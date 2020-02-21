@@ -25,5 +25,4 @@ def test_no_dt():
     s2 = c2.run(field)
                                
     np.testing.assert_allclose(s1.data, s2.data, rtol=1e-3, atol=1e-3)
-    assert c1.diagnostics['solver']['steps'] > c2.diagnostics['solver']['steps']
 
