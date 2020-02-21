@@ -43,6 +43,14 @@ simulate stochastic differential equations.
 The main goal of the package is to provide a convenient way to analyze
 PDEs using general methods, while at the same time allowing for enough
 flexibility to easily implement more specialized code.
+The code can be installed via pip (`pip install py-pde`), since it is written in
+pure python.
+However, central parts are just-in-time compiled using `numba` [@numba] for 
+computational efficiency.
+To improve user-interaction further, some parts except mathematical expressions
+that are parsed by `sympy` [@sympy] and optionally compiled.
+This approach lowers the barrier for new users while also providing flexibility
+for advanced use-cases.
 Moreover, the package provides convenience functions for creating suitable 
 initial conditions, for controlling what is analyzed as well as stored during a
 simulation, and for visualizing the final results.
@@ -53,12 +61,12 @@ world of dynamical systems.
 
 # Methods
 
-The basic object of the `py-pde` package are scalar and tensorial fields defined
-on various discretzied grids.
+The basic objects of the `py-pde` package are scalar and tensorial fields
+defined on various discretzied grids.
 These grids can deal with periodic boundary conditions and they allow exploiting
 spatial symmetries that might be present in the physical problem. 
 For instance, a scalar field $f(z, r) = \sqrt{z} * e^{-r^2}$ in cylindrical
-coordiantes can be visualized using
+coordiantes assuming azimuthal symmetry can be visualized using
 ```
 grid = CylindricalGrid(radius=5, bounds_z=[0, 10], shape=(32, 64))
 field = ScalarField.from_expression(grid, 'sqrt(z) * exp(-r**2)')
@@ -67,8 +75,9 @@ field.plot()
 The package defines common differential operators that act directly on the
 fields.
 For instance, the call `field.gradient('neumann')` returns a vector field on the
-same cylindrical grid where the differential operators is evaluated with Neumann
-boundary conditions.
+same cylindrical grid `grid`.
+The components of the vector field corrspond to the gradient of `field` assuming
+Neumann boundary conditions.
 Here, differential operators are evaluated using teh finite difference method
 (FDM) and the package supports various boundary conditions, which can be
 specified per field and boundary separately.
@@ -78,22 +87,34 @@ results, and the detailed investigation of intermediate data.
 
 The main part of the `py-pde` package provides the infrastructure for solving
 partial differential equations.
-For instance, solving the diffusion equation on the spherical grid defined
-above simply becomes
-```
-result = DiffusionPDE().solve(field, t_range=[0, 10])
-```
 Here, we use the method of lines by explicitely discretizing space using the
 grid classes described above.
 This reduces the PDEs to a set of ordinary differential equations, which can
 be solved using standard methods.
-For convenience, forward and backward Euler methods as well as a Runge-Kutta
-scheme are directly implemented in the package.
-Moreover, a wrapper for the excellent `scipy.integrate.solve_ivp` method from
-the scipy package [@SciPy2020] exists, which provides additional methods, in
-particular for stiff problems.
-Note that the explicit stepper provided by `py-pde` also supports stochastic
-differential equations in the Itô representation.
+For instance, solving the diffusion equation on the cylindrical grid defined
+above simply becomes
+```
+eq =  DiffusionPDE()
+result = eq.solve(field, t_range=[0, 10])
+```
+Note that the partial differential equation is defined independent of geometry,
+allowing for flexible specification later.
+The package provides simple implementations of standard PDEs, but extensions are
+simple to implement.
+In particular, the differential operator $\mathcal D$ can be implemented in pure
+python for initial testing, while adding a more specialized version compiled
+with `numba` [@numba] might be added later for speed.
+This flexibility is one strength of the package, since it allows quick
+development to test new PDEs, while it also provides an avenue for efficient
+calculations later.
+
+The flexibility of `py-pde` is one of its key feature.
+For instance, while the package implements forward and backward Euler methods as
+well as a Runge-Kutta scheme, users might require more sophisticated solvers.
+Here, we provide a wrapper for the excellent `scipy.integrate.solve_ivp` method
+from the scipy package [@SciPy2020] and further additions are straightforward.
+Finally, the explicit Euler stepper provided by `py-pde` also supports
+stochastic differential equations in the Itô representation.
 This feature allows users to quickly test the effect of noise onto their
 dynamical systems without in depth knowledge on the associated numerical
 implementation.
@@ -101,32 +122,21 @@ implementation.
 Finally, the package provides many convenience methods that allow analyzing
 simulations on the fly, storing data persistently or visualizing the temporal
 evolution of quantities of interest.
-
-
-
-* Plays well together with jupyter
-* Implemented using OOP -> easy extensibility
-* JIT using numba
-* Written in pure python -> easy installation
-
-
-<!-- Detailed use cases -->
-* Just-in-time compiled inner loops using numba
-* Object-oriented design for easy extensions
-* Formulate PDEs independent of geometry
-* Convenience functions for visualization and analysis
-
-
-# Methods
-
-
- finite difference method (FDM) + method of lines
-
-numpy [@numpy] and scipy for basic math [@SciPy2020]
-
-numba for accelerating [@numba]
-tqdm for displaying progress [@tqdm]
-sympy for parsing expressions [@sympy]
+These features can be used even when not dealing with PDEs, for instance for
+visualizing results from vector calculus.
+Here, the excellent integration of `matplotlib` [@matplotlib] into ipython
+jupyter notebooks [@ipython] allows for an efficient workflow.
+ 
+The `py-pde` package achievs the flexibility by a consinstent object-oriented
+implementation, where each component can be easily extended and some can even be
+used in isolation.
+For instance, the numba-compiled finite-difference operators, which support
+flexible boundary conditions, can be applied to `numpy.ndarrays` directly, e.g., 
+in custom applications.
+Generally, the just-in-time compilation provided by numba [@numba] allows for
+numerically efficient code while making deploying code easy.
+For instance, the package can be distributed to a cluster without worrying
+about setting paths and compiling source code. 
 
 
 # Related software
