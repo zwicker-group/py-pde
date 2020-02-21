@@ -38,7 +38,7 @@ def test_conservative_laplace_sph():
     r_max = 1.5
     for r_min in [0, 0.1]:
         grid = SphericalGrid((r_min, r_max), 8)
-        f = ScalarField.random_uniform(grid)
+        f = ScalarField.random_harmonic(grid)
     
         bcs = grid.get_boundary_conditions('natural')
         lap1 = ops.make_laplace(bcs, conservative=True)
