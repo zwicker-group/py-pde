@@ -13,9 +13,11 @@ from ..grids import UnitGrid, CartesianGrid
 from ..fields import ScalarField
 from ..pdes import DiffusionPDE
 from ..storage import FileStorage
+from ..tools.misc import skipUnlessModule
 
 
 
+@skipUnlessModule('h5py')
 def test_writing_to_storage():
     """ test whether data is written to storage """
     state = ScalarField.random_uniform(UnitGrid([3]))

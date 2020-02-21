@@ -22,7 +22,6 @@ from ...tools.misc import skipUnlessModule, module_available
 @skipUnlessModule("matplotlib")
 def test_plot_tracker(tmp_path):
     """ test whether the plot tracker creates files without errors """
-    movie_file = tmp_path / "movie.mov"
     output_file = tmp_path / "img.png"
     output_folder = tmp_path / "folder/"
     output_folder.mkdir()
@@ -32,14 +31,12 @@ def test_plot_tracker(tmp_path):
     pde = DiffusionPDE()
     tracker = trackers.PlotTracker(output_file=output_file,
                                    output_folder=output_folder,
-                                   movie_file=movie_file,
                                    interval=0.1, show=False)
     
     pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend='numpy')
     
     assert output_file.exists()
     assert len(list(output_folder.iterdir())) == 6
-    assert movie_file.exists()
     
     
     
