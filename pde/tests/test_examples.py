@@ -11,7 +11,7 @@ from typing import List  # @UnusedImport
 import pytest
 import numba as nb
 
-from ..tools.misc import module_available
+from ..tools.misc import module_available, skipUnlessModule
 
 
 
@@ -54,6 +54,7 @@ def test_example(path):
 
 
 
+@skipUnlessModule('jupyter')
 @pytest.mark.skipif(nb.config.DISABLE_JIT,
                     reason='pytest seems to check code coverage')
 @pytest.mark.parametrize('path', NOTEBOOKS)
