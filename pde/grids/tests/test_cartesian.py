@@ -87,8 +87,6 @@ def test_unit_grid_1d():
         d, a = grid.polar_coordinates_real(p, ret_angle=True)
         c2 = grid.from_polar_coordinates(d, a, p)
         assert np.allclose(grid.distance_real(c1, c2), 0)
-        
-        grid.plot()
     
     
     
@@ -125,8 +123,6 @@ def test_unit_grid_2d():
     c2 = grid.from_polar_coordinates(d, a, p)
     assert np.allclose(grid.distance_real(c1, c2), 0)
 
-    grid.plot()
-
 
 
 def test_unit_grid_3d():
@@ -154,9 +150,6 @@ def test_unit_grid_3d():
         assert np.all(not_too_large)
     large_enough = grid.polar_coordinates_real((0, 0, 0)) > np.sqrt(6)
     assert np.any(large_enough)
-    
-    with pytest.raises(NotImplementedError):
-        grid.plot()
 
 
 

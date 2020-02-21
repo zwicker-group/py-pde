@@ -11,14 +11,15 @@ Prerequisites
 The code builds on other python packages, which need to be installed for this
 package to function properly. The required packages are listed in the table below:
 
-=======  =====
-Package  Usage 
-=======  =====
-numpy    Array library used for manipulating data (version >=1.16)
-numba    Just-in-time compilation to accelerate numerics (version >=0.43)
-scipy    Miscellaneous scientific functions (version >=1.2)
-sympy    Dealing with user-defined mathematical expressions (version >=1.4)
-=======  =====
+===========  =========
+Package      Usage 
+===========  =========
+matplotlib   Visualizing results (version >= 3.1.0)
+numpy        Array library used for manipulating data (version >=1.16)
+numba        Just-in-time compilation to accelerate numerics (version >=0.43)
+scipy        Miscellaneous scientific functions (version >=1.2)
+sympy        Dealing with user-defined mathematical expressions (version >=1.4)
+===========  =========
 
 These package can be installed via your operating systems package manage, via
 :command:`macports`, :command:`homebrew`, :command:`conda`, or :command:`pip`.
@@ -36,7 +37,6 @@ features:
 Package      Usage                                      
 ===========  =========
 h5py         Storing data in the hierarchical file format
-matplotlib   Visualizing results
 pandas       Handling tabular data
 pyfftw       Faster Fourier transforms
 pytest       Running tests

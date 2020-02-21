@@ -10,6 +10,7 @@ import pytest
 
 from ... import grids
 from ..base import discretize_interval, GridBase
+from ...tools.misc import skipUnlessModule
 
 
 
@@ -130,3 +131,14 @@ def test_grid_volume():
 
 
 
+@skipUnlessModule('matplotlib')
+def test_grid_plotting():
+    """ test plotting of grids """
+    grids.UnitGrid([4]).plot()
+    grids.UnitGrid([4, 4]).plot()
+    
+    with pytest.raises(NotImplementedError):
+        grids.UnitGrid([4, 4, 4]).plot()
+
+    grids.PolarGrid(4, 8).plot()
+    grids.PolarGrid((2, 4), 8).plot()
