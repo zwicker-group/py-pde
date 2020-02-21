@@ -1,10 +1,17 @@
-from distutils.core import setup
+from setuptools import setup
+
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
+
 setup(
   name = 'py-pde',
-  packages = ['py-pde'],
+  packages = ['pde'],
   version = '0.1',
   license='MIT',
   description = 'Python package for solving partial differential equations',
+  long_description=long_description,
+  long_description_content_type="text/markdown",
   author = 'David Zwicker',
   author_email = 'david.zwicker@ds.mpg.de',
   url = 'https://github.com/zwicker-group/py-pde',

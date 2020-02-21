@@ -35,10 +35,10 @@ def test_findiff_sph():
     
 def test_conservative_laplace_sph():
     """ test and compare the two implementation of the laplace operator """
-    r_max = 1.5
+    r_max = 3.14
     for r_min in [0, 0.1]:
         grid = SphericalGrid((r_min, r_max), 8)
-        f = ScalarField.random_harmonic(grid)
+        f = ScalarField.from_expression(grid, 'cos(r)')
     
         bcs = grid.get_boundary_conditions('natural')
         lap1 = ops.make_laplace(bcs, conservative=True)
