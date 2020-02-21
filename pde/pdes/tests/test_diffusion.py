@@ -12,15 +12,15 @@ from ...fields import ScalarField
 
 def test_diffusion_single():
     """ test some methods of the simple diffusion model """
-    pde = DiffusionPDE()
-    assert isinstance(str(pde), str)
-    assert isinstance(repr(pde), str)
-    assert not pde.explicit_time_dependence
+    eq = DiffusionPDE()
+    assert isinstance(str(eq), str)
+    assert isinstance(repr(eq), str)
+    assert not eq.explicit_time_dependence
     
     grid = UnitGrid([4, 4])
     state = ScalarField.random_uniform(grid)
      
-    field = pde.evolution_rate(state)
+    field = eq.evolution_rate(state)
     assert isinstance(field, ScalarField)
     assert field.grid == grid
 

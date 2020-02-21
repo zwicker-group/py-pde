@@ -227,6 +227,7 @@ class PlotTracker(TrackerBase):
                  output_file: Optional[str] = None,
                  output_folder: Optional[str] = None,
                  movie_file: Optional[str] = None,
+                 quantities=None,
                  show: bool = True):
         """
         Args:
@@ -240,6 +241,8 @@ class PlotTracker(TrackerBase):
             movie_file (str, optional):
                 Specifies a filename to which a movie of all the frames is
                 written after the simulation.
+            quantities:
+                |Args_plot_quantities|
             show (bool, optional):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
@@ -247,6 +250,7 @@ class PlotTracker(TrackerBase):
         super().__init__(interval=interval)
         self.output_file = output_file
         self.output_folder = output_folder
+        self.quantities = quantities
         self.show = show
         
         if movie_file is not None or output_folder is not None:
@@ -271,7 +275,8 @@ class PlotTracker(TrackerBase):
             float: The first time the tracker needs to handle data
         """
         from ..visualization.plotting import ScalarFieldPlot
-        self.plot = ScalarFieldPlot(field, show=self.show)
+        self.plot = ScalarFieldPlot(field, quantities=self.quantities,
+                                    show=self.show)
          
         return super().initialize(field, info=info)
         

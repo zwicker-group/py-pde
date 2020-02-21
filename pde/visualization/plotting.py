@@ -252,7 +252,9 @@ class ScalarFieldPlot():
                 quantities = [{'title': 'Concentration', 'source': None}]
             
         # make sure panels is a 2d array
-        if isinstance(quantities[0], dict):
+        if isinstance(quantities, dict):
+            quantities = [[quantities]]
+        elif isinstance(quantities[0], dict):
             quantities = [quantities]
         return quantities
         
@@ -263,7 +265,7 @@ class ScalarFieldPlot():
         except TypeError:
             pass  # can occur when shutting down python interpreter
         else:
-            if self.fig:
+            if hasattr(self, 'fig') and self.fig:
                 plt.close(self.fig)
         
             

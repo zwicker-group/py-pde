@@ -20,6 +20,7 @@ deal with raw data for faster simulations.
    ~kpz_interface.KPZInterfacePDE
    ~kuramoto_sivashinsky.KuramotoSivashinskyPDE
    ~swift_hohenberg.SwiftHohenbergPDE
+   ~wave.WavePDE
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
@@ -31,3 +32,4 @@ from .diffusion import DiffusionPDE
 from .kpz_interface import KPZInterfacePDE
 from .kuramoto_sivashinsky import KuramotoSivashinskyPDE
 from .swift_hohenberg import SwiftHohenbergPDE
+from .wave import WavePDE
