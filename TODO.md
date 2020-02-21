@@ -2,7 +2,6 @@ TODO
 ====
 * Prepare JOSS submission
 * Revise jupyter examples
-* Move to group repository
 * Setup readthedocs
 * Setup CI
 
