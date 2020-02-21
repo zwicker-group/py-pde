@@ -1,0 +1,30 @@
+.. This files contains replacements that are used throughout the documentation
+
+
+.. |Arg_boundary_conditions| replace:: 
+  Specifies the boundary conditions for the differential operator. The expected
+  instance of :class:`~pde.boundaries.axes.Boundaries` can be created from
+  various data formats using the class method
+  :func:`~pde.boundaries.axes.Boundaries.from_data`.
+
+
+.. |Arg_tracker_interval| replace::
+    Determines how often the tracker interrupts the simulation. Simple numbers
+    are interpreted as durations measured in the simulation time variable.
+    Alternatively, a string using the format 'hh:mm:ss' can be used to give
+    durations in real time. Finally, instances of the classes defined in 
+    :mod:`~pde.trackers.intervals` can be given for more control. 
+    
+    
+.. |Args_plot_quantities| replace:: 
+  A list of quantities that are shown side by side. If `quantities` is a simple
+  list, the panels will be rendered as a single row, while a 2d list allows
+  for multiple rows.
+  Each panel is defined by a dictionary, where the item with key 'source' is
+  mandatory, since it defines what is being shown.
+  The value associated with 'source' can be either an integer specifying the
+  component that is shown or a function which is evaluated with the full state
+  as input. Additional items in the dictionary are 'title' (setting the title
+  of the panel), 'scale' (defining the color range shown; these are typically
+  two numbers defining the lower and upper bound, but if only one is given the
+  range [0, scale] is assumed), and 'cmap' (defining the colormap being used). 
