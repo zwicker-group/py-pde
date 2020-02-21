@@ -52,7 +52,8 @@ required for building the documentation.
 Installing the `py-pde` package
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The package can be simply checked out from `github.com/david-zwicker/py-pde <https://github.com/david-zwicker/py-pde>`_.
+The package can be simply checked out from
+`github.com/zwicker-group/py-pde <https://github.com/zwicker-group/py-pde>`_.
 To import the package from any python session, it might be convenient to include the
 root folder of the package into the :envvar:`PYTHONPATH` environment variable.
 
