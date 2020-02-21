@@ -26,12 +26,12 @@ jobs:
         cd tests
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
-        pytest --cov-report xml:test/report_coverage.xml --cov=pde ..
+        pytest --cov-report xml:tests/report_coverage.xml --cov=pde ..
     - name: Upload coverage to Codecov  
       uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./test/report_coverage.xml
+        file: ./tests/report_coverage.xml
         flags: unittests
         name: codecov-pydev
         fail_ci_if_error: true
