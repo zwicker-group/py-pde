@@ -121,9 +121,11 @@ evolution of quantities of interest.
 
  finite difference method (FDM) + method of lines
 
-numba for accelerating [@numba]
+numpy [@numpy] and scipy for basic math [@SciPy2020]
 
-sympy for parsing expressions
+numba for accelerating [@numba]
+tqdm for displaying progress [@tqdm]
+sympy for parsing expressions [@sympy]
 
 
 # Related software
