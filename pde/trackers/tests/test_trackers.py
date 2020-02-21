@@ -38,6 +38,9 @@ def test_plot_tracker(tmp_path):
     assert output_file.exists()
     assert len(list(output_folder.iterdir())) == 6
     
+    import matplotlib.pyplot as plt
+    plt.close('all')
+    
     
     
 def test_simple_progress():
@@ -92,6 +95,10 @@ def test_trackers():
         df = data.dataframe
         np.testing.assert_allclose(df['time'], times)
         np.testing.assert_allclose(df['integral'], state.integral)
+    if module_available("matplotlib"):
+        import matplotlib.pyplot as plt
+        plt.close('all')
+        
 
 
 def test_callback_tracker():

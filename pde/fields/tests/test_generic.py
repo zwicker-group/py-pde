@@ -271,7 +271,7 @@ def test_simple_plotting(grid):
         f.plot('line')
         if isinstance(f, VectorField) and grid.dim == 2:
             f.plot('vector')
-        plt.close()
+        plt.close('all')
         
             
             

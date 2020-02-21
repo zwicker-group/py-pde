@@ -57,4 +57,4 @@ def test_noise_scaling():
         mean = np.mean([get_noise() for _ in range(64)])
         result.append(mean)
         
-    np.testing.assert_allclose(*result, rtol=0.2)
+    np.testing.assert_allclose(*result, rtol=0.5)

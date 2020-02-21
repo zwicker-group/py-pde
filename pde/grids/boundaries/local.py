@@ -507,20 +507,17 @@ class BCBase(metaclass=ABCMeta):
             RuntimeError: if the value does not have rank `rank`
         """
         if self.homogeneous:
-            if self.value is 0.:
+            if np.isscalar(self.value) and self.value == 0:
                 return True
             
-            if rank == 0:
+            elif rank == 0:
                 if self.rank != 0:
                     raise RuntimeError('Expected scalar boundary condition but '
                                        f'got `{self.value}`')
                     
-            elif np.isscalar(self.value):
-                if self.value == 0:
-                    return True
-                else:
-                    raise RuntimeError('Expected boundary condition of rank '
-                                       f'{rank} but got scalar `{self.value}`')
+            elif np.isscalar(self.value):  # self.value != 0
+                raise RuntimeError('Expected boundary condition of rank '
+                                   f'{rank} but got scalar `{self.value}`')
                     
             elif self.value.shape != (self.grid.dim,) * rank:
                 raise RuntimeError('Expected boundary condition of rank '
@@ -531,6 +528,8 @@ class BCBase(metaclass=ABCMeta):
             if rank != 0:
                 raise NotImplementedError('Only homogeneous tensorial boundary '
                                           'conditions are supported')
+                
+        return True
             
             
     @abstractmethod

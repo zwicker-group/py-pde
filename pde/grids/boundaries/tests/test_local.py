@@ -59,7 +59,7 @@ def test_individual_boundaries():
                  {'type': 'mixed', 'value': 1}, 'extrapolate']:
         bc = BCBase.from_data(g, 0, upper=True, data=data)
         
-        assert bc.check_value_rank(0) is None
+        assert bc.check_value_rank(0)
         if bc.value == 0:
             assert bc.check_value_rank(1)
         else:
@@ -74,7 +74,7 @@ def test_individual_boundaries():
     # multidimensional
     g2 = UnitGrid([2, 3])
     bc = BCBase.from_data(g2, 0, True, {'type': 'value', 'value': [1, 2]})
-    assert bc.check_value_rank(1) is None
+    assert bc.check_value_rank(1)
     with pytest.raises(RuntimeError):
         bc.check_value_rank(0)
     assert bc.extract_component(0).value == 1

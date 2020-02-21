@@ -1,13 +1,12 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
-
 setup(
   name = 'py-pde',
-  packages = ['pde'],
-  version = '0.1',
+  packages = find_packages(),
+  version = '0.1.1',
   license='MIT',
   description = 'Python package for solving partial differential equations',
   long_description=long_description,
