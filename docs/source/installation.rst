@@ -1,29 +1,48 @@
 Installation
 ############
 
-This package is developed for python 3.6+ and might thus not work in earlier
-python versions. 
+This `py-pde` package is developed for python 3.6+ and should run on all
+common platforms.
+The code is tested under Linux, Windows, and macOS.
+Since the package is available on `pypi <https://pypi.org/project/py-pde/>`_,
+the installation is in principle as simple as running
+
+.. code-block:: bash
+
+    pip install py-pde
+    
+    
+However there might be cases where the source code needs to be installed from
+source, which is discussed below. 
+
+
+Installing from source
+^^^^^^^^^^^^^^^^^^^^^^
+Installing from source can be necessary if the pypi installation does not work
+or if the latest source code should be installed from github.
 
 
 Prerequisites
-^^^^^^^^^^^^^
+-------------
 
-The code builds on other python packages, which need to be installed for this
-package to function properly. The required packages are listed in the table below:
+The code builds on other python packages, which need to be installed for
+`py-pde` to function properly.
+The required packages are listed in the table below:
 
-===========  =========
-Package      Usage 
-===========  =========
-matplotlib   Visualizing results (version >= 3.1.0)
-numpy        Array library used for manipulating data (version >=1.16)
-numba        Just-in-time compilation to accelerate numerics (version >=0.43)
-scipy        Miscellaneous scientific functions (version >=1.2)
-sympy        Dealing with user-defined mathematical expressions (version >=1.4)
-===========  =========
+===========  ========= =========
+Package      Version   Usage 
+===========  ========= =========
+matplotlib   >= 3.1.0  Visualizing results
+numpy        >=1.16    Array library used for storing data
+numba        >=0.43    Just-in-time compilation to accelerate numerics
+scipy        >=1.2     Miscellaneous scientific functions
+sympy        >=1.4     Dealing with user-defined mathematical expressions
+===========  ========= =========
 
-These package can be installed via your operating systems package manage, via
-:command:`macports`, :command:`homebrew`, :command:`conda`, or :command:`pip`.
-The package versions given in the brackets are minimal requirements, although
+These package can be installed via your operating system's package manager, e.g.
+using :command:`macports`, :command:`homebrew`, :command:`conda`, or
+:command:`pip`.
+The package versions given above are minimal requirements, although
 this is not tested systematically. Generally, it should help to install the
 latest version of the package.  
 Note that the last package is only available via github and just needs to be
@@ -49,13 +68,13 @@ packages :mod:`sphinx-autodoc-annotation` and :mod:`sphinx_rtd_theme` are
 required for building the documentation.
 
 
-Installing the `py-pde` package
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Downloading the package
+-----------------------
 
 The package can be simply checked out from
 `github.com/zwicker-group/py-pde <https://github.com/zwicker-group/py-pde>`_.
-To import the package from any python session, it might be convenient to include the
-root folder of the package into the :envvar:`PYTHONPATH` environment variable.
+To import the package from any python session, it might be convenient to include
+the root folder of the package into the :envvar:`PYTHONPATH` environment variable.
 
 This documentation can be built by calling the :command:`make html` in the
 :file:`docs` folder.
@@ -65,7 +84,7 @@ Note that a LaTeX documentation can be build using :command:`make latexpdf`.
 
 
 Optimizing performance
-^^^^^^^^^^^^^^^^^^^^^^
+-----------------------
 
 Factors influencing the performance of the package include the compiler used for
 :mod:`numpy`, :mod:`scipy`, and of course :mod:`numba`.
