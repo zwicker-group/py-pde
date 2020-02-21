@@ -12,7 +12,7 @@ trackers = [
     'progress',                    # show progress bar during simulation
     'steady_state',                # abort when steady state is reached
     storage.tracker(interval=1),   # store data every simulation time unit
-    PlotTracker(movie_file='/tmp/movie.mov', show=False),  # create movie
+    PlotTracker(show=True),        # show images during simulation
     # print some output every 5 real seconds:
     PrintTracker(interval=RealtimeIntervals(duration=5))
     
