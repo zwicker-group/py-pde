@@ -8,4 +8,5 @@ export MPLBACKEND="agg"
 
 mkdir -p coverage
 python3 -m pytest  -n $CORES \
-	--cov=pde --cov-report html:coverage ..
+	--cov-report html:coverage \
+	--cov=pde ..

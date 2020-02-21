@@ -19,10 +19,9 @@ PACKAGE_PATH = Path(__file__).resolve().parents[2]
 EXAMPLES = glob.glob(str(PACKAGE_PATH / 'examples' / '*.py'))
 NOTEBOOKS = glob.glob(str(PACKAGE_PATH / 'examples' / 'jupyter' / '*.ipynb'))
 
-if module_available("matplotlib"):
-    SKIP_EXAMPLES: List[str] = []
-else:
-    SKIP_EXAMPLES = ['make_movie.py', 'trackers.py']
+SKIP_EXAMPLES: List[str] = ['make_movie.py']
+if not module_available("matplotlib"):
+    SKIP_EXAMPLES.append('trackers.py')
 
 
 
