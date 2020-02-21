@@ -241,3 +241,7 @@ intersphinx_mapping = {'https://docs.python.org/3/': None,
                        'https://matplotlib.org': None,
                        'http://docs.h5py.org/en/latest/': None}
 
+
+# run autodoc
+from run_autodoc import main
+main()

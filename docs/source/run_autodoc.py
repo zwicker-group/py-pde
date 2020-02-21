@@ -61,6 +61,5 @@ def main():
         replace_in_file(path, {'Submodules\n----------\n\n': ''})
     
     
-    
 if __name__ == '__main__':
     main()
