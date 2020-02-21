@@ -126,10 +126,10 @@ These features can be used even when not dealing with PDEs, for instance for
 visualizing results from vector calculus.
 Here, the excellent integration of `matplotlib` [@matplotlib] into ipython
 jupyter notebooks [@ipython] allows for an efficient workflow.
- 
-The `py-pde` package achievs the flexibility by a consinstent object-oriented
-implementation, where each component can be easily extended and some can even be
-used in isolation.
+
+One of the advantages of the `py-pde` package is its flexibilit, stemming from a
+consistent object-oriented implementation, where each component can be extended
+and some can even be used in isolation.
 For instance, the numba-compiled finite-difference operators, which support
 flexible boundary conditions, can be applied to `numpy.ndarrays` directly, e.g., 
 in custom applications.
@@ -138,20 +138,24 @@ numerically efficient code while making deploying code easy.
 For instance, the package can be distributed to a cluster without worrying
 about setting paths and compiling source code. 
 
-
-# Related software
-
-
-scikit-finite-diff: [@Cellier2019]
-
-https://gitlab.com/celliern/scikit-fdiff
-- limited to cartesian coordinates, no easy working with fields
-
-Other methods:
-
-finite volume method (FVM)
-finite element method (FEM)
-spectral methods such as the Fourier-spectral (could be included)
+The `py-pde` package joins a long list of software packages that aid researchers
+in solving PDEs.
+Lately, there have been several attempts at simplifying the process of
+translating the mathematical formulation to a numerical implementation on the
+computer.
+Noteably, the finite-difference approach has been favored by the packages
+`scikit-finite-diff` [@Cellier2019], `Devito` [@devito], and `pyclaw` [@pyclaw].
+Conversely, finite-element and finite-volume methods provide more flexibility in
+the gemeotries considered and have been used in major packages, including
+`FEniCS` [@Fenics], `FiPy` [@FiPy], and `SfePy` [@SfePy].
+Finally, another popular approach for calculating differentials of discretized
+fields are spectral methods.
+While these methods could in principle also implemented in `py-pde` they are
+limited to a small set of viable boundary conditions and are thus not the prime
+focus.
+Instead, `py-dev` focuses on providing a full toolchain for creating,
+simulating, and analyzing PDEs and the associated fields.
+While being useful in research, `py-pde` might thus also suitable for education.  
 
 
 # Acknowledgements
