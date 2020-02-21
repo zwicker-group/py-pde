@@ -20,10 +20,18 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    - name: Create coverage report
+    - name: Generate coverage report
       run: |
         pip install pytest pytest-cov
         cd tests
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
-        python3 -m pytest --cov-report xml:test/report_coverage.xml --cov=pde ..
+        pytest --cov-report xml:test/report_coverage.xml --cov=pde ..
+    - name: Upload coverage to Codecov  
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./test/report_coverage.xml
+        flags: unittests
+        name: codecov-pydev
+        fail_ci_if_error: true
