@@ -28,8 +28,7 @@ jobs:
     - name: Test types with mypy
       run: |
         pip install mypy
-        cd tests
-        ./tests_types.sh
+     	  python -m mypy --config-file tests/mypy.ini --pretty --package pde
     - name: Test with pytest
       run: |
         pip install pytest
