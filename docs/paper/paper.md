@@ -21,10 +21,11 @@ bibliography: paper.bib
 
 Partial differential equations (PDEs) play a central role in describing the
 dynamics of physical systems.
-Typical equations are non-linear, so analytical solutions rarely exist.
-Instead, numerical integration of such equations is used to provide insight into
-their behavior and to motivate approximative solutions, which might then lead to
-analytical insight.
+However, analytical solutions rarely exist since typical equations are
+non-linear.
+Instead, numerical integration is used to provide insight into their behavior.
+Moreover, such investigations can motivate approximative solutions, which might
+then lead to analytical insight.
 
 The `py-pde` python package presented in this paper allows researchers to
 quickly and conveniently simulate and analyze PDEs of the general form
@@ -36,18 +37,18 @@ where $\mathcal D$ is a (non-lienar) differential operator that defines
 the time evolution of a (set of) physical fields $u$ with possibly
 tensorial character, which depend on spatial coordinates $\boldsymbol x$
 and time $t$.
-The framework also supports stochastic differential equations, where the noise
-is represented by $\eta$ above.
+The framework also supports a noise term, represented by $\eta$ above, to
+simulate stochastic differential equations.
 
-The main design goal of the package was to provide a convenient way to analyze
+The main goal of the package is to provide a convenient way to analyze
 PDEs using general methods, while at the same time allowing for enough
 flexibility to easily implement more specialized code.
 Moreover, the package provides convenience functions for creating suitable 
-initial conditions, for controlling what is analyzed and stored during a
-simulation, and for visualizing final results.
-The package thus serves as a toolbox for exploring PDEs both in the professional
-context and for students, who want to delve into the facinating world of
-dynamical systems.
+initial conditions, for controlling what is analyzed as well as stored during a
+simulation, and for visualizing the final results.
+The `py-pde` package thus serves as a toolbox for exploring PDEs both in the
+professional context and for students, who want to delve into the facinating
+world of dynamical systems.
 
 
 # Methods
