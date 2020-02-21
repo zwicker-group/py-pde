@@ -23,7 +23,7 @@ jobs:
         
     - name: Generate coverage report
       run: |
-        pip install pytest pytest-cov
+        pip install pytest pytest-cov h5py pandas tqdm
         cd tests
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
