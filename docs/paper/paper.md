@@ -19,7 +19,6 @@ bibliography: paper.bib
 
 # Summary
 
-<!-- introduction to dynamical systems, why quick and easy code is necessary -->
 Partial differential equations (PDEs) play a central role in describing the
 dynamics of physical systems.
 Typical equations are non-linear, so analytical solutions rarely exist.

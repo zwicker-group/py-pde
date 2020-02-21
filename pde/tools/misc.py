@@ -199,17 +199,18 @@ def get_progress_bar_class():
         
         class MockProgress():
             """ indicates progress by printing dots to stderr """
-            def __init__(self, **kwargs):
+            def __init__(self, *args, **kwargs):
                 self.n = self.total = 0
                 self.disable = False
 
-            def close(self, **kwargs): pass
+            def close(self, *args, **kwargs): pass
             
-            def refresh(self, **kwargs): 
+            def refresh(self, *args, **kwargs): 
                 sys.stderr.write('.')
                 sys.stderr.flush()
                 
-            def set_description(self, msg: str, refresh: bool = True):
+            def set_description(self, msg: str, refresh: bool = True, *args,
+                                **kwargs):
                 if refresh:
                     self.refresh()
 
