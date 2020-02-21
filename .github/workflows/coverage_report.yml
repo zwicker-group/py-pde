@@ -1,4 +1,4 @@
-name: py-pde coverage
+name: coverage report
 
 on: [push]
 
@@ -24,5 +24,6 @@ jobs:
       run: |
         pip install pytest pytest-cov
         cd tests
-        ./tests_coverage.sh
-        
+        export NUMBA_DISABLE_JIT=1
+        export MPLBACKEND="agg"
+        python3 -m pytest --cov-report xml:test/report_coverage.xml --cov=pde ..
