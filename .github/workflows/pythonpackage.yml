@@ -29,7 +29,7 @@ jobs:
       run: |
         pip install mypy
         cd tests
-        ./test_types.sh
+        ./tests_types.sh
     - name: Test with pytest
       run: |
         pip install pytest
