@@ -119,20 +119,20 @@ class PeriodicityError(RuntimeError):
 
     pass
 
+
 def subdivide(num: int, chunks: int) -> List[int]:
-    r""" subdivide `num` intervals in `chunk` chunks 
+    r"""subdivide `num` intervals in `chunk` chunks
 
     Args:
         num (int): Number of intervals
         chunks (int): Number of chunks
-    
+
     Returns:
         list: The number of intervals per chunk
-    """ 
+    """
     if chunks > num:
         raise RuntimeError("Cannot divide in more chunks than support points ")
     return np.diff(np.linspace(0, num, chunks + 1).astype(int))
-
 
 
 class GridBase(metaclass=ABCMeta):
@@ -1564,102 +1564,6 @@ class GridBase(metaclass=ABCMeta):
 
         return integrate  # type: ignore
 
-    def _subdivide_along_axis(self, axis: int, chunks: int) -> List["GridBase"]:
-        """ subdivide the grid along a given axis
-        
-        Args:
-            axis (int): The axis along which the subdivision will happen
-            chunks (int): The number of chunks along this axis 
-           
-        Returns:
-            list: A list of subgrids 
-        """
-        if chunks <= 0:
-            raise ValueError('Chunks must be a positive Integer')
-        elif chunks == 1:
-            return [self]  # no subdivision necessary
-        
-        
-        def replace_in_axis(arr, value):
-            if isinstance(arr, tuple):
-                return arr[:axis] + (value,) + arr[axis + 1:]
-            else:
-                res = arr.copy()
-                res[axis] = value
-                return res
-        
-        subgrids = []
-        shape_n = subdivide(self.shape[axis], chunks)
-        start = 0
-        for size in shape_n:
-            # determine new sub region
-            end = start + size
-            shape = replace_in_axis(self.shape, size)
-            periodic = replace_in_axis(self.periodic, False)
-            neighbors = replace_in_axis(self._parallel['neighbors'], [None] * 2)
-            
-            # determine bounds of the new grid
-            axis_bounds = self.axes_bounds[axis]
-            cell_bounds = np.linspace(*axis_bounds, self.shape[axis] + 1)
-            bounds = replace_in_axis(self.axes_bounds,
-                                     (cell_bounds[start], cell_bounds[end]))
-
-            # create new subgrid            
-            subgrid = self.__class__.from_bounds(bounds, shape, periodic)
-            subgrid._parallel = {'basegrid': self._parallel['basegrid'],
-                                 'neighbors': neighbors}
-            subgrids.append(subgrid)
-            start = end  # for next iteration
-            
-        # set neighbors for the boundary grids
-        if self.periodic[axis]:
-            subgrids[0]._parallel['neighbors'][axis] = (subgrids[-1],
-                                                        subgrids[1])
-            subgrids[-1]._parallel['neighbors'][axis] = (subgrids[-2],
-                                                         subgrids[0])
-        else:
-            subgrids[0]._parallel['neighbors'][axis] = (None, subgrids[1])
-            subgrids[-1]._parallel['neighbors'][axis] = (subgrids[-2], None)
-        
-        # set neighbors for the middle grids
-        for n in range(1, chunks - 1):
-            subgrids[n]._parallel['neighbors'][axis] = (subgrids[n - 1],
-                                                        subgrids[n + 1])
-             
-        return subgrids
-
-
-    def subdivide(self, decomposition: List[int]):
-        """ subdivide the grid into subgrids
-        
-        Args:
-            decomposition (list of ints): 
-                Number of subdivision in each direction. Must be a list of
-                length `grid.num_axes` or a single integer. In the latter case,
-                the same subdivision is assumed for each axes.
-        """
-        if hasattr(self, '_parallel'):
-            raise RuntimeError('It seems the grid was already subdivided. Make '
-                               'copy before subdividing it again.')
-            
-        decomposition = np.broadcast_to(decomposition, (self.num_axes,))
-        decomposition = decomposition.astype(int)
-        
-        self._parallel = {'basegrid': self,
-                          'neighbors': [self] * self.num_axes}
-        
-        subgrids = [self]
-        for axis, chunks in enumerate(decomposition):
-            # divide each subgrid along `axis`
-            newlist = []
-            for subgrid in subgrids:
-                newlist.extend(subgrid._subdivide_along_axis(axis=axis,
-                                                             chunks=chunks))
-            subgrids = newlist
-            
-        self._parallel = {'subgrids': subgrids}
-        return subgrids
-                
 
 def registered_operators() -> Dict[str, List[str]]:
     """returns all operators that are currently defined
@@ -1672,5 +1576,4 @@ def registered_operators() -> Dict[str, List[str]]:
         name: sorted(cls.operators)
         for name, cls in GridBase._subclasses.items()
         if not (name.endswith("Base") or hasattr(cls, "deprecated") and cls.deprecated)  # type: ignore
-    }                
-        
+    }

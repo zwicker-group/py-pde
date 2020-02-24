@@ -10,6 +10,8 @@ vanishes.
  
 """
 
+from __future__ import annotations
+
 import warnings
 from abc import ABCMeta
 from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, TypeVar, Union
@@ -113,24 +115,27 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         self._discretization = np.array((dr,))
 
     @classmethod
-    def from_bounds(cls, bounds: Tuple[Tuple[float, float]],
-                    shape: Tuple[int],
-                    periodic: Tuple[bool] = (False,)) -> "SphericalGridBase":
-        """ 
+    def from_bounds(
+        cls,
+        bounds: Tuple[Tuple[float, float]],
+        shape: Tuple[int],
+        periodic: Tuple[bool] = (False,),
+    ) -> SphericalSymGridBase:
+        """
         Args:
             bounds (tuple): Give the coordinate range for the radial axis.
             shape (tuple): The number of support points for the radial axis
             periodic (bool or list): Not used
-                
+
         Returns:
-            SphericalGridBase representing the region chosen by bounds 
+            SphericalGridBase representing the region chosen by bounds
         """
         if len(bounds) != 1:
-            raise ValueError('`bounds` must be given as ((r_min, r_max),). '
-                             f'Got {bounds} instead')
+            raise ValueError(
+                f"`bounds` must be given as ((r_min, r_max),). Got {bounds} instead"
+            )
         return cls(bounds[0], shape)
-                
-                  
+
     @property
     def state(self) -> Dict[str, Any]:
         """state: the state of the grid"""
@@ -142,7 +147,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         return self.axes_bounds[0][0] > 0
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> "SphericalSymGridBase":  # type: ignore
+    def from_state(cls, state: Dict[str, Any]) -> SphericalSymGridBase:  # type: ignore
         """create a field from a stored `state`.
 
         Args:
