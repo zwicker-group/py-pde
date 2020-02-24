@@ -21,8 +21,8 @@ bibliography: paper.bib
 
 Partial differential equations (PDEs) play a central role in describing the
 dynamics of physical systems in research and in practical applications.
-However, analytical solutions rarely exist since typical equations are
-non-linear.
+However, such equations are typically non-linear and analytical solutions rarely
+exist.
 Instead, such systems are solved by numerical integration to provide insight
 into their behavior.
 Moreover, such investigations can motivate approximative solutions, which might
