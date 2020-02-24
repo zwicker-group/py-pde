@@ -5,7 +5,8 @@ Cylindrical grids with azimuthal symmetry
  
 '''
 
-from typing import Tuple, Dict, Any, Union, Callable, Generator, TYPE_CHECKING
+from typing import (Tuple, Dict, Any, Union, Callable, Generator, List,
+                    TYPE_CHECKING)
 
 import numpy as np
 from scipy import interpolate
@@ -98,6 +99,30 @@ class CylindricalGrid(GridBase):
         self.axes_bounds = ((0., radius), tuple(bounds_z))  # type: ignore 
         self.discretization = np.array((dr, dz))
         
+
+    @classmethod
+    def from_bounds(cls, bounds, shape,
+                    periodic: Union[List[bool], bool] = False) \
+                        -> "CylindricalGrid":
+        """ 
+        Args:
+            bounds (tuple): Give the coordinate range for each axis. This should
+                be a tuple of two number (lower and upper bound) for each axis.
+                The length of `bounds` must be 2. 
+            shape (tuple): The number of support points for each axis. The
+                length of `shape` needs to be 2. 
+            periodic (bool or list): Specifies which axes possess periodic
+                boundary conditions. The first entry must be False
+                
+        Returns:
+            CylindricalGrid representing the region chosen by bounds 
+        """
+        radii, bounds_z = bounds
+        if radii[0] != 0:
+            raise NotImplementedError('Cylinders with hollow core are not '
+                                      'implemented.')
+        return cls(radii[1], bounds_z, shape, periodic_z=periodic[1])
+                
         
     @property
     def state(self) -> Dict[str, Any]:
