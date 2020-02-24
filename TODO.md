@@ -2,6 +2,7 @@ TODO
 ====
 * Prepare JOSS submission
 * Find a way to directly launch a jupyter notebook for testing purposes
+	- mybinder.org?
 * Mention how to install the package from pypi in readme and documentation
 
 * Introduce cut(x=?, y=?) and project([‘x’, ‘y’]) returning new field with new grid
@@ -29,6 +30,7 @@ TODO
 
 LOW-PRIORITY (Future ideas)
 ===========================
+* Add option to apply (local) function after operator has been applied
 * Add method showing the boundary condition as a mathematical equation
 * Add interface for setting parameters of a simulation
 	- each class should have a list of parameters it supports (with type?)

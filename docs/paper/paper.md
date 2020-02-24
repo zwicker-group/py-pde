@@ -20,10 +20,11 @@ bibliography: paper.bib
 # Summary
 
 Partial differential equations (PDEs) play a central role in describing the
-dynamics of physical systems.
+dynamics of physical systems in research and in practical applications.
 However, analytical solutions rarely exist since typical equations are
 non-linear.
-Instead, numerical integration is used to provide insight into their behavior.
+Instead, such systems are solved by numerical integration to provide insight
+into their behavior.
 Moreover, such investigations can motivate approximative solutions, which might
 then lead to analytical insight.
 
@@ -33,29 +34,29 @@ $$
 	\partial_t u(\boldsymbol x, t) = \mathcal D[u(\boldsymbol x, t)] 
 		+ \eta(u, \boldsymbol x, t) \;,
 $$
-where $\mathcal D$ is a (non-lienar) differential operator that defines
+where $\mathcal D$ is a (non-linear) differential operator that defines
 the time evolution of a (set of) physical fields $u$ with possibly
 tensorial character, which depend on spatial coordinates $\boldsymbol x$
 and time $t$.
-The framework also supports a noise term, represented by $\eta$ above, to
-simulate stochastic differential equations.
+The framework also supports a noise term, represented by $\eta$ in the equation
+above, to simulate stochastic differential equations.
 
-The main goal of the package is to provide a convenient way to analyze
+The main goal of the `py-pde` package is to provide a convenient way to analyze
 PDEs using general methods, while at the same time allowing for enough
 flexibility to easily implement more specialized code.
-The code can be installed via pip (`pip install py-pde`), since it is written in
-pure python.
+Since the code is written in pure python, it can be easily installed via pip:
+`pip install py-pde`.
 However, central parts are just-in-time compiled using `numba` [@numba] for 
 computational efficiency.
-To improve user-interaction further, some parts except mathematical expressions
-that are parsed by `sympy` [@sympy] and optionally compiled.
-This approach lowers the barrier for new users while also providing flexibility
-for advanced use-cases.
+To improve user-interaction further, some arguments accept mathematical
+expressions that are parsed by `sympy` [@sympy] and are compiled optionally.
+This approach lowers the barrier for new users while also providing speed and 
+flexibility for advanced use-cases.
 Moreover, the package provides convenience functions for creating suitable 
 initial conditions, for controlling what is analyzed as well as stored during a
 simulation, and for visualizing the final results.
 The `py-pde` package thus serves as a toolbox for exploring PDEs both in the
-professional context and for students, who want to delve into the facinating
+professional context and for students who want to delve into the facinating
 world of dynamical systems.
 
 
@@ -65,20 +66,19 @@ The basic objects of the `py-pde` package are scalar and tensorial fields
 defined on various discretzied grids.
 These grids can deal with periodic boundary conditions and they allow exploiting
 spatial symmetries that might be present in the physical problem. 
-For instance, a scalar field $f(z, r) = \sqrt{z} * e^{-r^2}$ in cylindrical
+For instance, the scalar field $f(z, r) = \sqrt{z} * e^{-r^2}$ in cylindrical
 coordiantes assuming azimuthal symmetry can be visualized using
-```
+```python
 grid = CylindricalGrid(radius=5, bounds_z=[0, 10], shape=(32, 64))
 field = ScalarField.from_expression(grid, 'sqrt(z) * exp(-r**2)')
 field.plot()
 ```
 The package defines common differential operators that act directly on the
 fields.
-For instance, the call `field.gradient('neumann')` returns a vector field on the
-same cylindrical grid `grid`.
-The components of the vector field corrspond to the gradient of `field` assuming
-Neumann boundary conditions.
-Here, differential operators are evaluated using teh finite difference method
+For instance, calling `field.gradient('neumann')` returns a vector field on the
+same cylindrical grid `grid` where the components corrspond to the gradient of
+`field` assuming Neumann boundary conditions.
+Here, differential operators are evaluated using the finite difference method
 (FDM) and the package supports various boundary conditions, which can be
 specified per field and boundary separately.
 The discretized fields are the foundation of the `py-pde` package and allow 
@@ -91,14 +91,14 @@ Here, we use the method of lines by explicitely discretizing space using the
 grid classes described above.
 This reduces the PDEs to a set of ordinary differential equations, which can
 be solved using standard methods.
-For instance, solving the diffusion equation on the cylindrical grid defined
-above simply becomes
-```
+For instance, solving the diffusion equation $\partial_t u = \nabla^2 u$ on the
+cylindrical grid defined above can be achived by
+```python
 eq =  DiffusionPDE()
 result = eq.solve(field, t_range=[0, 10])
 ```
 Note that the partial differential equation is defined independent of geometry,
-allowing for flexible specification later.
+allowing to use the same implementation for various geometries.
 The package provides simple implementations of standard PDEs, but extensions are
 simple to implement.
 In particular, the differential operator $\mathcal D$ can be implemented in pure
@@ -115,15 +115,19 @@ Here, we provide a wrapper for the excellent `scipy.integrate.solve_ivp` method
 from the scipy package [@SciPy2020] and further additions are straightforward.
 Finally, the explicit Euler stepper provided by `py-pde` also supports
 stochastic differential equations in the Itô representation.
-This feature allows users to quickly test the effect of noise onto their
-dynamical systems without in depth knowledge on the associated numerical
+The standard PDE classes support additive Gaussian white noise, but
+alternatives, including multiplicative noise, can be specified in user-defined
+classes.
+This feature allows users to quickly test the effect of noise onto 
+dynamical systems without in depth knowledge of the associated numerical
 implementation.
 
 Finally, the package provides many convenience methods that allow analyzing
-simulations on the fly, storing data persistently or visualizing the temporal
+simulations on the fly, storing data persistently, or visualizing the temporal
 evolution of quantities of interest.
-These features can be used even when not dealing with PDEs, for instance for
-visualizing results from vector calculus.
+These features might be helpful even when not dealing with PDEs.
+For instance, the result of applying differential operators on the discretized
+fields can be visualized directly. 
 Here, the excellent integration of `matplotlib` [@matplotlib] into ipython
 jupyter notebooks [@ipython] allows for an efficient workflow.
 
@@ -135,24 +139,24 @@ flexible boundary conditions, can be applied to `numpy.ndarrays` directly, e.g.,
 in custom applications.
 Generally, the just-in-time compilation provided by numba [@numba] allows for
 numerically efficient code while making deploying code easy.
-For instance, the package can be distributed to a cluster without worrying
-about setting paths and compiling source code. 
+For instance, the package can be distributed to a cluster using `pip` without
+worrying about setting paths and compiling source code. 
 
 The `py-pde` package joins a long list of software packages that aid researchers
-in solving PDEs.
+in analyzing PDEs.
 Lately, there have been several attempts at simplifying the process of
-translating the mathematical formulation to a numerical implementation on the
-computer.
-Noteably, the finite-difference approach has been favored by the packages
+translating the mathematical formulation of a PDE to a numerical implementation 
+on the computer.
+Most noteably, the finite-difference approach has been favored by the packages
 `scikit-finite-diff` [@Cellier2019], `Devito` [@devito], and `pyclaw` [@pyclaw].
 Conversely, finite-element and finite-volume methods provide more flexibility in
 the gemeotries considered and have been used in major packages, including
 `FEniCS` [@Fenics], `FiPy` [@FiPy], and `SfePy` [@SfePy].
-Finally, another popular approach for calculating differentials of discretized
-fields are spectral methods.
+Finally, spectral methods are another popular approach for calculating
+differentials of discretized fields.
 While these methods could in principle also implemented in `py-pde` they are
-limited to a small set of viable boundary conditions and are thus not the prime
-focus.
+limited to a small set of viable boundary conditions and are thus not the 
+primary focus.
 Instead, `py-dev` focuses on providing a full toolchain for creating,
 simulating, and analyzing PDEs and the associated fields.
 While being useful in research, `py-pde` might thus also suitable for education.  
