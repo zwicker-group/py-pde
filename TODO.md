@@ -2,7 +2,6 @@ TODO
 ====
 * Prepare JOSS submission
 * Find a way to directly launch a jupyter notebook for testing purposes
-* Mention how to install the package from pypi in readme and documentation
 
 * Introduce cut(x=?, y=?) and project([‘x’, ‘y’]) returning new field with new grid
 * Extend methods `get_image_data` to allow different cuts, visualizations
