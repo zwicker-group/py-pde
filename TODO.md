@@ -1,7 +1,6 @@
 TODO
 ====
 * Prepare JOSS submission
-* Find a way to directly launch a jupyter notebook for testing purposes
 
 * Introduce cut(x=?, y=?) and project([‘x’, ‘y’]) returning new field with new grid
 * Extend methods `get_image_data` to allow different cuts, visualizations

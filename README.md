@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/zwicker-group/py-pde/branch/master/graph/badge.svg)](https://codecov.io/gh/zwicker-group/py-pde)
 [![PyPI version](https://badge.fury.io/py/py-pde.svg)](https://badge.fury.io/py/py-pde)
 [![Documentation Status](https://readthedocs.org/projects/py-pde/badge/?version=latest)](https://py-pde.readthedocs.io/en/latest/?badge=latest)
-      
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
 
 `py-pde` is a Python package for solving partial differential equations (PDEs). 
 The package provides classes for scalar and tensor fields discretized on grids
@@ -13,6 +13,8 @@ This allows defining, inspecting, and solving typical PDEs that appear for
 instance in the study of dynamical systems in physics.
 The focus of the package lies on easy usage to explore the behavior of PDEs.
 However, core computations can be compiled transparently using numba for speed.
+
+[Try it out online!](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
 
 
 Installation
