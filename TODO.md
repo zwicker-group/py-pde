@@ -1,7 +1,5 @@
 TODO
 ====
-* Prepare JOSS submission
-
 * Introduce cut(x=?, y=?) and project([‘x’, ‘y’]) returning new field with new grid
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`
@@ -41,7 +39,6 @@ LOW-PRIORITY (Future ideas)
 	out=None idiom
 * Ensure that stochastic simulations on a single core can be resumed from any
 	stored state (this requires storing random seeds)
-* Think about AMD/cuda acceleration of operators
 * Allow passing work array to central functions so memory does not need to be
     allocated each step.
     - is this actually a speed bottleneck?
@@ -84,7 +81,5 @@ LOW-PRIORITY (Future ideas)
 * Rename SphericalGrid to SphericalSymmetricGrid
 	- also CylindricalGrid -> CylindricalSymmetricGrid
 	- this allows to use general spherical coordinates later
-* Make project open-source:
-	- write little paper about it
-	- use TravisCI for continuous integration
+
 	
