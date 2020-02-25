@@ -12,9 +12,16 @@ the installation is in principle as simple as running
     pip install py-pde
     
     
-However there might be cases where the source code needs to be installed from
-source, which is discussed below. 
 
+In order to have all features of the package available, you might also want to 
+install the following optional packages:
+
+.. code-block:: bash
+
+	pip install h5py pandas pyfftw tqdm
+
+Moreover, :command:`ffmpeg` needs to be installed and for creating movies.    
+    
 
 Installing from source
 ^^^^^^^^^^^^^^^^^^^^^^
