@@ -21,8 +21,8 @@ bibliography: paper.bib
 
 Partial differential equations (PDEs) play a central role in describing the
 dynamics of physical systems in research and in practical applications.
-However, such equations are typically non-linear and analytical solutions rarely
-exist.
+However, equations appearing in realisitc scenarios are typically non-linear and
+analytical solutions rarely exist.
 Instead, such systems are solved by numerical integration to provide insight
 into their behavior.
 Moreover, such investigations can motivate approximative solutions, which might
@@ -38,14 +38,14 @@ where $\mathcal D$ is a (non-linear) differential operator that defines
 the time evolution of a (set of) physical fields $u$ with possibly
 tensorial character, which depend on spatial coordinates $\boldsymbol x$
 and time $t$.
-The framework also supports a noise term, represented by $\eta$ in the equation
-above, to simulate stochastic differential equations.
+The framework also supports stochastic differential equations, which are
+represented by by the noise term $\eta$ in the equation above.
 
 The main goal of the `py-pde` package is to provide a convenient way to analyze
 PDEs using general methods, while at the same time allowing for enough
 flexibility to easily implement more specialized code.
-Since the code is written in pure python, it can be easily installed via pip:
-`pip install py-pde`.
+Since the code is written in pure python, it can be easily installed via pip by
+simply calling `pip install py-pde`.
 However, central parts are just-in-time compiled using `numba` [@numba] for 
 computational efficiency.
 To improve user-interaction further, some arguments accept mathematical
@@ -69,18 +69,18 @@ spatial symmetries that might be present in the physical problem.
 For instance, the scalar field $f(z, r) = \sqrt{z} * e^{-r^2}$ in cylindrical
 coordiantes assuming azimuthal symmetry can be visualized using
 ```python
-grid = CylindricalGrid(radius=5, bounds_z=[0, 10], shape=(32, 64))
-field = ScalarField.from_expression(grid, 'sqrt(z) * exp(-r**2)')
+grid = pde.CylindricalGrid(radius=5, bounds_z=[0, 10], shape=(32, 64))
+field = pde.ScalarField.from_expression(grid, 'sqrt(z) * exp(-r**2)')
 field.plot()
 ```
 The package defines common differential operators that act directly on the
 fields.
 For instance, calling `field.gradient('neumann')` returns a vector field on the
-same cylindrical grid `grid` where the components corrspond to the gradient of
+same cylindrical grid where the components corrspond to the gradient of
 `field` assuming Neumann boundary conditions.
 Here, differential operators are evaluated using the finite difference method
 (FDM) and the package supports various boundary conditions, which can be
-specified per field and boundary separately.
+separately specified per field and boundary.
 The discretized fields are the foundation of the `py-pde` package and allow 
 the comfortable construction of initial conditions, the visualization of final
 results, and the detailed investigation of intermediate data.
@@ -91,16 +91,16 @@ Here, we use the method of lines by explicitely discretizing space using the
 grid classes described above.
 This reduces the PDEs to a set of ordinary differential equations, which can
 be solved using standard methods.
-For instance, solving the diffusion equation $\partial_t u = \nabla^2 u$ on the
-cylindrical grid defined above can be achived by
+For instance, the diffusion equation $\partial_t u = \nabla^2 u$ on the
+cylindrical grid defined above can be solved by
 ```python
-eq =  DiffusionPDE()
+eq =  pde.DiffusionPDE()
 result = eq.solve(field, t_range=[0, 10])
 ```
-Note that the partial differential equation is defined independent of geometry,
+Note that the partial differential equation is defined independent of the grid,
 allowing to use the same implementation for various geometries.
 The package provides simple implementations of standard PDEs, but extensions are
-simple to implement.
+simple to realize.
 In particular, the differential operator $\mathcal D$ can be implemented in pure
 python for initial testing, while adding a more specialized version compiled
 with `numba` [@numba] might be added later for speed.
@@ -111,7 +111,7 @@ calculations later.
 The flexibility of `py-pde` is one of its key feature.
 For instance, while the package implements forward and backward Euler methods as
 well as a Runge-Kutta scheme, users might require more sophisticated solvers.
-Here, we provide a wrapper for the excellent `scipy.integrate.solve_ivp` method
+We already provide a wrapper for the excellent `scipy.integrate.solve_ivp` method
 from the scipy package [@SciPy2020] and further additions are straightforward.
 Finally, the explicit Euler stepper provided by `py-pde` also supports
 stochastic differential equations in the Itô representation.
@@ -123,7 +123,7 @@ dynamical systems without in depth knowledge of the associated numerical
 implementation.
 
 Finally, the package provides many convenience methods that allow analyzing
-simulations on the fly, storing data persistently, or visualizing the temporal
+simulations on the fly, storing data persistently, and visualizing the temporal
 evolution of quantities of interest.
 These features might be helpful even when not dealing with PDEs.
 For instance, the result of applying differential operators on the discretized
@@ -139,8 +139,8 @@ flexible boundary conditions, can be applied to `numpy.ndarrays` directly, e.g.,
 in custom applications.
 Generally, the just-in-time compilation provided by numba [@numba] allows for
 numerically efficient code while making deploying code easy.
-For instance, the package can be distributed to a cluster using `pip` without
-worrying about setting paths and compiling source code. 
+In particular, the package can be distributed to a cluster using `pip` without
+worrying about setting paths or compiling source code. 
 
 The `py-pde` package joins a long list of software packages that aid researchers
 in analyzing PDEs.
