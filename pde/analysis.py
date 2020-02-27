@@ -22,20 +22,21 @@ from .grids.cartesian import CartesianGridBase
 
 
 
-def get_structure_factor(scalar_field: ScalarField):
+def get_structure_factor(scalar_field: ScalarField, ret_ks: bool = True):
     """ Calculates the structure factor associated with a scalar field
     
     Args:
         scalar_field (:class:`~pde.fields.ScalarField`):
             The scalar_field being analyzed
+        ret_ks (bool):
+            Flag determining whether the wave numbers associated with positions
+            at which the structure factor is evaluated is returned
             
     Returns:
         (:class:`numpy.ndarray`, :class:`numpy.ndarray`):
             Two arrays giving the wave numbers and the associated structure
-            factor
+            factor. If `ret_ks` is False, only the second array is returned
     """
-    logger = logging.getLogger(__name__)
-    
     if not isinstance(scalar_field, ScalarField):
         raise TypeError('Length scales can only be calculated for scalar '
                         f'fields, not {scalar_field.__class__.__name__}')
@@ -45,18 +46,23 @@ def get_structure_factor(scalar_field: ScalarField):
         raise NotImplementedError('Structure factor can currently only be '
                                   'calculated for Cartesian grids')
     if not all(grid.periodic):
+        logger = logging.getLogger(__name__)
         logger.warning('Structure factor calculation assumes periodic boundary '
                        'conditions, but not all grid dimensions are periodic')
         
     # do the n-dimensional Fourier transform and calculate the absolute value
     sf = np.absolute(np.fft.fftn(scalar_field.data)).flat[1:]
     
-    # determine the (squared) components of the wave vectors
-    k2s = [np.fft.fftfreq(grid.shape[i], d=grid.discretization[i])**2
-           for i in range(grid.dim)]
-    # calculate the magnitude 
-    k_mag = np.sqrt(reduce(np.add.outer, k2s)).flat[1:]
-    return k_mag, sf
+    if ret_ks:
+        # determine the (squared) components of the wave vectors
+        k2s = [np.fft.fftfreq(grid.shape[i], d=grid.discretization[i])**2
+               for i in range(grid.dim)]
+        # calculate the magnitude 
+        k_mag = np.sqrt(reduce(np.add.outer, k2s)).flat[1:]
+        return k_mag, sf
+    
+    else:  # only return the structure factor
+        return sf
 
 
 
