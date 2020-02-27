@@ -52,9 +52,6 @@ using :command:`macports`, :command:`homebrew`, :command:`conda`, or
 The package versions given above are minimal requirements, although
 this is not tested systematically. Generally, it should help to install the
 latest version of the package.  
-Note that the last package is only available via github and just needs to be
-checked out into a folder included in your :envvar:`PYTHONPATH`.
-
 
 Optionally, the following packages should be installed to use some miscellaneous
 features:

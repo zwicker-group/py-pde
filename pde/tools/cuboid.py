@@ -3,7 +3,7 @@
 '''
 
 import itertools
-from typing import Sequence, Tuple
+from typing import Tuple
 
 import numpy as np
 
@@ -146,8 +146,8 @@ class Cuboid(object):
             
 
     @property
-    def bounds(self) -> Sequence[Tuple[float, float]]:
-        return [(p, p + s) for p, s in zip(self.pos, self.size)]
+    def bounds(self) -> Tuple[Tuple[float, float], ...]:
+        return tuple((p, p + s) for p, s in zip(self.pos, self.size))
         
 
     @property

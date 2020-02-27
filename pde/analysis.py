@@ -13,7 +13,6 @@ Functions for analyzing scalar fields
 import logging
 import warnings
 from functools import reduce
-from typing import Optional
 
 import numpy as np
 from scipy import optimize
@@ -64,7 +63,7 @@ def get_structure_factor(scalar_field: ScalarField):
 def get_length_scale(scalar_field: ScalarField,
                      method: str = 'structure_factor_mean',
                      full_output: bool = False,
-                     smoothing: Optional[float] = None):
+                     smoothing: float = None):
     """ Calculates a length scale associated with a scalar field
     
     Args:

@@ -59,7 +59,7 @@ LOW-PRIORITY (Future ideas)
 	- Use mpi4py to pass information around
 	- How would this play with numba? (we might need to only use numba for the
 	  time stepping and do the rest in python)
-	- Also look into ipyparallel
+	- Also look into ipyparallel, pyop
 * Support more flexible boundary conditions
     - Think about implementing vectorial boundary conditions without creating three
     separate compiled functions
