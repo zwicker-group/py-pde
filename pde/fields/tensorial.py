@@ -236,7 +236,7 @@ class Tensor2Field(DataFieldBase):
                   label: Optional[str] = 'scalar `{scalar}`') -> ScalarField:
         r""" return a scalar field by applying `method`
         
-        The two invariants of the tensor field :math:`\boldsymbol{A}` are
+        The invariants of the tensor field :math:`\boldsymbol{A}` are
         
         .. math::
             I_1 &= \mathrm{tr}(\boldsymbol{A}) \\
@@ -248,18 +248,20 @@ class Tensor2Field(DataFieldBase):
             
         where `tr` denotes the trace and `det` denotes the determinant.
         Note that the three invariants can only be distinct and non-zero in 
-        three dimensions. We have :math:`2 I_2 = I_3` in tensor fields in two 
-        dimensional spaces well as :math:`I_1 = I_3` and :math:`I_2 = 0` in one-
-        dimensional spaces.
+        three dimensions. In two dimensional spaces, we have the identity
+        :math:`2 I_2 = I_3` and in one-dimensional spaces, we have
+        :math:`I_1 = I_3` as well as :math:`I_2 = 0`.
             
         Args:
-            scalar (str): Choose the method to use. Possible 
-                choices are `norm`, `max`, `min`, `squared_sum`, `trace` 
-                (or `invariant1`), and `invariant2`.
-            label (str, optional): Name of the returned field
+            scalar (str):
+                Choose the method to use. Possible choices include `norm`,
+                `min`, `max`, `squared_sum`, `trace` (or `invariant1`),
+                `invariant2`, and `determinant` (or `invariant3`).
+            label (str, optional):
+                Name of the returned field
             
         Returns:
-            ScalarField: the scalar result
+            ScalarField: the scalar field after applying the operation
         """
         if scalar == 'norm':
             data = np.linalg.norm(self.data, axis=(0, 1))
