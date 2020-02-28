@@ -240,10 +240,17 @@ class Tensor2Field(DataFieldBase):
         
         .. math::
             I_1 &= \mathrm{tr}(\boldsymbol{A}) \\
-            I_2 &= \frac12 \left(
+            I_2 &= \frac12 \left[
                 (\mathrm{tr}(\boldsymbol{A})^2 -
                 \mathrm{tr}(\boldsymbol{A}^2)
-            \right)
+            \right]) \\
+            I_3 &= \det(A)
+            
+        where `tr` denotes the trace and `det` denotes the determinant.
+        Note that the three invariants can only be distinct and non-zero in 
+        three dimensions. We have :math:`2 I_2 = I_3` in tensor fields in two 
+        dimensional spaces well as :math:`I_1 = I_3` and :math:`I_2 = 0` in one-
+        dimensional spaces.
             
         Args:
             scalar (str): Choose the method to use. Possible 
@@ -256,14 +263,19 @@ class Tensor2Field(DataFieldBase):
         """
         if scalar == 'norm':
             data = np.linalg.norm(self.data, axis=(0, 1))
-        elif scalar == 'max':
-            data = np.max(self.data, axis=(0, 1))
+            
         elif scalar == 'min':
             data = np.min(self.data, axis=(0, 1))
+            
+        elif scalar == 'max':
+            data = np.max(self.data, axis=(0, 1))
+            
         elif scalar == 'squared_sum':
             data = np.sum(self.data**2, axis=(0, 1))
+            
         elif scalar == 'trace' or scalar == 'invariant1':
             data = self.data.trace(axis1=0, axis2=1)
+            
         elif scalar == 'invariant2':
             data = np.zeros(self.grid.shape)
             for i in range(self.grid.dim):
@@ -271,8 +283,25 @@ class Tensor2Field(DataFieldBase):
                     data += (self.data[i, i] * self.data[j, j] -
                              self.data[i, j] * self.data[j, i])
             data *= 0.5
+            
+        elif scalar in {'det', 'determinant', 'invariant3'}:
+            if self.grid.dim == 1:
+                data = self.data[0, 0]
+            else:
+                data = np.zeros(self.grid.shape)
+                # this iterates over all of space and might thus be slow, but
+                # the interface of np.linalg.det is not very flexible. We could
+                # in principle use the definition of np.linalg.det without the
+                # multiple checks to gain some speed
+                for i in np.ndindex(self.grid.shape):
+                    i2 = (Ellipsis, ) + i  # type: ignore
+                    data[i] = np.linalg.det(self.data[i2])
+                
         else:
-            raise ValueError(f'Unknown method `{scalar}` for `to_scalar`')
+            raise ValueError(f'Unknown method `{scalar}` for `to_scalar`. '
+                             'Valid methods are `norm`, `min`, `max`, '
+                             'squared_sum`, `trace`, `determinant`, and '
+                             '`invariant#`, where # is 1, 2, or 3')
 
         # determine label of the result
         if self.label is None:

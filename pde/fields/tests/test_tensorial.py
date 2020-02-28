@@ -8,7 +8,7 @@ import pytest
 from .test_generic import iter_grids
 from ..tensorial import Tensor2Field
 from ..base import FieldBase
-from ...grids import CartesianGrid
+from ...grids import UnitGrid, CartesianGrid
 
 
 
@@ -113,3 +113,42 @@ def test_add_interpolated_tensor(grid):
     add_interpolated(f.data, grid.get_random_point(cartesian=False), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
+
+
+def test_tensor_invariants():
+    """ test the invariants """
+    # dim == 1
+    f = Tensor2Field.random_uniform(UnitGrid([3]))
+    np.testing.assert_allclose(f.to_scalar('invariant1').data,
+                               f.to_scalar('invariant3').data)
+    np.testing.assert_allclose(f.to_scalar('invariant2').data, 0)
+
+    # dim == 2
+    f = Tensor2Field.random_uniform(UnitGrid([3, 3]))
+    invs = [f.to_scalar(f'invariant{i}').data for i in range(1, 4)]
+    np.testing.assert_allclose(2 * invs[1], invs[2])
+
+    a = np.random.uniform(0, 2 * np.pi)  # pick random rotation angle
+    rot = Tensor2Field(f.grid)
+    rot.data[0, 0, ...] = np.cos(a)
+    rot.data[0, 1, ...] = np.sin(a)
+    rot.data[1, 0, ...] = -np.sin(a)
+    rot.data[1, 1, ...] = np.cos(a)
+    f_rot = rot @ f @ rot.transpose()  # apply the transpose
+    
+    for i, inv in enumerate(invs, 1):
+        np.testing.assert_allclose(inv, f_rot.to_scalar(f'invariant{i}').data,
+                                   err_msg=f'Mismatch in invariant {i}')
+        
+    # dim == 3
+    from scipy.spatial.transform import Rotation
+    f = Tensor2Field.random_uniform(UnitGrid([1, 1, 1]))
+    rot = Tensor2Field(f.grid)
+    rot_mat = Rotation.from_rotvec(np.random.randn(3)).as_matrix()
+    rot.data = rot_mat.reshape(3, 3, 1, 1, 1)
+    f_rot = rot @ f @ rot.transpose()  # apply the transpose
+    for i in range(1, 4):
+        np.testing.assert_allclose(f.to_scalar(f'invariant{i}').data,
+                                   f_rot.to_scalar(f'invariant{i}').data,
+                                   err_msg=f'Mismatch in invariant {i}')
+    

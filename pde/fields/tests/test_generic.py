@@ -201,14 +201,14 @@ def test_input_output():
     t = Tensor2Field.random_uniform(grid, label='tensor')
     col = FieldCollection([s, v, t], label='collection')
     
-    fp = tempfile.NamedTemporaryFile(suffix='.hdf5')
-    for f in [s, v, t, col]:
-        f.to_file(fp.name)
-        f2 = FieldBase.from_file(fp.name)
-        assert f == f2
-        assert f.label == f2.label
-        assert isinstance(str(f), str)
-        assert isinstance(repr(f), str)
+    with tempfile.NamedTemporaryFile(suffix='.hdf5') as fp:
+        for f in [s, v, t, col]:
+            f.to_file(fp.name)
+            f2 = FieldBase.from_file(fp.name)
+            assert f == f2
+            assert f.label == f2.label
+            assert isinstance(str(f), str)
+            assert isinstance(repr(f), str)
             
       
            

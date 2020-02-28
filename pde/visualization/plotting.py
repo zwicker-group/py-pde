@@ -68,16 +68,19 @@ def finalize_plot(fig_or_ax=None,
     # determine which figure to modify    
     if fig_or_ax is None:
         fig = plt.gcf()  # current figure
+        ax = fig.gca()
     elif hasattr(fig_or_ax, 'savefig'):
         fig = fig_or_ax  # figure is given
+        ax = fig.gca()
     else:
+        ax = fig_or_ax  # assume that axes are given
         try:
-            fig = fig_or_ax.figure  # axes are given
+            fig = fig_or_ax.figure
         except AttributeError:
             fig = fig_or_ax.fig
     
     if title:
-        plt.title(title)
+        ax.set_title(title)
     
     if filename:
         fig.savefig(filename)

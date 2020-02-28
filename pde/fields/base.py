@@ -1231,12 +1231,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # allocate memory for storing output
         data_in = self._data
         if out is None:
-            data_out = np.empty_like(data_in)
+            out = self.__class__(self.grid, label=self.label)
         else:
             self.assert_field_compatible(out)
-            data_out = out._data
         
         # apply Gaussian smoothing for each axis
+        data_out = out._data
         for axis in range(-len(self.grid.axes), 0):
             sigma_dx = sigma / self.grid.discretization[axis]
             mode = 'wrap' if self.grid.periodic[axis] else 'reflect'
@@ -1245,11 +1245,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data_in = data_out
             
         # return the data in the correct field class
-        if out is None:
-            out = self.copy(data=data_out, label=label)
-        else:
-            if label:
-                out.label = label
+        if label:
+            out.label = label
         return out
             
             
@@ -1296,7 +1293,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ax.set_ylabel(ylabel)
             
         from ..visualization.plotting import finalize_plot
-        finalize_plot(title=title, show=show)
+        finalize_plot(ax, title=title, show=show)
             
         return line
     
@@ -1362,7 +1359,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             add_scaled_colorbar(res, ax=ax)
 
         from ..visualization.plotting import finalize_plot
-        finalize_plot(title=title, show=show)
+        finalize_plot(ax, title=title, show=show)
             
         return res
 
@@ -1434,7 +1431,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             title = data.get('title', self.label)
 
         from ..visualization.plotting import finalize_plot
-        finalize_plot(title=title, show=show)
+        finalize_plot(ax, title=title, show=show)
             
         return res
         
