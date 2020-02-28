@@ -7,6 +7,7 @@ import os
 import subprocess as sp
 from pathlib import Path
 from typing import List  # @UnusedImport
+from tempfile import NamedTemporaryFile
 
 import pytest
 import numba as nb
@@ -67,6 +68,7 @@ def test_jupyter_notebooks(path):
     my_env = os.environ.copy()
     my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env["PATH"]        
         
-    sp.check_call(['python3', '-m', 'jupyter', 'nbconvert', 
-                   '--to', 'notebook', '--inplace',
-                   '--execute', path], env=my_env)
+    with NamedTemporaryFile(suffix='.ipynb') as fp:
+        sp.check_call(['python3', '-m', 'jupyter', 'nbconvert', 
+                       '--to', 'notebook', '--output', fp.name,
+                       '--execute', path], env=my_env)
