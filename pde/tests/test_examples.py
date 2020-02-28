@@ -62,6 +62,11 @@ def test_jupyter_notebooks(path):
     """ run the jupyter notebooks """
     if os.path.basename(path).startswith('_'):
         pytest.skip('skip examples starting with an underscore')
+        
+    # adjust python environment
+    my_env = os.environ.copy()
+    my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env["PATH"]        
+        
     sp.check_call(['python3', '-m', 'jupyter', 'nbconvert', 
                    '--to', 'notebook', '--inplace',
-                   '--execute', path])
+                   '--execute', path], env=my_env)

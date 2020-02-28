@@ -419,6 +419,8 @@ class BCBase(metaclass=ABCMeta):
             data (dict):
                 The dictionary defining the boundary condition
         """
+        data = data.copy()  # need to make a copy since we modify it below
+        
         # parse all possible variants that could be given
         if data.keys() == {'value'}:
             # only a value is given => Assume Dirichlet conditions
@@ -488,7 +490,9 @@ class BCBase(metaclass=ABCMeta):
             return cls.from_dict(grid, axis, upper=upper, data=data)
         
         elif isinstance(data, str):
+            # create a specific condition given by a string
             return cls.from_str(grid, axis, upper=upper, condition=data)
+        
         else:
             raise ValueError(f'Unsupported boundary format: `{data}`. '
                              f'{cls.get_help()}')
@@ -819,6 +823,23 @@ class MixedBC(BCBase1stOrder):
         super().__init__(grid, axis, upper, value)
         # TODO: support spatially varying constant terms β
         self.const = float(const)  
+        
+    def __eq__(self, other):
+        """ checks for equality neglecting the `upper` property """
+        return super().__eq__(other) and self.const == other.const
+
+
+    def copy(self, upper: Optional[bool] = None, value=None, const=None) \
+            -> "MixedBC":
+        """ return a copy of itself, but with a reference to the same grid """
+        if upper is None:
+            upper = self.upper
+        if value is None:
+            value = self._value_expression
+        if const is None:
+            const = self.const
+        return self.__class__(grid=self.grid, axis=self.axis, upper=upper,
+                              value=value, const=const)        
         
         
     def get_virtual_point_data(self) -> Tuple[Any, float, int]:
