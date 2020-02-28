@@ -105,10 +105,37 @@ def test_virtual_points():
     bc = BCBase.from_data(g, 0, True, 'extrapolate')
     assert bc.get_virtual_point(data) == pytest.approx(3)
     
+    # test mixed condition
+    bc = BCBase.from_data(g, 0, False,
+                          {'type': 'mixed', 'value': 4, 'const': 1})
+    assert bc.get_virtual_point(data) == pytest.approx(0)
+    bc = BCBase.from_data(g, 0, True,
+                          {'type': 'mixed', 'value': 2, 'const': 4})
+    assert bc.get_virtual_point(data) == pytest.approx(2)
+    
     # test curvature for y = 4 * x**2
     data = np.array([1, 9])
     bc = BCBase.from_data(g, 0, False, {'type': 'curvature', 'value': 8})
     assert bc.get_virtual_point(data) == pytest.approx(1)
     bc = BCBase.from_data(g, 0, True, {'type': 'curvature', 'value': 8})
     assert bc.get_virtual_point(data) == pytest.approx(25)
+
+       
+        
+def test_mixed_condition():
+    """ test the calculation of virtual points """
+    g = UnitGrid([2])
+    data = np.array([1, 2])
     
+    for upper in [True, False]:
+        bc1 = BCBase.from_data(g, 0, upper,
+                               {'type': 'mixed', 'value': 0, 'const': 2})
+        bc2 = BCBase.from_data(g, 0, upper, {'derivative': 2})
+        assert bc1.get_virtual_point(data) == \
+                pytest.approx(bc2.get_virtual_point(data))
+                
+    bc = BCBase.from_data(g, 0, False, {'type': 'mixed', 'value': np.inf})
+    assert bc.get_virtual_point(data) == pytest.approx(-1)
+    bc = BCBase.from_data(g, 0, True, {'type': 'mixed', 'value': np.inf})
+    assert bc.get_virtual_point(data) == pytest.approx(-2)
+        

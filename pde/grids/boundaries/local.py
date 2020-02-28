@@ -7,17 +7,17 @@ flag `upper`, which is True for the side of the axis with the larger coordinate.
 
 The module currently supports different boundary conditions:
 
-* :class:`~pde.boundaries.local.DirichletBC`:
+* :class:`~pde.grids.boundaries.local.DirichletBC`:
   Imposing the value of a field at the boundary
-* :class:`~pde.boundaries.local.NeumannBC`:
+* :class:`~pde.grids.boundaries.local.NeumannBC`:
   Imposing the derivative of a field in the outward normal direction at the
   boundary
-* :class:`~pde.boundaries.local.MixedBC`:
+* :class:`~pde.grids.boundaries.local.MixedBC`:
   Imposing the derivative of a field in the outward normal direction
   proportional to its value at the boundary  
-* :class:`~pde.boundaries.local.CurvatureBC`:
+* :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing the second derivative (curvature) of a field at the boundary
-* :class:`~pde.boundaries.local.ExtrapolateBC`:
+* :class:`~pde.grids.boundaries.local.ExtrapolateBC`:
   Extrapolate boundary points linearly from the two points closest to the
   boundary
 
@@ -210,7 +210,7 @@ class BCBase(metaclass=ABCMeta):
         self.upper = upper
         self.set_value(value)
                 
-                
+                    
     def set_value(self, value=0):
         """ set the value of this boundary condition
         
@@ -370,8 +370,8 @@ class BCBase(metaclass=ABCMeta):
                 
     @classmethod
     def from_str(cls, grid: GridBase, axis: int, upper: bool, condition: str,
-                 value=0) -> "BCBase":
-        """ creates boundary from a given string identifier
+                 value=0, **kwargs) -> "BCBase":
+        r""" creates boundary from a given string identifier
         
         Args:
             grid (:class:`~pde.grids.GridBase`):
@@ -385,6 +385,8 @@ class BCBase(metaclass=ABCMeta):
                 Identifies the boundary condition
             value (float or str or array):
                 Sets the associated value
+            \**kwargs:
+                Additional arguments passed to the constructor
         """
         if condition == 'no-flux' and np.all(value == 0):
             condition = 'derivative'
@@ -398,7 +400,7 @@ class BCBase(metaclass=ABCMeta):
 
         # create the actual class     
         return boundary_class(grid=grid, axis=axis, upper=upper,  # type: ignore
-                              value=value)
+                              value=value, **kwargs)
         
         
     @classmethod
@@ -421,39 +423,35 @@ class BCBase(metaclass=ABCMeta):
         if data.keys() == {'value'}:
             # only a value is given => Assume Dirichlet conditions
             b_type = 'value'
-            b_value = data['value']
+            b_value = data.pop('value')
             
         elif data.keys() == {'derivative'}:
             # the derivative is obviously given => Assume Neumann conditions
             b_type = 'derivative'
-            b_value = data['derivative']
+            b_value = data.pop('derivative')
             
         elif data.keys() == {'mixed'}:
             # short notation for mixed condition
             b_type = 'mixed'
-            b_value = data['mixed']
+            b_value = data.pop('mixed')
             
         elif data.keys() == {'curvature'}:
             # short notation for curvature condition
             b_type = 'curvature'
-            b_value = data['curvature']
+            b_value = data.pop('curvature')
             
-        elif data.keys() == {'type'}:
-            # only the type is given => assume zero for the value
-            b_type = data['type']
-            b_value = 0
-            
-        elif data.keys() == {'type', 'value'}:
-            # both the type and the value are given
-            b_type = data['type']
-            b_value = data['value']
+        elif 'type' in data.keys():
+            # type is given (optionally with a value)
+            b_type = data.pop('type')
+            b_value = data.pop('value', 0)
             
         else:
             raise ValueError('Boundary condition defined by '
                              f'{str(list(data.keys()))} are not supported.')
         
-        # initialize the boundary class
-        return cls.from_str(grid, axis, upper, condition=b_type, value=b_value)
+        # initialize the boundary class with all remaining values forwarded
+        return cls.from_str(grid, axis, upper, condition=b_type, value=b_value,
+                            **data)
         
         
     @classmethod
@@ -473,7 +471,7 @@ class BCBase(metaclass=ABCMeta):
                 Data that describes the boundary
         
         Returns:
-            :class:`~pde.boundaries.local.BCBase`: the instance created
+            :class:`~pde.grids.boundaries.local.BCBase`: the instance created
             from the data
             
         Throws:
@@ -776,18 +774,53 @@ class NeumannBC(BCBase1stOrder):
 
 
 class MixedBC(BCBase1stOrder):
-    r""" represents a mixed boundary condition imposing a derivative in the
-    outward normal direction of the boundary that is proportional to the actual
-    value: :math:`\partial_n c + \gamma c = 0`, where :math:`c` is the field to
-    which the condition is applied and :math:`\gamma` is the value that is
-    stored with the boundary condition. Note that :math:`\gamma = 0` corresponds
-    to Dirichlet conditions imposing a vanishing derivative and
-    :math:`\gamma \rightarrow \infty` corresponds to imposing a zero value. 
+    r""" represents a mixed (or Robin) boundary condition imposing a derivative
+    in the outward normal direction of the boundary that is given by an affine
+    function involving the actual value:
+    
+    .. math::
+        \partial_n c + \gamma c = \beta
+        
+    Here, :math:`c` is the field to which the condition is applied, 
+    :math:`\gamma` quantifies the influence of the field and :math:`\beta` is 
+    the constant term. Note that :math:`\gamma = 0` corresponds
+    to Dirichlet conditions imposing :math:`\beta` as the derivative.
+    Conversely,  :math:`\gamma \rightarrow \infty` corresponds to imposing a
+    zero value on :math:`c`. 
     """
     
     names = ['mixed', 'robin']
     
-    
+    def __init__(self, grid: GridBase, axis: int, upper: bool, value=0,
+                 const: float = 0):
+        r""" 
+        Args:
+            grid (:class:`~pde.grids.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated
+                with the upper side of an axis or not. In essence, this
+                determines the direction of the local normal vector of the
+                boundary.
+            value (float or str or array):
+                The parameter :math:`\gamma` quantifying the influence of the
+                field onto its normal derivative. If `value` is a single value
+                (or tensor in case of tensorial boundary conditions), the same
+                value is applied to all points.  Inhomogeneous boundary
+                conditions are possible by supplying an expression as a string,
+                which then may depend on the axes names of the respective grid.
+            const (float):
+                The parameter :math:`\beta` determining the constant term for 
+                the boundary condition. This term does not yet allow for
+                tensorial or spatially varying values.
+        """
+        super().__init__(grid, axis, upper, value)
+        # TODO: support spatially varying constant terms β
+        self.const = float(const)  
+        
+        
     def get_virtual_point_data(self) -> Tuple[Any, float, int]:
         """ return data suitable for calculating virtual points
             
@@ -797,17 +830,21 @@ class MixedBC(BCBase1stOrder):
         size = self.grid.shape[self.axis]
         dx = self.grid.discretization[self.axis]
         
-        α = dx * self.value
-        if np.isscalar(α):
-            value = 0
-            if np.isinf(α):
+        factor = dx * self.value
+        if np.isscalar(factor):
+            if np.isinf(factor):
+                value = 0
                 factor = -1
             else:
-                factor = (2 - α) / (2 + α)
+                value = 2 * dx * self.const / (2 + factor)
+                factor = (2 - factor) / (2 + factor)
         else:
-            value = np.zeros_like(α)
-            factor = (2 - α) / (2 + α)
-            factor[np.isinf(α)] = -1  # type: ignore
+            # calculate values assuming finite factor
+            value = 2 * dx * self.const / (2 + factor)
+            factor = (2 - factor) / (2 + factor)
+            # correct at places of infinite values 
+            value[np.isinf(factor)] = 0  # type: ignore
+            factor[np.isinf(factor)] = -1
             
         if self.upper:
             idx = size - 1
