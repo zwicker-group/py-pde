@@ -35,8 +35,9 @@ class SmoothData1D():
             raise ValueError('`x` and `y` must have equal number of elements')
             
         if sigma is None:
-            sigma = self.sigma_auto_scale * self.x.ptp() / len(self.x)
-        self._scale = 0.5 * sigma**-2
+            self.sigma = self.sigma_auto_scale * self.x.ptp() / len(self.x)
+        else:
+            self.sigma = sigma
         
         
     @property
@@ -57,8 +58,10 @@ class SmoothData1D():
         xs = np.asanyarray(xs)
         shape = xs.shape
         xs = np.ravel(xs)
+        scale = 0.5 * self.sigma**-2
+        
         with np.errstate(under='ignore'):
-            weight = np.exp(-self._scale * (self.x[:, None] - xs[None, :])**2)
+            weight = np.exp(-scale * (self.x[:, None] - xs[None, :])**2)
             weight /= weight.sum(axis=0)
         result = np.dot(self.y, weight)
         return result.reshape(shape)    

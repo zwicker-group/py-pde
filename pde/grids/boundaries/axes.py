@@ -3,7 +3,7 @@ r"""
 
 This module handles the boundaries of all axes of a grid. It only defines
 :class:`Boundaries`, which acts as a list of
-:class:`~pde.boundaries.axis.BoundaryAxisBase`.
+:class:`~pde.grids.boundaries.axis.BoundaryAxisBase`.
 """
 
 from typing import Union, Sequence

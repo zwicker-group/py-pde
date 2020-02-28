@@ -41,7 +41,7 @@ def make_laplace(bcs: Boundaries) -> Callable:
     |Description_polar|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -93,7 +93,7 @@ def make_gradient(bcs: Boundaries) -> Callable:
     |Description_polar|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -146,7 +146,7 @@ def make_divergence(bcs: Boundaries) -> Callable:
     |Description_polar|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -217,7 +217,7 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
     |Description_polar|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -246,7 +246,7 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
     |Description_polar|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -277,7 +277,7 @@ def make_operator(op: str, bcs: Boundaries) -> Callable:
     Args:
         op (str): Identifier for the operator. Some examples are 'laplace',
             'gradient', or 'divergence'.
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:

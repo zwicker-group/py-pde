@@ -34,7 +34,7 @@ def _make_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     This only supports uniform discretizations.
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -74,7 +74,7 @@ def _make_laplace_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d laplace operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -101,7 +101,7 @@ def _make_laplace_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d laplace operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -160,7 +160,7 @@ def _make_laplace_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d laplace operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -202,7 +202,7 @@ def make_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a laplace operator on a Cartesian grid
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         method (str): Method used for calculating the laplace operator.
             If method='auto', a suitable method is chosen automatically.
@@ -245,7 +245,7 @@ def _make_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a gradient operator using the scipy module
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -272,7 +272,7 @@ def _make_gradient_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d gradient operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:    
@@ -299,7 +299,7 @@ def _make_gradient_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d gradient operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -335,7 +335,7 @@ def _make_gradient_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d gradient operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -375,7 +375,7 @@ def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a gradient operator on a Cartesian grid
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         method (str): Method used for calculating the gradient operator.
             If method='auto', a suitable method is chosen automatically.
@@ -420,7 +420,7 @@ def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     This only supports uniform discretizations.
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -452,7 +452,7 @@ def _make_divergence_numba_1d(bcs: Boundaries) -> Callable:
     
     Args:
         dim (int): The number of support points for each axes
-        boundaries (:class:`~pde.boundaries.axes.Boundaries`):
+        boundaries (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         dx (float): The discretization
         
@@ -480,7 +480,7 @@ def _make_divergence_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d divergence operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -517,7 +517,7 @@ def _make_divergence_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d divergence operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -558,7 +558,7 @@ def make_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a divergence operator on a Cartesian grid
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         method (str): Method used for calculating the divergence operator.
             If method='auto', a suitable method is chosen automatically.
@@ -603,7 +603,7 @@ def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     This only supports uniform discretizations.
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -632,7 +632,7 @@ def _make_vector_gradient_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d vector gradient operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:    
@@ -654,7 +654,7 @@ def _make_vector_gradient_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d vector gradient operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -679,7 +679,7 @@ def _make_vector_gradient_numba_3d(bcs: Boundaries) -> Callable:
     
     Args:
         shape (tuple): The number of support points for each axes
-        boundaries (:class:`~pde.boundaries.axes.Boundaries`):
+        boundaries (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         dx (float or list): The discretizations
         
@@ -706,7 +706,7 @@ def make_vector_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a vector gradient operator on a Cartesian grid
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         method (str): Method used for calculating the vector gradient operator.
             If method='auto', a suitable method is chosen automatically
@@ -749,7 +749,7 @@ def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     This only supports uniform discretizations.
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -776,7 +776,7 @@ def _make_vector_laplace_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d vector Laplacian using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:    
@@ -798,7 +798,7 @@ def _make_vector_laplace_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d vector Laplacian using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -822,7 +822,7 @@ def _make_vector_laplace_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d vector Laplacian using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -848,7 +848,7 @@ def make_vector_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a vector Laplacian on a Cartesian grid
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         method (str): Method used for calculating the vector laplace operator.
             If method='auto', a suitable method is chosen automatically.
@@ -892,7 +892,7 @@ def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     This only supports uniform discretizations.
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -925,7 +925,7 @@ def _make_tensor_divergence_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d tensor divergence  operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:    
@@ -947,7 +947,7 @@ def _make_tensor_divergence_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d tensor divergence  operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -971,7 +971,7 @@ def _make_tensor_divergence_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d tensor divergence  operator using numba compilation
     
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -997,7 +997,7 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a tensor divergence operator on a Cartesian grid
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         method (str): Method used for calculating the tensor divergence
             operator. If method='auto', a suitable method is chosen
@@ -1115,7 +1115,7 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
 #     
 #     Args:
 #         shape (tuple): The number of support points for each axes
-#         boundaries (:class:`~pde.boundaries.axes.Boundaries`):
+#         boundaries (:class:`~pde.grids.boundaries.axes.Boundaries`):
 #             The boundary conditions. If the boundary conditions are not given
 #             they are assumed to be all periodic.
 #         dx (float or list): The discretizations
@@ -1149,7 +1149,7 @@ def make_operator(op: str, bcs: Boundaries, method: str = 'auto') -> Callable:
     Args:
         op (str): Identifier for the operator. Some examples are 'laplace',
             'gradient', or 'divergence'.
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         method (str): The method for implementing the operator
         

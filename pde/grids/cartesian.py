@@ -377,7 +377,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
         Args:
             bc (str or list or tuple or dict):
                 Boundary conditions specified in the flexible format accepted by
-                :func:`pde.boundaries.Boundaries.from_data`.  
+                :func:`pde.grids.boundaries.Boundaries.from_data`.  
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -397,7 +397,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
                 'gradient', or 'divergence'.
             bc (str or list or tuple or dict):
                 Boundary conditions specified in the flexible format accepted by
-                :func:`pde.boundaries.Boundaries.from_data`.  
+                :func:`pde.grids.boundaries.Boundaries.from_data`.  
             method (str): Specifies the method used for creating the operator.
                 Typical values could be 'numba' and 'scipy'.
                 

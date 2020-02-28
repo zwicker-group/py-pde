@@ -4,9 +4,9 @@ r"""
 This module handles the boundaries of a single axis of a grid. There are
 generally only two options, depending on whether the axis of the underlying
 grid is defined as periodic or not. If it is periodic, the class 
-:class:`~pde.boundaries.axis.BoundaryPeriodic` should be used, while
+:class:`~pde.grids.boundaries.axis.BoundaryPeriodic` should be used, while
 non-periodic axes have more option, which are represented by
-:class:`~pde.boundaries.axis.BoundaryPair`.
+:class:`~pde.grids.boundaries.axis.BoundaryPair`.
 """
 
 from typing import Union, Tuple, Dict, Callable
@@ -39,9 +39,9 @@ class BoundaryPair(BoundaryAxisBase):
     def __init__(self, low: BCBase, high: BCBase):
         """ 
         Args:
-            low (:class:`~pde.boundaries.local.BCBase`):
+            low (:class:`~pde.grids.boundaries.local.BCBase`):
                 Instance describing the lower boundary
-            high (:class:`~pde.boundaries.local.BCBase`):
+            high (:class:`~pde.grids.boundaries.local.BCBase`):
                 Instance describing the upper boundary
         """
         # check data consistency
@@ -120,7 +120,7 @@ class BoundaryPair(BoundaryAxisBase):
                 Data that describes the boundary pair
         
         Returns:
-            :class:`~pde.boundaries.axis.BoundaryPair`:
+            :class:`~pde.grids.boundaries.axis.BoundaryPair`:
             the instance created from the data
             
         Throws:

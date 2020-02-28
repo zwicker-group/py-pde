@@ -480,7 +480,7 @@ class CylindricalGrid(GridBase):
         Args:
             bc (str or list or tuple or dict):
                 Boundary conditions specified in the flexible format accepted by
-                :func:`pde.boundaries.Boundaries.from_data`.  
+                :func:`pde.grids.boundaries.Boundaries.from_data`.  
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -500,7 +500,7 @@ class CylindricalGrid(GridBase):
                 'gradient', or 'divergence'.
             bc (str or list or tuple or dict):
                 Boundary conditions specified in the flexible format accepted by
-                :func:`pde.boundaries.Boundaries.from_data`.  
+                :func:`pde.grids.boundaries.Boundaries.from_data`.  
                 
         Returns:
             A function that takes the discretized data as an input and returns

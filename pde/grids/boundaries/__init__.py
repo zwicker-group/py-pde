@@ -11,31 +11,31 @@ with effluxes.
 
 Local boundary conditions:
 
-* :class:`~pde.boundaries.local.DirichletBC`:
+* :class:`~pde.grids.boundaries.local.DirichletBC`:
   Imposing the value of a field at the boundary
-* :class:`~pde.boundaries.local.NeumannBC`:
+* :class:`~pde.grids.boundaries.local.NeumannBC`:
   Imposing the derivative of a field in the outward normal direction at the
   boundary
-* :class:`~pde.boundaries.local.MixedBC`:
+* :class:`~pde.grids.boundaries.local.MixedBC`:
   Imposing the derivative of a field in the outward normal direction
   proportional to its value at the boundary  
-* :class:`~pde.boundaries.local.CurvatureBC`:
+* :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing the second derivative (curvature) of a field at the boundary
-* :class:`~pde.boundaries.local.ExtrapolateBC`:
+* :class:`~pde.grids.boundaries.local.ExtrapolateBC`:
   Extrapolate boundary points linearly from the two points closest to the
   boundary
 
 Boundaries for an axis:
 
-* :class:`~pde.boundaries.axis.BoundaryPair`:
+* :class:`~pde.grids.boundaries.axis.BoundaryPair`:
   Uses the local boundary conditions to specify the two boundaries along an
   axis.
-* :class:`~pde.boundaries.axis.BoundaryPeriodic`:
+* :class:`~pde.grids.boundaries.axis.BoundaryPeriodic`:
   Indicates that an axis has periodic boundary conditions
 
 Boundaries for all axes of a grid:
 
-* :class:`~pde.boundaries.axes.Boundaries`:
+* :class:`~pde.grids.boundaries.axes.Boundaries`:
   Collection of boundaries to describe conditions for all axes
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>

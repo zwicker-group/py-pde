@@ -39,7 +39,7 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
     |Description_spherical|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         conservative (bool): flag indicating whether the laplace operator should
             be conservative (which results in slightly slower computations).    
@@ -166,7 +166,7 @@ def make_gradient(bcs: Boundaries) -> Callable:
     |Description_spherical|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -220,7 +220,7 @@ def make_divergence(bcs: Boundaries) -> Callable:
     |Description_spherical|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -292,7 +292,7 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
     |Description_spherical|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -323,7 +323,7 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
     |Description_spherical|
 
     Args:
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
@@ -356,7 +356,7 @@ def make_operator(op: str, bcs: Boundaries) -> Callable:
     Args:
         op (str): Identifier for the operator. Some examples are 'laplace',
             'gradient', or 'divergence'.
-        bcs (:class:`~pde.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             |Arg_boundary_conditions|
         
     Returns:
