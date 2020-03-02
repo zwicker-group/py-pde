@@ -6,4 +6,4 @@ equations.
 from .tools.misc import environment
 
 
-__version__ = "0.2"
+__version__ = "0.2.1"
