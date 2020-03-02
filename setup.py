@@ -5,7 +5,9 @@ with open("README.md", "r") as fh:
 
 setup(
   name = 'py-pde',
+  package_data={"pde": ["py.typed"]},
   packages = find_packages(),
+  zip_safe=False,  # this is required for mypy to find the py.typed file
   version = '0.2.1',
   license='MIT',
   description = 'Python package for solving partial differential equations',
