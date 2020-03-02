@@ -193,7 +193,7 @@ def test_data_managment():
 
             
 @skipUnlessModule("h5py")
-def test_input_output():
+def test_hdf_input_output():
     """ test writing and reading files """
     grid = UnitGrid([4, 4])
     s = ScalarField.random_uniform(grid, label='scalar')
@@ -211,6 +211,24 @@ def test_input_output():
             assert isinstance(repr(f), str)
             
       
+      
+@skipUnlessModule("matplotlib")
+def test_writing_images():
+    """ test writing and reading files """
+    from matplotlib.pyplot import imread
+    
+    grid = UnitGrid([4, 4])
+    s = ScalarField.random_uniform(grid, label='scalar')
+    v = VectorField.random_uniform(grid, label='vector')
+    t = Tensor2Field.random_uniform(grid, label='tensor')
+    
+    with tempfile.NamedTemporaryFile(suffix='.png') as fp:
+        for f in [s, v, t]:
+            f.to_file(fp.name)
+            # try reading the file
+            imread(fp.name)
+      
+           
            
 def test_interpolation_to_grid_fields():
     """ test whether data is interpolated correctly for different fields """

@@ -8,6 +8,7 @@ Defines base classes
 import functools
 import operator
 import logging
+from pathlib import Path 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (Tuple, Callable, Optional, Union, Any, Dict,
                     List, TypeVar, Iterator, TYPE_CHECKING)  # @UnusedImport
@@ -136,15 +137,31 @@ class FieldBase(metaclass=ABCMeta):
         return field_cls(grid, data=dataset, label=label)  # type: ignore
 
 
-    def to_file(self, filename: str):
-        """ store field in hdf5 file
+    def to_file(self, filename: str, **kwargs):
+        r""" store field in a file
+        
+        The extension of the filename determines what format is being used. If
+        it ends in `.h5` or `.hdf`, the Hierarchical Data Format is used. The
+        other supported format are images, where only the most typical formats
+        are supported. 
         
         Args:
             filename (str): Path where the data is stored
+            \**kwargs: Additional parameters may be supported for some formats 
         """
-        import h5py
-        with h5py.File(filename, "w") as fp:
-            self._write_hdf_dataset(fp)
+        extension = Path(filename).suffix.lower()
+        
+        if extension in {'.hdf', '.hdf5', '.he5', '.h5'}:
+            import h5py
+            with h5py.File(filename, "w") as fp:
+                self._write_hdf_dataset(fp, **kwargs)
+                
+        elif extension in {'.png', '.jpg', '.jpeg', '.tif', '.pdf', '.svg'}:
+            self._write_to_image(filename, **kwargs)
+            
+        else:
+            raise ValueError('Do not know how to save data to file with '
+                             f'extensions `{extension}`')
 
 
     def _write_hdf_dataset(self, fp, key: str = 'data'):
@@ -154,6 +171,16 @@ class FieldBase(metaclass=ABCMeta):
         if self.label:      
             dataset.attrs['label'] = str(self.label)      
         dataset.attrs['grid'] = self.grid.state_serialized      
+
+
+    def _write_to_image(self, filename: str, **kwargs):
+        """ write data to image 
+        
+        Args:
+            filename (str): The path to the image that will be created
+        """
+        raise NotImplementedError(f'Cannot save {self.__class__.__name__} as '
+                                  'an image')
 
     
     @abstractmethod
@@ -823,6 +850,34 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """ tuple: the shape of the data at each grid point """
         return (self.grid.dim,) * self.rank
     
+    
+    def _write_to_image(self, filename: str, **kwargs):
+        r""" write data to image 
+        
+        Args:
+            filename (str):
+                The path to the image that will be created
+            \**kwargs:
+                Additional keyword arguments that affect the image. For
+                instance, some fields support a `scalar` argument that
+                determines how they are converted to a scalar. Non-Cartesian
+                grids might support a `performance_goal` argument to influence
+                how an image is created from the raw data. Finally, the
+                remaining arguments are are passed to
+                :func:`matplotlib.pyplot.imsave` to affect the appearance.
+                        """
+        from matplotlib.pyplot import imsave
+
+        # obtain image data
+        get_image_args = {}
+        for key in ['performance_goal', 'scalar']:
+            if key in kwargs:
+                get_image_args[key] = kwargs.pop(key)
+        img = self.get_image_data(**get_image_args)
+        
+        kwargs.setdefault('cmap', 'gray')
+        imsave(filename, img['data'], origin='lower', **kwargs)
+    
 
     def _make_interpolator_scipy(self, **kwargs) -> Callable:
         r""" returns a function that can be used to interpolate values.
@@ -1320,8 +1375,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
             \**kwargs:
-                Additional keyword arguments are passed to
-                :func:`matplotlib.pyplot.imshow`.
+                Additional keyword arguments that affect the image. For
+                instance, some fields support a `scalar` argument that
+                determines how they are converted to a scalar. Non-Cartesian
+                grids might support a `performance_goal` argument to influence
+                how an image is created from the raw data. Finally, the
+                remaining arguments are are passed to
+                :func:`matplotlib.pyplot.imshow` to affect the appearance.
                 
         Returns:
             Result of :func:`matplotlib.pyplot.imshow`
@@ -1330,8 +1390,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         
         # obtain image data
         get_image_args = {}
-        # FIXME: rename scalar_method to method
-        for key in ['performance_goal', 'scalar_method']:
+        for key in ['performance_goal', 'scalar']:
             if key in kwargs:
                 get_image_args[key] = kwargs.pop(key)
         img = self.get_image_data(**get_image_args)
