@@ -125,6 +125,21 @@ class Cuboid(object):
                         pos=self.pos, size=self.size)
             
             
+    def __add__(self, other: "Cuboid"):
+        """ The sum of two cuboids is the minimal cuboid enclosing both """
+        if isinstance(other, Cuboid):
+            if self.dim != other.dim:
+                raise RuntimeError('Incompatible dimensions')
+            a1, a2 = self.corners
+            b1, b2 = other.corners
+            return self.__class__.from_points(np.minimum(a1, b1),
+                                              np.maximum(a2, b2))
+            
+        else:
+            raise NotImplementedError('Cannot add cuboid and '
+                                      f'{other.__class__.__name__}')
+            
+            
     def __eq__(self, other):
         """ override the default equality test """
         if isinstance(other, self.__class__):
