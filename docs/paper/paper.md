@@ -38,12 +38,12 @@ where $\mathcal D$ is a (non-linear) differential operator that defines
 the time evolution of a (set of) physical fields $u$ with possibly
 tensorial character, which depend on spatial coordinates $\boldsymbol x$
 and time $t$.
-The framework also supports stochastic differential equations, which are
-represented by by the noise term $\eta$ in the equation above.
+The framework also supports stochastic differential equations where the
+additional noise term $\eta$ in the equation above is non-zero.
 
 The main goal of the `py-pde` package is to provide a convenient way to analyze
-PDEs using general methods, while at the same time allowing for enough
-flexibility to easily implement more specialized code.
+general PDEs, while at the same time allowing for enough flexibility to easily
+implement specialized code for particular cases.
 Since the code is written in pure python, it can be easily installed via pip by
 simply calling `pip install py-pde`.
 However, central parts are just-in-time compiled using `numba` [@numba] for 
@@ -56,7 +56,7 @@ Moreover, the package provides convenience functions for creating suitable
 initial conditions, for controlling what is analyzed as well as stored during a
 simulation, and for visualizing the final results.
 The `py-pde` package thus serves as a toolbox for exploring PDEs both in the
-professional context and for students who want to delve into the facinating
+professional context and for students who want to delve into the fascinating
 world of dynamical systems.
 
 
@@ -104,9 +104,8 @@ simple to realize.
 In particular, the differential operator $\mathcal D$ can be implemented in pure
 python for initial testing, while adding a more specialized version compiled
 with `numba` [@numba] might be added later for speed.
-This flexibility is one strength of the package, since it allows quick
-development to test new PDEs, while it also provides an avenue for efficient
-calculations later.
+This approach allows fast testing of new PDEs, while it also provides an avenue
+for efficient calculations later.
 
 The flexibility of `py-pde` is one of its key feature.
 For instance, while the package implements forward and backward Euler methods as
@@ -131,9 +130,8 @@ fields can be visualized directly.
 Here, the excellent integration of `matplotlib` [@matplotlib] into ipython
 jupyter notebooks [@ipython] allows for an efficient workflow.
 
-One of the advantages of the `py-pde` package is its flexibilit, stemming from a
-consistent object-oriented implementation, where each component can be extended
-and some can even be used in isolation.
+The `py-pde` package employes a consistent object-oriented approach, where each
+component can be extended and some can even be used in isolation.
 For instance, the numba-compiled finite-difference operators, which support
 flexible boundary conditions, can be applied to `numpy.ndarrays` directly, e.g., 
 in custom applications.

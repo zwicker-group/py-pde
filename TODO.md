@@ -10,7 +10,6 @@ TODO
 * Add tests:
 	- boundary conditions with spatial dependence
 	- general Trackers
-	- boundary condition ExtrapolateBC
 	- Different intervals for trackers
 	- Interpolating using boundary conditions
 * Think about better interface to convert between different coordinate systems:

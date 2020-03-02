@@ -243,7 +243,7 @@ class Tensor2Field(DataFieldBase):
             I_2 &= \frac12 \left[
                 (\mathrm{tr}(\boldsymbol{A})^2 -
                 \mathrm{tr}(\boldsymbol{A}^2)
-            \right]) \\
+            \right] \\
             I_3 &= \det(A)
             
         where `tr` denotes the trace and `det` denotes the determinant.
