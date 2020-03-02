@@ -13,7 +13,7 @@ authors:
 affiliations:
  - name: Max Planck Institute for Dynamics and Self-Organization, Göttingen, Germany
    index: 1
-date: 20 February 2020
+date: 2 March 2020
 bibliography: paper.bib
 ---
 
@@ -69,9 +69,9 @@ spatial symmetries that might be present in the physical problem.
 For instance, the scalar field $f(z, r) = \sqrt{z} * e^{-r^2}$ in cylindrical
 coordiantes assuming azimuthal symmetry can be visualized using
 ```python
-grid = pde.CylindricalGrid(radius=5, bounds_z=[0, 10], shape=(32, 64))
-field = pde.ScalarField.from_expression(grid, 'sqrt(z) * exp(-r**2)')
-field.plot()
+    grid = pde.CylindricalGrid(radius=5, bounds_z=[0, 1], shape=(32, 8))
+    field = pde.ScalarField.from_expression(grid, 'sqrt(z) * exp(-r**2)')
+    field.plot()
 ```
 The package defines common differential operators that act directly on the
 fields.
@@ -94,8 +94,8 @@ be solved using standard methods.
 For instance, the diffusion equation $\partial_t u = \nabla^2 u$ on the
 cylindrical grid defined above can be solved by
 ```python
-eq =  pde.DiffusionPDE()
-result = eq.solve(field, t_range=[0, 10])
+    eq = pde.DiffusionPDE()
+    result = eq.solve(field, t_range=[0, 10])
 ```
 Note that the partial differential equation is defined independent of the grid,
 allowing to use the same implementation for various geometries.
