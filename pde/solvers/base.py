@@ -48,7 +48,12 @@ class SolverBase(metaclass=ABCMeta):
 
     @classmethod
     def from_name(cls, name: str, pde: PDEBase, **kwargs) -> "SolverBase":
-        r""" create solver class based on its name 
+        r""" create solver class based on its name
+        
+        Solver classes are automatically registered when they inherit from
+        :class:`SolverBase`. Note that this also requires that the respective
+        python module containing the solver has been loaded before it is
+        attempted to be used.
         
         Args:
             name (str):
@@ -62,9 +67,15 @@ class SolverBase(metaclass=ABCMeta):
             An instance of a subclass of :class:`SolverBase`
         """
         try:
+            # obtain the solver class associated with `name`
             solver_class = cls._subclasses[name]
         except KeyError:
-            raise ValueError(f'Unknown solver method `{name}`')
+            # solver was not registered
+            solvers = (f"'{solver}'"
+                       for solver in sorted(cls._subclasses.keys())
+                       if not solver.endswith('Solver'))
+            raise ValueError(f"Unknown solver method '{name}'. Registered "
+                             f"solvers are {', '.join(solvers)}")
 
         return solver_class(pde, **kwargs)  # type: ignore
     
