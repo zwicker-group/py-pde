@@ -5,16 +5,18 @@
 import pytest
 import numpy as np
 
-from .. import *
+from ... import pdes
 from ...grids import UnitGrid
 from ...fields import ScalarField
 
 
 
 @pytest.mark.parametrize('dim', [1, 2])
-@pytest.mark.parametrize('pde_class', [KuramotoSivashinskyPDE, KPZInterfacePDE,
-                                       SwiftHohenbergPDE, DiffusionPDE,
-                                       CahnHilliardPDE])
+@pytest.mark.parametrize('pde_class', [pdes.KuramotoSivashinskyPDE, 
+                                       pdes.KPZInterfacePDE,
+                                       pdes.SwiftHohenbergPDE,
+                                       pdes.DiffusionPDE,
+                                       pdes.CahnHilliardPDE])
 def test_pde_consistency(pde_class, dim):
     """ test some methods of generic PDE models """
     eq = pde_class()
