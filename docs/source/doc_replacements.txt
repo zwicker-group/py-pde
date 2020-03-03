@@ -3,9 +3,9 @@
 
 .. |Arg_boundary_conditions| replace:: 
   Specifies the boundary conditions for the differential operator. The expected
-  instance of :class:`~pde.grid.boundaries.axes.Boundaries` can be created from
+  instance of :class:`~pde.grids.boundaries.axes.Boundaries` can be created from
   various data formats using the class method
-  :func:`~pde.grid.boundaries.axes.Boundaries.from_data`.
+  :func:`~pde.grids.boundaries.axes.Boundaries.from_data`.
 
 
 .. |Arg_tracker_interval| replace::

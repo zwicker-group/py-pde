@@ -9,10 +9,7 @@ import tempfile
 
 import numpy as np
 
-from ..grids import UnitGrid, CartesianGrid
-from ..fields import ScalarField
-from ..pdes import DiffusionPDE
-from ..storage import FileStorage
+from ..common import *  # @UnusedWildImport
 from ..tools.misc import skipUnlessModule
 
 

@@ -9,13 +9,13 @@ from ...grids import UnitGrid
 from ...pdes import DiffusionPDE
 from ...controller import Controller
 from .. import ExplicitSolver, ImplicitSolver, ScipySolver
-from ..base import SolverBase
+from .. import registered_solvers
 
 
 
 def test_solver_registration():
     """ test solver registration """
-    solvers = SolverBase.registered_solvers
+    solvers = registered_solvers()
     assert 'explicit' in solvers
     assert 'scipy' in solvers
 

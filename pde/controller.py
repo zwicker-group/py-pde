@@ -41,7 +41,7 @@ class Controller():
                 single value `t_end` is given, the time range is assumed to be 
                 `[0, t_end]`.
             tracker:
-                Defines a tracker that process the state of the simulation at
+                Defines trackers that process the state of the simulation at
                 fixed time intervals. Multiple trackers can be specified as a
                 list. The default value 'auto' is converted to 
                 `['progress', 'consistency']` for normal simulations. This thus

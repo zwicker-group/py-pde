@@ -315,9 +315,11 @@ class ScalarFieldPlot():
         """
         from ..visualization.movies import Movie
 
-        data_iter = storage.items()
+        # create the iterator over the data
         if progress:
-            data_iter = display_progress(data_iter, total=len(storage))
+            data_iter = display_progress(storage.items(), total=len(storage))
+        else:
+            data_iter = storage.items()
             
         with Movie(filename=filename, verbose=False) as movie:
             # iterate over all time steps
