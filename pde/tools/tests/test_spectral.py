@@ -19,7 +19,7 @@ def test_colored_noise():
         noise = make_colored_noise(grid.shape, grid.discretization,
                                    exponent, scale)
         x = noise()
-        assert stats.normaltest(x.flat).pvalue > 1e-4, \
+        assert stats.normaltest(x.flat).pvalue > 2e-5, \
                f'Colored noise with exp={exponent} is not normal distributed'
         
         
