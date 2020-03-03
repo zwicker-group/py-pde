@@ -16,7 +16,7 @@ setup(
   author = 'David Zwicker',
   author_email = 'david.zwicker@ds.mpg.de',
   url = 'https://github.com/zwicker-group/py-pde',
-  download_url = 'https://github.com/zwicker-group/py-pde/archive/v0.2.1.tar.gz',
+  download_url = 'https://github.com/zwicker-group/py-pde/archive/v0.2.2.tar.gz',
   keywords = ['pdes', 'partial-differential-equations', 'dynamical-systems'],
   python_requires='>=3.6',
   install_requires=['matplotlib',

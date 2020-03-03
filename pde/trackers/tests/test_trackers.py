@@ -11,7 +11,7 @@ import pytest
 from .. import trackers
 from ...grids import UnitGrid, CartesianGrid
 from ...fields import ScalarField
-from ...pdes import DiffusionPDE
+from ...pdes import DiffusionPDE, CahnHilliardPDE, AllenCahnPDE
 from ...solvers import ExplicitSolver
 from ...controller import Controller
 from ...storage import MemoryStorage
@@ -197,3 +197,22 @@ def test_consistency_tracker():
     with np.errstate(all='ignore'):
         con.run(s, dt=1)
     assert con.info['t_final'] < con.info['t_end']
+
+
+    
+def test_material_conservation_tracker():
+    """ test the MaterialConservationTracker """
+    state = ScalarField.random_uniform(UnitGrid([8, 8]), 0, 1)
+    
+    solver = ExplicitSolver(CahnHilliardPDE())
+    controller = Controller(solver, t_range=10,
+                            tracker=['material_conservation'])
+    controller.run(state, dt=1e-3)
+    assert controller.info['t_final'] >= 10
+    
+    solver = ExplicitSolver(AllenCahnPDE())
+    controller = Controller(solver, t_range=10,
+                            tracker=['material_conservation'])
+    controller.run(state, dt=1e-3)
+    assert controller.info['t_final'] <= 10
+    

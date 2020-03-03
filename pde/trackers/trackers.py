@@ -15,6 +15,7 @@ The trackers defined in this module are:
    SteadyStateTracker
    RuntimeTracker
    ConsistencyTracker
+   MaterialConservationTracker
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -30,6 +31,7 @@ import numpy as np
 from .base import TrackerBase, InfoDict, FinishedSimulation, Real
 from .intervals import IntervalData, RealtimeIntervals
 from ..fields.base import FieldBase
+from ..fields import FieldCollection
 from ..tools.parse_duration import parse_duration
 from ..tools.misc import get_progress_bar_class
 
@@ -576,3 +578,58 @@ class ConsistencyTracker(TrackerBase):
         self._last = field.data.copy()  # store data from last timestep
             
 
+
+class MaterialConservationTracker(TrackerBase):
+    """ Ensure that the amount of material is conserved """
+
+    name = 'material_conservation'
+
+
+    def __init__(self, interval: IntervalData = 1,
+                 atol: float = 1e-4,
+                 rtol: float = 1e-4):
+        """
+        Args:
+            interval: |Arg_tracker_interval|
+            atol (float): Absolute tolerance for amount deviations
+            rtol (float): Relative tolerance for amount deviations
+        """
+        super().__init__(interval=interval)
+        self.atol = atol 
+        self.rtol = rtol
+        
+        
+    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
+        """ 
+        Args:
+            field (:class:`~pde.fields.base.FieldBase`):
+                An example of the data that will be analyzed by the tracker
+            info (dict):
+                Extra information from the simulation        
+                
+        Returns:
+            float: The first time the tracker needs to handle data
+        """
+        if isinstance(field, FieldCollection):
+            self._reference = np.array([f.magnitude for f in field])
+        else:
+            self._reference = field.magnitude  # type: ignore
+            
+        return super().initialize(field, info)
+        
+        
+    def handle(self, field: FieldBase, t: float) -> None:
+        """ handle the data of `field` for a give `time` """
+        if isinstance(field, FieldCollection):
+            mags = np.array([f.magnitude for f in field])
+        else:
+            mags = field.magnitude  # type: ignore
+            
+        c = np.isclose(mags, self._reference, rtol=self.rtol, atol=self.atol)
+        if not np.all(c):
+            if isinstance(field, FieldCollection):
+                msg = f'Material of field {np.flatnonzero(~c)} is not conserved'
+            else:
+                msg = f'Material is not conserved'
+            raise StopIteration(msg)
+            
