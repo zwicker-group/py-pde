@@ -181,6 +181,29 @@ def skipUnlessModule(module_name: str) -> Callable:
         
 
 
+class MockProgress():
+    """ indicates progress by printing dots to stderr """
+    def __init__(self, iterable=None, *args, **kwargs):
+        self.iterable = iterable
+        self.n = self.total = 0
+        self.disable = False
+
+    def __iter__(self):
+        return iter(self.iterable)
+
+    def close(self, *args, **kwargs): pass
+    
+    def refresh(self, *args, **kwargs): 
+        sys.stderr.write('.')
+        sys.stderr.flush()
+        
+    def set_description(self, msg: str, refresh: bool = True, *args,
+                        **kwargs):
+        if refresh:
+            self.refresh()
+
+
+
 def get_progress_bar_class():
     """ returns a class that behaves as progress bar.
     
@@ -196,24 +219,6 @@ def get_progress_bar_class():
         # progress bar package does not seem to be available
         warnings.warn('`tqdm` package is not available. Progress will '
                       'be indicated by dots.')
-        
-        class MockProgress():
-            """ indicates progress by printing dots to stderr """
-            def __init__(self, *args, **kwargs):
-                self.n = self.total = 0
-                self.disable = False
-
-            def close(self, *args, **kwargs): pass
-            
-            def refresh(self, *args, **kwargs): 
-                sys.stderr.write('.')
-                sys.stderr.flush()
-                
-            def set_description(self, msg: str, refresh: bool = True, *args,
-                                **kwargs):
-                if refresh:
-                    self.refresh()
-
         return MockProgress
 
     else:     

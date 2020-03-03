@@ -89,3 +89,14 @@ def test_classproperty():
     assert Test.value == 2
     
     
+    
+def test_progress_bars():
+    """ test progress bars """
+    for pb_cls in [misc.MockProgress, misc.get_progress_bar_class()]:
+        tot = 0
+        for i in pb_cls(range(4)):
+            tot += i
+        assert tot == 6
+    
+    
+    
