@@ -73,8 +73,8 @@ def make_laplace(bcs: Boundaries) -> Callable:
                 (arr_z_l - 2 * arr_c + arr_z_h) * dz_2
             )
             
-            if dim_z == 1:
-                continue  # deal with singular axial dimension
+            if dim_r == 1:
+                continue  # deal with singular radial dimension
             
             for i in range(1, dim_r - 1):  # iterate radial points
                 arr_z_l, arr_c, arr_z_h = region_z(arr, (i, j))

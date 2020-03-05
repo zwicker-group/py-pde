@@ -39,7 +39,7 @@ class TrackerBase(metaclass=ABCMeta):
             interval: |Arg_tracker_interval|
         """ 
         self.interval = get_interval(interval)
-        self._logger = logging.getLogger(self.__class__.__module__)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf

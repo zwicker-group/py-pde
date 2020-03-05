@@ -32,7 +32,7 @@ class SolverBase(metaclass=ABCMeta):
         """
         self.pde = pde
         self.info: Dict[str, Any] = {'pde_class': self.pde.__class__.__name__}
-        self._logger = logging.getLogger(self.__class__.__module__)
+        self._logger = logging.getLogger(self.__class__.__name__)
         
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf

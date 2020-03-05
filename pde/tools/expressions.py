@@ -85,7 +85,7 @@ class ExpressionBase(metaclass=ABCMeta):
                 expression
         """
         self._sympy_expr = expression
-        self._logger = logging.getLogger(self.__class__.__module__)
+        self._logger = logging.getLogger(self.__class__.__name__)
         self.user_funcs = {} if user_funcs is None else user_funcs
         self._check_signature(signature)
 

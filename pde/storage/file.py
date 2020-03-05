@@ -47,7 +47,7 @@ class FileStorage(StorageBase):
         """
         super().__init__(info=info, write_mode=write_mode)
         self.filename = Path(filename)
-        self._logger = logging.getLogger(self.__class__.__module__)
+        self._logger = logging.getLogger(self.__class__.__name__)
         self._file: Any = None
         self._is_writing = False
         self._data_length: Optional[int] = None

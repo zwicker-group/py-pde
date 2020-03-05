@@ -37,13 +37,15 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
     
     
     .. math::
-        r_i = r_\mathrm{inner} + \left(i + \frac12\right) \Delta r
+        r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
         \quad \text{for} \quad i = 0, \ldots, N - 1
-        \quad \text{with} \quad \Delta r = \frac{R}{N}
+        \quad \text{with} \quad 
+            \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N}
 
-    where :math:`R` is the radius of the grid and :math:`r_\mathrm{inner}` 
-    corresponds to a possible inner radius, which is zero by default. The radial
-    direction is discretized by :math:`N` support points.    
+    where :math:`R_\mathrm{outer}` is the outer radius of the grid and
+    :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is
+    zero by default. The radial direction is discretized by :math:`N` support
+    points.    
     """
 
     periodic = [False]  # the radial axis is not periodic
@@ -52,11 +54,12 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
 
     def __init__(self, radius: Union[float, Tuple[float, float]],
                  shape: Union[Tuple[int], int]):
-        """ 
+        r""" 
         Args:
             radius (float or tuple of floats): 
-                radius :math:`R` in case a simple float is given. If a tuple is
-                supplied it is interpreted as the inner and outer radius.
+                radius :math:`R_\mathrm{outer}` in case a simple float is given.
+                If a tuple is supplied it is interpreted as the inner and outer
+                radius, :math:`(R_\mathrm{inner}, R_\mathrm{outer})`.
             shape (tuple or int): A single number setting the number :math:`N`
                 of support points along the radial coordinate
         """
@@ -533,15 +536,16 @@ class PolarGrid(SphericalGridBase):
     The angular symmetry implies that states only depend on the radial
     coordinate :math:`r`, which is discretized uniformly as
     
-    
     .. math::
-        r_i = r_\mathrm{inner} + \left(i + \frac12\right) \Delta r
+        r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
         \quad \text{for} \quad i = 0, \ldots, N - 1
-        \quad \text{with} \quad \Delta r = \frac{R}{N}
+        \quad \text{with} \quad 
+            \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N}
 
-    where :math:`R` is the radius of the grid and :math:`r_\mathrm{inner}` 
-    corresponds to a possible inner radius, which is zero by default. The radial
-    direction is discretized by :math:`N` support points.    
+    where :math:`R_\mathrm{outer}` is the outer radius of the grid and
+    :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is
+    zero by default. The radial direction is discretized by :math:`N` support
+    points.    
     """
     
     dim = 2  # dimension of the described space
@@ -622,15 +626,16 @@ class SphericalGrid(SphericalGridBase):
     The symmetry implies that states only depend on the radial coordinate 
     :math:`r`, which is discretized as follows:
     
-    
     .. math::
-        r_i = r_\mathrm{inner} + \left(i + \frac12\right) \Delta r
+        r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
         \quad \text{for} \quad i = 0, \ldots, N - 1
-        \quad \text{with} \quad \Delta r = \frac{R}{N}
+        \quad \text{with} \quad 
+            \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N}
 
-    where :math:`R` is the radius of the grid and :math:`r_\mathrm{inner}` 
-    corresponds to a possible inner radius, which is zero by default. The radial
-    direction is discretized by :math:`N` support points.    
+    where :math:`R_\mathrm{outer}` is the outer radius of the grid and
+    :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is
+    zero by default. The radial direction is discretized by :math:`N` support
+    points.    
     """
     
     dim = 3  # dimension of the described space

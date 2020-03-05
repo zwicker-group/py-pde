@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from .. import trackers
-from ...grids import UnitGrid, CartesianGrid
+from ...grids import UnitGrid
 from ...fields import ScalarField
 from ...pdes import DiffusionPDE, CahnHilliardPDE, AllenCahnPDE
 from ...solvers import ExplicitSolver
@@ -167,17 +167,6 @@ def test_small_tracker_dt():
     assert len(storage) == 11
 
 
-
-def test_length_scale_tracker():
-    """ test the LengthScaleTracker """
-    g = CartesianGrid([[0, 2*np.pi]], 64, periodic=True)
-    s = ScalarField.from_expression(g, 'sin(2 * x)')
-
-    tracker = trackers.LengthScaleTracker(0.5)
-    DiffusionPDE().solve(s, t_range=1e-2, dt=1e-3, tracker=tracker)
-    np.testing.assert_allclose(tracker.length_scales, np.pi, rtol=1e-3)
-    
-    
     
 def test_runtime_tracker():
     """ test the RuntimeTracker """

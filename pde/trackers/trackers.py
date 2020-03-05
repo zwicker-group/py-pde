@@ -11,7 +11,6 @@ The trackers defined in this module are:
    PrintTracker
    PlotTracker
    DataTracker
-   LengthScaleTracker
    SteadyStateTracker
    RuntimeTracker
    ConsistencyTracker
@@ -371,93 +370,6 @@ class DataTracker(CallbackTracker):
         df.insert(0, 'time', self.times)
         return df
         
-
-
-class LengthScaleTracker(TrackerBase):
-    """ Tracker that stores length scales measured in simulations
-    
-    Attributes:
-        times (list):
-            The time points at which the length scales are stored
-        length_scales (list):
-            The associated length scales     
-    """
-
-    def __init__(self, interval: IntervalData = 1,
-                 filename: Optional[str] = None,
-                 method: str = 'structure_factor_mean',
-                 source: Union[None, int, Callable] = None,
-                 verbose: bool = False):
-        r"""
-        Args:
-            interval: |Arg_tracker_interval|
-            filename (str, optional): Determines the file to which the data is
-                written.
-            method (str): Method used for determining the length scale. Methods
-                are explain in the function
-                :func:`~pde.analysis.get\_length\_scale`.
-            source (int or callable, optional): Determines how a field is
-                extracted from `fields`. If `None`, `fields` is passed as is,
-                assuming it is already a scalar field. This works for the
-                simple, standard case where only a single ScalarField is
-                treated. Alternatively, `source` can be an integer, indicating
-                which field is extracted from an instance of
-                :class:`~pde.fields.FieldCollection`. Lastly,
-                `source` can be a function that takes `fields` as an argument
-                and returns the desired field.
-            verbose (bool): Determines whether errors in determining the length
-                scales are logged.
-        """
-        super().__init__(interval=interval)
-        self.length_scales: List[float] = []
-        self.times: List[float] = []
-        self.filename = filename
-        self.method = method
-        self.source = source
-        self.verbose = verbose
-        
-        
-    def handle(self, field: FieldBase, t: float):
-        """ handle data supplied to this tracker
-        
-        Args:
-            field (:class:`~pde.fields.FieldBase`):
-                The current state of the simulation
-            t (float): The associated time
-        """
-        # determine length scale
-        from ..visualization.plotting import extract_field
-        from ..analysis import get_length_scale
-                                        
-        scalar_field = extract_field(field, self.source, 0)
-                                        
-        try:
-            length_scale = get_length_scale(scalar_field,  # type: ignore
-                                            method=self.method)
-        except Exception:
-            if self.verbose:
-                self._logger.exception('Could not determine length scale')
-            length_scale = np.nan
-            
-        # store data
-        self.times.append(t)
-        self.length_scales.append(length_scale)
-        
-        
-    def finalize(self, info: InfoDict = None) -> None:
-        """ finalize the tracker, supplying additional information
-
-        Args:
-            info (dict):
-                Extra information from the simulation        
-        """
-        super().finalize(info)
-        if self.filename:
-            import json
-            data = {'times': self.times, 'length_scales': self.length_scales}
-            with open(self.filename, 'w') as fp:
-                json.dump(data, fp)
-            
             
             
 class SteadyStateTracker(TrackerBase):
@@ -635,6 +547,5 @@ class MaterialConservationTracker(TrackerBase):
             
             
 __all__ = ['CallbackTracker', 'ProgressTracker', 'PrintTracker', 'PlotTracker',
-           'DataTracker', 'LengthScaleTracker', 'SteadyStateTracker',
-           'RuntimeTracker', 'ConsistencyTracker',
-           'MaterialConservationTracker']
+           'DataTracker', 'SteadyStateTracker', 'RuntimeTracker',
+           'ConsistencyTracker', 'MaterialConservationTracker']

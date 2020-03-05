@@ -35,7 +35,7 @@ class PDEBase(metaclass=ABCMeta):
                 equation will be solved. If another noise structure is required
                 the respective methods need to be overwritten.
         """
-        self._logger = logging.getLogger(self.__class__.__module__)
+        self._logger = logging.getLogger(self.__class__.__name__)
         self.noise = noise
 
 

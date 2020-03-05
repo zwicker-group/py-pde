@@ -63,7 +63,7 @@ class FieldBase(metaclass=ABCMeta):
         self.grid = grid
         self._data: Any = data
         self.label = label
-        self._logger = logging.getLogger(self.__class__.__module__)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf

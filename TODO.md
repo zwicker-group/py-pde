@@ -6,7 +6,7 @@ TODO
   - mimick this interface for plotting 3d droplets?
 * Think about implementing vector differential operators more generally based
   on the scalar operators –> could this work for all grids?
-* Add conservative Laplace operator for cylindrical grid (reuse polar grid?)
+* Add conservative Laplace operator for polar and cylindrical grid?
 * Add tests:
 	- boundary conditions with spatial dependence
 	- general Trackers

@@ -20,7 +20,8 @@ This module implements differential operators on spherical grids
 .. |Description_spherical| replace:: 
   This function assumes spherical symmetry of the grid, so that fields only
   depend on the radial coordinate `r`. The radial discretization is defined as
-  :math:`r_i = (i + \frac12) \Delta r` for :math:`i=0, \ldots, N_r-1`.
+  :math:`r_i = r_\mathrm{inner} + (i + \frac12) \Delta r` for
+  :math:`i=0, \ldots, N_r-1`.
 """
 
 from typing import Callable
@@ -54,7 +55,7 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
     dim_r = bcs.grid.shape[0]
     dr = bcs.grid.discretization[0]
     rs = bcs.grid.axes_coords[0]
-    r_min, _ = bcs.grid.axes_bounds[0]
+    r_min, r_max = bcs.grid.axes_bounds[0]
 
     # prepare boundary values
     value_lower_bc = bcs[0].low.get_virtual_point_evaluator()
@@ -64,6 +65,7 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
         # create a conservative spherical laplace operator
         rl = r_min + dr * np.arange(dim_r)  # inner radii of spherical shells
         rh = rl + dr                        # outer radii
+        assert np.isclose(rh[-1], r_max)
         volumes = (rh**3 - rl**3) / 3       # volume of the spherical shells
     
         if r_min == 0:

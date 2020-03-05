@@ -111,7 +111,7 @@ class Parameterized():
                 parameters that are not in the defaults
         """
         # initialize a logger that can be used in this instance
-        self._logger = logging.getLogger(self.__class__.__module__)
+        self._logger = logging.getLogger(self.__class__.__name__)
         
         # initialize parameters with default ones from all parent classes
         self.parameters = {}

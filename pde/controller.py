@@ -54,7 +54,7 @@ class Controller():
         self.trackers = TrackerCollection.from_data(tracker)
         
         self.info: Dict[str, Any] = {'package_version': __version__}
-        self._logger = logging.getLogger(self.__class__.__module__)
+        self._logger = logging.getLogger(self.__class__.__name__)
 
         
     @property
