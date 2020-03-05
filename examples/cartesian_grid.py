@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pde.common import *
+from pde import CartesianGrid, ScalarField, DiffusionPDE
 
 grid = CartesianGrid([[0, 1], [0, 2]], [3, 8])     # generate grid
 state = ScalarField.random_uniform(grid, 0.2, 0.3) # generate initial condition

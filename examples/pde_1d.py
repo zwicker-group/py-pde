@@ -2,11 +2,8 @@
 
 from math import pi
 
-from pde.grids import CartesianGrid
-from pde.fields import ScalarField
-from pde.storage import MemoryStorage
-from pde.pdes import PDEBase
-from pde.visualization import plot_kymograph
+from pde import (CartesianGrid, ScalarField, PDEBase, MemoryStorage,
+                 plot_kymograph)
 
 
 class KortewegDeVriesPDE(PDEBase):

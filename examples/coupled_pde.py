@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-from pde.grids import UnitGrid
-from pde.fields import FieldCollection
-from pde.pdes.base import PDEBase
+from pde import UnitGrid, FieldCollection, PDEBase
 
 
 class FitzhughNagumoPDE(PDEBase):

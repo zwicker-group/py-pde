@@ -16,7 +16,7 @@ from ..tools.numba import jit
 
 
 if TYPE_CHECKING:
-    from ..controller import TRangeType  # @UnusedImport
+    from ..solvers.controller import TRangeType  # @UnusedImport
 
 
 
@@ -280,7 +280,7 @@ class PDEBase(metaclass=ABCMeta):
             solver = SolverBase.from_name(method, pde=self, **kwargs)
         
         # create controller
-        from ..controller import Controller
+        from ..solvers import Controller
         controller = Controller(solver, t_range=t_range, tracker=tracker)
         
         # run the simulation

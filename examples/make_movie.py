@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pde.common import *
+from pde import UnitGrid, ScalarField, DiffusionPDE, MemoryStorage, movie_scalar
 
 eq = DiffusionPDE()                                 # define the physics
 grid = UnitGrid([16, 16])                           # generate grid

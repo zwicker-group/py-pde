@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from pde.common import *
+from pde import (KPZInterfacePDE, UnitGrid, ScalarField, MemoryStorage,
+                 plot_kymograph)
 
 
 eq = KPZInterfacePDE(noise=1)              # define the SDE

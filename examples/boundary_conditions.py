@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pde.common import *
+from pde import UnitGrid, ScalarField, DiffusionPDE
 
 grid = UnitGrid([16, 16], periodic=[False, True])   # generate grid
 state = ScalarField.random_uniform(grid, 0.2, 0.3)  # generate initial condition

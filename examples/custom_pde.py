@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-from pde.grids import UnitGrid
-from pde.fields import ScalarField
-from pde.pdes.base import PDEBase
+from pde import UnitGrid, ScalarField, PDEBase
 
 
 class KuramotoSivashinskyPDE(PDEBase):

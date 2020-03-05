@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 
-from pde.grids import SphericalGrid
-from pde.fields import ScalarField
-from pde.pdes import DiffusionPDE
+from pde import DiffusionPDE, SphericalGrid, ScalarField
 
 eq = DiffusionPDE()                                 # define the pde
 grid = SphericalGrid(radius=5, shape=16)            # generate grid

@@ -12,8 +12,7 @@ from .. import trackers
 from ...grids import UnitGrid
 from ...fields import ScalarField
 from ...pdes import DiffusionPDE, CahnHilliardPDE, AllenCahnPDE
-from ...solvers import ExplicitSolver
-from ...controller import Controller
+from ...solvers import ExplicitSolver, Controller
 from ...storage import MemoryStorage
 from ...tools.misc import skipUnlessModule, module_available
         

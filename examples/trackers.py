@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-from pde.common import *
+from pde import (DiffusionPDE, UnitGrid, ScalarField, MemoryStorage,
+                 PlotTracker, PrintTracker, RealtimeIntervals)
 
 eq = DiffusionPDE()                                 # define the pde
 grid = UnitGrid([16, 16])                           # generate grid

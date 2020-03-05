@@ -7,8 +7,7 @@ import numpy as np
 from ...fields import ScalarField
 from ...grids import UnitGrid
 from ...pdes import DiffusionPDE
-from ...controller import Controller
-from .. import ExplicitSolver, ImplicitSolver, ScipySolver
+from .. import Controller, ExplicitSolver, ImplicitSolver, ScipySolver
 from .. import registered_solvers
 
 

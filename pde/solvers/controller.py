@@ -11,10 +11,10 @@ import time
 
 import logging
 
-from . import __version__
-from .solvers.base import SolverBase
-from .trackers.base import (TrackerCollectionDataType, TrackerCollection,
-                            FinishedSimulation) 
+from .. import __version__
+from .base import SolverBase
+from ..trackers.base import (TrackerCollectionDataType, TrackerCollection,
+                             FinishedSimulation) 
 
 
 TRangeType = Union[float, Tuple[float, float]]

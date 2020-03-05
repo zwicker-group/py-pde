@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pde.common import *
+from pde import DiffusionPDE, UnitGrid, ScalarField
 
 eq = DiffusionPDE(diffusivity=0.1)                  # define the pde
 grid = UnitGrid([64, 64])                           # generate grid
