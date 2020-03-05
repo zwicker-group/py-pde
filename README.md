@@ -43,14 +43,14 @@ Usage
 A simple example showing the evolution of the diffusion equation in 2d:
 
 ```python
-from pde.common import *
+import pde
 
-grid = UnitGrid([64, 64])                 # generate grid
-state = ScalarField.random_uniform(grid)  # generate initial condition
+grid = pde.UnitGrid([64, 64])                 # generate grid
+state = pde.ScalarField.random_uniform(grid)  # generate initial condition
 
-eq = DiffusionPDE(diffusivity=0.1)        # define the pde
-result = eq.solve(state, t_range=10)      # solve the pde
-result.plot()                             # plot the resulting field
+eq = pde.DiffusionPDE(diffusivity=0.1)        # define the pde
+result = eq.solve(state, t_range=10)          # solve the pde
+result.plot()                                 # plot the resulting field
 ```
 
 More examples illustrating the capabilities of the package can be found in the
