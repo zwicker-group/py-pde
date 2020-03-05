@@ -200,7 +200,7 @@ class ExpressionBase(metaclass=ABCMeta):
         Returns:
             function: the function
         """
-        variables = [self.vars] if single_arg else self.vars
+        variables = (self.vars,) if single_arg else self.vars
         return sympy.lambdify(variables, self._sympy_expr,  # type: ignore
                               modules=['numpy', self.user_funcs])
         
