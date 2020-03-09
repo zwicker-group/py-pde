@@ -26,6 +26,7 @@ import sphinx_simplify_typehints  # @UnresolvedImport @UnusedImport
 # -- Project information -----------------------------------------------------
 
 project = 'py-pde'
+module_name = 'pde'
 author = 'David Zwicker'
 copyright = f'{date.today().year}, {author}'  # @ReservedAssignment
 
@@ -98,6 +99,8 @@ exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
+
+modindex_common_prefix = [f'{module_name}.']
 
 
 # -- Options for HTML output -------------------------------------------------
