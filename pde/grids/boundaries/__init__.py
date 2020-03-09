@@ -38,6 +38,15 @@ Boundaries for all axes of a grid:
 * :class:`~pde.grids.boundaries.axes.Boundaries`:
   Collection of boundaries to describe conditions for all axes
 
+
+Inheritance structure of the classes:
+
+.. inheritance-diagram:: pde.grids.boundaries.axes pde.grids.boundaries.axis
+        pde.grids.boundaries.local
+   :parts: 1
+
+The details of the classes are explained below:
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

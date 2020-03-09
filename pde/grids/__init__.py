@@ -19,6 +19,13 @@ Moreover, points can be mapped to cell indices using the methods
    ~spherical.SphericalGrid
    ~cylindrical.CylindricalGrid
 
+
+Inheritance structure of the classes:
+
+.. inheritance-diagram:: pde.grids.base pde.grids.cartesian pde.grids.spherical
+        pde.grids.cylindrical
+   :parts: 1
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
  
 '''

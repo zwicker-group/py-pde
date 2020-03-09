@@ -1,5 +1,6 @@
 TODO
 ====
+* Fix progress bar when starting from non-zero t_start?
 * Introduce cut(x=?, y=?) and project([‘x’, ‘y’]) returning new field with new grid
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`

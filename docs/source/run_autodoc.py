@@ -59,7 +59,7 @@ def main():
     for path in glob.glob(f'{OUTPUT_PATH}/*.rst'):
         logging.info('Patch file `%s`', path)
         replace_in_file(path, {'Submodules\n----------\n\n': ''})
-        replace_in_file(path, {'Subpackages\n-----------\n\n': ''})
+        replace_in_file(path, {'Subpackages\n-----------': '**Subpackages:**'})
     
     
 if __name__ == '__main__':
