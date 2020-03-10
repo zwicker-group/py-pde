@@ -5,7 +5,9 @@ Base classes for storing data
 """
 
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Any, List, Tuple, Iterator, Union
+from typing import Optional, List, Tuple, Iterator, Union, Sequence, Any
+
+import numpy as np
 
 from ..grids.base import GridBase
 from ..fields.base import FieldBase
@@ -27,8 +29,8 @@ class StorageBase(metaclass=ABCMeta):
     """
     
     
-    times: List[float]
-    data: Any  # actually a numpy array
+    times: Sequence[float]
+    data: Any
     
 
     def __init__(self, info: InfoDict = None,
@@ -67,7 +69,7 @@ class StorageBase(metaclass=ABCMeta):
 
 
     @abstractmethod
-    def append(self, data, time: Optional[float]): pass
+    def append(self, data: np.ndarray, time: Optional[float]): pass
     
     
     def clear(self, clear_data_shape: bool = False) -> None:

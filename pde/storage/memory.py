@@ -39,7 +39,7 @@ class MemoryStorage(StorageBase):
                 'readonly' will disable writing completely.
         """
         super().__init__(info=info, write_mode=write_mode)
-        self.times = [] if times is None else times
+        self.times: List[float] = [] if times is None else times
         
         if fields is None:
             self._grid = None
@@ -97,7 +97,7 @@ class MemoryStorage(StorageBase):
         fields = [FieldCollection(d, label=label)  # type: ignore
                   for d in data]
         
-        return cls(times, fields=fields)
+        return cls(times, fields=fields)  # type: ignore
             
         
     def clear(self, clear_data_shape: bool = False) -> None:
@@ -146,7 +146,7 @@ class MemoryStorage(StorageBase):
                              '`truncate`, and `append`')
                     
             
-    def append(self, data, time: Optional[float] = None) -> None:
+    def append(self, data: np.ndarray, time: Optional[float] = None) -> None:
         """ append a new data set
         
         Args:

@@ -24,7 +24,9 @@ class FileStorage(StorageBase):
     def __init__(self, filename: str,
                  info: InfoDict = None,
                  write_mode: str = 'truncate_once',
-                 max_length: Optional[int] = None):
+                 max_length: Optional[int] = None,
+                 compression: bool = True,
+                 keep_opened: bool = True):
         """
         Args:
             filename (str):
@@ -44,13 +46,24 @@ class FileStorage(StorageBase):
                 files, but is also less flexible. Giving `max_length = None`,
                 allows for arbitrarily large data, which might lead to larger
                 files.
+            compression (bool):
+                Whether to store the data in compressed form. Automatically
+                enabled chunked storage.
+            keep_opened (bool):
+                Flag indicating whether the file should be kept opened after
+                each writing. If `False`, the file will be closed after writing
+                a dataset. This keeps the file in a consistent state, but also
+                requires more work before data can be written.
         """
         super().__init__(info=info, write_mode=write_mode)
         self.filename = Path(filename)
+        self.compression = compression
+        self.keep_opened = keep_opened
+        
         self._logger = logging.getLogger(self.__class__.__name__)
         self._file: Any = None
         self._is_writing = False
-        self._data_length: Optional[int] = None
+        self._data_length: int = None  # type: ignore
         self._max_length: Optional[int] = max_length
         
         if self.filename.is_file() and self.filename.stat().st_size > 0:
@@ -82,7 +95,7 @@ class FileStorage(StorageBase):
             self._logger.info(f'Close file `{self.filename}`')
             self._file.close()
             self._file = None
-            self._data_length = None
+            self._data_length = None  # type: ignore
         
     
     def _create_hdf_dataset(self, name: str, shape: Tuple[int, ...] = tuple()):
@@ -92,14 +105,21 @@ class FileStorage(StorageBase):
             name (str): Identifier of the hdf5 dataset
             shape (tuple): Data shape of the dataset
         """
+        if self.compression:
+            kwargs = {'chunks': (1,) + shape,
+                      'compression': 'gzip'}
+        else:
+            kwargs = {}
+        
         if self._max_length:
             shape = (self._max_length,) + shape
-            return self._file.create_dataset(name, shape=shape,
-                                             dtype=np.double)
+            return self._file.create_dataset(name, shape=shape, dtype=np.double,
+                                             **kwargs)
         else:
             return self._file.create_dataset(name, shape=(0,) + shape,
                                              dtype=np.double,
-                                             maxshape=(None,) + shape)
+                                             maxshape=(None,) + shape,
+                                             **kwargs)
         
                 
     def _open(self, mode: str = 'reading', info: InfoDict = None) -> None:
@@ -133,7 +153,7 @@ class FileStorage(StorageBase):
                 self.info.update(info)
             
             self._data_shape = self.data.shape[1:]
-            self._data_length = self.info.get('data_length')
+            self._data_length = self.info.get('data_length')  # type: ignore
             
         elif mode == 'appending':
             # open file for writing without deleting data
@@ -267,7 +287,8 @@ class FileStorage(StorageBase):
                 Supplies extra information that is stored in the storage
         """
         if self._is_writing:
-            raise RuntimeError('FileStorage is already in writing mode')
+            raise RuntimeError(f'{self.__class__.__name__} is already in '
+                               'writing mode')
         
         # delete data if truncation is requested. This is for instance necessary
         # to remove older data with incompatible data_shape
@@ -300,16 +321,22 @@ class FileStorage(StorageBase):
         self._is_writing = True
 
             
-    def append(self, data, time: Optional[float] = None) -> None:
+    def append(self, data: np.ndarray, time: Optional[float] = None) -> None:
         """ append a new data set
         
         Args:
             data (:class:`numpy.ndarray`): The actual data
             time (float, optional): The time point associated with the data
         """
-        if not self._is_writing or self._data_length is None:
-            raise RuntimeError('Writing not initialized. Call `start_writing`')
-
+        if self.keep_opened:
+            if not self._is_writing or self._data_length is None:
+                raise RuntimeError('Writing not initialized. Call '
+                                   f'`{self.__class__.__name__}.start_writing`')
+            
+        else:
+            # need to reopen the file
+            self._open('appending')
+        
         # write the new data
         if self._data_length >= len(self._data):
             self._data.resize((self._data_length + 1,) + self.data_shape)
@@ -327,16 +354,20 @@ class FileStorage(StorageBase):
 
         self._data_length += 1      
         self.info['data_length'] = self._data_length
+        
+        if not self.keep_opened:
+            self.close()
 
         
     def end_writing(self) -> None:
         """ finalize the storage after writing.
         
-        This makes sure the data is actually written to a file.
+        This makes sure the data is actually written to a file when
+        self.keep_opened == False
         """
         if not self._is_writing:
-            return
-        self._logger.debug(f'End writing')
+            return  # writing mode was already ended
+        self._logger.debug('End writing')
         
         # store extra information as attributes
         for k, v in self.info.items():

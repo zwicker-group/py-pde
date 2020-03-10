@@ -17,18 +17,20 @@ from ...tools.misc import skipUnlessModule
 
         
 @skipUnlessModule("h5py")
-def test_storage_persistence():
+@pytest.mark.parametrize('compression', [True, False])
+def test_storage_persistence(compression):
     """ test writing to persistent trackers """
     dim = 5
     grid = UnitGrid([dim])
     field = ScalarField(grid)
 
-    file = tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True)
+    file = tempfile.NamedTemporaryFile(suffix='.hdf5')
     
     # write some data 
     for write_mode in ['append', 'truncate_once', 'truncate']:
         storage = FileStorage(file.name, info={'a': 1},
-                              write_mode=write_mode)
+                              write_mode=write_mode,
+                              compression=compression)
         
         # first batch
         storage.start_writing(field, info={'b': 2})
@@ -68,11 +70,12 @@ def test_storage_persistence():
     
      
 @skipUnlessModule("h5py")
-def test_simulation_persistence():
+@pytest.mark.parametrize('compression', [True, False])
+def test_simulation_persistence(compression):
     """ test whether a tracker can accurately store information about
     simulation """
-    file = tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True)
-    storage = FileStorage(file.name)
+    file = tempfile.NamedTemporaryFile(suffix='.hdf5')
+    storage = FileStorage(file.name, compression=compression)
      
     # write some simulation data
     pde = DiffusionPDE()
@@ -95,13 +98,15 @@ def test_simulation_persistence():
 
 
 @skipUnlessModule("h5py")
-def test_storage_fixed_size():
+@pytest.mark.parametrize('compression', [True, False])
+def test_storage_fixed_size(compression):
     """ test setting fixed size of FileStorage objects """
     c = ScalarField(UnitGrid([2]), data=1)
 
     for fixed in [True, False]:
-        file = tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True)
-        storage = FileStorage(file.name, max_length=1 if fixed else None)
+        file = tempfile.NamedTemporaryFile(suffix='.hdf5')
+        storage = FileStorage(file.name, max_length=1 if fixed else None,
+                              compression=compression)
         assert len(storage) == 0
         
         storage.start_writing(c)
@@ -110,7 +115,7 @@ def test_storage_fixed_size():
         assert len(storage) == 1
         
         if fixed:
-            with pytest.raises(TypeError):
+            with pytest.raises((TypeError, ValueError)):
                 storage.append(c.data, 1)
             assert len(storage) == 1
             np.testing.assert_allclose(storage.times, [0])
@@ -120,3 +125,51 @@ def test_storage_fixed_size():
             np.testing.assert_allclose(storage.times, [0, 1])
             
             
+            
+@skipUnlessModule("h5py")
+def test_appending():
+    """ test the appending data """
+    c = ScalarField(UnitGrid([2]), data=1)
+    file = tempfile.NamedTemporaryFile(suffix='.hdf5')
+    storage = FileStorage(file.name)
+    storage.start_writing(c)
+    assert len(storage) == 0
+    storage.append(c.data, 0)
+    assert storage._file_state == 'writing'
+    assert len(storage) == 1
+    storage.close()
+                
+    storage2 = FileStorage(file.name, write_mode='append')
+    storage2.start_writing(c)
+    storage2.append(c.data, 1)
+    storage2.close()
+    
+    assert len(storage2) == 2
+    
+
+            
+@skipUnlessModule("h5py")
+def test_keep_opened():
+    """ test the keep opened option """
+    c = ScalarField(UnitGrid([2]), data=1)
+    file = tempfile.NamedTemporaryFile(suffix='.hdf5')
+    storage = FileStorage(file.name, keep_opened=False)
+    storage.start_writing(c)
+    assert len(storage) == 0
+    storage.append(c.data, 0)
+    assert storage._file_state == 'closed'
+    assert len(storage) == 1
+    assert storage._file_state == 'reading'
+                
+    storage2 = FileStorage(file.name, write_mode='append')
+    assert storage.times == storage2.times
+    assert storage.data == storage2.data
+    storage.close()  # close the old storage to enable writing here
+    storage2.start_writing(c)
+    storage2.append(c.data, 1)
+    storage2.close()
+
+    assert len(storage2) == 2
+    np.testing.assert_allclose(storage2.times, np.arange(2))
+    
+                        

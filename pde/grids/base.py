@@ -399,9 +399,11 @@ class GridBase(metaclass=ABCMeta):
                 """ obtain interpolated value of data at a point
                 
                 Args:
-                    data (:class:`numpy.ndarray`):  values at the grid points
-                    point (:class:`numpy.ndarray`): Coordinates of a single
-                        point in the grid coordinate system
+                    data (:class:`numpy.ndarray`):
+                        A 1d array of values at the grid points
+                    point (:class:`numpy.ndarray`):
+                        Coordinates of a single point in the grid coordinate
+                        system
                 
                 Returns:
                     :class:`numpy.ndarray`: The interpolated value at the point
