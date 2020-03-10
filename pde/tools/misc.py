@@ -14,6 +14,7 @@ Miscallenous python functions
    display_progress
    add_scaled_colorbar
    import_class
+   classproperty
    hybridmethod
    estimate_computation_speed
 

@@ -1,7 +1,15 @@
 '''
 This module provides infrastructure for managing classes with parameters. One
-aim is to allow easy management of inheritance.
+aim is to allow easy management of inheritance of parameters.
 
+.. autosummary::
+   :nosignatures:
+
+   Parameter
+   DeprecatedParameter
+   ObsoleteParameter
+   Parameterized
+   get_all_parameters
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''

@@ -1,6 +1,14 @@
 '''
 Functions making use of spectral decompositions
 
+
+.. autosummary::
+   :nosignatures:
+
+   spectral_density
+   make_colored_noise
+
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
