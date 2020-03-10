@@ -160,16 +160,18 @@ def test_keep_opened():
     assert storage._file_state == 'closed'
     assert len(storage) == 1
     assert storage._file_state == 'reading'
+    storage.append(c.data, 1)
+    assert len(storage) == 2
                 
     storage2 = FileStorage(file.name, write_mode='append')
     assert storage.times == storage2.times
     assert storage.data == storage2.data
     storage.close()  # close the old storage to enable writing here
     storage2.start_writing(c)
-    storage2.append(c.data, 1)
+    storage2.append(c.data, 2)
     storage2.close()
 
-    assert len(storage2) == 2
-    np.testing.assert_allclose(storage2.times, np.arange(2))
+    assert len(storage2) == 3
+    np.testing.assert_allclose(storage2.times, np.arange(3))
     
                         

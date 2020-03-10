@@ -159,7 +159,7 @@ class FileStorage(StorageBase):
             # open file for writing without deleting data
             if state in ['appending', 'writing']:
                 return  # we are already in a mode where we can append data
-            if self._is_writing:
+            if self.keep_opened and self._is_writing:
                 raise RuntimeError('Currently writing data, so mode cannot be '
                                    'switched.')
             if self._file:

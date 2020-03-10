@@ -34,7 +34,7 @@ def test_example(path):
     if os.path.basename(path).startswith('_'):
         pytest.skip('skip examples starting with an underscore')
     if any(name in path for name in SKIP_EXAMPLES):
-        pytest.skip('require matplotlib')
+        pytest.skip(f'Skip test {path}')
     
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
