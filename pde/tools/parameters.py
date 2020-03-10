@@ -1,37 +1,44 @@
 '''
-Helper classes for dealing with instance parameters
+This module provides infrastructure for managing classes with parameters. One
+aim is to allow easy management of inheritance.
+
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
 
 import logging
-from typing import Sequence, Dict, Any  # @UnusedImport
+from collections import OrderedDict
+from typing import Sequence, Dict, Any, Set  # @UnusedImport
 
-from ..tools.misc import import_class, hybridmethod
+from pde.tools.misc import import_class, hybridmethod, classproperty
 
 
 
 class Parameter():
-    """ class representing information about parameters """
+    """ class representing a single parameter """
     
-    def __init__(self, name: str, default_value=None,
-                 cls=object, description: str = '',
-                 deprecated: bool = False):
-        """ initialize a single parameter
+    def __init__(self, name: str,
+                 default_value=None,
+                 cls=object,
+                 description: str = ''):
+        """ initialize a parameter 
         
         Args:
-            name (str): The name of the parameter
-            default_value: The default value
-            cls: The type of the parameter also used to convert it
-            description (str): A description of the parameter
-            bool (flag): Flag stating whether this parameter is deprecated
+            name (str):
+                The name of the parameter
+            default_value:
+                The default value
+            cls:
+                The type of the parameter, which is used for conversion
+            description (str):
+                A string describing the impact of this parameter. This
+                description appears in the parameter help
         """
         self.name = name
         self.default_value = default_value
         self.cls = cls
         self.description = description
-        self.deprecated = deprecated
         if cls is not object and cls(default_value) != default_value:
             logging.warning('Default value `%s` does not seem to be of type '
                             '`%s`', name, cls.__name__)
@@ -73,14 +80,17 @@ class Parameter():
         
         
     def convert(self, value=None):
-        """ converts a value into the correct type for this parameter.
+        """ converts a `value` into the correct type for this parameter. If
+        `value` is not given, the default value is converted.
         
-        If value is not given, the default value is converted. Note that this
-        does not necessarily copy the values, which could lead to unexpected
-        effects where the default value is changed by an instance.
+        Note that this does not make a copy of the values, which could lead to
+        unexpected effects where the default value is changed by an instance.
         
         Args:
-            value: The value which will be converted
+            value: The value to convert
+        
+        Returns:
+            The converted value, which is of type `self.cls`
         """ 
         if value is None:
             value = self.default_value
@@ -92,33 +102,60 @@ class Parameter():
 
 
 
+class DeprecatedParameter(Parameter):
+    """ a parameter that can still be used normally but is deprecated """
+    pass
+
+
+
+class ObsoleteParameter():
+    """ parameter that was defined on a parent class, but does not apply to
+    child class anymore. This class can be used on child classes to signal that
+    a parameter from the parent class must not be inherited. """
+    
+    
+    def __init__(self, name: str):
+        """ 
+        Args:
+            name (str):
+                The name of the parameter
+        """
+        self.name = name
+
+
+
 class Parameterized():
-    """ manages a dictionary of parameters assigned to classes """
+    """ a mixin that manages the parameters of a class """
 
     parameters_default: Sequence[Parameter] = []
     _subclasses: Dict[str, Any] = {}
 
 
-    def __init__(self, parameters=None, check_validity=True):
+    def __init__(self, parameters: Dict[str, Any] = None,
+                 check_validity: bool = True):
         """ initialize the object with optional parameters that overwrite the
         default behavior
         
         Args:
             parameters (dict):
-                A dictionary of parameters overwriting the defaults
+                A dictionary of parameters to change the defaults
             check_validity (bool):
-                Determines whether an error is raised if there are keys in
-                parameters that are not in the defaults
+                Determines whether a `ValueError` is raised if there are keys in
+                parameters that are not in the defaults. If `False`, additional
+                items are simply stored in `self.parameters`
         """
         # initialize a logger that can be used in this instance
         self._logger = logging.getLogger(self.__class__.__name__)
         
         # initialize parameters with default ones from all parent classes
-        self.parameters = {}
+        self.parameters: Dict[str, Any] = {}
         for cls in reversed(self.__class__.__mro__):
             if hasattr(cls, 'parameters_default'):
-                for p in cls.parameters_default:
-                    self.parameters[p.name] = p.convert()
+                for p in cls.parameters_default:  # type: ignore
+                    if isinstance(p, ObsoleteParameter):
+                        del self.parameters[p.name]
+                    else:
+                        self.parameters[p.name] = p.convert()
                 
         # update parameters with the supplied ones
         if parameters is not None:
@@ -126,10 +163,10 @@ class Parameterized():
                                       for key in parameters):
                 for key in parameters:
                     if key not in self.parameters:
-                        raise ValueError('Parameter `{}` was provided in '
+                        raise ValueError(f'Parameter `{key}` was provided in '
                                          'instance specific parameters but is '
-                                         'not defined for the class `{}`'
-                                         .format(key, self.__class__.__name__))
+                                         'not defined for the class '
+                                         f'`{self.__class__.__name__}`.')
             
             self.parameters.update(parameters)
 
@@ -139,35 +176,73 @@ class Parameterized():
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
             
+            
+    @classproperty
+    def _obsolete_parameters(cls) -> Set[str]:  # @NoSelf
+        """ a list of obsolete parameters """
+        obsolete = set() 
+        for cls in reversed(cls.__mro__):  # type: ignore
+            if hasattr(cls, 'parameters_default'):
+                for p in cls.parameters_default:
+                    if isinstance(p, ObsoleteParameter):
+                        obsolete.add(p.name)
+                    else:
+                        obsolete.discard(p.name)
+        return obsolete
+            
 
     def get_parameter_default(self, name):
-        """ return the default value for the parameter with `name` """
-        if isinstance(self.parameters_default, dict):
-            # assume that this is a simple dictionary for names and values
-            # without further information on type and a description
-            return self.parameters_default[name]
+        """ return the default value for the parameter with `name` 
         
-        else:
-            for p in self.parameters_default:
-                if p.name == name:
-                    return p.default_value
-            raise KeyError('Parameter `name` is not defined')
+        Args:
+            name (str): The parameter name
+        """
+        if name in self._obsolete_parameters:
+            raise KeyError(f'Parameter `{name}` is obsolete')
+            
+        for cls in self.__class__.__mro__:
+            if hasattr(cls, 'parameters_default'):
+                for p in cls.parameters_default:
+                    if p.name == name:
+                        return p.default_value
+
+        raise KeyError(f'Parameter `{name}` is not defined')
+        
+
+    @classmethod        
+    def _get_parameters(cls, sort: bool = True, incl_deprecated: bool = False):
+        parameters = {}
+        for cls in reversed(cls.__mro__):
+            if hasattr(cls, 'parameters_default'):
+                for p in cls.parameters_default:
+                    if isinstance(p, ObsoleteParameter):
+                        del parameters[p.name]
+                    elif (incl_deprecated or
+                            not isinstance(p, DeprecatedParameter)):
+                        parameters[p.name] = p
+                        
+        if sort:
+            parameters = OrderedDict(sorted(parameters.items()))
+        return parameters
         
         
     @classmethod
-    def _show_parameters(cls, description=False, sort=False,
-                         show_deprecated=False, parameter_values=None):
+    def _show_parameters(cls, description: bool = False,
+                         sort: bool = False,
+                         show_deprecated: bool = False,
+                         parameter_values: Dict[str, Any] = None):
         """ private method showing all parameters in human readable format
         
         Args:
             description (bool):
-                Determines whether the parameter description is shown
+                Flag determining whether the parameter description is shown
             sort (bool):
-                Determines whether all parameters are sorted
+                Flag determining whether the parameters are sorted
             show_deprecated (bool):
-                Determines whether deprecated parameters are shown
-            parameter_values (dict)
-                A dictionary with values to show
+                Flag determining whether deprecated parameters are shown
+            parameter_values (dict):
+                A dictionary with values to show. Parameters not in this
+                dictionary are shown with their default value.
         
         All flags default to `False`.
         """
@@ -179,16 +254,9 @@ class Parameterized():
             template = '{name}: {type} = {value!r}'
             template_object = '{name} = {value!r}'
             
-        # obtain the iterator containing the data
-        params = cls.parameters_default
-        if sort:
-            params = sorted(params)
-            
         # iterate over all parameters
-        for param in params:
-            if param.deprecated and not show_deprecated:
-                continue  # skip deprecated parameter
-            
+        params = cls._get_parameters(sort=sort, incl_deprecated=show_deprecated)
+        for param in params.values():
             # initialize the data to show
             data = {'name': param.name,
                     'type': param.cls.__name__,
@@ -208,19 +276,18 @@ class Parameterized():
             
 
     @hybridmethod
-    def show_parameters(cls, description=False, sort=False,  # @NoSelf
-                        show_deprecated=False):
-        """ private method showing all parameters in human readable format
+    def show_parameters(cls, description: bool = False,  # @NoSelf
+                        sort: bool = False,
+                        show_deprecated: bool = False):
+        """ show all parameters in human readable format
         
         Args:
             description (bool):
-                Determines whether the parameter description is shown
+                Flag determining whether the parameter description is shown
             sort (bool):
-                Determines whether all parameters are sorted
+                Flag determining whether the parameters are sorted
             show_deprecated (bool):
-                Determines whether deprecated parameters are shown
-            parameter_values (dict)
-                A dictionary with values to show
+                Flag determining whether deprecated parameters are shown
         
         All flags default to `False`.
         """
@@ -228,23 +295,46 @@ class Parameterized():
 
 
     @show_parameters.instancemethod  # type: ignore
-    def show_parameters(self, description=False, sort=False,
-                        show_deprecated=False, default_value=False):
-        """ private method showing all parameters in human readable format
+    def show_parameters(self, description: bool = False,  # @NoSelf
+                        sort: bool = False,
+                        show_deprecated: bool = False,
+                        default_value: bool = False):
+        """ show all parameters in human readable format
         
         Args:
             description (bool):
-                Determines whether the parameter description is shown
+                Flag determining whether the parameter description is shown
             sort (bool):
-                Determines whether all parameters are sorted
+                Flag determining whether the parameters are sorted
             show_deprecated (bool):
-                Determines whether deprecated parameters are shown
-            parameter_values (dict)
-                A dictionary with values to show
+                Flag determining whether deprecated parameters are shown
+            default_value (bool):
+                Flag determining whether the default values or the current
+                values are shown
         
         All flags default to `False`.
         """
         self._show_parameters(description, sort, show_deprecated,
                               None if default_value else self.parameters)
+        
+        
+
+def get_all_parameters(data: str = None) -> Dict[str, Any]:
+    """ get a dictionary with all parameters of all registered classes """
+    result = {}
+    for cls_name, cls in Parameterized._subclasses.items():
+        if data is None:
+            parameters = set(cls._get_parameters().keys())
+        elif data == 'value':
+            parameters = {k: v.default_value  # type: ignore
+                          for k, v in cls._get_parameters().items()}
+        elif data == 'description':
+            parameters = {k: v.description  # type: ignore
+                          for k, v in cls._get_parameters().items()}
+        else:
+            raise ValueError(f'Cannot interpret data `{data}`')
+        
+        result[cls_name] = parameters
+    return result
         
                 

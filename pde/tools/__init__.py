@@ -4,7 +4,10 @@ Package containing several tools required in py-pde
 .. autosummary::
    :nosignatures:
 
+   cache
+   cuboid
    expressions
+   math
    misc
    numba
    parameters
