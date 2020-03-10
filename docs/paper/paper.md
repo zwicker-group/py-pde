@@ -63,11 +63,11 @@ world of dynamical systems.
 # Methods
 
 The basic objects of the `py-pde` package are scalar and tensorial fields
-defined on various discretzied grids.
+defined on various discretized grids.
 These grids can deal with periodic boundary conditions and they allow exploiting
 spatial symmetries that might be present in the physical problem. 
 For instance, the scalar field $f(z, r) = \sqrt{z} * e^{-r^2}$ in cylindrical
-coordiantes assuming azimuthal symmetry can be visualized using
+coordinates assuming azimuthal symmetry can be visualized using
 ```python
     grid = pde.CylindricalGrid(radius=5, bounds_z=[0, 1], shape=(32, 8))
     field = pde.ScalarField.from_expression(grid, 'sqrt(z) * exp(-r**2)')
@@ -107,7 +107,7 @@ with `numba` [@numba] might be added later for speed.
 This approach allows fast testing of new PDEs, while it also provides an avenue
 for efficient calculations later.
 
-The flexibility of `py-pde` is one of its key feature.
+The flexibility of `py-pde` is one of its key features.
 For instance, while the package implements forward and backward Euler methods as
 well as a Runge-Kutta scheme, users might require more sophisticated solvers.
 We already provide a wrapper for the excellent `scipy.integrate.solve_ivp` method
@@ -155,7 +155,7 @@ differentials of discretized fields.
 While these methods could in principle also implemented in `py-pde` they are
 limited to a small set of viable boundary conditions and are thus not the 
 primary focus.
-Instead, `py-dev` focuses on providing a full toolchain for creating,
+Instead, `py-pde` focuses on providing a full toolchain for creating,
 simulating, and analyzing PDEs and the associated fields.
 While being useful in research, `py-pde` might thus also suitable for education.  
 
