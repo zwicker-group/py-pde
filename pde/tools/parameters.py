@@ -219,7 +219,7 @@ class Parameterized():
 
     @classmethod        
     def _get_parameters(cls, sort: bool = True, incl_deprecated: bool = False):
-        parameters = {}
+        parameters: Dict[str, Any] = {}
         for cls in reversed(cls.__mro__):
             if hasattr(cls, 'parameters_default'):
                 for p in cls.parameters_default:
