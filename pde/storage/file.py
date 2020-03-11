@@ -318,6 +318,11 @@ class FileStorage(StorageBase):
                              'Possible values are `truncate_once`, '
                              '`truncate`, and `append`')
             
+        if not self.keep_opened:
+            # store extra information as attributes
+            for k, v in self.info.items():
+                self._file.attrs[k] = json.dumps(v)
+            
         self._is_writing = True
 
             

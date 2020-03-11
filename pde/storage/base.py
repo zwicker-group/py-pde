@@ -4,12 +4,14 @@ Base classes for storing data
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+import logging
 from abc import ABCMeta, abstractmethod
 from typing import Optional, List, Tuple, Iterator, Union, Sequence, Any
 
 import numpy as np
 
 from ..grids.base import GridBase
+from ..fields import ScalarField, VectorField, Tensor2Field
 from ..fields.base import FieldBase
 from ..trackers.base import TrackerBase, InfoDict
 from ..trackers.intervals import IntervalType, IntervalData
@@ -53,6 +55,7 @@ class StorageBase(metaclass=ABCMeta):
         self._data_shape: Optional[Tuple[int, ...]] = None
         self._grid: Optional[GridBase] = None
         self._field: Optional[FieldBase] = None
+        self._logger = logging.getLogger(self.__class__.__name__)
     
     
     @property
@@ -106,9 +109,11 @@ class StorageBase(metaclass=ABCMeta):
         if self._grid is None:
             if 'grid' in self.info:
                 self._grid = GridBase.from_state(self.info['grid'])
+            else:
+                self._logger.warning('`grid` attribute was not stored')
         return self._grid
     
-        
+    
     def get_field(self, index: int) -> FieldBase:
         """ return the field corresponding to index
         
@@ -124,15 +129,44 @@ class StorageBase(metaclass=ABCMeta):
             The field class containing the grid and data
         """
         if self._field is None:
+            # we need to determine the field type
+            
+            if self.grid is None:
+                raise RuntimeError('Could not load grid from data. Please set '
+                                   'the `_grid` attribute to the grid that has '
+                                   'been used for the stored data.')
+            
             if 'field' in self.info:
-                if self.grid is None:
-                    raise RuntimeError('Could not load grid')
+                # field type was stored in data
                 self._field = FieldBase.from_state(self.info['field'],
                                                    self.grid)
+                
             else:
-                raise RuntimeError('Could not load field')
-        field = self._field.copy(data=self.data[index])
-        return field
+                # try to determine field type automatically
+
+                # obtain data shape by removing the first axis (associated with
+                # the time series and the last axes (associated with the spatial
+                # dimensions). What is left should be the (local) data stored
+                # at each grid point for each time step. Note that self.data
+                # might be a list of arrays
+                local_shape = self.data[index].shape[:-self.grid.num_axes]
+                dim = self.grid.dim
+                if len(local_shape) == 0:  # rank 0
+                    self._field = ScalarField(self.grid)
+                elif local_shape == (dim,):  # rank 1
+                    self._field = VectorField(self.grid)
+                elif local_shape == (dim, dim):  # rank 2
+                    self._field = Tensor2Field(self.grid)
+                else:
+                    raise RuntimeError('`field` attribute was not stored in '
+                                       f'file and the data shape {local_shape} '
+                                       'could not be interpreted automatically')
+                self._logger.warning('`field` attribute was not stored. We '
+                                     'guessed that the data is of type '
+                                     f'{self._field.__class__.__name__}.')
+                    
+        # create the field with the data of the given index
+        return self._field.copy(data=self.data[index])
         
         
     def __getitem__(self, key: Union[int, slice]) \
