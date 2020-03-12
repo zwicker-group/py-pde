@@ -229,10 +229,6 @@ class FileStorage(StorageBase):
             return min(length, self._data_length)
 
 
-    def __del__(self):
-        self.close()
-        
-        
     @property
     def times(self):
         """ :class:`numpy.ndarray`: The times at which data is available """

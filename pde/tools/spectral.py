@@ -5,7 +5,6 @@ Functions making use of spectral decompositions
 .. autosummary::
    :nosignatures:
 
-   spectral_density
    make_colored_noise
 
 
@@ -25,42 +24,6 @@ except ImportError:
     from numpy.fft import irfftn as np_irfftn
 
 
-
-from scipy import fftpack
-
-
-
-def spectral_density(data, dx=1.):
-    """ calculate the power spectral density of a scalar field
-    
-    Note that we here refer to the density of the spatial spectrum, which is
-    related to the structure factor. In fact, the reported spectral densities
-    are the square of the structure factor.
-    
-    Args:
-        data (:class:`numpy.ndarray`):
-            Data of which the power spectral density will be calculated  
-        dx (float or list): The discretizations of the grid either as a single
-            number or as an array with a value for each dimension
-            
-    Returns:
-        A tuple with two arrays containing the magnitudes of the wave vectors
-        and the associated density, respectively.
-    """
-    dim = len(data.shape)
-    dx = np.broadcast_to(dx, (dim,))
-    
-    # prepare wave vectors
-    k2s = 0
-    for i in range(dim):
-        k = fftpack.fftfreq(data.shape[i], dx[i])
-        k2s = np.add.outer(k2s, k**2)
-  
-    res = fftpack.fftn(data)
-
-    return np.sqrt(k2s), np.abs(res)**2
-    
-    
 
 def make_colored_noise(shape: Tuple[int, ...],
                        dx=1.,

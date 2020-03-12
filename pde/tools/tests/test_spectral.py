@@ -4,11 +4,39 @@
 
 import pytest
 import numpy as np
-from scipy import stats
+from scipy import stats, fftpack
 
-from ..spectral import make_colored_noise, spectral_density
+from ..spectral import make_colored_noise
 from ...grids import UnitGrid, CartesianGrid
 
+
+
+def spectral_density(data, dx=1.):
+    """ calculate the power spectral density of a field
+    
+    Args:
+        data (:class:`numpy.ndarray`):
+            Data of which the power spectral density will be calculated  
+        dx (float or list): The discretizations of the grid either as a single
+            number or as an array with a value for each dimension
+            
+    Returns:
+        A tuple with two arrays containing the magnitudes of the wave vectors
+        and the associated density, respectively.
+    """
+    dim = len(data.shape)
+    dx = np.broadcast_to(dx, (dim,))
+    
+    # prepare wave vectors
+    k2s = 0
+    for i in range(dim):
+        k = fftpack.fftfreq(data.shape[i], dx[i])
+        k2s = np.add.outer(k2s, k**2)
+  
+    res = fftpack.fftn(data)
+
+    return np.sqrt(k2s), np.abs(res)**2
+    
 
                             
 def test_colored_noise():
