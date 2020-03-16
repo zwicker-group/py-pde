@@ -24,6 +24,10 @@ setup(
                     'numba',
                     'scipy',
                     'sympy'],
+  extras_require={
+        "hdf":  ["h5py>=2"],
+        "progress": ["tqdm>=4.40"]
+    },
   classifiers=[
     'Development Status :: 3 - Alpha',
     'Intended Audience :: Developers',
