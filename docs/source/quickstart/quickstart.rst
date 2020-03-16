@@ -8,4 +8,6 @@ Getting started
    
    overview
    examples
+   mathematical_basics
+   advanced_usage
    contributing

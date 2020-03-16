@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 24.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 340.4 83.56" style="enable-background:new 0 0 340.4 83.56;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:none;stroke:#000000;stroke-width:2;}
+	.st1{font-family:'STIXGeneral-Italic';}
+	.st2{font-size:24px;}
+	.st3{font-family:'STIXGeneral-Regular';}
+	.st4{font-size:17.04px;}
+	.st5{fill:#00A2FF;}
+	.st6{fill:#0076BA;}
+	.st7{font-size:19px;}
+	.st8{font-size:13.49px;}
+	.st9{font-size:20px;}
+	.st10{font-size:14.2px;}
+	.st11{fill:none;stroke:#000000;stroke-width:3;stroke-linecap:round;stroke-dasharray:3.000000e-03,9;}
+	.st12{font-size:61px;}
+</style>
+<line class="st0" x1="18.67" y1="50.75" x2="168.67" y2="50.75"/>
+<line class="st0" x1="18.67" y1="40.75" x2="18.67" y2="60.75"/>
+<line class="st0" x1="68.67" y1="40.75" x2="68.67" y2="60.75"/>
+<line class="st0" x1="118.67" y1="40.75" x2="118.67" y2="60.75"/>
+<line class="st0" x1="168.67" y1="40.75" x2="168.67" y2="60.75"/>
+<text transform="matrix(1 0 0 1 0.6482 29.0381)" class="st1 st2">x</text>
+<text transform="matrix(1 0 0 1 11.0593 35.0381)" class="st3 st4">min</text>
+<circle class="st5" cx="43.67" cy="50.75" r="3"/>
+<circle class="st5" cx="93.67" cy="50.75" r="3"/>
+<circle class="st5" cx="143.67" cy="50.75" r="3"/>
+<text transform="matrix(1 0 0 1 37.604 71.8331)" class="st6 st1 st7">x</text>
+<text transform="matrix(1 0 0 1 46.0303 76.5831)" class="st6 st3 st8">0</text>
+<text transform="matrix(1 0 0 1 87.631 72.2745)" class="st6 st1 st9">x</text>
+<text transform="matrix(1 0 0 1 95.8082 77.2745)" class="st6 st3 st10">1</text>
+<text transform="matrix(1 0 0 1 137.631 72.2745)" class="st6 st1 st9">x</text>
+<text transform="matrix(1 0 0 1 146.525 77.2745)" class="st6 st3 st10">2</text>
+<line class="st11" x1="168.67" y1="50.75" x2="218.67" y2="50.75"/>
+<line class="st0" x1="218.67" y1="50.75" x2="318.67" y2="50.75"/>
+<line class="st0" x1="218.67" y1="40.75" x2="218.67" y2="60.75"/>
+<line class="st0" x1="268.67" y1="40.75" x2="268.67" y2="60.75"/>
+<line class="st0" x1="318.67" y1="40.75" x2="318.67" y2="60.75"/>
+<text transform="matrix(1 0 0 1 278.604 71.8331)" class="st6 st1 st7">x</text>
+<text transform="matrix(1 0 0 1 286.3725 76.5831)" class="st6 st1 st8">N</text>
+<text transform="matrix(1 0 0 1 295.3701 76.5831)" class="st6 st3 st8">−</text>
+<text transform="matrix(1 0 0 1 304.6108 76.5831)" class="st6 st3 st8">1</text>
+<text transform="matrix(1 0 0 1 228.604 71.8331)" class="st6 st1 st7">x</text>
+<text transform="matrix(1 0 0 1 236.3725 76.5831)" class="st6 st1 st8">N</text>
+<text transform="matrix(1 0 0 1 245.3701 76.5831)" class="st6 st3 st8">−</text>
+<text transform="matrix(1 0 0 1 254.6108 76.5831)" class="st6 st3 st8">2</text>
+<circle class="st5" cx="243.67" cy="50.75" r="3"/>
+<circle class="st5" cx="293.67" cy="50.75" r="3"/>
+<text transform="matrix(1 0 0 1 300.6482 29.0381)" class="st1 st2">x</text>
+<text transform="matrix(1 0 0 1 311.0593 35.0381)" class="st3 st4">max</text>
+<text transform="matrix(1.224647e-16 1 -1 1.224647e-16 128.5425 14.0776)" class="st3 st12">{</text>
+<text transform="matrix(1 0 0 1 134.677 16.62)" class="st3 st9">Δ</text>
+<text transform="matrix(1 0 0 1 149.717 16.62)" class="st1 st9">x</text>
+</svg>

@@ -1,10 +1,12 @@
 Overview
 ^^^^^^^^
 
-The main aim of the :mod:`pde` package is to simulate partial
-differential equations in simple geometries.
-We here focus on the finite difference method, where fields are represented on
-discretized grids.
+The main aim of the :mod:`pde` package is to simulate partial differential
+equations in simple geometries.
+Here, the time evolution of a PDE is determined using the method of lines by
+explicitly discretizing space using fixed grids.
+The differential operators are implemented using the `finite difference method
+<https://en.wikipedia.org/wiki/Finite_difference_method>`_.
 For simplicity, we consider only regular, orthogonal grids, where each axis has
 a uniform discretization and all axes are (locally) orthogonal.
 Currently, we support simulations on  

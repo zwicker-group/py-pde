@@ -1,5 +1,8 @@
 TODO
 ====
+* Automatic testing of numba compiled rhs by comparing to numpy implementation
+* Think about introducing data class that holds integrated, global variables
+	- this might be helpful to implement lagrange multipliers and the like
 * Fix progress bar when starting from non-zero t_start?
 * Introduce cut(x=?, y=?) and project([‘x’, ‘y’]) returning new field with new grid
 * Extend methods `get_image_data` to allow different cuts, visualizations
@@ -25,9 +28,6 @@ TODO
 
 LOW-PRIORITY (Future ideas)
 ===========================
-* Extend operators so they accept a function that is applied to each grid point
-    - this could be used to accelerate some operations, avoding too many grid
-      iterations
 * Add method showing the boundary condition as a mathematical equation
 * Add interface for setting parameters of a simulation
 	- each class should have a list of parameters it supports (with type?)
