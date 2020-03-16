@@ -52,7 +52,7 @@ class ImplicitSolver(SolverBase):
     
 
     def make_stepper(self, state: FieldBase, dt=None) -> Callable:
-        """ return a stepper function using an explicit scheme
+        """ return a stepper function using an implicit scheme
         
         Args:
             state (:class:`~pde.fields.FieldBase`):

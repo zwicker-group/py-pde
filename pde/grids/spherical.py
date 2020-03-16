@@ -138,13 +138,13 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
 
 
     @cached_property()
-    def cell_volume_data(self):
+    def cell_volume_data(self) -> np.ndarray:
         """ :class:`numpy.ndarray`: the volumes of all cells """
         dr = self.discretization[0]
         rs = self.axes_coords[0]
         volumes_h = volume_from_radius(rs + 0.5 * dr, dim=self.dim)
         volumes_l = volume_from_radius(rs - 0.5 * dr, dim=self.dim)
-        return (volumes_h - volumes_l).reshape(self.shape[0])
+        return (volumes_h - volumes_l).reshape(self.shape[0])  # type: ignore
     
 
     def contains_point(self, point):

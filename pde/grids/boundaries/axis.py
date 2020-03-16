@@ -11,8 +11,9 @@ non-periodic axes have more option, which are represented by
 
 from typing import Union, Tuple, Dict, Callable
     
+from numba.extending import register_jitable
+    
 from ..base import GridBase
-from ...tools.numba import jit
 
 from .local import (BCBase, BoundaryData, NeumannBC, _make_get_arr_1d,
                     DomainError)
@@ -273,7 +274,7 @@ class BoundaryPair(BoundaryAxisBase):
         eval_lo = self.low.get_virtual_point_evaluator()
         eval_hi = self.high.get_virtual_point_evaluator()
 
-        @jit
+        @register_jitable
         def evaluate(arr, idx):
             """ evaluate values of the 1d array `arr_1d` at an index `i` """
             arr_1d, i, _ = get_arr_1d(arr, idx)
@@ -306,7 +307,7 @@ class BoundaryPair(BoundaryAxisBase):
         ap_low = self.low.get_adjacent_evaluator()
         ap_high = self.high.get_adjacent_evaluator()
         
-        @jit
+        @register_jitable
         def region_evaluator(arr, idx: Tuple[int, ...]) \
                 -> Tuple[float, float, float]:
             """ compiled function return the values in the region """
@@ -390,12 +391,12 @@ class BoundaryPeriodic(BoundaryAxisBase):
         """
         size = self.grid.shape[self.axis]
         
-        @jit
+        @register_jitable
         def value_low(arr):
             """ evaluate the virtual point using the data array `arr` """
             return arr[size - 1]
         
-        @jit
+        @register_jitable
         def value_high(arr):
             """ evaluate the virtual point using the data array `arr` """
             return arr[0]
@@ -435,7 +436,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
         
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
         
-        @jit
+        @register_jitable
         def evaluate(arr, idx):
             """ evaluate values of the array `arr` at an index `idx` """
             arr_1d, i, _ = get_arr_1d(arr, idx)
@@ -458,7 +459,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
         size = self.grid.shape[self.axis]
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
 
-        @jit
+        @register_jitable
         def region_evaluator(arr, idx: Tuple[int, ...]) \
                 -> Tuple[float, float, float]:
             """ compiled function return the values in the region """

@@ -32,9 +32,9 @@ import numbers
 from typing import Any, Union, Tuple, Dict, Sequence, Optional, Callable, List
     
 import numpy as np
+from numba.extending import register_jitable
 
 from ..base import GridBase
-from ...tools.numba import jit
 from ...tools.expressions import ScalarExpression
 
 
@@ -130,7 +130,7 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
     """
     assert 0 <= axis < dim
     
-    @jit
+    @register_jitable
     def get_arr_1d(arr, idx: Tuple[int, ...]) \
             -> Tuple[Any, int, Tuple[int, ...]]:
         """ extract the 1d array along axis at point idx """
@@ -613,7 +613,7 @@ class BCBase1stOrder(BCBase):
         data = self.get_virtual_point_data()
         
         if self.homogeneous:
-            @jit
+            @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, _ = get_arr_1d(arr, idx)
@@ -621,7 +621,7 @@ class BCBase1stOrder(BCBase):
                         data[1] * arr_1d[..., data[2]])
                 
         else:
-            @jit
+            @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
@@ -659,7 +659,7 @@ class BCBase1stOrder(BCBase):
             else:
                 zero = np.zeros((self.grid.dim,) * self.rank)
             
-            @jit
+            @register_jitable
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the point adjacent to `idx` """
                 # extract the 1d array
@@ -688,7 +688,7 @@ class BCBase1stOrder(BCBase):
         else:
             # the boundary condition is a function of space
             
-            @jit
+            @register_jitable
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the point adjacent to `idx` """
                 arr_1d, i, bc_idx = get_arr_1d(arr, idx)
@@ -949,7 +949,7 @@ class BCBase2ndOrder(BCBase):
         data = self.get_virtual_point_data()
         
         if self.homogeneous:
-            @jit
+            @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]):
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, _ = get_arr_1d(arr, idx)
@@ -959,7 +959,7 @@ class BCBase2ndOrder(BCBase):
                         data[3] * arr_1d[..., data[4]])
             
         else:
-            @jit
+            @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]):
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
@@ -1002,7 +1002,7 @@ class BCBase2ndOrder(BCBase):
             else:
                 zero = np.zeros((self.grid.dim,) * self.rank)
             
-            @jit
+            @register_jitable
             def adjacent_point(arr, idx: Tuple[int, ...]):
                 """ evaluate the point adjacent to `idx` """
                 # extract the 1d array
@@ -1028,7 +1028,7 @@ class BCBase2ndOrder(BCBase):
         else:
             # the boundary condition is a function of space
             
-            @jit
+            @register_jitable
             def adjacent_point(arr, idx: Tuple[int, ...]):
                 """ evaluate the point adjacent to `idx` """
                 arr_1d, i, bc_idx = get_arr_1d(arr, idx)

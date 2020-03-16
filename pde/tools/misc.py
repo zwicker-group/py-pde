@@ -81,9 +81,9 @@ def environment() -> Dict[str, Any]:
     result['package version'] = package_version
     result['python version'] = sys.version
     result['mandatory packages'] = get_package_versions(
-                                        ['numba', 'numpy', 'scipy', 'sympy'])
-    result['optional packages'] = get_package_versions(
-                            ['h5py', 'matplotlib', 'pandas', 'pyfftw', 'tqdm'])
+                            ['matplotlib', 'numba', 'numpy', 'scipy', 'sympy'])
+    result['optional packages'] = get_package_versions(['h5py', 'pandas',
+                                                        'pyfftw', 'tqdm'])
     if module_available('numba'):
         result['numba environment'] = numba_environment()
     

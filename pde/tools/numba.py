@@ -11,6 +11,7 @@ from functools import wraps
 from typing import Callable, Dict, Any, Optional, Tuple
 
 import numba as nb
+from numba.extending import register_jitable
 import numpy as np
 
 from ..tools.misc import decorator_arguments
@@ -237,7 +238,7 @@ def jit_allocate_out(func: Callable,
                 
                 if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # function is called without `out`
-                    f_jit = jit(parallel=parallel)(func)
+                    f_jit = register_jitable(parallel=parallel)(func)
                     
                     if out_shape is None:
                         # we have to obtain the shape of `out` from `arr` 
@@ -272,7 +273,7 @@ def jit_allocate_out(func: Callable,
                 
                 elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # function is called without `out`
-                    f_jit = jit(parallel=parallel)(func)
+                    f_jit = register_jitable(parallel=parallel)(func)
                     
                     if out_shape is None:  
                         # we have to obtain the shape of `out` from `a` 
