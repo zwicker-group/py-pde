@@ -16,7 +16,7 @@ Spatial discretization
 """"""""""""""""""""""
 
 
-.. image:: /_images/discretization.svg
+.. image:: /_images/discretization_cropped.*
    :alt: Schematic of the discretization scheme
    :width: 350px
    :class: float-right
