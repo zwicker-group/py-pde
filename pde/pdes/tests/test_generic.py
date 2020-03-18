@@ -30,3 +30,22 @@ def test_pde_consistency(pde_class, dim):
     rhs = eq._make_pde_rhs_numba(state)
     np.testing.assert_allclose(field.data, rhs(state.data, 0))
     
+
+
+def test_pde_consistency_test():
+    """ test whether the consistency of a pde implementation is checked """
+
+    class TestPDE(pdes.PDEBase):
+        def evolution_rate(self, field, t=0):
+            return 2 * field
+        
+        def _make_pde_rhs_numba(self, state):
+            def impl(state_data, t):
+                return 3 * state_data
+            return impl
+        
+    eq = TestPDE()
+    state = ScalarField.random_uniform(UnitGrid([4]))
+    with pytest.raises(RuntimeError):
+        eq.solve(state, t_range=5)
+    

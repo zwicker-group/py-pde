@@ -1,10 +1,7 @@
 TODO
 ====
-* Poisson solver
-    - make 1d and 2d example with and without driving (laplace and poisson)
 * Add tests for poisson solver and operator matrices
 * Add TensorField.from_expressions
-* Automatic testing of numba compiled rhs by comparing to numpy implementation
 * Think about introducing data class that holds integrated, global variables
 	- this might be helpful to implement lagrange multipliers and the like
 * Fix progress bar when starting from non-zero t_start?

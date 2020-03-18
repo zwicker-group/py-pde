@@ -21,8 +21,19 @@ if TYPE_CHECKING:
 
 
 class PDEBase(metaclass=ABCMeta):
-    """ base class for solving partial differential equations """
+    """ base class for solving partial differential equations
+    
+    Attributes:
+        check_implementation (bool):
+            Flag determining whether (some) numba-compiled functions should be
+            checked against their numpy counter-parts. This can help with
+            implementing a correct compiled version for a PDE class.
+        explicit_time_dependence (bool):
+            Flag indicating whether the right hand side of the PDE has an
+            explicit time dependence.
+    """
 
+    check_implementation: bool = True
     explicit_time_dependence: Optional[bool] = None
 
 
@@ -77,16 +88,15 @@ class PDEBase(metaclass=ABCMeta):
         """
         if backend == 'auto':
             try:
-                result = self._make_pde_rhs_numba(state)
+                rhs = self._make_pde_rhs_numba(state)
             except NotImplementedError:
                 backend = 'numpy'
             else:
-                result._backend = 'numba'  # type: ignore
-                return result
-             
+                rhs._backend = 'numba'  # type: ignore
+            
         if backend == 'numba':
-            result = self._make_pde_rhs_numba(state)
-            result._backend = 'numba'  # type: ignore
+            rhs = self._make_pde_rhs_numba(state)
+            rhs._backend = 'numba'  # type: ignore
                 
         elif backend == 'numpy':
             state = state.copy()
@@ -96,13 +106,24 @@ class PDEBase(metaclass=ABCMeta):
                 state.data = state_data
                 return self.evolution_rate(state, t).data
         
-            result = evolution_rate_numpy
-            result._backend = 'numpy'  # type: ignore
+            rhs = evolution_rate_numpy
+            rhs._backend = 'numpy'  # type: ignore
             
-        else:
+        elif backend != 'auto':
             raise ValueError(f'Unknown backend `{backend}`')
         
-        return result
+        if (self.check_implementation and
+                rhs._backend == 'numba'):  # type: ignore
+            # compare the numba implementation to the numpy implementation
+            expected = self.evolution_rate(state.copy()).data
+            test_state = state.copy()
+            result = rhs(test_state.data, 0)
+            if not np.allclose(result, expected):
+                raise RuntimeError('The numba compiled implementation of the '
+                                   'right hand side is not compatible with '
+                                   'the numpy implementation.')
+        
+        return rhs
             
             
     def noise_realization(self, state: FieldBase, t: float = 0) -> FieldBase:
