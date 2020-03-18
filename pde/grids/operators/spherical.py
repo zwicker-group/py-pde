@@ -27,7 +27,9 @@ This module implements differential operators on spherical grids
 from typing import Callable
 
 import numpy as np
+from scipy import sparse
 
+from .common import make_poisson_solver
 from .. import SphericalGrid
 from ..boundaries import Boundaries
 from ...tools.numba import jit_allocate_out
@@ -350,6 +352,67 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
 
 
 
+def _get_laplace_matrix(bcs):
+    """ get sparse matrix for laplace operator on a polar grid
+    
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            |Arg_boundary_conditions|
+        
+    Returns:
+        tuple: A sparse matrix and a sparse vector that can be used to evaluate
+        the discretized laplacian
+    """    
+    assert isinstance(bcs.grid, SphericalGrid)
+    bcs.check_value_rank(0)
+
+    # calculate preliminary quantities
+    dim_r = bcs.grid.shape[0]
+    dr = bcs.grid.discretization[0]
+    rs = bcs.grid.axes_coords[0]
+    r_min, r_max = bcs.grid.axes_bounds[0]
+    
+
+    # create a conservative spherical laplace operator
+    rl = r_min + dr * np.arange(dim_r)  # inner radii of spherical shells
+    rh = rl + dr                        # outer radii
+    assert np.isclose(rh[-1], r_max)
+    volumes = (rh**3 - rl**3) / 3       # volume of the spherical shells
+
+    factor_l = (rs - 0.5 * dr)**2 / (dr * volumes)
+    factor_h = (rs + 0.5 * dr)**2 / (dr * volumes)
+
+    matrix = sparse.dok_matrix((dim_r, dim_r))
+    vector = sparse.dok_matrix((dim_r, 1))
+    
+    for i in range(dim_r):
+        matrix[i, i] += -factor_l[i] - factor_h[i]
+        
+        if i == 0:
+            if r_min == 0:
+                matrix[i, i + 1] = factor_l[i]
+            else:
+                const, entries = bcs[0].get_data((-1,))
+                vector[i] += const * factor_l[i]
+                for k, v in entries.items():
+                    matrix[i, k] += v * factor_l[i]
+
+        else:
+            matrix[i, i - 1] = factor_l[i]
+            
+        if i == dim_r - 1:
+            const, entries = bcs[0].get_data((dim_r,))
+            vector[i] += const * factor_h[i]
+            for k, v in entries.items():
+                matrix[i, k] += v * factor_h[i]
+                
+        else:
+            matrix[i, i + 1] = factor_h[i]
+            
+    return matrix, vector
+
+
+
 def make_operator(op: str, bcs: Boundaries) -> Callable:
     """ make a discretized operator for a spherical grid
     
@@ -377,6 +440,8 @@ def make_operator(op: str, bcs: Boundaries) -> Callable:
         return make_vector_gradient(bcs)
     elif op == 'tensor_divergence':
         return make_tensor_divergence(bcs)
+    elif op == 'poisson_solver' or op == 'solve_poisson' or op == 'poisson':
+        return make_poisson_solver(*_get_laplace_matrix(bcs))
     else:
         raise NotImplementedError(f'Operator `{op}` is not defined for '
                                   'spherical grids')

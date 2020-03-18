@@ -104,3 +104,30 @@ def test_grid_div_grad():
     # do not test the radial boundary points
     np.testing.assert_allclose(a[1:-1], res[1:-1], rtol=0.1, atol=0.1)
     np.testing.assert_allclose(b[1:-1], res[1:-1], rtol=0.1, atol=0.1)       
+
+
+
+def test_poisson_solver_spherical():
+    """ test the poisson solver on Polar grids """
+    grid = SphericalGrid(4, 8)
+    for bc_val in ['natural', {'value': 1}]:
+        bcs = grid.get_boundary_conditions(bc_val)
+        poisson = grid.get_operator('poisson_solver', bcs)
+        laplace = grid.get_operator('laplace', bcs)
+        
+        d = np.random.random(grid.shape)
+        d -= ScalarField(grid, d).average  # balance the right hand side
+        np.testing.assert_allclose(laplace(poisson(d)), d,
+                                   err_msg=f'bcs = {bc_val}')
+
+
+    grid = SphericalGrid([2, 4], 8)
+    for bc_val in ['natural', {'value': 1}]:
+        bcs = grid.get_boundary_conditions(bc_val)
+        poisson = grid.get_operator('poisson_solver', bcs)
+        laplace = grid.get_operator('laplace', bcs)
+        
+        d = np.random.random(grid.shape)
+        d -= ScalarField(grid, d).average  # balance the right hand side
+        np.testing.assert_allclose(laplace(poisson(d)), d,
+                                   err_msg=f'bcs = {bc_val}')
