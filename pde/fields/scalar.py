@@ -125,39 +125,7 @@ class ScalarField(DataFieldBase):
             assert isinstance(out, ScalarField)
         laplace = self.grid.get_operator('laplace', bc=bc)
         return self.apply(laplace, out=out, label=label)
-    
-    
-#     def solve_poisson(self, out: Optional['ScalarField']=None,
-#                       label: str="solution to Poisson's equation"):
-#         r""" solve Poisson's equation with the current field as inhomogeneity.
-#         
-#         Denoting the current field by :math:`x`, we thus solve for :math:`y`,
-#         defined by the equation 
-# 
-#         .. math::
-#             \nabla^2 y(\boldsymbol r) = -x(\boldsymbol r)
-#             
-#             
-#         Args:
-#             out (ScalarField, optional): Optional scalar field to which the 
-#                 result is written.
-#             label (str, optional): Name of the returned field
-#             
-#         Returns:
-#             ScalarField: the result of applying the operator 
-#         """
-#         solve_poisson = self.grid.get_operator('poisson_solver',
-#                                                bc='periodic')
-#         data = solve_poisson(self.data)
-#         
-#         if out is None:
-#             return ScalarField(self.grid, data, label=label)
-#         else:
-#             out.data = data
-#             if label:
-#                 out.label = label
-#             return out
-    
+
         
     def gradient(self, bc: "BoundariesData",
                  out: Optional['VectorField'] = None,
@@ -183,7 +151,55 @@ class ScalarField(DataFieldBase):
             assert isinstance(out, VectorField)
             gradient(self.data, out=out.data)
         return out
-
+    
+    
+    def solve_poisson(self, bc: "BoundariesData",
+                      out: Optional['ScalarField'] = None,
+                      label: str = "solution to Poisson's equation"):
+        r""" solve Poisson's equation with the current field as inhomogeneity.
+         
+        Denoting the current field by :math:`x`, we thus solve for :math:`y`,
+        defined by the equation 
+ 
+        .. math::
+            \nabla^2 y(\boldsymbol r) = -x(\boldsymbol r)
+            
+        with boundary conditions specified by `bc`.
+            
+        Note:
+            In case of periodic or Neumann boundary conditions, the right hand
+            side :math:`x(\boldsymbol r)` needs to satisfy the following
+            condition for consistency:
+            
+            .. math::
+                \int x \, \mathrm{d}V = \oint g \, \mathrm{d}S
+                
+            where :math:`g` denotes the function specifying the outwards
+            derivative for Neumann conditions. In particular, the integral over
+            :math:`x` must vanish for neutral Neumann or periodic conditions.
+             
+        Args:
+            bc: Gives the boundary conditions applied to fields that are
+                required for calculating the Laplacian.
+            out (ScalarField, optional): Optional scalar field to which the 
+                result is written.
+            label (str, optional): Name of the returned field
+             
+        Returns:
+            ScalarField: the result of applying the operator 
+        """
+        # solve the poisson problem
+        solve_poisson = self.grid.get_operator('poisson_solver', bc=bc)
+        result = solve_poisson(self.data)
+         
+        if out is None:
+            return ScalarField(self.grid, result, label=label)
+        else:
+            out.data = result
+            if label:
+                out.label = label
+            return out
+    
         
     @property
     def integral(self) -> float:

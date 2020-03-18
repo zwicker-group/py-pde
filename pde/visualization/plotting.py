@@ -459,7 +459,7 @@ def plot_kymograph(storage: StorageBase,
     """
     import matplotlib.pyplot as plt
 
-    close_figure = (filename != '' and ax is None)
+    close_figure = (bool(filename) and ax is None)
     if ax is None:
         # create new figure
         ax = plt.figure().gca()

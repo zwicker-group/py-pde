@@ -435,6 +435,9 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
         from .boundaries.axis import BoundaryPair
         from .boundaries import Boundaries  # @Reimport
 
+        if isinstance(bc, Boundaries):
+            return bc
+
         if self.has_hole:  # grid has holes => specify two boundary conditions
             if bc == 'natural':
                 b_pair = BoundaryPair(NeumannBC(self, 0, upper=False),

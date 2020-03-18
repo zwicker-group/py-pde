@@ -236,6 +236,29 @@ class BoundaryPair(BoundaryAxisBase):
                 self.high.get_virtual_point_data())
 
 
+    def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
+        """ sets the elements of the sparse representation of this condition
+        
+        Args:
+            idx (tuple):
+                The index of the point that must lie on the boundary condition
+                
+        Returns:
+            float, dict: A constant value and a dictionary with indices and
+            factors that can be used to calculate this virtual point
+        """
+        axis_coord = idx[self.axis]
+        if axis_coord == -1:
+            # the virtual point on the lower side
+            return self.low.get_data(idx)
+        elif axis_coord == self.grid.shape[self.axis]:
+            # the virtual point on the upper side
+            return self.high.get_data(idx)
+        else:
+            # the normal case of an interior point
+            return 0, {axis_coord: 1}
+
+
     def get_virtual_point_evaluators(self) -> Tuple[Callable, Callable]:
         """ returns two functions evaluating the value at virtual support points
 
@@ -413,7 +436,31 @@ class BoundaryPeriodic(BoundaryAxisBase):
         """     
         size = self.grid.shape[self.axis]
         return ((0., 1., size - 1, 0., 0),
-                (0., 1., 0, 0., 0))   
+                (0., 1., 0, 0., 0))
+
+
+    def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
+        """ sets the elements of the sparse representation of this condition
+        
+        Args:
+            idx (tuple):
+                The index of the point that must lie on the boundary condition
+                
+        Returns:
+            float, dict: A constant value and a dictionary with indices and
+            factors that can be used to calculate this virtual point
+        """
+        axis_coord = idx[self.axis]
+        size = self.grid.shape[self.axis]
+        if axis_coord == -1:
+            # the virtual point on the lower side
+            return 0, {size - 1: 1}
+        elif axis_coord == size:
+            # the virtual point on the upper side
+            return 0, {0: 1}
+        else:
+            # the normal case of an interior point
+            return 0, {axis_coord: 1}
 
 
     @property

@@ -15,6 +15,10 @@ from ....fields import ScalarField
 
 
 
+π = np.pi
+
+
+
 def _get_random_grid_bcs(ndim: int, dx='random', periodic='random'):
     """ create a random Cartesian grid with natural bcs """
     shape = np.random.randint(2, 5, ndim)
@@ -74,7 +78,9 @@ def test_laplace_1d():
         a = np.random.random(bcs.grid.shape)  # test data
         l1 = ops._make_laplace_scipy_nd(bcs)
         l2 = ops._make_laplace_numba_1d(bcs)
+        l3 = ops.make_laplace(bcs, method='matrix')
         np.testing.assert_allclose(l1(a), l2(a))
+        np.testing.assert_allclose(l1(a), l3(a))
 
 
 
@@ -92,6 +98,9 @@ def test_laplace_2d():
 
         l2 = ops._make_laplace_numba_2d(bcs)
         np.testing.assert_allclose(l2(a), res)
+
+        l3 = ops.make_laplace(bcs, method='matrix')
+        np.testing.assert_allclose(l3(a), res)
 
 
 
@@ -112,6 +121,9 @@ def test_laplace_2d_nonuniform():
                                   **bcs._scipy_border_mode)
 
         lap = ops._make_laplace_numba_2d(bcs)
+        np.testing.assert_allclose(lap(a), res)
+
+        lap = ops.make_laplace(bcs, method='matrix')
         np.testing.assert_allclose(lap(a), res)
 
 
@@ -295,4 +307,57 @@ def test_degenerated_grid():
     assert v2.shape == g2.shape
     
     np.testing.assert_allclose(v1.flat, v2.flat)
+    
+
+
+@pytest.mark.parametrize('dim', [1, 2])
+def test_poisson_solver_general(dim):
+    """ test the poisson solver on Cartesian grids """ 
+    bcs = _get_random_grid_bcs(dim)
+    
+    poisson = bcs.grid.get_operator('poisson_solver', bcs)
+    laplace = bcs.grid.get_operator('laplace', bcs)
+    
+    d = np.random.random(bcs.grid.shape)
+    d -= d.mean()  # balance the right hand side
+    np.testing.assert_allclose(laplace(poisson(d)), d, err_msg=f'bcs = {bcs}')
+
+
+
+def test_poisson_solver_1d():
+    """ test the poisson solver on 1d grids """
+    # solve Laplace's equation
+    grid = UnitGrid([4])
+    field = ScalarField(grid)
+    res = field.solve_poisson([{'value': -1}, {'value': 3}])
+    np.testing.assert_allclose(res.data, grid.axes_coords[0] - 1)
+    
+    res = field.solve_poisson([{'value': -1}, {'derivative': 1}])
+    np.testing.assert_allclose(res.data, grid.axes_coords[0] - 1)
+    
+    # solve Poisson's equation
+    grid = CartesianGrid([[0, 1]], 4)
+    field = ScalarField(grid, data=1)
+    
+    res = field.solve_poisson([{'value': 1}, {'derivative': 1}])
+    xs = grid.axes_coords[0]
+    np.testing.assert_allclose(res.data, 1 + 0.5 * xs**2, rtol=1e-2)
+    
+
+
+def test_poisson_solver_2d():
+    """ test the poisson solver on 2d grids """
+    grid = CartesianGrid([[0, 2 * π]] * 2, 16)
+    bcs = [{'value': 'sin(y)'}, {'value': 'sin(x)'}]
+    
+    # solve Laplace's equation
+    field = ScalarField(grid)
+    res = field.solve_poisson(bcs)
+    xs = grid.cell_coords[..., 0]
+    ys = grid.cell_coords[..., 1]
+    
+    # analytical solution was obtained with Mathematica
+    expect = (np.cosh(π - ys) * np.sin(xs) +
+              np.cosh(π - xs) * np.sin(ys)) / np.cosh(π)
+    np.testing.assert_allclose(res.data, expect, atol=1e-2, rtol=1e-2)
     

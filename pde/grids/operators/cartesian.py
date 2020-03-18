@@ -16,15 +16,149 @@ This module implements differential operators on Cartesian grids
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>   
 '''
 
-from typing import Callable
+from typing import Callable, Tuple, Any
 
 import numba as nb
 import numpy as np
-from scipy import ndimage
+from scipy import ndimage, sparse
 
 from . import PARALLELIZATION_THRESHOLD_2D, PARALLELIZATION_THRESHOLD_3D
+from .common import make_laplace_from_matrix, make_poisson_solver
 from ..boundaries import Boundaries
 from ...tools.numba import jit_allocate_out
+
+
+
+def _get_laplace_matrix_1d(bcs) -> Tuple[Any, Any]:
+    """ get sparse matrix for laplace operator on a 1d Cartesian grid
+    
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            |Arg_boundary_conditions|
+        
+    Returns:
+        tuple: A sparse matrix and a sparse vector that can be used to evaluate
+        the discretized laplacian
+    """    
+    dim_x = bcs.grid.shape[0]
+    matrix = sparse.dok_matrix((dim_x, dim_x))
+    vector = sparse.dok_matrix((dim_x, 1))
+    
+    for i in range(dim_x):
+        matrix[i, i] += -2
+        
+        if i == 0:
+            const, entries = bcs[0].get_data((-1,))
+            vector[i] += const
+            for k, v in entries.items():
+                matrix[i, k] += v
+        else:
+            matrix[i, i - 1] += 1
+            
+        if i == dim_x - 1:
+            const, entries = bcs[0].get_data((dim_x,))
+            vector[i] += const
+            for k, v in entries.items():
+                matrix[i, k] += v
+        else:
+            matrix[i, i + 1] += 1
+
+    matrix *= bcs.grid.discretization[0]**-2
+    vector *= bcs.grid.discretization[0]**-2
+            
+    return matrix, vector
+
+    
+
+def _get_laplace_matrix_2d(bcs) -> Tuple[Any, Any]:
+    """ get sparse matrix for laplace operator on a 2d Cartesian grid
+    
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            |Arg_boundary_conditions|
+        
+    Returns:
+        tuple: A sparse matrix and a sparse vector that can be used to evaluate
+        the discretized laplacian
+    """        
+    dim_x, dim_y = bcs.grid.shape
+    matrix = sparse.dok_matrix((dim_x * dim_y, dim_x * dim_y))
+    vector = sparse.dok_matrix((dim_x * dim_y, 1))
+    
+    bc_x, bc_y = bcs
+    scale_x, scale_y = bcs.grid.discretization**-2
+    
+    def i(x, y):
+        """ helper function for flattening the index """
+        return np.ravel_multi_index((x, y), (dim_x, dim_y))
+        
+    for x in range(dim_x):
+        for y in range(dim_y):
+            # handle x-direction
+            matrix[i(x, y), i(x, y)] += -2 * scale_x
+
+            if x == 0:
+                const, entries = bc_x.get_data((-1, y))
+                vector[i(x, y)] += const * scale_x
+                for k, v in entries.items():
+                    matrix[i(x, y), i(k, y)] += v * scale_x
+            else:
+                matrix[i(x, y), i(x - 1, y)] += scale_x
+
+            if x == dim_x - 1:
+                const, entries = bc_x.get_data((dim_x, y))
+                vector[i(x, y)] += const * scale_x
+                for k, v in entries.items():
+                    matrix[i(x, y), i(k, y)] += v * scale_x
+            else:
+                matrix[i(x, y), i(x + 1, y)] += scale_x  
+                
+            # handle y-direction
+            matrix[i(x, y), i(x, y)] += -2 * scale_y
+
+            if y == 0:
+                const, entries = bc_y.get_data((x, -1))
+                vector[i(x, y)] += const * scale_y
+                for k, v in entries.items():
+                    matrix[i(x, y), i(x, k)] += v * scale_y
+            else:
+                matrix[i(x, y), i(x, y - 1)] += scale_y
+
+            if y == dim_y - 1:
+                const, entries = bc_y.get_data((x, dim_y))
+                vector[i(x, y)] += const * scale_y
+                for k, v in entries.items():
+                    matrix[i(x, y), i(x, k)] += v * scale_y
+            else:
+                matrix[i(x, y), i(x, y + 1)] += scale_y
+
+    return matrix, vector
+
+
+
+def _get_laplace_matrix(bcs: Boundaries):
+    """ get sparse matrix for laplace operator on a 1d Cartesian grid
+    
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            |Arg_boundary_conditions|
+        
+    Returns:
+        tuple: A sparse matrix and a sparse vector that can be used to evaluate
+        the discretized laplacian
+    """    
+    dim = bcs.grid.dim
+    bcs.check_value_rank(0)
+    
+    if dim == 1:
+        result = _get_laplace_matrix_1d(bcs)
+    elif dim == 2:
+        result = _get_laplace_matrix_2d(bcs)
+    else:
+        raise NotImplementedError('Numba laplace operator not implemented '
+                                  f'for {dim:d} dimensions')
+                                      
+    return result
 
 
 
@@ -230,6 +364,9 @@ def make_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
         else:
             raise NotImplementedError('Numba laplace operator not implemented '
                                       f'for {dim:d} dimensions')
+                          
+    elif method == 'matrix':
+        laplace = make_laplace_from_matrix(*_get_laplace_matrix(bcs))
                                       
     elif method == 'scipy':
         laplace = _make_laplace_scipy_nd(bcs)
@@ -1036,113 +1173,6 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 
-# def rfftnfreq(shape: Tuple[int, ...], dx=1):
-#     """ Return the Discrete Fourier Transform sample frequencies (for usage
-#     with rfftn, irfftn).
-#     
-#     Args:
-#         shape (tuple): the length of each axis
-#         dx (float or sequence): the discretization along each axis. If a
-#             single number is given, the same discretization is assumed along 
-#             each axis
-#             
-#     Returns:
-#         numpy.ndarray
-#     """
-#     dim = len(shape)
-#     dx = np.broadcast_to(dx, (dim,))
-#     
-#     k2s = 0
-#     for i in range(dim):
-#         # get wave vector for axis i
-#         if i == dim - 1:
-#             k = np.fft.rfftfreq(shape[i], dx[i])
-#         else:
-#             k = np.fft.fftfreq(shape[i], dx[i])
-#         # add the squared components to all present ones
-#         k2s = np.add.outer(k2s, k**2)
-#         
-#     # get the magnitude at each position
-#     return np.sqrt(k2s)
-# 
-# 
-# 
-# def _make_poisson_solver_scipy_nd(shape: Tuple[int, ...], dx) -> Callable:
-#     """ make an operator that solves Poisson's equation on a Cartesian grid
-#     using scipy.
-#     
-#     Args:
-#         shape (tuple): The number of support points for each axes
-#         dx (float or list): The discretizations
-#         
-#     Returns:
-#         A function that can be applied to an array of values
-#     """        
-#     # prepare wave vector
-#     k2s = rfftnfreq(shape, dx)**2
-#         
-#     # TODO: accelerate the FFT using the pyfftw package
-#         
-#     def poisson_solver(arr):
-#         """ apply poisson solver to array `arr` """
-#         # forward transform
-#         arr = np.fft.rfftn(arr)
-# 
-#         # divide by squared wave vector
-#         arr.flat[0] = 0  # remove zero mode
-#         arr.flat[1:] /= k2s.flat[1:]
-# 
-#         # backwards transform
-#         arr = np.fft.irfftn(arr, shape)
-#         return arr
-#     
-#     return poisson_solver
-# 
-# 
-# 
-# def make_poisson_solver(shape: Tuple[int, ...], boundaries: Boundaries, dx=1,
-#                         method: str='auto') -> Callable:
-#     r""" make an operator that solves Poisson's equation on a Cartesian grid
-#     
-#     Denoting the current field by :math:`x`, we thus solve for :math:`y`,
-#     defined by the equation 
-# 
-#     .. math::
-#         \nabla^2 y(\boldsymbol r) = -x(\boldsymbol r)
-#      
-#         
-#     Currently, this is only supported for periodic boundary conditions.
-#     
-#     Args:
-#         shape (tuple): The number of support points for each axes
-#         boundaries (:class:`~pde.grids.boundaries.axes.Boundaries`):
-#             The boundary conditions. If the boundary conditions are not given
-#             they are assumed to be all periodic.
-#         dx (float or list): The discretizations
-#         
-#     Returns:
-#         A function that can be applied to an array of values
-#     """    
-#     dim = len(shape)
-#     if boundaries is not None:
-#         boundaries.check_dimensions(dim=dim)
-#         if not np.all(boundaries.periodic):
-#             raise NotImplementedError("Solving Poisson's equation is only "
-#                                       "implemented for periodic boundary "
-#                                       "conditions")
-# 
-#     if method == 'auto':
-#         method = 'scipy'
-# 
-#     if method == 'scipy':
-#         poisson_solver = _make_poisson_solver_scipy_nd(shape, dx)
-#     else:
-#         raise ValueError(f'Method `{method}` is not defined')
-#         
-#     return poisson_solver
-
-
-
 def make_operator(op: str, bcs: Boundaries, method: str = 'auto') -> Callable:
     """ return a discretized operator for a Cartesian grid
     
@@ -1171,14 +1201,18 @@ def make_operator(op: str, bcs: Boundaries, method: str = 'auto') -> Callable:
         return make_vector_laplace(bcs, method)
     elif op == 'tensor_divergence':
         return make_tensor_divergence(bcs, method)
-#     elif op == 'poisson_solver':
-#         return make_poisson_solver(shape, bc, dx, method)
+    elif op == 'poisson_solver' or op == 'solve_poisson' or op == 'poisson':
+        matrix, vector = _get_laplace_matrix(bcs)
+        return make_poisson_solver(matrix, vector, method)
     else:
         raise NotImplementedError(f'Operator `{op}` is not defined for '
                                   'Cartesian grids')
     
 
 
+
+
 __all__ = ["make_laplace", "make_gradient", "make_divergence",
            "make_vector_gradient", "make_vector_laplace",
-           "make_tensor_divergence", "make_operator"]
+           "make_tensor_divergence", "make_poisson_solver", "make_operator"]
+    

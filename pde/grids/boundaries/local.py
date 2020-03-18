@@ -232,13 +232,22 @@ class BCBase(metaclass=ABCMeta):
             # parse the expression with the correct variables
             bc_vars = [self.grid.axes[i] for i in axes_ids]
             expr = ScalarExpression(value, bc_vars)
-            
-            # determine the value at each boundary position
+
+            # get the coordinates at each point of the boundary            
             bc_coords = np.meshgrid(*[self.grid.axes_coords[i]
                                       for i in axes_ids],
                                     indexing='ij')
-            self.value = expr(**{name: value
-                                 for name, value in zip(bc_vars, bc_coords)})
+            
+            # determine the value at each of these points. Note that we here
+            # iterate explicitly over all points because the expression might
+            # not depend on some of the variables, but we still want the array
+            # self.value to contain a value at each boundary point
+            self.value = np.empty_like(bc_coords[0])
+            coords = {name: 0 for name in bc_vars}
+            for idx in np.ndindex(*self.value.shape):
+                for i, name in enumerate(bc_vars):
+                    coords[name] = bc_coords[i][idx]
+                self.value[idx] = expr(**coords)
             
         elif np.isscalar(value):
             # homogeneous, scalar value
@@ -271,7 +280,7 @@ class BCBase(metaclass=ABCMeta):
                           for subclass in cls._subclasses.values()
                           if hasattr(subclass, 'names'))
         return (f"Possible types of boundary conditions are {types}. "
-                "Values can be set using {'type': TYPE, 'value': VALUE}."
+                "Values can be set using {'type': TYPE, 'value': VALUE}. "
                 "Here, VALUE can be a scalar number, a vector for tensorial "
                 "boundary conditions, or a string, which can be interpreted "
                 "as a sympy expression. In the latter case, the names of the "
@@ -535,6 +544,10 @@ class BCBase(metaclass=ABCMeta):
             
             
     @abstractmethod
+    def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
+        pass
+            
+    @abstractmethod
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float: pass
             
     @abstractmethod
@@ -556,6 +569,32 @@ class BCBase1stOrder(BCBase):
 
     @abstractmethod
     def get_virtual_point_data(self) -> Tuple[Any, Any, int]: pass
+
+
+    def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
+        """ sets the elements of the sparse representation of this condition
+        
+        Args:
+            idx (tuple):
+                The index of the point that must lie on the boundary condition
+                
+        Returns:
+            float, dict: A constant value and a dictionary with indices and
+            factors that can be used to calculate this virtual point
+        """
+        data = self.get_virtual_point_data()
+        
+        if self.homogeneous:
+            const = data[0]
+            factor = data[1]
+        else:
+            # obtain index of the boundary point
+            idx_c = list(idx)
+            del idx_c[self.axis]
+            const = data[0][tuple(idx_c)]
+            factor = data[1][tuple(idx_c)]
+            
+        return const, {data[2]: factor}
 
 
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
@@ -886,6 +925,35 @@ class BCBase2ndOrder(BCBase):
         Returns:
             tuple: the data associated with this virtual point 
         """ 
+
+
+    def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
+        """ sets the elements of the sparse representation of this condition
+        
+        Args:
+            idx (tuple):
+                The index of the point that must lie on the boundary condition
+                
+        Returns:
+            float, dict: A constant value and a dictionary with indices and
+            factors that can be used to calculate this virtual point
+        """
+        data = self.get_virtual_point_data()
+        
+        if self.homogeneous:
+            const = data[0]
+            factor1 = data[1]
+            factor2 = data[3]
+        else:
+            # obtain index of the boundary point
+            idx_c = list(idx)
+            del idx_c[self.axis]
+            bc_idx = tuple(idx_c)
+            const = data[0][bc_idx]
+            factor1 = data[1][bc_idx]
+            factor2 = data[3][bc_idx]
+            
+        return const, {data[2]: factor1, data[4]: factor2}
 
     
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:

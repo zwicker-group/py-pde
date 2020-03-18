@@ -4,6 +4,8 @@
 
 import numpy as np
 
+import pytest
+
 from ..vectorial import VectorField
 from ..base import FieldBase
 from ...grids import UnitGrid, CartesianGrid
@@ -105,3 +107,23 @@ def test_outer_product():
     vf.outer_product(vf, out=tf)
     np.testing.assert_equal(tf.data, np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1))    
     
+    
+    
+def test_from_expressions():
+    """ test initializing vector fields with expressions """
+    grid = UnitGrid([4, 4])
+    vf = VectorField.from_expression(grid, ['x**2', 'x * y'])
+    xs = grid.cell_coords[..., 0]
+    ys = grid.cell_coords[..., 1]
+    np.testing.assert_allclose(vf.data[0], xs**2)
+    np.testing.assert_allclose(vf.data[1], xs * ys)
+    
+    with pytest.raises(ValueError):
+        VectorField.from_expression(grid, 'xy')
+    with pytest.raises(ValueError):
+        VectorField.from_expression(grid, ['xy'])
+    with pytest.raises(ValueError):
+        VectorField.from_expression(grid, ['x'] * 3)
+        
+        
+        

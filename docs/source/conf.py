@@ -67,6 +67,7 @@ extensions = [
 #     'sphinx_autodoc_annotation',
     'sphinx_simplify_typehints',
     'sphinx.ext.inheritance_diagram',
+    'sphinx_gallery.gen_gallery',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -245,6 +246,15 @@ intersphinx_mapping = {'https://docs.python.org/3/': None,
                        'https://matplotlib.org': None,
                        'http://docs.h5py.org/en/latest/': None}
 
+
+# -- Options for sphinx-gallery extension ---------------------------------------
+
+sphinx_gallery_conf = {
+     'examples_dirs': '../../examples',
+     'gallery_dirs': 'examples_gallery',
+     'filename_pattern': '/',
+     'capture_repr': (),
+}
 
 # run autodoc
 from run_autodoc import main

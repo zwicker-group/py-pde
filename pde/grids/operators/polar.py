@@ -29,6 +29,9 @@ This module implements differential operators on polar grids
 
 from typing import Callable
 
+from scipy import sparse
+
+from .common import make_poisson_solver
 from .. import PolarGrid
 from ..boundaries import Boundaries
 from ...tools.numba import jit_allocate_out
@@ -269,6 +272,62 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
 
 
 
+def _get_laplace_matrix(bcs):
+    """ get sparse matrix for laplace operator on a polar grid
+    
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            |Arg_boundary_conditions|
+        
+    Returns:
+        tuple: A sparse matrix and a sparse vector that can be used to evaluate
+        the discretized laplacian
+    """    
+    assert isinstance(bcs.grid, PolarGrid)
+    bcs.check_value_rank(0)
+    
+    # calculate preliminary quantities
+    dim_r = bcs.grid.shape[0]
+    dr = bcs.grid.discretization[0]
+    rs = bcs.grid.axes_coords[0]
+    r_min, _ = bcs.grid.axes_bounds[0]
+    scale = 1 / dr**2
+
+    matrix = sparse.dok_matrix((dim_r, dim_r))
+    vector = sparse.dok_matrix((dim_r, 1))
+    
+    for i in range(dim_r):
+        matrix[i, i] += -2 * scale
+        scale_i = 1 / (2 * rs[i] * dr)
+        
+        if i == 0:
+            if r_min == 0:
+                matrix[i, i + 1] = 2 * scale
+                continue  # the special case of the inner boundary is handled
+            else:
+                const, entries = bcs[0].get_data((-1,))
+                factor = scale - scale_i
+                vector[i] += const * factor
+                for k, v in entries.items():
+                    matrix[i, k] += v * factor
+
+        else:
+            matrix[i, i - 1] = scale - scale_i
+            
+        if i == dim_r - 1:
+            const, entries = bcs[0].get_data((dim_r,))
+            factor = scale + scale_i
+            vector[i] += const * factor
+            for k, v in entries.items():
+                matrix[i, k] += v * factor
+                
+        else:
+            matrix[i, i + 1] = scale + scale_i
+            
+    return matrix, vector
+
+
+
 def make_operator(op: str, bcs: Boundaries) -> Callable:
     """ make a discretized operator for a polar grid
     
@@ -296,6 +355,8 @@ def make_operator(op: str, bcs: Boundaries) -> Callable:
         return make_vector_gradient(bcs)
     elif op == 'tensor_divergence':
         return make_tensor_divergence(bcs)
+    elif op == 'poisson_solver' or op == 'solve_poisson' or op == 'poisson':
+        return make_poisson_solver(*_get_laplace_matrix(bcs))
     else:
         raise NotImplementedError(f'Operator `{op}` is not defined for '
                                   'polar grids')

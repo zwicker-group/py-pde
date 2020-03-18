@@ -4,7 +4,8 @@ Defines a vectorial field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-from typing import Callable, Optional, Union, Any, Dict, List, TYPE_CHECKING
+from typing import (Callable, Optional, Union, Any, Dict, List, Sequence,
+                    TYPE_CHECKING)
 
 import numpy as np
 import numba as nb
@@ -12,7 +13,9 @@ import numba as nb
 
 from .base import DataFieldBase
 from .scalar import ScalarField
+from ..grids.base import GridBase 
 from ..tools.numba import jit
+from ..tools.expressions import ScalarExpression
 
   
 if TYPE_CHECKING:
@@ -63,6 +66,41 @@ class VectorField(DataFieldBase):
             
         return cls(grid, data, label)
     
+
+    @classmethod
+    def from_expression(cls, grid: GridBase, expressions: Sequence[str],
+                        label: str = None) -> "VectorField":
+        """ create a vector field on a grid from given expressions
+        
+        Args:
+            grid (:class:`~pde.grids.GridBase`):
+                Grid defining the space on which this field is defined
+            expressions (list of str):
+                A list of mathematical expression, one for each component of the
+                vector field. The expressions determine the values as a function
+                of the position on the grid. The expressions may contain
+                standard mathematical functions and they may depend on the axes
+                labels of the grid.
+            label (str, optional):
+                Name of the field
+        """
+        if isinstance(expressions, str) or len(expressions) != grid.dim:
+            axes_names = grid.axes + grid.axes_symmetric
+            raise ValueError(f'Expected {grid.dim} expressions for the '
+                             f'coordinates {axes_names}.') 
+        
+        # obtain the values at the grid points
+        points = {name: grid.cell_coords[..., i]
+                  for i, name in enumerate(grid.axes)}
+        
+        # evaluate the different components
+        data = []
+        for expression in expressions:
+            expr = ScalarExpression(expression=expression, signature=grid.axes) 
+            data.append(expr(**points))
+
+        return cls(grid=grid, data=data, label=label)
+        
 
     def __getitem__(self, key: int) -> ScalarField:
         """ extract a component of the VectorField """
