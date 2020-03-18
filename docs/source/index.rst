@@ -24,8 +24,9 @@ Contents
     :maxdepth: 2
     :numbered:
 
-    installation
-    quickstart/quickstart
+    getting_started
+    examples_gallery/index
+    manual/index
     packages/pde
  
 

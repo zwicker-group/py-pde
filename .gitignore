@@ -1,5 +1,6 @@
 # special project folders
 docs/source/packages/
+docs/source/examples_gallery/
 docs/paper/paper.pdf
 tests/coverage/
 tests/mypy-report/

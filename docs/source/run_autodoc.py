@@ -8,6 +8,11 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 OUTPUT_PATH = 'packages'
+REPLACEMENTS = {
+    'Submodules\n----------\n\n': '',
+    'Subpackages\n-----------': '**Subpackages:**',
+    'pde package\n===========': 'Reference manual\n================',
+}
 
 
 
@@ -58,8 +63,8 @@ def main():
     # replace unwanted information
     for path in glob.glob(f'{OUTPUT_PATH}/*.rst'):
         logging.info('Patch file `%s`', path)
-        replace_in_file(path, {'Submodules\n----------\n\n': ''})
-        replace_in_file(path, {'Subpackages\n-----------': '**Subpackages:**'})
+        replace_in_file(path, REPLACEMENTS)
+
     
     
 if __name__ == '__main__':

@@ -1,5 +1,9 @@
 TODO
 ====
+* Poisson solver
+    - make 1d and 2d example with and without driving (laplace and poisson)
+* Add tests for poisson solver and operator matrices
+* Add TensorField.from_expressions
 * Automatic testing of numba compiled rhs by comparing to numpy implementation
 * Think about introducing data class that holds integrated, global variables
 	- this might be helpful to implement lagrange multipliers and the like
@@ -28,6 +32,7 @@ TODO
 
 LOW-PRIORITY (Future ideas)
 ===========================
+* Think about implementing helmholtz solver
 * Add method showing the boundary condition as a mathematical equation
 * Add interface for setting parameters of a simulation
 	- each class should have a list of parameters it supports (with type?)
