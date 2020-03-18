@@ -28,10 +28,12 @@ def make_laplace_from_matrix(matrix, vector) -> Callable:
         solution to Poisson's equation where the array is used as the right hand
         side
     """
+    mat = matrix.tocsc()
+    vec = vector.toarray()[:, 0]
     
     def laplace(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
         """ apply the laplace operator to `arr` """
-        result = matrix @ arr.flat + vector.toarray()[:, 0]
+        result = mat.dot(arr.flat) + vec
         if out is None:
             return result.reshape(arr.shape)
         else:
@@ -64,23 +66,24 @@ def make_poisson_solver(matrix, vector, method: str = 'auto') -> Callable:
         raise ValueError(f'Method {method} is not available')
     
     # prepare the matrix representing the operator
-    matrix = matrix.tocsc()
+    mat = matrix.tocsc()
+    vec = vector.toarray()[:, 0]
     
     def solve_poisson(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
         """ solves Poisson's equation using sparse linear algebra """
         # prepare the right hand side vector
-        rhs = np.ravel(arr)[:, None] - vector.toarray()
+        rhs = arr.flat - vec
         
         # solve the linear problem using a sparse solver
         with warnings.catch_warnings():
             warnings.simplefilter("error")  # enable warning catching
             try:
-                result = sparse.linalg.spsolve(matrix, rhs)
+                result = sparse.linalg.spsolve(mat, rhs)
             except sparse.linalg.dsolve.linsolve.MatrixRankWarning:
                 # this can happen for singular laplace matrix, e.g. when pure
                 # Neumann conditions are considered. In this case, a solution is
                 # obtained using least squares 
-                result = sparse.linalg.lsmr(matrix, rhs)[0]
+                result = sparse.linalg.lsmr(mat, rhs)[0]
         
         # convert the result to the correct format
         if out is not None:

@@ -89,14 +89,18 @@ def _get_laplace_matrix_2d(bcs) -> Tuple[Any, Any]:
     scale_x, scale_y = bcs.grid.discretization**-2
     
     def i(x, y):
-        """ helper function for flattening the index """
-        return np.ravel_multi_index((x, y), (dim_x, dim_y))
+        """ helper function for flattening the index
+        
+        This is equivalent to np.ravel_multi_index((x, y), (dim_x, dim_y))
+        """
+        return x * dim_y + y
+        
+    # set diagonal elements, i.e., the central value in the kernel
+    matrix.setdiag(-2 * (scale_x + scale_y))
         
     for x in range(dim_x):
         for y in range(dim_y):
             # handle x-direction
-            matrix[i(x, y), i(x, y)] += -2 * scale_x
-
             if x == 0:
                 const, entries = bc_x.get_data((-1, y))
                 vector[i(x, y)] += const * scale_x
@@ -114,8 +118,6 @@ def _get_laplace_matrix_2d(bcs) -> Tuple[Any, Any]:
                 matrix[i(x, y), i(x + 1, y)] += scale_x  
                 
             # handle y-direction
-            matrix[i(x, y), i(x, y)] += -2 * scale_y
-
             if y == 0:
                 const, entries = bc_y.get_data((x, -1))
                 vector[i(x, y)] += const * scale_y

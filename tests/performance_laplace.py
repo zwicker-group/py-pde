@@ -174,12 +174,12 @@ def main():
             print(grid)
             result = cartesian.make_laplace(bcs, method='scipy')(data)
              
-            for method in ['FLEXIBLE', 'CUSTOM', 'numba', 'scipy']:
+            for method in ['FLEXIBLE', 'CUSTOM', 'numba', 'matrix', 'scipy']:
                 if method == 'FLEXIBLE':
                     laplace = flexible_laplace_2d(bcs)
                 elif method == 'CUSTOM':
                     laplace = custom_laplace_2d(shape, periodic=periodic)
-                elif method == 'numba' or method == 'scipy':
+                elif method in {'numba', 'matrix', 'scipy'}:
                     laplace = cartesian.make_laplace(bcs, method=method)
                 else:
                     raise ValueError(f'Unknown method `{method}`')
