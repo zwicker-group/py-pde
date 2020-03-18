@@ -1,4 +1,9 @@
-#!/usr/bin/env python3
+"""
+Boundary conditions
+===================
+
+This example shows how different boundary conditions can be specified.
+"""
 
 from pde import UnitGrid, ScalarField, DiffusionPDE
 

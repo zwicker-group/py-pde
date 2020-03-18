@@ -1,4 +1,9 @@
-#!/usr/bin/env python3
+"""
+Custom coupled PDEs
+===================
+
+This example shows how to solve a set of coupled PDEs.
+"""
 
 from pde import UnitGrid, FieldCollection, PDEBase
 
@@ -23,9 +28,9 @@ class FitzhughNagumoPDE(PDEBase):
         return FieldCollection([u_t, w_t])
 
 
-eq = FitzhughNagumoPDE()
 grid = UnitGrid([16, 16])
 state = FieldCollection.scalar_random_uniform(2, grid)
 
+eq = FitzhughNagumoPDE()
 result = eq.solve(state, t_range=10, dt=0.01)
 result.plot(show=True)
