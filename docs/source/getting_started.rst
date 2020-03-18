@@ -71,7 +71,7 @@ tqdm         Display progress bars during calculations
 ===========  =========
 
 Additionally, :command:`ffmpeg` should be installed for making movies and the
-packages :mod:`sphinx-autodoc-annotation` and :mod:`sphinx_rtd_theme` are
+packages :mod:`sphinx-autodoc-annotation` and :mod:`sphinx-rtd-theme` are
 required for building the documentation.
 
 
