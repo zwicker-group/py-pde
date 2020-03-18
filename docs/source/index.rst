@@ -17,8 +17,7 @@ is represented by :math:`\eta` above. Note that we here represent stochastic
 differential equations in the Itô representation.
 
 
-Contents
---------
+**Contents**
 
 .. toctree::
     :maxdepth: 2
@@ -31,8 +30,7 @@ Contents
  
 
 
-Indices and tables
-------------------
+**Indices and tables**
 
 * :ref:`genindex`
 * :ref:`modindex`

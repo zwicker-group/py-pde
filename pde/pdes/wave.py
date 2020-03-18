@@ -25,8 +25,8 @@ class WavePDE(PDEBase):
     implemented as two first-order equations:
     
     .. math::
-        \partial_t u = v
-        \partial_t v = c^2 \nabla^2 u
+        \partial_t u &= v \\
+        \partial_t v &= c^2 \nabla^2 u
         
         
     where :math:`u` is the density field that and :math:`c` sets the wave speed.

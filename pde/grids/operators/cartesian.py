@@ -1209,8 +1209,6 @@ def make_operator(op: str, bcs: Boundaries, method: str = 'auto') -> Callable:
     else:
         raise NotImplementedError(f'Operator `{op}` is not defined for '
                                   'Cartesian grids')
-    
-
 
 
 

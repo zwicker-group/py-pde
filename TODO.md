@@ -1,7 +1,5 @@
 TODO
 ====
-* Add tests for poisson solver and operator matrices
-* Add TensorField.from_expressions
 * Think about introducing data class that holds integrated, global variables
 	- this might be helpful to implement lagrange multipliers and the like
 * Fix progress bar when starting from non-zero t_start?
@@ -30,6 +28,7 @@ TODO
 LOW-PRIORITY (Future ideas)
 ===========================
 * Think about implementing helmholtz solver
+    - generally useful to discuss eigenvalues of laplace operator?
 * Add method showing the boundary condition as a mathematical equation
 * Add interface for setting parameters of a simulation
 	- each class should have a list of parameters it supports (with type?)
