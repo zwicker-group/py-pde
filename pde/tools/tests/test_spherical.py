@@ -3,7 +3,9 @@
 '''
 
 import math
+import os.path
 import random
+import tempfile
 
 import pytest
 import numpy as np
@@ -46,6 +48,13 @@ def test_surface():
         
         r2s = spherical.make_surface_from_radius_compiled(dim)
         assert surface == pytest.approx(r2s(radius))
+        
+        if dim == 1:
+            with pytest.raises(RuntimeError):
+                spherical.radius_from_surface(surface, dim=dim)
+        else:
+            assert (spherical.radius_from_surface(surface, dim=dim) == 
+                    pytest.approx(radius))
 
 
         
@@ -88,19 +97,23 @@ def test_spherical_voronoi():
             
             
             
-def test_points_on_sphere():
+@pytest.mark.parametrize('dim', range(1, 4))
+def test_points_on_sphere(dim):
     """ test spatial.SphericalVoronoi """
-    for dim in range(1, 4):
-        shell = spherical.PointsOnSphere.make_uniform(dim=dim)
-        assert shell.dim == dim
+    shell = spherical.PointsOnSphere.make_uniform(dim=dim)
+    assert shell.dim == dim
+    
+    for balance_axes in [True, False]:
+        ws = shell.get_area_weights(balance_axes=balance_axes)
+        assert ws.sum() == pytest.approx(1)
+        np.testing.assert_allclose(ws, 1 / len(shell.points), rtol=0.1)
         
-        for balance_axes in [True, False]:
-            ws = shell.get_area_weights(balance_axes=balance_axes)
-            assert ws.sum() == pytest.approx(1)
-            np.testing.assert_allclose(ws, 1 / len(shell.points), rtol=0.1)
-            
-        ws = shell.get_area_weights(balance_axes=True)
-        np.testing.assert_allclose(ws @ shell.points, 0, atol=1e-15)
+    ws = shell.get_area_weights(balance_axes=True)
+    np.testing.assert_allclose(ws @ shell.points, 0, atol=1e-15)
+    
+    with tempfile.NamedTemporaryFile(suffix='.xyz') as fp:
+        shell.write_to_xyz(path=fp.name)
+        assert os.path.getsize(fp.name) > 0
         
         
         

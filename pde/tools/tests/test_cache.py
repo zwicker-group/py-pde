@@ -461,3 +461,18 @@ def test_cache_clearing():
         mem4 = deep_getsizeof(t)
         assert mem4 >= mem0
         assert mem1 >= mem4
+
+
+
+def test_serialized_dict():
+    """ test SerializedDict """
+    d = cache.SerializedDict()
+    assert len(d) == 0
+    d['a'] = 1
+    assert len(d) == 1
+    assert 'a' in d
+    assert d['a'] == 1
+    assert list(d) == ['a']
+    del d['a']
+    assert len(d) == 0
+    
