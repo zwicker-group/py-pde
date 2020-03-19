@@ -1,15 +1,16 @@
 """
-Spherical grid
-==============
+Spherically symmetric PDE
+=========================
 
-This example illustrates how a spherical grid can be used.
+This example illustrates how to solve a PDE in a spherically symmetric geometry.
 """
 
 from pde import DiffusionPDE, SphericalGrid, ScalarField
 
-grid = SphericalGrid(radius=5, shape=16)            # generate grid
-state = ScalarField.random_uniform(grid, 0.2, 0.3)  # generate initial condition
+grid = SphericalGrid(radius=[1, 5], shape=32)  # generate grid
+state = ScalarField.random_uniform(grid)  # generate initial condition
 
-eq = DiffusionPDE()                                 # define the pde
-result = eq.solve(state, t_range=1, dt=0.005)
-result.plot(show=True)
+eq = DiffusionPDE()  # define the pde
+result = eq.solve(state, t_range=0.1, dt=0.005)
+
+result.plot_image(show=True)

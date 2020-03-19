@@ -112,8 +112,8 @@ of typical packages
 	port install py37-numba +tbb
 	
 	
-Overview
-^^^^^^^^
+Package overview
+^^^^^^^^^^^^^^^^
 
 The main aim of the :mod:`pde` package is to simulate partial differential
 equations in simple geometries.
@@ -158,8 +158,8 @@ solver instance, which analyze intermediate states periodically. Typical
 trackers include
 :class:`~pde.trackers.trackers.ProgressTracker` (display simulation progress),
 :class:`~pde.trackers.trackers.PlotTracker` (display images of the simulation),
-and :class:`~pde.trackers.trackers.LengthScaleTracker` (calculating
-typical length scales of the state over time).
+and :class:`~pde.trackers.trackers.SteadyStateTracker` (aborting simulation when
+a stationary state is reached).
 Others can be found in the :mod:`~pde.trackers.trackers` module.
 Moreover, we provide :class:`~pde.storage.memory.MemoryStorage` and
 :class:`~pde.storage.file.FileStorage`, which can be used as trackers

@@ -23,7 +23,9 @@ trackers = [
     
 ]
 
-eq = DiffusionPDE()                                 # define the pde
+eq = DiffusionPDE()  # define the pde
 eq.solve(state, 10, dt=0.1, tracker=trackers)
 
-storage[0].plot(show=True)
+
+for field in storage:
+    print(field.integral)

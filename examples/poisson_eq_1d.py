@@ -10,6 +10,6 @@ from pde import CartesianGrid, ScalarField
 
 grid = CartesianGrid([[0, 1]], 16, periodic=False)
 field = ScalarField(grid, 1)
-result = field.solve_poisson([{'value': 0}, {'derivative': 0}])
+result = field.solve_poisson([{'value': 0}, {'derivative': 1}])
 
 result.plot()
