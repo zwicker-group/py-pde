@@ -974,21 +974,37 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         
         # define wrapper function to always access current data of field
         @jit
-        def interpolate_many(data, point):
+        def interpolate_many(data: np.ndarray, point: np.ndarray) -> np.ndarray:
             """ return the interpolated value at the position `point`
             
             Args:
-                point (:class:`numpy.ndarray`): The list of points. This
-                    function only accepts 2d lists of points
+                data (:class:`numpy.ndarray`):
+                    The data of the field that is to be interpolated
+                point (:class:`numpy.ndarray`):
+                    The list of points. This function only accepts 2d arrays of
+                    points: a collection of point coordinates, such that the
+                    array shape is `(num_point, dim)`.
+                    
+            Returns:
+                :class:`numpy.ndarray`: The interpolated values at the points
             """
             out = np.empty(data_shape + (point.shape[0],))
             for i in range(point.shape[0]):
-                out[..., i] = interpolate_single(data, point[i, :])
+                out[..., i] = interpolate_single(data, point[i])
             return out
         
 
-        def interpolator(point):
-            """ return the interpolated value at the position `point` """
+        def interpolator(point: np.ndarray) -> np.ndarray:
+            """ return the interpolated value at the position `point`
+            
+            Args:
+                point (:class:`numpy.ndarray`):
+                    The list of points. This point coordinates should be given
+                    along the last axis, i.e., the shape should be `(..., dim)`.
+                    
+            Returns:
+                :class:`numpy.ndarray`: The interpolated values at the points
+            """
             # turn points into a linear array
             point = np.atleast_1d(point)
             if point.shape[-1] != grid_dim:

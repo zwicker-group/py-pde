@@ -71,6 +71,10 @@ def test_scalars():
     
     s2 = FieldBase.from_state(s1.state_serialized, grid=grid, data=s1.data)
     assert s1 == s2
+    
+    # test options for plotting images
+    if module_available("matplotlib"):
+        s1.plot(transpose=True, colorbar=True)
 
 
 

@@ -76,8 +76,8 @@ def test_laplace_1d():
     for periodic in [True, False]:
         bcs = _get_random_grid_bcs(1, periodic=periodic)
         a = np.random.random(bcs.grid.shape)  # test data
-        l1 = ops._make_laplace_scipy_nd(bcs)
-        l2 = ops._make_laplace_numba_1d(bcs)
+        l1 = ops.make_laplace(bcs, method='scipy')
+        l2 = ops.make_laplace(bcs, method='numba')
         l3 = ops.make_laplace(bcs, method='matrix')
         np.testing.assert_allclose(l1(a), l2(a))
         np.testing.assert_allclose(l1(a), l3(a))
@@ -93,10 +93,10 @@ def test_laplace_2d():
         dx = bcs._uniform_discretization
         kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]]) / dx**2
         res = ndimage.convolve(a, kernel, **bcs._scipy_border_mode)
-        l1 = ops._make_laplace_scipy_nd(bcs)
+        l1 = ops.make_laplace(bcs, method='scipy')
         np.testing.assert_allclose(l1(a), res)
 
-        l2 = ops._make_laplace_numba_2d(bcs)
+        l2 = ops.make_laplace(bcs, method='numba')
         np.testing.assert_allclose(l2(a), res)
 
         l3 = ops.make_laplace(bcs, method='matrix')
@@ -133,8 +133,8 @@ def test_laplace_3d():
     for periodic in [True, False]:
         bcs = _get_random_grid_bcs(ndim=3, dx='uniform', periodic=periodic)
         a = np.random.random(bcs.grid.shape)
-        l1 = ops._make_laplace_scipy_nd(bcs)
-        l2 = ops._make_laplace_numba_3d(bcs)
+        l1 = ops.make_laplace(bcs, method='scipy')
+        l2 = ops.make_laplace(bcs, method='numba')
         np.testing.assert_allclose(l1(a), l2(a))
 
 
@@ -215,9 +215,8 @@ def test_vector_laplace(ndim):
 def test_tensor_divergence(ndim):
     """ test different tensor divergence operators """
     bcs = _get_random_grid_bcs(ndim, dx='uniform', periodic='random')
-    mtd = ops.make_tensor_divergence
-    op1 = mtd(bcs, method='scipy')
-    op2 = mtd(bcs, method='numba')
+    op1 = ops.make_operator('tensor_divergence', bcs, method='scipy')
+    op2 = ops.make_operator('tensor_divergence', bcs, method='numba')
     arr = np.random.random((ndim, ndim) + bcs.grid.shape)
     val1, val2 = op1(arr), op2(arr)
     assert val1.shape == (ndim,) + bcs.grid.shape
@@ -335,6 +334,9 @@ def test_poisson_solver_1d():
     
     res = field.solve_poisson([{'value': -1}, {'derivative': 1}])
     np.testing.assert_allclose(res.data, grid.axes_coords[0] - 1)
+
+    # test Poisson equation with 2nd Order BC
+    res = field.solve_poisson([{'value': -1}, 'extrapolate'])
     
     # solve Poisson's equation
     grid = CartesianGrid([[0, 1]], 4)
@@ -361,4 +363,15 @@ def test_poisson_solver_2d():
     expect = (np.cosh(π - ys) * np.sin(xs) +
               np.cosh(π - xs) * np.sin(ys)) / np.cosh(π)
     np.testing.assert_allclose(res.data, expect, atol=1e-2, rtol=1e-2)
+    
+    # test more complex case for exceptions
+    res = field.solve_poisson([{'value': 'sin(y)'}, {'curvature': 'sin(x)'}])
+    
+    
+    
+def test_2nd_order_bc():
+    """ test whether 2nd order boundary conditions can be used """
+    grid = UnitGrid([8, 8])
+    field = ScalarField.random_uniform(grid)
+    field.laplace([{'value': 'sin(y)'}, {'value': 'x'}])
     

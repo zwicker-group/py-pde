@@ -487,7 +487,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
         def evaluate(arr, idx):
             """ evaluate values of the array `arr` at an index `idx` """
             arr_1d, i, _ = get_arr_1d(arr, idx)
-            return arr_1d[i % size]  # wrap around for periodic boundaries
+            return arr_1d[..., i % size]  # wrap around for periodic boundaries
         
         return evaluate  # type: ignore
     
@@ -518,7 +518,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
             ip = 0 if i == size - 1 else i + 1
            
             # return the values in the region around the point
-            return arr_1d[im], arr_1d[i], arr_1d[ip]
+            return arr_1d[..., im], arr_1d[..., i], arr_1d[..., ip]
         
         return region_evaluator  # type: ignore    
 

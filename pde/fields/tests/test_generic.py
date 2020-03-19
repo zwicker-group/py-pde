@@ -21,6 +21,7 @@ from ...tools.misc import skipUnlessModule
 def iter_grids():
     """ generator providing some test grids """
     for periodic in [True, False]:
+        yield UnitGrid([3], periodic=periodic)
         yield UnitGrid([3, 3, 3], periodic=periodic)
         yield CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic)
         yield CylindricalGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
@@ -30,14 +31,13 @@ def iter_grids():
     
 
 @pytest.mark.parametrize("grid", iter_grids())
-@pytest.mark.parametrize("method", ["scipy_linear", "numba_linear"])
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
-def test_interpolation_natural(grid, method, field_class):
+def test_interpolation_natural(grid, field_class):
     """ test some interpolation for natural boundary conditions """
-    msg = f'grid={grid}, method={method}, field={field_class}'
+    msg = f'grid={grid}, field={field_class}'
     f = field_class.random_uniform(grid)
     if isinstance(grid, CartesianGridBase):
-        p = grid.get_random_point(boundary_distance=1)
+        p = grid.get_random_point(boundary_distance=.5)
     else:
         p = grid.get_random_point(boundary_distance=1, avoid_center=True)
     p = grid.point_from_cartesian(p)
@@ -45,9 +45,11 @@ def test_interpolation_natural(grid, method, field_class):
     i2 = f.interpolate(p, method='numba_linear')
     np.testing.assert_almost_equal(i1, i2, err_msg=msg)
 
-    c = (2,) * len(grid.axes)  # specific cell
+    c = (1,) * len(grid.axes)  # specific cell
     p = f.grid.cell_coords[c]
-    np.testing.assert_allclose(f.interpolate(p, method=method),
+    np.testing.assert_allclose(f.interpolate(p, method='scipy_linear'),
+                               f.data[(Ellipsis,) + c], err_msg=msg)
+    np.testing.assert_allclose(f.interpolate(p, method='numba_linear'),
                                f.data[(Ellipsis,) + c], err_msg=msg)
 
 
@@ -285,8 +287,9 @@ def test_simple_plotting(grid):
     fc = FieldCollection([sf, vf])
     for f in [sf, vf, tf, fc]:
         f.plot()
-        f.plot('image')
         f.plot('line')
+        if grid.dim >= 2:
+            f.plot('image')
         if isinstance(f, VectorField) and grid.dim == 2:
             f.plot('vector')
         plt.close('all')

@@ -9,6 +9,7 @@ import pytest
 from ..vectorial import VectorField
 from ..base import FieldBase
 from ...grids import UnitGrid, CartesianGrid
+from ...tools.misc import module_available
 
 
 
@@ -47,6 +48,10 @@ def test_vectors():
         assert isinstance(s, ScalarField)
         assert s.grid is grid
         np.testing.assert_allclose(s.data, np.full(grid.shape, 4))
+        
+    # test options for plotting images
+    if module_available("matplotlib"):
+        v1.plot(method='streamplot', transpose=True)
 
 
     
