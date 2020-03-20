@@ -879,8 +879,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         imsave(filename, img['data'], origin='lower', **kwargs)
     
 
-    def _make_interpolator_scipy(self, fill: float = None, **kwargs) \
-            -> Callable:
+    def _make_interpolator_scipy(self, method: str = 'linear',
+                                 fill: float = None, **kwargs) -> Callable:
         r""" returns a function that can be used to interpolate values.
         
         This uses scipy.interpolate.RegularGridInterpolator and the
@@ -892,6 +892,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         conditions, yet.
         
         Args:
+            method (str):
+                The method used for interpolation. If 'linear' or 'nearest'
+                :class:`scipy.interpolate.RegularGridInterpolator` is used with
+                the specified method. If 'rbf', :class:`scipy.interpolate.Rbf`
+                is used for radial basis function interpolation.
             fill (float, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -1152,7 +1157,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # interpolate the data to the grid
         data = self.interpolate(points, method, fill)
         return self.__class__(grid, data, label=label)
-        
     
     
     def add_interpolated(self, point, amount):

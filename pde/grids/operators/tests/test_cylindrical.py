@@ -121,18 +121,18 @@ def test_findiff_cyl():
     
 def test_grid_laplace():
     """ test the cylindrical implementation of the laplace operator """
-    grid_cyl = CylindricalGrid(5, (0, 4), (6, 4))
+    grid_cyl = CylindricalGrid(6, (0, 4), (4, 4))
     grid_cart = CartesianGrid([[-5, 5], [-5, 5], [0, 4]], [10, 10, 4]) 
-     
-    rs, zs = np.meshgrid(*grid_cyl.axes_coords, indexing='ij')
-    a_2d = np.exp(-5 * rs) * np.cos(zs / 3)
-    a_3d = grid_cyl.interpolate_to_cartesian(a_2d, grid=grid_cart)
 
-    b_3d = grid_cart.get_operator('laplace', 'natural')(a_3d)
-    b_2d = grid_cyl.get_operator('laplace', 'natural')(a_2d)
-    b_2d_3 = grid_cyl.interpolate_to_cartesian(b_2d, grid=grid_cart)
+    a_2d = ScalarField.from_expression(grid_cyl,
+                                       expression='exp(-5 * r) * cos(z / 3)')     
+    a_3d = a_2d.interpolate_to_grid(grid_cart)
+
+    b_2d = a_2d.laplace('natural')
+    b_3d = a_3d.laplace('natural')
+    b_2d_3 = b_2d.interpolate_to_grid(grid_cart)
      
-    np.testing.assert_allclose(b_2d_3, b_3d, rtol=0.2, atol=0.2)
+    np.testing.assert_allclose(b_2d_3.data, b_3d.data, rtol=0.2, atol=0.2)
      
      
      

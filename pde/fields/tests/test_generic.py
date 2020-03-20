@@ -264,7 +264,8 @@ def test_interpolation_values(field_cls):
 
 
 
-@pytest.mark.parametrize('grid', [PolarGrid(6, 4),
+@pytest.mark.parametrize('grid', [UnitGrid([6]),
+                                  PolarGrid(6, 4),
                                   SphericalGrid(7, 4),
                                   CylindricalGrid(6, (0, 8), (7, 8))])
 def test_interpolation_to_cartesian(grid):
@@ -286,6 +287,18 @@ def test_interpolation_to_cartesian(grid):
         res = f.interpolate_to_grid(grid_cart, fill=0)
         assert res.data.min() == 0
         assert res.data.max() == pytest.approx(2)
+        
+        
+        
+@pytest.mark.parametrize('grid', [PolarGrid(6, 4),
+                                  SphericalGrid(7, 4),
+                                  CylindricalGrid(6, (0, 8), (7, 8))])
+def test_get_cartesian_grid(grid):
+    """ test whether Cartesian grids can be created """
+    cart = grid.get_cartesian_grid(mode='valid')
+    assert cart.volume < grid.volume
+    cart = grid.get_cartesian_grid(mode='full')
+    assert cart.volume > grid.volume
         
 
         

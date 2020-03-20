@@ -49,20 +49,13 @@ def test_cylindrical_to_cartesian():
     expr_cart = expr_cyl.replace('r**2', '(x**2 + y**2)')
      
     z_range = (-np.pi, 2*np.pi)
-    grid_cyl = CylindricalGrid(8, z_range, (16, 33))
+    grid_cyl = CylindricalGrid(10, z_range, (16, 33))
     pf_cyl = ScalarField.from_expression(grid_cyl, expression=expr_cyl)
     
-    # pre-defined grid
     grid_cart = CartesianGrid([[-7, 7], [-6, 7], z_range], [16, 16, 16])
-    data_cart = grid_cyl.interpolate_to_cartesian(pf_cyl.data, grid=grid_cart)
-    pf_cart = ScalarField.from_expression(grid_cart, expression=expr_cart) 
-    np.testing.assert_allclose(data_cart, pf_cart.data, atol=0.1)
-     
-    # choose grid automatically
-    data_cart, grid_cart = grid_cyl.interpolate_to_cartesian(pf_cyl.data,
-                                                             ret_grid=True)
-    pf_cart = ScalarField.from_expression(grid_cart, expression=expr_cart) 
-    np.testing.assert_allclose(data_cart, pf_cart.data, atol=0.1)
+    pf_cart1 = pf_cyl.interpolate_to_grid(grid_cart)
+    pf_cart2 = ScalarField.from_expression(grid_cart, expression=expr_cart) 
+    np.testing.assert_allclose(pf_cart1.data, pf_cart2.data, atol=0.1)
 
 
 

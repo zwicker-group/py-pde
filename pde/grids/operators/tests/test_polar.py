@@ -66,18 +66,19 @@ def test_small_annulus(make_op, field):
 
 def test_grid_laplace():
     """ test the polar implementation of the laplace operator """
-    grid_sph = PolarGrid(10, 11)
+    grid_sph = PolarGrid(7, 8)
     grid_cart = CartesianGrid([[-5, 5], [-5, 5]], [12, 11]) 
      
-    a_1d = np.cos(grid_sph.axes_coords[0])
-    a_2d = grid_sph.interpolate_to_cartesian(a_1d, grid=grid_cart)
+    a_1d = ScalarField.from_expression(grid_sph, 'cos(r)')
+    a_2d = a_1d.interpolate_to_grid(grid_cart)
 
-    b_2d = grid_cart.get_operator('laplace', 'no-flux')(a_2d)
-    b_1d = grid_sph.get_operator('laplace', 'no-flux')(a_1d)
-    b_1d_2 = grid_sph.interpolate_to_cartesian(b_1d, grid=grid_cart)
+    b_2d = a_2d.laplace('natural')
+    b_1d = a_1d.laplace('natural')
+    b_1d_2 = b_1d.interpolate_to_grid(grid_cart)
      
     i = slice(1, -1)  # do not compare boundary points
-    np.testing.assert_allclose(b_1d_2[i, i], b_2d[i, i], rtol=0.2, atol=0.2)
+    np.testing.assert_allclose(b_1d_2.data[i, i], b_2d.data[i, i],
+                               rtol=0.2, atol=0.2)
      
      
      

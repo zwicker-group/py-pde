@@ -13,7 +13,7 @@ import numpy as np
 from scipy import interpolate
 
 from .base import GridBase, discretize_interval, _check_shape
-from .cartesian import CartesianGridBase, CartesianGrid
+from .cartesian import CartesianGrid
 from ..tools.spherical import volume_from_radius
 from ..tools.cache import cached_property, cached_method
 
@@ -468,68 +468,38 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
         return Boundaries([b_pair])       
 
     
-    def interpolate_to_cartesian(self, data,
-                                 grid: Union[CartesianGridBase, str] = 'valid',
-                                 ret_grid: bool = False):
-        """ return the given cylindrical `data` in a 3d Cartesian grid
+    def get_cartesian_grid(self, mode: str = 'valid', num: int = None) \
+            -> CartesianGrid:
+        """ return a Cartesian grid for this Cylindrical one 
         
         Args:
-            data (:class:`numpy.ndarray`):
-                The actual data values on the cylindrical grid.
-            grid (str or CartesianGridBase):
-                determines the grid on which the data is returned. This can
-                either be an instance of CartesianGridBase, the string 'valid'
-                or the string 'full'. Using 'valid' only returns points that are
-                fully resolved in the spherical grid using an inscribed
-                sphere. Conversely, 'full' returns all data, using a
-                circumscribed sphere. 
-            ret_grid (bool):
-                Determines whether the respective Rectangular grid should be
-                returned alongside the data.
+            mode (str):
+                Determines how the grid is determined. Setting it to 'valid'
+                only returns points that are fully resolved in the spherical
+                grid, e.g., the sphere is circumscribed. Conversely, 'full'
+                returns all data, so the sphere is inscribed. 
+            num (int):
+                Number of support points along each axis of the returned grid.
                 
         Returns:
-            :class:`numpy.ndarray`: The data values on the Cartesian grid.
-            If `ret_grid=True`, a tuple of these data values and the associated
-            grid are returned. 
+            :class:`pde.grids.cartesian.CartesianGrid`: The requested grid
         """
-        if self.has_hole:
-            raise NotImplementedError
-
-        assert data.shape == self.shape
-        
-        if isinstance(grid, GridBase):
-            # supplied grid is already constructed 
-            if not isinstance(grid, CartesianGridBase):
-                raise TypeError('Supplied grid needs to be of type '
-                                '`CartesianGridBase`')
-            if grid.dim != self.dim:
-                raise ValueError('Dimension mismatch')
-            
+        # Pick the grid instance
+        if mode == 'valid':
+            if self.has_hole:
+                self._logger.warn('The sphere has holes, so not all points are '
+                                  'valid.')
+            bounds = self.radius / np.sqrt(self.dim)
+        elif mode == 'full':
+            bounds = self.radius
         else:
-            # need to build the grid instance
-            if grid == 'valid':
-                bounds = self.radius / np.sqrt(self.dim)
-            elif grid == 'full':
-                bounds = self.radius
-            else:
-                raise ValueError(f'Do not support grid `{grid}`')
+            raise ValueError(f'Unsupported mode `{mode}`')
                 
-            num = round(bounds / self.discretization[0])
-            grid_bounds = [(-bounds, bounds)] * self.dim
-            grid_shape = (2*num,) * self.dim
-            grid = CartesianGrid(grid_bounds, grid_shape)
-        
-        coords = np.meshgrid(*grid.axes_coords, indexing='ij')
-        rs = np.sqrt(sum(c**2 for c in coords))
-        
-        # interpolate over the new coordinates
-        f = interpolate.Rbf(*self.axes_coords, data, function='cubic')
-        data_int = f(rs)
-
-        if ret_grid:
-            return data_int, grid
-        else:
-            return data_int
+        # determine the grid points
+        if num is None:
+            num = 2 * round(bounds / self.discretization[0])
+        grid_bounds = [(-bounds, bounds)] * self.dim
+        return CartesianGrid(grid_bounds, num)
         
 
 

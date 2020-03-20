@@ -5,13 +5,12 @@ Cylindrical grids with azimuthal symmetry
  
 '''
 
-from typing import Tuple, Dict, Any, Union, Callable, Generator, TYPE_CHECKING
+from typing import Tuple, Dict, Any, Callable, Generator, TYPE_CHECKING
 
 import numpy as np
-from scipy import interpolate
 
 from .base import GridBase, discretize_interval, _check_shape
-from .cartesian import CartesianGridBase, CartesianGrid
+from .cartesian import CartesianGrid
 from ..tools.cache import cached_property, cached_method
 
 
@@ -513,76 +512,31 @@ class CylindricalGrid(GridBase):
                                          bcs=self.get_boundary_conditions(bc))
 
     
-    def interpolate_to_cartesian(self, data,
-                                 grid: Union[CartesianGridBase, str] = 'valid',
-                                 method: str = 'radial_basis_function',
-                                 ret_grid: bool = False):
-        """ return the given cylindrical `data` in a 3d Cartesian grid
+    def get_cartesian_grid(self, mode: str = 'valid') -> CartesianGrid:
+        """ return a Cartesian grid for this Cylindrical one 
         
         Args:
-            data (:class:`numpy.ndarray`):
-                The actual data values on the cylindrical grid.
-            grid (str or CartesianGridBase):
-                determines the grid on which the data is returned. This can
-                either be an instance of CartesianGridBase, the string 'valid'
-                or the string 'full'. Using 'valid' only returns points that are
-                fully resolved in the cylindrical grid using an inscribed
-                cylinder. Conversely, 'full' returns all data, using a
-                circumscribed cylinder. 
-            ret_grid (bool):
-                Determines whether the respective Rectangular grid should be
-                returned alongside the data.
+            mode (str):
+                Determines how the grid is determined. Setting it to 'valid'
+                only returns points that are fully resolved in the cylindrical
+                grid, e.g., the cylinder is circumscribed. Conversely, 'full'
+                returns all data, so the cylinder is inscribed. 
                 
         Returns:
-            :class:`numpy.ndarray`: The data values on the Cartesian grid.
-            If `ret_grid=True`, a tuple of these data values and the associated
-            grid are returned. 
+            :class:`pde.grids.cartesian.CartesianGrid`: The requested grid
         """
-        assert data.shape == self.shape
-        
-        if isinstance(grid, GridBase):
-            # supplied grid is already constructed 
-            if not isinstance(grid, CartesianGridBase):
-                raise TypeError('Supplied grid needs to be of type '
-                                '`CartesianGridBase`')
+        # Pick the grid instance
+        if mode == 'valid':
+            bounds = self.radius / np.sqrt(self.dim)
+        elif mode == 'full':
+            bounds = self.radius
         else:
-            # need to build the grid instance
-            if grid == 'valid':
-                bounds = self.radius / np.sqrt(2)
-            elif grid == 'full':
-                bounds = self.radius
-            else:
-                raise ValueError('Do not support grid `{grid:s}`')
+            raise ValueError(f'Unsupported mode `{mode}`')
                 
-            num = round(bounds / self.discretization[0])
-            grid_bounds = [(-bounds, bounds), (-bounds, bounds),
-                           self.axes_bounds[1]]
-            grid_shape = 2*num, 2*num, self.shape[1]
-            grid = CartesianGrid(grid_bounds, grid_shape)
-        
-        xs, ys, zs = np.meshgrid(*grid.axes_coords, indexing='ij')
-        rs = np.hypot(xs, ys)
-        
-        # interpolate over the new coordinates
-        if method == 'radial_basis_function' or method == 'rbf':
-            f = interpolate.Rbf(*np.meshgrid(*self.axes_coords, indexing='ij'),
-                                data, function='cubic')
-            data_int = f(rs, zs)
-            
-        elif method == 'numba':
-            f = self.make_interpolator_compiled(bc='natural')
-            points = np.empty(xs.shape + (2,))
-            points[..., 0] = rs
-            points[..., 1] = zs
-            print(rs.shape)
-            print(data.shape, points.shape)
-            data_int = f(data, points) 
-            
-        else:
-            raise ValueError(f'Undefined interpolation method {method}')
-            
-        if ret_grid:
-            return data_int, grid
-        else:
-            return data_int
+        # determine the Cartesian grid
+        num = round(bounds / self.discretization[0])
+        grid_bounds = [(-bounds, bounds), (-bounds, bounds),
+                       self.axes_bounds[1]]
+        grid_shape = 2 * num, 2 * num, self.shape[1]
+        return CartesianGrid(grid_bounds, grid_shape)
     

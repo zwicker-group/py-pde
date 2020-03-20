@@ -100,18 +100,11 @@ def test_polar_to_cartesian():
     grid_pol = PolarGrid(7, 16)
     pf_pol = ScalarField.from_expression(grid_pol, expression=expr_pol)
      
-    # pre-defined grid
     grid_cart = CartesianGrid([[-4, 4], [-3.9, 4.1]], [16, 16])
-    data_cart = grid_pol.interpolate_to_cartesian(pf_pol.data, grid=grid_cart)
-    pf_cart = ScalarField.from_expression(grid_cart, expression=expr_cart)
-    np.testing.assert_allclose(data_cart, pf_cart.data, atol=0.1)
+    pf_cart1 = pf_pol.interpolate_to_grid(grid_cart)
+    pf_cart2 = ScalarField.from_expression(grid_cart, expression=expr_cart)
+    np.testing.assert_allclose(pf_cart1.data, pf_cart2.data, atol=0.1)
      
-    # choose grid automatically
-    data_cart, grid_cart = grid_pol.interpolate_to_cartesian(pf_pol.data,
-                                                             ret_grid=True)
-    pf_cart = ScalarField.from_expression(grid_cart, expression=expr_cart)
-    np.testing.assert_allclose(data_cart, pf_cart.data, atol=0.1)
-
 
 
 def test_spherical_grid():
@@ -184,17 +177,7 @@ def test_spherical_to_cartesian():
     grid_sph = SphericalGrid(7, 16)
     pf_sph = ScalarField.from_expression(grid_sph, expression=expr_sph)
      
-    # pre-defined grid
     grid_cart = CartesianGrid([[-4, 4], [-3.9, 4.1], [-4.1, 3.9]], [16] * 3)
-    data_cart = grid_sph.interpolate_to_cartesian(pf_sph.data, grid=grid_cart)
-    pf_cart = ScalarField.from_expression(grid_cart, expression=expr_cart)
-    np.testing.assert_allclose(data_cart, pf_cart.data, atol=0.1)
-     
-    # choose grid automatically
-    data_cart, grid_cart = grid_sph.interpolate_to_cartesian(pf_sph.data,
-                                                             ret_grid=True)
-    pf_cart = ScalarField.from_expression(grid_cart, expression=expr_cart)
-    np.testing.assert_allclose(data_cart, pf_cart.data, atol=0.1)
-
-        
-
+    pf_cart1 = pf_sph.interpolate_to_grid(grid_cart)
+    pf_cart2 = ScalarField.from_expression(grid_cart, expression=expr_cart)
+    np.testing.assert_allclose(pf_cart1.data, pf_cart2.data, atol=0.1)
