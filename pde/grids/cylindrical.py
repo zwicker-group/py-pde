@@ -515,6 +515,7 @@ class CylindricalGrid(GridBase):
     
     def interpolate_to_cartesian(self, data,
                                  grid: Union[CartesianGridBase, str] = 'valid',
+                                 method: str = 'radial_basis_function',
                                  ret_grid: bool = False):
         """ return the given cylindrical `data` in a 3d Cartesian grid
         
@@ -563,10 +564,23 @@ class CylindricalGrid(GridBase):
         rs = np.hypot(xs, ys)
         
         # interpolate over the new coordinates
-        f = interpolate.Rbf(*np.meshgrid(*self.axes_coords, indexing='ij'),
-                            data, function='cubic')
-        data_int = f(rs, zs)
-
+        if method == 'radial_basis_function' or method == 'rbf':
+            f = interpolate.Rbf(*np.meshgrid(*self.axes_coords, indexing='ij'),
+                                data, function='cubic')
+            data_int = f(rs, zs)
+            
+        elif method == 'numba':
+            f = self.make_interpolator_compiled(bc='natural')
+            points = np.empty(xs.shape + (2,))
+            points[..., 0] = rs
+            points[..., 1] = zs
+            print(rs.shape)
+            print(data.shape, points.shape)
+            data_int = f(data, points) 
+            
+        else:
+            raise ValueError(f'Undefined interpolation method {method}')
+            
         if ret_grid:
             return data_int, grid
         else:

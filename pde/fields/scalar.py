@@ -4,7 +4,7 @@ Defines a scalar field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-from typing import (List, TypeVar, Iterator, Union, Optional,  # @UnusedImport
+from typing import (List, Iterator, Union, Optional,  # @UnusedImport
                     TYPE_CHECKING)
 from pathlib import Path
 

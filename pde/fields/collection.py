@@ -6,7 +6,7 @@ grid.
 '''
 
 from typing import (Sequence, Optional, Union, Any, Dict,
-                    List, TypeVar, Iterator)  # @UnusedImport
+                    List, Iterator)  # @UnusedImport
 
 import numpy as np
 
@@ -283,8 +283,8 @@ class FieldCollection(FieldBase):
 
 
     def interpolate_to_grid(self, grid: GridBase,
-                            normalized: bool = False,
-                            method: str = 'linear',
+                            method: str = 'numba',
+                            fill: float = None,
                             label: Optional[str] = None) -> 'FieldCollection':
         """ interpolate the data of this field collection to another grid.
         
@@ -292,21 +292,22 @@ class FieldCollection(FieldBase):
             grid (:class:`~pde.grids.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
-            normalized (bool): Specifies whether the interpolation uses the true
-                grid positions, potentially filling in undefined locations with
-                zeros. Alternatively, if `normalized = True`, the data is
-                stretched so both fields cover the same area.
-            method (str): Specifies interpolation method, e.g. 'linear' or
-                'nearest'
-            label (str, optional): Name of the returned field collection
+            method (str):
+                Specifies interpolation method, e.g., 'numba', 'scipy_linear',
+                'scipy_nearest' .
+            fill (float, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
+            label (str, optional):
+                Name of the returned field collection
             
         Returns:
-            Field collection with the same fields as the current one
+            FieldCollection: Interpolated data
         """        
         if label is None:
             label = self.label
-        fields = [f.interpolate_to_grid(grid, normalized=normalized,
-                                        method=method)
+        fields = [f.interpolate_to_grid(grid, method=method, fill=fill)
                   for f in self.fields]
         return self.__class__(fields, label=label)        
         

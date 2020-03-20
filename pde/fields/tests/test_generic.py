@@ -2,7 +2,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-import itertools
 import tempfile
 
 import numpy as np
@@ -42,14 +41,14 @@ def test_interpolation_natural(grid, field_class):
         p = grid.get_random_point(boundary_distance=1, avoid_center=True)
     p = grid.point_from_cartesian(p)
     i1 = f.interpolate(p, method='scipy_linear')
-    i2 = f.interpolate(p, method='numba_linear')
+    i2 = f.interpolate(p, method='numba')
     np.testing.assert_almost_equal(i1, i2, err_msg=msg)
 
     c = (1,) * len(grid.axes)  # specific cell
     p = f.grid.cell_coords[c]
     np.testing.assert_allclose(f.interpolate(p, method='scipy_linear'),
                                f.data[(Ellipsis,) + c], err_msg=msg)
-    np.testing.assert_allclose(f.interpolate(p, method='numba_linear'),
+    np.testing.assert_allclose(f.interpolate(p, method='numba'),
                                f.data[(Ellipsis,) + c], err_msg=msg)
 
 
@@ -234,20 +233,16 @@ def test_writing_images():
            
 def test_interpolation_to_grid_fields():
     """ test whether data is interpolated correctly for different fields """
-    grid = UnitGrid([3, 4])
-    grid2 = UnitGrid([6, 8])
-    vf = VectorField.random_uniform(grid)
-    tf = Tensor2Field.random_uniform(grid)
-    sf = tf[0, 0]  # test extraction of fields
+    grid = CartesianGrid([[0, 2*np.pi]]*2, 6)
+    grid2 = CartesianGrid([[0, 2*np.pi]]*2, 8)
+    vf = VectorField.from_expression(grid, ['sin(y)', 'cos(x)'])
+    sf = vf[0]  # test extraction of fields
     fc = FieldCollection([sf, vf])
     
-    for normalized, f in itertools.product([True, False], [sf, vf, tf, fc]):
-        f2 = f.interpolate_to_grid(grid2, normalized=normalized,
-                                   method='nearest')
-        f3 = f2.interpolate_to_grid(grid, normalized=normalized,
-                                    method='nearest')
-        np.testing.assert_allclose(f.data, f3.data, rtol=1e-6,
-                                   err_msg='normalized=%s' % normalized)
+    for f in [sf, vf, fc]:
+        f2 = f.interpolate_to_grid(grid2, method='numba')
+        f3 = f2.interpolate_to_grid(grid, method='numba')
+        np.testing.assert_allclose(f.data, f3.data, atol=0.2, rtol=0.2)
             
       
            
@@ -257,21 +252,40 @@ def test_interpolation_values(field_cls):
     grid = UnitGrid([3, 4])
     f = field_cls.random_uniform(grid)
     
-    intp = f.make_interpolator()
+    intp = f.make_interpolator('numba')
     c = f.grid.cell_coords[2, 2]
     np.testing.assert_allclose(intp(c), f.data[..., 2, 2])
+    
+    with pytest.raises(ValueError):
+        intp(np.array([100, -100]))
+
+    res = f.make_interpolator('numba', fill=45)(np.array([100, -100]))
+    np.testing.assert_almost_equal(res, np.full(f.data_shape, 45))
 
 
 
-def test_interpolation_to_cartesian():
+@pytest.mark.parametrize('grid', [PolarGrid(6, 4),
+                                  SphericalGrid(7, 4),
+                                  CylindricalGrid(6, (0, 8), (7, 8))])
+def test_interpolation_to_cartesian(grid):
     """ test whether data is interpolated correctly to Cartesian grid """
-    for grid in [CylindricalGrid(3, [-1, 2], [7, 8]),
-                 SphericalGrid(3, 4)]:
-        vf = VectorField.random_uniform(grid)
-        sf = vf[0]  # test extraction of fields
-        fc = FieldCollection([sf, vf])
-        grid_cart = UnitGrid([8, 8, 8])
-        fc.interpolate_to_grid(grid_cart)
+    dim = grid.dim
+    vf = VectorField(grid, 2)
+    sf = vf[0]  # test extraction of fields
+    fc = FieldCollection([sf, vf])
+    
+    # subset
+    grid_cart = UnitGrid([4] * dim)
+    for f in [sf, fc]:
+        res = f.interpolate_to_grid(grid_cart)
+        np.testing.assert_allclose(res.data, 2)
+    
+    # superset
+    grid_cart = UnitGrid([8] * dim)
+    for f in [sf, fc]:
+        res = f.interpolate_to_grid(grid_cart, fill=0)
+        assert res.data.min() == 0
+        assert res.data.max() == pytest.approx(2)
         
 
         

@@ -16,9 +16,9 @@ from typing import (Tuple, Callable, Optional, Union, Any, Dict,
 import numpy as np
 from scipy import interpolate, ndimage
 
-from ..grids import CylindricalGrid, SphericalGrid
 from ..grids.base import GridBase, discretize_interval
 from ..grids.cartesian import CartesianGridBase
+from ..grids.boundaries.axes import BoundariesData
 from ..tools.numba import jit
 from ..tools.cache import cached_method
 
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 ArrayLike = Union[np.ndarray, float]
 OptionalArrayLike = Optional[ArrayLike]
-T1 = TypeVar('T1', bound='FieldBase')
+TField = TypeVar('TField', bound='FieldBase')
 
 
 
@@ -184,7 +184,7 @@ class FieldBase(metaclass=ABCMeta):
 
     
     @abstractmethod
-    def copy(self: T1, data=None, label: str = None) -> T1: pass
+    def copy(self: TField, data=None, label: str = None) -> TField: pass
             
          
     def assert_field_compatible(self, other: 'FieldBase',
@@ -569,7 +569,7 @@ class FieldBase(metaclass=ABCMeta):
                     
 
 
-T2 = TypeVar('T2', bound='DataFieldBase')
+TDataField = TypeVar('TDataField', bound='DataFieldBase')
 
 
 class DataFieldBase(FieldBase, metaclass=ABCMeta):
@@ -829,7 +829,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(grid, data=data, **state)
             
         
-    def copy(self: T2, data=None, label: str = None) -> T2:
+    def copy(self: TDataField, data=None, label: str = None) -> TDataField:
         """ return a copy of the data, but not of the grid
         
         Args:
@@ -879,7 +879,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         imsave(filename, img['data'], origin='lower', **kwargs)
     
 
-    def _make_interpolator_scipy(self, **kwargs) -> Callable:
+    def _make_interpolator_scipy(self, fill: float = None, **kwargs) \
+            -> Callable:
         r""" returns a function that can be used to interpolate values.
         
         This uses scipy.interpolate.RegularGridInterpolator and the
@@ -891,6 +892,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         conditions, yet.
         
         Args:
+            fill (float, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
             \**kwargs: All keyword arguments are forwarded to
                 :class:`scipy.interpolate.RegularGridInterpolator`
                 
@@ -914,6 +919,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data = data_flat.reshape(new_shape)
             assert data.shape[-1] == self.grid.dim ** self.rank
             revert_shape = True
+            
+        # set the fill behavior
+        if fill is None:
+            kwargs['bounds_error'] = True
+        else:
+            kwargs['bounds_error'] = False
+            kwargs['fill_value'] = fill
             
         # prepare the interpolator
         intp = interpolate.RegularGridInterpolator(coords_src, data, **kwargs)
@@ -943,8 +955,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return interpolator
 
 
-    def _make_interpolator_compiled(self, method: str = 'linear',
-                                    bc='natural') -> Callable:
+    def _make_interpolator_compiled(self, bc: BoundariesData = 'natural',
+                                    fill: float = None) -> Callable:
         """ return a compiled interpolator
         
         This interpolator respects boundary conditions and can thus interpolate
@@ -952,25 +964,28 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         interpolation might not be optimal, in particular for periodic grids.
         
         Args:
-            method (str): Determines how the interpolation is done. Currently,
-                only linear interpolation is supported.
             bc: Sets the boundary condition, which affects how values at the
                 boundary are determined
+            fill (float, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
                 
         Returns:
             A function which returns interpolated values when called with
             arbitrary positions within the space of the grid. 
         """
-        if method != 'linear':
-            raise ValueError(f'Interpolation method `{method}` is not '
-                             'supported. `linear` is the only possible choice.')
-        
         grid = self.grid
         grid_dim = len(grid.axes)
         data_shape = self.data_shape
 
         # create an interpolator for a single point
-        interpolate_single = grid.make_interpolator_compiled(method, bc)
+        if fill is not None:
+            if data_shape == tuple():
+                fill = float(fill)
+            else:
+                fill = np.broadcast_to(fill, data_shape).astype(float)
+        interpolate_single = grid.make_interpolator_compiled(bc=bc, fill=fill)
         
         # define wrapper function to always access current data of field
         @jit
@@ -1022,7 +1037,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
 
     @cached_method()
-    def make_interpolator(self, method: str = 'numba_linear', **kwargs):
+    def make_interpolator(self, method: str = 'numba',
+                          fill: float = None,
+                          **kwargs) -> Callable:
         r""" returns a function that can be used to interpolate values.
         
         Args:
@@ -1031,7 +1048,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 
                 * `scipy_nearest`: Use scipy to interpolate to nearest neighbors
                 * `scipy_linear`: Linear interpolation using scipy
-                * `numba_linear`: Linear interpolation using numba (default)
+                * `numba`: Linear interpolation using numba (default)
+
+            fill (float, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
                   
             \**kwargs: Additional keyword arguments are passed to the individual
                 interpolator methods and can be used to further affect the
@@ -1053,20 +1075,28 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             arbitrary positions within the space of the grid. 
         """
         if method.startswith('scipy'):
-            return self._make_interpolator_scipy(method=method[6:], **kwargs)
-        elif method.startswith('numba'):
-            return self._make_interpolator_compiled(method=method[6:], **kwargs)
+            return self._make_interpolator_scipy(method=method[6:], fill=fill,
+                                                 **kwargs)
+        elif method == 'numba':
+            return self._make_interpolator_compiled(fill=fill, **kwargs)
         else:
             raise ValueError(f'Unknown interpolation method `{method}`')
             
 
-    def interpolate(self, point, **kwargs):
+    def interpolate(self, point, method: str = 'numba', fill: float = None,
+                    **kwargs):
         r""" interpolate the field to points between support points
         
         Args:
             point (:class:`numpy.ndarray`):
                 The points at which the values should be obtained. This is given
                 in grid coordinates.
+            method (str):
+                Determines the method being used for interpolation.
+            fill (float, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
             \**kwargs:
                 Additional keyword arguments are forwarded to the method
                 :meth:`DataFieldBase.make_interpolator`.
@@ -1074,26 +1104,28 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             :class:`numpy.ndarray`: the values of the field
         """
-        return self.make_interpolator(**kwargs)(point)
+        return self.make_interpolator(method=method, fill=fill, **kwargs)(point)
 
 
-    def interpolate_to_grid(self: T2, grid: GridBase,
-                            normalized: bool = False,
-                            method: str = 'linear',
-                            label: Optional[str] = None) -> T2:
+    def interpolate_to_grid(self: TDataField, grid: GridBase,
+                            method: str = 'numba',
+                            fill: float = None,
+                            label: Optional[str] = None) -> TDataField:
         """ interpolate the data of this field to another grid.
         
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
-            normalized (bool): Specifies whether the interpolation uses the true
-                grid positions, potentially filling in undefined locations with
-                zeros. Alternatively, if `normalized = True`, the data is
-                stretched so both fields cover the same area.
-            method (str): Specifies interpolation method, e.g. 'linear' or
-                'nearest' 
-            label (str, optional): Name of the returned field
+            method (str):
+                Specifies interpolation method, e.g., 'numba', 'scipy_linear',
+                'scipy_nearest' .
+            fill (float, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
+            label (str, optional):
+                Name of the returned field
             
         Returns:
             Field of the same rank as the current one.
@@ -1101,57 +1133,26 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if self.grid.dim != grid.dim:
             raise ValueError(f'Grid dimensions are incompatible '
                              f'({self.grid.dim:d} != {grid.dim:d})')
-        # check if both grids are Cartesian
-        src_cart = isinstance(self.grid, CartesianGridBase)
-        dst_cart = isinstance(grid, CartesianGridBase)
             
-        if isinstance(self.grid, (CylindricalGrid, SphericalGrid)) and dst_cart:
-            # special interpolation defined by the grid class
-            if normalized:
-                self._logger.warning('Normalized interpolation is not '
-                                     'supported for Curvilinear to Cartesian '
-                                     'mapping')
-            if method != 'linear':
-                self._logger.warning('Setting interpolation method is only '
-                                     'supported for Cartesian grids')
+        # determine the points at which data needs to be calculated
+        if isinstance(grid, CartesianGridBase):
+            # convert to a Cartesian grid
+            points = self.grid.point_from_cartesian(grid.cell_coords)
             
-            def interpolator(data_slice):
-                """ interpolates scalar data """
-                return self.grid.interpolate_to_cartesian(data_slice, grid)
-        
-        elif (src_cart and dst_cart) or self.grid.__class__ == grid.__class__:
-            # grid data is directly compatible
+        elif self.grid.__class__ is grid.__class__:
+            # convert within the same grid class
+            points = grid.cell_coords
             
-            # determine the coordinates of source and destination
-            if normalized:
-                coords_src = tuple(np.linspace(0, 1, len(c))
-                                   for c in self.grid.axes_coords)
-                coords_dst = [np.linspace(0, 1, s) for s in grid.shape]
-                coords_dst = np.meshgrid(*coords_dst, indexing='ij')
-                coords_dst = np.moveaxis(coords_dst, 0, -1)
-            else:
-                coords_src = self.grid.axes_coords
-                coords_dst = grid.cell_coords
-                
-            def interpolator(data_slice):
-                """ interpolates scalar data """
-                return interpolate.interpn(
-                    coords_src, data_slice, coords_dst, method=method,
-                    bounds_error=False, fill_value=0)
-
-        else: 
+        else:
             # this type of interpolation is not supported
-            raise NotImplementedError('Grid types are incompatible')
-    
-        # interpolate the actual data
-        data_src = self._data_flat
-        data_dst = np.empty((len(data_src), ) + grid.shape)
-        for i in range(len(data_src)):
-            data_dst[i] = interpolator(data_src[i])
-    
-        result = self.__class__(grid, label=label)
-        result._data_flat = data_dst
-        return result
+            raise NotImplementedError('Cannot convert '
+                                      f'{self.grid.__class__.__name__} to '
+                                      f'{grid.__class__.__name__}')
+        
+        # interpolate the data to the grid
+        data = self.interpolate(points, method, fill)
+        return self.__class__(grid, data, label=label)
+        
     
     
     def add_interpolated(self, point, amount):
@@ -1203,8 +1204,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             self.data[(Ellipsis,) + coords] += chng                                                  
         
         
-    def apply(self: T2, func: Callable, out: Optional[T2] = None,
-              label: str = None) -> T2:
+    def apply(self: TDataField, func: Callable,
+              out: Optional[TDataField] = None,
+              label: str = None) -> TDataField:
         """ applies a function to the data and returns it as a field
         
         Args:
@@ -1281,8 +1283,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                                       'field ' + self.__class__.__name__)
             
             
-    def smooth(self: T2, sigma: Optional[float] = 1, out: Optional[T2] = None,
-               label: str = None) -> T2:
+    def smooth(self: TDataField, sigma: Optional[float] = 1,
+               out: Optional[TDataField] = None,
+               label: str = None) -> TDataField:
         """ applies Gaussian smoothing with the given standard deviation
 
         This function respects periodic boundary conditions of the underlying

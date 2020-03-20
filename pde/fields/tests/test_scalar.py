@@ -24,14 +24,14 @@ def test_interpolation_singular():
     # test constant boundary conditions
     bc = [{'type': 'value', 'value': 1}, {'type': 'value', 'value': 5}]
     x = np.linspace(0, 1, 7).reshape((7, 1))
-    y = field.interpolate(x, method='numba_linear', bc=bc)
+    y = field.interpolate(x, method='numba', bc=bc)
     np.testing.assert_allclose(y, 1 + 4*x.ravel())
 
     # test derivative boundary conditions
     bc = [{'type': 'derivative', 'value': -2},
           {'type': 'derivative', 'value': 2}]
     x = np.linspace(0, 1, 7).reshape((7, 1))
-    y = field.interpolate(x, method='numba_linear', bc=bc)
+    y = field.interpolate(x, method='numba', bc=bc)
     np.testing.assert_allclose(y, 2 + 2*x.ravel())
 
 
@@ -107,11 +107,8 @@ def test_gradient():
 def test_interpolation_to_grid(grid):
     """ test whether data is interpolated correctly for different grids """
     sf = ScalarField.random_uniform(grid)
-    for normalized in [True, False]:
-        sf2 = sf.interpolate_to_grid(grid, normalized=normalized,
-                                     method='nearest')
-        np.testing.assert_allclose(sf.data, sf2.data, rtol=1e-6,
-                                   err_msg='grid=%s' % grid)
+    sf2 = sf.interpolate_to_grid(grid, method='numba')
+    np.testing.assert_allclose(sf.data, sf2.data, rtol=1e-6)
 
 
         
@@ -194,7 +191,7 @@ def test_interpolation_inhomogeneous_bc():
     """ test field interpolation with inhomogeneous boundary condition """
     sf = ScalarField(UnitGrid([3, 3], periodic=False))
     x = 1 + np.random.random()
-    v = sf.interpolate([x, 0], method='numba_linear',
+    v = sf.interpolate([x, 0], method='numba',
                        bc=['natural', {'type': 'value', 'value': 'x'}])
     assert x == pytest.approx(v)
 

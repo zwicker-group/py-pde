@@ -1,5 +1,9 @@
 TODO
 ====
+* Add interpolation by radial basis functions
+* Improve docstring of boundary conditions
+    - look into methods for automatically replacing docstrings (matplotlib,
+      numpy, scipy?)
 * Think about introducing data class that holds integrated, global variables
 	- this might be helpful to implement lagrange multipliers and the like
 * Fix progress bar when starting from non-zero t_start?

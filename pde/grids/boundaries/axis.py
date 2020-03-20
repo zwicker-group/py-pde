@@ -11,6 +11,7 @@ non-periodic axes have more option, which are represented by
 
 from typing import Union, Tuple, Dict, Callable
     
+import numpy as np
 from numba.extending import register_jitable
     
 from ..base import GridBase
@@ -281,11 +282,17 @@ class BoundaryPair(BoundaryAxisBase):
         return self.__class__(self.low.differentiated, self.high.differentiated)
 
 
-    def get_point_evaluator(self) -> Callable:
+    def get_point_evaluator(self, fill: np.array = None) -> Callable:
         """ return a function to evaluate values at a given point
         
         The point can either be a point inside the domain or a virtual point
         right outside the domain
+
+        Args:
+            fill (:class:`numpy.ndarray`, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `DomainError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
             
         Returns:
             function: A function taking a 1d array and an index as an argument,
@@ -303,14 +310,25 @@ class BoundaryPair(BoundaryAxisBase):
             arr_1d, i, _ = get_arr_1d(arr, idx)
             
             if i == -1:
+                # virtual point on the lower side of the axis
                 return eval_lo(arr, idx)
+            
             elif i == size:
+                # virtual point on the upper side of the axis
                 return eval_hi(arr, idx)
+            
             elif 0 <= i < size:
+                # inner point of the axis
                 return arr_1d[..., i]
+            
+            elif fill is None:
+                # point is outside the domain and no fill value is specified
+                raise DomainError('Point index lies outside bounds')
+            
             else:
-                # point higher than right boundary
-                raise DomainError('Point index outside bounds')
+                # Point is outside the domain, but fill value is specified. Note
+                # that fill value needs to be given with the correct shape.
+                return fill
         
         return evaluate  # type: ignore
 
@@ -469,11 +487,14 @@ class BoundaryPeriodic(BoundaryAxisBase):
         return self
 
 
-    def get_point_evaluator(self) -> Callable:
+    def get_point_evaluator(self, fill: float = None) -> Callable:
         """ return a function to evaluate values at a given point
         
         The point can either be a point inside the domain or a virtual point
-        right outside the domain
+        right outside the domain.
+        
+        Args:
+            fill: This argument is ignored.
         
         Returns:
             function: A function taking a 1d array and an index as an argument,

@@ -19,7 +19,7 @@ from ..tools.cache import cached_property, cached_method
 
 
 if TYPE_CHECKING:
-    from .boundaries.axes import Boundaries  # @UnusedImport
+    from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
 
 
 
@@ -360,19 +360,22 @@ class GridBase(metaclass=ABCMeta):
         return cell_volume  # type: ignore
     
     
-    def make_interpolator_compiled(self, method: str = 'linear', bc='natural') \
-            -> Callable:
-        """ return a compiled function for interpolating values on the grid
+    def make_interpolator_compiled(self, bc: "BoundariesData" = 'natural',
+                                   fill: float = None) -> Callable:
+        """ return a compiled function for linear interpolation on the grid
         
         This interpolator respects boundary conditions and can thus interpolate
         values in the whole grid volume. However, close to corners, the
         interpolation might not be optimal, in particular for periodic grids.
         
         Args:
-            method (str): Determines how the interpolation is done. Currently,
-                only linear interpolation is supported.
-            bc: Sets the boundary condition, which affects how values at the
-                boundary are determined
+            bc:
+                Sets the boundary condition, which affects how values at the
+                boundary are determined.
+            fill (float, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
                 
         Returns:
             A function which returns interpolated values when called with
@@ -381,9 +384,6 @@ class GridBase(metaclass=ABCMeta):
             containing the field data and position is denotes the position in
             grid coordinates.
         """
-        if method != 'linear':
-            raise ValueError(f"Unsupported interpolation method: '{method}'")
-
         bcs = self.get_boundary_conditions(bc)
         
         if self.num_axes == 1:
@@ -392,10 +392,11 @@ class GridBase(metaclass=ABCMeta):
             dx = self.discretization[0]
             size = self.shape[0]
             normalize_point = self.make_normalize_point_compiled()
-            ev = bcs[0].get_point_evaluator()
+            ev = bcs[0].get_point_evaluator(fill=fill)
         
             @jit
-            def interpolate_single(data, point):
+            def interpolate_single(data: np.ndarray, point: np.ndarray) \
+                    -> np.ndarray:
                 """ obtain interpolated value of data at a point
                 
                 Args:
@@ -411,7 +412,10 @@ class GridBase(metaclass=ABCMeta):
                 normalize_point(point)
                 c_l, d_l = divmod((point[0] - lo) / dx - 0.5, 1.)
                 if c_l < -1 or c_l > size - 1:
-                    raise ValueError('Point lies outside grid')
+                    if fill is None:
+                        raise ValueError('Point lies outside the grid')
+                    else:
+                        return fill
                 c_li = int(c_l)
                 c_hi = c_li + 1
                 return (1 - d_l) * ev(data, (c_li,)) + d_l * ev(data, (c_hi,))  
@@ -422,11 +426,12 @@ class GridBase(metaclass=ABCMeta):
             lo_x, lo_y = np.array(self.axes_bounds)[:, 0]
             dx, dy = self.discretization
             periodic_x, periodic_y = self.periodic
-            ev_x = bcs[0].get_point_evaluator()
-            ev_y = bcs[1].get_point_evaluator()
+            ev_x = bcs[0].get_point_evaluator(fill=fill)
+            ev_y = bcs[1].get_point_evaluator(fill=fill)
         
             @jit
-            def interpolate_single(data, point):
+            def interpolate_single(data: np.ndarray, point: np.ndarray) \
+                    -> np.ndarray:
                 """ obtain interpolated value of data at a point
                 
                 Args:
@@ -478,7 +483,10 @@ class GridBase(metaclass=ABCMeta):
                         # implement correctly.
         
                 if weight == 0:
-                    raise ValueError('Point lies outside grid')
+                    if fill is None:
+                        raise ValueError('Point lies outside the grid')
+                    else:
+                        return fill
                             
                 return value / weight
             
@@ -488,12 +496,13 @@ class GridBase(metaclass=ABCMeta):
             lo_x, lo_y, lo_z = np.array(self.axes_bounds)[:, 0]
             dx, dy, dz = self.discretization
             periodic_x, periodic_y, periodic_z = self.periodic
-            ev_x = bcs[0].get_point_evaluator()
-            ev_y = bcs[1].get_point_evaluator()
-            ev_z = bcs[2].get_point_evaluator()
+            ev_x = bcs[0].get_point_evaluator(fill=fill)
+            ev_y = bcs[1].get_point_evaluator(fill=fill)
+            ev_z = bcs[2].get_point_evaluator(fill=fill)
         
             @jit
-            def interpolate_single(data, point):
+            def interpolate_single(data: np.ndarray, point: np.ndarray) \
+                    -> np.ndarray:
                 """ obtain interpolated value of data at a point
                 
                 Args:
@@ -558,7 +567,10 @@ class GridBase(metaclass=ABCMeta):
                             # tedious to do correctly.
                                 
                 if weight == 0:
-                    raise ValueError('Point lies outside grid')
+                    if fill is None:
+                        raise ValueError('Point lies outside the grid')
+                    else:
+                        return fill
                             
                 return value / weight            
             
@@ -618,7 +630,7 @@ class GridBase(metaclass=ABCMeta):
 
                 elif c_li < 0:
                     if c_hi >= size:
-                        raise RuntimeError('Point lies outside grid')
+                        raise RuntimeError('Point lies outside the grid')
                     else:  # c_hi < size
                         data[..., c_hi] += amount / cell_volume(c_hi)
                 else:  # c_li >= 0
@@ -677,7 +689,7 @@ class GridBase(metaclass=ABCMeta):
                         total_weight += w_x[i] * w_y[j]
         
                 if total_weight == 0:
-                    raise ValueError('Point lies outside grid')
+                    raise ValueError('Point lies outside the grid')
         
                 # change the field with the correct weights
                 for i in range(2):
@@ -756,7 +768,7 @@ class GridBase(metaclass=ABCMeta):
                             total_weight += w_x[i] * w_y[j] * w_z[k]
         
                 if total_weight == 0:
-                    raise ValueError('Point lies outside grid')
+                    raise ValueError('Point lies outside the grid')
         
                 # change the field with the correct weights
                 for i in range(2):

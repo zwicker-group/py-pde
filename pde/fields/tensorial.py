@@ -5,7 +5,7 @@ Defines a tensorial field of rank 2 over a grid
 '''
 
 from typing import (Tuple, Optional, Union, Any, Dict, Callable,
-                    List, TypeVar, Iterator, TYPE_CHECKING)  # @UnusedImport
+                    List, Iterator, TYPE_CHECKING)  # @UnusedImport
 
 import numpy as np
 import numba as nb
