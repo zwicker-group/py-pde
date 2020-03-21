@@ -15,6 +15,8 @@ from .scalar import ScalarField
 from .vectorial import VectorField
 
 from ..tools.numba import jit
+from ..tools.docstrings import fill_in_docstring
+
 
 
 if TYPE_CHECKING:
@@ -158,17 +160,19 @@ class Tensor2Field(DataFieldBase):
         return dot
     
           
+    @fill_in_docstring
     def divergence(self, bc: "BoundariesData",
                    out: Optional[VectorField] = None,
                    label: str = 'divergence') -> VectorField:
         """ apply (tensor) divergence and return result as a field 
         
         Args:
-            bc: Gives the boundary conditions applied to fields that are
-                required for calculating the divergence.
-            out (VectorField, optional): Optional scalar field to which the 
-                result is written.
-            label (str, optional): Name of the returned field
+            bc: 
+                {ARG_BOUNDARIES}
+            out (VectorField, optional):
+                Optional scalar field to which the  result is written.
+            label (str, optional):
+                Name of the returned field
             
         Returns:
             VectorField: the result of applying the operator 

@@ -14,16 +14,6 @@ This module implements differential operators on cylindrical grids
    
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-
-
-.. The following contains text parts that are used multiple times below:
-
-.. |Description_cylindrical| replace:: 
-  This function assumes polar symmetry of the cylindrical grid, so that fields
-  only depend on the radial coordinate `r` and the axial coordinate `z`. Here,
-  the first axis is along the radius, while the second axis is along the axis of
-  the cylinder. The radial discretization is defined as
-  :math:`r_i = (i + \frac12) \Delta r` for :math:`i=0, \ldots, N_r-1`.
 """
 
 from typing import Callable
@@ -32,17 +22,19 @@ from . import PARALLELIZATION_THRESHOLD_2D
 from .. import CylindricalGrid
 from ..boundaries import Boundaries
 from ...tools.numba import nb, jit_allocate_out
+from ...tools.docstrings import fill_in_docstring
 
         
         
+@fill_in_docstring
 def make_laplace(bcs: Boundaries) -> Callable:
     """ make a discretized laplace operator for a cylindrical grid
     
-    |Description_cylindrical|
+    {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -100,14 +92,15 @@ def make_laplace(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_gradient(bcs: Boundaries) -> Callable:
     """ make a discretized gradient operator for a cylindrical grid
     
-    |Description_cylindrical|
+    {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -157,14 +150,15 @@ def make_gradient(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_divergence(bcs: Boundaries) -> Callable:
     """ make a discretized divergence operator for a cylindrical grid
     
-    |Description_cylindrical|
+    {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -217,14 +211,15 @@ def make_divergence(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_vector_gradient(bcs: Boundaries) -> Callable:
     """ make a discretized vector gradient operator for a cylindrical grid
     
-    |Description_cylindrical|
+    {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -249,14 +244,15 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_vector_laplace(bcs: Boundaries) -> Callable:
     """ make a discretized vector laplace operator for a cylindrical grid
     
-    |Description_cylindrical|
+    {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -280,14 +276,15 @@ def make_vector_laplace(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_tensor_divergence(bcs: Boundaries) -> Callable:
     """ make a discretized tensor divergence operator for a cylindrical grid
     
-    |Description_cylindrical|
+    {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -311,16 +308,17 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_operator(op: str, bcs: Boundaries) -> Callable:
     """ make a discretized operator for a cylindrical grid
     
-    |Description_cylindrical|
+    {DESCR_CYLINDRICAL_GRID}
 
     Args:
         op (str): Identifier for the operator. Some examples are 'laplace',
             'gradient', or 'divergence'.
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
 
     Returns:
         A function that takes the discretized data as an input and returns

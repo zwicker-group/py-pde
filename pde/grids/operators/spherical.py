@@ -13,15 +13,6 @@ This module implements differential operators on spherical grids
    
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-
-
-.. The following contains text parts that are used multiple times below:
-
-.. |Description_spherical| replace:: 
-  This function assumes spherical symmetry of the grid, so that fields only
-  depend on the radial coordinate `r`. The radial discretization is defined as
-  :math:`r_i = r_\mathrm{inner} + (i + \frac12) \Delta r` for
-  :math:`i=0, \ldots, N_r-1`.
 """
 
 from typing import Callable
@@ -33,17 +24,19 @@ from .common import make_poisson_solver
 from .. import SphericalGrid
 from ..boundaries import Boundaries
 from ...tools.numba import jit_allocate_out
+from ...tools.docstrings import fill_in_docstring
 
 
 
+@fill_in_docstring
 def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
     """ make a discretized laplace operator for a spherical grid
     
-    |Description_spherical|
+    {DESCR_SPHERICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         conservative (bool): flag indicating whether the laplace operator should
             be conservative (which results in slightly slower computations).    
         
@@ -164,14 +157,15 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
 
 
 
+@fill_in_docstring
 def make_gradient(bcs: Boundaries) -> Callable:
     """ make a discretized gradient operator for a spherical grid
     
-    |Description_spherical|
+    {DESCR_SPHERICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -218,14 +212,15 @@ def make_gradient(bcs: Boundaries) -> Callable:
 
     
 
+@fill_in_docstring
 def make_divergence(bcs: Boundaries) -> Callable:
     """ make a discretized divergence operator for a spherical grid
     
-    |Description_spherical|
+    {DESCR_SPHERICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -290,14 +285,15 @@ def make_divergence(bcs: Boundaries) -> Callable:
 
 
     
+@fill_in_docstring
 def make_vector_gradient(bcs: Boundaries) -> Callable:
     """ make a discretized vector gradient operator for a spherical grid
     
-    |Description_spherical|
+    {DESCR_SPHERICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -321,14 +317,15 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_tensor_divergence(bcs: Boundaries) -> Callable:
     """ make a discretized tensor divergence operator for a spherical grid
     
-    |Description_spherical|
+    {DESCR_SPHERICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -352,12 +349,13 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _get_laplace_matrix(bcs):
     """ get sparse matrix for laplace operator on a polar grid
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         tuple: A sparse matrix and a sparse vector that can be used to evaluate
@@ -413,16 +411,17 @@ def _get_laplace_matrix(bcs):
 
 
 
+@fill_in_docstring
 def make_operator(op: str, bcs: Boundaries) -> Callable:
     """ make a discretized operator for a spherical grid
     
-    |Description_spherical|
+    {DESCR_SPHERICAL_GRID}
 
     Args:
         op (str): Identifier for the operator. Some examples are 'laplace',
             'gradient', or 'divergence'.
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that takes the discretized data as an input and returns

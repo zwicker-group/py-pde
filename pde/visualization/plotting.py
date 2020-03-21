@@ -22,6 +22,7 @@ from ..fields import FieldCollection
 from ..fields.base import FieldBase, DataFieldBase
 from ..storage.base import StorageBase
 from ..tools.misc import display_progress
+from ..tools.docstrings import fill_in_docstring
 
 
 
@@ -140,14 +141,18 @@ def extract_field(fields: FieldBase,
 class ScalarFieldPlot():
     """ class managing compound plots of scalar fields """
     
+    @fill_in_docstring
     def __init__(self, fields: FieldBase, quantities=None, show: bool = True):
         """
         Args:
-            fields: Collection of fields
-            quantities: |Args_plot_quantities|
-            show (bool): Flag determining whether to show a plot. If `False`,
-                the plot is kept in the background, which can be useful if
-                it only needs to be written to a file
+            fields:
+                Collection of fields
+            quantities:
+                {ARG_PLOT_QUANTITIES}
+            show (bool):
+                Flag determining whether to show a plot. If `False`, the plot is
+                kept in the background, which can be useful if it only needs to
+                be written to a file
         """
         import matplotlib.pyplot as plt
         import matplotlib.cm as cm
@@ -207,13 +212,15 @@ class ScalarFieldPlot():
         
     
     @classmethod
+    @fill_in_docstring
     def from_storage(cls, storage: StorageBase, quantities=None):
         """ create ScalarFieldPlot from storage
         
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
                 Instance of the storage class that contains the data
-            quantities: |Args_plot_quantities|
+            quantities:
+                {ARG_PLOT_QUANTITIES}
             
         Returns:
             :class:`~pde.visualization.plotting.ScalarFieldPlot`
@@ -329,6 +336,7 @@ class ScalarFieldPlot():
 
 
 
+@fill_in_docstring
 def plot_magnitudes(storage: StorageBase,
                     filename: str = None,
                     quantities=None,
@@ -346,7 +354,8 @@ def plot_magnitudes(storage: StorageBase,
             the simulation data that will be plotted
         filename (str):
             If given, the resulting image is written to this file.
-        quantities: |Args_plot_quantities|
+        quantities:
+            {ARG_PLOT_QUANTITIES}
         ax:
             Matplotlib figure axes to be used for plotting. If `None`, a new
             figure is created

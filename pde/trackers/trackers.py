@@ -33,12 +33,14 @@ from ..fields.base import FieldBase
 from ..fields import FieldCollection
 from ..tools.parse_duration import parse_duration
 from ..tools.misc import get_progress_bar_class
+from ..tools.docstrings import fill_in_docstring
 
 
 
 class CallbackTracker(TrackerBase):
     """ Tracker that calls a function periodically """
     
+    @fill_in_docstring
     def __init__(self, func: Callable,
                  interval: IntervalData = 1):
         """ 
@@ -50,7 +52,8 @@ class CallbackTracker(TrackerBase):
                 float value indicating the current time. Note that only a view
                 of the state is supplied, implying that a copy needs to be made
                 if the data should be stored.
-            interval: |Arg_tracker_interval|
+            interval:
+                {ARG_TRACKER_INTERVAL}
         """
         super().__init__(interval=interval)
         self._callback = func
@@ -80,12 +83,14 @@ class ProgressTracker(TrackerBase):
             
     name = 'progress'
 
-            
+
+    @fill_in_docstring            
     def __init__(self, interval: IntervalData = None,
                  ndigits: int = 5, leave: bool = True):
         """
         Args:
-            interval: |Arg_tracker_interval|
+            interval:
+                {ARG_TRACKER_INTERVAL}
                 The default value `None` updates the progress bar approximately
                 every (real) second.
             ndigits (int): The number of digits after the decimal point that are
@@ -192,13 +197,16 @@ class PrintTracker(TrackerBase):
     name = 'print'
     
     
+    @fill_in_docstring
     def __init__(self, interval: IntervalData = 1,
                  stream: IO[str] = sys.stdout):
         """
         
         Args:
-            interval: |Arg_tracker_interval|
-            stream: The stream used for printing
+            interval:
+                {ARG_TRACKER_INTERVAL}
+            stream:
+                The stream used for printing
         """
         super().__init__(interval=interval)
         self.stream = stream
@@ -224,6 +232,7 @@ class PlotTracker(TrackerBase):
      
     name = 'plot'
     
+    @fill_in_docstring
     def __init__(self, interval: IntervalData = 1,
                  output_file: Optional[str] = None,
                  output_folder: Optional[str] = None,
@@ -232,7 +241,8 @@ class PlotTracker(TrackerBase):
                  show: bool = True):
         """
         Args:
-            interval: |Arg_tracker_interval|
+            interval:
+                {ARG_TRACKER_INTERVAL}
             output_file (str, optional):
                 Specifies a single image file, which is updated periodically, so
                 that the progress can be monitored (e.g. on a compute cluster)
@@ -243,7 +253,7 @@ class PlotTracker(TrackerBase):
                 Specifies a filename to which a movie of all the frames is
                 written after the simulation.
             quantities:
-                |Args_plot_quantities|
+                {ARG_PLOT_QUANTITIES}
             show (bool, optional):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
@@ -328,6 +338,7 @@ class DataTracker(CallbackTracker):
             the callback function. 
     """
     
+    @fill_in_docstring
     def __init__(self, func: Callable,
                  interval: IntervalData = 1):
         """ 
@@ -339,7 +350,8 @@ class DataTracker(CallbackTracker):
                 float value indicating the current time. Note that only a view
                 of the state is supplied, implying that a copy needs to be made
                 if the data should be stored.
-            interval: |Arg_tracker_interval|
+            interval:
+                {ARG_TRACKER_INTERVAL}
         """
         super().__init__(func=func, interval=interval)
         self.times: List[float] = []
@@ -382,12 +394,14 @@ class SteadyStateTracker(TrackerBase):
     name = 'steady_state'
 
 
+    @fill_in_docstring
     def __init__(self, interval: IntervalData = None,
                  atol: float = 1e-8,
                  rtol: float = 1e-5):
         """
         Args:
-            interval: |Arg_tracker_interval|
+            interval:
+                {ARG_TRACKER_INTERVAL}
                 The default value `None` checks for the steady state
                 approximately every (real) second.
             atol (float): Absolute tolerance that must be reached to abort the
@@ -421,6 +435,7 @@ class RuntimeTracker(TrackerBase):
     """ Tracker that interrupts the simulation once a duration has passed """
 
 
+    @fill_in_docstring
     def __init__(self, max_runtime: Union[Real, str],
                  interval: IntervalData = 1):  
         """
@@ -431,7 +446,8 @@ class RuntimeTracker(TrackerBase):
                 given as a number (interpreted as seconds) or as a string, which
                 is then parsed using the function
                 :func:`~pde.tools.parse_duration.parse_duration`.
-            interval: |Arg_tracker_interval|
+            interval:
+                {ARG_TRACKER_INTERVAL}
         """
         super().__init__(interval=interval)
         
@@ -470,12 +486,15 @@ class ConsistencyTracker(TrackerBase):
 
     name = 'consistency'
         
-        
+    
+    @fill_in_docstring
     def __init__(self, interval: IntervalData = None):
         """
         Args:
-            interval: |Arg_tracker_interval| The default value `None` checks for
-                consistency approximately every (real) second.
+            interval: 
+                {ARG_TRACKER_INTERVAL}
+                The default value `None` checks for consistency approximately
+                every (real) second.
         """ 
         if interval is None:
             interval = RealtimeIntervals(duration=1)
@@ -497,14 +516,18 @@ class MaterialConservationTracker(TrackerBase):
     name = 'material_conservation'
 
 
+    @fill_in_docstring
     def __init__(self, interval: IntervalData = 1,
                  atol: float = 1e-4,
                  rtol: float = 1e-4):
         """
         Args:
-            interval: |Arg_tracker_interval|
-            atol (float): Absolute tolerance for amount deviations
-            rtol (float): Relative tolerance for amount deviations
+            interval:
+                {ARG_TRACKER_INTERVAL}
+            atol (float):
+                Absolute tolerance for amount deviations
+            rtol (float):
+                Relative tolerance for amount deviations
         """
         super().__init__(interval=interval)
         self.atol = atol 
@@ -544,6 +567,7 @@ class MaterialConservationTracker(TrackerBase):
             else:
                 msg = f'Material is not conserved'
             raise StopIteration(msg)
+            
             
             
 __all__ = ['CallbackTracker', 'ProgressTracker', 'PrintTracker', 'PlotTracker',

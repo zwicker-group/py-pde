@@ -26,15 +26,17 @@ from . import PARALLELIZATION_THRESHOLD_2D, PARALLELIZATION_THRESHOLD_3D
 from .common import make_laplace_from_matrix, make_poisson_solver
 from ..boundaries import Boundaries
 from ...tools.numba import jit_allocate_out
+from ...tools.docstrings import fill_in_docstring
 
 
 
+@fill_in_docstring
 def _get_laplace_matrix_1d(bcs) -> Tuple[Any, Any]:
     """ get sparse matrix for laplace operator on a 1d Cartesian grid
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         tuple: A sparse matrix and a sparse vector that can be used to evaluate
@@ -70,12 +72,13 @@ def _get_laplace_matrix_1d(bcs) -> Tuple[Any, Any]:
 
     
 
+@fill_in_docstring
 def _get_laplace_matrix_2d(bcs) -> Tuple[Any, Any]:
     """ get sparse matrix for laplace operator on a 2d Cartesian grid
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         tuple: A sparse matrix and a sparse vector that can be used to evaluate
@@ -138,12 +141,13 @@ def _get_laplace_matrix_2d(bcs) -> Tuple[Any, Any]:
 
 
 
+@fill_in_docstring
 def _get_laplace_matrix(bcs: Boundaries):
     """ get sparse matrix for laplace operator on a 1d Cartesian grid
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         tuple: A sparse matrix and a sparse vector that can be used to evaluate
@@ -164,6 +168,7 @@ def _get_laplace_matrix(bcs: Boundaries):
 
 
 
+@fill_in_docstring
 def _make_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a laplace operator using the scipy module
     
@@ -171,7 +176,7 @@ def _make_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -206,12 +211,13 @@ def _make_laplace_scipy_nd(bcs: Boundaries) -> Callable:
 
         
     
+@fill_in_docstring
 def _make_laplace_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d laplace operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -233,12 +239,13 @@ def _make_laplace_numba_1d(bcs: Boundaries) -> Callable:
 
     
     
+@fill_in_docstring
 def _make_laplace_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d laplace operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -292,12 +299,13 @@ def _make_laplace_numba_2d(bcs: Boundaries) -> Callable:
     
 
 
+@fill_in_docstring
 def _make_laplace_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d laplace operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -334,12 +342,13 @@ def _make_laplace_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a laplace operator on a Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         method (str): Method used for calculating the laplace operator.
             If method='auto', a suitable method is chosen automatically.
         
@@ -380,12 +389,13 @@ def make_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 
+@fill_in_docstring
 def _make_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a gradient operator using the scipy module
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -407,12 +417,13 @@ def _make_gradient_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_gradient_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d gradient operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:    
         A function that can be applied to an array of values
@@ -434,12 +445,13 @@ def _make_gradient_numba_1d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_gradient_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d gradient operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -470,12 +482,13 @@ def _make_gradient_numba_2d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_gradient_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d gradient operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -510,12 +523,13 @@ def _make_gradient_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a gradient operator on a Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         method (str): Method used for calculating the gradient operator.
             If method='auto', a suitable method is chosen automatically.
         
@@ -553,6 +567,7 @@ def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 
+@fill_in_docstring
 def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a divergence operator using the scipy module
     
@@ -560,7 +575,7 @@ def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -586,13 +601,14 @@ def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_divergence_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d divergence operator using numba compilation
     
     Args:
         dim (int): The number of support points for each axes
         boundaries (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         dx (float): The discretization
         
     Returns:    
@@ -615,12 +631,13 @@ def _make_divergence_numba_1d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_divergence_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d divergence operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -652,12 +669,13 @@ def _make_divergence_numba_2d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_divergence_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d divergence operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -693,12 +711,13 @@ def _make_divergence_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a divergence operator on a Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         method (str): Method used for calculating the divergence operator.
             If method='auto', a suitable method is chosen automatically.
         
@@ -736,6 +755,7 @@ def make_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 
+@fill_in_docstring
 def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a vector gradient operator using the scipy module
     
@@ -743,7 +763,7 @@ def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -767,12 +787,13 @@ def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_vector_gradient_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d vector gradient operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:    
         A function that can be applied to an array of values
@@ -789,12 +810,13 @@ def _make_vector_gradient_numba_1d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_vector_gradient_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d vector gradient operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -813,13 +835,14 @@ def _make_vector_gradient_numba_2d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_vector_gradient_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d vector gradient operator using numba compilation
     
     Args:
         shape (tuple): The number of support points for each axes
         boundaries (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         dx (float or list): The discretizations
         
     Returns:
@@ -841,12 +864,13 @@ def _make_vector_gradient_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_vector_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a vector gradient operator on a Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         method (str): Method used for calculating the vector gradient operator.
             If method='auto', a suitable method is chosen automatically
         
@@ -882,6 +906,7 @@ def make_vector_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
     return gradient
 
 
+@fill_in_docstring
 def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a vector Laplacian using the scipy module
     
@@ -889,7 +914,7 @@ def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -911,12 +936,13 @@ def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_vector_laplace_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d vector Laplacian using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:    
         A function that can be applied to an array of values
@@ -933,12 +959,13 @@ def _make_vector_laplace_numba_1d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_vector_laplace_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d vector Laplacian using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -957,12 +984,13 @@ def _make_vector_laplace_numba_2d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_vector_laplace_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d vector Laplacian using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -983,12 +1011,13 @@ def _make_vector_laplace_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_vector_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a vector Laplacian on a Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         method (str): Method used for calculating the vector laplace operator.
             If method='auto', a suitable method is chosen automatically.
         
@@ -1025,6 +1054,7 @@ def make_vector_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 
+@fill_in_docstring
 def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a tensor divergence operator using the scipy module
     
@@ -1032,7 +1062,7 @@ def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values
@@ -1060,12 +1090,13 @@ def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_tensor_divergence_numba_1d(bcs: Boundaries) -> Callable:
     """ make a 1d tensor divergence  operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:    
         A function that can be applied to an array of values
@@ -1082,12 +1113,13 @@ def _make_tensor_divergence_numba_1d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_tensor_divergence_numba_2d(bcs: Boundaries) -> Callable:
     """ make a 2d tensor divergence  operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -1106,12 +1138,13 @@ def _make_tensor_divergence_numba_2d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def _make_tensor_divergence_numba_3d(bcs: Boundaries) -> Callable:
     """ make a 3d tensor divergence  operator using numba compilation
     
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         
     Returns:
         A function that can be applied to an array of values    
@@ -1132,12 +1165,13 @@ def _make_tensor_divergence_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@fill_in_docstring
 def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a tensor divergence operator on a Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         method (str): Method used for calculating the tensor divergence
             operator. If method='auto', a suitable method is chosen
             automatically.
@@ -1175,6 +1209,7 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 
+@fill_in_docstring
 def make_operator(op: str, bcs: Boundaries, method: str = 'auto') -> Callable:
     """ return a discretized operator for a Cartesian grid
     
@@ -1182,7 +1217,7 @@ def make_operator(op: str, bcs: Boundaries, method: str = 'auto') -> Callable:
         op (str): Identifier for the operator. Some examples are 'laplace',
             'gradient', or 'divergence'.
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            |Arg_boundary_conditions|
+            {ARG_BOUNDARIES_INSTANCE}
         method (str): The method for implementing the operator
         
     Returns:

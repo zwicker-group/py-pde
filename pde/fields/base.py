@@ -21,6 +21,7 @@ from ..grids.cartesian import CartesianGridBase
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.numba import jit
 from ..tools.cache import cached_method
+from ..tools.docstrings import fill_in_docstring
 
 
 if TYPE_CHECKING:
@@ -960,6 +961,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return interpolator
 
 
+    @fill_in_docstring
     def _make_interpolator_compiled(self, bc: BoundariesData = 'natural',
                                     fill: float = None) -> Callable:
         """ return a compiled interpolator
@@ -969,8 +971,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         interpolation might not be optimal, in particular for periodic grids.
         
         Args:
-            bc: Sets the boundary condition, which affects how values at the
-                boundary are determined
+            bc:
+                {ARG_BOUNDARIES}
             fill (float, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.

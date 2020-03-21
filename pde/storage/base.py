@@ -15,6 +15,7 @@ from ..fields import ScalarField, VectorField, Tensor2Field
 from ..fields.base import FieldBase
 from ..trackers.base import TrackerBase, InfoDict
 from ..trackers.intervals import IntervalType, IntervalData
+from ..tools.docstrings import fill_in_docstring
 
 
     
@@ -193,17 +194,14 @@ class StorageBase(metaclass=ABCMeta):
             yield self.times[i], self[i]  # type: ignore
 
     
+    @fill_in_docstring
     def tracker(self, interval: Union[int, float, IntervalType] = 1) \
             -> "StorageTracker":
         """ create object that can be used as a tracker to fill this storage
         
         Args:
-            interval: Determines how often the tracker interrupts the
-                simulation. Simple numbers are interpreted as durations measured
-                in the simulation time variable. Alternatively, instances of
-                :class:`~pde.trackers.intervals.LogarithmicIntervals` and
-                :class:`~pde.trackers.intervals.RealtimeIntervals` might
-                be given for more control.
+            interval:
+                {ARG_TRACKER_INTERVAL}
             
         Returns:
             :class:`~pde.trackers.trackers.StorageTracker`
@@ -249,12 +247,14 @@ class StorageTracker(TrackerBase):
             The underlying storage class through which the data can be accessed 
     """
 
+    @fill_in_docstring
     def __init__(self, storage, interval: IntervalData = 1):
         """
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
                 Storage instance to which the data is written
-            interval: |Arg_tracker_interval|
+            interval:
+                {ARG_TRACKER_INTERVAL}
         """
         super().__init__(interval=interval)
         self.storage = storage

@@ -12,7 +12,7 @@ import numpy as np
 
 from .intervals import IntervalData, get_interval
 from ..fields.base import FieldBase
-
+from ..tools.docstrings import fill_in_docstring
 
 
 Real = Union[float, int]
@@ -33,10 +33,12 @@ class TrackerBase(metaclass=ABCMeta):
     _subclasses: Dict[str, Any] = {}  # all classes inheriting from this
     
     
+    @fill_in_docstring
     def __init__(self, interval: IntervalData = 1):
         """
         Args:
-            interval: |Arg_tracker_interval|
+            interval:
+                {ARG_TRACKER_INTERVAL}
         """ 
         self.interval = get_interval(interval)
         self._logger = logging.getLogger(self.__class__.__name__)

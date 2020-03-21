@@ -15,6 +15,7 @@ import numpy as np
 from .base import GridBase, _check_shape
 from ..tools.cache import cached_method
 from ..tools.cuboid import Cuboid
+from ..tools.docstrings import fill_in_docstring
 
 
 if TYPE_CHECKING:
@@ -371,13 +372,13 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
                                       f'of dimension {self.dim}')
             
 
+    @fill_in_docstring
     def get_boundary_conditions(self, bc='natural') -> "Boundaries":
         """ constructs boundary conditions from a flexible data format
         
         Args:
             bc (str or list or tuple or dict):
-                Boundary conditions specified in the flexible format accepted by
-                :func:`pde.grids.boundaries.Boundaries.from_data`.  
+                {ARG_BOUNDARIES}  
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -389,6 +390,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
     
     
     @cached_method()
+    @fill_in_docstring
     def get_operator(self, op: str, bc, method: str = 'auto') -> Callable:
         """ return a discretized operator defined on this grid
         
@@ -396,8 +398,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
             op (str): Identifier for the operator. Some examples are 'laplace',
                 'gradient', or 'divergence'.
             bc (str or list or tuple or dict):
-                Boundary conditions specified in the flexible format accepted by
-                :func:`pde.grids.boundaries.Boundaries.from_data`.  
+                {ARG_BOUNDARIES}  
             method (str): Specifies the method used for creating the operator.
                 Typical values could be 'numba' and 'scipy'.
                 

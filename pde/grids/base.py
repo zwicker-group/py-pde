@@ -15,6 +15,7 @@ import numpy as np
 
 from ..tools.numba import jit
 from ..tools.cache import cached_property, cached_method
+from ..tools.docstrings import fill_in_docstring
 
 
 
@@ -360,6 +361,7 @@ class GridBase(metaclass=ABCMeta):
         return cell_volume  # type: ignore
     
     
+    @fill_in_docstring
     def make_interpolator_compiled(self, bc: "BoundariesData" = 'natural',
                                    fill: float = None) -> Callable:
         """ return a compiled function for linear interpolation on the grid
@@ -370,8 +372,7 @@ class GridBase(metaclass=ABCMeta):
         
         Args:
             bc:
-                Sets the boundary condition, which affects how values at the
-                boundary are determined.
+                {ARG_BOUNDARIES}
             fill (float, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.

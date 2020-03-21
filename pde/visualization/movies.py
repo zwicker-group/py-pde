@@ -21,6 +21,7 @@ import shutil
 
 from .plotting import ScalarFieldPlot
 from ..storage.base import StorageBase
+from ..tools.docstrings import fill_in_docstring
 
 
 
@@ -209,6 +210,7 @@ def movie_scalar(storage: StorageBase,
    
     
     
+@fill_in_docstring
 def movie_multiple(storage: StorageBase,
                    filename: str,
                    quantities=None,
@@ -218,11 +220,13 @@ def movie_multiple(storage: StorageBase,
     Args:
         storage (:class:`~pse.storage.base.StorageBase`):
             The storage instance that contains all the data for the movie
-        filename (str): The filename to which the movie is written. The
-            extension determines the format used.
-        quantities: |Args_plot_quantities| 
-        progress (bool): Flag determining whether the progress of making
-            the movie is shown.
+        filename (str):
+            The filename to which the movie is written. The extension determines
+            the format used.
+        quantities:
+            {ARG_PLOT_QUANTITIES}
+        progress (bool):
+            Flag determining whether the progress of making the movie is shown.
     """
     plot = ScalarFieldPlot.from_storage(storage, quantities=quantities)
     plot.make_movie(storage, filename, progress=progress)

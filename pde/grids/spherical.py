@@ -16,6 +16,7 @@ from .base import GridBase, discretize_interval, _check_shape
 from .cartesian import CartesianGrid
 from ..tools.spherical import volume_from_radius
 from ..tools.cache import cached_property, cached_method
+from ..tools.docstrings import fill_in_docstring
 
 
 
@@ -415,6 +416,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
             return rs
 
 
+    @fill_in_docstring
     def get_boundary_conditions(self, bc='natural') -> "Boundaries":
         """ constructs boundary conditions from a flexible data format.
         
@@ -423,8 +425,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
         
         Args:
             bc (str or list or tuple or dict):
-                Boundary conditions specified in the flexible format accepted by
-                :func:`pde.grids.boundaries.Boundaries.from_data`.  
+                {ARG_BOUNDARIES}
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -572,6 +573,7 @@ class PolarGrid(SphericalGridBase):
             
     
     @cached_method()
+    @fill_in_docstring
     def get_operator(self, op: str, bc) -> Callable:
         """ return a discretized operator defined on this grid
         
@@ -579,8 +581,7 @@ class PolarGrid(SphericalGridBase):
             op (str): Identifier for the operator. Some examples are 'laplace',
                 'gradient', or 'divergence'.
             bc (str or list or tuple or dict):
-                Boundary conditions specified in the flexible format accepted by
-                :func:`pde.grids.boundaries.Boundaries.from_data`.  
+                {ARG_BOUNDARIES}
                 
         Returns:
             A function that takes the discretized data as an input and returns
@@ -639,6 +640,7 @@ class SphericalGrid(SphericalGridBase):
 
 
     @cached_method()
+    @fill_in_docstring
     def get_operator(self, op, bc: str) -> Callable:
         """ return a discretized operator defined on this grid
         
@@ -646,8 +648,7 @@ class SphericalGrid(SphericalGridBase):
             op (str): Identifier for the operator. Some examples are 'laplace',
                 'gradient', or 'divergence'.
             bc (str or list or tuple or dict):
-                Boundary conditions specified in the flexible format accepted by
-                :func:`pde.grids.boundaries.Boundaries.from_data`.  
+                {ARG_BOUNDARIES}
                 
         Returns:
             A function that takes the discretized data as an input and returns

@@ -16,6 +16,7 @@ from .scalar import ScalarField
 from ..grids.base import GridBase 
 from ..tools.numba import jit
 from ..tools.expressions import ScalarExpression
+from ..tools.docstrings import fill_in_docstring
 
   
 if TYPE_CHECKING:
@@ -241,17 +242,19 @@ class VectorField(DataFieldBase):
         return out
         
 
+    @fill_in_docstring
     def divergence(self, bc: "BoundariesData",
                    out: Optional[ScalarField] = None,
                    label: str = 'divergence') -> ScalarField:
         """ apply divergence operator and return result as a field 
         
         Args:
-            bc: Gives the boundary conditions applied to fields that are
-                required for calculating the divergence.
-            out (ScalarField, optional): Optional scalar field to which the 
-                result is written.
-            label (str, optional): Name of the returned field
+            bc: 
+                {ARG_BOUNDARIES}
+            out (ScalarField, optional):
+                Optional scalar field to which the  result is written.
+            label (str, optional):
+                Name of the returned field
             
         Returns:
             ScalarField: the result of applying the operator 
@@ -266,17 +269,19 @@ class VectorField(DataFieldBase):
         return out
     
     
+    @fill_in_docstring
     def gradient(self, bc: "BoundariesData",
                  out: Optional['Tensor2Field'] = None,
                  label: str = 'gradient') -> 'Tensor2Field':
         """ apply (vecotr) gradient operator and return result as a field 
         
         Args:
-            bc: Gives the boundary conditions applied to fields that are
-                required for calculating the gradient.
-            out (Tensor2Field, optional): Optional scalar field to which the 
-                result is written.
-            label (str, optional): Name of the returned field
+            bc:
+                {ARG_BOUNDARIES}
+            out (Tensor2Field, optional):
+                Optional tensorial field to which the  result is written.
+            label (str, optional):
+                Name of the returned field
             
         Returns:
             Tensor2Field: the result of applying the operator 
@@ -293,17 +298,19 @@ class VectorField(DataFieldBase):
         return out
 
         
+    @fill_in_docstring
     def laplace(self, bc: "BoundariesData",
                 out: Optional['VectorField'] = None,
                 label: str = 'vector laplacian') -> 'VectorField':
         """ apply vector Laplace operator and return result as a field 
         
         Args:
-            bc: Gives the boundary conditions applied to fields that are
-                required for calculating the vector Laplacian.
-            out (VectorField, optional): Optional vector field to which the 
-                result is written.
-            label (str, optional): Name of the returned field
+            bc: 
+                {ARG_BOUNDARIES}
+            out (VectorField, optional):
+                Optional vector field to which the  result is written.
+            label (str, optional):
+                Name of the returned field
             
         Returns:
             VectorField: the result of applying the operator 

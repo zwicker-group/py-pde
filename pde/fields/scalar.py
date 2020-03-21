@@ -14,6 +14,7 @@ from .base import DataFieldBase
 from ..grids import UnitGrid, CartesianGrid
 from ..grids.base import GridBase 
 from ..tools.expressions import ScalarExpression
+from ..tools.docstrings import fill_in_docstring
 
 
 if TYPE_CHECKING:
@@ -106,17 +107,19 @@ class ScalarField(DataFieldBase):
         self._data = value[0]
 
         
+    @fill_in_docstring
     def laplace(self, bc: "BoundariesData",
                 out: Optional['ScalarField'] = None,
                 label: str = 'laplace') -> 'ScalarField':
         """ apply Laplace operator and return result as a field 
         
         Args:
-            bc: Gives the boundary conditions applied to fields that are
-                required for calculating the Laplacian.
-            out (ScalarField, optional): Optional scalar field to which the 
-                result is written.
-            label (str, optional): Name of the returned field
+            bc:
+                {ARG_BOUNDARIES}
+            out (ScalarField, optional):
+                Optional scalar field to which the  result is written.
+            label (str, optional):
+                Name of the returned field
             
         Returns:
             ScalarField: the result of applying the operator 
@@ -127,17 +130,19 @@ class ScalarField(DataFieldBase):
         return self.apply(laplace, out=out, label=label)
 
         
+    @fill_in_docstring
     def gradient(self, bc: "BoundariesData",
                  out: Optional['VectorField'] = None,
                  label: str = 'gradient') -> 'VectorField':
         """ apply gradient operator and return result as a field 
         
         Args:
-            bc: Gives the boundary conditions applied to fields that are
-                required for calculating the gradient.
-            out (VectorField, optional): Optional vector field to which the 
-                result is written.
-            label (str, optional): Name of the returned field
+            bc: 
+                {ARG_BOUNDARIES}
+            out (VectorField, optional):
+                Optional vector field to which the result is written.
+            label (str, optional):
+                Name of the returned field
             
         Returns:
             VectorField: the result of applying the operator 
