@@ -13,6 +13,7 @@ from .base import PDEBase
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.numba import nb, jit
+from ..tools.docstrings import fill_in_docstring
 
 
         
@@ -28,7 +29,8 @@ class DiffusionPDE(PDEBase):
 
     explicit_time_dependence = False
     
-
+    
+    @fill_in_docstring
     def __init__(self, diffusivity: float = 1,
                  noise: float = 0,
                  bc: BoundariesData = 'natural'):
@@ -39,11 +41,7 @@ class DiffusionPDE(PDEBase):
             noise (float):
                 Strength of the (additive) noise term
             bc:
-                The boundary conditions applied to the scalar field :math:`c`.
-                The default value ('natural') imposes periodic boundary
-                conditions for axes in which the grid is periodic and vanishing
-                derivatives for all other axes. Alternatively, specific boundary
-                conditions can be set for all axes individually. 
+                {ARG_BOUNDARIES} 
         """
         super().__init__(noise=noise)
         

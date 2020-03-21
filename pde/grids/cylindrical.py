@@ -28,7 +28,6 @@ class CylindricalGrid(GridBase):
     coordinates :math:`r` and :math:`z`, respectively. These are discretized
     uniformly as
     
-    
     .. math::
         :nowrap:
     

@@ -1,13 +1,11 @@
 TODO
 ====
-* Add interpolation by radial basis functions
-* Improve docstring of boundary conditions
-    - look into methods for automatically replacing docstrings (matplotlib,
-      numpy, scipy?)
+* Give examples for boundary conditions in the boundaries module description
+    - link to this from the normal arguments
+* Introduce cut(x=?, y=?) and project([‘x’, ‘y’]) returning new field with new grid
 * Think about introducing data class that holds integrated, global variables
 	- this might be helpful to implement lagrange multipliers and the like
 * Fix progress bar when starting from non-zero t_start?
-* Introduce cut(x=?, y=?) and project([‘x’, ‘y’]) returning new field with new grid
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`
   - mimick this interface for plotting 3d droplets?

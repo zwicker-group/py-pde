@@ -13,6 +13,7 @@ from .base import PDEBase
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.numba import nb, jit
+from ..tools.docstrings import fill_in_docstring
 
 
         
@@ -29,6 +30,7 @@ class CahnHilliardPDE(PDEBase):
     explicit_time_dependence = False
     
 
+    @fill_in_docstring
     def __init__(self, interface_width: float = 1,
                  bc_c: BoundariesData = 'natural',
                  bc_mu: BoundariesData = 'natural'):
@@ -37,14 +39,11 @@ class CahnHilliardPDE(PDEBase):
             interface_width (float):
                 The diffusivity of the described species
             bc_c:
-                The boundary conditions applied to the scalar field :math:`c`.
-                The default value ('natural') imposes periodic boundary
-                conditions for axes in which the grid is periodic and vanishing
-                derivatives for all other axes. Alternatively, specific boundary
-                conditions can be set for all axes individually. 
+                {ARG_BOUNDARIES}
             bc_mu:
                 The boundary conditions applied to the chemical potential 
-                associated with the scalar field :math:`c`. 
+                associated with the scalar field :math:`c`. Supports the same
+                options as `bc_c`.
         """
         super().__init__()
         

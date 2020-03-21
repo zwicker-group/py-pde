@@ -13,6 +13,7 @@ from .base import PDEBase
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.numba import nb, jit
+from ..tools.docstrings import fill_in_docstring
 
 
         
@@ -32,10 +33,11 @@ class KuramotoSivashinskyPDE(PDEBase):
     explicit_time_dependence = False
     
 
+    @fill_in_docstring
     def __init__(self, nu: float = 1,
                  noise: float = 0,
                  bc: BoundariesData = 'natural',
-                 bc2: BoundariesData = 'natural'):
+                 bc_lap: BoundariesData = None):
         r""" 
         Args:
             nu (float):
@@ -43,20 +45,18 @@ class KuramotoSivashinskyPDE(PDEBase):
             noise (float):
                 Strength of the (additive) noise term
             bc:
-                The boundary conditions applied to the scalar field :math:`u`.
-                The default value ('natural') imposes periodic boundary
-                conditions for axes in which the grid is periodic and vanishing
-                derivatives for all other axes. Alternatively, specific boundary
-                conditions can be set for all axes individually. 
-            bc2:
-                The boundary condition for the second derivative,
-                :math:`\nabla^2 u`.
+                {ARG_BOUNDARIES}
+            bc_lap:
+                The boundary conditions applied to the second derivative of the
+                scalar field :math:`c`. If `None`, the same boundary condition
+                as `bc` is chosen. Otherwise, this supports the same options as
+                `bc`.
         """
         super().__init__(noise=noise)
         
         self.nu = nu
         self.bc = bc
-        self.bc2 = bc2
+        self.bc_lap = bc if bc_lap is None else bc_lap
             
             
     def evolution_rate(self, state: ScalarField,  # type: ignore
@@ -74,7 +74,7 @@ class KuramotoSivashinskyPDE(PDEBase):
         """
         assert isinstance(state, ScalarField)
         state_lap = state.laplace(bc=self.bc)
-        result = -self.nu * state_lap.laplace(bc=self.bc2) - state_lap \
+        result = -self.nu * state_lap.laplace(bc=self.bc_lap) - state_lap \
                  - 0.5 * state.gradient(bc=self.bc).to_scalar('squared_sum')
         result.label = 'evolution rate'
         return result  # type: ignore
@@ -101,7 +101,7 @@ class KuramotoSivashinskyPDE(PDEBase):
         
         nu_value = self.nu
         laplace = state.grid.get_operator('laplace', bc=self.bc)
-        laplace2 = state.grid.get_operator('laplace', bc=self.bc2)
+        laplace2 = state.grid.get_operator('laplace', bc=self.bc_lap)
         gradient = state.grid.get_operator('gradient', bc=self.bc)
 
         @jit(signature)

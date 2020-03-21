@@ -15,25 +15,25 @@ DOCSTRING_REPLACEMENTS = {
     '{ARG_BOUNDARIES_INSTANCE}': """
         Specifies the boundary conditions applied to the field. This must be an
         instance of :class:`~pde.grids.boundaries.axes.Boundaries`, which can be
-        created from variouss data formats using the class method
+        created from various data formats using the class method
        :func:`~pde.grids.boundaries.axes.Boundaries.from_data`."""[1:],
        
     '{ARG_BOUNDARIES}': """
         The boundary conditions applied to the field. In the most general 
         format, this is a list with boundary conditions for each axis. If a 
-        particular axis is periodic, only periodic boundary conditions,
-        indicated by the string 'periodic' are allowed. For non-periodic axes,
+        particular axis is periodic, only periodic boundary conditions are
+        allowed (indicated by the string 'periodic'). For non-periodic axes,
         different boundary conditions can be specified for the lower and upper
-        end, i.e., by specifying a tuple of two conditions. Typical choices for
-        individual conditions are Dirichlet conditions that enforce a value NUM
-        (specified by `{'value': NUM}`) and Neumann conditions that enforce a
-        derivative NUM (specified by `{'derivative': NUM}`). If both sides of an
-        axis have the same boundary, only one needs to be specified. Similarly,
-        if all axes have the same boundary conditions, only one axis needs to be
-        specified. Finally, the special value 'natural' imposes periodic
-        boundary conditions for periodic axis and a vanishing derivative
-        otherwise.
-        """[1:-1],
+        end of the axis (generally a tuple of two conditions). Typical choices 
+        for individual conditions are Dirichlet conditions that enforce a value
+        NUM (specified by `{'value': NUM}`) and Neumann conditions that enforce 
+        the value DERIV for the derivative in the normal direction (specified by
+        `{'derivative': DERIV}`). If both sides of an axis have the same 
+        boundary condition, only one needs to be specified (instead of the 
+        tuple). Similarly, if all axes have the same boundary conditions, only 
+        one axis needs to be specified (instead of the list). Finally, the 
+        special value 'natural' imposes periodic boundary conditions for 
+        periodic axis and a vanishing derivative otherwise."""[1:],
     
     '{ARG_TRACKER_INTERVAL}': """
         Determines how often the tracker interrupts the simulation. Simple
@@ -84,7 +84,6 @@ DOCSTRING_REPLACEMENTS = {
         the outer boundary is given by
         :math:`r_\mathrm{max} = r_\mathrm{min} + N_r \Delta r`."""[1:]
 }
-
 
 
 
