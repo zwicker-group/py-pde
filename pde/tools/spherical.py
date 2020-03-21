@@ -352,7 +352,7 @@ def get_spherical_polygon_area(vertices, radius: float = 1) -> float:
     # this could definitely be written more nicely
     b_point = vertices[1]
     root_b_dist = haversine_distance(root_point, b_point)
-    for i in 1 + np.arange(n - 2):
+    for i in np.arange(1, n - 1):
         a_point = b_point
         b_point = vertices[i+1]
         root_a_dist = root_b_dist

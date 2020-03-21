@@ -76,6 +76,7 @@ class ImplicitSolver(SolverBase):
         self.info['steps'] = 0
         self.info['function_evaluations'] = 0
         self.info['scheme'] = 'implicit-euler'
+        self.info['stochastic'] = False
     
         rhs = self._make_pde_rhs(state, backend=self.backend,
                                  allow_stochastic=False)
@@ -101,9 +102,9 @@ class ImplicitSolver(SolverBase):
                     
                     # calculate mean squared error
                     err = 0
-                    for i in range(state_data.size):
-                        err += (state_guess.flat[i] - state_data.flat[i] -
-                                evolution_this.flat[i])**2
+                    for j in range(state_data.size):
+                        err += (state_guess.flat[j] - state_data.flat[j] -
+                                evolution_this.flat[j])**2
                     err /= state_data.size
                                 
                     if err < maxerror2:
@@ -123,10 +124,6 @@ class ImplicitSolver(SolverBase):
                      
             return tn, nfev
         
-            self.info['stochastic'] = False
-            self._logger.info(f'Initialized explicit Euler stepper with dt=%g',
-                              dt)
-                        
         if self.info['backend'] == 'numba':
             # compile inner step
             inner_stepper = jit(inner_stepper)
@@ -142,6 +139,6 @@ class ImplicitSolver(SolverBase):
             self.info['function_evaluations'] += nfev
             return t_last        
             
+        self._logger.info(f'Initialized implicit Euler stepper with dt=%g', dt)
         return stepper
-
         

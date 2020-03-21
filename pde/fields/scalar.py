@@ -4,8 +4,7 @@ Defines a scalar field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-from typing import (List, Iterator, Union, Optional,  # @UnusedImport
-                    TYPE_CHECKING)
+from typing import Union, Optional, TYPE_CHECKING
 from pathlib import Path
 
 import numpy as np

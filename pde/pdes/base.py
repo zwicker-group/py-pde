@@ -6,7 +6,7 @@ Base classes
 
 from abc import ABCMeta, abstractmethod
 import logging
-from typing import Callable, Dict, Optional, TYPE_CHECKING  # @UnusedImport
+from typing import Callable, Optional, TYPE_CHECKING  # @UnusedImport
 
 import numpy as np
 

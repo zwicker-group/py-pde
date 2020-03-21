@@ -29,7 +29,6 @@ import importlib
 import unittest
 import warnings
 from pathlib import Path
-from functools import wraps
 from collections import OrderedDict
 from typing import Callable, Dict, Any, List, Union
 
@@ -122,7 +121,7 @@ def preserve_scalars(method: Callable) -> Callable:
     Returns:
         The decorated method
     """
-    @wraps(method)
+    @functools.wraps(method)
     def wrapper(self, *args):
         args = [np.asanyarray(arg, dtype=np.double)
                 for arg in args]
@@ -149,7 +148,7 @@ def decorator_arguments(decorator: Callable) -> Callable:
     Returns:
         the decorated function
     """
-    @wraps(decorator)
+    @functools.wraps(decorator)
     def new_decorator(*args, **kwargs):
         if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
             # actual decorated function

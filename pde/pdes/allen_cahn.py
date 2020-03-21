@@ -4,7 +4,7 @@ A Allen-Cahn equation
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import (Callable, Dict, Any, Counter, List)  # @UnusedImport
+from typing import Callable  # @UnusedImport
 
 import numpy as np
 

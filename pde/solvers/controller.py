@@ -108,7 +108,6 @@ class Controller():
 
         # initialize trackers
         self.trackers.initialize(state, info=self.diagnostics)
-        t_next_action = self.trackers.time_next_action
             
         def _handle_stop_iteration(err):
             """ helper function for handling interrupts raised by trackers """

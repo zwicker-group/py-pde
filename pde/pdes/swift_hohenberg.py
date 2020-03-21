@@ -4,7 +4,7 @@ The Swift-Hohenberg equation
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import (Callable, Dict, Any, Counter, List)  # @UnusedImport
+from typing import Callable
 
 import numpy as np
 

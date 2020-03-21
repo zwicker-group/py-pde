@@ -4,8 +4,7 @@ Defines a tensorial field of rank 2 over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-from typing import (Tuple, Optional, Union, Any, Dict, Callable,
-                    List, Iterator, TYPE_CHECKING)  # @UnusedImport
+from typing import Tuple, Optional, Union, Any, Dict, Callable, TYPE_CHECKING
 
 import numpy as np
 import numba as nb
