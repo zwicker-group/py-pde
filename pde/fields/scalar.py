@@ -4,7 +4,7 @@ Defines a scalar field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-from typing import Union, Optional, TYPE_CHECKING
+from typing import Union, Sequence, Dict, Optional, TYPE_CHECKING
 from pathlib import Path
 
 import numpy as np
@@ -12,6 +12,7 @@ import numpy as np
 from .base import DataFieldBase
 from ..grids import UnitGrid, CartesianGrid
 from ..grids.base import GridBase 
+from ..grids.boundaries import DomainError
 from ..tools.expressions import ScalarExpression
 from ..tools.docstrings import fill_in_docstring
 
@@ -208,8 +209,100 @@ class ScalarField(DataFieldBase):
     @property
     def integral(self) -> float:
         """ float: integral of the scalar field over space """
-        return self.grid.integrate(self.data)
+        return float(self.grid.integrate(self.data))
 
+               
+    def project(self, axes: Union[str, Sequence[str]],
+                method: str = 'integral',
+                label: str = None) -> "ScalarField":
+        """ project scalar field along given axes
+        
+        Args:
+            axes (list of str):
+                The names of the axes that are removed by the projection
+                operation. The valid names for a given grid are the ones in
+                the :attr:`GridBase.axes` attribute.
+            method (str):
+                The projection method. This can be either 'integral' to
+                integrate over the removed axes or 'average' to perform an
+                average instead.
+            label (str, optional):
+                The label of the returned field
+                
+        Returns:
+            ScalarField: The projected data in a scalar field with a subgrid of
+            the original grid.
+        """
+        if any(ax not in self.grid.axes for ax in axes):
+            raise ValueError(f'The axes {axes} are not all contained in '
+                             f'{self.grid} with axes {self.grid.axes}')
+            
+        # determine the axes after projection
+        ax_all = range(self.grid.num_axes)
+        ax_remove = tuple(self.grid.axes.index(ax) for ax in axes)
+        ax_retain = tuple(sorted(set(ax_all) - set(ax_remove)))
+        
+        # determine the new grid
+        subgrid = self.grid.get_subgrid(ax_retain)
+        
+        # calculate the new data
+        if method == 'integral':
+            subdata = self.grid.integrate(self.data, axes=ax_remove)
+        elif method == 'average' or method == 'mean':
+            subdata = (self.grid.integrate(self.data, axes=ax_remove) /
+                       self.grid.integrate(1, axes=ax_remove))
+        else:
+            raise ValueError(f'Unknown projection method `{method}`')
+        
+        # create the new field instance
+        return self.__class__(grid=subgrid, data=subdata, label=label)
+    
+    
+    def slice(self, position: Dict[str, float],
+              method: str = 'nearest',
+              label: str = None) -> "ScalarField":
+        """ slice data at a given position """
+        grid = self.grid
+        
+        # parse the positions and determine the axes to remove
+        ax_remove, pos_values = [], np.zeros(grid.num_axes)
+        for ax, pos in position.items():
+            try:
+                i = grid.axes.index(ax)
+            except IndexError:
+                raise ValueError(f'The axes {ax} is not contained in '
+                                 f'{self.grid} with axes {self.grid.axes}')
+                
+            ax_remove.append(i)
+            pos_values[i] = pos
+            
+        # determine the axes left after slicing and the new grid
+        ax_all = range(grid.num_axes)
+        ax_retain = tuple(sorted(set(ax_all) - set(ax_remove)))
+        subgrid = grid.get_subgrid(ax_retain)
+        
+        # obtain the sliced data
+        if method == 'nearest':
+            idx = []
+            for i in range(grid.num_axes):
+                if i in ax_remove:
+                    pos = pos_values[i]
+                    axis_bounds = grid.axes_bounds[i]
+                    if pos < axis_bounds[0] or pos > axis_bounds[1]:
+                        raise DomainError(f'Position {grid.axes[i]} = {pos} is '
+                                          'outside the domain')
+                    # add slice that is closest to pos 
+                    idx.append(np.argmin((grid.axes_coords[i] - pos)**2))
+                else:
+                    idx.append(slice(None))
+            subdata = self.data[tuple(idx)]
+            
+        else:
+            raise ValueError(f'Unknown slicing method `{method}`')
+    
+        # create the new field instance
+        return self.__class__(grid=subgrid, data=subdata, label=label)
+    
         
     def to_scalar(self, scalar: Union[str, int] = 'abs',
                   label: Optional[str] = None) -> "ScalarField":
@@ -229,5 +322,3 @@ class ScalarField(DataFieldBase):
         else:
             raise ValueError(f'Unknown method `{scalar}` for `to_scalar`')
         return ScalarField(grid=self.grid, data=data, label=label)
-
-               

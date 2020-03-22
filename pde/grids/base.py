@@ -6,10 +6,11 @@ Bases classes
 '''
 
 import json
+import functools
 import logging
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (List, Tuple, Dict, Any, Union, Callable, Generator,
-                    TYPE_CHECKING)
+                    Sequence, TYPE_CHECKING)
 
 import numpy as np
 
@@ -108,7 +109,7 @@ class GridBase(metaclass=ABCMeta):
     axes: List[str]
     num_axes: int
     discretization: Any
-    cell_volume_data: float
+    cell_volume_data: Sequence[Union[float, np.ndarray]]
     axes_coords: Tuple
     axes_bounds: Tuple[Tuple[float, float], ...]
     periodic: List[bool]
@@ -211,7 +212,7 @@ class GridBase(metaclass=ABCMeta):
             ValueError: if grids are not compatible
         """
         if not self.compatible_with(other):
-            raise ValueError('Grids incompatible')
+            raise ValueError(f'Grids {self} and {other} are incompatible')
         
         
     @property
@@ -229,7 +230,8 @@ class GridBase(metaclass=ABCMeta):
     @cached_property()
     def cell_volumes(self):
         """ :class:`numpy.ndarray`: volume of each cell """
-        return np.broadcast_to(self.cell_volume_data, self.shape)
+        vols = functools.reduce(np.outer, self.cell_volume_data)
+        return np.broadcast_to(vols, self.shape)
         
         
     def distance_real(self, p1, p2) -> float:
@@ -282,6 +284,12 @@ class GridBase(metaclass=ABCMeta):
     def get_random_point(self, boundary_distance: float = 0,
                          cartesian: bool = True): pass
              
+
+    def get_subgrid(self, indices: Sequence[int]) -> "GridBase":
+        """ return a subgrid of only the specified axes """
+        raise NotImplementedError('Subgrids are not implemented for class '
+                                  f'{self.__class__.__name__}')
+    
                          
     def plot(self):
         """ visualize the grid """
@@ -295,18 +303,49 @@ class GridBase(metaclass=ABCMeta):
         return np.mean(self.discretization)  # type: ignore
 
     
-    def integrate(self, data) -> float:
+    def integrate(self, data: np.ndarray,
+                  axes: Sequence[int] = None) -> np.ndarray:
         """ Integrates the discretized data over the grid
         
         Args:
-            data (array): The values at the support points of the grid that 
-                need to be integrated
+            data (:class:`numpy.ndarray`):
+                The values at the support points of the grid that need to be
+                integrated.
+            axes (list of int, optional):
+                The axes along which the integral is performed. If omitted, all
+                axes are integrated over.
         
         Returns:
             float: The values integrated over the entire grid
         """
-        data = np.broadcast_to(data, self.shape)
-        return float((data * self.cell_volume_data).sum())
+        # determine the volumes of the individual cells
+        if axes is None:
+            volume_list = self.cell_volume_data
+        else:
+            # use stored value for the default case of integrating over all axes
+            volume_list = [cell_vol if ax in axes else 1
+                           for ax, cell_vol in enumerate(self.cell_volume_data)]
+        cell_volumes = functools.reduce(np.outer, volume_list)
+        
+        # determine the axes over which we will integrate
+        if not isinstance(data, np.ndarray) or data.ndim < self.num_axes:
+            # deal with the case where data is not supplied for each support
+            # point, e.g., when a single scalar is integrated over the grid
+            data = np.broadcast_to(data, self.shape)
+            
+        elif data.ndim > self.num_axes:
+            # deal with the case where more than a single value is provided per
+            # support point, e.g., when a tensorial field is integrated
+            offset = data.ndim - self.num_axes
+            if axes is None:
+                # integrate over all axes of the grid
+                axes = tuple(range(offset, data.ndim))
+            else:
+                # shift the indices to account for the data shape
+                axes = tuple(offset + i for i in axes)
+        
+        # calculate integral using a weighted sum along the chosen axes
+        return (data * cell_volumes).sum(axis=axes)
     
     
     @cached_method()
@@ -335,30 +374,35 @@ class GridBase(metaclass=ABCMeta):
         """ return a compiled function returning the volume of a grid cell
         
         Args:
-            flat_index (bool): When True, cell_volumes are indexed by a single
-                integer into the flattened array.
+            flat_index (bool):
+                When True, cell_volumes are indexed by a single integer into the
+                flattened array.
                 
         Returns:
             function: returning the volume of the chosen cell
         """
-        if np.isscalar(self.cell_volume_data):
-            cell_volume_data = self.cell_volume_data
+        if all(np.isscalar(d) for d in self.cell_volume_data):
+            # all cells have the same volume
+            cell_volume = np.product(self.cell_volume_data)
+
             @jit
-            def cell_volume(*args) -> float:
-                return cell_volume_data
+            def get_cell_volume(*args) -> float:
+                return cell_volume  # type: ignore
+        
         else:
+            # some cells have a different volume
             cell_volumes = self.cell_volumes
             
             if flat_index:
                 @jit
-                def cell_volume(idx: int) -> float:
+                def get_cell_volume(idx: int) -> float:
                     return cell_volumes.flat[idx]  # type: ignore
             else:
                 @jit
-                def cell_volume(*args) -> float:
+                def get_cell_volume(*args) -> float:
                     return cell_volumes[args]  # type: ignore
             
-        return cell_volume  # type: ignore
+        return get_cell_volume  # type: ignore
     
     
     @fill_in_docstring
@@ -802,5 +846,3 @@ class GridBase(metaclass=ABCMeta):
                                       f'for dimension {self.num_axes}')
             
         return add_interpolated  # type: ignore
-                
-

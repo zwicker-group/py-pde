@@ -1,8 +1,9 @@
 TODO
 ====
+* Use project and slice in plotting
+* disallow empty Cartesian grids (with shape (,))
 * Give examples for boundary conditions in the boundaries module description
     - link to this from the normal arguments
-* Introduce cut(x=?, y=?) and project([‘x’, ‘y’]) returning new field with new grid
 * Think about introducing data class that holds integrated, global variables
 	- this might be helpful to implement lagrange multipliers and the like
 * Fix progress bar when starting from non-zero t_start?

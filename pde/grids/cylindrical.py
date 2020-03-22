@@ -5,7 +5,8 @@ Cylindrical grids with azimuthal symmetry
  
 '''
 
-from typing import Tuple, Dict, Any, Callable, Generator, TYPE_CHECKING
+from typing import (Tuple, Sequence, Dict, Union, Any, Callable, Generator,
+                    TYPE_CHECKING)
 
 import numpy as np
 
@@ -17,7 +18,7 @@ from ..tools.docstrings import fill_in_docstring
 
 if TYPE_CHECKING:
     from .boundaries import Boundaries  # @UnusedImport
-
+    from .spherical import PolarGrid  # @UnusedImport
 
 
     
@@ -294,12 +295,13 @@ class CylindricalGrid(GridBase):
 
 
     @cached_property()
-    def cell_volume_data(self):
+    def cell_volume_data(self) -> Tuple[np.ndarray, float]:
         """ :class:`numpy.ndarray`: the volumes of all cells """
         dr, dz = self.discretization
         rs = np.arange(self.shape[0] + 1) * dr
         areas = np.pi * rs**2
-        return (np.diff(areas) * dz).reshape(self.shape[0], 1)
+        r_vols = np.diff(areas).reshape(self.shape[0], 1)
+        return (r_vols, dz)
     
             
     def normalize_point(self, point, reduced_coords: bool = False):
@@ -540,3 +542,25 @@ class CylindricalGrid(GridBase):
         grid_shape = 2 * num, 2 * num, self.shape[1]
         return CartesianGrid(grid_bounds, grid_shape)
     
+
+    def get_subgrid(self, indices: Sequence[int]) \
+            -> Union["CartesianGrid", "PolarGrid"]:
+        """ return a subgrid of only the specified axes """
+        if len(indices) != 1:
+            raise ValueError(f'Can only get sub-grid for one axis.')
+        
+        if indices[0] == 0:
+            # return a radial grid
+            assert self.axes[0] == 'r'
+            from .spherical import PolarGrid  # @Reimport
+            return PolarGrid(self.radius, self.shape[0])
+            
+        elif indices[0] == 1:
+            # return a Cartesian grid along the z-axis
+            assert self.axes[1] == 'z'
+            return CartesianGrid(bounds=[self.axes_bounds[1]],
+                                 shape=self.shape[1],
+                                 periodic=self.periodic[1])
+            
+        else:
+            raise ValueError(f'Cannot get sub-grid for index {indices[0]}')

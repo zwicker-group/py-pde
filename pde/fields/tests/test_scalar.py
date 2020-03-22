@@ -214,3 +214,32 @@ def test_to_scalar():
     sf = ScalarField.random_uniform(UnitGrid([3, 3]))
     np.testing.assert_allclose(sf.to_scalar().data, sf.data)    
     np.testing.assert_allclose(sf.to_scalar('squared_sum').data, sf.data**2)
+
+
+
+@pytest.mark.parametrize('grid', (g for g in iter_grids() if g.num_axes > 1))
+@pytest.mark.parametrize('method', ['integral', 'average'])
+def test_projection(grid, method):
+    """ test scalar projection """
+    sf = ScalarField.random_uniform(grid)
+    for ax in grid.axes:
+        sp = sf.project(ax, method=method)
+        assert sp.grid.dim < grid.dim
+        assert sp.grid.num_axes == grid.num_axes - 1
+        if method == 'integral':
+            assert sp.integral == pytest.approx(sf.integral)
+        elif method == 'average':
+            assert sp.average == pytest.approx(sf.average)
+
+
+
+@pytest.mark.parametrize('grid', (g for g in iter_grids() if g.num_axes > 1))
+def test_slice(grid):
+    """ test scalar slicing """
+    sf = ScalarField(grid, 0.5)
+    p = grid.get_random_point()
+    for i in range(grid.num_axes):
+        sf_slc = sf.slice({grid.axes[i]: p[i]})
+        np.testing.assert_allclose(sf_slc.data, 0.5)
+        assert sf_slc.grid.dim < grid.dim
+        assert sf_slc.grid.num_axes == grid.num_axes - 1

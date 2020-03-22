@@ -7,7 +7,8 @@ Cartesian grids of arbitrary dimension.
 
 import itertools
 from abc import ABCMeta
-from typing import List, Dict, Any, Union, Callable, Generator, TYPE_CHECKING
+from typing import (List, Sequence, Dict, Any, Union, Callable, Generator,
+                    TYPE_CHECKING)
 
 import numpy as np
 
@@ -26,7 +27,6 @@ if TYPE_CHECKING:
 class CartesianGridBase(GridBase, metaclass=ABCMeta):
     """Base class for :class:`UnitGrid` and :class:`CartesianGrid`"""
     
-    discretization: Any
     cuboid: Cuboid
     
     
@@ -59,6 +59,12 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
             self.axes = list('xyz'[:self.dim])
         else:
             self.axes = [chr(97 + i) for i in range(self.dim)]
+        
+    
+    @property
+    def cell_volume_data(self):
+        """ size associated with each cell """
+        return tuple(self.discretization)
         
 
     def contains_point(self, point):
@@ -427,9 +433,6 @@ class UnitGrid(CartesianGridBase):
     """
     
     
-    cell_volume_data = 1  # factor to convert cell volume to real volume
-    
-    
     def __init__(self, shape, periodic: Union[List[bool], bool] = False):
         """ 
         Args:
@@ -577,6 +580,12 @@ class UnitGrid(CartesianGridBase):
         """ convert unit grid to CartesianGrid """
         return CartesianGrid(self.cuboid.bounds, shape=self.shape,
                              periodic=self.periodic)
+        
+        
+    def get_subgrid(self, indices: Sequence[int]) -> "UnitGrid":
+        """ return a subgrid of only the specified axes """
+        return self.__class__(shape=[self.shape[i] for i in indices],
+                              periodic=[self.periodic[i] for i in indices])
 
 
 
@@ -668,11 +677,11 @@ class CartesianGrid(CartesianGridBase):
         self.axes_coords = tuple(axes_coords)
         self.axes_bounds = tuple(self.cuboid.bounds)
 
-
+    
     @property
     def state(self) -> Dict[str, Any]:
         """ dict: the state of the grid """
-        return {'bounds': tuple(tuple(cs) for cs in self.cuboid.bounds),
+        return {'bounds': self.axes_bounds,
                 'shape': self.shape,
                 'periodic': self.periodic}
 
@@ -699,12 +708,6 @@ class CartesianGrid(CartesianGridBase):
     def volume(self) -> float:
         """ float: total volume of the grid """
         return float(self.cuboid.volume)
-
-
-    @property    
-    def cell_volume_data(self) -> float:  # type: ignore
-        """ float: volume of a single cell """
-        return np.prod(self.discretization)  # type: ignore
 
 
     def normalize_point(self, point, reduced_coords: bool = False):
@@ -803,3 +806,9 @@ class CartesianGrid(CartesianGridBase):
                             (diff[..., self.periodic] + size/2) % size - size/2
         return diff
 
+
+    def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":
+        """ return a subgrid of only the specified axes """
+        return self.__class__(bounds=[self.axes_bounds[i] for i in indices],
+                              shape=[self.shape[i] for i in indices],
+                              periodic=[self.periodic[i] for i in indices])

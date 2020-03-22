@@ -10,7 +10,7 @@ import operator
 import logging
 from pathlib import Path 
 from abc import ABCMeta, abstractmethod, abstractproperty
-from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar, 
+from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar,
                     TYPE_CHECKING)
 
 import numpy as np
@@ -693,7 +693,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if scaling == 'none':
             noise_scale = std
         elif scaling == 'physical':
-            noise_scale = std / np.sqrt(grid.cell_volume_data)
+            noise_scale = std / np.sqrt(grid.cell_volumes)
         else:
             raise ValueError(f'Unknown noise scaling {scaling}')
             
@@ -1250,7 +1250,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         and dividing by the grid volume
         """
         return self.integral / self.grid.volume
-    
+
 
     @property    
     def fluctuations(self):
@@ -1267,7 +1267,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             individually. Consequently, a simple scalar is returned for a
             :class:`~pde.fields.scalar.ScalarField`.
         """
-        scaled_data = self.data * np.sqrt(self.grid.cell_volume_data)
+        scaled_data = self.data * np.sqrt(self.grid.cell_volumes)
         axes = tuple(range(self.rank, self.data.ndim))
         return np.std(scaled_data, axis=axes)
             
@@ -1518,5 +1518,3 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         finalize_plot(ax, title=title, show=show)
             
         return res
-        
-    

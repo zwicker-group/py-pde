@@ -189,10 +189,7 @@ class Tensor2Field(DataFieldBase):
     @property
     def integral(self):
         """ :class:`numpy.ndarray`: integral of each component over space """
-        out = np.empty((self.grid.dim, self.grid.dim))
-        for i, j in np.ndindex(out.shape):
-            out[i, j] = self.grid.integrate(self.data[i, j])
-        return out
+        return self.grid.integrate(self.data)
     
     
     def transpose(self, label: str = 'transpose') -> 'Tensor2Field':

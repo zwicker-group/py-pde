@@ -19,9 +19,8 @@ def _get_cartesian_grid(dim=2, periodic=True):
     return CartesianGrid(bounds, shape, periodic=periodic)
 
 
-
-def test_generic_grid():
-    """ test generic grid functions """
+def test_generic_cartesian_grid():
+    """ test generic cartesian grid functions """
     for dim in (1, 2, 3):
         periodic = random.choices([True, False], k=dim)
         shape = np.random.randint(2, 8, size=dim)
@@ -34,7 +33,7 @@ def test_generic_grid():
             assert grid.dim == dim
             dim_axes = len(grid.axes) + len(grid.axes_symmetric)
             assert dim_axes == dim
-            vol = grid.cell_volume_data * np.prod(shape)
+            vol = np.prod(grid.discretization) * np.prod(shape)
             assert grid.volume == pytest.approx(vol)
             
             # random points

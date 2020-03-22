@@ -3,7 +3,6 @@
 '''
 
 import itertools
-import random
 
 import numpy as np
 import pytest
@@ -33,36 +32,6 @@ def test_discretize():
     assert dx == pytest.approx((x_max - x_min) / num)
     x_expect = np.linspace(x_min + dx / 2, x_max - dx / 2, num)
     np.testing.assert_allclose(x, x_expect)
-
-
-
-def test_generic_grid():
-    """ test generic grid functions """
-    for dim in (1, 2, 3):
-        periodic = random.choices([True, False], k=dim)
-        shape = np.random.randint(2, 8, size=dim)
-        a = np.random.random(dim)
-        b = a + np.random.random(dim)
-        
-        cases = [grids.UnitGrid(shape, periodic=periodic),
-                 grids.CartesianGrid(np.c_[a, b], shape, periodic=periodic)]
-        for grid in cases:
-            assert grid.dim == dim
-            dim_axes = len(grid.axes) + len(grid.axes_symmetric)
-            assert dim_axes == dim
-            vol = grid.cell_volume_data * np.prod(shape)
-            assert grid.volume == pytest.approx(vol)
-            
-            # random points
-            points = [[np.random.uniform(a[i], b[i]) for i in range(dim)]
-                      for _ in range(10)]
-            c = grid.point_to_cell(points)
-            p = grid.cell_to_point(c)
-            np.testing.assert_array_equal(c, grid.point_to_cell(p))
-            
-            assert grid.contains_point(grid.get_random_point())
-            w = 0.499 * (b - a).min()
-            assert grid.contains_point(grid.get_random_point(w))
 
 
 
@@ -122,14 +91,6 @@ def test_cell_to_point_conversion():
         assert grid.cell_to_point(p_emtpy).size == 0
         
         
-        
-def test_grid_volume():
-    """ test calculation of the grid volume """
-    for grid in iter_grids():
-        vol_discr = np.broadcast_to(grid.cell_volume_data, grid.shape).sum()
-        assert vol_discr == pytest.approx(grid.volume)
-
-
 
 @skipUnlessModule('matplotlib')
 def test_grid_plotting():
