@@ -19,21 +19,18 @@ DOCSTRING_REPLACEMENTS = {
        :func:`~pde.grids.boundaries.axes.Boundaries.from_data`."""[1:],
        
     '{ARG_BOUNDARIES}': """
-        The boundary conditions applied to the field. In the most general 
-        format, this is a list with boundary conditions for each axis. If a 
-        particular axis is periodic, only periodic boundary conditions are
-        allowed (indicated by the string 'periodic'). For non-periodic axes,
-        different boundary conditions can be specified for the lower and upper
-        end of the axis (generally a tuple of two conditions). Typical choices 
-        for individual conditions are Dirichlet conditions that enforce a value
-        NUM (specified by `{'value': NUM}`) and Neumann conditions that enforce 
-        the value DERIV for the derivative in the normal direction (specified by
-        `{'derivative': DERIV}`). If both sides of an axis have the same 
-        boundary condition, only one needs to be specified (instead of the 
-        tuple). Similarly, if all axes have the same boundary conditions, only 
-        one axis needs to be specified (instead of the list). Finally, the 
-        special value 'natural' imposes periodic boundary conditions for 
-        periodic axis and a vanishing derivative otherwise."""[1:],
+        The boundary conditions applied to the field. This is generally a list
+        with boundary conditions for each axis. For periodic axis, only periodic
+        boundary conditions are allowed (indicated by 'periodic'). For
+        non-periodic axes, different boundary conditions can be specified for
+        the lower and upper end (by a tuple of two conditions). For instance,
+        Dirichlet conditions enforcing a value NUM (specified by
+        `{'value': NUM}`) and Neumann conditions enforcing the value DERIV for
+        the derivative in the normal direction (specified by
+        `{'derivative': DERIV}`) are supported. Note that the special value 
+        'natural' imposes periodic boundary conditions for periodic axis and a
+        vanishing derivative otherwise. More information can be found in the 
+        :ref:`boundaries documentation <documentation-boundaries>`."""[1:],
     
     '{ARG_TRACKER_INTERVAL}': """
         Determines how often the tracker interrupts the simulation. Simple

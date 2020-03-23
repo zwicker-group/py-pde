@@ -45,18 +45,6 @@ BoundaryData = Union[Dict, str, "BCBase"]
 
 
 
-class DomainError(ValueError):
-    """ exception indicating that point lies outside domain """ 
-    pass
-
-
-
-class PeriodicityError(RuntimeError):
-    """ exception indicating that the grid periodicity is inconsistent """
-    pass
-
-
-
 def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) \
         -> Tuple[Any, int, Tuple[int, ...]]:
     """ extract the 1d array along axis at point idx
@@ -830,6 +818,15 @@ class MixedBC(BCBase1stOrder):
     to Dirichlet conditions imposing :math:`\beta` as the derivative.
     Conversely,  :math:`\gamma \rightarrow \infty` corresponds to imposing a
     zero value on :math:`c`. 
+    
+    This condition can be enforced by using one of the following variants
+    
+    .. code-block:: python
+    
+        bc = {'mixed': VALUE}
+        bc = {'type': 'mixed', 'value': VALUE, 'const': CONST}
+        
+    where `VALUE` corresponds to :math:`\gamma` and `CONST` to :math:`\beta`.
     """
     
     names = ['mixed', 'robin']

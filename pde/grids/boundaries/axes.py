@@ -10,8 +10,8 @@ from typing import Union, Sequence
     
 import numpy as np
 
-from .local import PeriodicityError
 from .axis import BoundaryPair, BoundaryPairData, get_boundary_axis
+from .. import PeriodicityError
  
 BoundariesData = Union[BoundaryPairData,
                        Sequence[BoundaryPairData]]

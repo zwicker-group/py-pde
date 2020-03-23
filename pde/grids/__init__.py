@@ -30,6 +30,7 @@ Inheritance structure of the classes:
  
 '''
 
+from .base import DomainError, PeriodicityError
 from .cartesian import UnitGrid, CartesianGrid
 from .spherical import PolarGrid, SphericalGrid
 from .cylindrical import CylindricalGrid

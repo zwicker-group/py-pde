@@ -79,6 +79,17 @@ def discretize_interval(x_min: float, x_max: float, num: int) \
 
 
 
+class DomainError(ValueError):
+    """ exception indicating that point lies outside domain """ 
+    pass
+
+
+
+class PeriodicityError(RuntimeError):
+    """ exception indicating that the grid periodicity is inconsistent """
+    pass
+
+
 
 class GridBase(metaclass=ABCMeta):
     """ Base class for all grids defining common methods and interfaces

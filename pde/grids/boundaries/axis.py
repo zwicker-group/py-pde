@@ -14,10 +14,9 @@ from typing import Union, Tuple, Dict, Callable
 import numpy as np
 from numba.extending import register_jitable
     
-from ..base import GridBase
+from ..base import GridBase, DomainError
 
-from .local import (BCBase, BoundaryData, NeumannBC, _make_get_arr_1d,
-                    DomainError)
+from .local import BCBase, BoundaryData, NeumannBC, _make_get_arr_1d
 
 
 
