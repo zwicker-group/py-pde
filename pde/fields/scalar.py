@@ -261,7 +261,25 @@ class ScalarField(DataFieldBase):
     def slice(self, position: Dict[str, float],
               method: str = 'nearest',
               label: str = None) -> "ScalarField":
-        """ slice data at a given position """
+        """ slice data at a given position
+        
+        Args:
+            position (dict):
+                Determines the location of the slice using a dictionary
+                supplying coordinate values for a subset of axes. Axes not
+                mentioned in the dictionary are retained and form the slice.
+                For instance, in a 2d Cartesian grid, `position = {'x': 1}`
+                slices along the y-direction at x=1.
+            method (str):
+                The method used for slicing. `nearest` takes data from cells
+                defined on the grid.
+            label (str, optional):
+                The label of the returned field
+                
+        Returns:
+            ScalarField: The sliced data in a scalar field with a subgrid of
+            the original grid.
+        """
         grid = self.grid
         
         # parse the positions and determine the axes to remove
