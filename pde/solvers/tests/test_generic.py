@@ -20,6 +20,14 @@ def test_solver_registration():
 
 
 
+def test_solver_in_pde_class():
+    """ test whether solver instances can be used in pde instances """
+    field = ScalarField.random_uniform(UnitGrid([16, 16]), -1, 1)
+    eq = DiffusionPDE()
+    eq.solve(field, t_range=1, method=ScipySolver)
+
+
+
 def test_compare_solvers():
     """ compare several solvers """
     field = ScalarField.random_uniform(UnitGrid([16, 16]), -1, 1)

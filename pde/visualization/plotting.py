@@ -211,8 +211,8 @@ class ScalarFieldPlot():
         self.show_data(fields)    
         
     
-    @classmethod
     @fill_in_docstring
+    @classmethod
     def from_storage(cls, storage: StorageBase, quantities=None):
         """ create ScalarFieldPlot from storage
         

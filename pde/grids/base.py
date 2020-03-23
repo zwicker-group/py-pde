@@ -34,6 +34,11 @@ def _check_shape(shape) -> Tuple[int, ...]:
     """ checks the consistency of shape tuples """
     if not hasattr(shape, '__iter__'):
         shape = [shape]  # support single numbers
+        
+    if len(shape) == 0:
+        raise ValueError('Require at least one dimension')
+        
+    # convert the shape to a tuple of integers
     result = []
     for dim in shape:
         if dim == int(dim) and dim >= 1:

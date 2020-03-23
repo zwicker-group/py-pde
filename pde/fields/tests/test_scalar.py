@@ -11,6 +11,7 @@ from .test_generic import iter_grids
 from ..scalar import ScalarField
 from ..base import FieldBase
 from ...grids import UnitGrid, CartesianGrid, PolarGrid
+from ...grids.boundaries import DomainError
 from ...grids.tests.test_cartesian import _get_cartesian_grid
 from ...tools.misc import module_available, skipUnlessModule
 
@@ -230,6 +231,9 @@ def test_projection(grid, method):
             assert sp.integral == pytest.approx(sf.integral)
         elif method == 'average':
             assert sp.average == pytest.approx(sf.average)
+            
+    with pytest.raises(ValueError):
+        sf.project('q')
 
 
 
@@ -243,3 +247,56 @@ def test_slice(grid):
         np.testing.assert_allclose(sf_slc.data, 0.5)
         assert sf_slc.grid.dim < grid.dim
         assert sf_slc.grid.num_axes == grid.num_axes - 1
+        
+    with pytest.raises(DomainError):
+        sf.slice({grid.axes[0]: -10})
+    with pytest.raises(ValueError):
+        sf.slice({'q': 0})
+
+
+
+def test_poisson_solver_1d():
+    """ test the poisson solver on 1d grids """
+    # solve Laplace's equation
+    grid = UnitGrid([4])
+    field = ScalarField(grid)
+    res = field.solve_poisson([{'value': -1}, {'value': 3}])
+    np.testing.assert_allclose(res.data, grid.axes_coords[0] - 1)
+    
+    res = field.solve_poisson([{'value': -1}, {'derivative': 1}])
+    np.testing.assert_allclose(res.data, grid.axes_coords[0] - 1)
+
+    # test Poisson equation with 2nd Order BC
+    res = field.solve_poisson([{'value': -1}, 'extrapolate'])
+    
+    # solve Poisson's equation
+    grid = CartesianGrid([[0, 1]], 4)
+    field = ScalarField(grid, data=1)
+    
+    res = field.copy()
+    field.solve_poisson([{'value': 1}, {'derivative': 1}], out=res)
+    xs = grid.axes_coords[0]
+    np.testing.assert_allclose(res.data, 1 + 0.5 * xs**2, rtol=1e-2)
+    
+
+
+def test_poisson_solver_2d():
+    """ test the poisson solver on 2d grids """
+    grid = CartesianGrid([[0, 2 * np.pi]] * 2, 16)
+    bcs = [{'value': 'sin(y)'}, {'value': 'sin(x)'}]
+    
+    # solve Laplace's equation
+    field = ScalarField(grid)
+    res = field.solve_poisson(bcs)
+    xs = grid.cell_coords[..., 0]
+    ys = grid.cell_coords[..., 1]
+    
+    # analytical solution was obtained with Mathematica
+    expect = (np.cosh(np.pi - ys) * np.sin(xs) +
+              np.cosh(np.pi - xs) * np.sin(ys)) / np.cosh(np.pi)
+    np.testing.assert_allclose(res.data, expect, atol=1e-2, rtol=1e-2)
+    
+    # test more complex case for exceptions
+    res = field.solve_poisson([{'value': 'sin(y)'}, {'curvature': 'sin(x)'}])
+    
+    

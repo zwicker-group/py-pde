@@ -287,7 +287,7 @@ class ScalarField(DataFieldBase):
         for ax, pos in position.items():
             try:
                 i = grid.axes.index(ax)
-            except IndexError:
+            except ValueError:
                 raise ValueError(f'The axes {ax} is not contained in '
                                  f'{self.grid} with axes {self.grid.axes}')
                 

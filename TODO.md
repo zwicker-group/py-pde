@@ -1,7 +1,8 @@
 TODO
 ====
+* Add example for dataanalysis uysing project, slice, fluctuations, average, ...
+    - also display plotting multiple things
 * Use project and slice in plotting
-* disallow empty Cartesian grids (with shape (,))
 * Give examples for boundary conditions in the boundaries module description
     - link to this from the normal arguments
 * Think about introducing data class that holds integrated, global variables

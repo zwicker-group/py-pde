@@ -19,6 +19,16 @@ def _get_cartesian_grid(dim=2, periodic=True):
     return CartesianGrid(bounds, shape, periodic=periodic)
 
 
+
+def test_degenerated_grid():
+    """ test degenerated grids """
+    with pytest.raises(ValueError):
+        UnitGrid([])
+    with pytest.raises(ValueError):
+        CartesianGrid([], 1)
+
+
+
 def test_generic_cartesian_grid():
     """ test generic cartesian grid functions """
     for dim in (1, 2, 3):

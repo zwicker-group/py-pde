@@ -323,51 +323,6 @@ def test_poisson_solver_general(dim):
                                err_msg=f'bcs = {bcs}')
 
 
-
-def test_poisson_solver_1d():
-    """ test the poisson solver on 1d grids """
-    # solve Laplace's equation
-    grid = UnitGrid([4])
-    field = ScalarField(grid)
-    res = field.solve_poisson([{'value': -1}, {'value': 3}])
-    np.testing.assert_allclose(res.data, grid.axes_coords[0] - 1)
-    
-    res = field.solve_poisson([{'value': -1}, {'derivative': 1}])
-    np.testing.assert_allclose(res.data, grid.axes_coords[0] - 1)
-
-    # test Poisson equation with 2nd Order BC
-    res = field.solve_poisson([{'value': -1}, 'extrapolate'])
-    
-    # solve Poisson's equation
-    grid = CartesianGrid([[0, 1]], 4)
-    field = ScalarField(grid, data=1)
-    
-    res = field.solve_poisson([{'value': 1}, {'derivative': 1}])
-    xs = grid.axes_coords[0]
-    np.testing.assert_allclose(res.data, 1 + 0.5 * xs**2, rtol=1e-2)
-    
-
-
-def test_poisson_solver_2d():
-    """ test the poisson solver on 2d grids """
-    grid = CartesianGrid([[0, 2 * π]] * 2, 16)
-    bcs = [{'value': 'sin(y)'}, {'value': 'sin(x)'}]
-    
-    # solve Laplace's equation
-    field = ScalarField(grid)
-    res = field.solve_poisson(bcs)
-    xs = grid.cell_coords[..., 0]
-    ys = grid.cell_coords[..., 1]
-    
-    # analytical solution was obtained with Mathematica
-    expect = (np.cosh(π - ys) * np.sin(xs) +
-              np.cosh(π - xs) * np.sin(ys)) / np.cosh(π)
-    np.testing.assert_allclose(res.data, expect, atol=1e-2, rtol=1e-2)
-    
-    # test more complex case for exceptions
-    res = field.solve_poisson([{'value': 'sin(y)'}, {'curvature': 'sin(x)'}])
-    
-    
     
 def test_2nd_order_bc():
     """ test whether 2nd order boundary conditions can be used """

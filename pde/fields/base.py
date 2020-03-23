@@ -500,7 +500,7 @@ class FieldBase(metaclass=ABCMeta):
     
     
     def plot_vector(self, method: str, ax=None, transpose: bool = False,
-                    title: Optional[str] = None, **kwargs):
+                    title: Optional[str] = None, show: bool = False, **kwargs):
         r""" visualize a 2d vector field
 
         Args:
@@ -512,8 +512,11 @@ class FieldBase(metaclass=ABCMeta):
                 should be plotted.
             title (str): Title of the plot. If omitted, the title is chosen
                 automatically based on the label the data field.
+            show (bool):
+                Flag setting whether :func:`matplotlib.pyplot.show` is called
             \**kwargs: Additional keyword arguments are passed to
-                `matplotlib.pyplot.quiver` or `matplotlib.pyplot.streamplot`.
+                :func:`matplotlib.pyplot.quiver` or
+                :func:`matplotlib.pyplot.streamplot`.
                 
         Returns:
             Result of `plt.quiver` or `plt.streamplot`
@@ -1340,16 +1343,21 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         r""" visualize a field using a 1d cut
         
         Args:
-            extract (str): The method used for extracting the line data.
-            ylabel (str): Label of the y-axis. If omitted, the label is chosen
+            extract (str):
+                The method used for extracting the line data.
+            ylabel (str):
+                Label of the y-axis. If omitted, the label is chosen 
                 automatically from the data field.
-            ax: Figure axes to be used for plotting. If `None`, a new figure is
+            ax:
+                Figure axes to be used for plotting. If `None`, a new figure is
                 created
-            title (str): Title of the plot.
+            title (str):
+                Title of the plot.
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
-            \**kwargs: Additional keyword arguments are passed to
-                `matplotlib.pyplot.plot`
+            \**kwargs:
+                Additional keyword arguments are passed to
+                :func:`matplotlib.pyplot.plot`
                 
         Returns:
             Instance of the line returned by `plt.plot`
@@ -1458,22 +1466,27 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         r""" visualize a 2d vector field
 
         Args:
-            method (str): Plot type that is used. This can be either `quiver`
-                or `streamplot`.
-            ax: Figure axes to be used for plotting. If `None`, a new figure is
+            method (str):
+                Plot type that is used. This can be either `quiver` or
+                `streamplot`.
+            ax:
+                Figure axes to be used for plotting. If `None`, a new figure is
                 created
-            transpose (bool): determines whether the transpose of the data
-                should be plotted.
-            title (str): Title of the plot. If omitted, the title is chosen
+            transpose (bool):
+                Determines whether the transpose of the data should be plotted.
+            title (str):
+                Title of the plot. If omitted, the title is chosen
                 automatically based on the label the data field.
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
-            \**kwargs: Additional keyword arguments are passed to
+            \**kwargs:
+                Additional keyword arguments are passed to
                 :func:`matplotlib.pyplot.quiver` or
                 :func:`matplotlib.pyplot.streamplot`.
                 
         Returns:
-            Result of `plt.quiver` or `plt.streamplot`
+            Result of :func:`matplotlib.pyplot.quiver` or
+            :func:`matplotlib.pyplot.streamplot`
         """
         import matplotlib.pyplot as plt
         

@@ -73,7 +73,8 @@ class StorageBase(metaclass=ABCMeta):
 
 
     @abstractmethod
-    def append(self, data: np.ndarray, time: Optional[float]): pass
+    def append(self, data: np.ndarray, time: Optional[float] = None) -> None:
+        pass
     
     
     def clear(self, clear_data_shape: bool = False) -> None:
