@@ -85,6 +85,12 @@ class DomainError(ValueError):
 
 
 
+class DimensionError(ValueError):
+    """ exception indicating that dimensions were inconsistent """ 
+    pass
+
+
+
 class PeriodicityError(RuntimeError):
     """ exception indicating that the grid periodicity is inconsistent """
     pass
@@ -474,7 +480,7 @@ class GridBase(metaclass=ABCMeta):
                 c_l, d_l = divmod((point[0] - lo) / dx - 0.5, 1.)
                 if c_l < -1 or c_l > size - 1:
                     if fill is None:
-                        raise ValueError('Point lies outside the grid')
+                        raise DomainError('Point lies outside the grid')
                     else:
                         return fill
                 c_li = int(c_l)
@@ -545,7 +551,7 @@ class GridBase(metaclass=ABCMeta):
         
                 if weight == 0:
                     if fill is None:
-                        raise ValueError('Point lies outside the grid')
+                        raise DomainError('Point lies outside the grid')
                     else:
                         return fill
                             
@@ -629,7 +635,7 @@ class GridBase(metaclass=ABCMeta):
                                 
                 if weight == 0:
                     if fill is None:
-                        raise ValueError('Point lies outside the grid')
+                        raise DomainError('Point lies outside the grid')
                     else:
                         return fill
                             
@@ -677,7 +683,7 @@ class GridBase(metaclass=ABCMeta):
                 """
                 c_l, d_l = divmod((point[0] - lo) / dx - 0.5, 1.)
                 if c_l < -1 or c_l > size - 1:
-                    raise ValueError('Point lies outside grid')
+                    raise DomainError('Point lies outside grid')
                 c_li = int(c_l)
                 c_hi = c_li + 1
                 
@@ -691,7 +697,7 @@ class GridBase(metaclass=ABCMeta):
 
                 elif c_li < 0:
                     if c_hi >= size:
-                        raise RuntimeError('Point lies outside the grid')
+                        raise DomainError('Point lies outside the grid')
                     else:  # c_hi < size
                         data[..., c_hi] += amount / cell_volume(c_hi)
                 else:  # c_li >= 0
@@ -750,7 +756,7 @@ class GridBase(metaclass=ABCMeta):
                         total_weight += w_x[i] * w_y[j]
         
                 if total_weight == 0:
-                    raise ValueError('Point lies outside the grid')
+                    raise DomainError('Point lies outside the grid')
         
                 # change the field with the correct weights
                 for i in range(2):
@@ -829,7 +835,7 @@ class GridBase(metaclass=ABCMeta):
                             total_weight += w_x[i] * w_y[j] * w_z[k]
         
                 if total_weight == 0:
-                    raise ValueError('Point lies outside the grid')
+                    raise DomainError('Point lies outside the grid')
         
                 # change the field with the correct weights
                 for i in range(2):

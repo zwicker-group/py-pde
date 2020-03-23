@@ -13,7 +13,7 @@ import numba as nb
 
 from .base import DataFieldBase
 from .scalar import ScalarField
-from ..grids.base import GridBase 
+from ..grids.base import GridBase, DimensionError
 from ..tools.numba import jit
 from ..tools.expressions import ScalarExpression
 from ..tools.docstrings import fill_in_docstring
@@ -57,8 +57,8 @@ class VectorField(DataFieldBase):
         grid = fields[0].grid
         
         if grid.dim != len(fields):
-            raise ValueError('Grid dimension and number of scalar fields '
-                             f'differ ({grid.dim} != {len(fields)})')
+            raise DimensionError('Grid dimension and number of scalar fields '
+                                 f'differ ({grid.dim} != {len(fields)})')
             
         data = []
         for field in fields:

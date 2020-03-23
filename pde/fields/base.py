@@ -16,7 +16,8 @@ from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar,
 import numpy as np
 from scipy import interpolate, ndimage
 
-from ..grids.base import GridBase, discretize_interval
+from ..grids.base import (GridBase, discretize_interval, DimensionError,
+                          DomainError)
 from ..grids.cartesian import CartesianGridBase
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.numba import jit
@@ -1141,8 +1142,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Field of the same rank as the current one.
         """
         if self.grid.dim != grid.dim:
-            raise ValueError(f'Grid dimensions are incompatible '
-                             f'({self.grid.dim:d} != {grid.dim:d})')
+            raise DimensionError(f'Grid dimensions are incompatible '
+                                 f'({self.grid.dim:d} != {grid.dim:d})')
             
         # determine the points at which data needs to be calculated
         if isinstance(grid, CartesianGridBase):
@@ -1184,7 +1185,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid_dim = len(grid.axes)
     
         if point.size != grid_dim or point.ndim != 1:
-            raise ValueError(f'Dimension mismatch for point {point}')
+            raise DimensionError(f'Dimension mismatch for point {point}')
         
         point = grid.normalize_point(point, reduced_coords=True)
     
@@ -1205,7 +1206,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 cells.append((tuple(coords), weight))
                 
         if total_weight == 0:
-            raise ValueError('Point lies outside grid')
+            raise DomainError('Point lies outside grid')
     
         # alter each point in second iteration
         for coords, weight in cells:

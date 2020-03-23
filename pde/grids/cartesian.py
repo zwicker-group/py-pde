@@ -13,7 +13,7 @@ from typing import (List, Sequence, Dict, Any, Union, Callable, Generator,
 import numpy as np
 
 
-from .base import GridBase, _check_shape
+from .base import GridBase, _check_shape, DimensionError
 from ..tools.cache import cached_method
 from ..tools.cuboid import Cuboid
 from ..tools.docstrings import fill_in_docstring
@@ -49,9 +49,9 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
         if isinstance(periodic, bool):
             self.periodic = [periodic] * self.dim
         elif len(periodic) != self.dim:
-            raise ValueError('Number of axes with specified periodicity does '
-                             f'not match grid dimension ({len(periodic)} != '
-                             f'{self.dim})')
+            raise DimensionError('Number of axes with specified periodicity '
+                                 'does not match grid dimension '
+                                 f'({len(periodic)} != {self.dim})')
         else:
             self.periodic = periodic
         
@@ -74,7 +74,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
             point (vector): Coordinates of the point
         """
         if len(point) != self.dim:
-            raise ValueError('Incompatible dimensions')
+            raise DimensionError('Incompatible dimensions')
         return self.cuboid.contains_point(point)
 
 
@@ -283,7 +283,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
-            raise ValueError('Dimensions are not compatible')
+            raise DimensionError('Dimensions are not compatible')
         
         # calculate the difference vector between all cells and the origin
         diff = self.difference_vector_real(origin, self.cell_coords)
@@ -498,12 +498,12 @@ class UnitGrid(CartesianGridBase):
             return np.zeros((0, self.dim))
         if point.ndim == 0:
             if self.dim > 1:
-                raise ValueError(f'Dimension mismatch: Point {point} is '
-                                 f'not of dimension {self.dim}.')
+                raise DimensionError(f'Dimension mismatch: Point {point} is '
+                                     f'not of dimension {self.dim}.')
         elif point.shape[-1] != self.dim:
-            raise ValueError('Dimension mismatch: Array of shape '
-                             f'{point.shape} does not describe points of '
-                             f'dimension {self.dim}.')
+            raise DimensionError('Dimension mismatch: Array of shape '
+                                 f'{point.shape} does not describe points of '
+                                 f'dimension {self.dim}.')
         
         # normalize the coordinates for the periodic dimensions
         if point.ndim == 0:
@@ -534,7 +534,7 @@ class UnitGrid(CartesianGridBase):
         if cells.size == 0:
             return np.zeros((0, self.dim))
         if cells.shape[-1] != self.dim:
-            raise ValueError('Dimension mismatch')
+            raise DimensionError('Dimension mismatch')
         return cells + 0.5
 
 
@@ -655,8 +655,8 @@ class CartesianGrid(CartesianGridBase):
         if len(shape) == 1 and self.cuboid.dim > 1:
             shape = np.full(self.cuboid.dim, shape, dtype=np.uint32)
         if self.cuboid.dim != len(shape):
-            raise ValueError('Dimension of the bounds and the shape are not '
-                             'compatible')
+            raise DimensionError('Dimension of the bounds and the shape are '
+                                 'not compatible')
                     
         # initialize the base class            
         super().__init__(shape, periodic)
@@ -727,12 +727,12 @@ class CartesianGrid(CartesianGridBase):
             return np.zeros((0, self.dim)) 
         if point.ndim == 0:
             if self.dim > 1:
-                raise ValueError(f'Dimension mismatch: Point {point} is '
-                                 f'not of dimension {self.dim}.')
+                raise DimensionError(f'Dimension mismatch: Point {point} is '
+                                     f'not of dimension {self.dim}.')
         elif point.shape[-1] != self.dim:
-            raise ValueError('Dimension mismatch: Array of shape '
-                             f'{point.shape} does not describe points of '
-                             f'dimension {self.dim}.')
+            raise DimensionError('Dimension mismatch: Array of shape '
+                                 f'{point.shape} does not describe points of '
+                                 f'dimension {self.dim}.')
         
         if any(self.periodic):
             if self.dim == 1:  # single, periodic dimension

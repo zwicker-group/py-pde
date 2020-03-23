@@ -12,7 +12,7 @@ from typing import Tuple, Dict, Any, Union, Callable, Generator, TYPE_CHECKING
 import numpy as np
 from scipy import interpolate
 
-from .base import GridBase, discretize_interval, _check_shape
+from .base import GridBase, discretize_interval, _check_shape, DimensionError
 from .cartesian import CartesianGrid
 from ..tools.spherical import volume_from_radius
 from ..tools.cache import cached_property, cached_method
@@ -156,7 +156,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
         """
         point = np.atleast_1d(point)
         if point.shape[-1] != self.dim:
-            raise ValueError('Dimension mismatch')
+            raise DimensionError('Dimension mismatch')
         r = np.linalg.norm(point, axis=-1)
         
         r_inner, r_outer = self.axes_bounds[0]
@@ -307,9 +307,9 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
         if point.size == 0:
             return np.zeros((0, size))
         if point.shape[-1] != size:
-            raise ValueError('Dimension mismatch: Array of shape '
-                             f'{point.shape} does not describe points of '
-                             f'dimension {size}.')
+            raise DimensionError('Dimension mismatch: Array of shape '
+                                 f'{point.shape} does not describe points of '
+                                 f'dimension {size}.')
         return point
 
     
@@ -539,7 +539,7 @@ class PolarGrid(SphericalGridBase):
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != 1:
-            raise ValueError(f'Dimension mismatch: Points {points} invalid')
+            raise DimensionError(f'Dimension mismatch: Points {points} invalid')
         
         y = points[..., 0]
         x = np.zeros_like(y)
@@ -633,7 +633,7 @@ class SphericalGrid(SphericalGridBase):
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != 1:
-            raise ValueError(f'Dimension mismatch: Points {points} invalid')
+            raise DimensionError(f'Dimension mismatch: Points {points} invalid')
         z = points[..., 0]
         x = np.zeros_like(z)
         return np.stack((x, x, z), axis=-1)    

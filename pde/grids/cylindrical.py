@@ -10,7 +10,7 @@ from typing import (Tuple, Sequence, Dict, Union, Any, Callable, Generator,
 
 import numpy as np
 
-from .base import GridBase, discretize_interval, _check_shape
+from .base import GridBase, discretize_interval, _check_shape, DimensionError
 from .cartesian import CartesianGrid
 from ..tools.cache import cached_property, cached_method
 from ..tools.docstrings import fill_in_docstring
@@ -78,7 +78,7 @@ class CylindricalGrid(GridBase):
         elif len(shape_list) == 2:
             self.shape = shape_list  # type: ignore
         else:
-            raise ValueError("`shape` must be two integers")
+            raise DimensionError("`shape` must be two integers")
         if len(bounds_z) != 2:
             raise ValueError('Lower and upper value of the axial coordinate '
                              'must be specified')
@@ -176,7 +176,6 @@ class CylindricalGrid(GridBase):
             if r_mag <= 0 or z_max <= z_min:
                 raise RuntimeError('Random points would be too close to '
                                    'boundary')
-
 
         # create random point
         r = r_mag * np.random.random() + r_min
@@ -321,9 +320,9 @@ class CylindricalGrid(GridBase):
         if point.size == 0:
             return np.zeros((0, size))
         if point.shape[-1] != size:
-            raise ValueError('Dimension mismatch: Array of shape '
-                             f'{point.shape} does not describe points of '
-                             f'dimension {size}.')
+            raise DimensionError('Dimension mismatch: Array of shape '
+                                 f'{point.shape} does not describe points of '
+                                 f'dimension {size}.')
         
         if self.periodic_z:
             z_min = self.axes_bounds[1][0]
@@ -345,7 +344,7 @@ class CylindricalGrid(GridBase):
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != 2:
-            raise ValueError(f'Dimension mismatch: Points {points} invalid')
+            raise DimensionError(f'Dimension mismatch: Points {points} invalid')
         
         x = points[..., 0]
         y = np.zeros_like(x)
@@ -394,7 +393,7 @@ class CylindricalGrid(GridBase):
         if cells.size == 0:
             return np.zeros((0, self.dim))
         if cells.shape[-1] != 2:
-            raise ValueError(f'Dimension mismatch: Cell {cells} invalid')
+            raise DimensionError(f'Dimension mismatch: Cell {cells} invalid')
 
         # convert from cells indices to grid coordinates
         points = (cells + 0.5) * self.discretization
@@ -459,7 +458,7 @@ class CylindricalGrid(GridBase):
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
-            raise ValueError('Dimensions are not compatible')
+            raise DimensionError('Dimensions are not compatible')
             
         if origin[0] != 0 or origin[1] != 0:
             raise RuntimeError('Origin must lie on symmetry axis for '

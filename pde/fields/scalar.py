@@ -11,8 +11,7 @@ import numpy as np
 
 from .base import DataFieldBase
 from ..grids import UnitGrid, CartesianGrid
-from ..grids.base import GridBase 
-from ..grids.boundaries import DomainError
+from ..grids.base import GridBase, DomainError
 from ..tools.expressions import ScalarExpression
 from ..tools.docstrings import fill_in_docstring
 
