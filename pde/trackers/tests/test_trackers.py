@@ -193,14 +193,14 @@ def test_material_conservation_tracker():
     state = ScalarField.random_uniform(UnitGrid([8, 8]), 0, 1)
     
     solver = ExplicitSolver(CahnHilliardPDE())
-    controller = Controller(solver, t_range=10,
+    controller = Controller(solver, t_range=1,
                             tracker=['material_conservation'])
     controller.run(state, dt=1e-3)
-    assert controller.info['t_final'] >= 10
+    assert controller.info['t_final'] >= 1
     
     solver = ExplicitSolver(AllenCahnPDE())
-    controller = Controller(solver, t_range=10,
+    controller = Controller(solver, t_range=1,
                             tracker=['material_conservation'])
     controller.run(state, dt=1e-3)
-    assert controller.info['t_final'] <= 10
+    assert controller.info['t_final'] <= 1
     

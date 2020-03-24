@@ -70,6 +70,8 @@ def test_individual_boundaries():
         assert bc == bc.copy()
         assert isinstance(str(bc), str)
         assert isinstance(repr(bc), str)
+
+    assert bc.extract_component(tuple()) == bc
         
     # multidimensional
     g2 = UnitGrid([2, 3])
@@ -139,3 +141,38 @@ def test_mixed_condition():
     bc = BCBase.from_data(g, 0, True, {'type': 'mixed', 'value': np.inf})
     assert bc.get_virtual_point(data) == pytest.approx(-2)
         
+        
+        
+def test_inhomogeneous_bcs():
+    """ test inhomogeneous boundary conditions """
+    g = UnitGrid([2, 2])
+    data = np.ones((2, 2))
+    
+    # first order bc
+    bc_x = BCBase.from_data(g, 0, True, {'value': 'y'})
+    assert isinstance(str(bc_x), str)
+    assert bc_x.rank == 0
+    assert bc_x.get_virtual_point(data, (1, 0)) == pytest.approx(0)
+    assert bc_x.get_virtual_point(data, (1, 1)) == pytest.approx(2)
+
+    # second order bc
+    bc_x = BCBase.from_data(g, 0, True, {'curvature': 'y'})
+    assert isinstance(str(bc_x), str)
+    assert bc_x.rank == 0
+    assert bc_x.get_virtual_point(data, (1, 0)) == pytest.approx(1.5)
+    assert bc_x.get_virtual_point(data, (1, 1)) == pytest.approx(2.5)
+    ev = bc_x.get_virtual_point_evaluator()
+    assert ev(data, (1, 0)) == pytest.approx(1.5)
+    assert ev(data, (1, 1)) == pytest.approx(2.5)
+    ev = bc_x.get_adjacent_evaluator()
+    assert ev(data, (0, 0)) == pytest.approx(1)
+    assert ev(data, (0, 1)) == pytest.approx(1)
+    assert ev(data, (1, 0)) == pytest.approx(1.5)
+    assert ev(data, (1, 1)) == pytest.approx(2.5)
+    # test lower bc
+    bc_x = BCBase.from_data(g, 0, False, {'curvature': 'y'})
+    ev = bc_x.get_adjacent_evaluator()
+    assert ev(data, (1, 0)) == pytest.approx(1)
+    assert ev(data, (1, 1)) == pytest.approx(1)
+    assert ev(data, (0, 0)) == pytest.approx(1.5)
+    assert ev(data, (0, 1)) == pytest.approx(2.5)

@@ -279,12 +279,11 @@ class BCBase(metaclass=ABCMeta):
     def __repr__(self):
         if np.array_equal(self.value, 0):
             return (f"{self.__class__.__name__}("
-                    f"axis={self.axis}, upper={self.upper}, "
-                    f"homogeneous={self.homogeneous})")
+                    f"axis={self.axis}, upper={self.upper})")
         else:
             return (f"{self.__class__.__name__}("
                     f"axis={self.axis}, upper={self.upper}, "
-                    f"homogeneous={self.homogeneous}, value={self.value!r})")
+                    f"value={self.value!r})")
     
     
     def __str__(self):
