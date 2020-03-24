@@ -1,2 +1,3 @@
 queries:
 - exclude: py/mismatched-multiple-assignment
+- exclude: py/similar-function
