@@ -268,7 +268,9 @@ class ScalarField(DataFieldBase):
                 supplying coordinate values for a subset of axes. Axes not
                 mentioned in the dictionary are retained and form the slice.
                 For instance, in a 2d Cartesian grid, `position = {'x': 1}`
-                slices along the y-direction at x=1.
+                slices along the y-direction at x=1. Additionally, the special
+                positions 'low', 'mid', and 'high' are supported to reference
+                relative positions along the axis.
             method (str):
                 The method used for slicing. `nearest` takes data from cells
                 defined on the grid.
@@ -284,14 +286,26 @@ class ScalarField(DataFieldBase):
         # parse the positions and determine the axes to remove
         ax_remove, pos_values = [], np.zeros(grid.num_axes)
         for ax, pos in position.items():
+            # check the axis
             try:
                 i = grid.axes.index(ax)
             except ValueError:
                 raise ValueError(f'The axes {ax} is not contained in '
                                  f'{self.grid} with axes {self.grid.axes}')
-                
             ax_remove.append(i)
-            pos_values[i] = pos
+            
+            # check the position
+            if isinstance(pos, str):
+                if pos in {'min', 'low', 'lower'}:
+                    pos_values[i] = grid.axes_coords[i][0]
+                elif pos in {'max', 'high', 'upper'}:
+                    pos_values[i] = grid.axes_coords[i][-1]
+                elif pos in {'mid', 'middle', 'center'}:
+                    pos_values[i] = np.mean(grid.axes_bounds[i])
+                else:
+                    raise ValueError(f'Unknown position `{pos}`')
+            else:
+                pos_values[i] = float(pos)
             
         # determine the axes left after slicing and the new grid
         ax_all = range(grid.num_axes)

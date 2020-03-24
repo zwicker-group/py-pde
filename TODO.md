@@ -10,7 +10,6 @@ TODO
   on the scalar operators –> could this work for all grids?
 * Add conservative Laplace operator for polar and cylindrical grid?
 * Add tests:
-	- boundary conditions with spatial dependence
 	- general Trackers
 	- Different intervals for trackers
 	- Interpolating using boundary conditions

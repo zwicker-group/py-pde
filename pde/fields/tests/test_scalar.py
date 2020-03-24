@@ -255,6 +255,18 @@ def test_slice(grid):
 
 
 
+def test_slice_positions():
+    """ test scalar slicing at standard positions """
+    grid = UnitGrid([3, 1])
+    sf = ScalarField(grid, np.arange(3).reshape(3, 1))
+    assert sf.slice({'x': 'min'}).data == 0
+    assert sf.slice({'x': 'mid'}).data == 1
+    assert sf.slice({'x': 'max'}).data == 2
+    with pytest.raises(ValueError):
+        sf.slice({'x': 'foo'})
+
+
+
 def test_poisson_solver_1d():
     """ test the poisson solver on 1d grids """
     # solve Laplace's equation
