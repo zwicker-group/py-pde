@@ -500,8 +500,13 @@ class FieldBase(metaclass=ABCMeta):
         raise NotImplementedError()
     
     
-    def plot_vector(self, method: str, ax=None, transpose: bool = False,
-                    title: Optional[str] = None, show: bool = False, **kwargs):
+    def plot_vector(self,
+                    method: str = 'quiver',
+                    ax=None,
+                    transpose: bool = False,
+                    title: Optional[str] = None,
+                    show: bool = False,
+                    **kwargs):
         r""" visualize a 2d vector field
 
         Args:
