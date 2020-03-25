@@ -5,7 +5,8 @@ Defines the :class:`~pde.controller.Controller` class for solving pdes.
 '''
 
 
-from typing import Union, Tuple, Any, Dict  # @UnusedImport
+from typing import (Union, Tuple, Any, Dict, TypeVar,  # @UnusedImport
+                    TYPE_CHECKING)
 import datetime
 import time
 
@@ -16,8 +17,12 @@ from .base import SolverBase
 from ..trackers.base import (TrackerCollectionDataType, TrackerCollection,
                              FinishedSimulation) 
 
+if TYPE_CHECKING:
+    from ..fields.base import FieldBase  # @UnusedImport
+
 
 TRangeType = Union[float, Tuple[float, float]]
+TState = TypeVar('TState', bound='FieldBase')
 
 
 
@@ -75,7 +80,7 @@ class Controller():
                                  'a tuple of two numbers')
 
 
-    def run(self, state, dt: float = None): 
+    def run(self, state: TState, dt: float = None) -> TState: 
         """ run the simulation 
         
         Diagnostic information about the solver procedure are available in the
