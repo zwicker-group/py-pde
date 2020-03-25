@@ -237,8 +237,8 @@ class StorageBase(metaclass=ABCMeta):
     def end_writing(self) -> None:
         """ finalize the storage after writing """
         pass
-    
-    
+
+
     
 class StorageTracker(TrackerBase):
     """ Tracker that stores data in special storage classes 

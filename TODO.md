@@ -1,5 +1,6 @@
 TODO
 ====
+* Enable automatic color scaling in videos
 * Think about introducing data class that holds integrated, global variables
 	- this might be helpful to implement lagrange multipliers and the like
 * Fix progress bar when starting from non-zero t_start?

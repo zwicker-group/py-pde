@@ -31,6 +31,14 @@ DOCSTRING_REPLACEMENTS = {
         'natural' imposes periodic boundary conditions for periodic axis and a
         vanishing derivative otherwise. More information can be found in the 
         :ref:`boundaries documentation <documentation-boundaries>`."""[1:],
+
+    '{ARG_COLOR_SCALE}': """
+        Flag determining how the range of the color scale is determined. In the
+        simplest case a tuple of numbers marks the lower and upper end of the 
+        scalar values that will be shown. If only a single number is supplied,
+        the range starts at zero and ends at the given number. Additionally, the
+        special value 'automatic' determines the range from the range of scalar
+        values."""[1:-1],
     
     '{ARG_TRACKER_INTERVAL}': """
         Determines how often the tracker interrupts the simulation. Simple
@@ -41,18 +49,18 @@ DOCSTRING_REPLACEMENTS = {
         """[1:-1],
         
     '{ARG_PLOT_QUANTITIES}': """
-        A list of quantities that are shown side by side. If `quantities` is a
-        simple list, the panels will be rendered as a single row, while a 2d
-        list allows for multiple rows.
-        Each panel is defined by a dictionary, where the item with key 'source'
-        is mandatory, since it defines what is being shown. The value associated
-        with 'source' can be either an integer specifying the component that is
-        shown or a function which is evaluated with the full state as input.
-        Additional items in the dictionary are 'title' (setting the title of the
-        panel), 'scale' (defining the color range shown; these are typically two
-        numbers defining the lower and upper bound, but if only one is given the
-        range [0, scale] is assumed), and 'cmap' (defining the colormap being
-        used)."""[1:],
+        A 2d list of quantities that are shown in a rectangular arrangement.
+        If `quantities` is a simple list, the panels will be rendered as a
+        single row.
+        Each panel is defined by a dictionary, where the mandatory item 'source'
+        defines what is being shown. Here, an integer specifies the component
+        that is extracted from the field while a function is evaluate with the
+        full state as an input and the result is shown.
+        Additional items in the dictionary can be 'title' (setting the title of
+        the panel), 'scale' (defining the color range shown; these are typically
+        two numbers defining the lower and upper bound, but if only one is given
+        the range [0, scale] is assumed), and 'cmap' (defining the colormap
+        being used)."""[1:],
         
     # descriptions of the discretization and the symmetries         
     '{DESCR_CYLINDRICAL_GRID}': r"""

@@ -33,7 +33,7 @@ def test_simple_diffusion_value():
     b_l = {'type': 'value', 'value': 0}
     b_r = {'type': 'value', 'value': 1}
     pde = DiffusionPDE(bc=[b_l, b_r])
-    sol = pde.solve(c, t_range=50, dt=0.001, tracker=None)
+    sol = pde.solve(c, t_range=1, dt=0.001, tracker=None)
     np.testing.assert_allclose(sol.data, grid.axes_coords[0], rtol=5e-3)
     
     
@@ -45,7 +45,7 @@ def test_simple_diffusion_flux_right():
     b_l = {'type': 'value', 'value': 0}
     b_r = {'type': 'derivative', 'value': 3}
     pde = DiffusionPDE(bc=[b_l, b_r])
-    sol = pde.solve(c, t_range=50, dt=0.001, tracker=None)
+    sol = pde.solve(c, t_range=5, dt=0.001, tracker=None)
     np.testing.assert_allclose(sol.data, 3 * grid.axes_coords[0], rtol=5e-3)
     
     
@@ -57,5 +57,5 @@ def test_simple_diffusion_flux_left():
     b_l = {'type': 'derivative', 'value': 2}
     b_r = {'type': 'value', 'value': 0}
     pde = DiffusionPDE(bc=[b_l, b_r])
-    sol = pde.solve(c, t_range=50, dt=0.001, tracker=None)
+    sol = pde.solve(c, t_range=5, dt=0.001, tracker=None)
     np.testing.assert_allclose(sol.data, 2 - 2 * grid.axes_coords[0], rtol=5e-3)

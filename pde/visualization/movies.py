@@ -12,14 +12,14 @@ Functions for creating movies of simulation results
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-from typing import Union, Tuple
 import functools
 import os
 import subprocess as sp
 import tempfile
 import shutil
+from typing import Dict, Any
 
-from .plotting import ScalarFieldPlot
+from .plotting import ScalarFieldPlot, ColorScaleData
 from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
 
@@ -176,35 +176,36 @@ class Movie(object):
 
 
 
+@fill_in_docstring
 def movie_scalar(storage: StorageBase,
                  filename: str,
-                 scale: Union[str, float, Tuple[float, float]] = 'automatic',
-                 extras=None,
+                 color_scale: ColorScaleData = 'automatic',
+                 extras: Dict[str, Any] = None,
                  progress: bool = True,) -> None:
     """ produce a movie for a simulation of a scalar field
     
     Args:
         storage (:class:`~pde.storage.base.StorageBase`):
             The storage instance that contains all the data for the movie
-        filename (str): The filename to which the movie is written. The
-            extension determines the format used.
-        scale (float, tuple): Defining the color range shown; typically, two
-            numbers are given to define the lower and upper bound, but if only
-            one is specified the range [0, scale] is assumed. If `scale` is set
-            to 'automatic', the values are determined from the data in storage.
-        extras (dict, optional): Additional functions that are evaluated and
-            shown for each time step. The key of the dictionary is used as a
-            panel title.
-        progress (bool): Flag determining whether the progress of making
-            the movie is shown.
+        filename (str):
+            The filename to which the movie is written. The extension determines
+            the format used.
+        color_scale (str, float, tuple of float):
+            {ARG_COLOR_SCALE}
+        extras (dict, optional):
+            Additional functions that are evaluated and shown for each time 
+            step. The key of the dictionary is used as a panel title.
+        progress (bool):
+            Flag determining whether the progress of making the movie is shown.
     """
-    quantities = [{'title': 'Concentration', 'source': None, 'scale': scale}]
+    quantities = [{'title': 'Concentration', 'source': None}]
     if extras:
         for key, value in extras.items():
             quantities.append({'title': key, 'source': value})
     
     # initialize the plot with the first data point
-    plot = ScalarFieldPlot.from_storage(storage, quantities=quantities)
+    plot = ScalarFieldPlot.from_storage(storage, quantities=quantities,
+                                        color_scale=color_scale)
     # make the full movie
     plot.make_movie(storage, filename, progress=progress)    
    
@@ -214,6 +215,7 @@ def movie_scalar(storage: StorageBase,
 def movie_multiple(storage: StorageBase,
                    filename: str,
                    quantities=None,
+                   color_scale: ColorScaleData = 'automatic',
                    progress: bool = True) -> None:
     """ produce a movie for a simulation with n components
 
@@ -225,9 +227,12 @@ def movie_multiple(storage: StorageBase,
             the format used.
         quantities:
             {ARG_PLOT_QUANTITIES}
+        color_scale (str, float, tuple of float):
+            {ARG_COLOR_SCALE}
         progress (bool):
             Flag determining whether the progress of making the movie is shown.
     """
-    plot = ScalarFieldPlot.from_storage(storage, quantities=quantities)
+    plot = ScalarFieldPlot.from_storage(storage, quantities=quantities,
+                                        color_scale=color_scale)
     plot.make_movie(storage, filename, progress=progress)
 

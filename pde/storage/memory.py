@@ -5,6 +5,7 @@ Defines a class storing data in memory.
 """
 
 from typing import Optional, List, Sequence
+from contextlib import contextmanager
 
 import numpy as np
 
@@ -158,3 +159,21 @@ class MemoryStorage(StorageBase):
         if time is None:
             time = 0 if len(self.times) == 0 else self.times[-1] + 1
         self.times.append(time)
+
+
+
+@contextmanager
+def get_memory_storage(field: FieldBase, info: InfoDict = None):
+    """ initialize the storage for writing data
+    
+    Args:
+        field (:class:`~pde.fields.FieldBase`):
+            An example of the data that will be written to extract the grid
+            and the data_shape
+        info (dict):
+            Supplies extra information that is stored in the storage
+    """
+    storage = MemoryStorage()
+    storage.start_writing(field, info)
+    yield storage
+    storage.end_writing()

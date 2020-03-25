@@ -14,7 +14,7 @@ Functions and classes for plotting simulation data
 
 import logging
 import warnings
-from typing import Union, Callable, Optional, Any, List  # @UnusedImport
+from typing import (Union, Callable, Optional, Any, Dict, List, Tuple)
 
 import numpy as np
 
@@ -23,6 +23,9 @@ from ..fields.base import FieldBase, DataFieldBase
 from ..storage.base import StorageBase
 from ..tools.misc import display_progress
 from ..tools.docstrings import fill_in_docstring
+
+
+ColorScaleData = Union[str, float, Tuple[float, float]]
 
 
 
@@ -142,13 +145,18 @@ class ScalarFieldPlot():
     """ class managing compound plots of scalar fields """
     
     @fill_in_docstring
-    def __init__(self, fields: FieldBase, quantities=None, show: bool = True):
+    def __init__(self, fields: FieldBase,
+                 quantities=None,
+                 color_scale: ColorScaleData = 'automatic',
+                 show: bool = True):
         """
         Args:
             fields:
                 Collection of fields
             quantities:
                 {ARG_PLOT_QUANTITIES}
+            color_scale (str, float, tuple of float):
+                {ARG_COLOR_SCALE}
             show (bool):
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background, which can be useful if it only needs to
@@ -159,7 +167,8 @@ class ScalarFieldPlot():
         
         self.grid = fields.grid
         example_image = fields.get_image_data()
-        self.quantities = self._prepare_quantities(fields, quantities)
+        self.quantities = self._prepare_quantities(fields, quantities,
+                                                   color_scale=color_scale)
         self.show = show
              
         num_rows = len(self.quantities)
@@ -179,16 +188,25 @@ class ScalarFieldPlot():
             img_row = []
             for j, panel in enumerate(panel_row):
                 # determine scale of the panel
-                scale = panel.get('scale', 1)
-                try:
-                    vmin, vmax = scale
-                except TypeError:
-                    vmin, vmax = 0, scale
+                scale = panel.get('scale', color_scale)
+                if scale == 'automatic':
+                    vmin, vmax = None, None
+                elif scale == 'unity':
+                    vmin, vmax = 0, 1
+                elif scale == 'symmetric':
+                    vmin, vmax = -1, 1
+                else:
+                    try:
+                        vmin, vmax = scale
+                    except TypeError:
+                        vmin, vmax = 0, scale
                     
                 # determine colormap
                 cmap = panel.get('cmap')
                 if cmap is None:
-                    if np.isclose(-vmin, vmax):
+                    if vmin is None or vmax is None:
+                        cmap = cm.PiYG
+                    elif np.isclose(-vmin, vmax):
                         cmap = cm.coolwarm
                     elif np.isclose(vmin, 0):
                         cmap = cm.gray
@@ -204,16 +222,21 @@ class ScalarFieldPlot():
                 ax.set_title(panel.get('title', ''))
                 ax.set_xlabel(example_image['label_x'])
                 ax.set_ylabel(example_image['label_y'])
-#                 ax.axison = False
+                
+                # store the default value alongside
+                img._default_vmin_vmax = vmin, vmax
                 img_row.append(img)
             self.images.append(img_row)
             
         self.show_data(fields)    
         
     
-    @fill_in_docstring
     @classmethod
-    def from_storage(cls, storage: StorageBase, quantities=None):
+    @fill_in_docstring
+    def from_storage(cls, storage: StorageBase,
+                     quantities=None,
+                     color_scale: ColorScaleData = 'automatic') \
+            -> "ScalarFieldPlot":
         """ create ScalarFieldPlot from storage
         
         Args:
@@ -221,13 +244,15 @@ class ScalarFieldPlot():
                 Instance of the storage class that contains the data
             quantities:
                 {ARG_PLOT_QUANTITIES}
+            color_scale (str, float, tuple of float):
+                {ARG_COLOR_SCALE}
             
         Returns:
             :class:`~pde.visualization.plotting.ScalarFieldPlot`
         """
         fields = storage.get_field(0)
         quantities = cls._prepare_quantities(fields, quantities, 
-                                             default_scale='automatic')
+                                             color_scale=color_scale)
         
         # resolve automatic scaling
         for quantity_row in quantities:
@@ -246,17 +271,34 @@ class ScalarFieldPlot():
         
         
     @staticmethod
-    def _prepare_quantities(fields: FieldBase, quantities, default_scale=None):
-        """ internal method to prepare quantities """
+    @fill_in_docstring
+    def _prepare_quantities(fields: FieldBase,
+                            quantities,
+                            color_scale: ColorScaleData = 'automatic') \
+            -> List[List[Dict[str, Any]]]:
+        """ internal method to prepare quantities
+        
+        Args:
+            fields (:class:`~pde.fields.FieldBase`):
+                The field containing the data to show
+            quantities (dict):
+                {ARG_PLOT_QUANTITIES}
+            color_scale (str, float, tuple of float):
+                {ARG_COLOR_SCALE}
+        
+        Returns:
+            list of list of dict: a 2d arrangements of panels that define what
+                quantities are shown.
+        """
         if quantities is None:
             # show each component by default
             if isinstance(fields, FieldCollection):
                 quantities = []
                 for i, field in enumerate(fields):
                     title = field.label if field.label else f'Field {i + 1}'
-                    quantity = {'title': title, 'source': i}
-                    if default_scale:
-                        quantity['scale'] = default_scale
+                    quantity = {'title': title,
+                                'source': i,
+                                'scale': color_scale}
                     quantities.append(quantity)
             else:
                 quantities = [{'title': 'Concentration', 'source': None}]
@@ -266,7 +308,7 @@ class ScalarFieldPlot():
             quantities = [[quantities]]
         elif isinstance(quantities[0], dict):
             quantities = [quantities]
-        return quantities
+        return quantities  # type: ignore
         
         
     def __del__(self):
@@ -277,6 +319,20 @@ class ScalarFieldPlot():
         else:
             if hasattr(self, 'fig') and self.fig:
                 plt.close(self.fig)
+        
+            
+    def savefig(self, path: str, **kwargs):
+        """ save plot to file 
+        
+        Args:
+            path (str):
+                The path to the file where the image is written. The file
+                extension determines the image format
+            **kwargs:
+                Additional arguments are forwarded to 
+                :meth:`matplotlib.figure.Figure.savefig`.
+        """
+        self.fig.savefig(path, **kwargs)
         
             
     def show_data(self, fields: FieldBase, title: Optional[str] = None) -> None:
@@ -296,9 +352,19 @@ class ScalarFieldPlot():
         
         for i, panel_row in enumerate(self.quantities):
             for j, panel in enumerate(panel_row):
+                # obtain image data
                 field = extract_field(fields, panel.get('source'))
-                img = field.get_image_data()
-                self.images[i][j].set_data(img['data'])
+                img_data = field.get_image_data()
+                
+                # set the data in the correct panel
+                img = self.images[i][j]
+                img.set_data(img_data['data'])
+                vmin, vmax = img._default_vmin_vmax
+                if vmin is None:
+                    vmin = img_data['data'].min()
+                if vmax is None:
+                    vmax = img_data['data'].max()
+                img.set_clim(vmin, vmax)
                 
         # add a small pause to allow the GUI to run it's event loop
         if self.show:
