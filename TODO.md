@@ -1,6 +1,7 @@
 TODO
 ====
-* Enable automatic color scaling in videos
+* Hide attributes in field classes that should not be overwritten
+    - clarify in the description of grids and fields what fields are mutable
 * Think about introducing data class that holds integrated, global variables
 	- this might be helpful to implement lagrange multipliers and the like
 * Fix progress bar when starting from non-zero t_start?

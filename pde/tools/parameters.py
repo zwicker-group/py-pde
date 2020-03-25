@@ -61,12 +61,6 @@ class Parameter():
                                **self.__dict__)
     
     
-    def __hash__(self):
-        """ custom hash function """
-        return hash((str(self.name), self.convert(), self.cls.__name__,
-                     self.description))
- 
-    
     def __getstate__(self):
         # replace the object class by its class path 
         return {'name': str(self.name),
@@ -80,11 +74,6 @@ class Parameter():
         state['cls'] = import_class(state['cls'])
         # restore the state
         self.__dict__.update(state)
-    
-    
-    def __lt__(self, other):
-        """ allow comparison of parameter objects """
-        return self.name.upper() < other.name.upper()
         
         
     def convert(self, value=None):
