@@ -31,7 +31,7 @@ from .base import TrackerBase, InfoDict, FinishedSimulation, Real
 from .intervals import IntervalData, RealtimeIntervals
 from ..fields.base import FieldBase
 from ..fields import FieldCollection
-from ..visualization.plotting import ColorScaleData
+from ..visualization.plotting import ScaleData
 from ..tools.parse_duration import parse_duration
 from ..tools.misc import get_progress_bar_class
 from ..tools.docstrings import fill_in_docstring
@@ -239,7 +239,7 @@ class PlotTracker(TrackerBase):
                  output_folder: Optional[str] = None,
                  movie_file: Optional[str] = None,
                  quantities=None,
-                 color_scale: ColorScaleData = 'automatic',
+                 scale: ScaleData = 'automatic',
                  show: bool = True):
         """
         Args:
@@ -256,8 +256,8 @@ class PlotTracker(TrackerBase):
                 written after the simulation.
             quantities:
                 {ARG_PLOT_QUANTITIES}
-            color_scale (str, float, tuple of float):
-                {ARG_COLOR_SCALE}
+            scale (str, float, tuple of float):
+                {ARG_PLOT_SCALE}
             show (bool, optional):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
@@ -266,7 +266,7 @@ class PlotTracker(TrackerBase):
         self.output_file = output_file
         self.output_folder = output_folder
         self.quantities = quantities
-        self.color_scale = color_scale
+        self.scale = scale
         self.show = show
         
         if movie_file is not None or output_folder is not None:
@@ -293,7 +293,7 @@ class PlotTracker(TrackerBase):
         from ..visualization.plotting import ScalarFieldPlot
         self.plot = ScalarFieldPlot(field,
                                     quantities=self.quantities,
-                                    color_scale=self.color_scale,
+                                    scale=self.scale,
                                     show=self.show)
          
         return super().initialize(field, info=info)

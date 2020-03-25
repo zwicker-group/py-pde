@@ -32,14 +32,6 @@ DOCSTRING_REPLACEMENTS = {
         vanishing derivative otherwise. More information can be found in the 
         :ref:`boundaries documentation <documentation-boundaries>`."""[1:],
 
-    '{ARG_COLOR_SCALE}': """
-        Flag determining how the range of the color scale is determined. In the
-        simplest case a tuple of numbers marks the lower and upper end of the 
-        scalar values that will be shown. If only a single number is supplied,
-        the range starts at zero and ends at the given number. Additionally, the
-        special value 'automatic' determines the range from the range of scalar
-        values."""[1:-1],
-    
     '{ARG_TRACKER_INTERVAL}': """
         Determines how often the tracker interrupts the simulation. Simple
         numbers are interpreted as durations measured in the simulation time
@@ -62,6 +54,14 @@ DOCSTRING_REPLACEMENTS = {
         the range [0, scale] is assumed), and 'cmap' (defining the colormap
         being used)."""[1:],
         
+    '{ARG_PLOT_SCALE}': """
+        Flag determining how the range of the color scale is determined. In the
+        simplest case a tuple of numbers marks the lower and upper end of the 
+        scalar values that will be shown. If only a single number is supplied,
+        the range starts at zero and ends at the given number. Additionally, the
+        special value 'automatic' determines the range from the range of scalar
+        values."""[1:-1],
+    
     # descriptions of the discretization and the symmetries         
     '{DESCR_CYLINDRICAL_GRID}': r"""
         The cylindrical grid assumes polar symmetry, so that fields only depend

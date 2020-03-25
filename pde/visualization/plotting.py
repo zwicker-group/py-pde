@@ -25,7 +25,7 @@ from ..tools.misc import display_progress
 from ..tools.docstrings import fill_in_docstring
 
 
-ColorScaleData = Union[str, float, Tuple[float, float]]
+ScaleData = Union[str, float, Tuple[float, float]]
 
 
 
@@ -147,7 +147,7 @@ class ScalarFieldPlot():
     @fill_in_docstring
     def __init__(self, fields: FieldBase,
                  quantities=None,
-                 color_scale: ColorScaleData = 'automatic',
+                 scale: ScaleData = 'automatic',
                  show: bool = True):
         """
         Args:
@@ -155,8 +155,8 @@ class ScalarFieldPlot():
                 Collection of fields
             quantities:
                 {ARG_PLOT_QUANTITIES}
-            color_scale (str, float, tuple of float):
-                {ARG_COLOR_SCALE}
+            scale (str, float, tuple of float):
+                {ARG_PLOT_SCALE}
             show (bool):
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background, which can be useful if it only needs to
@@ -168,7 +168,7 @@ class ScalarFieldPlot():
         self.grid = fields.grid
         example_image = fields.get_image_data()
         self.quantities = self._prepare_quantities(fields, quantities,
-                                                   color_scale=color_scale)
+                                                   scale=scale)
         self.show = show
              
         num_rows = len(self.quantities)
@@ -188,18 +188,18 @@ class ScalarFieldPlot():
             img_row = []
             for j, panel in enumerate(panel_row):
                 # determine scale of the panel
-                scale = panel.get('scale', color_scale)
-                if scale == 'automatic':
+                panel_scale = panel.get('scale', scale)
+                if panel_scale == 'automatic':
                     vmin, vmax = None, None
-                elif scale == 'unity':
+                elif panel_scale == 'unity':
                     vmin, vmax = 0, 1
-                elif scale == 'symmetric':
+                elif panel_scale == 'symmetric':
                     vmin, vmax = -1, 1
                 else:
                     try:
-                        vmin, vmax = scale
+                        vmin, vmax = panel_scale
                     except TypeError:
-                        vmin, vmax = 0, scale
+                        vmin, vmax = 0, panel_scale
                     
                 # determine colormap
                 cmap = panel.get('cmap')
@@ -235,7 +235,7 @@ class ScalarFieldPlot():
     @fill_in_docstring
     def from_storage(cls, storage: StorageBase,
                      quantities=None,
-                     color_scale: ColorScaleData = 'automatic') \
+                     scale: ScaleData = 'automatic') \
             -> "ScalarFieldPlot":
         """ create ScalarFieldPlot from storage
         
@@ -244,15 +244,15 @@ class ScalarFieldPlot():
                 Instance of the storage class that contains the data
             quantities:
                 {ARG_PLOT_QUANTITIES}
-            color_scale (str, float, tuple of float):
-                {ARG_COLOR_SCALE}
+            scale (str, float, tuple of float):
+                {ARG_PLOT_SCALE}
             
         Returns:
             :class:`~pde.visualization.plotting.ScalarFieldPlot`
         """
         fields = storage.get_field(0)
-        quantities = cls._prepare_quantities(fields, quantities, 
-                                             color_scale=color_scale)
+        quantities = cls._prepare_quantities(fields, quantities=quantities,
+                                             scale=scale)
         
         # resolve automatic scaling
         for quantity_row in quantities:
@@ -274,7 +274,7 @@ class ScalarFieldPlot():
     @fill_in_docstring
     def _prepare_quantities(fields: FieldBase,
                             quantities,
-                            color_scale: ColorScaleData = 'automatic') \
+                            scale: ScaleData = 'automatic') \
             -> List[List[Dict[str, Any]]]:
         """ internal method to prepare quantities
         
@@ -283,8 +283,8 @@ class ScalarFieldPlot():
                 The field containing the data to show
             quantities (dict):
                 {ARG_PLOT_QUANTITIES}
-            color_scale (str, float, tuple of float):
-                {ARG_COLOR_SCALE}
+            scale (str, float, tuple of float):
+                {ARG_PLOT_SCALE}
         
         Returns:
             list of list of dict: a 2d arrangements of panels that define what
@@ -296,9 +296,7 @@ class ScalarFieldPlot():
                 quantities = []
                 for i, field in enumerate(fields):
                     title = field.label if field.label else f'Field {i + 1}'
-                    quantity = {'title': title,
-                                'source': i,
-                                'scale': color_scale}
+                    quantity = {'title': title, 'source': i, 'scale': scale}
                     quantities.append(quantity)
             else:
                 quantities = [{'title': 'Concentration', 'source': None}]

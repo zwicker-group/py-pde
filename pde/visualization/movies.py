@@ -19,7 +19,7 @@ import tempfile
 import shutil
 from typing import Dict, Any
 
-from .plotting import ScalarFieldPlot, ColorScaleData
+from .plotting import ScalarFieldPlot, ScaleData
 from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
 
@@ -179,7 +179,7 @@ class Movie(object):
 @fill_in_docstring
 def movie_scalar(storage: StorageBase,
                  filename: str,
-                 color_scale: ColorScaleData = 'automatic',
+                 scale: ScaleData = 'automatic',
                  extras: Dict[str, Any] = None,
                  progress: bool = True,) -> None:
     """ produce a movie for a simulation of a scalar field
@@ -190,8 +190,8 @@ def movie_scalar(storage: StorageBase,
         filename (str):
             The filename to which the movie is written. The extension determines
             the format used.
-        color_scale (str, float, tuple of float):
-            {ARG_COLOR_SCALE}
+        scale (str, float, tuple of float):
+            {ARG_PLOT_SCALE}
         extras (dict, optional):
             Additional functions that are evaluated and shown for each time 
             step. The key of the dictionary is used as a panel title.
@@ -205,7 +205,7 @@ def movie_scalar(storage: StorageBase,
     
     # initialize the plot with the first data point
     plot = ScalarFieldPlot.from_storage(storage, quantities=quantities,
-                                        color_scale=color_scale)
+                                        scale=scale)
     # make the full movie
     plot.make_movie(storage, filename, progress=progress)    
    
@@ -215,7 +215,7 @@ def movie_scalar(storage: StorageBase,
 def movie_multiple(storage: StorageBase,
                    filename: str,
                    quantities=None,
-                   color_scale: ColorScaleData = 'automatic',
+                   scale: ScaleData = 'automatic',
                    progress: bool = True) -> None:
     """ produce a movie for a simulation with n components
 
@@ -227,12 +227,12 @@ def movie_multiple(storage: StorageBase,
             the format used.
         quantities:
             {ARG_PLOT_QUANTITIES}
-        color_scale (str, float, tuple of float):
-            {ARG_COLOR_SCALE}
+        scale (str, float, tuple of float):
+            {ARG_PLOT_SCALE}
         progress (bool):
             Flag determining whether the progress of making the movie is shown.
     """
     plot = ScalarFieldPlot.from_storage(storage, quantities=quantities,
-                                        color_scale=color_scale)
+                                        scale=scale)
     plot.make_movie(storage, filename, progress=progress)
 

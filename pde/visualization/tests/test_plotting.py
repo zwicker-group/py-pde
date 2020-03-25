@@ -19,7 +19,7 @@ def test_scalar_field_plot():
     # create some data
     state = ScalarField.random_uniform(UnitGrid([16, 16]))
     for scale in [(0, 1), 1, 'automatic', 'symmetric', 'unity']:
-        sfp = plotting.ScalarFieldPlot(state, color_scale=scale)
+        sfp = plotting.ScalarFieldPlot(state, scale=scale)
         with tempfile.NamedTemporaryFile(suffix='.png') as fp:
             sfp.savefig(fp.name)
             assert os.stat(fp.name).st_size > 0

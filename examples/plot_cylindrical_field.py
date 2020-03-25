@@ -2,8 +2,8 @@
 Plotting a scalar field in cylindrical coordinates
 ==================================================
 
-This example shows how to initialize and visualize a scalar field in cylindrical
-coordinates.
+This example shows how to initialize and visualize the scalar field 
+:math:`u = \sqrt{z} \, \exp(-r^2)` in cylindrical coordinates.
 """
 
 from pde import CylindricalGrid, ScalarField

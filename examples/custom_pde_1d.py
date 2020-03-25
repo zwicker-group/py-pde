@@ -3,6 +3,11 @@ Custom PDE in one dimension
 ===========================
 
 This example implements a PDE that is only defined in one dimension.
+Here, we chose the `Korteweg-de Vries equation
+<https://en.wikipedia.org/wiki/Korteweg–de_Vries_equation>`_, given by
+
+.. math::
+    \partial_t \phi = 6 \phi \partial_x \phi - \partial_x^2 \phi
 """
 
 from math import pi
@@ -12,10 +17,7 @@ from pde import (CartesianGrid, ScalarField, PDEBase, MemoryStorage,
 
 
 class KortewegDeVriesPDE(PDEBase):
-    """ Korteweg-de Vries equation
-    
-    See https://en.wikipedia.org/wiki/Korteweg–de_Vries_equation
-    """
+    """ Korteweg-de Vries equation """
     
     def evolution_rate(self, state, t=0):
         """ implement the python version of the evolution equation """

@@ -1,18 +1,21 @@
-"""
+r"""
 Custom scalar PDE
 =================
 
-This example implements a custom scalar PDE.
+This example implements a custom scalar PDE. To display some of the features of
+the package, we here implemented the `Kuramoto–Sivashinsky equation
+<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, which was
+considered for flame front dynamics:
+
+.. math::
+    \partial_t u = -\frac12 |\nabla u|^2 - \nabla^2 u - \nabla^4 u
 """
 
 from pde import UnitGrid, ScalarField, PDEBase
 
 
 class KuramotoSivashinskyPDE(PDEBase):
-    """ Kuramoto–Sivashinsky equation
-    
-    See https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation
-    """
+    """ Implementation of the normalized Kuramoto–Sivashinsky equation """
     
     def evolution_rate(self, state, t=0):
         """ implement the python version of the evolution equation """

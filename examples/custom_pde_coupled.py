@@ -1,18 +1,26 @@
-"""
+r"""
 Custom coupled PDEs
 ===================
 
-This example shows how to solve a set of coupled PDEs.
+This example shows how to solve a set of coupled PDEs, the
+spatially coupled `FitzHugh–Nagumo model 
+<https://en.wikipedia.org/wiki/FitzHugh–Nagumo_model>`_, which is a simple model
+for the excitable dynamics of coupled Neurons:
+
+.. math::
+
+    \partial_t u &= \nabla^2 u + u (u - \alpha) (1 - u) + w \\
+    \partial_t w &= \epsilon u
+    
+Here, :math:`\alpha` denotes the external stimulus and :math:`\epsilon` defines
+the recovery time scale.
 """
 
 from pde import UnitGrid, FieldCollection, PDEBase
 
 
 class FitzhughNagumoPDE(PDEBase):
-    """ FitzHugh–Nagumo model with diffusive coupling
-    
-    See https://en.wikipedia.org/wiki/FitzHugh–Nagumo_model
-    """
+    """ FitzHugh–Nagumo model with diffusive coupling """
     
     def __init__(self, stimulus=.1, ε=1, bc='natural'):
         self.bc = bc
