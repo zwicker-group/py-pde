@@ -219,24 +219,22 @@ def get_progress_bar_class():
         # progress bar package does not seem to be available
         warnings.warn('`tqdm` package is not available. Progress will '
                       'be indicated by dots.')
-        return MockProgress
+        progress_bar_class = MockProgress
 
-    else:     
+    else:
         # tqdm is available => decide which class to return   
-        tqdm_version = tuple(int(v)
-                             for v in tqdm.__version__.split('.')[:2])
-        if tqdm_version >= (4, 34):
-            # TODO: Bump this up to 4, 40 eventually 
+        tqdm_version = tuple(int(v) for v in tqdm.__version__.split('.')[:2])
+        if tqdm_version >= (4, 40):
             # optionally import notebook progress bar in recent version
-            from tqdm.auto import tqdm
+            from tqdm.auto import tqdm as progress_bar_class
         else:
             # only import text progress bar in older version
-            from tqdm import tqdm
+            progress_bar_class = tqdm.tqdm
             warnings.warn('Your version of tqdm is outdated. To get a '
                           'nicer progress bar update to at least '
                           'version 4.40.')
 
-        return tqdm
+    return progress_bar_class
         
         
 

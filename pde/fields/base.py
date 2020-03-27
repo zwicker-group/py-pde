@@ -15,6 +15,7 @@ from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar,
 
 import numpy as np
 from scipy import interpolate, ndimage
+import matplotlib.pyplot as plt
 
 from ..grids.base import (GridBase, discretize_interval, DimensionError,
                           DomainError)
@@ -572,7 +573,6 @@ class FieldBase(metaclass=ABCMeta):
             
         # store the result to a file if requested
         if filename:
-            import matplotlib.pyplot as plt
             plt.savefig(filename)
             
         return res
@@ -876,8 +876,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 remaining arguments are are passed to
                 :func:`matplotlib.pyplot.imsave` to affect the appearance.
                         """
-        from matplotlib.pyplot import imsave
-
         # obtain image data
         get_image_args = {}
         for key in ['performance_goal', 'scalar']:
@@ -886,7 +884,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         img = self.get_image_data(**get_image_args)
         
         kwargs.setdefault('cmap', 'gray')
-        imsave(filename, img['data'], origin='lower', **kwargs)
+        plt.imsave(filename, img['data'], origin='lower', **kwargs)
     
 
     def _make_interpolator_scipy(self, method: str = 'linear',
@@ -1368,7 +1366,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Instance of the line returned by `plt.plot`
         """
-        import matplotlib.pyplot as plt
         # obtain data
         line_data = self.get_line_data(extract=extract)
         
@@ -1425,8 +1422,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Result of :func:`matplotlib.pyplot.imshow`
         """
-        import matplotlib.pyplot as plt
-        
         # obtain image data
         get_image_args = {}
         for key in ['performance_goal', 'scalar']:
@@ -1494,8 +1489,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Result of :func:`matplotlib.pyplot.quiver` or
             :func:`matplotlib.pyplot.streamplot`
         """
-        import matplotlib.pyplot as plt
-        
         # obtain image data
         get_image_args = {}
         # FIXME: rename scalar_method to method

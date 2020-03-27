@@ -10,9 +10,8 @@ import warnings
 from functools import wraps
 from typing import Callable, Dict, Any, Optional, Tuple
 
-import numba as nb
-from numba.extending import register_jitable
 import numpy as np
+import numba as nb
 
 from ..tools.misc import decorator_arguments
 
@@ -214,6 +213,7 @@ def jit_allocate_out(func: Callable,
     else:
         # jitting is enabled => return specific compiled functions
         jit_kwargs = _numba_get_signature(parallel=False, **kwargs)
+        register_jitable = nb.extending.register_jitable
         logging.getLogger(__name__).info('Compile `%s` with parallel=%s',
                                          func.__name__, jit_kwargs['parallel'])
     
