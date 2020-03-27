@@ -5,7 +5,7 @@
 import pytest
 import numpy as np
 
-from ..expressions import parse_number, ScalarExpression
+from ..expressions import parse_number, ScalarExpression, TensorExpression
 
 
 
@@ -19,6 +19,8 @@ def test_parse_number():
     assert parse_number("sin(3.4)") == pytest.approx(np.sin(3.4))
     assert parse_number("sin(a)", a=3) == pytest.approx(np.sin(3))
     assert parse_number("a**b", a=3.2, b=4.5) == pytest.approx(3.2**4.5)
+    with pytest.raises(TypeError):
+        parse_number('foo')
 
 
 
@@ -31,6 +33,7 @@ def test_const():
         assert e.value == val
         assert e() == val
         assert e.get_compiled()() == val
+        assert not e.depends_on('a')
         assert e.differentiate('a').value == 0
         assert e.shape == tuple()
         assert e.rank == 0
@@ -59,6 +62,8 @@ def test_single_arg():
     assert e.shape == tuple()
     assert e.rank == 0
     assert e == ScalarExpression(e.expression)
+    with pytest.raises(TypeError):
+        e.value
     
     arr = np.random.random(5)
     np.testing.assert_allclose(e(arr), 2 * arr)
@@ -69,6 +74,9 @@ def test_single_arg():
     assert g.constant
     assert g(3) == [2]
     assert g.get_compiled()(3) == [2]
+    
+    with pytest.raises(TypeError):
+        ScalarExpression(np.exp)
 
 
 
@@ -148,4 +156,41 @@ def test_indexed():
     
     with pytest.raises(RuntimeError):
         e.differentiate('a')
+    with pytest.raises(RuntimeError):
+        e.derivatives
+        
+    
+        
+def test_synonyms():
+    """ test using synonyms in expression """
+    e = ScalarExpression('2 * all', [['a', 'all']])
+    assert e.depends_on('a')
+    assert not e.depends_on('all')
+    
+
+
+def test_tensor_expression():
+    """ test TensorExpression """
+    e = TensorExpression('[[0, 1], [2, 3]]')
+    assert isinstance(str(e), str)
+    assert e.shape == (2, 2)
+    assert e.rank == 2
+    assert e.constant
+    assert e.differentiate('a') == TensorExpression('[[0, 0], [0, 0]]')
+    np.testing.assert_allclose(e.value, np.arange(4).reshape(2, 2))
+    
+    e = TensorExpression('[a, 2*a]')
+    assert isinstance(str(e), str)
+    assert e.shape == (2,)
+    assert e.rank == 1
+    assert e.depends_on('a')
+    assert not e.constant
+    np.testing.assert_allclose(e.differentiate('a').value, np.array([1, 2]))
+    with pytest.raises(TypeError):
+        e.value
+    
+    e2 = TensorExpression(e)
+    assert isinstance(str(e2), str)
+    assert e == e2
+    assert e is not e2
 

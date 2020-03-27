@@ -96,9 +96,17 @@ class ExpressionBase(metaclass=ABCMeta):
         
         
     def __eq__(self, other):
-        return (set(self.vars) == set(other.vars) and 
-                sympy.simplify(self._sympy_expr - other._sympy_expr) == 0)
+        # compare what the expressions depend on
+        if set(self.vars) != set(other.vars):
+            return False
         
+        # compare the expressions themselves by checking their difference
+        diff = sympy.simplify(self._sympy_expr - other._sympy_expr)
+        if isinstance(self._sympy_expr, sympy.NDimArray):
+            return diff == sympy.Array(np.zeros(self._sympy_expr.shape))
+        else:
+            return diff == 0
+
 
     @property
     def constant(self) -> bool:
@@ -161,7 +169,11 @@ class ExpressionBase(metaclass=ABCMeta):
     def expression(self) -> str:
         """ str: the expression in string form """
         # turn numerical values into easily readable text
-        expr = self._sympy_expr.evalf(chop=True)
+        if isinstance(self._sympy_expr, sympy.NDimArray):
+            expr = self._sympy_expr.applyfunc(lambda x: x.evalf(chop=True))
+        else:
+            expr = self._sympy_expr.evalf(chop=True)
+            
         return str(expr.xreplace({n: float(n)
                                   for n in expr.atoms(sympy.Float)}))
 
