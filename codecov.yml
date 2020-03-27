@@ -1,3 +1,6 @@
+coverage:
+  status:
+    patch: off
 ignore:
   - "**/tests/*"
   - "**/tests/*.py"

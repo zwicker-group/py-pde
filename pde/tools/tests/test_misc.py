@@ -98,5 +98,3 @@ def test_progress_bars():
             tot += i
         assert tot == 6
     
-    
-    
