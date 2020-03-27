@@ -3,6 +3,7 @@
 '''
 
 import itertools
+import pickle
 
 import pytest
 
@@ -13,10 +14,18 @@ from ..parameters import (Parameter, DeprecatedParameter, ObsoleteParameter,
 
 def test_parameters():
     """ test mixing Parameterized """
-    
-    class Test1(Parameterized):
-        parameters_default = [Parameter('a', 1, int, "help")]
         
+    param = Parameter('a', 1, int, "help")
+    assert isinstance(str(param), str)
+    
+    p_string = pickle.dumps(param)
+    param_new = pickle.loads(p_string)
+    assert param.__dict__ == param_new.__dict__
+    assert param is not param_new
+        
+    class Test1(Parameterized):
+        parameters_default = [param]
+
         
     t = Test1()
     assert t.parameters['a'] == 1
@@ -60,6 +69,17 @@ def test_parameters():
         
         
         
+def test_parameters_simple():
+    """ test adding parameters using a simple dictionary """
+    
+    class Test(Parameterized):
+        parameters_default = {'a': 1}
+        
+    t = Test()
+    assert t.parameters['a'] == 1
+        
+        
+        
 def test_parameter_help(capsys):
     """ test how parameters are shown """
     class Test1(Parameterized):
@@ -84,15 +104,24 @@ def test_obsolete_parameter():
     class Test1(Parameterized):
         parameters_default = [Parameter('a', 1), Parameter('b', 2)]
          
+    assert Test1().parameters == {'a': 1, 'b': 2}
+    
     class Test2(Test1):
         parameters_default = [ObsoleteParameter('b')]
         
+    assert 'b' in Test2._obsolete_parameters
+    assert 'b' not in Test2._get_parameters()
+    t2 = Test2()
+    assert t2.parameters == {'a': 1}
+    with pytest.raises(KeyError):
+        t2.get_parameter_default('b')
+        
     class Test3(Test1):
         parameters_default = [Parameter('b', 3)]
-        
-    assert Test1().parameters == {'a': 1, 'b': 2}
-    assert Test2().parameters == {'a': 1}
-    assert Test3().parameters == {'a': 1, 'b': 3}
+    
+    t3 = Test3()
+    assert t3.parameters == {'a': 1, 'b': 3}
+    assert t3.get_parameter_default('b') == 3
     
     
     

@@ -59,6 +59,7 @@ class Parameter():
         return template.format(class_name=self.__class__.__name__,
                                cls_name=self.cls.__name__,
                                **self.__dict__)
+    __str__ = __repr__
     
     
     def __getstate__(self):
@@ -169,7 +170,15 @@ class Parameterized():
 
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """ register all subclassess to reconstruct them later """
+        """ register all subclasses to reconstruct them later """
+        # normalize the parameters_default attribute
+        if (hasattr(cls, 'parameters_default') and
+                isinstance(cls.parameters_default, dict)):
+            # default parameters are given as a dictionary
+            cls.parameters_default = \
+                [Parameter(*args) for args in cls.parameters_default.items()]
+        
+        # register the subclasses
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
             
