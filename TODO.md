@@ -1,5 +1,6 @@
 TODO
 ====
+* Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable
 * Think about introducing data class that holds integrated, global variables

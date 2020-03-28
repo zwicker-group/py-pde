@@ -476,3 +476,22 @@ def test_serialized_dict():
     del d['a']
     assert len(d) == 0
     
+    
+    
+def test_finite_dict():
+    """ test DictFiniteCapacity """
+    d = cache.DictFiniteCapacity(capacity=1)
+    d['a'] = 1
+    assert d['a'] == 1
+    d['b'] = 2
+    assert d['b'] == 2
+    assert 'a' not in d
+    
+    d1 = cache.DictFiniteCapacity(capacity=1)
+    d2 = cache.DictFiniteCapacity(capacity=1)
+    d1['a'] = d2['a'] = 1
+    assert d1 == d2
+    d2 = cache.DictFiniteCapacity(capacity=2)
+    d2['a'] = 1
+    assert d1 != d2
+    

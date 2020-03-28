@@ -228,6 +228,14 @@ class DictFiniteCapacity(collections.OrderedDict):
         while len(self) > self.capacity:
             self.popitem(last=False)
             
+            
+    def __eq__(self, other):
+        return super().__eq__(other) and self.capacity == other.capacity
+           
+            
+    def __ne__(self, other):
+        return super().__ne__(other) or self.capacity != other.capacity
+            
 
     def __setitem__(self, key, value):
         super(DictFiniteCapacity, self).__setitem__(key, value)

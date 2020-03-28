@@ -96,6 +96,8 @@ class ExpressionBase(metaclass=ABCMeta):
         
         
     def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         # compare what the expressions depend on
         if set(self.vars) != set(other.vars):
             return False
@@ -320,6 +322,13 @@ class ScalarExpression(ExpressionBase):
     def __bool__(self):
         """ tests whether the expression is nonzero """
         return not self.constant or self.value != 0
+        
+        
+    def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return (super().__eq__(other) and
+                self.allow_indexed == other.allow_indexed)
         
 
     def _prepare_expression(self, expression: str) -> str:

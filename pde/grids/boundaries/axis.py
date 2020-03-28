@@ -73,11 +73,15 @@ class BoundaryPair(BoundaryAxisBase):
         
         
     def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return (self.__class__ == other.__class__ and
                 self.low == other.low and
                 self.high == other.high)
 
-    def __neq__(self, other):
+    def __ne__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return (self.__class__ != other.__class__ or
                 self.low != other.low or
                 self.high != other.high)
@@ -379,11 +383,15 @@ class BoundaryPeriodic(BoundaryAxisBase):
     
     
     def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return (self.__class__ == other.__class__ and 
                 self.grid == other.grid and
                 self.axis == other.axis)
 
-    def __neq__(self, other):
+    def __ne__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return (self.__class__ != other.__class__ or
                 self.grid != other.grid or
                 self.axis != other.axis)

@@ -262,6 +262,8 @@ class FieldBase(metaclass=ABCMeta):
     
     def __eq__(self, other):
         """ test for equality """
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return (self.state == other.state and
                 np.array_equal(self.data, other.data))
     

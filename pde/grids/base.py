@@ -195,6 +195,8 @@ class GridBase(metaclass=ABCMeta):
          
          
     def __eq__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return (self.__class__ == other.__class__ and
                 self.shape == other.shape and
                 self.axes_bounds == other.axes_bounds and
@@ -202,6 +204,8 @@ class GridBase(metaclass=ABCMeta):
         
         
     def __ne__(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return (self.__class__ != other.__class__ or
                 self.shape != other.shape or
                 self.axes_bounds != other.axes_bounds or

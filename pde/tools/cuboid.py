@@ -145,16 +145,16 @@ class Cuboid(object):
             
     def __eq__(self, other):
         """ override the default equality test """
-        if isinstance(other, self.__class__):
-            return (np.all(self.pos == other.pos) and 
-                    np.all(self.size == other.size))
-        return NotImplemented
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return (np.all(self.pos == other.pos) and 
+                np.all(self.size == other.size))
 
 
     def __ne__(self, other):
         """ overwrite the default non-equality test """
         if isinstance(other, self.__class__):
-            return not self.__eq__(other)
+            return not self == other
         return NotImplemented
     
     

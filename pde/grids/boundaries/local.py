@@ -302,6 +302,8 @@ class BCBase(metaclass=ABCMeta):
     
     def __eq__(self, other):
         """ checks for equality neglecting the `upper` property """
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return (self.__class__ == other.__class__ and
                 self.grid == other.grid and 
                 self.axis == other.axis and
@@ -309,8 +311,8 @@ class BCBase(metaclass=ABCMeta):
                 np.all(self.value == other.value))
         
 
-    def __neq__(self, other):
-        return not self.__eq__(other)
+    def __ne__(self, other):
+        return not self == other
 
 
     def copy(self, upper: Optional[bool] = None, value=None) -> "BCBase":
@@ -861,6 +863,8 @@ class MixedBC(BCBase1stOrder):
         
     def __eq__(self, other):
         """ checks for equality neglecting the `upper` property """
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return super().__eq__(other) and self.const == other.const
 
 

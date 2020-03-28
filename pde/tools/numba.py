@@ -36,14 +36,14 @@ def numba_environment() -> Dict[str, Any]:
     """
     # determine whether Nvidia Cuda is available
     try:
-        from numba import cuda
+        from numba import cuda  # lgtm [py/import-and-import-from]
         cuda_available = cuda.is_available()
     except ImportError:
         cuda_available = False
 
     # determine whether AMD ROC is available
     try:
-        from numba import roc
+        from numba import roc  # lgtm [py/import-and-import-from]
         roc_available = roc.is_available()
     except ImportError:
         roc_available = False

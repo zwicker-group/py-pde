@@ -112,6 +112,12 @@ class Boundaries(list):
         return cls(bcs)
     
     
+    def __eq__(self, other):
+        if not isinstance(other, Boundaries):
+            return NotImplemented
+        return super().__eq__(other) and self.grid == other.grid
+    
+    
     def check_value_rank(self, rank: int):
         """ check whether the values at the boundaries have the correct rank
         

@@ -34,6 +34,10 @@ def test_boundaries():
         assert bcs == bc2
         assert bcs is not bc2
         
+    b1 = Boundaries.from_data(UnitGrid([2, 2]), 'natural')
+    b2 = Boundaries.from_data(UnitGrid([3, 3]), 'natural')
+    assert b1 != b2
+        
         
         
 def test_boundary_specifications():
