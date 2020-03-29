@@ -224,10 +224,6 @@ class GridBase(metaclass=ABCMeta):
                 self.axes_bounds == other.axes_bounds and
                 self.periodic == other.periodic)
         
-        
-    def __ne__(self, other):
-        return not self == other
-        
          
     def compatible_with(self, other) -> bool:
         """ tests whether this class is compatible with other grids.

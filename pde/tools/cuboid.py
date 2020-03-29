@@ -150,13 +150,6 @@ class Cuboid(object):
         return (np.all(self.pos == other.pos) and 
                 np.all(self.size == other.size))
 
-
-    def __ne__(self, other):
-        """ overwrite the default non-equality test """
-        if isinstance(other, self.__class__):
-            return not self == other
-        return NotImplemented
-    
     
     @property
     def dim(self) -> int:

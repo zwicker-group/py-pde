@@ -64,7 +64,7 @@ class FieldBase(metaclass=ABCMeta):
                 Name of the field
         """
         self._grid = grid
-        self._data: Any = data
+        self._data: np.ndarray = data
         self.label = label
         self._logger = logging.getLogger(self.__class__.__name__)
 
@@ -220,7 +220,7 @@ class FieldBase(metaclass=ABCMeta):
     
          
     @property
-    def data(self):
+    def data(self) -> np.ndarray:
         """ :class:`numpy.ndarray`: discretized data at the support points """
         return self._data
     
