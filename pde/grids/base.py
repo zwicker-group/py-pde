@@ -122,19 +122,21 @@ class GridBase(metaclass=ABCMeta):
     """
     
     _subclasses: Dict[str, Any] = {}  # all classes inheriting from this
-    coordinate_constraints: List[int] = []  # axes not described explicitly
-    axes_symmetric: List[str] = []
     
-    # defaults for properties that are defined in subclasses
-    dim: int
-    shape: Tuple[int, ...]
+    # properties that are defined in subclasses
     axes: List[str]
-    num_axes: int
-    discretization: Any
+    axes_symmetric: List[str] = []
     cell_volume_data: Sequence[Union[float, np.ndarray]]
-    axes_coords: Tuple
-    axes_bounds: Tuple[Tuple[float, float], ...]
+    coordinate_constraints: List[int] = []  # axes not described explicitly
+    dim: int
+    num_axes: int
     periodic: List[bool]
+
+    # mandatory, immutable, private attributes
+    _axes_bounds: Tuple[Tuple[float, float], ...]
+    _axes_coords: Tuple[np.ndarray, ...]
+    _discretization: np.array
+    _shape: Tuple[int, ...]
 
 
     def __init__(self):
@@ -171,6 +173,27 @@ class GridBase(metaclass=ABCMeta):
         return grid_cls.from_state(state)  # type: ignore
     
     
+    @property
+    def axes_bounds(self) -> Tuple[Tuple[float, float], ...]:
+        """ tuple: lower and upper bounds of each axis """
+        return self._axes_bounds
+    
+    @property
+    def axes_coords(self) -> Tuple[np.ndarray, ...]:
+        """ tuple: coordinates of the cells for each axis """
+        return self._axes_coords
+        
+    @property
+    def discretization(self) -> np.array:
+        """ :class:`numpy.array`: the linear size of a cell along each axis """
+        return self._discretization
+    
+    @property
+    def shape(self) -> Tuple[int, ...]:
+        """ tuple of int: the number of support points of each axis """
+        return self._shape
+    
+    
     @abstractproperty
     def state(self) -> Dict[str, Any]: pass
 
@@ -197,19 +220,13 @@ class GridBase(metaclass=ABCMeta):
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return (self.__class__ == other.__class__ and
-                self.shape == other.shape and
+        return (self.shape == other.shape and
                 self.axes_bounds == other.axes_bounds and
                 self.periodic == other.periodic)
         
         
     def __ne__(self, other):
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-        return (self.__class__ != other.__class__ or
-                self.shape != other.shape or
-                self.axes_bounds != other.axes_bounds or
-                self.periodic != other.periodic)
+        return not self == other
         
          
     def compatible_with(self, other) -> bool:

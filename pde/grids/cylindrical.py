@@ -74,15 +74,15 @@ class CylindricalGrid(GridBase):
         super().__init__()
         shape_list = _check_shape(shape)
         if len(shape_list) == 1:
-            self.shape: Tuple[int, int] = (shape_list[0], shape_list[0]) 
+            self._shape: Tuple[int, int] = (shape_list[0], shape_list[0]) 
         elif len(shape_list) == 2:
-            self.shape = shape_list  # type: ignore
+            self._shape = tuple(shape_list)  # type: ignore
         else:
             raise DimensionError("`shape` must be two integers")
         if len(bounds_z) != 2:
             raise ValueError('Lower and upper value of the axial coordinate '
                              'must be specified')
-        self.periodic_z: bool = periodic_z
+        self._periodic_z: bool = periodic_z
         self.periodic = [False, periodic_z]
 
         # radial discretization
@@ -94,9 +94,9 @@ class CylindricalGrid(GridBase):
         zs, dz = discretize_interval(*bounds_z, self.shape[1])
         assert np.isclose(zs[-1] + dz/2, bounds_z[1])
         
-        self.axes_coords = (rs, zs)
-        self.axes_bounds = ((0., radius), tuple(bounds_z))  # type: ignore 
-        self.discretization = np.array((dr, dz))
+        self._axes_coords = (rs, zs)
+        self._axes_bounds = ((0., radius), tuple(bounds_z))  # type: ignore 
+        self._discretization = np.array((dr, dz))
         
         
     @property
@@ -106,7 +106,7 @@ class CylindricalGrid(GridBase):
         return {'radius': radius,
                 'bounds_z': self.axes_bounds[1],
                 'shape': self.shape,
-                'periodic_z': self.periodic_z}
+                'periodic_z': self._periodic_z}
         
         
     @classmethod
@@ -288,7 +288,7 @@ class CylindricalGrid(GridBase):
         if with_self:
             yield point
             
-        if not only_periodic or self.periodic_z:
+        if not only_periodic or self._periodic_z:
             yield point - np.array([self.length, 0, 0])
             yield point + np.array([self.length, 0, 0])            
 
@@ -324,7 +324,7 @@ class CylindricalGrid(GridBase):
                                  f'{point.shape} does not describe points of '
                                  f'dimension {size}.')
         
-        if self.periodic_z:
+        if self._periodic_z:
             z_min = self.axes_bounds[1][0]
             point[..., -1] = (point[..., -1] - z_min) % self.length + z_min
             return point
@@ -438,7 +438,7 @@ class CylindricalGrid(GridBase):
             with periodic  boundary conditions applied.
         """
         diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        if self.periodic_z:
+        if self._periodic_z:
             size = self.length
             diff[..., 1] = (diff[..., 1] + size/2) % size - size/2
         return diff

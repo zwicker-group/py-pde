@@ -69,7 +69,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
         if not len(shape_list) == 1:
             raise ValueError('`shape` must be a single number, not '
                              f'{shape_list}')
-        self.shape: Tuple[int] = (int(shape_list[0]),)
+        self._shape: Tuple[int] = (int(shape_list[0]),)
         
         try:
             r_inner, r_outer = radius  # type: ignore
@@ -84,9 +84,9 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):
         # radial discretization
         rs, dr = discretize_interval(r_inner, r_outer, self.shape[0])
         
-        self.axes_coords = (rs,)
-        self.axes_bounds = ((r_inner, r_outer),)
-        self.discretization = np.array((dr,))
+        self._axes_coords = (rs,)
+        self._axes_bounds = ((r_inner, r_outer),)
+        self._discretization = np.array((dr,))
         
         
     @property

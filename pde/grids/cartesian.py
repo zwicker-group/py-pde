@@ -41,8 +41,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
                 specifying the same periodicity for all axes.
         """
         super().__init__()
-        self.shape = _check_shape(shape)
-        self._shape_array = np.array(self.shape, np.double)
+        self._shape = _check_shape(shape)
         self.dim = len(self.shape)
         self.num_axes = self.dim
         
@@ -60,7 +59,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):
         else:
             self.axes = [chr(97 + i) for i in range(self.dim)]
         
-    
+
     @property
     def cell_volume_data(self):
         """ size associated with each cell """
@@ -445,11 +444,11 @@ class UnitGrid(CartesianGridBase):
         """
         super().__init__(shape, periodic)
         self.cuboid = Cuboid(np.zeros(self.dim), self.shape)
-        self.discretization = np.ones(self.dim)
+        self._discretization = np.ones(self.dim)
         
         # determine the cell center coordinates
-        self.axes_coords = tuple(np.arange(n) + 0.5 for n in self.shape)
-        self.axes_bounds = tuple(self.cuboid.bounds)
+        self._axes_coords = tuple(np.arange(n) + 0.5 for n in self.shape)
+        self._axes_bounds = tuple(self.cuboid.bounds)
 
 
     @property
@@ -508,9 +507,11 @@ class UnitGrid(CartesianGridBase):
         # normalize the coordinates for the periodic dimensions
         if point.ndim == 0:
             if self.periodic[0]:
-                point %= self._shape_array[0]
+                point %= self.shape[0]
         else:
-            point[..., self.periodic] %= self._shape_array[self.periodic]
+            for i in range(self.num_axes):
+                if self.periodic[i]:
+                    point[..., i] %= self.shape[i]
 
         return point
     
@@ -568,11 +569,11 @@ class UnitGrid(CartesianGridBase):
             with periodic boundary conditions applied.
         """
         diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        if any(self.periodic):
-            # correct the periodic dimensions
-            size = self._shape_array[self.periodic]
-            diff[..., self.periodic] = \
-                            (diff[..., self.periodic] + size/2) % size - size/2
+        # correct the periodic dimensions
+        for i in range(self.num_axes):
+            if self.periodic[i]:
+                s = self.shape[i]
+                diff[..., i] = (diff[..., i] + s/2) % s - s/2
         return diff
     
     
@@ -673,9 +674,9 @@ class CartesianGrid(CartesianGridBase):
             c += dc / 2
             axes_coords.append(c)
             discretization.append(dc)
-        self.discretization = np.array(discretization)
-        self.axes_coords = tuple(axes_coords)
-        self.axes_bounds = tuple(self.cuboid.bounds)
+        self._discretization = np.array(discretization)
+        self._axes_coords = tuple(axes_coords)
+        self._axes_bounds = tuple(self.cuboid.bounds)
 
     
     @property
