@@ -63,7 +63,7 @@ class FieldBase(metaclass=ABCMeta):
             label (str, optional):
                 Name of the field
         """
-        self.grid = grid
+        self._grid = grid
         self._data: Any = data
         self.label = label
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -138,6 +138,12 @@ class FieldBase(metaclass=ABCMeta):
         grid = GridBase.from_state(dataset.attrs['grid'])
         label = dataset.attrs['label'] if 'label' in dataset.attrs else None
         return field_cls(grid, data=dataset, label=label)  # type: ignore
+
+    
+    @property
+    def grid(self) -> GridBase:
+        """ GridBase: The grid on which the field is defined """
+        return self._grid
 
 
     def to_file(self, filename: str, **kwargs):

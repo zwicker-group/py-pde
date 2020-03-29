@@ -55,13 +55,13 @@ class FieldCollection(FieldBase):
 
         # create the list of underlying fields        
         if copy_fields:
-            self.fields = [field.copy() for field in fields]
+            self._fields = [field.copy() for field in fields]
         else:
-            self.fields = fields  # type: ignore
+            self._fields = fields  # type: ignore
         
         # extract data from individual fields
         new_data: List[np.ndarray] = []
-        self.slices: List[slice] = []
+        self._slices: List[slice] = []
         dof = 0  # count local degrees of freedom
         for field in self.fields:
             if not isinstance(field, DataFieldBase):
@@ -71,7 +71,7 @@ class FieldCollection(FieldBase):
             start = len(new_data)
             this_data = field._data_flat
             new_data.extend(this_data)
-            self.slices.append(slice(start, len(new_data)))
+            self._slices.append(slice(start, len(new_data)))
             dof += len(this_data)
                 
         # combine into one data field
@@ -92,7 +92,7 @@ class FieldCollection(FieldBase):
         if not copy_fields:
             for i, field in enumerate(self.fields):
                 field_shape = field.data.shape
-                field._data_flat = self.data[self.slices[i]]
+                field._data_flat = self.data[self._slices[i]]
                 
                 # check whether the field data is based on our data field
                 assert field.data.base is self.data
@@ -158,6 +158,12 @@ class FieldCollection(FieldBase):
 
         else:
             raise TypeError(f'Unsupported index {index}')
+
+
+    @property
+    def fields(self) -> List[DataFieldBase]:
+        """ list: the fields of this collection """
+        return self._fields
 
         
     @classmethod
