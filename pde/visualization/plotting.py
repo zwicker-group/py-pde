@@ -83,7 +83,7 @@ def finalize_plot(fig_or_ax=None,
         except AttributeError:
             fig = fig_or_ax.fig
     
-    if title:
+    if title is not None:
         ax.set_title(title)
     
     if filename:
