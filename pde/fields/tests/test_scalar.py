@@ -84,7 +84,12 @@ def test_laplacian():
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16],
                          periodic=True)
     s = ScalarField.random_harmonic(grid, axis_combination=np.add, modes=1)
+
     s_lap = s.laplace('natural')
+    assert s_lap.data.shape == (16, 16)
+    np.testing.assert_allclose(s_lap.data, -s.data, rtol=0.1, atol=0.1)
+
+    s.laplace('natural', out=s_lap)
     assert s_lap.data.shape == (16, 16)
     np.testing.assert_allclose(s_lap.data, -s.data, rtol=0.1, atol=0.1)
 
@@ -96,12 +101,18 @@ def test_gradient():
                          periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = np.cos(x) + np.sin(y)
+    
     s = ScalarField(grid, data)
     v = s.gradient('natural')
     assert v.data.shape == (2, 16, 16)
     np.testing.assert_allclose(v.data[0], -np.sin(x), rtol=0.1, atol=0.1)
     np.testing.assert_allclose(v.data[1], np.cos(y), rtol=0.1, atol=0.1)
    
+    s.gradient('natural', out=v)
+    assert v.data.shape == (2, 16, 16)
+    np.testing.assert_allclose(v.data[0], -np.sin(x), rtol=0.1, atol=0.1)
+    np.testing.assert_allclose(v.data[1], np.cos(y), rtol=0.1, atol=0.1)
+      
         
         
 @pytest.mark.parametrize("grid", iter_grids())
@@ -216,6 +227,9 @@ def test_to_scalar():
     np.testing.assert_allclose(sf.to_scalar().data, sf.data)    
     np.testing.assert_allclose(sf.to_scalar('squared_sum').data, sf.data**2)
 
+    with pytest.raises(ValueError):
+        sf.to_scalar('nonsense')
+
 
 
 @pytest.mark.parametrize('grid', (g for g in iter_grids() if g.num_axes > 1))
@@ -233,7 +247,7 @@ def test_projection(grid, method):
             assert sp.average == pytest.approx(sf.average)
             
     with pytest.raises(ValueError):
-        sf.project('q')
+        sf.project(grid.axes[0], method='nonsense')
 
 
 
@@ -262,8 +276,11 @@ def test_slice_positions():
     assert sf.slice({'x': 'min'}).data == 0
     assert sf.slice({'x': 'mid'}).data == 1
     assert sf.slice({'x': 'max'}).data == 2
+
     with pytest.raises(ValueError):
         sf.slice({'x': 'foo'})
+    with pytest.raises(ValueError):
+        sf.slice({'x': 0}, method='nonsense')
 
 
 
@@ -289,6 +306,11 @@ def test_poisson_solver_1d():
     field.solve_poisson([{'value': 1}, {'derivative': 1}], out=res)
     xs = grid.axes_coords[0]
     np.testing.assert_allclose(res.data, 1 + 0.5 * xs**2, rtol=1e-2)
+    
+    # test inconsistent problem
+    field.data = 1
+    with pytest.raises(RuntimeError, match='Neumann'):
+        field.solve_poisson({'derivative': 0})
     
 
 

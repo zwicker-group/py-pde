@@ -194,7 +194,18 @@ class ScalarField(DataFieldBase):
         """
         # solve the poisson problem
         solve_poisson = self.grid.get_operator('poisson_solver', bc=bc)
-        result = solve_poisson(self.data)
+        try:
+            result = solve_poisson(self.data)
+        except RuntimeError:
+            average = self.average
+            if abs(average) > 1e-10:
+                raise RuntimeError('Could not solve the Poisson problem. One '
+                                   'possible reason for this is that only '
+                                   'periodic or Neumann conditions are '
+                                   'applied although the average of the field '
+                                   f'is {average} and thus non-zero.')
+            else:
+                raise  # another error occured
          
         if out is None:
             return ScalarField(self.grid, result, label=label)

@@ -5,10 +5,15 @@ Common functions that are used by many operators
 '''
 
 from typing import Callable
+import logging
 import warnings
 
 import numpy as np
 from scipy import sparse
+
+
+
+logger = logging.getLogger(__name__) 
 
 
 
@@ -75,15 +80,36 @@ def make_poisson_solver(matrix, vector, method: str = 'auto') -> Callable:
         rhs = arr.flat - vec
         
         # solve the linear problem using a sparse solver
-        with warnings.catch_warnings():
-            warnings.simplefilter("error")  # enable warning catching
-            try:
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("error")  # enable warning catching
                 result = sparse.linalg.spsolve(mat, rhs)
-            except sparse.linalg.dsolve.linsolve.MatrixRankWarning:
-                # this can happen for singular laplace matrix, e.g. when pure
-                # Neumann conditions are considered. In this case, a solution is
-                # obtained using least squares 
-                result = sparse.linalg.lsmr(mat, rhs)[0]
+                
+        except sparse.linalg.dsolve.linsolve.MatrixRankWarning:
+            # this can happen for singular laplace matrix, e.g. when pure
+            # Neumann conditions are considered. In this case, a solution is
+            # obtained using least squares
+            logger.warning('Poisson problem seems to be under-determined and '
+                           'could not be solved using sparse.linalg.spsolve')
+            use_leastsquares = True
+            
+        else:
+            # test whether the solution is good enough
+            if np.allclose(mat.dot(result), rhs, rtol=1e-5, atol=1e-5):
+                logger.info('Solved Poisson problem with sparse.linalg.spsolve')
+                use_leastsquares = False
+            else:
+                logger.warning('Poisson problem was not solved using '
+                               'sparse.linalg.spsolve')
+                use_leastsquares = True
+                
+        if use_leastsquares:
+            # use least squares to solve an underdetermined problem
+            result = sparse.linalg.lsmr(mat, rhs)[0]
+            if not np.allclose(mat.dot(result), rhs, rtol=1e-5, atol=1e-5):
+                raise RuntimeError('Poisson problem could not be solved')
+                use_leastsquares = False
+            logger.info('Solved Poisson problem with sparse.linalg.lsmr')
         
         # convert the result to the correct format
         if out is not None:
