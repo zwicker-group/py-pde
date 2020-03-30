@@ -1316,7 +1316,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Gives the standard deviation of the smoothing in real length units
             (default: 1)
         out (FieldBase, optional):
-            Optional field into which the smoothed data is stored
+            Optional field into which the smoothed data is stored. Setting this
+            to the input field enables in-place smoothing.
         label (str, optional):
             Name of the returned field
 

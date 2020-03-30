@@ -399,6 +399,13 @@ def test_smoothing():
     # test one simple higher order smoothing
     tf = Tensor2Field.random_uniform(grid)
     assert tf.data.shape == tf.smooth(1).data.shape
+    
+    # test in-place smoothing
+    g = UnitGrid([8, 8])
+    f1 = ScalarField.random_normal(g)
+    f2 = f1.smooth(3)
+    f1.smooth(3, out=f1)
+    np.testing.assert_allclose(f1.data, f2.data)
 
 
 
