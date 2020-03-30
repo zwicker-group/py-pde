@@ -312,3 +312,16 @@ def test_poisson_solver_2d():
     res = field.solve_poisson([{'value': 'sin(y)'}, {'curvature': 'sin(x)'}])
     
     
+    
+def test_interpolation_mutuable():
+    """ test interpolation on mutuable fields """
+    grid = UnitGrid([2], periodic=True)
+    field = ScalarField(grid)
+    
+    for method in ['numba', 'scipy']:
+        field.data = 1
+        np.testing.assert_allclose(field.interpolate([0.5], method=method), 1)
+        field.data = 2
+        np.testing.assert_allclose(field.interpolate([0.5], method=method), 2)
+
+    
