@@ -11,7 +11,7 @@ from functools import wraps
 from typing import Callable, Dict, Any, Optional, Tuple
 
 import numpy as np
-import numba as nb
+import numba as nb  # lgtm [py/import-and-import-from]
 
 from ..tools.misc import decorator_arguments
 
@@ -36,14 +36,14 @@ def numba_environment() -> Dict[str, Any]:
     """
     # determine whether Nvidia Cuda is available
     try:
-        from numba import cuda  # lgtm [py/import-and-import-from]
+        from numba import cuda
         cuda_available = cuda.is_available()
     except ImportError:
         cuda_available = False
 
     # determine whether AMD ROC is available
     try:
-        from numba import roc  # lgtm [py/import-and-import-from]
+        from numba import roc
         roc_available = roc.is_available()
     except ImportError:
         roc_available = False

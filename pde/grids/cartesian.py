@@ -24,7 +24,8 @@ if TYPE_CHECKING:
     
 
 
-class CartesianGridBase(GridBase, metaclass=ABCMeta):
+class CartesianGridBase(GridBase,
+                        metaclass=ABCMeta):  # lgtm [py/missing-equals]
     """Base class for :class:`UnitGrid` and :class:`CartesianGrid`"""
     
     cuboid: Cuboid

@@ -166,6 +166,13 @@ class FieldCollection(FieldBase):
         return self._fields
 
         
+    def __eq__(self, other):
+        """ test fields for equality, ignoring the label """
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return self.fields == other.fields
+    
+        
     @classmethod
     def from_state(cls, state: Dict[str, Any], grid: GridBase,  # type: ignore
                    data=None) -> "FieldCollection":

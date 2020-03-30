@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 
     
-class CylindricalGrid(GridBase):
+class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
     r""" 3-dimensional cylindrical grid assuming polar symmetry 
     
     The polar symmetry implies that states only depend on the radial and axial
