@@ -23,7 +23,8 @@ from datetime import timedelta
 import inspect
 import sys
 import time
-from typing import Callable, Optional, Union, IO, List, Any  # @UnusedImport
+from typing import (Callable, Optional, Union, IO, List, Any,  # @UnusedImport
+                    TYPE_CHECKING)
 
 import numpy as np
 
@@ -35,6 +36,11 @@ from ..visualization.plotting import ScaleData
 from ..tools.parse_duration import parse_duration
 from ..tools.misc import get_progress_bar_class
 from ..tools.docstrings import fill_in_docstring
+
+
+
+if TYPE_CHECKING:
+    import pandas  # @UnusedImport
 
 
 
@@ -70,7 +76,8 @@ class CallbackTracker(TrackerBase):
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
-            t (float): The associated time
+            t (float):
+                The associated time
         """
         if self._num_args == 1:
             self._callback(field)
@@ -141,7 +148,8 @@ class ProgressTracker(TrackerBase):
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
-            t (float): The associated time
+            t (float):
+                The associated time
         """
         # show an update
         if self.progress_bar.total:
@@ -219,7 +227,8 @@ class PrintTracker(TrackerBase):
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
-            t (float): The associated time
+            t (float):
+                The associated time
         """
         data = f"c={field.data.mean():.3g}±{field.data.std():.3g}"
             
@@ -305,7 +314,8 @@ class PlotTracker(TrackerBase):
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
-            t (float): The associated time
+            t (float):
+                The associated time
         """
         self.plot.show_data(field, title=f'Time {t:g}')
         if self.output_file:
@@ -357,6 +367,9 @@ class DataTracker(CallbackTracker):
                 float value indicating the current time. Note that only a view
                 of the state is supplied, implying that a copy needs to be made
                 if the data should be stored.
+                Typical return values of the function are either a single
+                number, a numpy array, a list of number, or a dictionary to
+                return multiple numbers with assigned labels.
             interval:
                 {ARG_TRACKER_INTERVAL}
         """
@@ -371,7 +384,8 @@ class DataTracker(CallbackTracker):
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
-            t (float): The associated time
+            t (float):
+                The associated time
         """
         self.times.append(t)
         if self._num_args == 1:
@@ -381,8 +395,14 @@ class DataTracker(CallbackTracker):
         
         
     @property
-    def dataframe(self):
-        """ pandas.DataFrame: the data as a pandas DataFrame """
+    def dataframe(self) -> "pandas.DataFrame":
+        """ :class:`pandas.DataFrame`: the data in a dataframe
+        
+        If `func` returns a dictionary, the keys are used as column names.
+        Otherwise, the returned data is enumerated starting with '0'. In any
+        case the time point at which the data was recorded is stored in the
+        column 'time'.
+        """
         import pandas as pd
         df = pd.DataFrame(self.data)
         # insert the times and use them as an index
@@ -425,7 +445,14 @@ class SteadyStateTracker(TrackerBase):
         
         
     def handle(self, field: FieldBase, t: float) -> None:
-        """ handle the data of `field` for a give `time` """
+        """ handle data supplied to this tracker
+        
+        Args:
+            field (:class:`~pde.fields.FieldBase`):
+                The current state of the simulation
+            t (float):
+                The associated time
+        """
         if self._last_data is not None:
             # scale with dt to make test independent of dt
             atol = self.atol * self.interval.dt
@@ -481,7 +508,14 @@ class RuntimeTracker(TrackerBase):
         
         
     def handle(self, field: FieldBase, t: float) -> None:
-        """ handle the data of `field` for a give `time` """
+        """ handle data supplied to this tracker
+        
+        Args:
+            field (:class:`~pde.fields.FieldBase`):
+                The current state of the simulation
+            t (float):
+                The associated time
+        """
         if time.time() > self.max_time:
             dt = timedelta(seconds=self.max_runtime)
             raise FinishedSimulation(f'Reached maximal runtime of {str(dt)}')
@@ -509,7 +543,14 @@ class ConsistencyTracker(TrackerBase):
         
         
     def handle(self, field: FieldBase, t: float) -> None:
-        """ handle the data of `field` for a give `time` """
+        """ handle data supplied to this tracker
+        
+        Args:
+            field (:class:`~pde.fields.FieldBase`):
+                The current state of the simulation
+            t (float):
+                The associated time
+        """
         if not np.all(np.isfinite(field.data)):
             raise StopIteration('Field was not finite')
             
@@ -561,7 +602,14 @@ class MaterialConservationTracker(TrackerBase):
         
         
     def handle(self, field: FieldBase, t: float) -> None:
-        """ handle the data of `field` for a give `time` """
+        """ handle data supplied to this tracker
+        
+        Args:
+            field (:class:`~pde.fields.FieldBase`):
+                The current state of the simulation
+            t (float):
+                The associated time
+        """
         if isinstance(field, FieldCollection):
             mags = np.array([f.magnitude for f in field])
         else:

@@ -99,7 +99,8 @@ class TrackerBase(metaclass=ABCMeta):
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
-            t (float): The associated time
+            t (float):
+                The associated time
         """
         pass
     
@@ -210,11 +211,13 @@ class TrackerCollection():
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
-            t (float): The associated time
-            atol (float): An absolute tolerance that is used to determine
-                whether a tracker should be called now or whether the simulation
-                should be carried on more timesteps. This is basically used to
-                predict the next time to decided which one is closer.
+            t (float):
+                The associated time
+            atol (float):
+                An absolute tolerance that is used to determine whether a
+                tracker should be called now or whether the simulation should be
+                carried on more timesteps. This is basically used to predict the
+                next time to decided which one is closer.
                 
         Returns:
             float: The next time the simulation needs to be interrupted to
