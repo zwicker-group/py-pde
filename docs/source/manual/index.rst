@@ -9,3 +9,4 @@ User manual
    mathematical_basics
    advanced_usage
    contributing
+   code_of_conduct
