@@ -49,12 +49,20 @@ scipy        >=1.2     Miscellaneous scientific functions
 sympy        >=1.4     Dealing with user-defined mathematical expressions
 ===========  ========= =========
 
-These package can be installed via your operating system's package manager, e.g.
-using :command:`macports`, :command:`homebrew`, :command:`conda`, or
-:command:`pip`.
+The simplest way to install these packages is to use the
+:file:`requirements.txt` in the base folder:
+
+.. code-block:: bash
+
+    pip install -r requirements.txt
+    
+
+Alternatively, these package can be installed via your operating system's
+package manager, e.g. using :command:`macports`, :command:`homebrew`, or
+:command:`conda`.
 The package versions given above are minimal requirements, although
 this is not tested systematically. Generally, it should help to install the
-latest version of the package.  
+latest version of the package.
 
 Optionally, the following packages should be installed to use some miscellaneous
 features:
@@ -65,14 +73,14 @@ Package      Usage
 h5py         Storing data in the hierarchical file format
 pandas       Handling tabular data
 pyfftw       Faster Fourier transforms
-pytest       Running tests
-sphinx       Building the documentation
 tqdm         Display progress bars during calculations
 ===========  =========
 
-Additionally, :command:`ffmpeg` should be installed for making movies and the
-packages :mod:`sphinx-autodoc-annotation` and :mod:`sphinx-rtd-theme` are
-required for building the documentation.
+For making movies, the :command:`ffmpeg` should be available.
+Additional packages might be required for running the tests in the folder
+:file:`tests` and to build the documentation in the folder :file:`docs`.
+These packages are listed in the files :file:`requirements.txt` in the
+respective folders.
 
 
 Downloading the package
