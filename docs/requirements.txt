@@ -6,3 +6,4 @@ sympy>=1.5.0
 sphinx-autodoc-annotation>=1.0
 sphinx-gallery>=0.5
 sphinx-rtd-theme>=0.4
+Pillow>=7.0
