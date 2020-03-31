@@ -21,7 +21,7 @@ bibliography: paper.bib
 
 Partial differential equations (PDEs) play a central role in describing the
 dynamics of physical systems in research and in practical applications.
-However, equations appearing in realisitc scenarios are typically non-linear and
+However, equations appearing in realistic scenarios are typically non-linear and
 analytical solutions rarely exist.
 Instead, such systems are solved by numerical integration to provide insight
 into their behavior.
@@ -76,7 +76,7 @@ coordinates assuming azimuthal symmetry can be visualized using
 The package defines common differential operators that act directly on the
 fields.
 For instance, calling `field.gradient('neumann')` returns a vector field on the
-same cylindrical grid where the components corrspond to the gradient of
+same cylindrical grid where the components correspond to the gradient of
 `field` assuming Neumann boundary conditions.
 Here, differential operators are evaluated using the finite difference method
 (FDM) and the package supports various boundary conditions, which can be
@@ -87,7 +87,7 @@ results, and the detailed investigation of intermediate data.
 
 The main part of the `py-pde` package provides the infrastructure for solving
 partial differential equations.
-Here, we use the method of lines by explicitely discretizing space using the
+Here, we use the method of lines by explicitly discretizing space using the
 grid classes described above.
 This reduces the PDEs to a set of ordinary differential equations, which can
 be solved using standard methods.
@@ -130,7 +130,7 @@ fields can be visualized directly.
 Here, the excellent integration of `matplotlib` [@matplotlib] into ipython
 jupyter notebooks [@ipython] allows for an efficient workflow.
 
-The `py-pde` package employes a consistent object-oriented approach, where each
+The `py-pde` package employs a consistent object-oriented approach, where each
 component can be extended and some can even be used in isolation.
 For instance, the numba-compiled finite-difference operators, which support
 flexible boundary conditions, can be applied to `numpy.ndarrays` directly, e.g., 
@@ -145,13 +145,13 @@ in analyzing PDEs.
 Lately, there have been several attempts at simplifying the process of
 translating the mathematical formulation of a PDE to a numerical implementation 
 on the computer.
-Most noteably, the finite-difference approach has been favored by the packages
-`scikit-finite-diff` [@Cellier2019], `Devito` [@devito], and `pyclaw` [@pyclaw].
+Most notably, the finite-difference approach has been favored by the packages
+`scikit-finite-diff` [@Cellier2019], `Devito` [@devito], and .
 Conversely, finite-element and finite-volume methods provide more flexibility in
-the gemeotries considered and have been used in major packages, including
-`FEniCS` [@Fenics], `FiPy` [@FiPy], and `SfePy` [@SfePy].
+the geometries considered and have been used in major packages, including
+`FEniCS` [@Fenics], `FiPy` [@FiPy], `pyclaw` [@pyclaw], and `SfePy` [@SfePy].
 Finally, spectral methods are another popular approach for calculating
-differentials of discretized fields.
+differentials of discretized fields, e.g., the `dedalus project` [@dedalus].
 While these methods could in principle also implemented in `py-pde` they are
 limited to a small set of viable boundary conditions and are thus not the 
 primary focus.
