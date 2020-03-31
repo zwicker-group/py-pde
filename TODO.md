@@ -28,6 +28,10 @@ TODO
 
 LOW-PRIORITY (Future ideas)
 ===========================
+* Think about 2nd order BCs for spherical coordinates
+* Think about hyperbolic equations:
+    Introducing "advection" operator that could either implement really simple
+    Gudunov finite volume scheme or upwind finite difference scheme
 * Think about implementing helmholtz solver
     - generally useful to discuss eigenvalues of laplace operator?
 * Add method showing the boundary condition as a mathematical equation
