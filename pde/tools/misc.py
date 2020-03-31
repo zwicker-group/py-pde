@@ -226,13 +226,20 @@ def get_progress_bar_class():
         tqdm_version = tuple(int(v) for v in tqdm.__version__.split('.')[:2])
         if tqdm_version >= (4, 40):
             # optionally import notebook progress bar in recent version
-            from tqdm.auto import tqdm as progress_bar_class
+            try:
+                # check whether progress bar can use a widget
+                import ipywidgets  # type: ignore  # @UnusedImport  
+            except ImportError:
+                # widgets are not available => use standard tqdm
+                progress_bar_class = tqdm.tqdm
+            else:
+                # use the fancier version of the progress bar in jupyter
+                from tqdm.auto import tqdm as progress_bar_class
         else:
             # only import text progress bar in older version
             progress_bar_class = tqdm.tqdm
-            warnings.warn('Your version of tqdm is outdated. To get a '
-                          'nicer progress bar update to at least '
-                          'version 4.40.')
+            warnings.warn('Your version of tqdm is outdated. To get a nicer '
+                          'progress bar update to at least version 4.40.')
 
     return progress_bar_class
         
