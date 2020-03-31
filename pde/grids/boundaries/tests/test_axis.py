@@ -32,7 +32,20 @@ def test_boundary_pair():
         else:
             with pytest.raises(RuntimeError):
                 bc.check_value_rank(1)
-                            
+                
+    data = {'low': {'value': 1}, 'high': {'derivative': 2}}
+    bc1 = BoundaryPair.from_data(g, 0, data)
+    bc2 = BoundaryPair.from_data(g, 0, data)
+    assert bc1 == bc2 and bc1 is not bc2
+    bc2 = BoundaryPair.from_data(g, 1, data)
+    assert bc1 != bc2 and bc1 is not bc2
+    
+    # miscellaneous methods
+    bc1.set_value(0)
+    b_lo, b_hi = bc1
+    assert b_lo == BCBase.from_data(g, 0, False, {'value': 0})
+    assert b_hi == BCBase.from_data(g, 0, True, {'derivative': 0})
+    
                             
                             
 def test_get_axis_boundaries():
