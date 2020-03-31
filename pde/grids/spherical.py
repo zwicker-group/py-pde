@@ -30,8 +30,8 @@ PI_43 = 4 / 3 * np.pi
 
 
 
-class SphericalGridBase(GridBase,
-                        metaclass=ABCMeta):  # lgtm [py/missing-equals]
+class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
+                        metaclass=ABCMeta):
     r""" Base class for d-dimensional spherical grids with angular symmetry
     
     The angular symmetry implies that states only depend on the radial

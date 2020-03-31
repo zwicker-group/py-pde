@@ -108,7 +108,6 @@ def make_poisson_solver(matrix, vector, method: str = 'auto') -> Callable:
             result = sparse.linalg.lsmr(mat, rhs)[0]
             if not np.allclose(mat.dot(result), rhs, rtol=1e-5, atol=1e-5):
                 raise RuntimeError('Poisson problem could not be solved')
-                use_leastsquares = False
             logger.info('Solved Poisson problem with sparse.linalg.lsmr')
         
         # convert the result to the correct format
