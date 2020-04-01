@@ -4,7 +4,6 @@ docs/source/examples_gallery/
 docs/paper/paper.pdf
 tests/coverage/
 tests/mypy-report/
-tests/.coveragerc
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
