@@ -2,7 +2,7 @@
 Diffusion on a Cartesian grid
 =============================
 
-This example shows how to solve the diffusion equation on a Cartesian grid
+This example shows how to solve the diffusion equation on a Cartesian grid.
 """
 
 from pde import CartesianGrid, ScalarField, DiffusionPDE

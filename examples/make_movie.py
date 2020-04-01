@@ -3,7 +3,7 @@ Create a movie
 ==============
 
 This example shows how to create a movie, which is only possible if `ffmpeg` is
-installed.
+installed in a standard location.
 """
 
 from pde import UnitGrid, ScalarField, DiffusionPDE, MemoryStorage, movie_scalar

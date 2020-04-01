@@ -8,6 +8,8 @@ Here, we chose the `Korteweg-de Vries equation
 
 .. math::
     \partial_t \phi = 6 \phi \partial_x \phi - \partial_x^2 \phi
+    
+which we implement using a custom PDE class below.
 """
 
 from math import pi

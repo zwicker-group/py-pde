@@ -2,7 +2,7 @@
 Visualizing a scalar field
 ==========================
 
-This example shows some methods for visualizing scalar fields.
+This example displays methods for visualizing scalar fields.
 """
 
 import numpy as np

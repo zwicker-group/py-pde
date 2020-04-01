@@ -3,8 +3,7 @@ Custom PDE: Brusselator
 =======================
 
 This example implements the `Brusselator 
-<https://en.wikipedia.org/wiki/Brusselator>`_ with spatial coupling.
-The defining equations are 
+<https://en.wikipedia.org/wiki/Brusselator>`_ with spatial coupling,
 
 .. math::
 

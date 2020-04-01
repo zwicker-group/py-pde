@@ -7,7 +7,7 @@ This example shows how different boundary conditions can be specified.
 
 from pde import UnitGrid, ScalarField, DiffusionPDE
 
-grid = UnitGrid([16, 16], periodic=[False, True])   # generate grid
+grid = UnitGrid([16, 16], periodic=[False, True]) # generate grid
 state = ScalarField.random_uniform(grid, 0.2, 0.3)  # generate initial condition
 
 # set boundary conditions `bc` for all axes

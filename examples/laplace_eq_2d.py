@@ -2,7 +2,8 @@
 Solving Laplace's equation in 2d
 ================================
 
-This example shows how to solve a 2d Laplace equation with boundary conditions.
+This example shows how to solve a 2d Laplace equation with spatially varying
+boundary conditions.
 """
 
 import numpy as np

@@ -13,7 +13,7 @@ for the excitable dynamics of coupled Neurons:
     \partial_t w &= \epsilon u
     
 Here, :math:`\alpha` denotes the external stimulus and :math:`\epsilon` defines
-the recovery time scale.
+the recovery time scale. We implement this as a custom PDE class below.
 """
 
 from pde import UnitGrid, FieldCollection, PDEBase
