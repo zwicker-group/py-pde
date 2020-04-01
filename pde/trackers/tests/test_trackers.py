@@ -4,6 +4,8 @@
 
 import os
 from unittest import mock
+import tempfile
+import pickle
 
 import numpy as np
 import pytest
@@ -142,6 +144,26 @@ def test_callback_tracker():
     np.testing.assert_allclose(data, ts, atol=1e-2)
     np.testing.assert_allclose(data_tracker.data, ts, atol=1e-2)
    
+    
+
+def test_data_tracker():
+    """ test the DataTracker """
+    field = ScalarField(UnitGrid([4, 4]))
+    eq = DiffusionPDE()
+    
+    fp = tempfile.NamedTemporaryFile(suffix='.pickle')
+    data1 = trackers.DataTracker(lambda f: f.average, filename=fp.name)
+    data2 = trackers.DataTracker(lambda f: {'avg': f.average,
+                                            'int': f.integral})
+    eq.solve(field, 10, tracker=[data1, data2])
+    
+    time, data = pickle.load(fp)
+    np.testing.assert_allclose(time, np.arange(11))
+    assert isinstance(data, list)
+    assert len(data) == 11
+    
+    assert os.stat(fp.name).st_size > 0
+     
     
     
 def test_steady_state_tracker():

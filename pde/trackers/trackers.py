@@ -22,6 +22,7 @@ The trackers defined in this module are:
 from datetime import timedelta
 import inspect
 import sys
+import os.path
 import time
 from typing import (Callable, Optional, Union, IO, List, Any,  # @UnusedImport
                     TYPE_CHECKING)
@@ -357,10 +358,12 @@ class DataTracker(CallbackTracker):
     
     @fill_in_docstring
     def __init__(self, func: Callable,
-                 interval: IntervalData = 1):
+                 interval: IntervalData = 1,
+                 filename: str = None):
         """ 
         Args:
-            func: The function to call periodically. The function signature
+            func:
+                The function to call periodically. The function signature
                 should be `(state)` or `(state, time)`, where `state` contains
                 the current state as an instance of
                 :class:`~pde.fields.FieldBase` and `time` is a
@@ -372,8 +375,15 @@ class DataTracker(CallbackTracker):
                 return multiple numbers with assigned labels.
             interval:
                 {ARG_TRACKER_INTERVAL}
+            filename (str):
+                A path to a file to which the data is written at the end of the
+                tracking. The data format will be determined by the extension
+                of the filename. '.pickle' indicates a python pickle file
+                storing a tuple `(self.times, self.data)`, whereas any other
+                data format requires :mod:`pandas`.  
         """
         super().__init__(func=func, interval=interval)
+        self.filename = filename
         self.times: List[float] = []
         self.data: List[Any] = []
         
@@ -394,6 +404,18 @@ class DataTracker(CallbackTracker):
             self.data.append(self._callback(field, t))
         
         
+    def finalize(self, info: InfoDict = None) -> None:
+        """ finalize the tracker, supplying additional information
+
+        Args:
+            info (dict):
+                Extra information from the simulation        
+        """
+        super().finalize(info)
+        if self.filename:
+            self.to_file(self.filename)
+        
+        
     @property
     def dataframe(self) -> "pandas.DataFrame":
         """ :class:`pandas.DataFrame`: the data in a dataframe
@@ -408,7 +430,38 @@ class DataTracker(CallbackTracker):
         # insert the times and use them as an index
         df.insert(0, 'time', self.times)
         return df
+    
+    
+    def to_file(self, filename: str, **kwargs):
+        r""" store data in a file
         
+        The extension of the filename determines what format is being used. For
+        instance, '.pickle' indicates a python pickle file storing a tuple
+        `(self.times, self.data)`, whereas any other data format requires
+        :mod:`pandas`. Supported formats include 'csv', 'json'.  
+                
+        Args:
+            filename (str):
+                Path where the data is stored
+            \**kwargs:
+                Additional parameters may be supported for some formats 
+        """
+        extension = os.path.splitext(filename)[1].lower()
+        if extension == '.pickle':
+            # default 
+            import pickle
+            with open(filename, "wb") as fp:
+                pickle.dump((self.times, self.data), fp, **kwargs)
+            
+        elif extension == '.csv':
+            self.dataframe.to_csv(filename, **kwargs)
+        elif extension == '.json':
+            self.dataframe.to_json(filename, **kwargs)
+        elif extension in {'.xls', '.xlsx'}:
+            self.dataframe.to_excel(filename, **kwargs)
+        else:
+            raise ValueError(f'Unsupported file extension `{extension}`')
+            
             
             
 class SteadyStateTracker(TrackerBase):

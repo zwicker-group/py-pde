@@ -155,8 +155,10 @@ class FieldBase(metaclass=ABCMeta):
         are supported. 
         
         Args:
-            filename (str): Path where the data is stored
-            \**kwargs: Additional parameters may be supported for some formats 
+            filename (str):
+                Path where the data is stored
+            \**kwargs:
+                Additional parameters may be supported for some formats 
         """
         extension = Path(filename).suffix.lower()
         
