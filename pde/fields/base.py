@@ -116,12 +116,12 @@ class FieldBase(metaclass=ABCMeta):
             if 'class' in fp.attrs:
                 # this should be a field collection
                 assert fp.attrs['class'] == 'FieldCollection'
-                obj = FieldCollection._from_dataset(fp)
+                obj = FieldCollection._from_hdf_dataset(fp)
                 
             elif len(fp) == 1:
                 # a single field is stored in the data
                 dataset = fp[list(fp.keys())[0]]  # retrieve only dataset
-                obj = cls._from_dataset(dataset)  # type: ignore
+                obj = cls._from_hdf_dataset(dataset)  # type: ignore
                 
             else:
                 raise RuntimeError('Multiple data fields were found in the '
@@ -130,7 +130,7 @@ class FieldBase(metaclass=ABCMeta):
                 
                 
     @classmethod
-    def _from_dataset(cls, dataset) -> "FieldBase":
+    def _from_hdf_dataset(cls, dataset) -> "FieldBase":
         """ construct a field by reading data from an hdf5 dataset """
         class_name = dataset.attrs['class']
         field_cls = cls._subclasses[class_name]

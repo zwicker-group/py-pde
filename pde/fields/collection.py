@@ -193,13 +193,13 @@ class FieldCollection(FieldBase):
 
 
     @classmethod
-    def _from_dataset(cls, dataset) -> "FieldCollection":
+    def _from_hdf_dataset(cls, dataset) -> "FieldCollection":
         """ construct the class by reading data from an hdf5 dataset """
         count = dataset.attrs['count']  # number of fields
         label = dataset.attrs['label'] if 'label' in dataset.attrs else None
         
         # reconstruct all fields
-        fields = [FieldBase._from_dataset(dataset[f"field_{i}"])
+        fields = [FieldBase._from_hdf_dataset(dataset[f"field_{i}"])
                   for i in range(count)]
              
         return cls(fields, label=label)  # type: ignore
