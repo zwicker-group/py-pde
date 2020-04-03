@@ -44,14 +44,14 @@ representation, indicated by the noise term $\eta$ in the equation above.
 The main goal of the `py-pde` package is to provide a convenient way to analyze
 general PDEs, while at the same time allowing for enough flexibility to easily
 implement specialized code for particular cases.
-Since the code is written in pure python, it can be easily installed via pip by
+Since the code is written in pure Python, it can be easily installed via pip by
 simply calling `pip install py-pde`.
-However, central parts are just-in-time compiled using `numba` [@numba] for 
+However, the central parts are just-in-time compiled using `numba` [@numba] for 
 computational efficiency.
-To improve user-interaction further, some arguments accept mathematical
+To improve user interaction further, some arguments accept mathematical
 expressions that are parsed by `sympy` [@sympy] and are compiled optionally.
 This approach lowers the barrier for new users while also providing speed and 
-flexibility for advanced use-cases.
+flexibility for advanced use cases.
 Moreover, the package provides convenience functions for creating suitable 
 initial conditions, for controlling what is analyzed as well as stored during a
 simulation, and for visualizing the final results.
@@ -98,11 +98,11 @@ cylindrical grid defined above can be solved by
     result = eq.solve(field, t_range=[0, 10])
 ```
 Note that the partial differential equation is defined independent of the grid,
-allowing to use the same implementation for various geometries.
+allowing use of the same implementation for various geometries.
 The package provides simple implementations of standard PDEs, but extensions are
 simple to realize.
 In particular, the differential operator $\mathcal D$ can be implemented in pure
-python for initial testing, while adding a more specialized version compiled
+Python for initial testing, while a more specialized version compiled
 with `numba` [@numba] might be added later for speed.
 This approach allows fast testing of new PDEs while also providing an avenue
 for efficient calculations later.
@@ -111,14 +111,14 @@ The flexibility of `py-pde` is one of its key features.
 For instance, while the package implements forward and backward Euler methods as
 well as a Runge-Kutta scheme, users might require more sophisticated solvers.
 We already provide a wrapper for the excellent `scipy.integrate.solve_ivp` method
-from the scipy package [@SciPy2020] and further additions are straightforward.
+from the SciPy package [@SciPy2020] and further additions are straightforward.
 Finally, the explicit Euler stepper provided by `py-pde` also supports
 stochastic differential equations in the Itô representation.
 The standard PDE classes support additive Gaussian white noise, but
 alternatives, including multiplicative noise, can be specified in user-defined
 classes.
-This feature allows users to quickly test the effect of noise onto 
-dynamical systems without in depth knowledge of the associated numerical
+This feature allows users to quickly test the effect of noise on 
+dynamical systems without in-depth knowledge of the associated numerical
 implementation.
 
 Finally, the package provides many convenience methods that allow analyzing
@@ -127,8 +127,8 @@ evolution of quantities of interest.
 These features might be helpful even when not dealing with PDEs.
 For instance, the result of applying differential operators on the discretized
 fields can be visualized directly. 
-Here, the excellent integration of `matplotlib` [@matplotlib] into ipython
-jupyter notebooks [@ipython] allows for an efficient workflow.
+Here, the excellent integration of `matplotlib` [@matplotlib] into 
+Jupyter notebooks [@ipython] allows for an efficient workflow.
 
 The `py-pde` package employs a consistent object-oriented approach, where each
 component can be extended and some can even be used in isolation.
