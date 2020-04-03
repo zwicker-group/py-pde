@@ -2,11 +2,14 @@
 
 [![Build Status](https://travis-ci.org/zwicker-group/py-pde.svg?branch=master)](https://travis-ci.org/zwicker-group/py-pde)
 [![Documentation Status](https://readthedocs.org/projects/py-pde/badge/?version=latest)](https://py-pde.readthedocs.io/en/latest/?badge=latest)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
 [![PyPI version](https://badge.fury.io/py/py-pde.svg)](https://badge.fury.io/py/py-pde)
+
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![codecov](https://codecov.io/gh/zwicker-group/py-pde/branch/master/graph/badge.svg)](https://codecov.io/gh/zwicker-group/py-pde)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/zwicker-group/py-pde.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/zwicker-group/py-pde/context:python)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.02158/status.svg)](https://doi.org/10.21105/joss.02158)
 
 `py-pde` is a Python package for solving partial differential equations (PDEs). 
 The package provides classes for grids on which scalar and tensor fields can be defined.
