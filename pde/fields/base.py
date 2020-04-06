@@ -8,6 +8,7 @@ Defines base classes
 import functools
 import operator
 import logging
+import json
 from pathlib import Path 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar,
@@ -48,11 +49,12 @@ class FieldBase(metaclass=ABCMeta):
             Name of the field
     """ 
     
-    _subclasses: Dict[str, Any] = {}  # all classes inheriting from this
+    _subclasses: Dict[str, 'FieldBase'] = {}  # all classes inheriting from this
     readonly = False
     
     
-    def __init__(self, grid: GridBase, data: OptionalArrayLike = None,
+    def __init__(self, grid: GridBase,
+                 data: OptionalArrayLike = None,
                  label: Optional[str] = None):
         """ 
         Args:
@@ -76,32 +78,27 @@ class FieldBase(metaclass=ABCMeta):
 
 
     @classmethod
-    def from_state(cls, state: Union[str, Dict[str, Any]],
-                   grid: GridBase, data=None) -> "FieldBase":
+    def from_state(cls, attributes: Dict[str, Any],
+                   data: np.ndarray = None) -> "FieldBase":
         """ create a field from given state.
         
         Args:
-            state (str or dict): State from which the instance is created. If 
-                `state` is a string, it is decoded as JSON.
-            grid (:class:`~pde.grids.GridBase`):
-                The grid that is used to describe the field
-            data (:class:`numpy.ndarray`, optional): Data values at the support
-                points of the grid that define the field.
+            attributes (dict):
+                The attributes that describe the current instance
+            data (:class:`numpy.ndarray`, optional):
+                Data values at the support points of the grid defining the field
         """
-        # decode the json data
-        if isinstance(state, str):
-            import json
-            state = dict(json.loads(state))
-        
-        # create the instance of the correct class
-        class_name = state.pop('class')
+        # base class was chosen => select correct class from attributes
+        class_name = attributes.pop('class')
+
         if class_name == cls.__name__:
             raise RuntimeError('Cannot reconstruct abstract class' 
                                f'`{class_name}`')
-        field_cls = cls._subclasses[class_name]
-        return field_cls.from_state(state, grid, data=data)  # type: ignore
+        
+        # call possibly overwritten classmethod from subclass
+        return cls._subclasses[class_name].from_state(attributes, data)
 
-    
+            
     @classmethod
     def from_file(cls, filename: str) -> "FieldBase":
         """ create field by reading file
@@ -115,7 +112,7 @@ class FieldBase(metaclass=ABCMeta):
         with h5py.File(filename, "r") as fp:
             if 'class' in fp.attrs:
                 # this should be a field collection
-                assert fp.attrs['class'] == 'FieldCollection'
+                assert json.loads(fp.attrs['class']) == 'FieldCollection'
                 obj = FieldCollection._from_hdf_dataset(fp)
                 
             elif len(fp) == 1:
@@ -132,12 +129,16 @@ class FieldBase(metaclass=ABCMeta):
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> "FieldBase":
         """ construct a field by reading data from an hdf5 dataset """
-        class_name = dataset.attrs['class']
+        # copy attributes from hdf
+        attributes = dict(dataset.attrs)
+        
+        # determine class
+        class_name = json.loads(attributes.pop('class'))
         field_cls = cls._subclasses[class_name]
         
-        grid = GridBase.from_state(dataset.attrs['grid'])
-        label = dataset.attrs['label'] if 'label' in dataset.attrs else None
-        return field_cls(grid, data=dataset, label=label)  # type: ignore
+        # unserialize the attributes
+        attributes = field_cls.unserialize_attributes(attributes)
+        return field_cls.from_state(attributes, data=dataset)
 
     
     @property
@@ -177,11 +178,12 @@ class FieldBase(metaclass=ABCMeta):
 
     def _write_hdf_dataset(self, fp, key: str = 'data'):
         """ write data to a given hdf5 file pointer `fp` """
+        # write the data
         dataset = fp.create_dataset(key, data=self.data)
-        dataset.attrs['class'] = self.__class__.__name__
-        if self.label:      
-            dataset.attrs['label'] = str(self.label)      
-        dataset.attrs['grid'] = self.grid.state_serialized      
+
+        # write attributes        
+        for key, value in self.attributes_serialized.items():
+            dataset.attrs[key] = value
 
 
     def _write_to_image(self, filename: str, **kwargs):
@@ -239,19 +241,47 @@ class FieldBase(metaclass=ABCMeta):
         
         
     @property
-    def state(self) -> dict:
-        """ dict: current state of this instance """
-        return {'label': self.label}
+    def attributes(self) -> Dict[str, Any]:
+        """ dict: describes the state of the instance (without the data) """
+        return {'class': self.__class__.__name__,
+                'grid': self.grid,
+                'label': self.label}
     
-        
+
     @property
-    def state_serialized(self) -> str:
-        """ str: a json serialized version of the field """
-        import json
-        state = self.state
-        state['class'] = self.__class__.__name__
-        return json.dumps(state)
+    def attributes_serialized(self) -> Dict[str, str]:
+        """ dict: serialized version of the attributes """
+        results = {}
+        for key, value in self.attributes.items():
+            if key == 'grid':
+                results[key] = value.state_serialized
+            else:
+                results[key] = json.dumps(value)
+        return results
     
+    
+    @classmethod
+    def unserialize_attributes(cls, attributes: Dict[str, str]) \
+            -> Dict[str, Any]:
+        """ unserializes the given attributes
+        
+        Args:
+            attributes (dict):
+                The serialized attributes
+                
+        Returns:
+            dict: The unserialized attributes
+        """
+        # base class was chosen => select correct class from attributes
+        class_name = json.loads(attributes['class'])
+
+        if class_name == cls.__name__:
+            raise RuntimeError('Cannot reconstruct abstract class' 
+                               f'`{class_name}`')
+        
+        # call possibly overwritten classmethod from subclass
+        return cls._subclasses[class_name].unserialize_attributes(attributes)
+
 
     @property
     def _data_flat(self):
@@ -832,22 +862,25 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
          
         return cls(grid, data, label=label)
     
-        
+
     @classmethod
-    def from_state(cls, state: Dict[str, Any], grid: GridBase,  # type: ignore
-                   data=None) -> "DataFieldBase":
+    def from_state(cls, attributes: Dict[str, Any],
+                   data: np.ndarray = None) -> "DataFieldBase":
         """ create a field from given state.
         
         Args:
-            state (str or dict): State from which the instance is created. If 
-                `state` is a string, it is decoded as JSON.
-            grid (:class:`~pde.grids.GridBase`):
-                The grid that is used to describe the field
-            data (:class:`numpy.ndarray`, optional): Data values at the support
-                points of the grid that define the field.
+            attributes (dict):
+                The attributes that describe the current instance
+            data (:class:`numpy.ndarray`, optional):
+                Data values at the support points of the grid defining the field
         """
-        return cls(grid, data=data, **state)
+        if 'class' in attributes:
+            class_name = attributes.pop('class')
+            assert class_name == cls.__name__
             
+        # create the instance from the attributes
+        return cls(attributes.pop('grid'), data=data, **attributes)
+        
         
     def copy(self: TDataField, data=None, label: str = None) -> TDataField:
         """ return a copy of the data, but not of the grid
@@ -871,6 +904,27 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return (self.grid.dim,) * self.rank
     
     
+    @classmethod
+    def unserialize_attributes(cls, attributes: Dict[str, str]) \
+            -> Dict[str, Any]:
+        """ unserializes the given attributes
+        
+        Args:
+            attributes (dict):
+                The serialized attributes
+                
+        Returns:
+            dict: The unserialized attributes
+        """
+        results = {}
+        for key, value in attributes.items():
+            if key == 'grid':
+                results[key] = GridBase.from_state(value)
+            else:
+                results[key] = json.loads(value)
+        return results
+    
+        
     def _write_to_image(self, filename: str, **kwargs):
         r""" write data to image 
         

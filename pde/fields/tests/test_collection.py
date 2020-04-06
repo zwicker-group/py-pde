@@ -61,9 +61,14 @@ def test_collections():
     assert vf.data.shape == (2, 3, 4)
     assert tf.data.shape == (2, 2, 3, 4)
     
-    c2 = FieldBase.from_state(fields.state_serialized, grid=grid,
-                              data=fields.data)
+    c2 = FieldBase.from_state(fields.attributes, data=fields.data)
     assert c2 == fields
+    assert c2.grid is grid
+    
+    attrs = FieldCollection.unserialize_attributes(fields.attributes_serialized)
+    c2 = FieldCollection.from_state(attrs, data=fields.data)
+    assert c2 == fields
+    assert c2.grid is not grid
     
     fields['sf'] = 2.
     np.testing.assert_allclose(sf.data, 2)

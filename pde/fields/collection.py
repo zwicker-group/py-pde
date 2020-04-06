@@ -5,6 +5,7 @@ grid.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
+import json
 from typing import (Sequence, Optional, Union, Any, Dict,
                     List, Iterator)  # @UnusedImport
 
@@ -174,44 +175,54 @@ class FieldCollection(FieldBase):
     
         
     @classmethod
-    def from_state(cls, state: Dict[str, Any], grid: GridBase,  # type: ignore
-                   data=None) -> "FieldCollection":
+    def from_state(cls, attributes: Dict[str, Any],
+                   data: np.ndarray = None) -> "FieldCollection":
         """ create a field collection from given state.
         
         Args:
-            state (str or dict): State from which the instance is created. If 
-                `state` is a string, it is decoded as JSON.
-            grid (:class:`~pde.grids.GridBase`):
-                The grid that is used to describe the field
-            data (:class:`numpy.ndarray`, optional): Data values at the support
-                points of the grid that define the field.
+            attributes (dict):
+                The attributes that describe the current instance
+            data (:class:`numpy.ndarray`, optional):
+                Data values at support points of the grid defining all fields
         """
-        fields = [FieldBase.from_state(field_state, grid=grid)
-                  for field_state in state.pop('fields')]
+        if 'class' in attributes:
+            class_name = attributes.pop('class')
+            assert class_name == cls.__name__
         
-        return cls(fields, data=data, **state)  # type: ignore
+        # restore the individual fields (without data)
+        fields = [FieldBase.from_state(field_state)
+                  for field_state in attributes.pop('fields')]
+        
+        return cls(fields, data=data, **attributes)  # type: ignore
 
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> "FieldCollection":
         """ construct the class by reading data from an hdf5 dataset """
-        count = dataset.attrs['count']  # number of fields
-        label = dataset.attrs['label'] if 'label' in dataset.attrs else None
+        # copy attributes from hdf
+        attributes = dict(dataset.attrs)
         
-        # reconstruct all fields
-        fields = [FieldBase._from_hdf_dataset(dataset[f"field_{i}"])
-                  for i in range(count)]
-             
-        return cls(fields, label=label)  # type: ignore
+        # determine class
+        class_name = json.loads(attributes.pop('class'))
+        assert class_name == cls.__name__
+        
+        # determine the fields
+        field_attrs = json.loads(attributes.pop('fields'))
+        fields = [DataFieldBase._from_hdf_dataset(dataset[f"field_{i}"])
+                  for i in range(len(field_attrs))]
+        
+        # unserialize remaining attributes
+        attributes = cls.unserialize_attributes(attributes)
+        return cls(fields, **attributes)  # type: ignore
 
 
     def _write_hdf_dataset(self, fp):
         """ write data to a given hdf5 file pointer `fp` """
-        # write details of the collection
-        fp.attrs['class'] = self.__class__.__name__
-        fp.attrs['count'] = len(self)
-        if self.label:      
-            fp.attrs['label'] = str(self.label)
+        # write attributes of the collection
+        from pprint import pprint
+        pprint(self.attributes_serialized)
+        for key, value in self.attributes_serialized.items():
+            fp.attrs[key] = value
                   
         # write individual fields
         for i, field in enumerate(self.fields):
@@ -255,26 +266,47 @@ class FieldCollection(FieldBase):
     
     
     @property
-    def state(self) -> dict:
-        """ dict: current state of this instance """
-        return {'label': self.label,
-                'fields': [f.state for f in self.fields]}
-
+    def attributes(self) -> Dict[str, Any]:
+        """ dict: describes the state of the instance (without the data) """
+        results = super().attributes
+        del results['grid']
+        results['fields'] = [f.attributes for f in self.fields]
+        return results
+    
 
     @property
-    def state_serialized(self) -> str:
-        """ str: a json serialized version of the field """
-        import json
+    def attributes_serialized(self) -> Dict[str, str]:
+        """ dict: serialized version of the attributes """
+        results = {}
+        for key, value in self.attributes.items():
+            if key == 'fields':
+                fields = [f.attributes_serialized for f in self.fields]
+                results[key] = json.dumps(fields)
+            else:
+                results[key] = json.dumps(value)
+        return results
+    
+    
+    @classmethod
+    def unserialize_attributes(cls, attributes: Dict[str, str]) \
+            -> Dict[str, Any]:
+        """ unserializes the given attributes
         
-        fields = []
-        for field in self.fields:
-            state = field.state
-            state['class'] = field.__class__.__name__
-            fields.append(state)
-
-        return json.dumps({'class': self.__class__.__name__,
-                           'label': self.label,
-                           'fields': fields})
+        Args:
+            attributes (dict):
+                The serialized attributes
+                
+        Returns:
+            dict: The unserialized attributes
+        """
+        results = {}
+        for key, value in attributes.items():
+            if key == 'fields':
+                results[key] = [FieldBase.unserialize_attributes(attrs)
+                                for attrs in json.loads(value)]
+            else:
+                results[key] = json.loads(value)
+        return results
     
     
     def copy(self, data=None, label: str = None) -> 'FieldCollection':

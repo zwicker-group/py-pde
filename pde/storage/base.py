@@ -109,8 +109,10 @@ class StorageBase(metaclass=ABCMeta):
         This returns `None` if grid was not stored in `self.info`.
         """
         if self._grid is None:
-            if 'grid' in self.info:
-                self._grid = GridBase.from_state(self.info['grid'])
+            if 'field_attributes' in self.info:
+                attrs_serialized = self.info['field_attributes']
+                attrs = FieldBase.unserialize_attributes(attrs_serialized)
+                self._grid = attrs['grid']
             else:
                 self._logger.warning('`grid` attribute was not stored')
         return self._grid
@@ -138,10 +140,11 @@ class StorageBase(metaclass=ABCMeta):
                                    'the `_grid` attribute to the grid that has '
                                    'been used for the stored data.')
             
-            if 'field' in self.info:
+            if 'field_attributes' in self.info:
                 # field type was stored in data
-                self._field = FieldBase.from_state(self.info['field'],
-                                                   self.grid)
+                attrs_serialized = self.info['field_attributes']
+                attrs = FieldBase.unserialize_attributes(attrs_serialized)
+                self._field = FieldBase.from_state(attrs)
                 
             else:
                 # try to determine field type automatically
@@ -230,8 +233,8 @@ class StorageBase(metaclass=ABCMeta):
 
         self._grid = field.grid
         self._field = field.copy()
-        self.info['field'] = field.state_serialized 
-        self.info['grid'] = field.grid.state_serialized
+        self.info['field_attributes'] = field.attributes_serialized 
+#         self.info['grid'] = field.grid.state_serialized
             
     
     def end_writing(self) -> None:

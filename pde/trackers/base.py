@@ -30,7 +30,7 @@ class FinishedSimulation(StopIteration):
 class TrackerBase(metaclass=ABCMeta):
     """ base class for implementing trackers """
     
-    _subclasses: Dict[str, Any] = {}  # all classes inheriting from this
+    _subclasses: Dict[str, 'TrackerBase'] = {}  # all inheriting classes
     
     
     @fill_in_docstring

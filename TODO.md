@@ -1,5 +1,8 @@
 TODO
 ====
+* Introduce ExpressionPDE, where the rhs is defined by a string
+    - use a simple expression with pre-defined methods for the differentials
+    - do this for scalar pdes first, then coupled scalar pdes, then vectorial
 * Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable

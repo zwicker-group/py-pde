@@ -168,8 +168,8 @@ class BCBase(metaclass=ABCMeta):
     homogeneous: bool  # spatial dependence of boundary condition?
     value: Any         # the actual value of the boundary condition
 
-    _subclasses: Dict[str, Any] = {}  # all classes inheriting from this
-    _conditions: Dict[str, Any] = {}
+    _subclasses: Dict[str, 'BCBase'] = {}  # all classes inheriting from this
+    _conditions: Dict[str, 'BCBase'] = {}
     
     
     def __init__(self, grid: GridBase, axis: int, upper: bool, value=0):

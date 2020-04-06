@@ -121,7 +121,7 @@ class GridBase(metaclass=ABCMeta):
             The coordinate bounds of each axes
     """
     
-    _subclasses: Dict[str, Any] = {}  # all classes inheriting from this
+    _subclasses: Dict[str, 'GridBase'] = {}  # all classes inheriting from this
     
     # properties that are defined in subclasses
     axes: List[str]
@@ -170,7 +170,7 @@ class GridBase(metaclass=ABCMeta):
             raise RuntimeError('Cannot reconstruct abstract class '
                                f'`{class_name}`')
         grid_cls = cls._subclasses[class_name]
-        return grid_cls.from_state(state)  # type: ignore
+        return grid_cls.from_state(state)
     
     
     @property

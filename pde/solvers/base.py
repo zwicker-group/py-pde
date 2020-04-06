@@ -20,7 +20,7 @@ class SolverBase(metaclass=ABCMeta):
     """ base class for simulations """
 
     
-    _subclasses: Dict[str, Any] = {}  # all classes inheriting from this
+    _subclasses: Dict[str, 'SolverBase'] = {}  # all inheriting classes
     
         
     def __init__(self, pde: PDEBase):

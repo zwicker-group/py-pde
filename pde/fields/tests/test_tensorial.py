@@ -46,8 +46,14 @@ def test_tensors():
         assert p1.data.shape == grid.shape
         np.testing.assert_allclose(p1.data, value)
 
-    t2 = FieldBase.from_state(t1.state_serialized, grid=grid, data=t1.data)
+    t2 = FieldBase.from_state(t1.attributes, data=t1.data)
     assert t1 == t2
+    assert t1.grid is t2.grid
+    
+    attrs = Tensor2Field.unserialize_attributes(t1.attributes_serialized)
+    t2 = FieldBase.from_state(attrs, data=t1.data)
+    assert t1 == t2
+    assert t1.grid is not t2.grid
 
 
 

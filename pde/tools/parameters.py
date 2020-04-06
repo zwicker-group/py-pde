@@ -126,7 +126,7 @@ class Parameterized():
     """ a mixin that manages the parameters of a class """
 
     parameters_default: Sequence[Parameter] = []
-    _subclasses: Dict[str, Any] = {}
+    _subclasses: Dict[str, 'Parameterized'] = {}
 
 
     def __init__(self, parameters: Dict[str, Any] = None,

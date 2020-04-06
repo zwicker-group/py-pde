@@ -70,8 +70,14 @@ def test_scalars():
     s1 += s2
     np.testing.assert_allclose(s1.data, 3)
     
-    s2 = FieldBase.from_state(s1.state_serialized, grid=grid, data=s1.data)
+    s2 = FieldBase.from_state(s1.attributes, data=s1.data)
     assert s1 == s2
+    assert s1.grid is s2.grid
+    
+    attrs = ScalarField.unserialize_attributes(s1.attributes_serialized)
+    s2 = FieldBase.from_state(attrs, data=s1.data)
+    assert s1 == s2
+    assert s1.grid is not s2.grid
     
     # test options for plotting images
     if module_available("matplotlib"):

@@ -37,10 +37,17 @@ def test_vectors():
         assert p1.data.shape == grid.shape
         np.testing.assert_allclose(p1.data, value)
 
-    v2 = FieldBase.from_state(v1.state_serialized, grid=grid, data=v1.data)
+    v2 = FieldBase.from_state(v1.attributes, data=v1.data)
     assert v1 == v2
+    assert v1.grid is v2.grid
+    
+    attrs = VectorField.unserialize_attributes(v1.attributes_serialized)
+    v2 = FieldBase.from_state(attrs, data=v1.data)
+    assert v1 == v2
+    assert v1.grid is not v2.grid
 
     # test dot product
+    v2._grid = v1.grid  # make sure grids are identical
     v1.data = 1
     v2.data = 2
     for s in (v1 @ v2, v2 @ v1, v1.dot(v2)):
