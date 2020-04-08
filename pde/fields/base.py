@@ -1101,8 +1101,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # turn points into a linear array
             point = np.atleast_1d(point)
             if point.shape[-1] != grid_dim:
-                raise ValueError('Invalid points for interpolation.'
-                                 '(Dimension mismatch)')
+                raise DimensionError('Dimension of the interpolation point '
+                                     'does not match grid dimension')
             points_shape = point.shape[:-1]  # keep original shape of points
                 
             num_points = functools.reduce(operator.mul, points_shape, 1)
