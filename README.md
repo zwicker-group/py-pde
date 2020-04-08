@@ -61,18 +61,19 @@ result.plot()                                 # plot the resulting field
 A convenient feature of the package is that PDEs can also be specified by simply
 writing the expressions of the evolution rate.
 For instance, the
-[Cahn-Hilliard equation](https://en.wikipedia.org/wiki/Cahn–Hilliard_equation>)
+[Cahn-Hilliard equation](https://en.wikipedia.org/wiki/Cahn–Hilliard_equation)
 can be implemented as
 ```python
 eq = pde.PDE({'c': 'laplace(c**3 - c - laplace(c))')
 ```
 which can be used in place of the `DiffusionPDE` in the example above.
 
-More examples illustrating the capabilities of the package can be found in the
- `examples` folder of the package or in the
- [examples gallery](https://py-pde.readthedocs.io/en/latest/examples_gallery/)
-A detailed
-[documentation is available on readthedocs](https://py-pde.readthedocs.io/)
-and as
-[a single PDF file](https://py-pde.readthedocs.io/_/downloads/en/latest/pdf/).
 
+More information
+----------------
+* [Examples gallery](https://py-pde.readthedocs.io/en/latest/examples_gallery/)
+  with an overview of the capabilities of the package
+* [Full documentation on readthedocs](https://py-pde.readthedocs.io/)
+  or as [a single PDF file](https://py-pde.readthedocs.io/_/downloads/en/latest/pdf/).
+* The [paper published in the Journal of Open Source Software](https://doi.org/10.21105/joss.02158)
+ 
