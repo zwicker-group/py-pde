@@ -464,7 +464,7 @@ def _make_gradient_numba_2d(bcs: Boundaries) -> Callable:
 
     # use parallel processing for large enough arrays 
     parallel = (dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D**2)
-    
+        
     @jit_allocate_out(parallel=parallel, out_shape=(2, dim_x, dim_y))
     def gradient(arr, out=None):
         """ apply gradient operator to array `arr` """

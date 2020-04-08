@@ -20,10 +20,12 @@ from ..tools.docstrings import fill_in_docstring
 class WavePDE(PDEBase):
     r""" A simple wave equation
     
+    The mathematical definition,
+    
     .. math::
         \partial_t^2 u = c^2 \nabla^2 u
         
-    implemented as two first-order equations:
+    is implemented as two first-order equations:
     
     .. math::
         \partial_t u &= v \\
@@ -44,6 +46,7 @@ class WavePDE(PDEBase):
             speed (float):
                 The speed :math:`c` of the wave
             bc:
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
         """
         super().__init__()

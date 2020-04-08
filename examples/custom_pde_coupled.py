@@ -1,6 +1,6 @@
 r"""
-Custom coupled PDEs
-===================
+Custom Class for coupled PDEs
+=============================
 
 This example shows how to solve a set of coupled PDEs, the
 spatially coupled `FitzHugh–Nagumo model 

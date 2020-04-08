@@ -18,7 +18,9 @@ from ..tools.docstrings import fill_in_docstring
 
         
 class AllenCahnPDE(PDEBase):
-    r""" A simple Allen-Cahn equation, given by
+    r""" A simple Allen-Cahn equation
+    
+    The mathematical definition is
     
     .. math::
         \partial_t c = \gamma \nabla^2 c - c^3 + c
@@ -38,6 +40,7 @@ class AllenCahnPDE(PDEBase):
             interface_width (float):
                 The diffusivity of the described species
             bc:
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
         """
         super().__init__()

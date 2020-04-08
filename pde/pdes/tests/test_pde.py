@@ -1,0 +1,103 @@
+'''
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
+'''
+
+import pytest
+import numpy as np
+
+from .. import PDE, SwiftHohenbergPDE
+from ...grids import UnitGrid
+from ...fields import ScalarField, VectorField, FieldCollection
+from ...grids.tests.test_generic import iter_grids
+
+
+
+def test_pde_wrong_input():
+    """ test some wrong input """
+    with pytest.raises(RuntimeError):
+        PDE({'t': 1})
+        
+    grid = UnitGrid([4])
+    eq = PDE({'u': 1})
+    with pytest.raises(ValueError):
+        eq.evolution_rate(FieldCollection.scalar_random_uniform(2, grid))
+    
+    eq = PDE({'u': 1, 'v': 2})
+    with pytest.raises(ValueError):
+        eq.evolution_rate(ScalarField.random_uniform(grid))
+    
+
+
+def test_pde_scalar():
+    """ test PDE with a single scalar field """
+    eq = PDE({'u': 'laplace(u) + exp(-t) + sin(t)'})
+    grid = UnitGrid([8])
+    field = ScalarField.random_normal(grid)
+    
+    res_a = eq.solve(field, t_range=1, dt=0.01, backend='numpy', tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend='numba', tracker=None)
+    
+    res_a.assert_field_compatible(res_b)
+    np.testing.assert_allclose(res_a.data, res_b.data)
+    
+    
+
+def test_pde_vector():
+    """ test PDE with a single vector field """
+    eq = PDE({'u': 'vector_laplace(u) + exp(-t)'})
+    grid = UnitGrid([8, 8])
+    field = VectorField.random_normal(grid)
+
+    res_a = eq.solve(field, t_range=1, dt=0.01, backend='numpy', tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend='numba', tracker=None)
+    
+    res_a.assert_field_compatible(res_b)
+    np.testing.assert_allclose(res_a.data, res_b.data)    
+    
+    
+    
+def test_pde_2scalar():
+    """ test PDE with two scalar fields """
+    eq = PDE({'u': 'laplace(u) - u', 'v': '- u * v'})
+    grid = UnitGrid([8])
+    field = FieldCollection.scalar_random_uniform(2, grid)
+
+    res_a = eq.solve(field, t_range=1, dt=0.01, backend='numpy', tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend='numba', tracker=None)
+    
+    res_a.assert_field_compatible(res_b)
+    np.testing.assert_allclose(res_a.data, res_b.data)
+    
+    
+    
+def test_pde_vector_scalar():
+    """ test PDE with a vector and a scalar field """
+    eq = PDE({'u': 'vector_laplace(u) - u + gradient(v)',
+              'v': '- divergence(u)'})
+    grid = UnitGrid([8, 8])
+    field = FieldCollection([VectorField.random_uniform(grid),
+                             ScalarField.random_uniform(grid)])
+
+    res_a = eq.solve(field, t_range=1, dt=0.01, backend='numpy', tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend='numba', tracker=None)
+    
+    res_a.assert_field_compatible(res_b)
+    np.testing.assert_allclose(res_a.data, res_b.data)  
+
+
+
+@pytest.mark.parametrize('grid', iter_grids())
+def test_compare_swift_hohenberg(grid):
+    """ compare custom class to swift-Hohenberg """
+    rate, kc2, delta = np.random.uniform(0.5, 2, size=3)
+    eq1 = SwiftHohenbergPDE(rate=rate, kc2=kc2, delta=delta)
+    eq2 = PDE({'u': f"({rate} - {kc2}**2) * u - 2 * {kc2} * laplace(u) "
+                    f"- laplace(laplace(u)) + {delta} * u**2 - u**3"})
+
+    field = ScalarField.random_uniform(grid)
+    res1 = eq1.solve(field, t_range=1, dt=0.01, backend='numpy', tracker=None)
+    res2 = eq2.solve(field, t_range=1, dt=0.01, backend='numpy', tracker=None)
+    
+    res1.assert_field_compatible(res1)
+    np.testing.assert_allclose(res1.data, res2.data)
+    

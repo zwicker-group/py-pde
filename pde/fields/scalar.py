@@ -37,10 +37,14 @@ class ScalarField(DataFieldBase):
     rank = 0
         
         
+    @fill_in_docstring
     @classmethod
     def from_expression(cls, grid: GridBase, expression: str,
                         label: str = None) -> "ScalarField":
         """ create a scalar field on a grid from a given expression
+        
+        Warning:
+            {WARNING_EXEC}
         
         Args:
             grid (:class:`~pde.grids.GridBase`):
@@ -114,6 +118,7 @@ class ScalarField(DataFieldBase):
         
         Args:
             bc:
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
@@ -137,6 +142,7 @@ class ScalarField(DataFieldBase):
         
         Args:
             bc: 
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (VectorField, optional):
                 Optional vector field to which the result is written.

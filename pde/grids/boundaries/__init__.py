@@ -42,6 +42,12 @@ condition to the example above could thus read
     
     bc_y = ({'value': 'y**2'}, {'derivative': '-sin(x)'})
 
+
+Warning:
+    To interpret arbitrary expressions, the package uses :func:`exec`. It
+    should therefore not be used in a context where malicious input could occur.
+    
+
 The package also supports mixed boundary conditions (depending on both the value
 and the derivative of the field) and imposing a second derivative. An example is
 

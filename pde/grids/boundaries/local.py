@@ -36,6 +36,7 @@ from numba.extending import register_jitable
 
 from ..base import GridBase
 from ...tools.expressions import ScalarExpression
+from ...tools.docstrings import fill_in_docstring
 
 
 
@@ -171,9 +172,14 @@ class BCBase(metaclass=ABCMeta):
     _subclasses: Dict[str, 'BCBase'] = {}  # all classes inheriting from this
     _conditions: Dict[str, 'BCBase'] = {}
     
-    
+
+    @fill_in_docstring    
     def __init__(self, grid: GridBase, axis: int, upper: bool, value=0):
         """ 
+        Warning:
+            {WARNING_EXEC} However, the function is safe when `value` cannot be
+            an arbitrary string.
+        
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 The grid for which the boundary conditions are defined
@@ -198,9 +204,13 @@ class BCBase(metaclass=ABCMeta):
         self.upper = upper
         self.set_value(value)
                 
-                    
+          
+    @fill_in_docstring          
     def set_value(self, value=0):
         """ set the value of this boundary condition
+        
+        Warning:
+            {WARNING_EXEC}
         
         Args:
             value (float or str or array):

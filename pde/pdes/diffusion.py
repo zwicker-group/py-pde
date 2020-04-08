@@ -20,6 +20,8 @@ from ..tools.docstrings import fill_in_docstring
 class DiffusionPDE(PDEBase):
     r""" A simple diffusion equation
     
+    The mathematical definition is
+
     .. math::
         \partial_t c = D \nabla^2 c
         
@@ -41,6 +43,7 @@ class DiffusionPDE(PDEBase):
             noise (float):
                 Strength of the (additive) noise term
             bc:
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES} 
         """
         super().__init__(noise=noise)

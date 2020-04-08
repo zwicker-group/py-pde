@@ -167,6 +167,7 @@ class Tensor2Field(DataFieldBase):
         
         Args:
             bc: 
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (VectorField, optional):
                 Optional scalar field to which the  result is written.

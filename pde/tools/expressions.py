@@ -26,14 +26,19 @@ from numbers import Number
 import sympy
 import numpy as np
 
-from ..tools.cache import cached_property, cached_method
+from .cache import cached_property, cached_method
+from .docstrings import fill_in_docstring
 
 from .numba import jit
 
 
 
+@fill_in_docstring
 def parse_number(expression: Union[str, Number], **kwargs) -> float:
     r""" return a number compiled from an expression
+    
+    Warning:
+        {WARNING_EXEC}
     
     Args:
         expression (str or number): An expression that can be interpreted as a
@@ -63,10 +68,14 @@ ExpressionType = Union[float, str, "ExpressionBase"]
 class ExpressionBase(metaclass=ABCMeta):
     """ abstract base class for handling expressions """
 
+    @fill_in_docstring
     def __init__(self, expression,
                  signature: Optional[Sequence[Union[str, List[str]]]] = None,
                  user_funcs: Optional[Dict[str, Any]] = None):
         """
+        Warning:
+            {WARNING_EXEC}
+    
         Args:
             expression (str or float):
                 The expression, which is either a number or a string that sympy
@@ -202,26 +211,48 @@ class ExpressionBase(metaclass=ABCMeta):
                        for symbol in self._sympy_expr.free_symbols) 
     
     
-    @cached_method()
-    def _get_function(self, single_arg: bool = False) -> Callable:
+    def _get_function(self, single_arg: bool = False,
+                      user_funcs: Dict[str, Callable] = None) -> Callable:
         """ return function evaluating expression
         
         Args:
-            single_arg (bool): Determines whether the returned function accepts
-                all variables in a single argument as an array or whether all
-                variables need to be supplied separately
+            single_arg (bool):
+                Determines whether the returned function accepts all variables
+                in a single argument as an array or whether all variables need
+                to be supplied separately
+            user_funcs (dict):
+                Additional functions that can be used in the expression 
         
         Returns:
             function: the function
         """
+        if user_funcs is None:
+            user_funcs = {}
+        
         variables = (self.vars,) if single_arg else self.vars
         return sympy.lambdify(variables, self._sympy_expr,  # type: ignore
-                              modules=['numpy', self.user_funcs])
+                              modules=[user_funcs, self.user_funcs, 'numpy'])
         
+        
+    @cached_method()
+    def _get_function_cached(self, single_arg: bool = False) -> Callable:
+        """ return function evaluating expression
+        
+        Args:
+            single_arg (bool):
+                Determines whether the returned function accepts all variables
+                in a single argument as an array or whether all variables need
+                to be supplied separately
+        
+        Returns:
+            function: the function
+        """
+        return self._get_function(single_arg)
+
 
     def __call__(self, *args, **kwargs):
         """ return the value of the expression for the given values """
-        return self._get_function(single_arg=False)(*args, **kwargs)
+        return self._get_function_cached(single_arg=False)(*args, **kwargs)
 
     
     @cached_method()
@@ -236,7 +267,8 @@ class ExpressionBase(metaclass=ABCMeta):
         Returns:
             function: the compiled function
         """
-        return jit(self._get_function(single_arg=single_arg))  # type: ignore
+        func = self._get_function_cached(single_arg=single_arg)
+        return jit(func)  # type: ignore
     
 
 
@@ -246,11 +278,15 @@ class ScalarExpression(ExpressionBase):
     shape: Tuple[int, ...] = tuple()
     
     
+    @fill_in_docstring
     def __init__(self, expression: ExpressionType = 0,
                  signature: Optional[Sequence[Union[str, List[str]]]] = None,
                  user_funcs: Optional[Dict[str, Any]] = None,
                  allow_indexed: bool = False):
         """
+        Warning:
+            {WARNING_EXEC}
+
         Args:
             expression (str or float):
                 The expression, which is either a number or a string that sympy
@@ -391,10 +427,14 @@ class TensorExpression(ExpressionBase):
     """ describes a mathematical expression of a tensorial quantity """
     
     
+    @fill_in_docstring
     def __init__(self, expression: ExpressionType,
                  signature: Optional[Sequence[Union[str, List[str]]]] = None,
                  user_funcs: Optional[Dict[str, Any]] = None):
         """
+        Warning:
+            {WARNING_EXEC}
+
         Args:
             expression (str or float):
                 The expression, which is either a number or a string that sympy

@@ -18,7 +18,9 @@ from ..tools.docstrings import fill_in_docstring
 
         
 class KuramotoSivashinskyPDE(PDEBase):
-    r""" Represents the Kuramoto-Sivashinsky equation,
+    r""" The Kuramoto-Sivashinsky equation
+    
+    The mathematical definition is
     
     .. math::
         \partial_t u = -\nu \nabla^4 u  - \nabla^2 u -
@@ -45,6 +47,7 @@ class KuramotoSivashinskyPDE(PDEBase):
             noise (float):
                 Strength of the (additive) noise term
             bc:
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             bc_lap:
                 The boundary conditions applied to the second derivative of the

@@ -30,6 +30,22 @@ Custom PDEs
 """""""""""
 The `py-pde` package provides classes that help with implementing and analyzing
 partial differential equations.
+In particular, using the :class:`~pde.pdes.pde.PDE` class, PDEs can be defined
+by specifying their right-hand side as an expression. For instance, the
+Cahn-Hilliard equation could be implemented as
+
+.. code-block:: python
+
+    eq = PDE({'c': 'laplace(c**3 - c - laplace(c))'})
+    
+Here, the argument defines the evolution rate for all fields (in this case
+only :math:`c`).
+The expression on the right hand side can contain typical mathematical functions
+and the operators defined by the package.
+
+
+Custom PDE classes
+""""""""""""""""""
 To implement a new PDE in a way that all of the machinery of `py-pde` can be
 used, one needs to subclass :class:`pde.pdes.base.PDEBase` and overwrite at 
 least the :meth:`pde.pdes.base.PDEBase.evolution_rate`.

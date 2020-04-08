@@ -18,7 +18,9 @@ from ..tools.docstrings import fill_in_docstring
 
         
 class SwiftHohenbergPDE(PDEBase):
-    r""" The Swift-Hohenberg equation defined as
+    r""" The Swift-Hohenberg equation 
+    
+    The mathematical definition is
     
     .. math::
         \partial_t c = 
@@ -48,6 +50,7 @@ class SwiftHohenbergPDE(PDEBase):
             delta (float):
                 Parameter :math:`\delta` of the non-linearity
             bc:
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             bc_lap:
                 The boundary conditions applied to the second derivative of the

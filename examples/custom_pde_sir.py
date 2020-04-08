@@ -1,6 +1,6 @@
 r"""
-Custom PDE: SIR model
-=====================
+Custom PDE class: SIR model
+===========================
 
 This example implements a `spatially coupled SIR model 
 <https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology>`_ with 

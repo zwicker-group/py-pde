@@ -68,10 +68,14 @@ class VectorField(DataFieldBase):
         return cls(grid, data, label)
     
 
+    @fill_in_docstring
     @classmethod
     def from_expression(cls, grid: GridBase, expressions: Sequence[str],
                         label: str = None) -> "VectorField":
         """ create a vector field on a grid from given expressions
+
+        Warning:
+            {WARNING_EXEC}
         
         Args:
             grid (:class:`~pde.grids.GridBase`):
@@ -250,6 +254,7 @@ class VectorField(DataFieldBase):
         
         Args:
             bc: 
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
@@ -277,6 +282,7 @@ class VectorField(DataFieldBase):
         
         Args:
             bc:
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (Tensor2Field, optional):
                 Optional tensorial field to which the  result is written.
@@ -306,6 +312,7 @@ class VectorField(DataFieldBase):
         
         Args:
             bc: 
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (VectorField, optional):
                 Optional vector field to which the  result is written.

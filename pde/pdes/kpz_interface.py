@@ -18,7 +18,9 @@ from ..tools.docstrings import fill_in_docstring
 
         
 class KPZInterfacePDE(PDEBase):
-    r""" Represents the Kardar–Parisi–Zhang (KPZ) equation,
+    r""" The Kardar–Parisi–Zhang (KPZ) equation
+    
+    The mathematical definition is
     
     .. math::
         \partial_t h = \nu \nabla^2 h +
@@ -47,6 +49,7 @@ class KPZInterfacePDE(PDEBase):
             noise (float):
                 Strength of the (additive) noise term
             bc:
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES} 
         """
         super().__init__(noise=noise)

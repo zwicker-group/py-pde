@@ -1,13 +1,13 @@
 TODO
 ====
-* Introduce ExpressionPDE, where the rhs is defined by a string
-    - use a simple expression with pre-defined methods for the differentials
-    - do this for scalar pdes first, then coupled scalar pdes, then vectorial
+* Add noise to PDE (additive, but different for each field)
 * Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable
 * Think about introducing data class that holds integrated, global variables
 	- this might be helpful to implement lagrange multipliers and the like
+	- generally, we should use a state class that contains the state of a pde
+	  (in most cases, this would be a FieldBase)
 * Fix progress bar when starting from non-zero t_start?
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`

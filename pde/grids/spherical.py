@@ -426,6 +426,7 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         
         Args:
             bc (str or list or tuple or dict):
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
 
         Raises:
@@ -582,6 +583,7 @@ class PolarGrid(SphericalGridBase):
             op (str): Identifier for the operator. Some examples are 'laplace',
                 'gradient', or 'divergence'.
             bc (str or list or tuple or dict):
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
                 
         Returns:
@@ -649,6 +651,7 @@ class SphericalGrid(SphericalGridBase):
             op (str): Identifier for the operator. Some examples are 'laplace',
                 'gradient', or 'divergence'.
             bc (str or list or tuple or dict):
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
                 
         Returns:

@@ -1,6 +1,6 @@
 r"""
-Custom scalar PDE
-=================
+Simple custom PDE class
+=======================
 
 This example implements a custom scalar PDE. To display some of the features of
 the package, we here implemented the `Kuramoto–Sivashinsky equation

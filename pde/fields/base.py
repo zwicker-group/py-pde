@@ -1043,7 +1043,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         
         Args:
             bc:
-                {ARG_BOUNDARIES}
+                The boundary conditions applied to the field. {ARG_BOUNDARIES}
             fill (float, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.

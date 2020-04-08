@@ -19,17 +19,17 @@ DOCSTRING_REPLACEMENTS = {
        :func:`~pde.grids.boundaries.axes.Boundaries.from_data`."""[1:],
        
     '{ARG_BOUNDARIES}': """
-        The boundary conditions applied to the field. This is generally a list
-        with boundary conditions for each axis. For periodic axis, only periodic
-        boundary conditions are allowed (indicated by 'periodic'). For
-        non-periodic axes, different boundary conditions can be specified for
-        the lower and upper end (by a tuple of two conditions). For instance,
-        Dirichlet conditions enforcing a value NUM (specified by
-        `{'value': NUM}`) and Neumann conditions enforcing the value DERIV for
-        the derivative in the normal direction (specified by
-        `{'derivative': DERIV}`) are supported. Note that the special value 
-        'natural' imposes periodic boundary conditions for periodic axis and a
-        vanishing derivative otherwise. More information can be found in the 
+        Boundary conditions are generally given as a list with one condition for
+        each axis. For periodic axis, only periodic boundary conditions are
+        allowed (indicated by 'periodic'). For non-periodic axes, different 
+        boundary conditions can be specified for the lower and upper end (by a
+        tuple of two conditions). For instance, Dirichlet conditions enforcing a
+        value NUM (specified by `{'value': NUM}`) and Neumann conditions 
+        enforcing the value DERIV for the derivative in the normal direction
+        (specified by `{'derivative': DERIV}`) are supported.Note that the
+        special value 'natural' imposes periodic boundary conditions for
+        periodic axis and a vanishing derivative otherwise. More information can
+        be found in the
         :ref:`boundaries documentation <documentation-boundaries>`."""[1:],
 
     '{ARG_TRACKER_INTERVAL}': """
@@ -87,7 +87,12 @@ DOCSTRING_REPLACEMENTS = {
         :math:`i=0, \ldots, N_r-1`,  where :math:`r_\mathrm{min}` is the radius
         of the inner boundary, which is zero by default. Note that the radius of
         the outer boundary is given by
-        :math:`r_\mathrm{max} = r_\mathrm{min} + N_r \Delta r`."""[1:]
+        :math:`r_\mathrm{max} = r_\mathrm{min} + N_r \Delta r`."""[1:],
+        
+    # notes in the docstring
+    '{WARNING_EXEC}': r"""
+        This implementation uses :func:`exec` and should therefore not be used 
+        in a context where malicious input could occur."""[1:]
 }
 
 

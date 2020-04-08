@@ -14,6 +14,7 @@ deal with raw data for faster simulations.
 .. autosummary::
    :nosignatures:
 
+   ~pde.PDE
    ~allen_cahn.AllenCahnPDE
    ~cahn_hilliard.CahnHilliardPDE
    ~diffusion.DiffusionPDE
@@ -26,6 +27,7 @@ deal with raw data for faster simulations.
 """
 
 from .base import PDEBase
+from .pde import PDE
 from .allen_cahn import AllenCahnPDE
 from .cahn_hilliard import CahnHilliardPDE
 from .diffusion import DiffusionPDE

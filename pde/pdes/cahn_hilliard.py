@@ -18,8 +18,10 @@ from ..tools.docstrings import fill_in_docstring
 
         
 class CahnHilliardPDE(PDEBase):
-    r""" A simple Cahn-Hilliard equation, given by
+    r""" A simple Cahn-Hilliard equation
     
+    The mathematical definition is
+
     .. math::
         \partial_t c = \nabla^2 \left(c^3 - c - \gamma \nabla^2 c\right)
         
@@ -39,6 +41,7 @@ class CahnHilliardPDE(PDEBase):
             interface_width (float):
                 The diffusivity of the described species
             bc_c:
+                The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             bc_mu:
                 The boundary conditions applied to the chemical potential 
