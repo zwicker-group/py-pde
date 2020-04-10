@@ -8,7 +8,7 @@ import logging
 import os
 import warnings
 from functools import wraps
-from typing import Callable, Dict, Any, Optional, Tuple
+from typing import Callable, Dict, Any, Optional, Tuple, TypeVar
 
 import numpy as np
 import numba as nb  # lgtm [py/import-and-import-from]
@@ -26,6 +26,10 @@ NUMBA_DEBUG = False     # enable additional debug information
 # numba version as a list of integers
 NUMBA_VERSION = [int(v) for v in nb.__version__.split('.')[:2]]
  
+ 
+ 
+TFunc = TypeVar('TFunc')
+
     
 
 def numba_environment() -> Dict[str, Any]:
@@ -123,9 +127,9 @@ else:
     
     
 @decorator_arguments
-def jit(function: Callable,
+def jit(function: TFunc,
         signature=None,
-        parallel: bool = False, **kwargs) -> Callable:
+        parallel: bool = False, **kwargs) -> TFunc:
     """ apply nb.jit with predefined arguments
     
     Args:
@@ -141,8 +145,9 @@ def jit(function: Callable,
         return function  # type: ignore
     
     jit_kwargs = _numba_get_signature(parallel, **kwargs)
+    name = function.__name__  # type: ignore
     logging.getLogger(__name__).info('Compile `%s` with parallel=%s',
-                                     function.__name__, jit_kwargs['parallel'])
+                                     name, jit_kwargs['parallel'])
     return nb.jit(signature, **jit_kwargs)(function)  # type: ignore
 
 

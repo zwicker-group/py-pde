@@ -219,8 +219,6 @@ class FieldCollection(FieldBase):
     def _write_hdf_dataset(self, fp):
         """ write data to a given hdf5 file pointer `fp` """
         # write attributes of the collection
-        from pprint import pprint
-        pprint(self.attributes_serialized)
         for key, value in self.attributes_serialized.items():
             fp.attrs[key] = value
                   
