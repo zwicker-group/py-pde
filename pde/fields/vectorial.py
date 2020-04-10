@@ -68,8 +68,8 @@ class VectorField(DataFieldBase):
         return cls(grid, data, label)
     
 
-    @fill_in_docstring
     @classmethod
+    @fill_in_docstring
     def from_expression(cls, grid: GridBase, expressions: Sequence[str],
                         label: str = None) -> "VectorField":
         """ create a vector field on a grid from given expressions
@@ -104,7 +104,9 @@ class VectorField(DataFieldBase):
             expr = ScalarExpression(expression=expression, signature=grid.axes) 
             data.append(expr(**points))
 
-        return cls(grid=grid, data=data, label=label)
+        return cls(grid=grid,  # lgtm [py/call-to-non-callable]
+                   data=data,
+                   label=label)
         
 
     def __getitem__(self, key: int) -> ScalarField:

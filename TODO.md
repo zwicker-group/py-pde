@@ -1,5 +1,7 @@
 TODO
 ====
+* Add Glossary or something to development guide
+    - e.g., state = attributes + data
 * Add noise to PDE (additive, but different for each field)
 * Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten

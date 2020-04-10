@@ -37,8 +37,8 @@ class ScalarField(DataFieldBase):
     rank = 0
         
         
-    @fill_in_docstring
     @classmethod
+    @fill_in_docstring
     def from_expression(cls, grid: GridBase, expression: str,
                         label: str = None) -> "ScalarField":
         """ create a scalar field on a grid from a given expression
@@ -60,7 +60,9 @@ class ScalarField(DataFieldBase):
         expr = ScalarExpression(expression=expression, signature=grid.axes)
         points = {name: grid.cell_coords[..., i]
                   for i, name in enumerate(grid.axes)}
-        return cls(grid=grid, data=expr(**points), label=label)
+        return cls(grid=grid,  # lgtm [py/call-to-non-callable]
+                   data=expr(**points),
+                   label=label)
     
     
     @classmethod
