@@ -9,7 +9,6 @@ from typing import (Union, Tuple, Any, Dict, TypeVar,  # @UnusedImport
                     TYPE_CHECKING)
 import datetime
 import time
-
 import logging
 
 from .. import __version__
@@ -155,7 +154,7 @@ class Controller():
         if dt is None:
             dt = self.solver.info.get('dt')
             # Note that self.solver.info['dt'] might be None
-                                      
+
         if dt is None:
             atol = 1e-12
         else:

@@ -136,7 +136,8 @@ class Parameterized():
         
         Args:
             parameters (dict):
-                A dictionary of parameters to change the defaults
+                A dictionary of parameters to change the defaults. Call
+                :meth:`~Parameterized.show_parameters` for details.
             check_validity (bool):
                 Determines whether a `ValueError` is raised if there are keys in
                 parameters that are not in the defaults. If `False`, additional
