@@ -176,10 +176,10 @@ class FieldBase(metaclass=ABCMeta):
                              f'extensions `{extension}`')
 
 
-    def _write_hdf_dataset(self, fp, key: str = 'data'):
-        """ write data to a given hdf5 file pointer `fp` """
+    def _write_hdf_dataset(self, hdf_path, key: str = 'data'):
+        """ write data to a given hdf5 path `hdf_path` """
         # write the data
-        dataset = fp.create_dataset(key, data=self.data)
+        dataset = hdf_path.create_dataset(key, data=self.data)
 
         # write attributes        
         for key, value in self.attributes_serialized.items():

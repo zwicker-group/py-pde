@@ -216,15 +216,15 @@ class FieldCollection(FieldBase):
         return cls(fields, **attributes)  # type: ignore
 
 
-    def _write_hdf_dataset(self, fp):
-        """ write data to a given hdf5 file pointer `fp` """
+    def _write_hdf_dataset(self, hdf_path):
+        """ write data to a given hdf5 path `hdf_path` """
         # write attributes of the collection
         for key, value in self.attributes_serialized.items():
-            fp.attrs[key] = value
+            hdf_path.attrs[key] = value
                   
         # write individual fields
         for i, field in enumerate(self.fields):
-            field._write_hdf_dataset(fp, f"field_{i}")
+            field._write_hdf_dataset(hdf_path, f"field_{i}")
 
 
     def assert_field_compatible(self, other: FieldBase,
