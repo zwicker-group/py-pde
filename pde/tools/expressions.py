@@ -34,25 +34,30 @@ from .numba import jit
 
 
 @fill_in_docstring
-def parse_number(expression: Union[str, Number], **kwargs) -> float:
+def parse_number(expression: Union[str, Number],
+                 variables: Dict[str, Number] = None) -> float:
     r""" return a number compiled from an expression
     
     Warning:
         {WARNING_EXEC}
     
     Args:
-        expression (str or number): An expression that can be interpreted as a
-          number.
-        **kwargs: All extra arguments can define variables that are replaced in
-          the expression.
+        expression (str or number):
+            An expression that can be interpreted as a number
+        variables (dict):
+            A dictionary of values that replace variables in the expression
         
     Returns:
         float: the calculated value
     """
     from sympy.parsing import sympy_parser
+    
+    if variables is None:
+        variables = {}
+    
     expr = sympy_parser.parse_expr(str(expression)).simplify()
     try:
-        value = float(expr.subs(kwargs))
+        value = float(expr.subs(variables))
     except TypeError as err:
         if not err.args: 
             err.args = ('',)
