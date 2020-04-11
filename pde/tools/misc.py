@@ -24,6 +24,7 @@ Miscallenous python functions
 import os
 import errno
 import functools
+import json
 import sys
 import importlib
 import unittest
@@ -379,4 +380,32 @@ def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
         number *= 10
         duration = timeit.timeit(test_func, number=number)  # type: ignore
     return number / duration
+
+
+
+def hdf_write_attributes(hdf_path,
+                         attributes: Dict[str, Any] = None,
+                         raise_serialization_error: bool = False) -> None:
+    """ write (JSON-serialized) attributes to a hdf file
+    
+    Args:
+        hdf_path:
+            Path to a group or dataset in an open HDF file
+        attributes (dict):
+            Dictionary with values written as attributes
+        raise_serialization_error (bool):
+            Flag indicating whether serialization errors are raised or silently
+            ignored
+    """ 
+    if attributes is None:
+        return
+        
+    for key, value in attributes.items():
+        try:
+            value_serialized = json.dumps(value)
+        except TypeError:
+            if raise_serialization_error:
+                raise
+        else:
+            hdf_path.attrs[key] = value_serialized
 

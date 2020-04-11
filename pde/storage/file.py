@@ -14,7 +14,7 @@ import numpy as np
 
 from .base import StorageBase, InfoDict
 from ..fields.base import FieldBase
-from ..tools.misc import ensure_directory_exists
+from ..tools.misc import ensure_directory_exists, hdf_write_attributes
 
 
 
@@ -316,8 +316,7 @@ class FileStorage(StorageBase):
             
         if not self.keep_opened:
             # store extra information as attributes
-            for k, v in self.info.items():
-                self._file.attrs[k] = json.dumps(v)
+            hdf_write_attributes(self._file, self.info)
             
         self._is_writing = True
 
@@ -371,8 +370,7 @@ class FileStorage(StorageBase):
         self._logger.debug('End writing')
         
         # store extra information as attributes
-        for k, v in self.info.items():
-            self._file.attrs[k] = json.dumps(v)
+        hdf_write_attributes(self._file, self.info)
         self._file.flush()
         self.close()
         self._is_writing = False

@@ -3,8 +3,10 @@
 '''
 
 import os
+import json
 import tempfile
 
+import pytest
 import numpy as np
 
 from .. import misc
@@ -98,3 +100,34 @@ def test_progress_bars():
             tot += i
         assert tot == 6
     
+    
+    
+@misc.skipUnlessModule('h5py')
+def test_hdf_write_attributes():
+    """ test hdf_write_attributes function """
+    import h5py
+
+    # test normal case    
+    data = {'a': 3, 'b': 'asd'}
+    with tempfile.NamedTemporaryFile(suffix='.hdf') as fp:
+        with h5py.File(fp.name, 'w') as hdf_file:
+            misc.hdf_write_attributes(hdf_file, data)
+            data2 = {k: json.loads(v) for k, v in hdf_file.attrs.items()}
+            
+    assert data == data2
+    assert data is not data2
+
+    # test silencing of problematic items
+    with tempfile.NamedTemporaryFile(suffix='.hdf') as fp:
+        with h5py.File(fp.name, 'w') as hdf_file:
+            misc.hdf_write_attributes(hdf_file, {'a': 1, 'b': object()})
+            data2 = {k: json.loads(v) for k, v in hdf_file.attrs.items()}
+    assert data2 == {'a': 1}
+            
+    # test raising problematic items
+    with tempfile.NamedTemporaryFile(suffix='.hdf') as fp:
+        with h5py.File(fp.name, 'w') as hdf_file:
+            with pytest.raises(TypeError):
+                misc.hdf_write_attributes(hdf_file, {'a': object()},
+                                          raise_serialization_error=True)
+                
