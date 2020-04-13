@@ -31,7 +31,8 @@ class SolverBase(metaclass=ABCMeta):
                 The partial differential equation that should be solved
         """
         self.pde = pde
-        self.info: Dict[str, Any] = {'pde_class': self.pde.__class__.__name__}
+        self.info: Dict[str, Any] = {'class': self.__class__.__name__,
+                                     'pde_class': self.pde.__class__.__name__}
         self._logger = logging.getLogger(self.__class__.__name__)
         
 
