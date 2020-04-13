@@ -474,7 +474,7 @@ class FieldCollection(FieldBase):
     def plot_image(self, quantities=None,  # type: ignore
                    title: Optional[str] = None,
                    tight: bool = True,
-                   show: bool = False,
+                   show: bool = True,
                    **kwargs):
         r""" visualize images of all fields
         

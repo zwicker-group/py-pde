@@ -226,21 +226,28 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
 
 
     def get_image_data(self, data, performance_goal: str = 'speed',
-                       fill_value: float = 0) -> Dict[str, Any]:
+                       fill_value: float = 0,
+                       masked: bool = True) -> Dict[str, Any]:
         """ return a 2d-image of the data
         
         Args:
-            data (:class:`numpy.ndarray`): The values at the grid points
-            performance_goal (str): Determines the method chosen for
-                interpolation. Possible options are `speed` and `quality`.
-            fill_value (float): The value assigned to invalid positions (those
-                inside the hole or outside the bcs).
+            data (:class:`numpy.ndarray`):
+                The values at the grid points
+            performance_goal (str):
+                Determines the method chosen for interpolation. Possible options
+                are `speed` and `quality`.
+            fill_value (float):
+                The value assigned to invalid positions (those inside the hole
+                or outside the region).
+            masked (bool):
+                Whether a :class:`numpy.ma.MaskedArray` is returned for the data
+                instead of the normal :class:`numpy.ndarray`.
             
         Returns:
             A dictionary with information about the image, which is  convenient
             for plotting.
         """
-        r_outer = self.axes_bounds[0][1] 
+        _, r_outer = self.axes_bounds[0]
         r_data = self.axes_coords[0]
         
         if self.has_hole:
@@ -268,6 +275,10 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
             
         else:
             raise ValueError(f'Performance goal `{performance_goal}` undefined')
+        
+        if masked:
+            mask = (r_img < r_data[0]) | (r_data[-1] < r_img) 
+            data_int = np.ma.masked_array(data_int, mask=mask)
         
         return {'data': data_int,
                 'x': x, 'y': x,
