@@ -96,16 +96,18 @@ class VectorField(DataFieldBase):
             raise ValueError(f'Expected {grid.dim} expressions for the '
                              f'coordinates {axes_names}.') 
         
-        # obtain the values at the grid points
+        # obtain the coordinates of the grid points
         points = {name: grid.cell_coords[..., i]
                   for i, name in enumerate(grid.axes)}
         
-        # evaluate the different components
+        # evaluate all vector components at all points 
         data = []
         for expression in expressions:
-            expr = ScalarExpression(expression=expression, signature=grid.axes) 
-            data.append(expr(**points))
+            expr = ScalarExpression(expression=expression, signature=grid.axes)
+            values = np.broadcast_to(expr(**points), grid.shape) 
+            data.append(values)
 
+        # create vector field from the data
         return cls(grid=grid,  # lgtm [py/call-to-non-callable]
                    data=data,
                    label=label)
