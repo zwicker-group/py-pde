@@ -148,6 +148,8 @@ class ScalarFieldPlot():
     def __init__(self, fields: FieldBase,
                  quantities=None,
                  scale: ScaleData = 'automatic',
+                 title: Optional[str] = None,
+                 tight: bool = True,
                  show: bool = True):
         """
         Args:
@@ -157,6 +159,10 @@ class ScalarFieldPlot():
                 {ARG_PLOT_QUANTITIES}
             scale (str, float, tuple of float):
                 {ARG_PLOT_SCALE}
+            title (str):
+                Title of the plot.
+            tight (bool):
+                Whether to call :func:`matplotlib.pyploy.tight_layout`
             show (bool):
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background, which can be useful if it only needs to
@@ -178,7 +184,9 @@ class ScalarFieldPlot():
         self.fig, self.axes = plt.subplots(num_rows, num_cols,
                                            sharey=True, squeeze=False,
                                            figsize=(4 * num_cols, 4 * num_rows))
-        self.sup_title = plt.suptitle('')
+        if title is None:
+            title = ""        
+        self.sup_title = plt.suptitle(title)
         
         # set up all images
         empty = np.zeros_like(example_image['data'])
@@ -229,6 +237,8 @@ class ScalarFieldPlot():
             self.images.append(img_row)
             
         self.show_data(fields)    
+        if tight:
+            plt.tight_layout()
         
     
     @classmethod

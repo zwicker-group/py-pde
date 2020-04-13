@@ -418,16 +418,21 @@ class FieldCollection(FieldBase):
     
     def plot_collection(self,
                         title: Optional[str] = None,
+                        tight: bool = True,
                         show: bool = False,
                         **kwargs):
         r""" visualize all fields by plotting them next to each other
         
         Args:
-            title (str): Title of the plot. If omitted, the title is chosen
-                automatically based on the label the data field.
+            title (str):
+                Title of the plot. If omitted, the title is chosen automatically
+                based on the label the data field.
+            tight (bool):
+                Whether to call :func:`matplotlib.pyploy.tight_layout`
             show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is called
-            \**kwargs: Additional keyword arguments are passed to the method
+                Whether to call :func:`matplotlib.pyplot.show`
+            \**kwargs:
+                Additional keyword arguments are passed to the method
                 `plot_line` of the individual fields.
         """
         import matplotlib.pyplot as plt
@@ -437,49 +442,63 @@ class FieldCollection(FieldBase):
         if title is None:
             title = self.label
         plt.suptitle(title)
+        if tight:
+            plt.tight_layout()
         if show:
             plt.show()
     
     
     def plot_line(self,
                   title: Optional[str] = None,
+                  tight: bool = True,
                   show: bool = False,
                   **kwargs):
-        r""" visualize all fields using a 1d cuts
+        r""" visualize all fields as line plots
         
         Args:
-            title (str): Title of the plot. If omitted, the title is chosen
-                automatically based on the label the data field.
+            title (str):
+                Title of the plot. If omitted, the title is chosen automatically
+                based on the label the data field.
+            tight (bool):
+                Whether to call :func:`matplotlib.pyploy.tight_layout`
             show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is called
-            \**kwargs: Additional keyword arguments are passed to the method
+                Whether to call :func:`matplotlib.pyplot.show`
+            \**kwargs:
+                Additional keyword arguments are passed to the method
                 `plot_line` of the individual fields.
         """
-        self.plot_collection(title=title, show=show, kind='line', **kwargs)
+        self.plot_collection(title=title, tight=tight, show=show, kind='line',
+                             **kwargs)
         
     
     def plot_image(self, quantities=None,  # type: ignore
                    title: Optional[str] = None,
+                   tight: bool = True,
                    show: bool = False,
                    **kwargs):
         r""" visualize images of all fields
         
         Args:
-            quantities: Determines what exactly is plotted. See
-                :class:`~pde.visualization.plotting.ScalarfieldPlot` for
-                details.
-            title (str): Title of the plot. If omitted, the title is chosen
-                automatically based on the label the data field.
+            quantities:
+                Determines what exactly is plotted. See
+                :class:`~pde.visualization.plotting.ScalarfieldPlot` for details
+            title (str):
+                Title of the plot. If omitted, the title is chosen automatically
+                based on the label the data field.
+            tight (bool):
+                Whether to call :func:`matplotlib.pyploy.tight_layout`
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
-            \**kwargs: Additional keyword arguments are passed to the plot
-                methods of the individual fields
+            \**kwargs:
+                Additional keyword arguments are passed to the plot methods of
+                the individual fields
         """
-        from ..visualization.plotting import ScalarFieldPlot
-        plot = ScalarFieldPlot(self, quantities=quantities, show=show)
         if title is None:
             title = self.label
-        plot.show_data(self, title=title)
+            
+        from ..visualization.plotting import ScalarFieldPlot
+        ScalarFieldPlot(self, quantities=quantities, title=title,
+                        tight=tight, show=show)
         
         
     def plot(self, kind: str = 'auto', filename=None, **kwargs):
