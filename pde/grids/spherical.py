@@ -548,14 +548,19 @@ class PolarGrid(SphericalGridBase):
         return np.stack((x, y), axis=-1)
 
 
-    def plot(self, **kwargs):
-        r""" visualize the grid
+    def plot(self, title: str = None, show: bool = False, **kwargs):
+        r""" visualize the polar grid
         
         Args:
+            title (str):
+                Determines the title of the figure
+            show (bool):
+                Determines whether :func:`matplotlib.pyplot.show` is called
             \**kwargs: Extra arguments are passed on the to the matplotlib
                 plotting routines, e.g., to set the color of the lines
         """
         import matplotlib.pyplot as plt
+        from ..visualization.plotting import finalize_plot
         
         kwargs.setdefault('color', 'k')
         rb, = self.axes_bounds
@@ -572,6 +577,8 @@ class PolarGrid(SphericalGridBase):
         plt.ylim(-rmax, rmax)
         plt.ylabel('y')
         ax.set_aspect(1)
+        
+        finalize_plot(title=title, show=show)
             
     
     @cached_method()

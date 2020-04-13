@@ -347,35 +347,41 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
         return self.normalize_point(coords)
 
 
-    def plot(self, **kwargs):
+    def plot(self, title: str = None, show: bool = False, **kwargs):
         r""" visualize the grid
         
         Args:
+            title (str):
+                Determines the title of the figure
+            show (bool):
+                Determines whether :func:`matplotlib.pyplot.show` is called
             \**kwargs: Extra arguments are passed on the to the matplotlib
                 plotting routines, e.g., to set the color of the lines
         """
         import matplotlib.pyplot as plt
+        from ..visualization.plotting import finalize_plot
         
-        if self.dim in {1, 2}:
-            kwargs.setdefault('color', 'k')
-            xb = self.axes_bounds[0]
-            for x in np.linspace(*xb, self.shape[0] + 1):
-                plt.axvline(x, **kwargs)
-            plt.xlim(*xb)
-            plt.xlabel(self.axes[0])
-            
-            if self.dim == 2:
-                yb = self.axes_bounds[1]
-                for y in np.linspace(*yb, self.shape[1] + 1):
-                    plt.axhline(y, **kwargs)
-                plt.ylim(*yb)
-                plt.ylabel(self.axes[1])
-                
-                plt.gca().set_aspect(1)
-            
-        else:
+        if self.dim not in {1, 2}:
             raise NotImplementedError('Plotting is not implemented for grids '
                                       f'of dimension {self.dim}')
+            
+        kwargs.setdefault('color', 'k')
+        xb = self.axes_bounds[0]
+        for x in np.linspace(*xb, self.shape[0] + 1):
+            plt.axvline(x, **kwargs)
+        plt.xlim(*xb)
+        plt.xlabel(self.axes[0])
+        
+        if self.dim == 2:
+            yb = self.axes_bounds[1]
+            for y in np.linspace(*yb, self.shape[1] + 1):
+                plt.axhline(y, **kwargs)
+            plt.ylim(*yb)
+            plt.ylabel(self.axes[1])
+            
+            plt.gca().set_aspect(1)
+            
+        finalize_plot(title=title, show=show)
             
 
     @fill_in_docstring

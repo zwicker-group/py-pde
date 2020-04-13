@@ -48,7 +48,7 @@ def finalize_plot(fig_or_ax=None,
                   title: str = None,
                   filename: str = None,
                   show: bool = False,
-                  close_figure: bool = False):
+                  close_figure: bool = False) -> Tuple[Any, Any]:
     r""" finalizes a figure by adjusting relevant parameters
     
     Args:
@@ -65,7 +65,7 @@ def finalize_plot(fig_or_ax=None,
             Whether the figure should be closed in the end
             
     Returns:
-        Result of :func:`matplotlib.pyplot.imshow`
+        tuple: The figure and the axes that were used to finalize the plot
     """
     import matplotlib.pyplot as plt
     
@@ -93,7 +93,7 @@ def finalize_plot(fig_or_ax=None,
     if close_figure:
         plt.close(fig)
         
-    return fig
+    return fig, ax
     
 
 

@@ -1,5 +1,8 @@
 TODO
 ====
+* Add benchmark
+    - store results on disk in json-encoded file
+    - compare to findiff package
 * Add Glossary or something to development guide
     - e.g., state = attributes + data
 * Add noise to PDE (additive, but different for each field)
