@@ -48,11 +48,13 @@ class VectorField(DataFieldBase):
         Note that the data of the scalar fields is copied in the process
         
         Args:
-            fields (list): The list of (compatible) scalar fields
-            label (str, optional): Name of the field
+            fields (list):
+                The list of (compatible) scalar fields
+            label (str, optional):
+                Name of the returned field
             
         Returns:
-            VectorField: the resulting vector field
+            :class:`VectorField`: the resulting vector field
         """
         grid = fields[0].grid
         
@@ -190,7 +192,8 @@ class VectorField(DataFieldBase):
             return out
         
         if nb.config.DISABLE_JIT:
-            def dot(a, b, out=None):
+            def dot(a: np.ndarray, b: np.ndarray, out: np.ndarray = None) \
+                    -> np.ndarray:
                 """ wrapper deciding whether the underlying function is called
                 with or without `out`. """
                 if out is None:
@@ -199,7 +202,8 @@ class VectorField(DataFieldBase):
             
         else:
             @nb.generated_jit
-            def dot(a, b, out=None):
+            def dot(a: np.ndarray, b: np.ndarray, out: np.ndarray = None) \
+                    -> np.ndarray:
                 """ wrapper deciding whether the underlying function is called
                 with or without `out`. """
                 if isinstance(a, nb.types.Number):
@@ -226,10 +230,12 @@ class VectorField(DataFieldBase):
         """ calculate the outer product of this vector field with another
         
         Args:
-            other (VectorField): The other term
-            out (Tensor2Field, optional): Optional tensorial field to which the 
-                result is written.
-            label (str, optional): Name of the returned field
+            other (:class:`VectorField`):
+                The second vector field
+            out (:class:`pde.fields.tensorial.Tensor2Field`, optional):
+                Optional tensorial field to which the  result is written.
+            label (str, optional):
+                Name of the returned field
         
         """
         from .tensorial import Tensor2Field  # @Reimport
@@ -343,10 +349,12 @@ class VectorField(DataFieldBase):
         The two tensor invariants are given by
         
         Args:
-            scalar (str or int): Choose the method to use. Possible 
-                choices are `norm`, `max`, `min`, `squared_sum`, and an integer
-                which specifies a particular component.
-            label (str, optional): Name of the returned field
+            scalar (str or int):
+                Choose the method to use. Possible  choices are `norm`, `max`,
+                `min`, `squared_sum`, and an integer which specifies a
+                particular component.
+            label (str, optional):
+                Name of the returned field
             
         Returns:
             ScalarField: the scalar result
@@ -376,8 +384,9 @@ class VectorField(DataFieldBase):
         """ return data for a line plot of the field
         
         Args:
-            method (str or int): The method for extracting scalars as described
-                in `self.to_scalar`.
+            method (str or int):
+                The method for extracting scalars as described in
+                `self.to_scalar`.
                 
         Returns:
             dict: Information useful for performing a line plot of the field
@@ -389,8 +398,9 @@ class VectorField(DataFieldBase):
         r""" return data for plotting an image of the field
 
         Args:
-            scalar (str or int): The method for extracting scalars as described
-                in `self.to_scalar`.
+            scalar (str or int):
+                The method for extracting scalars as described in
+                `self.to_scalar`.
             \**kwargs: Additional parameters are forwarded to `get_image_data`
                 
         Returns:

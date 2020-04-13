@@ -545,23 +545,31 @@ class FieldBase(metaclass=ABCMeta):
                     method: str = 'quiver',
                     ax=None,
                     transpose: bool = False,
+                    max_points: int = 16,
                     title: Optional[str] = None,
                     show: bool = False,
                     **kwargs):
         r""" visualize a 2d vector field
 
         Args:
-            method (str): Plot type that is used. This can be either `quiver`
-                or `streamplot`.
-            ax: Figure axes to be used for plotting. If `None`, a new figure is
+            method (str):
+                Plot type that is used. This can be either `quiver` or
+                `streamplot`.
+            ax:
+                Figure axes to be used for plotting. If `None`, a new figure is
                 created
-            transpose (bool): determines whether the transpose of the data
-                should be plotted.
-            title (str): Title of the plot. If omitted, the title is chosen
+            transpose (bool):
+                Determines whether the transpose of the data should be plotted.
+            max_points (int):
+                The maximal number of points that is used along each axis. This
+                is only used for quiver plots.
+            title (str):
+                Title of the plot. If omitted, the title is chosen
                 automatically based on the label the data field.
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
-            \**kwargs: Additional keyword arguments are passed to
+            \**kwargs:
+                Additional keyword arguments are passed to
                 :func:`matplotlib.pyplot.quiver` or
                 :func:`matplotlib.pyplot.streamplot`.
                 
@@ -1526,6 +1534,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     method: str = 'quiver',
                     ax=None,
                     transpose: bool = False,
+                    max_points: int = 16,
                     title: Optional[str] = None,
                     show: bool = False,
                     **kwargs):
@@ -1540,6 +1549,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 created
             transpose (bool):
                 Determines whether the transpose of the data should be plotted.
+            max_points (int):
+                The maximal number of points that is used along each axis. This
+                is only used for quiver plots.
             title (str):
                 Title of the plot. If omitted, the title is chosen
                 automatically based on the label the data field.
@@ -1570,6 +1582,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         
         # determine which plotting function to use
         if method == 'quiver':
+            # potentially reduce the number of points along each axis
+            shape = data['data_x'].shape
+            for axis, size in enumerate(shape):
+                if size > max_points:
+                    idx_f = np.linspace(0, size - 1, max_points)
+                    idx_i = np.round(idx_f).astype(int)
+                    #
+                    data['data_x'] = np.take(data['data_x'], idx_i, axis=axis)
+                    data['data_y'] = np.take(data['data_y'], idx_i, axis=axis)
+                    if axis == 0:
+                        data['y'] = data['y'][idx_i]
+                    elif axis == 1:
+                        data['x'] = data['x'][idx_i]
             plot_func = plt.quiver if ax is None else ax.quiver
             
         elif method == 'streamplot':
