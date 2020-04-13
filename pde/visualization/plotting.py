@@ -416,6 +416,7 @@ def plot_magnitudes(storage: StorageBase,
                     filename: str = None,
                     quantities=None,
                     ax=None,
+                    title: str = None,
                     show: bool = False,
                     **kwargs) -> None:
     r""" create a plot of spatially integrated quantities from a given storage.
@@ -434,6 +435,8 @@ def plot_magnitudes(storage: StorageBase,
         ax:
             Matplotlib figure axes to be used for plotting. If `None`, a new
             figure is created
+        title (str):
+            Determines the title of the figure
         show (bool):
             Flag determining whether :func:`matplotlib.pyplot.show` is called
         \**kwargs:
@@ -478,7 +481,7 @@ def plot_magnitudes(storage: StorageBase,
             value *= quantity.get('scale', 1)
             data[i]['values'].append(value)
     
-    close_figure = (filename and ax is None)
+    close_figure = (bool(filename) and ax is None)
     if ax is None:
         # create new figure
         ax = plt.figure().gca()
@@ -488,16 +491,15 @@ def plot_magnitudes(storage: StorageBase,
         kwargs['label'] = d['label']
         ax.plot(storage.times, d['values'], **kwargs)
         
+    ax.set_xlabel('Time')
+    if len(data) == 1:
+        ax.set_ylabel(kwargs['label'])
+        
     if len(data) > 1:
         ax.legend(loc='best')
     
-    fig = ax.figure
-    if filename:
-        fig.savefig(filename)
-    if show:
-        plt.show()
-    if close_figure:
-        plt.close(fig)
+    finalize_plot(ax, title=title, filename=filename, show=show,
+                  close_figure=close_figure)
             
 
 
@@ -506,6 +508,7 @@ def plot_kymograph(storage: StorageBase,
                    extract: str = 'auto',
                    colorbar: bool = True,
                    transpose: bool = False,
+                   title: str = None,
                    show: bool = False,
                    ax=None,
                    **kwargs):
@@ -530,6 +533,8 @@ def plot_kymograph(storage: StorageBase,
             Whether to show a colorbar or not
         transpose (bool):
             Determines whether the transpose of the data should is plotted
+        title (str):
+            Determines the title of the figure
         show (bool):
             Flag determining whether :func:`matplotlib.pyplot.show` is called
         ax: Figure axes to be used for plotting. If `None`, a new figure is
@@ -571,8 +576,11 @@ def plot_kymograph(storage: StorageBase,
     if colorbar:
         from ..tools.misc import add_scaled_colorbar
         add_scaled_colorbar(res, ax=ax)
+        
+    if title is None:
+        title = img_data['label_y']
 
-    finalize_plot(ax, title=img_data['label_y'], filename=filename, show=show,
+    finalize_plot(ax, title=title, filename=filename, show=show,
                   close_figure=close_figure)
     
     return res

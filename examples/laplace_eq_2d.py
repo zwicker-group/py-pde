@@ -9,7 +9,7 @@ boundary conditions.
 import numpy as np
 from pde import CartesianGrid, ScalarField
 
-grid = CartesianGrid([[0, 2 * np.pi]] * 2, 16)
+grid = CartesianGrid([[0, 2 * np.pi]] * 2, 64)
 bcs = [{'value': 'sin(y)'}, {'value': 'sin(x)'}]
 
 field = ScalarField(grid)
