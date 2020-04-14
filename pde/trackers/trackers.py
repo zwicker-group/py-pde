@@ -239,7 +239,13 @@ class PrintTracker(TrackerBase):
 
 
 class PlotTracker(TrackerBase):
-    """ Tracker that plots data on screen, to files, or writes a movie """
+    """ Tracker that plots data on screen, to files, or writes a movie.
+    
+    Note:
+        Although this tracker can be used in a jupyter notebook, it currently
+        deletes all other output in the same cell and does not combine very well
+        with other output widgets.
+    """
      
     name = 'plot'
     
@@ -301,9 +307,18 @@ class PlotTracker(TrackerBase):
             float: The first time the tracker needs to handle data
         """
         from ..visualization.plotting import ScalarFieldPlot
+        
+        # get initial time
+        if info:
+            t_start = info.get('controller', {}).get('t_start', 0)
+        else:
+            t_start = 0
+            
+        # initialize the plotting panels
         self.plot = ScalarFieldPlot(field,
                                     quantities=self.quantities,
                                     scale=self.scale,
+                                    title=f'Time: {t_start:g}',
                                     show=self.show)
          
         return super().initialize(field, info=info)
@@ -318,7 +333,7 @@ class PlotTracker(TrackerBase):
             t (float):
                 The associated time
         """
-        self.plot.show_data(field, title=f'Time {t:g}')
+        self.plot.show_data(field, title=f'Time: {t:g}')
         if self.output_file:
             self.plot.fig.savefig(self.output_file)
         if self.movie:

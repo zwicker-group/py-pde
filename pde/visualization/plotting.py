@@ -14,6 +14,7 @@ Functions and classes for plotting simulation data
 
 import logging
 import warnings
+import time
 from typing import (Union, Callable, Optional, Any, Dict, List, Tuple)
 
 import numpy as np
@@ -142,7 +143,13 @@ def extract_field(fields: FieldBase,
 
 
 class ScalarFieldPlot():
-    """ class managing compound plots of scalar fields """
+    """ class managing compound plots of scalar fields
+    
+    Note:
+        The `ScalarFieldPlot` class supports jupyter notebooks and can update
+        plots dynamically. However, the current implementation deletes all other
+        output in the same cell when `show = True`.    
+    """
     
     @fill_in_docstring
     def __init__(self, fields: FieldBase,
@@ -166,7 +173,7 @@ class ScalarFieldPlot():
             show (bool):
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background, which can be useful if it only needs to
-                be written to a file
+                be written to a file.
         """
         import matplotlib.pyplot as plt
         import matplotlib.cm as cm
@@ -180,6 +187,14 @@ class ScalarFieldPlot():
         num_rows = len(self.quantities)
         num_cols = max(len(p) for p in self.quantities)
              
+        # initialize display to update ipython output dynamically
+        try:
+            from IPython import display
+        except ImportError:
+            self._ipython_display = None
+        else:
+            self._ipython_display = display
+                 
         # set up the figure
         self.fig, self.axes = plt.subplots(num_rows, num_cols,
                                            sharey=True, squeeze=False,
@@ -236,11 +251,13 @@ class ScalarFieldPlot():
                 img_row.append(img)
             self.images.append(img_row)
             
-        self.show_data(fields)    
         if tight:
             # adjust layout and leave some room for title
             self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
         
+        # show the actual data
+        self.show_data(fields, first_frame=True)    
+
     
     @classmethod
     @fill_in_docstring
@@ -344,14 +361,19 @@ class ScalarFieldPlot():
         self.fig.savefig(path, **kwargs)
         
             
-    def show_data(self, fields: FieldBase, title: Optional[str] = None) -> None:
+    def show_data(self, fields: FieldBase, title: Optional[str] = None,
+                  first_frame: bool = False) -> None:
         """ show the given fields in the current view
         
         Args:
-            fields: The field or field collection of which the defined 
-                quantities are shown.
-            title (str, optional): The title of this view. If `None`, the
-                current title is not changed. 
+            fields:
+                The field or field collection of which the defined quantities
+                are shown.
+            title (str, optional):
+                The title of this view. If `None`, the current title is not
+                changed. 
+            first_frame (bool):
+                Indicates whether this is the first frame
         """
         import matplotlib.pyplot as plt
         assert isinstance(fields, FieldBase)
@@ -359,6 +381,7 @@ class ScalarFieldPlot():
         if title:
             self.sup_title.set_text(title)
         
+        # iterate over all panels and update their content
         for i, panel_row in enumerate(self.quantities):
             for j, panel in enumerate(panel_row):
                 # obtain image data
@@ -375,11 +398,22 @@ class ScalarFieldPlot():
                     vmax = img_data['data'].max()
                 img.set_clim(vmin, vmax)
                 
-        # add a small pause to allow the GUI to run it's event loop
+        # display the updated panels if selected
         if self.show:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                plt.pause(0.01)
+            if self._ipython_display:
+                # seems to be in an ipython instance => update widget
+                if not first_frame:
+                    self._ipython_display.clear_output(wait=True)
+                self._ipython_display.display(self.fig)
+                # add a small pause to allow the GUI to run it's event loop
+                time.sleep(0.01)
+                
+            else:
+                # seems to be in a normal matplotlib window => update it
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    # add a small pause to allow the GUI to run it's event loop
+                    plt.pause(0.01)
                 
     
     def make_movie(self, storage: StorageBase,
@@ -390,10 +424,12 @@ class ScalarFieldPlot():
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
                 The storage instance that contains all the data for the movie
-            filename (str): The filename to which the movie is written. The
-                extension determines the format used.
-            progress (bool): Flag determining whether the progress of making
-                the movie is shown.
+            filename (str):
+                The filename to which the movie is written. The extension
+                determines the format used.
+            progress (bool):
+                Flag determining whether the progress of making the movie is
+                shown.
         """
         from ..visualization.movies import Movie
 

@@ -1,7 +1,6 @@
 TODO
 ====
-* Add dynamic outout to jupyter notebooks if PlotTracker
-    - see https://stackoverflow.com/a/21361994/932593
+* Catch KeyboardInterrupt to keep traceback clean in simulations
 * Support 3d plots in plot_image (use for Laplace and Poisson eq) 
 * Add benchmark
     - store results on disk in json-encoded file
