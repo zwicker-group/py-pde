@@ -513,7 +513,7 @@ class FieldBase(metaclass=ABCMeta):
         raise NotImplementedError()
     
     
-    def plot_line(self, **kwargs):
+    def plot_line(self, ax=None, **kwargs):
         r""" visualize a field using a 1d cut """
         raise NotImplementedError()
     
@@ -579,21 +579,25 @@ class FieldBase(metaclass=ABCMeta):
         raise NotImplementedError()
     
             
-    def plot(self, kind: str = 'auto', filename=None, **kwargs):
+    def plot(self, kind: str = 'auto', ax=None, filename=None, **kwargs):
         r""" visualize the field
         
         Args:
-            kind (str): Determines the visualizations. Supported values are
-                `image`,  `line`, or `vector`. Alternatively, `auto` determines
-                the best visualization based on the field itself.
-            filename (str, optional): If given, the plot is written to the
-                specified file. Otherwise, the plot might show directly in an
-                interactive matplotlib session or `matplotlib.pyplot.show()`
-                might be used to display the graphics.
-            ax: Figure axes to be used for plotting. If `None`, a new figure is
+            kind (str):
+                Determines the visualizations. Supported values are `image`, 
+                `line`, or `vector`. Alternatively, `auto` determines the best
+                visualization based on the field itself.
+            ax:
+                Figure axes to be used for plotting. If `None`, a new figure is
                 created
-            \**kwargs: All additional keyword arguments are forwarded to the
-                actual plotting functions.
+            filename (str, optional):
+                If given, the plot is written to the specified file. Otherwise,
+                the plot might show directly in an interactive matplotlib
+                session or `matplotlib.pyplot.show()` might be used to display
+                the graphics.
+            \**kwargs:
+                All additional keyword arguments are forwarded to the actual
+                plotting functions.
                 
         Returns:
             The result of the respective matplotlib plotting function
@@ -610,11 +614,11 @@ class FieldBase(metaclass=ABCMeta):
 
         # do the actual plotting
         if kind == 'image':
-            res = self.plot_image(**kwargs)
+            res = self.plot_image(ax=ax, **kwargs)
         elif kind == 'line':
-            res = self.plot_line(**kwargs)
+            res = self.plot_line(ax=ax, **kwargs)
         elif kind == 'vector':
-            res = self.plot_vector(**kwargs)
+            res = self.plot_vector(ax=ax, **kwargs)
         else:
             raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
                              '`image`, `line`, `vector`, or `auto`.')
@@ -1411,23 +1415,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             
             
     def plot_line(self, 
+                  ax=None,
                   extract: str = 'auto',
                   ylabel: str = None,
-                  ax=None,
                   title: str = None,
                   show: bool = False,
                   **kwargs):
         r""" visualize a field using a 1d cut
         
         Args:
+            ax:
+                Figure axes to be used for plotting. If `None`, a new figure is
+                created
             extract (str):
                 The method used for extracting the line data.
             ylabel (str):
                 Label of the y-axis. If omitted, the label is chosen 
                 automatically from the data field.
-            ax:
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created
             title (str):
                 Title of the plot.
             show (bool):

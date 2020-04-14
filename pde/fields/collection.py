@@ -436,19 +436,19 @@ class FieldCollection(FieldBase):
                 `plot_line` of the individual fields.
         """
         import matplotlib.pyplot as plt
-        _, axes = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
+        fig, axes = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
         for field, ax in zip(self.fields, axes):
             field.plot(ax=ax, **kwargs)
         if title is None:
             title = self.label
-        plt.suptitle(title)
+        fig.suptitle(title)
         if tight:
-            plt.tight_layout()
+            fig.tight_layout()
         if show:
             plt.show()
     
     
-    def plot_line(self,
+    def plot_line(self,  # type: ignore
                   title: Optional[str] = None,
                   tight: bool = True,
                   show: bool = False,
@@ -501,7 +501,7 @@ class FieldCollection(FieldBase):
                         tight=tight, show=show)
         
         
-    def plot(self, kind: str = 'auto', filename=None, **kwargs):
+    def plot(self, kind: str = 'auto', filename=None, **kwargs):  # type: ignore
         r""" visualize the field
         
         Args:

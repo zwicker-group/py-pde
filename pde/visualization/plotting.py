@@ -239,7 +239,7 @@ class ScalarFieldPlot():
         self.show_data(fields)    
         if tight:
             # adjust layout and leave some room for title
-            plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+            self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
         
     
     @classmethod
