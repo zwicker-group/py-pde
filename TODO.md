@@ -1,6 +1,6 @@
 TODO
 ====
-* Check caching of operators (why is even calling a second time slow?)
+* Check caching of operators (why is calling a second time slow?)
 * Add wrapper for solving Laplacian equation on a grid
 * Catch KeyboardInterrupt to keep traceback clean in simulations
 * Figure out how to not delete other output when using PlotTracker
@@ -10,7 +10,7 @@ TODO
     - compare to findiff package
 * Add Glossary or something to development guide
     - e.g., state = attributes + data
-* Add noise to PDE (additive, but different for each field)
+* Add noise to PDE class (additive, but different for each field)
 * Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable
