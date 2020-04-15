@@ -71,6 +71,7 @@ which can be used in place of the `DiffusionPDE` in the example above.
 
 More information
 ----------------
+* Tutorial notebooks in the [tutorials folder](https://github.com/zwicker-group/py-pde/examples/tutorial)
 * [Examples gallery](https://py-pde.readthedocs.io/en/latest/examples_gallery/)
   with an overview of the capabilities of the package
 * [Full documentation on readthedocs](https://py-pde.readthedocs.io/)
