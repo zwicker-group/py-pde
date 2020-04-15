@@ -165,9 +165,10 @@ class ScalarField(DataFieldBase):
         return out
     
     
+    @fill_in_docstring
     def solve_poisson(self, bc: "BoundariesData",
                       out: Optional['ScalarField'] = None,
-                      label: str = "solution to Poisson's equation"):
+                      label: str = "Solution to Poisson's equation"):
         r""" solve Poisson's equation with the current field as inhomogeneity.
          
         Denoting the current field by :math:`x`, we thus solve for :math:`y`,
@@ -191,15 +192,24 @@ class ScalarField(DataFieldBase):
             :math:`x` must vanish for neutral Neumann or periodic conditions.
              
         Args:
-            bc: Gives the boundary conditions applied to fields that are
-                required for calculating the Laplacian.
-            out (ScalarField, optional): Optional scalar field to which the 
-                result is written.
-            label (str, optional): Name of the returned field
+            bc: 
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES}
+            out (ScalarField, optional):
+                Optional scalar field to which the  result is written.
+            label (str, optional):
+                Name of the returned field
              
         Returns:
             ScalarField: the result of applying the operator 
         """
+        # Deprecated this method on 2020-04-15
+        import warnings
+        warnings.warn("solve_poisson() method is deprecated. Use the function "
+                      "pde.pdes.solve_poisson_equation or pde.pdes.solve_"
+                      "laplace_equation instead.",
+                      DeprecationWarning)
+        
         # solve the poisson problem
         solve_poisson = self.grid.get_operator('poisson_solver', bc=bc)
         try:
@@ -372,3 +382,4 @@ class ScalarField(DataFieldBase):
         else:
             raise ValueError(f'Unknown method `{scalar}` for `to_scalar`')
         return ScalarField(grid=self.grid, data=data, label=label)
+

@@ -290,6 +290,7 @@ def test_slice_positions():
 
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_poisson_solver_1d():
     """ test the poisson solver on 1d grids """
     # solve Laplace's equation
@@ -320,6 +321,7 @@ def test_poisson_solver_1d():
     
 
 
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
 def test_poisson_solver_2d():
     """ test the poisson solver on 2d grids """
     grid = CartesianGrid([[0, 2 * np.pi]] * 2, 16)

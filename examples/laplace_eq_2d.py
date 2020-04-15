@@ -7,11 +7,10 @@ boundary conditions.
 """
 
 import numpy as np
-from pde import CartesianGrid, ScalarField
+from pde import CartesianGrid, solve_laplace_equation
 
 grid = CartesianGrid([[0, 2 * np.pi]] * 2, 64)
 bcs = [{'value': 'sin(y)'}, {'value': 'sin(x)'}]
 
-field = ScalarField(grid)
-res = field.solve_poisson(bcs)
+res = solve_laplace_equation(grid, bcs)
 res.plot()

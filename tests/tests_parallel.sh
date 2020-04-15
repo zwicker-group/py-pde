@@ -9,9 +9,9 @@ if [ ! -z $1 ]
 then 
 	# test pattern was specified 
 	echo 'Run unittests with pattern '$1' on '$CORES' cores:'
-	python3 -m pytest -rs -n $CORES --durations=10 -k "$1" . ..
+	python3 -m pytest -c pytest.ini -rs -n $CORES --durations=10 -k "$1" . ..
 else
 	# test pattern was not specified
 	echo 'Run all unittests on '$CORES' cores:'
-	python3 -m pytest -rs -n $CORES --durations=10 . ..
+	python3 -m pytest -c pytest.ini -rs -n $CORES --durations=10 . ..
 fi

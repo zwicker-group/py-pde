@@ -22,6 +22,16 @@ deal with raw data for faster simulations.
    ~kuramoto_sivashinsky.KuramotoSivashinskyPDE
    ~swift_hohenberg.SwiftHohenbergPDE
    ~wave.WavePDE
+
+Additionally, we offer two solvers for typical elliptical PDEs:
+
+
+.. autosummary::
+   :nosignatures:
+
+   ~laplace.solve_laplace_equation
+   ~laplace.solve_poisson_equation
+
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
@@ -35,3 +45,6 @@ from .kpz_interface import KPZInterfacePDE
 from .kuramoto_sivashinsky import KuramotoSivashinskyPDE
 from .swift_hohenberg import SwiftHohenbergPDE
 from .wave import WavePDE
+
+from .laplace import solve_laplace_equation
+from .laplace import solve_poisson_equation
