@@ -512,123 +512,6 @@ class FieldBase(metaclass=ABCMeta):
         """
         raise NotImplementedError()
     
-    
-    def plot_line(self, ax=None, **kwargs):
-        r""" visualize a field using a 1d cut """
-        raise NotImplementedError()
-    
-    
-    def plot_image(self, ax=None,
-                   colorbar: bool = False,
-                   transpose: bool = False,
-                   title: Optional[str] = None, **kwargs):
-        r""" visualize an 2d image of the field
-
-        Args:
-            ax: Figure axes to be used for plotting. If `None`, a new figure is
-                created
-            colorbar (bool): determines whether a colorbar is shown
-            transpose (bool): determines whether the transpose of the data
-                should be plotted.
-            title (str): Title of the plot. If omitted, the title is chosen
-                automatically based on the label the data field.
-            \**kwargs: Additional keyword arguments are passed to
-                `matplotlib.pyplot.imshow`.
-                
-        Returns:
-            Result of `plt.imshow`
-        """
-        raise NotImplementedError()
-    
-    
-    def plot_vector(self,
-                    method: str = 'quiver',
-                    ax=None,
-                    transpose: bool = False,
-                    max_points: int = 16,
-                    title: Optional[str] = None,
-                    show: bool = False,
-                    **kwargs):
-        r""" visualize a 2d vector field
-
-        Args:
-            method (str):
-                Plot type that is used. This can be either `quiver` or
-                `streamplot`.
-            ax:
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created
-            transpose (bool):
-                Determines whether the transpose of the data should be plotted.
-            max_points (int):
-                The maximal number of points that is used along each axis. This
-                is only used for quiver plots.
-            title (str):
-                Title of the plot. If omitted, the title is chosen
-                automatically based on the label the data field.
-            show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is called
-            \**kwargs:
-                Additional keyword arguments are passed to
-                :func:`matplotlib.pyplot.quiver` or
-                :func:`matplotlib.pyplot.streamplot`.
-                
-        Returns:
-            Result of `plt.quiver` or `plt.streamplot`
-        """
-        raise NotImplementedError()
-    
-            
-    def plot(self, kind: str = 'auto', ax=None, filename=None, **kwargs):
-        r""" visualize the field
-        
-        Args:
-            kind (str):
-                Determines the visualizations. Supported values are `image`, 
-                `line`, or `vector`. Alternatively, `auto` determines the best
-                visualization based on the field itself.
-            ax:
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created
-            filename (str, optional):
-                If given, the plot is written to the specified file. Otherwise,
-                the plot might show directly in an interactive matplotlib
-                session or `matplotlib.pyplot.show()` might be used to display
-                the graphics.
-            \**kwargs:
-                All additional keyword arguments are forwarded to the actual
-                plotting functions.
-                
-        Returns:
-            The result of the respective matplotlib plotting function
-        """
-        if kind == 'auto':
-            # determine best plot for this field
-            if (isinstance(self, DataFieldBase) and self.rank == 1 and
-                    self.grid.dim == 2):
-                kind = 'vector'
-            elif len(self.grid.shape) == 1:
-                kind = 'line'
-            else:
-                kind = 'image'
-
-        # do the actual plotting
-        if kind == 'image':
-            res = self.plot_image(ax=ax, **kwargs)
-        elif kind == 'line':
-            res = self.plot_line(ax=ax, **kwargs)
-        elif kind == 'vector':
-            res = self.plot_vector(ax=ax, **kwargs)
-        else:
-            raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
-                             '`image`, `line`, `vector`, or `auto`.')
-            
-        # store the result to a file if requested
-        if filename:
-            plt.savefig(filename)
-            
-        return res
-                    
 
 
 TDataField = TypeVar('TDataField', bound='DataFieldBase')
@@ -1419,9 +1302,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                   extract: str = 'auto',
                   ylabel: str = None,
                   title: str = None,
+                  filename: str = None,
                   show: bool = False,
                   **kwargs):
-        r""" visualize a field using a 1d cut
+        r""" visualize a field using a 1d line plot
         
         Args:
             ax:
@@ -1434,6 +1318,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 automatically from the data field.
             title (str):
                 Title of the plot.
+            filename (str, optional):
+                If given, the plot is written to the specified file.
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
             \**kwargs:
@@ -1461,7 +1347,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ax.set_ylabel(ylabel)
             
         from ..visualization.plotting import finalize_plot
-        finalize_plot(ax, title=title, show=show)
+        finalize_plot(ax, title=title, filename=filename, show=show)
             
         return line
     
@@ -1470,9 +1356,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                    colorbar: bool = False,
                    transpose: bool = False,
                    title: Optional[str] = None,
+                   filename: str = None,
                    show: bool = False,
                    **kwargs):
-        r""" visualize an 2d image of the field
+        r""" visualize a field using a 2d density plot
 
         Args:
             ax:
@@ -1485,6 +1372,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             title (str):
                 Title of the plot. If omitted, the title is chosen automatically
                 based on the label the data field.
+            filename (str, optional):
+                If given, the plot is written to the specified file.
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
             \**kwargs:
@@ -1504,34 +1393,34 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         for key in ['performance_goal', 'scalar']:
             if key in kwargs:
                 get_image_args[key] = kwargs.pop(key)
-        img = self.get_image_data(**get_image_args)
+        data = self.get_image_data(**get_image_args)
         
         if transpose:
             # adjust image data such that the transpose is plotted
-            img['data'] = img['data'].T
-            img['label_x'], img['label_y'] = img['label_y'], img['label_x']
+            data['data'] = data['data'].T
+            data['label_x'], data['label_y'] = data['label_y'], data['label_x']
         
         # plot the image (either using pyplot or the supplied axes)
         kwargs.setdefault('origin', 'lower')
         kwargs.setdefault('interpolation', 'none')
         if ax is None:
             ax = plt.figure().gca()
-        res = ax.imshow(img['data'], extent=img['extent'], **kwargs)
+        img = ax.imshow(data['data'], extent=data['extent'], **kwargs)
             
         # set some default properties
-        ax.set_xlabel(img['label_x'])
-        ax.set_ylabel(img['label_y'])
+        ax.set_xlabel(data['label_x'])
+        ax.set_ylabel(data['label_y'])
         if title is None:
-            title = img.get('title', self.label)
+            title = data.get('title', self.label)
 
         if colorbar:
             from ..tools.misc import add_scaled_colorbar
-            add_scaled_colorbar(res, ax=ax)
+            add_scaled_colorbar(img, ax=ax)
 
         from ..visualization.plotting import finalize_plot
-        finalize_plot(ax, title=title, show=show)
+        finalize_plot(ax, title=title, filename=filename, show=show)
             
-        return res
+        return img
 
 
     def plot_vector(self,
@@ -1540,9 +1429,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     transpose: bool = False,
                     max_points: int = 16,
                     title: Optional[str] = None,
+                    filename: str = None,
                     show: bool = False,
                     **kwargs):
-        r""" visualize a 2d vector field
+        r""" visualize a field using a 2d vector plot
 
         Args:
             method (str):
@@ -1559,6 +1449,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             title (str):
                 Title of the plot. If omitted, the title is chosen
                 automatically based on the label the data field.
+            filename (str, optional):
+                If given, the plot is written to the specified file.
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
             \**kwargs:
@@ -1571,12 +1463,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :func:`matplotlib.pyplot.streamplot`
         """
         # obtain image data
-        get_image_args = {}
-        # FIXME: rename scalar_method to method
-        for key in ['performance_goal', 'scalar_method']:
-            if key in kwargs:
-                get_image_args[key] = kwargs.pop(key)
-        data = self.get_vector_data(**get_image_args)
+        data = self.get_vector_data()
         
         if transpose:
             # adjust image data such that the transpose is plotted
@@ -1621,6 +1508,51 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             title = data.get('title', self.label)
 
         from ..visualization.plotting import finalize_plot
-        finalize_plot(ax, title=title, show=show)
+        finalize_plot(ax, title=title, filename=filename, show=show)
             
         return res
+
+
+    def plot(self, kind: str = 'auto', **kwargs):
+        r""" visualize the field
+        
+        Args:
+            kind (str):
+                Determines the visualizations. Supported values are `image`, 
+                `line`, or `vector`. Alternatively, `auto` determines the best
+                visualization based on the field itself.
+            \**kwargs:
+                All additional keyword arguments are forwarded to the actual
+                plotting functions. This includes `ax` to determine the
+                matplotlib axis in which the plot is done, `title` to set the
+                title of the plot, `filename` to write the plot to a specific
+                file, and `show` to determine whether
+                :func:`matplotlib.pyplot.show` is called. These parameters are
+                described in detail in :meth:`~DataFieldBase.plot_line`.
+                
+        Returns:
+            The result of the respective matplotlib plotting function
+        """
+        if kind == 'auto':
+            # determine best plot for this field
+            if (isinstance(self, DataFieldBase) and self.rank == 1 and
+                    self.grid.dim == 2):
+                kind = 'vector'
+            elif len(self.grid.shape) == 1:
+                kind = 'line'
+            else:
+                kind = 'image'
+
+        # do the actual plotting
+        if kind == 'image':
+            res = self.plot_image(**kwargs)
+        elif kind == 'line':
+            res = self.plot_line(**kwargs)
+        elif kind == 'vector':
+            res = self.plot_vector(**kwargs)
+        else:
+            raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
+                             '`image`, `line`, `vector`, or `auto`.')
+            
+        return res
+    

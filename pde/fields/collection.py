@@ -419,6 +419,7 @@ class FieldCollection(FieldBase):
     def plot_collection(self,
                         title: Optional[str] = None,
                         tight: bool = True,
+                        filename: str = None,
                         show: bool = False,
                         **kwargs):
         r""" visualize all fields by plotting them next to each other
@@ -429,54 +430,75 @@ class FieldCollection(FieldBase):
                 based on the label the data field.
             tight (bool):
                 Whether to call :func:`matplotlib.pyploy.tight_layout`
+            filename (str, optional):
+                If given, the plot is written to the specified file.
             show (bool):
                 Whether to call :func:`matplotlib.pyplot.show`
             \**kwargs:
                 Additional keyword arguments are passed to the method
-                `plot_line` of the individual fields.
+                plotting function of the individual fields.
+                
+        Returns:
+            :class:`matplotlib.figure.Figure`: The figure instance
         """
         import matplotlib.pyplot as plt
+        
+        # plot the individual panels
         fig, axes = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
         for field, ax in zip(self.fields, axes):
             field.plot(ax=ax, **kwargs)
-        if title is None:
-            title = self.label
-        fig.suptitle(title)
+            
+        # set the title above all panels
+        fig.suptitle(self.label if title is None else title)
+            
+        # adjust layout
         if tight:
             fig.tight_layout()
-        if show:
-            plt.show()
+            
+        from ..visualization.plotting import finalize_plot
+        finalize_plot(fig, filename=filename, show=show)
+        return fig
     
     
-    def plot_line(self,  # type: ignore
-                  title: Optional[str] = None,
-                  tight: bool = True,
-                  show: bool = False,
-                  **kwargs):
-        r""" visualize all fields as line plots
+    def plot_line(self, **kwargs):
+        r""" visualize all fields using line plots
         
         Args:
-            title (str):
-                Title of the plot. If omitted, the title is chosen automatically
-                based on the label the data field.
-            tight (bool):
-                Whether to call :func:`matplotlib.pyploy.tight_layout`
-            show (bool):
-                Whether to call :func:`matplotlib.pyplot.show`
             \**kwargs:
-                Additional keyword arguments are passed to the method
-                `plot_line` of the individual fields.
+                Supported keyword arguments include `title` to set the title,
+                `tight` to adjust the layout, `filename` to write the image to a
+                file, and `show` to call :func:`matplotlib.pyplot.show`. These
+                are described in :meth:`~FieldCollection.plot_collection`.
+                
+        Returns:
+            :class:`matplotlib.figure.Figure`: The figure instance
         """
-        self.plot_collection(title=title, tight=tight, show=show, kind='line',
-                             **kwargs)
+        return self.plot_collection(kind='line', **kwargs)
         
+        
+    def plot_vector(self, **kwargs):
+        r""" visualize all fields using vector plots
+        
+        Args:
+            \**kwargs:
+                Supported keyword arguments include `title` to set the title,
+                `tight` to adjust the layout, `filename` to write the image to a
+                file, and `show` to call :func:`matplotlib.pyplot.show`. These
+                are described in :meth:`~FieldCollection.plot_collection`.
+                
+        Returns:
+            :class:`matplotlib.figure.Figure`: The figure instance
+        """
+        return self.plot_collection(kind='vector', **kwargs)
+                
     
-    def plot_image(self, quantities=None,  # type: ignore
+    def plot_image(self, quantities=None,
                    title: Optional[str] = None,
                    tight: bool = True,
+                   filename: str = None,
                    show: bool = True,
                    **kwargs):
-        r""" visualize images of all fields
+        r""" visualize all fields using density plots
         
         Args:
             quantities:
@@ -487,48 +509,60 @@ class FieldCollection(FieldBase):
                 based on the label the data field.
             tight (bool):
                 Whether to call :func:`matplotlib.pyploy.tight_layout`
+            filename (str, optional):
+                If given, the plot is written to the specified file.
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
             \**kwargs:
                 Additional keyword arguments are passed to the plot methods of
                 the individual fields
+                
+        Returns:
+            :class:`matplotlib.figure.Figure`: The figure instance
         """
         if title is None:
             title = self.label
             
+        # create the plot panels
         from ..visualization.plotting import ScalarFieldPlot
-        ScalarFieldPlot(self, quantities=quantities, title=title,
-                        tight=tight, show=show)
+        plot = ScalarFieldPlot(self, quantities=quantities, title=title,
+                               tight=tight, show=show)
+        
+        # save plot to file if requested
+        if filename:
+            plot.fig.savefig(filename)
+            
+        return plot.fig
         
         
-    def plot(self, kind: str = 'auto', filename=None, **kwargs):  # type: ignore
-        r""" visualize the field
+    def plot(self, kind: str = 'auto', **kwargs):
+        r""" visualize the field collection
         
         Args:
-            kind (str): Determines the visualizations. Supported values are
+            kind (str):
+                Determines how to visualize the collection. Supported values are
                 `image`,  `line`, or `vector`. Alternatively, `auto` determines
-                the best visualization based on the field itself.
-            filename (str, optional): If given, the plot is written to the
-                specified file. Otherwise, the plot might show directly in an
-                interactive matplotlib session or `matplotlib.pyplot.show()`
-                might be used to display the graphics.
-            \**kwargs: All additional keyword arguments are forwarded to the
-                actual plotting functions.
+                the best visualization based on each individual field itself.
+            \**kwargs:
+                All additional keyword arguments are forwarded to the actual
+                plotting functions. They include the keyword arguments `title`
+                to set the title, `tight` to adjust the layout, `filename` to
+                write the image to a file, and `show` to call
+                :func:`matplotlib.pyplot.show`. These arguments are described in
+                :meth:`~FieldCollection.plot_collection`.
+                
+        Returns:
+            :class:`matplotlib.figure.Figure`: The figure instance
         """
         if kind == 'auto':
-            self.plot_collection(**kwargs)
+            return self.plot_collection(**kwargs)
         elif kind == 'image':
-            self.plot_image(**kwargs)
+            return self.plot_image(**kwargs)
         elif kind == 'line':
-            self.plot_line(**kwargs)
+            return self.plot_line(**kwargs)
         elif kind == 'vector':
-            self.plot_vector(**kwargs)
+            return self.plot_vector(**kwargs)
         else:
             raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
                              '`image`, `line`, `vector`, or `auto`.')
-            
-        # store the result to a file if requested
-        if filename:
-            import matplotlib.pyplot as plt
-            plt.savefig(filename)
     

@@ -151,6 +151,7 @@ class ScalarFieldPlot():
         output in the same cell when `show = True`.    
     """
     
+    
     @fill_in_docstring
     def __init__(self, fields: FieldBase,
                  quantities=None,
