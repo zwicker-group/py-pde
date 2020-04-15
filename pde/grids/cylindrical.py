@@ -559,9 +559,11 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         elif indices[0] == 1:
             # return a Cartesian grid along the z-axis
             assert self.axes[1] == 'z'
-            return CartesianGrid(bounds=[self.axes_bounds[1]],
-                                 shape=self.shape[1],
-                                 periodic=self.periodic[1])
+            subgrid = CartesianGrid(bounds=[self.axes_bounds[1]],
+                                    shape=self.shape[1],
+                                    periodic=self.periodic[1])
+            subgrid.axes = ['z']
+            return subgrid
             
         else:
             raise ValueError(f'Cannot get sub-grid for index {indices[0]}')
