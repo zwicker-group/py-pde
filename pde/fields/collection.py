@@ -437,9 +437,6 @@ class FieldCollection(FieldBase):
             \**kwargs:
                 Additional keyword arguments are passed to the method
                 plotting function of the individual fields.
-                
-        Returns:
-            :class:`matplotlib.figure.Figure`: The figure instance
         """
         import matplotlib.pyplot as plt
         
@@ -457,7 +454,6 @@ class FieldCollection(FieldBase):
             
         from ..visualization.plotting import finalize_plot
         finalize_plot(fig, filename=filename, show=show)
-        return fig
     
     
     def plot_line(self, **kwargs):
@@ -469,11 +465,8 @@ class FieldCollection(FieldBase):
                 `tight` to adjust the layout, `filename` to write the image to a
                 file, and `show` to call :func:`matplotlib.pyplot.show`. These
                 are described in :meth:`~FieldCollection.plot_collection`.
-                
-        Returns:
-            :class:`matplotlib.figure.Figure`: The figure instance
         """
-        return self.plot_collection(kind='line', **kwargs)
+        self.plot_collection(kind='line', **kwargs)
         
         
     def plot_vector(self, **kwargs):
@@ -485,12 +478,9 @@ class FieldCollection(FieldBase):
                 `tight` to adjust the layout, `filename` to write the image to a
                 file, and `show` to call :func:`matplotlib.pyplot.show`. These
                 are described in :meth:`~FieldCollection.plot_collection`.
-                
-        Returns:
-            :class:`matplotlib.figure.Figure`: The figure instance
         """
-        return self.plot_collection(kind='vector', **kwargs)
-                
+        self.plot_collection(kind='vector', **kwargs)
+
     
     def plot_image(self, quantities=None,
                    title: Optional[str] = None,
@@ -516,9 +506,6 @@ class FieldCollection(FieldBase):
             \**kwargs:
                 Additional keyword arguments are passed to the plot methods of
                 the individual fields
-                
-        Returns:
-            :class:`matplotlib.figure.Figure`: The figure instance
         """
         if title is None:
             title = self.label
@@ -531,8 +518,6 @@ class FieldCollection(FieldBase):
         # save plot to file if requested
         if filename:
             plot.fig.savefig(filename)
-            
-        return plot.fig
         
         
     def plot(self, kind: str = 'auto', **kwargs):
@@ -550,18 +535,15 @@ class FieldCollection(FieldBase):
                 write the image to a file, and `show` to call
                 :func:`matplotlib.pyplot.show`. These arguments are described in
                 :meth:`~FieldCollection.plot_collection`.
-                
-        Returns:
-            :class:`matplotlib.figure.Figure`: The figure instance
         """
         if kind == 'auto':
-            return self.plot_collection(**kwargs)
+            self.plot_collection(**kwargs)
         elif kind == 'image':
-            return self.plot_image(**kwargs)
+            self.plot_image(**kwargs)
         elif kind == 'line':
-            return self.plot_line(**kwargs)
+            self.plot_line(**kwargs)
         elif kind == 'vector':
-            return self.plot_vector(**kwargs)
+            self.plot_vector(**kwargs)
         else:
             raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
                              '`image`, `line`, `vector`, or `auto`.')
