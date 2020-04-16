@@ -182,6 +182,13 @@ class Controller():
         except StopIteration as err:
             # iteration has been interrupted by a tracker
             msg_level, msg = _handle_stop_iteration(err)
+            
+        except KeyboardInterrupt:
+            # iteration has been interrupted by the user
+            self.info['successful'] = False
+            self.info['stop_reason'] = 'User interrupted simulation'
+            msg = f'Simulation interrupted at t={t}'
+            msg_level = logging.INFO
                 
         else:
             # reached final time
@@ -207,8 +214,7 @@ class Controller():
         # show information after a potential progress bar has been deleted to
         # not mess up the display
         self._logger.log(msg_level, msg)
-        if (profiler['tracker'] > profiler['solver'] and
-                profiler['tracker'] > 1):
+        if profiler['tracker'] > max(profiler['solver'], 1):
             self._logger.warning("Spent more time on handling trackers "
                                  f"({profiler['tracker']}) than on the actual "
                                  f"simulation ({profiler['solver']})")

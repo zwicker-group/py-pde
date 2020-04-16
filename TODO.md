@@ -1,8 +1,5 @@
 TODO
 ====
-* Check caching of operators (why is calling a second time slow?)
-* Add wrapper for solving Laplacian equation on a grid
-* Catch KeyboardInterrupt to keep traceback clean in simulations
 * Figure out how to not delete other output when using PlotTracker
 * Support 3d plots in plot_image (use for Laplace and Poisson eq) 
 * Add benchmark
