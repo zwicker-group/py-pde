@@ -429,7 +429,8 @@ class FieldCollection(FieldBase):
                 Title of the plot. If omitted, the title is chosen automatically
                 based on the label the data field.
             tight (bool):
-                Whether to call :func:`matplotlib.pyploy.tight_layout`
+                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
+                affects the layout of all plot elements.
             filename (str, optional):
                 If given, the plot is written to the specified file.
             show (bool):
@@ -498,7 +499,8 @@ class FieldCollection(FieldBase):
                 Title of the plot. If omitted, the title is chosen automatically
                 based on the label the data field.
             tight (bool):
-                Whether to call :func:`matplotlib.pyploy.tight_layout`
+                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
+                affects the layout of all plot elements.
             filename (str, optional):
                 If given, the plot is written to the specified file.
             show (bool):

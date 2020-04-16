@@ -143,13 +143,7 @@ def extract_field(fields: FieldBase,
 
 
 class ScalarFieldPlot():
-    """ class managing compound plots of scalar fields
-    
-    Note:
-        The `ScalarFieldPlot` class supports jupyter notebooks and can update
-        plots dynamically. However, the current implementation deletes all other
-        output in the same cell when `show = True`.    
-    """
+    """ class managing compound plots of scalar fields """
     
     
     @fill_in_docstring
@@ -157,11 +151,11 @@ class ScalarFieldPlot():
                  quantities=None,
                  scale: ScaleData = 'automatic',
                  title: Optional[str] = None,
-                 tight: bool = True,
+                 tight: bool = False,
                  show: bool = True):
         """
         Args:
-            fields:
+            fields (:class:`~pde.fields.base.FieldBase`):
                 Collection of fields
             quantities:
                 {ARG_PLOT_QUANTITIES}
@@ -170,32 +164,167 @@ class ScalarFieldPlot():
             title (str):
                 Title of the plot.
             tight (bool):
-                Whether to call :func:`matplotlib.pyploy.tight_layout`
+                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
+                affects the layout of all plot elements.
             show (bool):
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background, which can be useful if it only needs to
                 be written to a file.
         """
-        import matplotlib.pyplot as plt
-        import matplotlib.cm as cm
-        
         self.grid = fields.grid
-        example_image = fields.get_image_data()
         self.quantities = self._prepare_quantities(fields, quantities,
                                                    scale=scale)
         self.show = show
              
+        # figure out whether plots are shown in jupyter notebook
+        try:
+            from ipywidgets import Output
+        except ImportError:
+            ipython_plot = False
+        else:
+            ipython_plot = self.show
+            
+        if ipython_plot:
+            # plotting is done in an ipython environment using widgets
+            from IPython.display import display
+            self._ipython_out = Output()
+            with self._ipython_out:
+                self._initialize(fields, scale, title, tight)
+            display(self._ipython_out)
+            
+        else:
+            # plotting is done using a simple matplotlib backend
+            self._ipython_out = None
+            self._initialize(fields, scale, title, tight)
+            
+        if self.show:
+            self._show()
+
+    
+    @classmethod
+    @fill_in_docstring
+    def from_storage(cls, storage: StorageBase,
+                     quantities=None,
+                     scale: ScaleData = 'automatic',
+                     tight: bool = False,
+                     show: bool = True) \
+            -> "ScalarFieldPlot":
+        """ create ScalarFieldPlot from storage
+        
+        Args:
+            storage (:class:`~pde.storage.base.StorageBase`):
+                Instance of the storage class that contains the data
+            quantities:
+                {ARG_PLOT_QUANTITIES}
+            scale (str, float, tuple of float):
+                {ARG_PLOT_SCALE}
+            tight (bool):
+                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
+                affects the layout of all plot elements.
+            show (bool):
+                Flag determining whether to show a plot. If `False`, the plot is
+                kept in the background.
+            
+        Returns:
+            :class:`~pde.visualization.plotting.ScalarFieldPlot`
+        """
+        fields = storage.get_field(0)
+        quantities = cls._prepare_quantities(fields, quantities=quantities,
+                                             scale=scale)
+        
+        # resolve automatic scaling
+        for quantity_row in quantities:
+            for quantity in quantity_row:
+                if quantity.get('scale', 'automatic') == 'automatic':
+                    vmin, vmax = +np.inf, -np.inf
+                    for data in storage:
+                        field = extract_field(data, quantity.get('source'))
+                        img = field.get_image_data()
+                        vmin = np.nanmin([np.nanmin(img['data']), vmin])
+                        vmax = np.nanmax([np.nanmax(img['data']), vmax])
+                    quantity['scale'] = (vmin, vmax)
+            
+        # actually setup 
+        return cls(fields,  # lgtm [py/call-to-non-callable]
+                   quantities,
+                   tight=tight, show=show)
+        
+        
+    @staticmethod
+    @fill_in_docstring
+    def _prepare_quantities(fields: FieldBase,
+                            quantities,
+                            scale: ScaleData = 'automatic') \
+            -> List[List[Dict[str, Any]]]:
+        """ internal method to prepare quantities
+        
+        Args:
+            fields (:class:`~pde.fields.base.FieldBase`):
+                The field containing the data to show
+            quantities (dict):
+                {ARG_PLOT_QUANTITIES}
+            scale (str, float, tuple of float):
+                {ARG_PLOT_SCALE}
+        
+        Returns:
+            list of list of dict: a 2d arrangements of panels that define what
+                quantities are shown.
+        """
+        if quantities is None:
+            # show each component by default
+            if isinstance(fields, FieldCollection):
+                quantities = []
+                for i, field in enumerate(fields):
+                    title = field.label if field.label else f'Field {i + 1}'
+                    quantity = {'title': title, 'source': i, 'scale': scale}
+                    quantities.append(quantity)
+            else:
+                quantities = [{'title': 'Concentration', 'source': None}]
+            
+        # make sure panels is a 2d array
+        if isinstance(quantities, dict):
+            quantities = [[quantities]]
+        elif isinstance(quantities[0], dict):
+            quantities = [quantities]
+        return quantities  # type: ignore
+        
+        
+    def __del__(self):
+        try:
+            import matplotlib.pyplot as plt
+        except TypeError:
+            pass  # can occur when shutting down python interpreter
+        else:
+            if hasattr(self, 'fig') and self.fig:
+                plt.close(self.fig)
+
+    
+    @fill_in_docstring
+    def _initialize(self, fields: FieldBase,
+                    scale: ScaleData = 'automatic',
+                    title: Optional[str] = None,
+                    tight: bool = False):         
+        """ initialize the plot creating the figure and the axes
+        
+        Args:
+            fields (:class:`~pde.fields.base.FieldBase`):
+                Collection of fields
+            scale (str, float, tuple of float):
+                {ARG_PLOT_SCALE}
+            title (str):
+                Title of the plot.
+            tight (bool):
+                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
+                affects the layout of all plot elements.
+        """        
+        import matplotlib.pyplot as plt
+        import matplotlib.cm as cm
+        
         num_rows = len(self.quantities)
         num_cols = max(len(p) for p in self.quantities)
              
-        # initialize display to update ipython output dynamically
-        try:
-            from IPython import display
-        except ImportError:
-            self._ipython_display = None
-        else:
-            self._ipython_display = display
-                 
+        example_image = fields.get_image_data()
+        
         # set up the figure
         self.fig, self.axes = plt.subplots(num_rows, num_cols,
                                            sharey=True, squeeze=False,
@@ -255,128 +384,20 @@ class ScalarFieldPlot():
         if tight:
             # adjust layout and leave some room for title
             self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-        
-        # show the actual data
-        self.show_data(fields, first_frame=True)    
 
-    
-    @classmethod
-    @fill_in_docstring
-    def from_storage(cls, storage: StorageBase,
-                     quantities=None,
-                     scale: ScaleData = 'automatic') \
-            -> "ScalarFieldPlot":
-        """ create ScalarFieldPlot from storage
+            
+    def _update_data(self, fields: FieldBase,
+                     title: Optional[str] = None) -> None:
+        """ update the fields in the current plot
         
         Args:
-            storage (:class:`~pde.storage.base.StorageBase`):
-                Instance of the storage class that contains the data
-            quantities:
-                {ARG_PLOT_QUANTITIES}
-            scale (str, float, tuple of float):
-                {ARG_PLOT_SCALE}
-            
-        Returns:
-            :class:`~pde.visualization.plotting.ScalarFieldPlot`
-        """
-        fields = storage.get_field(0)
-        quantities = cls._prepare_quantities(fields, quantities=quantities,
-                                             scale=scale)
-        
-        # resolve automatic scaling
-        for quantity_row in quantities:
-            for quantity in quantity_row:
-                if quantity.get('scale', 'automatic') == 'automatic':
-                    vmin, vmax = +np.inf, -np.inf
-                    for data in storage:
-                        field = extract_field(data, quantity.get('source'))
-                        img = field.get_image_data()
-                        vmin = np.nanmin([np.nanmin(img['data']), vmin])
-                        vmax = np.nanmax([np.nanmax(img['data']), vmax])
-                    quantity['scale'] = (vmin, vmax)
-            
-        # actually setup 
-        return cls(fields, quantities)  # lgtm [py/call-to-non-callable]
-        
-        
-    @staticmethod
-    @fill_in_docstring
-    def _prepare_quantities(fields: FieldBase,
-                            quantities,
-                            scale: ScaleData = 'automatic') \
-            -> List[List[Dict[str, Any]]]:
-        """ internal method to prepare quantities
-        
-        Args:
-            fields (:class:`~pde.fields.FieldBase`):
-                The field containing the data to show
-            quantities (dict):
-                {ARG_PLOT_QUANTITIES}
-            scale (str, float, tuple of float):
-                {ARG_PLOT_SCALE}
-        
-        Returns:
-            list of list of dict: a 2d arrangements of panels that define what
-                quantities are shown.
-        """
-        if quantities is None:
-            # show each component by default
-            if isinstance(fields, FieldCollection):
-                quantities = []
-                for i, field in enumerate(fields):
-                    title = field.label if field.label else f'Field {i + 1}'
-                    quantity = {'title': title, 'source': i, 'scale': scale}
-                    quantities.append(quantity)
-            else:
-                quantities = [{'title': 'Concentration', 'source': None}]
-            
-        # make sure panels is a 2d array
-        if isinstance(quantities, dict):
-            quantities = [[quantities]]
-        elif isinstance(quantities[0], dict):
-            quantities = [quantities]
-        return quantities  # type: ignore
-        
-        
-    def __del__(self):
-        try:
-            import matplotlib.pyplot as plt
-        except TypeError:
-            pass  # can occur when shutting down python interpreter
-        else:
-            if hasattr(self, 'fig') and self.fig:
-                plt.close(self.fig)
-        
-            
-    def savefig(self, path: str, **kwargs):
-        """ save plot to file 
-        
-        Args:
-            path (str):
-                The path to the file where the image is written. The file
-                extension determines the image format
-            **kwargs:
-                Additional arguments are forwarded to 
-                :meth:`matplotlib.figure.Figure.savefig`.
-        """
-        self.fig.savefig(path, **kwargs)
-        
-            
-    def show_data(self, fields: FieldBase, title: Optional[str] = None,
-                  first_frame: bool = False) -> None:
-        """ show the given fields in the current view
-        
-        Args:
-            fields:
+            fields (:class:`~pde.fields.base.FieldBase`):
                 The field or field collection of which the defined quantities
                 are shown.
             title (str, optional):
                 The title of this view. If `None`, the current title is not
                 changed. 
-            first_frame (bool):
-                Indicates whether this is the first frame
         """
-        import matplotlib.pyplot as plt
         assert isinstance(fields, FieldBase)
         
         if title:
@@ -398,24 +419,58 @@ class ScalarFieldPlot():
                 if vmax is None:
                     vmax = img_data['data'].max()
                 img.set_clim(vmin, vmax)
+                    
+            
+    def _show(self):
+        """ show the updated plot """
+        if self._ipython_out:
+            # seems to be in an ipython instance => update widget
+            from IPython.display import display, clear_output
+            with self._ipython_out:
+                clear_output(wait=True)
+                display(self.fig)
                 
-        # display the updated panels if selected
-        if self.show:
-            if self._ipython_display:
-                # seems to be in an ipython instance => update widget
-                if not first_frame:
-                    self._ipython_display.clear_output(wait=True)
-                self._ipython_display.display(self.fig)
+            # add a small pause to allow the GUI to run it's event loop
+            time.sleep(0.01)
+            
+        else:
+            # seems to be in a normal matplotlib window => update it
+            import matplotlib.pyplot as plt
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
                 # add a small pause to allow the GUI to run it's event loop
-                time.sleep(0.01)
-                
-            else:
-                # seems to be in a normal matplotlib window => update it
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    # add a small pause to allow the GUI to run it's event loop
-                    plt.pause(0.01)
-                
+                plt.pause(0.01)
+        
+        
+    def update(self, fields: FieldBase, title: Optional[str] = None) -> None:
+        """ update the plot with the given fields
+        
+        Args:
+            fields:
+                The field or field collection of which the defined quantities
+                are shown.
+            title (str, optional):
+                The title of this view. If `None`, the current title is not
+                changed. 
+        """
+        self._update_data(fields, title)
+        if self.show:
+            self._show()
+
+            
+    def savefig(self, path: str, **kwargs):
+        """ save plot to file 
+        
+        Args:
+            path (str):
+                The path to the file where the image is written. The file
+                extension determines the image format
+            **kwargs:
+                Additional arguments are forwarded to 
+                :meth:`matplotlib.figure.Figure.savefig`.
+        """
+        self.fig.savefig(path, **kwargs)
+        
     
     def make_movie(self, storage: StorageBase,
                    filename: str,
@@ -443,7 +498,7 @@ class ScalarFieldPlot():
         with Movie(filename=filename, verbose=False) as movie:
             # iterate over all time steps
             for t, data in data_iter:
-                self.show_data(data, title=f'Time {t:g}')
+                self.update(data, title=f'Time {t:g}')
                 movie.add_figure(self.fig)
 
 

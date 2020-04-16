@@ -1,6 +1,5 @@
 TODO
 ====
-* Figure out how to not delete other output when using PlotTracker
 * Support 3d plots in plot_image (use for Laplace and Poisson eq) 
 * Add benchmark
     - store results on disk in json-encoded file

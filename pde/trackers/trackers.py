@@ -239,12 +239,11 @@ class PrintTracker(TrackerBase):
 
 
 class PlotTracker(TrackerBase):
-    """ Tracker that plots data on screen, to files, or writes a movie.
+    """ Tracker that plots data on screen, to files, or writes a movie
     
-    Note:
-        Although this tracker can be used in a jupyter notebook, it currently
-        deletes all other output in the same cell and does not combine very well
-        with other output widgets.
+    The plot tracker uses the 
+    :class:`~pde.visualization.plotting.ScalarFieldPlot` class to show fields
+    and field collections. Most options are thus forwarded to this class.
     """
      
     name = 'plot'
@@ -256,6 +255,7 @@ class PlotTracker(TrackerBase):
                  movie_file: Optional[str] = None,
                  quantities=None,
                  scale: ScaleData = 'automatic',
+                 tight: bool = False,
                  show: bool = True):
         """
         Args:
@@ -274,6 +274,9 @@ class PlotTracker(TrackerBase):
                 {ARG_PLOT_QUANTITIES}
             scale (str, float, tuple of float):
                 {ARG_PLOT_SCALE}
+            tight (bool):
+                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
+                affects the layout of all plot elements.
             show (bool, optional):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
@@ -283,6 +286,7 @@ class PlotTracker(TrackerBase):
         self.output_folder = output_folder
         self.quantities = quantities
         self.scale = scale
+        self.tight = tight
         self.show = show
         
         if movie_file is not None or output_folder is not None:
@@ -308,17 +312,12 @@ class PlotTracker(TrackerBase):
         """
         from ..visualization.plotting import ScalarFieldPlot
         
-        # get initial time
-        if info:
-            t_start = info.get('controller', {}).get('t_start', 0)
-        else:
-            t_start = 0
-            
         # initialize the plotting panels
         self.plot = ScalarFieldPlot(field,
                                     quantities=self.quantities,
                                     scale=self.scale,
-                                    title=f'Time: {t_start:g}',
+                                    title='Initializing...',
+                                    tight=self.tight,
                                     show=self.show)
          
         return super().initialize(field, info=info)
@@ -333,7 +332,7 @@ class PlotTracker(TrackerBase):
             t (float):
                 The associated time
         """
-        self.plot.show_data(field, title=f'Time: {t:g}')
+        self.plot.update(field, title=f'Time: {t:g}')
         if self.output_file:
             self.plot.fig.savefig(self.output_file)
         if self.movie:

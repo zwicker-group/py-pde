@@ -229,7 +229,7 @@ def get_progress_bar_class():
             # optionally import notebook progress bar in recent version
             try:
                 # check whether progress bar can use a widget
-                import ipywidgets  # type: ignore  # @UnusedImport  
+                import ipywidgets  # @UnusedImport  
             except ImportError:
                 # widgets are not available => use standard tqdm
                 progress_bar_class = tqdm.tqdm

@@ -181,7 +181,9 @@ def movie_scalar(storage: StorageBase,
                  filename: str,
                  scale: ScaleData = 'automatic',
                  extras: Dict[str, Any] = None,
-                 progress: bool = True,) -> None:
+                 progress: bool = True,
+                 tight: bool = False,
+                 show: bool = True) -> None:
     """ produce a movie for a simulation of a scalar field
     
     Args:
@@ -197,6 +199,11 @@ def movie_scalar(storage: StorageBase,
             step. The key of the dictionary is used as a panel title.
         progress (bool):
             Flag determining whether the progress of making the movie is shown.
+        tight (bool):
+            Whether to call :func:`matplotlib.pyplot.tight_layout`. This affects
+            the layout of all plot elements.
+        show (bool):
+            Flag determining whether images are shown during making the movie
     """
     quantities = [{'title': 'Concentration', 'source': None}]
     if extras:
@@ -205,7 +212,7 @@ def movie_scalar(storage: StorageBase,
     
     # initialize the plot with the first data point
     plot = ScalarFieldPlot.from_storage(storage, quantities=quantities,
-                                        scale=scale)
+                                        scale=scale, tight=tight, show=show)
     # make the full movie
     plot.make_movie(storage, filename, progress=progress)    
    
