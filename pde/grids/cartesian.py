@@ -7,14 +7,12 @@ Cartesian grids of arbitrary dimension.
 
 import itertools
 from abc import ABCMeta
-from typing import (List, Sequence, Dict, Any, Union, Callable, Generator,
-                    TYPE_CHECKING)
+from typing import List, Sequence, Dict, Any, Union, Generator, TYPE_CHECKING
 
 import numpy as np
 
 
 from .base import GridBase, _check_shape, DimensionError
-from ..tools.cache import cached_method
 from ..tools.cuboid import Cuboid
 from ..tools.docstrings import fill_in_docstring
 
@@ -401,31 +399,6 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
         from .boundaries import Boundaries  # @Reimport
         return Boundaries.from_data(self, bc)
     
-    
-    @cached_method()
-    @fill_in_docstring
-    def get_operator(self, op: str, bc, method: str = 'auto') -> Callable:
-        """ return a discretized operator defined on this grid
-        
-        Args:
-            op (str): Identifier for the operator. Some examples are 'laplace',
-                'gradient', or 'divergence'.
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}  
-            method (str): Specifies the method used for creating the operator.
-                Typical values could be 'numba' and 'scipy'.
-                
-        Returns:
-            A function that takes the discretized data as an input and returns
-            the data to which the operator `op` has been applied. This function
-            optionally supports a second argument, which provides allocated
-            memory for the output.
-        """
-        from .operators import cartesian
-        return cartesian.make_operator(op, bcs=self.get_boundary_conditions(bc),
-                                       method=method)
-
 
 
 class UnitGrid(CartesianGridBase):

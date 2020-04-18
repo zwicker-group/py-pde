@@ -18,7 +18,7 @@ This module implements differential operators on cylindrical grids
 
 from typing import Callable
 
-from . import PARALLELIZATION_THRESHOLD_2D
+from .common import PARALLELIZATION_THRESHOLD_2D
 from .. import CylindricalGrid
 from ..boundaries import Boundaries
 from ...tools.numba import nb, jit_allocate_out
@@ -340,3 +340,12 @@ def make_operator(op: str, bcs: Boundaries) -> Callable:
         raise NotImplementedError(f'Operator `{op}` is not defined for '
                                   'cylindrical grids')
     
+
+# register all operators with the grid class
+CylindricalGrid.register_operator('laplace', make_laplace)
+CylindricalGrid.register_operator('gradient', make_gradient)
+CylindricalGrid.register_operator('divergence', make_divergence)
+CylindricalGrid.register_operator('vector_gradient', make_vector_gradient)
+CylindricalGrid.register_operator('vector_laplace', make_vector_laplace)
+CylindricalGrid.register_operator('tensor_divergence', make_tensor_divergence)
+

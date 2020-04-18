@@ -34,3 +34,7 @@ from .base import DomainError, PeriodicityError
 from .cartesian import UnitGrid, CartesianGrid
 from .spherical import PolarGrid, SphericalGrid
 from .cylindrical import CylindricalGrid
+
+# import all operator modules to register the operators
+from . import operators
+del operators

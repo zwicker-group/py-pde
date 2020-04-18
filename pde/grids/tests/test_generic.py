@@ -103,3 +103,13 @@ def test_grid_plotting():
 
     grids.PolarGrid(4, 8).plot()
     grids.PolarGrid((2, 4), 8).plot()
+    
+    
+    
+def test_operators():
+    """ test operator mechanism """
+    for grid in iter_grids():
+        assert "laplace" in grid.operators
+        with pytest.raises(NotImplementedError):
+            grid.get_operator('not_existent', 'natural')
+        

@@ -37,6 +37,7 @@ def test_cylindrical_grid():
         
         assert grid.contains_point(grid.get_random_point())
         assert grid.contains_point(grid.get_random_point(1.49))
+        assert "laplace" in grid.operators
         
 
 

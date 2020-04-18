@@ -56,6 +56,7 @@ def test_generic_cartesian_grid():
             assert grid.contains_point(grid.get_random_point())
             w = 0.499 * (b - a).min()
             assert grid.contains_point(grid.get_random_point(w))
+            assert "laplace" in grid.operators
 
 
 

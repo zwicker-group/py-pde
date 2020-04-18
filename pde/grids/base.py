@@ -8,12 +8,14 @@ Bases classes
 import json
 import functools
 import logging
+import inspect
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (List, Tuple, Dict, Any, Union, Callable, Generator,
-                    Sequence, TYPE_CHECKING)
+                    Sequence, Set, TYPE_CHECKING)
 
 import numpy as np
 
+from ..tools.misc import classproperty
 from ..tools.numba import jit
 from ..tools.cache import cached_property, cached_method
 from ..tools.docstrings import fill_in_docstring
@@ -122,6 +124,7 @@ class GridBase(metaclass=ABCMeta):
     """
     
     _subclasses: Dict[str, 'GridBase'] = {}  # all classes inheriting from this
+    _operators: Dict[str, Callable] = {}  # all operators defined for the grid
     
     # properties that are defined in subclasses
     axes: List[str]
@@ -148,6 +151,7 @@ class GridBase(metaclass=ABCMeta):
         """ register all subclassess to reconstruct them later """
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
+        cls._operators: Dict[str, Callable] = {}
 
 
     @classmethod
@@ -314,15 +318,73 @@ class GridBase(metaclass=ABCMeta):
     @abstractmethod
     def get_boundary_conditions(self, bc='natural') -> "Boundaries": pass
     @abstractmethod
-    def get_operator(self, op, bc): pass
-    @abstractmethod
     def get_line_data(self, data, extract: str = 'auto'): pass
     @abstractmethod
     def get_image_data(self, data): pass
     @abstractmethod
     def get_random_point(self, boundary_distance: float = 0,
                          cartesian: bool = True): pass
+
+    
+    @classmethod
+    def register_operator(cls, name: str, factory_func: Callable):
+        """ register an operator for this class
+        
+        Args:
+            name (str):
+                The name of the operator to register
+            factory_func (callable):
+                A function with signature ``(bcs: Boundaries, **kwargs)``, which
+                takes boundary conditions and optional keyword arguments and
+                returns an implementation of the given operator.
+        """
+        cls._operators[name] = factory_func
              
+             
+    @classproperty
+    def operators(cls) -> Set[str]:  # @NoSelf
+        """ set: all operators defined for this class """
+        result = set()
+        classes = inspect.getmro(cls)[:-1]  # type: ignore
+        for anycls in classes:
+            result |= set(anycls._operators.keys())  # type: ignore
+        return result
+            
+
+    @cached_method()
+    @fill_in_docstring
+    def get_operator(self, name: str,
+                     bc: "Boundaries",
+                     **kwargs) -> Callable:
+        """ return a discretized operator defined on this grid
+         
+        Args:
+            name (str):
+                Identifier for the operator. Some examples are 'laplace',
+                'gradient', or 'divergence'.
+            bc (str or list or tuple or dict):
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES}  
+            **kwargs:
+                Specifies extra arguments that can influence how the operator
+                is created. Many operators support a `method` argument that can
+                typically be set to 'numba', 'scipy', or `auto`.
+                 
+        Returns:
+            A function that takes the discretized data as an input and returns
+            the data to which the operator `op` has been applied. This function
+            optionally supports a second argument, which provides allocated
+            memory for the output.
+        """
+        # obtain all parent classes, except `object`
+        classes = inspect.getmro(self.__class__)[:-1]
+        for cls in classes:
+            if name in cls._operators:  # type: ignore
+                bcs = self.get_boundary_conditions(bc)
+                return cls._operators[name](bcs, **kwargs)  # type: ignore
+            
+        raise NotImplementedError(f'Operator {name} is not implemented')
+            
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":
         """ return a subgrid of only the specified axes """

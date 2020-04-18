@@ -56,6 +56,7 @@ def test_polar_grid():
 
     assert grid.contains_point(grid.get_random_point())
     assert grid.contains_point(grid.get_random_point(3.99))
+    assert "laplace" in grid.operators
 
 
 
@@ -133,6 +134,7 @@ def test_spherical_grid():
 
     assert grid.contains_point(grid.get_random_point())
     assert grid.contains_point(grid.get_random_point(3.99))
+    assert "laplace" in grid.operators
 
 
 

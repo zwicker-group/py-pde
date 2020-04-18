@@ -7,7 +7,7 @@ discretize the radial direction, assuming symmetry with respect to all angles.
 '''
 
 from abc import ABCMeta
-from typing import Tuple, Dict, Any, Union, Callable, Generator, TYPE_CHECKING
+from typing import Tuple, Dict, Any, Union, Generator, TYPE_CHECKING
 
 import numpy as np
 from scipy import interpolate
@@ -15,7 +15,7 @@ from scipy import interpolate
 from .base import GridBase, discretize_interval, _check_shape, DimensionError
 from .cartesian import CartesianGrid
 from ..tools.spherical import volume_from_radius
-from ..tools.cache import cached_property, cached_method
+from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
 
 
@@ -591,29 +591,7 @@ class PolarGrid(SphericalGridBase):
         
         finalize_plot(title=title, show=show)
             
-    
-    @cached_method()
-    @fill_in_docstring
-    def get_operator(self, op: str, bc) -> Callable:
-        """ return a discretized operator defined on this grid
-        
-        Args:
-            op (str): Identifier for the operator. Some examples are 'laplace',
-                'gradient', or 'divergence'.
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-                
-        Returns:
-            A function that takes the discretized data as an input and returns
-            the data to which the operator `op` has been applied. This function
-            optionally supports a second argument, which provides allocated
-            memory for the output.
-        """
-        from .operators import polar
-        return polar.make_operator(op, bcs=self.get_boundary_conditions(bc))
-    
-    
+            
     
 class SphericalGrid(SphericalGridBase):
     r""" 3-dimensional spherical grid assuming spherical symmetry
@@ -658,26 +636,3 @@ class SphericalGrid(SphericalGridBase):
         z = points[..., 0]
         x = np.zeros_like(z)
         return np.stack((x, x, z), axis=-1)    
-
-
-    @cached_method()
-    @fill_in_docstring
-    def get_operator(self, op, bc: str) -> Callable:
-        """ return a discretized operator defined on this grid
-        
-        Args:
-            op (str): Identifier for the operator. Some examples are 'laplace',
-                'gradient', or 'divergence'.
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-                
-        Returns:
-            A function that takes the discretized data as an input and returns
-            the data to which the operator `op` has been applied. This function
-            optionally supports a second argument, which provides allocated
-            memory for the output.
-        """
-        from .operators import spherical
-        return spherical.make_operator(op, bcs=self.get_boundary_conditions(bc))
-

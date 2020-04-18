@@ -543,7 +543,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
             data (array, optional):
-                Field values at the support points of the grid
+                Field values at the support points of the grid. The data is
+                copied from the supplied array.
             label (str, optional):
                 Name of the field
         """

@@ -22,9 +22,10 @@ import numba as nb
 import numpy as np
 from scipy import ndimage, sparse
 
-from . import PARALLELIZATION_THRESHOLD_2D, PARALLELIZATION_THRESHOLD_3D
-from .common import make_laplace_from_matrix, make_poisson_solver
+from .common import (make_laplace_from_matrix, make_general_poisson_solver,
+                     PARALLELIZATION_THRESHOLD_2D, PARALLELIZATION_THRESHOLD_3D)
 from ..boundaries import Boundaries
+from ..cartesian import CartesianGridBase
 from ...tools.numba import jit_allocate_out
 from ...tools.docstrings import fill_in_docstring
 
@@ -564,6 +565,7 @@ def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
         raise ValueError(f'Method `{method}` is not defined')
         
     return gradient
+
 
 
 
@@ -1210,6 +1212,25 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 @fill_in_docstring
+def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
+    """ make a operator that solves Poisson's equation
+
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+        method (str): Method used for calculating the tensor divergence
+            operator. If method='auto', a suitable method is chosen
+            automatically.
+        
+    Returns:
+        A function that can be applied to an array of values
+    """
+    matrix, vector = _get_laplace_matrix(bcs)
+    return make_general_poisson_solver(matrix, vector, method)
+
+
+
+@fill_in_docstring
 def make_operator(op: str, bcs: Boundaries, method: str = 'auto') -> Callable:
     """ return a discretized operator for a Cartesian grid
     
@@ -1240,10 +1261,20 @@ def make_operator(op: str, bcs: Boundaries, method: str = 'auto') -> Callable:
         return make_tensor_divergence(bcs, method)
     elif op == 'poisson_solver' or op == 'solve_poisson' or op == 'poisson':
         matrix, vector = _get_laplace_matrix(bcs)
-        return make_poisson_solver(matrix, vector, method)
+        return make_general_poisson_solver(matrix, vector, method)
     else:
         raise NotImplementedError(f'Operator `{op}` is not defined for '
                                   'Cartesian grids')
+
+
+# register all operators with the grid class
+CartesianGridBase.register_operator('laplace', make_laplace)
+CartesianGridBase.register_operator('gradient', make_gradient)
+CartesianGridBase.register_operator('divergence', make_divergence)
+CartesianGridBase.register_operator('vector_gradient', make_vector_gradient)
+CartesianGridBase.register_operator('vector_laplace', make_vector_laplace)
+CartesianGridBase.register_operator('tensor_divergence', make_tensor_divergence)
+CartesianGridBase.register_operator('poisson_solver', make_poisson_solver)
 
 
 

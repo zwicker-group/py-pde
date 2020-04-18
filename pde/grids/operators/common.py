@@ -13,6 +13,18 @@ from scipy import sparse
 
 
 
+# Package-wide constant defining when to use parallel numba 
+PARALLELIZATION_THRESHOLD_2D = 256
+""" int: threshold for determining when parallel code is created for
+differential operators. The value gives the minimal number of support points in
+each direction for a 2-dimensional grid """
+PARALLELIZATION_THRESHOLD_3D = 64
+""" int: threshold for determining when parallel code is created for
+differential operators. The value gives the minimal number of support points in
+each direction for a 3-dimensional grid """
+
+
+
 logger = logging.getLogger(__name__) 
 
 
@@ -49,7 +61,8 @@ def make_laplace_from_matrix(matrix, vector) -> Callable:
 
 
 
-def make_poisson_solver(matrix, vector, method: str = 'auto') -> Callable:
+def make_general_poisson_solver(matrix, vector, method: str = 'auto') \
+        -> Callable:
     """ make an operator that solves Poisson's problem
 
     Args:

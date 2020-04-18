@@ -44,12 +44,8 @@ LOW-PRIORITY (Future ideas)
 * Think about implementing helmholtz solver
     - generally useful to discuss eigenvalues of laplace operator?
 * Add method showing the boundary condition as a mathematical equation
-* Add interface for setting parameters of a simulation
-	- each class should have a list of parameters it supports (with type?)
-	- parameters can be set through **kwargs mechanism in constructor
-	- parameters can be set and read through files 
-	- automatic discovery should give a list of parameters each simulation supports
-	- look at older code in `nose` package for instance
+* Use Parametrized for some simulations
+    - add to documentation how to use it
 * Consider using @numba.overload decorator instead of generated jit to support
 	out=None idiom
 * Ensure that stochastic simulations on a single core can be resumed from any

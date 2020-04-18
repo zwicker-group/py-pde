@@ -5,14 +5,13 @@ Cylindrical grids with azimuthal symmetry
  
 '''
 
-from typing import (Tuple, Sequence, Dict, Union, Any, Callable, Generator,
-                    TYPE_CHECKING)
+from typing import Tuple, Sequence, Dict, Union, Any, Generator, TYPE_CHECKING
 
 import numpy as np
 
 from .base import GridBase, discretize_interval, _check_shape, DimensionError
 from .cartesian import CartesianGrid
-from ..tools.cache import cached_property, cached_method
+from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
 
 
@@ -492,28 +491,6 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         return Boundaries.from_data(self, bc)
     
     
-    @cached_method()
-    @fill_in_docstring
-    def get_operator(self, op: str, bc) -> Callable:
-        """ return a discretized operator defined on this grid
-        
-        Args:
-            op (str): Identifier for the operator. Some examples are 'laplace',
-                'gradient', or 'divergence'.
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}  
-                
-        Returns:
-            A function that takes the discretized data as an input and returns
-            the data to which the operator `op` has been applied. This function
-            optionally supports a second argument, which provides allocated
-            memory for the output.
-        """
-        from .operators import cylindrical
-        return cylindrical.make_operator(op,
-                                         bcs=self.get_boundary_conditions(bc))
-
     
     def get_cartesian_grid(self, mode: str = 'valid') -> CartesianGrid:
         """ return a Cartesian grid for this Cylindrical one 
