@@ -21,20 +21,16 @@ if TYPE_CHECKING:
 
 
 class PDEBase(metaclass=ABCMeta):
-    """ base class for solving partial differential equations
-    
-    Attributes:
-        check_implementation (bool):
-            Flag determining whether (some) numba-compiled functions should be
-            checked against their numpy counter-parts. This can help with
-            implementing a correct compiled version for a PDE class.
-        explicit_time_dependence (bool):
-            Flag indicating whether the right hand side of the PDE has an
-            explicit time dependence.
-    """
+    """ base class for solving partial differential equations """
 
     check_implementation: bool = True
+    """ bool: Flag determining whether (some) numba-compiled functions should be
+    checked against their numpy counter-parts. This can help with implementing a
+    correct compiled version for a PDE class. """
+    
     explicit_time_dependence: Optional[bool] = None
+    """ bool: Flag indicating whether the right hand side of the PDE has an
+    explicit time dependence. """
 
 
     def __init__(self, noise: float = 0):

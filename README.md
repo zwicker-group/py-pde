@@ -39,7 +39,7 @@ install the following optional packages:
 pip install h5py pandas tqdm
 ```
 
-Moreover, `ffmpeg` needs to be installed and for creating movies.
+Moreover, `ffmpeg` needs to be installed for creating movies.
 
 
 Usage
@@ -58,8 +58,7 @@ result = eq.solve(state, t_range=10)          # solve the pde
 result.plot()                                 # plot the resulting field
 ```
 
-A convenient feature of the package is that PDEs can also be specified by simply
-writing the expressions of the evolution rate.
+PDEs can also be specified by simply writing expressions of the evolution rate.
 For instance, the
 [Cahn-Hilliard equation](https://en.wikipedia.org/wiki/Cahn–Hilliard_equation)
 can be implemented as

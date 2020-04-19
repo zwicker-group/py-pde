@@ -125,14 +125,12 @@ class TrackerCollection():
     Attributes:
         trackers (list):
             List of the trackers in the collection
-        tracker_action_times (list):
-            Times at which the respective trackers need to be handled next
-        time_next_action (float):
-            The time of the next interrupt of the simulation
     """
     
     tracker_action_times: List[float]
+    """ list: Times at which the trackers need to be handled next """
     time_next_action: float
+    """ float: The time of the next interrupt of the simulation """
     
     
     def __init__(self, trackers: Optional[List[TrackerBase]] = None):

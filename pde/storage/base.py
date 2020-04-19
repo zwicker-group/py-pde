@@ -20,20 +20,11 @@ from ..tools.docstrings import fill_in_docstring
 
     
 class StorageBase(metaclass=ABCMeta):
-    """ base class for storage
-    
-    Attributes:
-        times (:class:`numpy.ndarray`):
-            The times at which data is available
-        data (:class:`numpy.ndarray`):
-            The actual data for all the stored times
-        grid (:class:`~pde.grids.GridBase`):
-            The grid defining how the data is discretized
-    """
+    """ base class for storage of discretized fields """
     
     
-    times: Sequence[float]
-    data: Any
+    times: Sequence[float]  # :class:`numpy.ndarray`): stored time points
+    data: Any  # The actual data for all the stored times
     
 
     def __init__(self, info: InfoDict = None,

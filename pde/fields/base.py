@@ -41,10 +41,6 @@ class FieldBase(metaclass=ABCMeta):
     """ abstract base class for describing (discretized) fields
     
     Attributes:
-        grid (:class:`~pde.grids.GridBase`):
-            The underlying grid defining the discretization
-        data (:class:`numpy.ndarray`):
-            Data values at the support points of the grid
         label (str):
             Name of the field
     """ 

@@ -100,38 +100,20 @@ class PeriodicityError(RuntimeError):
 
 
 class GridBase(metaclass=ABCMeta):
-    """ Base class for all grids defining common methods and interfaces
-    
-    Attributes:
-        dim (int):
-            The spatial dimension in which the grid is embedded
-        shape (tuple):
-            The number of support points in each axis. Note that `len(shape)`
-            might be smaller than `dim` if the grid assumes some symmetry. For
-            instance, a spherically symmetric grid has `dim == 3`, but
-            `len(shape) == 1`.
-        discretization (:class:`numpy.ndarray`):
-            The discretization along each axis.
-        axes (tuple):
-            The name of all the axes that are described by the grid.
-        axes_symmetric (tuple):
-            The names of the additional axes that the fields do not depend on,
-            e.g. along which they are constant.
-        axes_coords (tuple):
-            The discretization points along each axis
-        axes_bounds (tuple):
-            The coordinate bounds of each axes
-    """
+    """ Base class for all grids defining common methods and interfaces """
     
     _subclasses: Dict[str, 'GridBase'] = {}  # all classes inheriting from this
     _operators: Dict[str, Callable] = {}  # all operators defined for the grid
     
     # properties that are defined in subclasses
-    axes: List[str]
+    dim: int  # int: The spatial dimension in which the grid is embedded
+    axes: List[str]  # list: Name of all axes that are described by the grid
     axes_symmetric: List[str] = []
+    """ list: The names of the additional axes that the fields do not depend on,
+    e.g. along which they are constant. """
+
     cell_volume_data: Sequence[Union[float, np.ndarray]]
     coordinate_constraints: List[int] = []  # axes not described explicitly
-    dim: int
     num_axes: int
     periodic: List[bool]
 
