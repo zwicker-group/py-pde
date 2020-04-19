@@ -361,7 +361,9 @@ class GridBase(metaclass=ABCMeta):
         Args:
             name (str):
                 Identifier for the operator. Some examples are 'laplace',
-                'gradient', or 'divergence'.
+                'gradient', or 'divergence'. The registered operators for this
+                grid can be obtained from the
+                :attr:`~pde.grids.base.GridBase.operators` attribute.
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}  
@@ -372,9 +374,9 @@ class GridBase(metaclass=ABCMeta):
                  
         Returns:
             A function that takes the discretized data as an input and returns
-            the data to which the operator `op` has been applied. This function
-            optionally supports a second argument, which provides allocated
-            memory for the output.
+            the data to which the operator `name` has been applied. This
+            function optionally supports a second argument, which provides
+            allocated memory for the output.
         """
         # obtain all parent classes, except `object`
         classes = inspect.getmro(self.__class__)[:-1]
@@ -383,7 +385,11 @@ class GridBase(metaclass=ABCMeta):
                 bcs = self.get_boundary_conditions(bc)
                 return cls._operators[name](bcs, **kwargs)  # type: ignore
             
-        raise NotImplementedError(f'Operator {name} is not implemented')
+        # operator was not found
+        raise ValueError(f"'{name}' is not one of the defined operators: "
+                         f"{', '.join(sorted(self.operators))}. Custom "
+                         "operators can be added using the `register_operator` "
+                         "method.")
             
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":

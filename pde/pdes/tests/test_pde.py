@@ -101,3 +101,24 @@ def test_compare_swift_hohenberg(grid):
     res1.assert_field_compatible(res1)
     np.testing.assert_allclose(res1.data, res2.data)
     
+    
+    
+def test_custom_operators():
+    """ test using a custom operator """
+    grid = UnitGrid([32])
+    field = ScalarField.random_normal(grid)
+    eq = PDE({'u': 'undefined(u)'})
+    
+    with pytest.raises(ValueError):
+        eq.evolution_rate(field)
+        
+    
+    def make_op(state):
+        return lambda state: state
+    UnitGrid.register_operator('undefined', make_op)
+    
+    eq._cache = {}  # reset cache
+    res = eq.evolution_rate(field)
+    np.testing.assert_allclose(field.data, res.data)
+    
+    del UnitGrid._operators['undefined']  # reset original state

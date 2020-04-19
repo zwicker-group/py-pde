@@ -117,7 +117,7 @@ class PDE(PDEBase):
                         'operators_detected': self.operators}
         self._cache: Dict[str, Any] = {}
             
-            
+           
     def _prepare(self, state: FieldBase) -> None:
         """ prepare the expression by setting internal variables in the cache
 
@@ -132,8 +132,8 @@ class PDE(PDEBase):
         if ('state_attributes' in self._cache and
                 state.attributes == self._cache['state_attributes']):
             return  # prepare was already called
-        self._cache['state_attributes'] = state.attributes
-            
+        self._cache = {}  # clear cache, if there was something
+
         # check whether the state is compatible with the PDE
         num_fields = len(self.variables)
         self.diagnostics['num_fields'] = num_fields
@@ -172,6 +172,12 @@ class PDE(PDEBase):
                                  else state_data[starts[i]: stops[i]]
                              for i in range(num_fields))
             self._cache['get_data_tuple'] = get_data_tuple
+
+        # store the attributes in the cache, which allows to later circumvent
+        # calculating the quantities above again. Note that this has to be the
+        # last expression of the method, so the cache is only valid when the
+        # prepare function worked successfully            
+        self._cache['state_attributes'] = state.attributes
         
         
     def evolution_rate(self, state: FieldBase, t: float = 0) -> FieldBase:

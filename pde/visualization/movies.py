@@ -25,7 +25,7 @@ from ..tools.docstrings import fill_in_docstring
 
 
 
-class Movie(object):
+class Movie:
     """ Class for creating movies from matplotlib figures using ffmpeg """
 
     def __init__(self, width=None, filename=None, verbose=False,

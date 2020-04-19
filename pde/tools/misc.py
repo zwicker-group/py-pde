@@ -306,16 +306,16 @@ def import_class(identifier: str):
     
 
 
-class classproperty(object):
+class classproperty:
     """ decorator that can be used to define read-only properties for classes. 
-    Code copied from http://stackoverflow.com/a/5192374/932593
+    Adopted from http://stackoverflow.com/a/5192374/932593
     """
     def __init__(self, f):
         self.f = f
-        
+         
     def __get__(self, obj, owner):
         return self.f(owner)
-
+    
 
 
 class hybridmethod:

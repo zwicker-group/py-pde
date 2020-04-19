@@ -12,7 +12,7 @@ import numpy as np
 
 
 
-class Cuboid(object):
+class Cuboid:
     """ class that represents a cuboid in :math:`n` dimensions """
     
     

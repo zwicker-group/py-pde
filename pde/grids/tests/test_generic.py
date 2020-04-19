@@ -108,8 +108,13 @@ def test_grid_plotting():
     
 def test_operators():
     """ test operator mechanism """
+    def make_op(state):
+        return lambda state: state
     for grid in iter_grids():
         assert "laplace" in grid.operators
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(ValueError):
             grid.get_operator('not_existent', 'natural')
+        grid.register_operator('noop', make_op)
+        assert "noop" in grid.operators
+        del grid._operators['noop']  # reset original state
         

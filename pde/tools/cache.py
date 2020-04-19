@@ -324,7 +324,7 @@ class SerializedDict(collections.abc.MutableMapping):
 
 
 
-class _class_cache(object):
+class _class_cache:
     """ class handling the caching of results of methods and properties """
     
     def __init__(self, factory=None, extra_args=None, ignore_args=None,
@@ -568,7 +568,7 @@ class cached_method(_class_cache):
     Example:
         The decorator can be used like so::
     
-            class Foo(object):
+            class Foo:
             
                 @cached_method
                 def bar(self):
