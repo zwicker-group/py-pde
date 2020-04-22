@@ -2,12 +2,13 @@
 Handling mathematical expressions with sympy
 
 This module provides classes representing expressions that can be provided as 
-human-readable strings and are converted to numpy and numba representations
-using sympy.
+human-readable strings and are converted to :mod:`numpy` and :mod:`numba`
+representations using :mod:`sympy`.
 
 .. autosummary::
    :nosignatures:
 
+   parse_number
    ScalarExpression
    TensorExpression
    

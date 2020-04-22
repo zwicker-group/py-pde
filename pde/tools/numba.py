@@ -16,6 +16,13 @@ import numba as nb  # lgtm [py/import-and-import-from]
 from ..tools.misc import decorator_arguments
 
 
+try:
+    from numba.core.dispatcher import Dispatcher
+except ImportError:
+    # assume older numba module structure
+    from numba.dispatcher import Dispatcher
+
+
 
 # global settings for numba
 NUMBA_PARALLEL = True   # enable parallel numba
@@ -140,10 +147,6 @@ def jit(function: TFunc,
     Returns:
         Function that will be compiled using numba
     """
-    if NUMBA_VERSION < [0, 49]:
-        from numba.dispatcher import Dispatcher
-    else:
-        from numba.core.dispatcher import Dispatcher
     if isinstance(function, Dispatcher):
         # function is already jited
         return function  # type: ignore
