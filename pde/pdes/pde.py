@@ -8,7 +8,6 @@ from collections import OrderedDict, defaultdict
 from typing import Callable, Dict, Any  # @UnusedImport
 
 import numpy as np
-from sympy.core.function import AppliedUndef
 
 
 from pde.pdes.base import PDEBase
@@ -16,7 +15,6 @@ from pde.fields import FieldCollection
 from pde.fields.base import FieldBase, DataFieldBase
 from pde.grids.boundaries.axes import BoundariesData
 from pde.tools.numba import nb, jit
-from pde.tools.expressions import ScalarExpression
 from pde.tools.docstrings import fill_in_docstring
 
 
@@ -78,6 +76,9 @@ class PDE(PDEBase):
             to surprising results.
                 
         """
+        from ..tools.expressions import ScalarExpression
+        from sympy.core.function import AppliedUndef
+        
         super().__init__()
         
         # validate input

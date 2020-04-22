@@ -12,7 +12,6 @@ import numpy as np
 from .base import DataFieldBase
 from ..grids import UnitGrid, CartesianGrid
 from ..grids.base import GridBase, DomainError
-from ..tools.expressions import ScalarExpression
 from ..tools.docstrings import fill_in_docstring
 
 
@@ -57,6 +56,7 @@ class ScalarField(DataFieldBase):
             label (str, optional):
                 Name of the field
         """
+        from ..tools.expressions import ScalarExpression
         expr = ScalarExpression(expression=expression, signature=grid.axes)
         points = {name: grid.cell_coords[..., i]
                   for i, name in enumerate(grid.axes)}

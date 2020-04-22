@@ -15,7 +15,6 @@ from .base import DataFieldBase
 from .scalar import ScalarField
 from ..grids.base import GridBase, DimensionError
 from ..tools.numba import jit
-from ..tools.expressions import ScalarExpression
 from ..tools.docstrings import fill_in_docstring
 
   
@@ -91,6 +90,8 @@ class VectorField(DataFieldBase):
             label (str, optional):
                 Name of the field
         """
+        from ..tools.expressions import ScalarExpression
+        
         if isinstance(expressions, str) or len(expressions) != grid.dim:
             axes_names = grid.axes + grid.axes_symmetric
             raise ValueError(f'Expected {grid.dim} expressions for the '

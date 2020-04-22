@@ -16,7 +16,6 @@ from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar,
 
 import numpy as np
 from scipy import interpolate, ndimage
-import matplotlib.pyplot as plt
 
 from ..grids.base import (GridBase, discretize_interval, DimensionError,
                           DomainError)
@@ -831,7 +830,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 how an image is created from the raw data. Finally, the
                 remaining arguments are are passed to
                 :func:`matplotlib.pyplot.imsave` to affect the appearance.
-                        """
+        """
+        import matplotlib.pyplot as plt
         # obtain image data
         get_image_args = {}
         for key in ['performance_goal', 'scalar']:
@@ -1326,6 +1326,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Instance of the line returned by `plt.plot`
         """
+        import matplotlib.pyplot as plt
+        
         # obtain data
         line_data = self.get_line_data(extract=extract)
         
@@ -1385,6 +1387,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Result of :func:`matplotlib.pyplot.imshow`
         """
+        import matplotlib.pyplot as plt
+        
         # obtain image data
         get_image_args = {}
         for key in ['performance_goal', 'scalar']:
@@ -1459,8 +1463,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Result of :func:`matplotlib.pyplot.quiver` or
             :func:`matplotlib.pyplot.streamplot`
         """
+        import matplotlib.pyplot as plt
+        
         # obtain image data
         data = self.get_vector_data()
+
+        if ax is None:                
+            ax = plt.figure().gca()
         
         if transpose:
             # adjust image data such that the transpose is plotted
@@ -1483,10 +1492,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                         data['y'] = data['y'][idx_i]
                     elif axis == 1:
                         data['x'] = data['x'][idx_i]
-            plot_func = plt.quiver if ax is None else ax.quiver
+            plot_func = ax.quiver
             
         elif method == 'streamplot':
-            plot_func = plt.streamplot if ax is None else ax.streamplot
+            plot_func = ax.streamplot
                 
         else:
             raise ValueError(f'Vector plot `{method}` is not supported.')
@@ -1494,8 +1503,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # do the actual plotting
         res = plot_func(data['x'], data['y'], data['data_x'], data['data_y'],
                         **kwargs)        
-        if ax is None:                
-            ax = plt.gca()
             
         # set some default properties
         ax.set_aspect('equal')

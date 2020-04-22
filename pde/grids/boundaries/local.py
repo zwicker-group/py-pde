@@ -35,7 +35,6 @@ import numpy as np
 from numba.extending import register_jitable
 
 from ..base import GridBase
-from ...tools.expressions import ScalarExpression
 from ...tools.docstrings import fill_in_docstring
 
 
@@ -221,6 +220,7 @@ class BCBase(metaclass=ABCMeta):
         
         if isinstance(value, str):
             # inhomogeneous value given by an expression 
+            from ...tools.expressions import ScalarExpression
             self.homogeneous = False
 
             # determine which coordinates are allowed to vary            
