@@ -35,15 +35,15 @@ from .numba import jit
 
 
 @fill_in_docstring
-def parse_number(expression: Union[str, Number],
-                 variables: Dict[str, Number] = None) -> float:
+def parse_number(expression: Union[str, float],
+                 variables: Dict[str, float] = None) -> float:
     r""" return a number compiled from an expression
     
     Warning:
         {WARNING_EXEC}
     
     Args:
-        expression (str or number):
+        expression (str or float):
             An expression that can be interpreted as a number
         variables (dict):
             A dictionary of values that replace variables in the expression
