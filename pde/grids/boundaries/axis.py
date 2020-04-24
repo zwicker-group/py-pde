@@ -27,7 +27,13 @@ BoundaryPairData = Union[Dict[str, BoundaryData],
        
        
 class BoundaryAxisBase:
-    pass
+    """ base class for defining boundaries of a single axis in a grid """
+    
+    grid: GridBase
+    """ :class:`~pde.grids.base.GridBase`:
+    The grid for which the boundaries are defined """
+    axis: int
+    """ int: The axis along which the boundaries are defined """
        
        
         
@@ -35,7 +41,7 @@ class BoundaryPair(BoundaryAxisBase):
     """ represents the two boundaries of an axis along a single dimension """
     
     periodic = False
-
+    
 
     def __init__(self, low: BCBase, high: BCBase):
         """ 

@@ -47,11 +47,11 @@ and the operators defined by the package.
 Custom PDE classes
 """"""""""""""""""
 To implement a new PDE in a way that all of the machinery of `py-pde` can be
-used, one needs to subclass :class:`pde.pdes.base.PDEBase` and overwrite at 
-least the :meth:`pde.pdes.base.PDEBase.evolution_rate`.
+used, one needs to subclass :class:`~pde.pdes.base.PDEBase` and overwrite at 
+least the :meth:`~pde.pdes.base.PDEBase.evolution_rate` method.
 
-As an example we implement the `Kuramoto–Sivashinsky equation 
-<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, given by    
+As an example, we consider the `Kuramoto–Sivashinsky equation 
+<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_,     
 :math:`\partial_t u = - \nabla^4 u - \nabla^2 u - \frac{1}{2} |\nabla u|^2`,
 which describes the time evolution of a scalar field :math:`u`.
 A simple implementation of this equation could read 
@@ -146,6 +146,10 @@ The :code:`get_operator` method of the grids generally supports the following
 differential operators: :code:`'laplacian'`, :code:`'gradient'`,
 :code:`'divergence'`, :code:`'vector_gradient'`, :code:`'vector_laplace'`, 
 and :code:`'tensor_divergence'`.
+However, a complete list of operators supported by a certain grid class can be
+obtained from the class property :attr:`GridClass.operators`.
+New operators can be added using the class method
+:meth:`GridClass.register_operator`.
  
 
 Field integration

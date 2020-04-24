@@ -122,6 +122,10 @@ class GridBase(metaclass=ABCMeta):
     _axes_coords: Tuple[np.ndarray, ...]
     _discretization: np.array
     _shape: Tuple[int, ...]
+    
+    # to help sphinx, we here list docstrings for classproperties    
+    operators: Set[str]
+    """ set: names of all operators defined for this grid """
 
 
     def __init__(self):
@@ -318,12 +322,16 @@ class GridBase(metaclass=ABCMeta):
             factory_func (callable):
                 A function with signature ``(bcs: Boundaries, **kwargs)``, which
                 takes boundary conditions and optional keyword arguments and
-                returns an implementation of the given operator.
+                returns an implementation of the given operator. This
+                implementation is a function that takes a
+                :class:`~numpy.ndarray` of discretized values as arguments and
+                returns the resulting :class:`~numpy.ndarray` after applying the
+                operator.
         """
         cls._operators[name] = factory_func
              
              
-    @classproperty
+    @classproperty  # type: ignore
     def operators(cls) -> Set[str]:  # @NoSelf
         """ set: all operators defined for this class """
         result = set()

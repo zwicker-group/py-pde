@@ -164,12 +164,14 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
 class BCBase(metaclass=ABCMeta):
     """ represents a single boundary in an BoundaryPair instance """
     
-    names: List[str]   # identifiers for the given boundary
-    homogeneous: bool  # spatial dependence of boundary condition?
+    names: List[str]
+    """ list: identifiers used to specify the given boundary class """
+    homogeneous: bool
+    """ bool: determines whether the boundary condition depends on space """
     value: Any         # the actual value of the boundary condition
 
     _subclasses: Dict[str, 'BCBase'] = {}  # all classes inheriting from this
-    _conditions: Dict[str, 'BCBase'] = {}
+    _conditions: Dict[str, 'BCBase'] = {}  # mapping from all names to classes
     
 
     @fill_in_docstring    
@@ -180,7 +182,7 @@ class BCBase(metaclass=ABCMeta):
             an arbitrary string.
         
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated

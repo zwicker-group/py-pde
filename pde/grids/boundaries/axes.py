@@ -11,6 +11,7 @@ from typing import Union, Sequence
 import numpy as np
 
 from .axis import BoundaryPair, BoundaryPairData, get_boundary_axis
+from ..base import GridBase
 from .. import PeriodicityError
  
 BoundariesData = Union[BoundaryPairData,
@@ -20,6 +21,11 @@ BoundariesData = Union[BoundaryPairData,
 
 class Boundaries(list):
     """ class that bundles all boundary conditions for all axes """
+    
+    
+    grid: GridBase
+    """ :class:`~pde.grids.base.GridBase`:
+    The grid for which the boundaries are defined """
     
     
     def __init__(self, boundaries):
@@ -57,12 +63,12 @@ class Boundaries(list):
 
     
     @classmethod
-    def from_data(cls, grid, boundaries) -> "Boundaries":
+    def from_data(cls, grid: GridBase, boundaries) -> "Boundaries":
         """
         Creates all boundaries from given data
         
         Args:
-            grid (GridBase):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid with which the boundary condition is associated
             boundaries (str or list or tuple or dict):
                 Data that describes the boundaries. This can either be a list of

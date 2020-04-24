@@ -20,10 +20,26 @@ All code is build on a modular basis, making it easy to introduce new classes
 that integrate with the rest of the package. For instance, it is simple to
 define a new partial differential equation by subclassing
 :class:`~pde.pdes.base.PDEBase`.
-Similarly, new grids can be introduced by subclassing
+Alternatively, PDEs can be defined by specifying their evolution rates using
+mathematical expressions by creating instances of the class
+:class:`~pde.pdes.pde.PDE`.
+Moreover, new grids can be introduced by subclassing
 :class:`~pde.grids.base.GridBase`.
 It is also possible to only use parts of the package, e.g., the discretized
 differential operators from :mod:`~pde.grids.operators`.
+
+New operators can be associated with grids by registering them using
+:meth:`~pde.grids.base.GridBase.register_operator`.
+For instance, to create a new operator for the cylindrical grid one needs to 
+define a factory function that creates the operator. This factory function takes
+an instance of :class:`~pde.grids.boundaries.axes.Boundaries` as an argument and
+returns a function that takes as an argument the actual data array for the grid.
+Note that the grid itself is an attribute of
+:class:`~pde.grids.boundaries.axes.Boundaries`.
+This operator would be registered with the grid by calling
+:code:`CylindricalGrid.register_operator("operator", make_operator)`, where the
+first argument is the name of the operator and the second argument is the
+factory function.
 
 
 Design choices
