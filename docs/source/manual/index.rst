@@ -8,5 +8,6 @@ User manual
    
    mathematical_basics
    advanced_usage
+   performance
    contributing
    code_of_conduct

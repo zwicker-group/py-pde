@@ -10,8 +10,8 @@ import numpy as np
 import numba
 
 from pde.grids import UnitGrid, CylindricalGrid, SphericalGrid
-from pde.grids.operators import (cartesian, cylindrical, spherical,
-                                 PARALLELIZATION_THRESHOLD_2D)
+from pde.grids.operators import cartesian, cylindrical, spherical
+from pde.grids.operators.common import PARALLELIZATION_THRESHOLD_2D
 from pde.grids.boundaries import Boundaries
 from pde.tools.numba import jit, jit_allocate_out
 from pde.tools.misc import estimate_computation_speed

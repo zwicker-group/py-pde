@@ -1,9 +1,6 @@
 TODO
 ====
 * Support 3d plots in plot_image (use for Laplace and Poisson eq) 
-* Add benchmark
-    - store results on disk in json-encoded file
-    - compare to findiff package
 * Add Glossary or something to development guide
     - e.g., state = attributes + data
 * Add noise to PDE class (additive, but different for each field)

@@ -32,8 +32,8 @@ Installing from source can be necessary if the pypi installation does not work
 or if the latest source code should be installed from github.
 
 
-Prerequisites
--------------
+Required prerequisites
+----------------------
 
 The code builds on other python packages, which need to be installed for
 `py-pde` to function properly.
@@ -64,8 +64,11 @@ The package versions given above are minimal requirements, although
 this is not tested systematically. Generally, it should help to install the
 latest version of the package.
 
-Optionally, the following packages should be installed to use some miscellaneous
-features:
+
+Optional packages
+-----------------
+
+The following packages should be installed to use some miscellaneous features:
 
 ===========  =========
 Package      Usage                                      
@@ -83,8 +86,8 @@ These packages are listed in the files :file:`requirements.txt` in the
 respective folders.
 
 
-Downloading the package
------------------------
+Downloading `py-pde`
+--------------------
 
 The package can be simply checked out from
 `github.com/zwicker-group/py-pde <https://github.com/zwicker-group/py-pde>`_.
@@ -96,28 +99,6 @@ This documentation can be built by calling the :command:`make html` in the
 The final documentation will be available in :file:`docs/build/html`.
 Note that a LaTeX documentation can be build using :command:`make latexpdf`.
 
-
-
-Optimizing performance
------------------------
-
-Factors influencing the performance of the package include the compiler used for
-:mod:`numpy`, :mod:`scipy`, and of course :mod:`numba`.
-Moreover, the BLAS and LAPACK libraries might make a difference.
-The package has some basic support for multithreading, which can be accelerated
-using the `Threading Building Blocks` library.
-Finally, it can help to install the intel short vector math library (SVML).
-However, this is not distributed with :command:`macports` and might thus be more
-difficult to enable. 
-
-Using :command:`macports`, one could for instance install the following variants
-of typical packages
-
-.. code-block:: bash
-
-	port install py37-numpy +gcc8+openblas
-	port install py37-scipy +gcc8+openblas
-	port install py37-numba +tbb
 	
 	
 Package overview
