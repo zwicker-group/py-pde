@@ -215,8 +215,8 @@ def test_vector_laplace(ndim):
 def test_tensor_divergence(ndim):
     """ test different tensor divergence operators """
     bcs = _get_random_grid_bcs(ndim, dx='uniform', periodic='random')
-    op1 = ops.make_operator('tensor_divergence', bcs, method='scipy')
-    op2 = ops.make_operator('tensor_divergence', bcs, method='numba')
+    op1 = ops.make_tensor_divergence(bcs, method='scipy')
+    op2 = ops.make_tensor_divergence(bcs, method='numba')
     arr = np.random.random((ndim, ndim) + bcs.grid.shape)
     val1, val2 = op1(arr), op2(arr)
     assert val1.shape == (ndim,) + bcs.grid.shape

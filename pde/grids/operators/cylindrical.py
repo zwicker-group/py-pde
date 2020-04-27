@@ -10,7 +10,6 @@ This module implements differential operators on cylindrical grids
    make_vector_gradient
    make_vector_laplace
    make_tensor_divergence
-   make_operator
    
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
@@ -306,40 +305,6 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
         
     return tensor_divergence  # type: ignore
 
-
-
-@fill_in_docstring
-def make_operator(op: str, bcs: Boundaries) -> Callable:
-    """ make a discretized operator for a cylindrical grid
-    
-    {DESCR_CYLINDRICAL_GRID}
-
-    Args:
-        op (str): Identifier for the operator. Some examples are 'laplace',
-            'gradient', or 'divergence'.
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            {ARG_BOUNDARIES_INSTANCE}
-
-    Returns:
-        A function that takes the discretized data as an input and returns
-        the data to which the operator `op` has been applied. This function
-        optionally supports a second argument, which provides allocated
-        memory for the output.
-    """
-    if op == 'laplace' or op == 'laplacian':
-        return make_laplace(bcs)
-    elif op == 'gradient':
-        return make_gradient(bcs)
-    elif op == 'divergence':
-        return make_divergence(bcs)
-    elif op == 'vector_gradient':
-        return make_vector_gradient(bcs)
-    elif op == 'tensor_divergence':
-        return make_tensor_divergence(bcs)
-    else:
-        raise NotImplementedError(f'Operator `{op}` is not defined for '
-                                  'cylindrical grids')
-    
 
 # register all operators with the grid class
 CylindricalGrid.register_operator('laplace', make_laplace)

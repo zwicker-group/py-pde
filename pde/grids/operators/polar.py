@@ -9,7 +9,6 @@ This module implements differential operators on polar grids
    make_divergence
    make_vector_gradient
    make_tensor_divergence
-   make_operator
    
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
@@ -339,43 +338,7 @@ def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
     matrix, vector = _get_laplace_matrix(bcs)
     return make_general_poisson_solver(matrix, vector, method)
 
-
-
-@fill_in_docstring
-def make_operator(op: str, bcs: Boundaries) -> Callable:
-    """ make a discretized operator for a polar grid
-    
-    {DESCR_POLAR_GRID}
-
-    Args:
-        op (str): Identifier for the operator. Some examples are 'laplace',
-            'gradient', or 'divergence'.
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            {ARG_BOUNDARIES_INSTANCE}
-        
-    Returns:
-        A function that takes the discretized data as an input and returns
-        the data to which the operator `op` has been applied. This function
-        optionally supports a second argument, which provides allocated
-        memory for the output.
-    """
-    if op == 'laplace' or op == 'laplacian':
-        return make_laplace(bcs)
-    elif op == 'gradient':
-        return make_gradient(bcs)
-    elif op == 'divergence':
-        return make_divergence(bcs)
-    elif op == 'vector_gradient':
-        return make_vector_gradient(bcs)
-    elif op == 'tensor_divergence':
-        return make_tensor_divergence(bcs)
-    elif op == 'poisson_solver' or op == 'solve_poisson' or op == 'poisson':
-        return make_general_poisson_solver(*_get_laplace_matrix(bcs))
-    else:
-        raise NotImplementedError(f'Operator `{op}` is not defined for '
-                                  'polar grids')
-        
-        
+       
 # register all operators with the grid class
 PolarGrid.register_operator('laplace', make_laplace)
 PolarGrid.register_operator('gradient', make_gradient)
@@ -383,4 +346,3 @@ PolarGrid.register_operator('divergence', make_divergence)
 PolarGrid.register_operator('vector_gradient', make_vector_gradient)
 PolarGrid.register_operator('tensor_divergence', make_tensor_divergence)
 PolarGrid.register_operator('poisson_solver', make_poisson_solver)
-

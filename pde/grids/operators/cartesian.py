@@ -10,7 +10,6 @@ This module implements differential operators on Cartesian grids
    make_vector_gradient
    make_vector_laplace
    make_tensor_divergence
-   make_operator
    
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>   
@@ -389,6 +388,10 @@ def make_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
     return laplace
 
 
+# register operators with the grid class
+CartesianGridBase.register_operator('laplace', make_laplace)
+
+
 
 @fill_in_docstring
 def _make_gradient_scipy_nd(bcs: Boundaries) -> Callable:
@@ -566,6 +569,9 @@ def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
         
     return gradient
 
+
+# register operators with the grid class
+CartesianGridBase.register_operator('gradient', make_gradient)
 
 
 
@@ -756,6 +762,10 @@ def make_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
     return divergence
 
 
+# register operators with the grid class
+CartesianGridBase.register_operator('divergence', make_divergence)
+
+
 
 @fill_in_docstring
 def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
@@ -908,6 +918,11 @@ def make_vector_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
     return gradient
 
 
+# register operators with the grid class
+CartesianGridBase.register_operator('vector_gradient', make_vector_gradient)
+
+
+
 @fill_in_docstring
 def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a vector Laplacian using the scipy module
@@ -1053,6 +1068,10 @@ def make_vector_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
         raise ValueError(f'Method `{method}` is not defined')
         
     return gradient
+
+
+# register operators with the grid class
+CartesianGridBase.register_operator('vector_laplace', make_vector_laplace)
 
 
 
@@ -1210,6 +1229,10 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
     return func
 
 
+# register operators with the grid class
+CartesianGridBase.register_operator('tensor_divergence', make_tensor_divergence)
+
+
 
 @fill_in_docstring
 def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
@@ -1229,56 +1252,12 @@ def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
     return make_general_poisson_solver(matrix, vector, method)
 
 
-
-@fill_in_docstring
-def make_operator(op: str, bcs: Boundaries, method: str = 'auto') -> Callable:
-    """ return a discretized operator for a Cartesian grid
-    
-    Args:
-        op (str): Identifier for the operator. Some examples are 'laplace',
-            'gradient', or 'divergence'.
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
-            {ARG_BOUNDARIES_INSTANCE}
-        method (str): The method for implementing the operator
-        
-    Returns:
-        A function that takes the discretized data as an input and returns
-        the data to which the operator `op` has been applied. This function
-        optionally supports a second argument, which provides allocated
-        memory for the output.
-    """
-    if op == 'laplace' or op == 'laplacian':
-        return make_laplace(bcs, method)
-    elif op == 'gradient':
-        return make_gradient(bcs, method)
-    elif op == 'divergence':
-        return make_divergence(bcs, method)
-    elif op == 'vector_gradient':
-        return make_vector_gradient(bcs, method) 
-    elif op == 'vector_laplace' or op == 'vector_laplacian':
-        return make_vector_laplace(bcs, method)
-    elif op == 'tensor_divergence':
-        return make_tensor_divergence(bcs, method)
-    elif op == 'poisson_solver' or op == 'solve_poisson' or op == 'poisson':
-        matrix, vector = _get_laplace_matrix(bcs)
-        return make_general_poisson_solver(matrix, vector, method)
-    else:
-        raise NotImplementedError(f'Operator `{op}` is not defined for '
-                                  'Cartesian grids')
-
-
-# register all operators with the grid class
-CartesianGridBase.register_operator('laplace', make_laplace)
-CartesianGridBase.register_operator('gradient', make_gradient)
-CartesianGridBase.register_operator('divergence', make_divergence)
-CartesianGridBase.register_operator('vector_gradient', make_vector_gradient)
-CartesianGridBase.register_operator('vector_laplace', make_vector_laplace)
-CartesianGridBase.register_operator('tensor_divergence', make_tensor_divergence)
+# register operators with the grid class
 CartesianGridBase.register_operator('poisson_solver', make_poisson_solver)
 
 
 
 __all__ = ["make_laplace", "make_gradient", "make_divergence",
            "make_vector_gradient", "make_vector_laplace",
-           "make_tensor_divergence", "make_poisson_solver", "make_operator"]
+           "make_tensor_divergence", "make_poisson_solver"]
     
