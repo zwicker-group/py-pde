@@ -36,8 +36,10 @@ LOW-PRIORITY (Future ideas)
 ===========================
 * Think about 2nd order BCs for spherical coordinates
 * Think about hyperbolic equations:
-    Introducing "advection" operator that could either implement really simple
-    Gudunov finite volume scheme or upwind finite difference scheme
+    - Introducing "advection" operator that could either implement really simple
+      Gudunov finite volume scheme or upwind finite difference scheme
+    - Introduce gradient operator for given direction:
+        https://en.wikipedia.org/wiki/Lax–Wendroff_method (Richtmyer or MacCormack)
 * Think about implementing helmholtz solver
     - generally useful to discuss eigenvalues of laplace operator?
 * Add method showing the boundary condition as a mathematical equation

@@ -330,3 +330,21 @@ def test_2nd_order_bc():
     field = ScalarField.random_uniform(grid)
     field.laplace([{'value': 'sin(y)'}, {'value': 'x'}])
     
+    
+    
+@pytest.mark.parametrize('ndim,axis', [(1, 0), (2, 0), (2, 1),
+                                       (3, 0), (3, 1), (3, 2)])
+def test_make_derivative(ndim, axis):
+    """ test the make derivative function """
+    periodic = random.choice([True, False])
+    grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 128, periodic=periodic)
+    field = ScalarField.random_harmonic(grid, modes=2)
+    
+    bcs = grid.get_boundary_conditions('natural')
+    grad = field.gradient(bcs)
+    for method in ['central', 'forward', 'backward']:
+        msg = f"method={method}, periodic={periodic}"
+        diff = ops._make_derivative(bcs, axis=axis, method=method)
+        np.testing.assert_allclose(grad.data[axis], diff(field.data),
+                                   atol=0.1, rtol=0.1, err_msg=msg)
+    

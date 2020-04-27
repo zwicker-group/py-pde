@@ -44,8 +44,8 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
         self.dim = len(self.shape)
         self.num_axes = self.dim
         
-        if isinstance(periodic, bool):
-            self.periodic = [periodic] * self.dim
+        if isinstance(periodic, (bool, np.bool_)):
+            self.periodic = [bool(periodic)] * self.dim
         elif len(periodic) != self.dim:
             raise DimensionError('Number of axes with specified periodicity '
                                  'does not match grid dimension '

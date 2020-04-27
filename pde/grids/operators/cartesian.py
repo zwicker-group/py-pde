@@ -168,6 +168,88 @@ def _get_laplace_matrix(bcs: Boundaries):
 
 
 
+def _make_derivative(bcs: Boundaries, axis: int = 0, method: str = 'central') \
+        -> Callable:
+    """ make a derivative operator along a single axis using numba compilation
+    
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+        axis (int):
+            The axis along which the derivative will be taken
+        method (str):
+            The method for calculating the derivative. Possible values are
+            'central', 'forward', and 'backward'.
+        
+    Returns:
+        A function that can be applied to an array of values. The result will be
+        an array of the same shape containing the actual derivatives at the grid
+        points.
+    """
+    if method not in {'central', 'forward', 'backward'}:
+        raise ValueError(f'Unknown derivative type `{method}`')
+    
+    shape = bcs.grid.shape
+    dim = len(shape)
+    dx = bcs.grid.discretization[axis]
+    region = bcs[axis].get_region_evaluator()
+        
+    if dim == 1:
+        @jit_allocate_out(out_shape=shape)
+        def diff(arr, out=None):
+            """ calculate derivative of 1d array `arr` """
+            for i in range(shape[0]):
+                arr_l, arr_m, arr_h = region(arr, (i,))
+                if method == 'central':
+                    out[i] = (arr_h - arr_l) * 0.5 / dx
+                elif method == 'forward':
+                    out[i] = (arr_h - arr_m) / dx
+                elif method == 'backward':
+                    out[i] = (arr_m - arr_l) / dx
+                    
+            return out       
+        
+    elif dim == 2:
+        @jit_allocate_out(out_shape=shape)
+        def diff(arr, out=None):
+            """ calculate derivative of 2d array `arr` """
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    arr_l, arr_m, arr_h = region(arr, (i, j))
+                    if method == 'central':
+                        out[i, j] = (arr_h - arr_l) * 0.5 / dx
+                    elif method == 'forward':
+                        out[i, j] = (arr_h - arr_m) / dx
+                    elif method == 'backward':
+                        out[i, j] = (arr_m - arr_l) / dx
+                    
+            return out       
+        
+    elif dim == 3:
+        @jit_allocate_out(out_shape=shape)
+        def diff(arr, out=None):
+            """ calculate derivative of 3d array `arr` """
+            for i in range(shape[0]):
+                for j in range(shape[1]):
+                    for k in range(shape[2]):
+                        arr_l, arr_m, arr_h = region(arr, (i, j, k))
+                        if method == 'central':
+                            out[i, j, k] = (arr_h - arr_l) * 0.5 / dx
+                        elif method == 'forward':
+                            out[i, j, k] = (arr_h - arr_m) / dx
+                        elif method == 'backward':
+                            out[i, j, k] = (arr_m - arr_l) / dx
+                    
+            return out     
+        
+    else:
+        raise NotImplementedError('Numba derivative operator not implemented '
+                                  f'for {dim:d} dimensions')
+        
+    return diff  # type: ignore    
+
+
+
 @fill_in_docstring
 def _make_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a laplace operator using the scipy module
