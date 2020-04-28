@@ -262,6 +262,12 @@ class BCBase(metaclass=ABCMeta):
             # since np.isscalar(np.array(0)) == False
             if self.value.ndim == 0:
                 self.value = float(self.value)
+            else:
+                # check whether the tensorial dimensions are correct
+                if not all(dim == self.grid.dim for dim in self.value.shape):
+                    raise ValueError('Tensorial boundary condition (shape: '
+                                     f'{self.value.shape}) does not have the '
+                                     f'correct dimension ({self.grid.dim})')
     
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
@@ -682,13 +688,8 @@ class BCBase1stOrder(BCBase):
         """
         size = self.grid.shape[self.axis]
         upper = self.upper
-        dx = self.grid.discretization[self.axis]
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
         
-        if not isinstance(dx, numbers.Number):
-            raise ValueError(f'Discretization along axis {self.axis} must be a '
-                             f'number, not `{dx}`')
-
         # calculate necessary constants
         data_vp = self.get_virtual_point_data()
         
@@ -1062,15 +1063,11 @@ class BCBase2ndOrder(BCBase):
         """
         size = self.grid.shape[self.axis]
         upper = self.upper
-        dx = self.grid.discretization[self.axis]
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
         
         if size < 2:
             raise ValueError('Need at least two support points along axis '
                              f'{self.axis} to apply boundary conditions')
-        if not isinstance(dx, numbers.Number):
-            raise ValueError(f'Discretization along axis {self.axis} must be a '
-                             f'number, not `{dx}`')
 
         # calculate necessary constants
         data_vp = self.get_virtual_point_data()
