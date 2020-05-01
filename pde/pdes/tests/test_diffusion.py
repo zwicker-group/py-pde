@@ -33,7 +33,8 @@ def test_simple_diffusion_value():
     b_l = {'type': 'value', 'value': 0}
     b_r = {'type': 'value', 'value': 1}
     pde = DiffusionPDE(bc=[b_l, b_r])
-    sol = pde.solve(c, t_range=1, dt=0.001, tracker=None)
+    sol, info = pde.solve(c, t_range=1, dt=0.001, tracker=None, ret_info=True)
+    assert isinstance(info, dict)
     np.testing.assert_allclose(sol.data, grid.axes_coords[0], rtol=5e-3)
     
     

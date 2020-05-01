@@ -6,7 +6,8 @@ Base classes
 
 from abc import ABCMeta, abstractmethod
 import logging
-from typing import Callable, Optional, TYPE_CHECKING  # @UnusedImport
+from typing import (Callable, Optional, TYPE_CHECKING, Union,  # @UnusedImport
+                    Dict, Tuple, Any)
 
 import numpy as np
 
@@ -117,7 +118,9 @@ class PDEBase(metaclass=ABCMeta):
             if not np.allclose(result, expected):
                 raise RuntimeError('The numba compiled implementation of the '
                                    'right hand side is not compatible with '
-                                   'the numpy implementation.')
+                                   'the numpy implementation. This check can '
+                                   'be disabled by setting the class attribute '
+                                   '`check_implementation` to `False`.')
         
         return rhs
             
@@ -244,7 +247,8 @@ class PDEBase(metaclass=ABCMeta):
               dt: float = None,
               tracker: TrackerCollectionDataType = ['progress', 'consistency'],
               method: str = 'auto',
-              **kwargs):
+              ret_info: bool = False,
+              **kwargs) -> Union[FieldBase, Tuple[FieldBase, Dict[str, Any]]]:
         """ convenience method for solving the partial differential equation 
         
         The method constructs a suitable solver
@@ -275,12 +279,17 @@ class PDEBase(metaclass=ABCMeta):
                 :class:`~pde.solvers.base.SolverBase` or a descriptive name
                 like 'explicit' or 'scipy'. The valid names are given by
                 :meth:`pde.solvers.base.SolverBase.registered_solvers`.
+            ret_info (bool):
+                Flag determining whether diagnostic information about the solver
+                process should be returned.
             **kwargs:
                 Additional keyword arguments are forwarded to the solver class
                 
         Returns:
             :class:`~pde.fields.base.FieldBase`:
-            The state at the final time point.
+            The state at the final time point. In the case `ret_info == True`, a
+            tuple with the final state and a dictionary with additional
+            information is returned.
         """
         from ..solvers.base import SolverBase
         
@@ -301,5 +310,13 @@ class PDEBase(metaclass=ABCMeta):
         controller = Controller(solver, t_range=t_range, tracker=tracker)
         
         # run the simulation
-        return controller.run(state, dt)
+        final_state = controller.run(state, dt)
+        
+        if ret_info:
+            info = controller.info.copy()
+            info.pop('solver_class')  # remove redundant information
+            info['solver'] = solver.info.copy()
+            return final_state, info
+        else: 
+            return final_state
                 
