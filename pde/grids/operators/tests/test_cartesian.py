@@ -338,7 +338,7 @@ def test_make_derivative(ndim, axis):
     """ test the make derivative function """
     periodic = random.choice([True, False])
     grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 128, periodic=periodic)
-    field = ScalarField.random_harmonic(grid, modes=2)
+    field = ScalarField.random_harmonic(grid, modes=2, axis_combination=np.add)
     
     bcs = grid.get_boundary_conditions('natural')
     grad = field.gradient(bcs)
