@@ -57,13 +57,15 @@ def hash_mutable(obj) -> int:
     if isinstance(obj, collections.OrderedDict):
         return _hash_iter((k, hash_mutable(v))
                           for k, v in sorted(obj.items())
-                          if not k.startswith('_cache'))
+                          if not (isinstance(k, str) and
+                                  k.startswith('_cache')))
     
     if isinstance(obj, (dict, collections.abc.MutableMapping,
                         collections.defaultdict, collections.Counter)):
         return hash(frozenset((k, hash_mutable(v))
                               for k, v in sorted(obj.items())
-                              if not k.startswith('_cache')))
+                              if not (isinstance(k, str) and
+                                      k.startswith('_cache'))))
     
     if isinstance(obj, np.ndarray):
         return hash(obj.tostring())

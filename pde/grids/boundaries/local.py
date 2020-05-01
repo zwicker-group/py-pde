@@ -29,7 +29,6 @@ derivatives are associated with effluxes.
 
 import numbers
 from abc import ABCMeta, abstractmethod
-from collections import namedtuple
 from typing import Any, Union, Tuple, Dict, Sequence, Optional, Callable, List
     
 import numba as nb
@@ -654,19 +653,13 @@ class BCBase(metaclass=ABCMeta):
 
 
 
-BC1stOrderData = namedtuple('BC1stOrderData', ['const', 'factor', 'index'])
-""" data type representing the information necessary to calculate the value at
-a 1st order boundary condition """
-
-
-
 class BCBase1stOrder(BCBase):
     """ represents a single boundary in an BoundaryPair instance """
 
 
     @abstractmethod
     def get_virtual_point_data(self, compiled: bool = False) \
-        -> BC1stOrderData: pass
+        -> Tuple: pass
 
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
@@ -683,16 +676,16 @@ class BCBase1stOrder(BCBase):
         data = self.get_virtual_point_data()
         
         if self.homogeneous:
-            const = data.const
-            factor = data.factor
+            const = data[0]
+            factor = data[1]
         else:
             # obtain index of the boundary point
             idx_c = list(idx)
             del idx_c[self.axis]
-            const = data.const[tuple(idx_c)]
-            factor = data.factor[tuple(idx_c)]
+            const = data[0][tuple(idx_c)]
+            factor = data[1][tuple(idx_c)]
             
-        return const, {data.index: factor}
+        return const, {data[2]: factor}
 
 
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
@@ -720,14 +713,14 @@ class BCBase1stOrder(BCBase):
         arr_1d, _, bc_idx = _get_arr_1d(arr, idx, axis=self.axis)
         
         # calculate necessary constants
-        data = self.get_virtual_point_data()
+        const, factor, index = self.get_virtual_point_data()
         
         if self.homogeneous:
-            return (data.const +  # type: ignore
-                    data.factor * arr_1d[..., data.index])
+            return (const +  # type: ignore
+                    factor * arr_1d[..., index])
         else:
-            return (data.const[bc_idx] +  # type: ignore
-                    data.factor[bc_idx] * arr_1d[..., data.index])
+            return (const[bc_idx] +  # type: ignore
+                    factor[bc_idx] * arr_1d[..., index])
 
 
     def make_virtual_point_evaluator(self) -> Callable:
@@ -747,23 +740,24 @@ class BCBase1stOrder(BCBase):
                              f'number, not `{dx}`')
 
         # calculate necessary constants
-        data = self.get_virtual_point_data(compiled=True)
+        const_func, factor_func, index = \
+                                    self.get_virtual_point_data(compiled=True)
         
         if self.homogeneous:
             @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, _ = get_arr_1d(arr, idx)
-                return (data.const() +  # type: ignore
-                        data.factor() * arr_1d[..., data.index])
+                return (const_func() +  # type: ignore
+                        factor_func() * arr_1d[..., index])
                 
         else:
             @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-                return (data.const()[bc_idx] +  # type: ignore
-                        data.factor()[bc_idx] * arr_1d[..., data.index])
+                return (const_func()[bc_idx] +  # type: ignore
+                        factor_func()[bc_idx] * arr_1d[..., index])
         
         return virtual_point  # type: ignore
     
@@ -781,11 +775,15 @@ class BCBase1stOrder(BCBase):
         upper = self.upper
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
         
-        # calculate necessary constants
-        data_vp = self.get_virtual_point_data(compiled=True)
-        
         if self.homogeneous:
             # the boundary condition does not depend on space
+            
+            if self.value_is_linked:
+                self._logger.warning('Linked data will only be respected for '
+                                     'inhomogeneous boundary conditions.')
+            
+            # calculate necessary constants
+            data_bndr = self.get_virtual_point_data()
             
             @register_jitable
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
@@ -800,22 +798,24 @@ class BCBase1stOrder(BCBase):
                 # significantly slower.
                 if upper:
                     if i == size - 1:
-                        val = (data_vp.const() +
-                               data_vp.factor() * arr_1d[..., data_vp.index])
+                        data = data_bndr
                     else:
-                        val = arr_1d[..., i + 1]
+                        data = (0., 1., i + 1)  # INTENTIONAL; see comment above
                 else:
                     if i == 0:
-                        val = (data_vp.const() +
-                               data_vp.factor() * arr_1d[..., data_vp.index])
+                        data = data_bndr
                     else:
-                        val = arr_1d[..., i - 1]
+                        data = (0., 1., i - 1)  # INTENTIONAL; see comment above
                 
                 # calculate the values
-                return val  # type: ignore
+                return data[0] + data[1] * arr_1d[..., data[2]]  # type: ignore
                 
         else:
             # the boundary condition is a function of space
+
+            # calculate necessary constants
+            const_func, factor_func, index = \
+                                    self.get_virtual_point_data(compiled=True)
             
             @register_jitable
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
@@ -825,16 +825,14 @@ class BCBase1stOrder(BCBase):
                 # determine the parameters for evaluating adjacent point
                 if upper:
                     if i == size - 1:
-                        val = (data_vp.const()[bc_idx] +
-                               data_vp.factor()[bc_idx] *
-                                    arr_1d[..., data_vp.index])
+                        val = (const_func()[bc_idx] +
+                               factor_func()[bc_idx] * arr_1d[..., index])
                     else:
                         val = arr_1d[..., i + 1]
                 else:
                     if i == 0:
-                        val = (data_vp.const()[bc_idx] +
-                               data_vp.factor()[bc_idx] *
-                                    arr_1d[..., data_vp.index])
+                        val = (const_func()[bc_idx] +
+                               factor_func()[bc_idx] * arr_1d[..., index])
                     else:
                         val = arr_1d[..., i - 1]
                 
@@ -850,7 +848,7 @@ class DirichletBC(BCBase1stOrder):
     names = ['value', 'dirichlet']  # identifiers for this boundary condition
 
     
-    def get_virtual_point_data(self, compiled: bool = False) -> BC1stOrderData:
+    def get_virtual_point_data(self, compiled: bool = False) -> Tuple:
         """ return data suitable for calculating virtual points
         
         Args:
@@ -863,17 +861,15 @@ class DirichletBC(BCBase1stOrder):
             :class:`BC1stOrderData`: the data structure associated with this
             virtual point
         """        
-        size = self.grid.shape[self.axis]
-        
         const = 2 * self.value
         factor = -1 if np.isscalar(const) else -np.ones_like(const)
         if self.upper:
-            index = size - 1
+            index = self.grid.shape[self.axis] - 1
         else:
             index = 0
             
         if not compiled:
-            bc_data = BC1stOrderData(const=const, factor=factor, index=index)
+            return (const, factor, index)
         else:
             # return boundary data such that dynamically calculated values can
             # be used in numba compiled code. This is a work-around since numpy
@@ -887,18 +883,15 @@ class DirichletBC(BCBase1stOrder):
                 def const_func():
                     return 2 * value()
             else:
-                @nb.njit
+                @register_jitable
                 def const_func():
                     return const
             
-            @nb.njit
+            @register_jitable
             def factor_func():
                 return factor
                 
-            bc_data = BC1stOrderData(const=const_func, factor=factor_func,
-                                     index=index)
-            
-        return bc_data
+            return (const_func, factor_func, index)
     
             
     @property
@@ -916,7 +909,7 @@ class NeumannBC(BCBase1stOrder):
     names = ['derivative', 'neumann']  # identifiers for this boundary condition        
 
     
-    def get_virtual_point_data(self, compiled: bool = False) -> BC1stOrderData:
+    def get_virtual_point_data(self, compiled: bool = False) -> Tuple:
         """ return data suitable for calculating virtual points
         
         Args:
@@ -929,18 +922,17 @@ class NeumannBC(BCBase1stOrder):
             :class:`BC1stOrderData`: the data structure associated with this
             virtual point
         """        
-        size = self.grid.shape[self.axis]
         dx = self.grid.discretization[self.axis]
         
         const = dx * self.value
         factor = 1 if np.isscalar(const) else np.ones_like(const)
         if self.upper:
-            index = size - 1
+            index = self.grid.shape[self.axis] - 1
         else:
             index = 0
             
         if not compiled:
-            bc_data = BC1stOrderData(const=const, factor=factor, index=index)
+            return (const, factor, index)
         else:
             # return boundary data such that dynamically calculated values can
             # be used in numba compiled code. This is a work-around since numpy
@@ -953,18 +945,15 @@ class NeumannBC(BCBase1stOrder):
                 def const_func():
                     return dx * value()
             else:
-                @nb.njit
+                @register_jitable
                 def const_func():
                     return const
             
-            @nb.njit
+            @register_jitable
             def factor_func():
                 return factor
                 
-            bc_data = BC1stOrderData(const=const_func, factor=factor_func,
-                                     index=index)
-            
-        return bc_data
+            return (const_func, factor_func, index)
 
 
     @property
@@ -1058,7 +1047,7 @@ class MixedBC(BCBase1stOrder):
                               value=value, const=const)        
         
         
-    def get_virtual_point_data(self, compiled: bool = False) -> BC1stOrderData:
+    def get_virtual_point_data(self, compiled: bool = False) -> Tuple:
         """ return data suitable for calculating virtual points
         
         Args:
@@ -1071,7 +1060,6 @@ class MixedBC(BCBase1stOrder):
             :class:`BC1stOrderData`: the data structure associated with this
             virtual point
         """        
-        size = self.grid.shape[self.axis]
         dx = self.grid.discretization[self.axis]
         
         factor = dx * self.value
@@ -1091,12 +1079,12 @@ class MixedBC(BCBase1stOrder):
             factor[np.isinf(factor)] = -1
             
         if self.upper:
-            index = size - 1
+            index = self.grid.shape[self.axis] - 1
         else:
             index = 0
 
         if not compiled:
-            bc_data = BC1stOrderData(const=const, factor=factor, index=index)
+            return (const, factor, index)
         else:
             # return boundary data such that dynamically calculated values can
             # be used in numba compiled code. This is a work-around since numpy
@@ -1139,10 +1127,7 @@ class MixedBC(BCBase1stOrder):
                 def factor_func():
                     return factor
                 
-            bc_data = BC1stOrderData(const=const_func, factor=factor_func,
-                                     index=index)
-            
-        return bc_data
+            return (const_func, factor_func, index)
     
     
 
