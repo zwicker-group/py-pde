@@ -27,6 +27,7 @@ boundary, which corresponds to an inwards flux. Conversely, negative
 derivatives are associated with effluxes.
 """
 
+import logging
 import numbers
 from abc import ABCMeta, abstractmethod
 from typing import Any, Union, Tuple, Dict, Sequence, Optional, Callable, List
@@ -226,6 +227,7 @@ class BCBase(metaclass=ABCMeta):
                                 self.grid.shape[self.axis + 1:])
         
         self.value = value  # type: ignore
+        self._logger = logging.getLogger(self.__class__.__name__)
                 
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
