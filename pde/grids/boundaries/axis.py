@@ -352,7 +352,7 @@ class BoundaryPair(BoundaryAxisBase):
             and right of the point along the axis associated with this boundary
             condition. The function takes boundary conditions into account if
             the point lies on the boundary.
-        """        
+        """
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
         ap_low = self.low.get_adjacent_evaluator()
         ap_high = self.high.get_adjacent_evaluator()

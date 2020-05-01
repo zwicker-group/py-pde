@@ -1,5 +1,14 @@
 TODO
 ====
+* Think about interface for changing boundary values in numba
+    - might need to implement new numba type which keeps a reference to a numpy
+      array for the value
+    - this needs to work transparently, so that the operators do not need to
+      change
+    - BoundariesPair and BCBase need new methods that allow changing the
+      underlying value on the numba side, e.g. set_value
+    - this needs to be efficient, since we want to use it in the parallel path
+    - We might need to support optional `bc` argument for operators 
 * Support 3d plots in plot_image (use for Laplace and Poisson eq) 
 * Add Glossary or something to development guide
     - e.g., state = attributes + data
