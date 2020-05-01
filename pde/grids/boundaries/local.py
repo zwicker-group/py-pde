@@ -411,7 +411,7 @@ class BCBase(metaclass=ABCMeta):
                 return (f'{{"type": "{self.names[0]}", '
                         f'"value": "{self._value_expression}"}}')
         else:
-            raise RuntimeError('This class should not be used directly')
+            return self.__repr__()
     
     
     def __eq__(self, other):

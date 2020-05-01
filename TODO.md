@@ -1,5 +1,7 @@
 TODO
 ====
+* Implement hashing for boundary conditions to accelerate operator caching
+* Show more details for the boundary conditions
 * Think about interface for changing boundary values in numba
     - might need to implement new numba type which keeps a reference to a numpy
       array for the value
