@@ -50,12 +50,12 @@ def test_conservative_laplace_sph():
     
 
 
-@pytest.mark.parametrize('make_op,field', [(ops.make_laplace, ScalarField),
-                                           (ops.make_divergence, VectorField),
-                                           (ops.make_gradient, ScalarField),
-                                           (ops.make_tensor_divergence,
-                                            Tensor2Field)])
-def test_small_annulus(make_op, field):
+@pytest.mark.parametrize('make_op,field,rank',
+                         [(ops.make_laplace, ScalarField, 0),
+                          (ops.make_divergence, VectorField, 0),
+                          (ops.make_gradient, ScalarField, 0),
+                          (ops.make_tensor_divergence, Tensor2Field, 1)])
+def test_small_annulus(make_op, field, rank):
     """ test whether a small annulus gives the same result as a sphere """
     grids = [SphericalGrid((0, 1), 8),
              SphericalGrid((1e-8, 1), 8),
@@ -63,7 +63,8 @@ def test_small_annulus(make_op, field):
     
     f = field.random_uniform(grids[0])
     
-    res = [make_op(g.get_boundary_conditions())(f.data) for g in grids]
+    res = [make_op(g.get_boundary_conditions(rank=rank))(f.data)
+           for g in grids]
     
     np.testing.assert_almost_equal(res[0], res[1], decimal=5)
     assert np.linalg.norm(res[0] - res[2]) > 1e-3

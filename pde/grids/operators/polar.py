@@ -50,8 +50,8 @@ def make_laplace(bcs: Boundaries) -> Callable:
     dr_2 = 1 / dr**2
 
     # prepare boundary values
-    value_lower_bc = bcs[0].low.get_virtual_point_evaluator()
-    value_upper_bc = bcs[0].high.get_virtual_point_evaluator()    
+    value_lower_bc = bcs[0].low.make_virtual_point_evaluator()
+    value_upper_bc = bcs[0].high.make_virtual_point_evaluator()    
     
     @jit_allocate_out(out_shape=(dim_r,))
     def laplace(arr, out=None):
@@ -103,8 +103,8 @@ def make_gradient(bcs: Boundaries) -> Callable:
     
     # prepare boundary values
     boundary = bcs[0]
-    value_lower_bc = boundary.low.get_virtual_point_evaluator()
-    value_upper_bc = boundary.high.get_virtual_point_evaluator()
+    value_lower_bc = boundary.low.make_virtual_point_evaluator()
+    value_upper_bc = boundary.high.make_virtual_point_evaluator()
     
     @jit_allocate_out(out_shape=(2, dim_r))
     def gradient(arr, out=None):
@@ -158,8 +158,8 @@ def make_divergence(bcs: Boundaries) -> Callable:
     
     # prepare boundary values
     boundary = bcs[0]
-    value_lower_bc = boundary.low.get_virtual_point_evaluator()
-    value_upper_bc = boundary.high.get_virtual_point_evaluator()
+    value_lower_bc = boundary.low.make_virtual_point_evaluator()
+    value_upper_bc = boundary.high.make_virtual_point_evaluator()
 
     if r_min == 0:
         @jit_allocate_out(out_shape=(dim_r,))
@@ -340,9 +340,15 @@ def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
 
        
 # register all operators with the grid class
-PolarGrid.register_operator('laplace', make_laplace)
-PolarGrid.register_operator('gradient', make_gradient)
-PolarGrid.register_operator('divergence', make_divergence)
-PolarGrid.register_operator('vector_gradient', make_vector_gradient)
-PolarGrid.register_operator('tensor_divergence', make_tensor_divergence)
-PolarGrid.register_operator('poisson_solver', make_poisson_solver)
+PolarGrid.register_operator('laplace', make_laplace,
+                            rank_in=0, rank_out=0)
+PolarGrid.register_operator('gradient', make_gradient,
+                            rank_in=0, rank_out=1)
+PolarGrid.register_operator('divergence', make_divergence,
+                            rank_in=1, rank_out=0)
+PolarGrid.register_operator('vector_gradient', make_vector_gradient,
+                            rank_in=1, rank_out=2)
+PolarGrid.register_operator('tensor_divergence', make_tensor_divergence,
+                            rank_in=2, rank_out=1)
+PolarGrid.register_operator('poisson_solver', make_poisson_solver,
+                            rank_in=0, rank_out=0)

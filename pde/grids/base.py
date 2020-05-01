@@ -11,7 +11,7 @@ import logging
 import inspect
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (List, Tuple, Dict, Any, Union, Callable, Generator,
-                    Sequence, Set, TYPE_CHECKING)
+                    Sequence, Set, NamedTuple, TYPE_CHECKING)
 
 import numpy as np
 
@@ -29,6 +29,13 @@ if TYPE_CHECKING:
 
 PI_4 = 4 * np.pi
 PI_43 = 4 / 3 * np.pi
+
+
+class Operator(NamedTuple):
+    """ stores information about an operator """
+    factory: Callable
+    rank_in: int
+    rank_out: int
 
 
 
@@ -103,7 +110,7 @@ class GridBase(metaclass=ABCMeta):
     """ Base class for all grids defining common methods and interfaces """
     
     _subclasses: Dict[str, 'GridBase'] = {}  # all classes inheriting from this
-    _operators: Dict[str, Callable] = {}  # all operators defined for the grid
+    _operators: Dict[str, Operator] = {}  # all operators defined for the grid
     
     # properties that are defined in subclasses
     dim: int  # int: The spatial dimension in which the grid is embedded
@@ -302,7 +309,9 @@ class GridBase(metaclass=ABCMeta):
                            only_periodic: bool = True) -> Generator: pass
                            
     @abstractmethod
-    def get_boundary_conditions(self, bc='natural') -> "Boundaries": pass
+    def get_boundary_conditions(self, bc='natural', rank: int = 0) \
+        -> "Boundaries": pass
+        
     @abstractmethod
     def get_line_data(self, data, extract: str = 'auto'): pass
     @abstractmethod
@@ -313,8 +322,9 @@ class GridBase(metaclass=ABCMeta):
 
     
     @classmethod
-    def register_operator(cls, name: str, factory_func: Callable):
-        """ register an operator for this class
+    def register_operator(cls, name: str, factory_func: Callable,
+                          rank_in: int = 0, rank_out: int = 0):
+        """ register an operator for this grid
         
         Args:
             name (str):
@@ -325,10 +335,16 @@ class GridBase(metaclass=ABCMeta):
                 returns an implementation of the given operator. This
                 implementation is a function that takes a
                 :class:`~numpy.ndarray` of discretized values as arguments and
-                returns the resulting :class:`~numpy.ndarray` after applying the
-                operator.
+                returns the resulting discretized data in a
+                :class:`~numpy.ndarray` after applying the operator.
+            rank_in (int):
+                The rank of the input field for the operator
+            rank_out (int):
+                The rank of the field that is returned by the operator
         """
-        cls._operators[name] = factory_func
+        cls._operators[name] = Operator(factory=factory_func,
+                                        rank_in=rank_in,
+                                        rank_out=rank_out)
              
              
     @classproperty  # type: ignore
@@ -372,8 +388,10 @@ class GridBase(metaclass=ABCMeta):
         classes = inspect.getmro(self.__class__)[:-1]
         for cls in classes:
             if name in cls._operators:  # type: ignore
-                bcs = self.get_boundary_conditions(bc)
-                return cls._operators[name](bcs, **kwargs)  # type: ignore
+                operator = cls._operators[name]  # type: ignore
+                rank = min(operator.rank_in, operator.rank_out)
+                bcs = self.get_boundary_conditions(bc, rank=rank)
+                return operator.factory(bcs, **kwargs)  # type: ignore
             
         # operator was not found
         raise ValueError(f"'{name}' is not one of the defined operators: "

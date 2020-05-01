@@ -95,8 +95,8 @@ def flexible_laplace_2d(bcs):
     dx_2 = 1 / dx**2
     dim_x, dim_y = bcs.grid.shape
      
-    region_x = bc_x.get_region_evaluator()
-    region_y = bc_y.get_region_evaluator()
+    region_x = bc_x.make_region_evaluator()
+    region_y = bc_y.make_region_evaluator()
      
     @jit_allocate_out
     def laplace(arr, out=None):

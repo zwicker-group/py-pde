@@ -474,13 +474,17 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
 
     @fill_in_docstring
-    def get_boundary_conditions(self, bc='natural') -> "Boundaries":
+    def get_boundary_conditions(self, bc='natural', rank: int = 0) \
+            -> "Boundaries":
         """ constructs boundary conditions from a flexible data format
         
         Args:
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}  
+            rank (int):
+                The tensorial rank of the value associated with the boundary
+                conditions.
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -488,7 +492,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
                 periodic axes of the grid. 
         """
         from .boundaries import Boundaries  # @Reimport
-        return Boundaries.from_data(self, bc)
+        return Boundaries.from_data(self, bc, rank=rank)
     
     
     

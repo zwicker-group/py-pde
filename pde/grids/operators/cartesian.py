@@ -192,7 +192,7 @@ def _make_derivative(bcs: Boundaries, axis: int = 0, method: str = 'central') \
     shape = bcs.grid.shape
     dim = len(shape)
     dx = bcs.grid.discretization[axis]
-    region = bcs[axis].get_region_evaluator()
+    region = bcs[axis].make_region_evaluator()
         
     if dim == 1:
         @jit_allocate_out(out_shape=shape)
@@ -306,7 +306,7 @@ def _make_laplace_numba_1d(bcs: Boundaries) -> Callable:
     """
     dim_x = bcs.grid.shape[0]
     scale = bcs.grid.discretization[0]**-2
-    region_x = bcs[0].get_region_evaluator()
+    region_x = bcs[0].make_region_evaluator()
     
     @jit_allocate_out
     def laplace(arr, out=None):
@@ -335,8 +335,8 @@ def _make_laplace_numba_2d(bcs: Boundaries) -> Callable:
     dim_x, dim_y = bcs.grid.shape
     scale_x, scale_y = bcs.grid.discretization**-2
     
-    region_x = bcs[0].get_region_evaluator()
-    region_y = bcs[1].get_region_evaluator()
+    region_x = bcs[0].make_region_evaluator()
+    region_y = bcs[1].make_region_evaluator()
     
     # use parallel processing for large enough arrays 
     parallel = (dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D**2)
@@ -395,9 +395,9 @@ def _make_laplace_numba_3d(bcs: Boundaries) -> Callable:
     dim_x, dim_y, dim_z = bcs.grid.shape 
     scale_x, scale_y, scale_z = bcs.grid.discretization**-2
     
-    region_x = bcs[0].get_region_evaluator()
-    region_y = bcs[1].get_region_evaluator()
-    region_z = bcs[2].get_region_evaluator()
+    region_x = bcs[0].make_region_evaluator()
+    region_y = bcs[1].make_region_evaluator()
+    region_z = bcs[2].make_region_evaluator()
     
     # use parallel processing for large enough arrays 
     parallel = (dim_x * dim_y * dim_z >= PARALLELIZATION_THRESHOLD_3D**3)
@@ -471,7 +471,8 @@ def make_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 # register operators with the grid class
-CartesianGridBase.register_operator('laplace', make_laplace)
+CartesianGridBase.register_operator('laplace', make_laplace,
+                                    rank_in=0, rank_out=0)
 
 
 
@@ -516,7 +517,7 @@ def _make_gradient_numba_1d(bcs: Boundaries) -> Callable:
     """
     dim_x = bcs.grid.shape[0]
     scale = 0.5 / bcs.grid.discretization[0]
-    region_x = bcs[0].get_region_evaluator()
+    region_x = bcs[0].make_region_evaluator()
     
     @jit_allocate_out(out_shape=(1, dim_x))
     def gradient(arr, out=None):
@@ -545,8 +546,8 @@ def _make_gradient_numba_2d(bcs: Boundaries) -> Callable:
     dim_x, dim_y = bcs.grid.shape
     scale_x, scale_y = 0.5 / bcs.grid.discretization
     
-    region_x = bcs[0].get_region_evaluator()
-    region_y = bcs[1].get_region_evaluator()
+    region_x = bcs[0].make_region_evaluator()
+    region_y = bcs[1].make_region_evaluator()
 
     # use parallel processing for large enough arrays 
     parallel = (dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D**2)
@@ -582,9 +583,9 @@ def _make_gradient_numba_3d(bcs: Boundaries) -> Callable:
     dim_x, dim_y, dim_z = bcs.grid.shape
     scale_x, scale_y, scale_z = 0.5 / bcs.grid.discretization
     
-    region_x = bcs[0].get_region_evaluator()
-    region_y = bcs[1].get_region_evaluator()
-    region_z = bcs[2].get_region_evaluator()
+    region_x = bcs[0].make_region_evaluator()
+    region_y = bcs[1].make_region_evaluator()
+    region_z = bcs[2].make_region_evaluator()
     
     # use parallel processing for large enough arrays 
     parallel = (dim_x * dim_y * dim_z >= PARALLELIZATION_THRESHOLD_3D**3)
@@ -653,7 +654,8 @@ def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 # register operators with the grid class
-CartesianGridBase.register_operator('gradient', make_gradient)
+CartesianGridBase.register_operator('gradient', make_gradient,
+                                    rank_in=0, rank_out=1)
 
 
 
@@ -706,7 +708,7 @@ def _make_divergence_numba_1d(bcs: Boundaries) -> Callable:
     """
     dim_x = bcs.grid.shape[0]
     scale = 0.5 / bcs.grid.discretization[0]
-    region_x = bcs[0].get_region_evaluator()
+    region_x = bcs[0].make_region_evaluator()
     
     @jit_allocate_out(out_shape=(dim_x,))
     def divergence(arr, out=None):
@@ -735,8 +737,8 @@ def _make_divergence_numba_2d(bcs: Boundaries) -> Callable:
     dim_x, dim_y = bcs.grid.shape
     scale_x, scale_y = 0.5 / bcs.grid.discretization
     
-    region_x = bcs[0].get_region_evaluator()
-    region_y = bcs[1].get_region_evaluator()
+    region_x = bcs[0].make_region_evaluator()
+    region_y = bcs[1].make_region_evaluator()
 
     # use parallel processing for large enough arrays 
     parallel = (dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D**2)
@@ -773,9 +775,9 @@ def _make_divergence_numba_3d(bcs: Boundaries) -> Callable:
     dim_x, dim_y, dim_z = bcs.grid.shape
     scale_x, scale_y, scale_z = 0.5 / bcs.grid.discretization
     
-    region_x = bcs[0].get_region_evaluator()
-    region_y = bcs[1].get_region_evaluator()
-    region_z = bcs[2].get_region_evaluator()
+    region_x = bcs[0].make_region_evaluator()
+    region_y = bcs[1].make_region_evaluator()
+    region_z = bcs[2].make_region_evaluator()
     
     # use parallel processing for large enough arrays 
     parallel = (dim_x * dim_y * dim_z >= PARALLELIZATION_THRESHOLD_3D**3)
@@ -845,7 +847,8 @@ def make_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 # register operators with the grid class
-CartesianGridBase.register_operator('divergence', make_divergence)
+CartesianGridBase.register_operator('divergence', make_divergence,
+                                    rank_in=1, rank_out=0)
 
 
 
@@ -1001,7 +1004,8 @@ def make_vector_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 # register operators with the grid class
-CartesianGridBase.register_operator('vector_gradient', make_vector_gradient)
+CartesianGridBase.register_operator('vector_gradient', make_vector_gradient,
+                                    rank_in=1, rank_out=2)
 
 
 
@@ -1153,7 +1157,8 @@ def make_vector_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 # register operators with the grid class
-CartesianGridBase.register_operator('vector_laplace', make_vector_laplace)
+CartesianGridBase.register_operator('vector_laplace', make_vector_laplace,
+                                    rank_in=1, rank_out=1)
 
 
 
@@ -1312,7 +1317,8 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 # register operators with the grid class
-CartesianGridBase.register_operator('tensor_divergence', make_tensor_divergence)
+CartesianGridBase.register_operator('tensor_divergence', make_tensor_divergence,
+                                    rank_in=2, rank_out=1)
 
 
 
@@ -1335,7 +1341,8 @@ def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 # register operators with the grid class
-CartesianGridBase.register_operator('poisson_solver', make_poisson_solver)
+CartesianGridBase.register_operator('poisson_solver', make_poisson_solver,
+                                    rank_in=0, rank_out=0)
 
 
 

@@ -429,7 +429,8 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
 
 
     @fill_in_docstring
-    def get_boundary_conditions(self, bc='natural') -> "Boundaries":
+    def get_boundary_conditions(self, bc='natural', rank: int = 0) \
+            -> "Boundaries":
         """ constructs boundary conditions from a flexible data format.
         
         Note that the inner boundary condition for grids without holes need not
@@ -439,6 +440,9 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
+            rank (int):
+                The tensorial rank of the value associated with the boundary
+                conditions.
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -454,22 +458,25 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
 
         if self.has_hole:  # grid has holes => specify two boundary conditions
             if bc == 'natural':
-                b_pair = BoundaryPair(NeumannBC(self, 0, upper=False),
-                                      NeumannBC(self, 0, upper=True))
+                low = NeumannBC(self, 0, upper=False, rank=rank)
+                high = NeumannBC(self, 0, upper=True, rank=rank)
+                b_pair = BoundaryPair(low, high)
             else:
-                b_pair = BoundaryPair.from_data(self, 0, bc)
+                b_pair = BoundaryPair.from_data(self, 0, bc, rank=rank)
             
         else:  # grid has no hole => need only one boundary condition
-            b_inner = NeumannBC(self, 0, upper=False)
+            b_inner = NeumannBC(self, 0, upper=False, rank=rank)
             if bc == 'natural':
-                b_pair = BoundaryPair(b_inner, NeumannBC(self, 0, upper=True))
+                upper = NeumannBC(self, 0, upper=True, rank=rank)
+                b_pair = BoundaryPair(b_inner, upper)
             else:
                 try:
-                    b_outer = BCBase.from_data(self, 0, upper=True, data=bc)
+                    b_outer = BCBase.from_data(self, 0, upper=True, data=bc,
+                                               rank=rank)
                 except ValueError:
                     # this can happen when two boundary conditions have been
                     # supplied
-                    b_pair = BoundaryPair.from_data(self, 0, bc)
+                    b_pair = BoundaryPair.from_data(self, 0, bc, rank=rank)
                     if b_inner != b_pair.low:
                         raise ValueError(
                             f'Unsupported boundary format: `{bc}`. Note that '

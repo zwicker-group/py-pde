@@ -57,26 +57,29 @@ def test_individual_boundaries():
                  'derivative', {'derivative': 1},
                  {'type': 'derivative', 'value': 1}, {'mixed': 1},
                  {'type': 'mixed', 'value': 1}, 'extrapolate']:
-        bc = BCBase.from_data(g, 0, upper=True, data=data)
+        bc = BCBase.from_data(g, 0, upper=True, data=data, rank=0)
         
-        assert bc.check_value_rank(0)
-        if bc.value == 0:
-            assert bc.check_value_rank(1)
-        else:
-            with pytest.raises(RuntimeError):
-                bc.check_value_rank(1)
+        assert bc.rank == 0
+        bc.check_value_rank(0)
+        with pytest.raises(RuntimeError):
+            bc.check_value_rank(1)
                 
-        assert bc == BCBase.from_data(g, 0, upper=True, data=bc)
+        assert bc == BCBase.from_data(g, 0, upper=True, data=bc, rank=0)
         assert bc == bc.copy()
         assert isinstance(str(bc), str)
         assert isinstance(repr(bc), str)
 
     assert bc.extract_component(tuple()) == bc
         
-    # multidimensional
+
+
+def test_individual_boundaries_multidimensional():
+    """ test setting individual boundaries in 2d """
     g2 = UnitGrid([2, 3])
-    bc = BCBase.from_data(g2, 0, True, {'type': 'value', 'value': [1, 2]})
-    assert bc.check_value_rank(1)
+    bc = BCBase.from_data(g2, 0, True, {'type': 'value', 'value': [1, 2]},
+                          rank=1)
+    assert bc.rank == 1
+    bc.check_value_rank(1)
     with pytest.raises(RuntimeError):
         bc.check_value_rank(0)
     assert bc.extract_component(0).value == 1
@@ -92,37 +95,79 @@ def test_virtual_points():
     # test constant boundary conditions
     bc = BCBase.from_data(g, 0, False, {'type': 'value', 'value': 1})
     assert bc.get_virtual_point(data) == pytest.approx(1)
+    assert not bc.value_is_linked
     bc = BCBase.from_data(g, 0, True, {'type': 'value', 'value': 1})
     assert bc.get_virtual_point(data) == pytest.approx(0)
+    assert not bc.value_is_linked
     
     # test derivative boundary conditions (wrt to outwards derivative)
     bc = BCBase.from_data(g, 0, False, {'type': 'derivative', 'value': -1})
     assert bc.get_virtual_point(data) == pytest.approx(0)
+    assert not bc.value_is_linked
     bc = BCBase.from_data(g, 0, True, {'type': 'derivative', 'value': 1})
     assert bc.get_virtual_point(data) == pytest.approx(3)
+    assert not bc.value_is_linked
     
     # test extrapolation
     bc = BCBase.from_data(g, 0, False, 'extrapolate')
     assert bc.get_virtual_point(data) == pytest.approx(0)
+    assert not bc.value_is_linked
     bc = BCBase.from_data(g, 0, True, 'extrapolate')
     assert bc.get_virtual_point(data) == pytest.approx(3)
+    assert not bc.value_is_linked
     
     # test mixed condition
     bc = BCBase.from_data(g, 0, False,
                           {'type': 'mixed', 'value': 4, 'const': 1})
     assert bc.get_virtual_point(data) == pytest.approx(0)
+    assert not bc.value_is_linked
     bc = BCBase.from_data(g, 0, True,
                           {'type': 'mixed', 'value': 2, 'const': 4})
     assert bc.get_virtual_point(data) == pytest.approx(2)
+    assert not bc.value_is_linked
     
     # test curvature for y = 4 * x**2
     data = np.array([1, 9])
     bc = BCBase.from_data(g, 0, False, {'type': 'curvature', 'value': 8})
     assert bc.get_virtual_point(data) == pytest.approx(1)
+    assert not bc.value_is_linked
     bc = BCBase.from_data(g, 0, True, {'type': 'curvature', 'value': 8})
     assert bc.get_virtual_point(data) == pytest.approx(25)
+    assert not bc.value_is_linked
 
        
+       
+@pytest.mark.parametrize('upper', [False, True])
+def test_virtual_points_linked_data(upper):
+    """ test the calculation of virtual points with linked_data """
+    g = UnitGrid([2, 2])
+    point = (1, 1) if upper else (0, 0)
+    data = np.zeros(g.shape)
+    
+    # test constant boundary conditions
+    bc_data = np.array([1, 1])
+    bc = BCBase.from_data(g, 0, upper, {'type': 'value', 'value': bc_data})
+    assert not bc.value_is_linked
+    bc.link_value(bc_data)
+    assert bc.value_is_linked
+    bc_data[:] = 3
+
+    assert bc.get_virtual_point(data, point) == pytest.approx(6)
+    ev = bc.make_virtual_point_evaluator()
+    assert ev(data, point) == pytest.approx(6)
+
+    # test derivative boundary conditions (wrt to outwards derivative)
+    bc = BCBase.from_data(g, 0, upper, {'type': 'derivative', 'value': bc_data})
+    assert not bc.value_is_linked
+    bc.link_value(bc_data)
+    assert bc.value_is_linked
+    bc_data[:] = 4
+
+    assert bc.get_virtual_point(data, point) == pytest.approx(4)
+    ev = bc.make_virtual_point_evaluator()
+    assert ev(data, point) == pytest.approx(4)
+        
+        
         
 def test_mixed_condition():
     """ test the calculation of virtual points """
@@ -161,17 +206,17 @@ def test_inhomogeneous_bcs():
     assert bc_x.rank == 0
     assert bc_x.get_virtual_point(data, (1, 0)) == pytest.approx(1.5)
     assert bc_x.get_virtual_point(data, (1, 1)) == pytest.approx(2.5)
-    ev = bc_x.get_virtual_point_evaluator()
+    ev = bc_x.make_virtual_point_evaluator()
     assert ev(data, (1, 0)) == pytest.approx(1.5)
     assert ev(data, (1, 1)) == pytest.approx(2.5)
-    ev = bc_x.get_adjacent_evaluator()
+    ev = bc_x.make_adjacent_evaluator()
     assert ev(data, (0, 0)) == pytest.approx(1)
     assert ev(data, (0, 1)) == pytest.approx(1)
     assert ev(data, (1, 0)) == pytest.approx(1.5)
     assert ev(data, (1, 1)) == pytest.approx(2.5)
     # test lower bc
     bc_x = BCBase.from_data(g, 0, False, {'curvature': 'y'})
-    ev = bc_x.get_adjacent_evaluator()
+    ev = bc_x.make_adjacent_evaluator()
     assert ev(data, (1, 0)) == pytest.approx(1)
     assert ev(data, (1, 1)) == pytest.approx(1)
     assert ev(data, (0, 0)) == pytest.approx(1.5)
