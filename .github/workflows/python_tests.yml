@@ -35,10 +35,10 @@ jobs:
         
     - name: Test with pytest
       env:
-        TEMP: .
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
+        echo "::set-env name=TEMP::${GITHUB_WORKSPACE}"
         pip install pytest
         cd tests
         python -m pytest -c pytest.ini -rs . ..
