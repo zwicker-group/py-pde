@@ -35,6 +35,7 @@ jobs:
         
     - name: Test with pytest
       env:
+        TEMP: .
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
