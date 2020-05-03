@@ -718,8 +718,7 @@ class BCBase1stOrder(BCBase):
         const, factor, index = self.get_virtual_point_data()
         
         if self.homogeneous:
-            return (const +  # type: ignore
-                    factor * arr_1d[..., index])
+            return (const + factor * arr_1d[..., index])  # type: ignore
         else:
             return (const[bc_idx] +  # type: ignore
                     factor[bc_idx] * arr_1d[..., index])
@@ -742,24 +741,23 @@ class BCBase1stOrder(BCBase):
                              f'number, not `{dx}`')
 
         # calculate necessary constants
-        const_func, factor_func, index = \
-                                    self.get_virtual_point_data(compiled=True)
+        const, factor, index = self.get_virtual_point_data(compiled=True)
         
         if self.homogeneous:
             @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, _ = get_arr_1d(arr, idx)
-                return (const_func() +  # type: ignore
-                        factor_func() * arr_1d[..., index])
+                return (const() + factor() * arr_1d[..., index])  # type: ignore
+                        
                 
         else:
             @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-                return (const_func()[bc_idx] +  # type: ignore
-                        factor_func()[bc_idx] * arr_1d[..., index])
+                return (const()[bc_idx] +  # type: ignore
+                        factor()[bc_idx] * arr_1d[..., index])
         
         return virtual_point  # type: ignore
     
@@ -780,12 +778,8 @@ class BCBase1stOrder(BCBase):
         if self.homogeneous:
             # the boundary condition does not depend on space
             
-            if self.value_is_linked:
-                self._logger.warning('Linked data will only be respected for '
-                                     'inhomogeneous boundary conditions.')
-            
             # calculate necessary constants
-            data_bndr = self.get_virtual_point_data()
+            const, factor, index = self.get_virtual_point_data(compiled=True)
             
             @register_jitable
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
@@ -800,12 +794,12 @@ class BCBase1stOrder(BCBase):
                 # significantly slower.
                 if upper:
                     if i == size - 1:
-                        data = data_bndr
+                        data = (const(), factor(), index)  
                     else:
                         data = (0., 1., i + 1)  # INTENTIONAL; see comment above
                 else:
                     if i == 0:
-                        data = data_bndr
+                        data = (const(), factor(), index)  
                     else:
                         data = (0., 1., i - 1)  # INTENTIONAL; see comment above
                 
@@ -816,8 +810,7 @@ class BCBase1stOrder(BCBase):
             # the boundary condition is a function of space
 
             # calculate necessary constants
-            const_func, factor_func, index = \
-                                    self.get_virtual_point_data(compiled=True)
+            const, factor, index = self.get_virtual_point_data(compiled=True)
             
             @register_jitable
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
@@ -827,18 +820,17 @@ class BCBase1stOrder(BCBase):
                 # determine the parameters for evaluating adjacent point
                 if upper:
                     if i == size - 1:
-                        val = (const_func()[bc_idx] +
-                               factor_func()[bc_idx] * arr_1d[..., index])
+                        data = (const()[bc_idx], factor()[bc_idx], index)  
                     else:
-                        val = arr_1d[..., i + 1]
+                        data = (0., 1., i + 1)  # INTENTIONAL; see comment above
                 else:
                     if i == 0:
-                        val = (const_func()[bc_idx] +
-                               factor_func()[bc_idx] * arr_1d[..., index])
+                        data = (const()[bc_idx], factor()[bc_idx], index)  
                     else:
-                        val = arr_1d[..., i - 1]
-                
-                return val  # type: ignore
+                        data = (0., 1., i - 1)  # INTENTIONAL; see comment above
+
+                # calculate the values
+                return data[0] + data[1] * arr_1d[..., data[2]]  # type: ignore
         
         return adjacent_point  # type: ignore    
     
@@ -881,15 +873,15 @@ class DirichletBC(BCBase1stOrder):
             if self.value_is_linked:
                 value = self._make_value_getter()
                 
-                @nb.njit
+                @nb.njit(inline='always')
                 def const_func():
                     return 2 * value()
             else:
-                @register_jitable
+                @register_jitable(inline='always')
                 def const_func():
                     return const
             
-            @register_jitable
+            @register_jitable(inline='always')
             def factor_func():
                 return factor
                 
@@ -943,15 +935,15 @@ class NeumannBC(BCBase1stOrder):
             
             if self.value_is_linked:
                 value = self._make_value_getter()
-                @nb.njit
+                @nb.njit(inline='always')
                 def const_func():
                     return dx * value()
             else:
-                @register_jitable
+                @register_jitable(inline='always')
                 def const_func():
                     return const
             
-            @register_jitable
+            @register_jitable(inline='always')
             def factor_func():
                 return factor
                 
@@ -1096,7 +1088,7 @@ class MixedBC(BCBase1stOrder):
             if self.value_is_linked:
                 const_val = self.const
                 value = self._make_value_getter()
-                @nb.njit
+                @nb.njit(inline='always')
                 def const_func():
                     value = value()
                     const = np.empty_like(value)
@@ -1108,7 +1100,7 @@ class MixedBC(BCBase1stOrder):
                             const.flat[i] = 2 * dx * const_val / (2 + dx * val)
                     return const
 
-                @nb.njit
+                @nb.njit(inline='always')
                 def factor_func():
                     value = value()
                     factor = np.empty_like(value)
@@ -1121,11 +1113,11 @@ class MixedBC(BCBase1stOrder):
                     return factor
                 
             else:
-                @nb.njit
+                @nb.njit(inline='always')
                 def const_func():
                     return const          
                 
-                @nb.njit
+                @nb.njit(inline='always')
                 def factor_func():
                     return factor
                 
