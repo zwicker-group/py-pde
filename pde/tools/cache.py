@@ -47,6 +47,9 @@ def hash_mutable(obj) -> int:
     Returns:
         int: A hash value associated with the data of `obj`
     """
+    if hasattr(obj, "_cache_hash"):
+        return int(obj._cache_hash())
+    
     # deal with some special classes
     if isinstance(obj, (list, tuple)):
         return _hash_iter(hash_mutable(v) for v in obj)

@@ -221,6 +221,14 @@ class GridBase(metaclass=ABCMeta):
                 self.axes_bounds == other.axes_bounds and
                 self.periodic == other.periodic)
         
+
+    def _cache_hash(self) -> int:
+        """ returns a value to determine when a cache needs to be updated """ 
+        return hash((self.__class__.__name__, 
+                     self.shape,
+                     self.axes_bounds,
+                     hash(tuple(self.periodic))))
+        
          
     def compatible_with(self, other) -> bool:
         """ tests whether this class is compatible with other grids.
@@ -284,6 +292,13 @@ class GridBase(metaclass=ABCMeta):
         """
         diff = self.difference_vector_real(p1, p2)
         return np.linalg.norm(diff, axis=-1)  # type: ignore
+
+
+#     def _boundary_indices(self, axis: int, upper: bool) -> Tuple:
+#         """ get indices for accessing the points on the boundary """
+#         i_bndry = self.shape[axis] - 1 if upper else 0
+#         return tuple(i_bndry if i == axis else slice(None)
+#                      for i in range(self.num_axes))
 
 
     @abstractproperty

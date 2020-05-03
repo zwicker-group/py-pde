@@ -51,6 +51,7 @@ def test_serialization():
     for grid in iter_grids():
         g = GridBase.from_state(grid.state_serialized)
         assert grid == g
+        assert grid._cache_hash() == g._cache_hash()
             
         
         
@@ -59,6 +60,8 @@ def test_iter_mirror_points():
     grid_cart = grids.UnitGrid([2, 2], periodic=[True, False])
     grid_cyl = grids.CylindricalGrid(2, (0, 2), (2, 2), periodic_z=False)
     grid_sph = grids.SphericalGrid(2, 2)
+    assert (grid_cart._cache_hash() != grid_cyl._cache_hash() != 
+            grid_sph._cache_hash())
     
     for with_, only_periodic in itertools.product([False, True], repeat=2):
         num_expect = 2 if only_periodic else 8

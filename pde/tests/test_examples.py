@@ -3,6 +3,7 @@
 '''
 
 import glob
+import sys
 import os
 import subprocess as sp
 from pathlib import Path
@@ -38,7 +39,7 @@ def test_example(path):
     
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
-    proc = sp.Popen(['python3', path], env=env, stdout=sp.PIPE,
+    proc = sp.Popen([sys.executable, path], env=env, stdout=sp.PIPE,
                     stderr=sp.PIPE)
     try:
         outs, errs = proc.communicate(timeout=30)
@@ -69,6 +70,6 @@ def test_jupyter_notebooks(path):
     my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env["PATH"]        
         
     with NamedTemporaryFile(suffix='.ipynb') as fp:
-        sp.check_call(['python3', '-m', 'jupyter', 'nbconvert', 
+        sp.check_call([sys.executable, '-m', 'jupyter', 'nbconvert', 
                        '--to', 'notebook', '--output', fp.name,
                        '--execute', path], env=my_env)

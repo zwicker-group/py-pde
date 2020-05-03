@@ -300,31 +300,23 @@ class BCBase(metaclass=ABCMeta):
         else:
             # assume tensorial and/or inhomogeneous values
             value = np.asarray(value, dtype=np.double)
+            shape = self._shape_tensor + self._shape_boundary
             
-            # determine which coordinates are allowed to vary       
-#             tensor_shape = (self.grid.dim,) * self.rank     
-#             bc_shape = (self.grid.shape[:self.axis] +
-#                         self.grid.shape[self.axis + 1:])
-            
-            if value.shape[:self.rank] == self._shape_tensor:
-                # values are given for each tensorial dimension
-                if value.ndim == self.rank:
-                    self.homogeneous = True
-                    self._value = value
-                else:
-                    self.homogeneous = False
-                    shape = self._shape_tensor + self._shape_boundary
-                    self._value = value.reshape(shape)
-                    
-            elif value.ndim == 0:
+            if value.ndim == 0:
                 # value is a scalar, although np.isscalar(np.array(0)) == False
                 self.homogeneous = True
-                self._value = float(value)
+                self._value = np.broadcast_to(value, self._shape_tensor)
                     
-            elif value.shape == self._shape_boundary:
+            elif value.shape == shape:
+                # inhomogeneous field with all tensor components
                 self.homogeneous = False
                 self._value = value
-                
+            
+            elif value.shape == self._shape_tensor:
+                # homogeneous field with all tensor components
+                self.homogeneous = True
+                self._value = value
+                    
             else:
                 raise ValueError(f"Dimensions {value.shape} of the value are "
                                  f"incompatible with rank {self.rank} and "
@@ -340,8 +332,8 @@ class BCBase(metaclass=ABCMeta):
                               "incompatible with the expected shape for this "
                              f"boundary condition, {shape}")
         self._value = value
+        self.homogeneous = False
         self.value_is_linked = True
-        
     
     
     def _make_value_getter(self) -> Callable:
@@ -392,9 +384,13 @@ class BCBase(metaclass=ABCMeta):
 
     
     def __repr__(self):
-        if np.array_equal(self.value, 0):
+        if self.value_is_linked:
             return (f"{self.__class__.__name__}("
-                    f"axis={self.axis}, upper={self.upper})")
+                    f"axis={self.axis}, upper={self.upper}, "
+                    f"value=<linked: {self.value.ctypes.data}>)")
+        elif np.array_equal(self.value, 0):
+            return (f"{self.__class__.__name__}("
+                    f"axis={self.axis}, upper={self.upper}, rank={self.rank})")
         else:
             return (f"{self.__class__.__name__}("
                     f"axis={self.axis}, upper={self.upper}, "
@@ -405,12 +401,12 @@ class BCBase(metaclass=ABCMeta):
         if hasattr(self, 'names'):
             if np.array_equal(self.value, 0):
                 return f'"{self.names[0]}"' 
-            elif self.homogeneous:
+            elif self.value_is_linked:
                 return (f'{{"type": "{self.names[0]}", '
-                        f'"value": {self.value}}}')
+                        f'"value": <linked: {self.value.ctypes.data}>}}')
             else:
                 return (f'{{"type": "{self.names[0]}", '
-                        f'"value": "{self._value_expression}"}}')
+                        f'"value": {self.value}}}')
         else:
             return self.__repr__()
     
@@ -429,16 +425,37 @@ class BCBase(metaclass=ABCMeta):
 
     def __ne__(self, other):
         return not self == other
+    
+    
+    def _cache_hash(self) -> int:
+        """ returns a value to determine when a cache needs to be updated """ 
+        if self.value_is_linked:
+            return hash((self.__class__.__name__,
+                         self.grid._cache_hash(),
+                         self.axis))
+        else:
+            if isinstance(self.value, np.ndarray):
+                value = self.value.tobytes()
+            else:
+                value = self.value
+            return hash((self.__class__.__name__,
+                         self.grid._cache_hash(),
+                         self.axis,
+                         value))
 
 
-    def copy(self, upper: Optional[bool] = None, value=None) -> "BCBase":
+    def copy(self, upper: Optional[bool] = None,
+             rank: int = None,
+             value: Union[float, np.ndarray] = None) -> "BCBase":
         """ return a copy of itself, but with a reference to the same grid """
-        if upper is None:
-            upper = self.upper
-        if value is None:
-            value = self._value_expression
-        return self.__class__(grid=self.grid, axis=self.axis, upper=upper,
-                              value=value)
+        obj = self.__class__(grid=self.grid,
+                             axis=self.axis,
+                             upper=self.upper if upper is None else upper,
+                             rank=self.rank if rank is None else rank,
+                             value=self.value if value is None else value)
+        if self.value_is_linked:
+            obj.link_value(self.value)
+        return obj
         
         
     @property
@@ -467,7 +484,8 @@ class BCBase(metaclass=ABCMeta):
         else:  # tensorial boundary conditions
             value = self.value[indices]
             
-        return self.copy(value=value)
+        rank = self.rank - len(indices)
+        return self.copy(value=value, rank=rank)
 
                 
     @classmethod
@@ -603,7 +621,7 @@ class BCBase(metaclass=ABCMeta):
         # check all different data formats
         if isinstance(data, BCBase):
             # already in the correct format
-            assert data.grid == grid and data.axis == axis
+            assert data.grid == grid and data.axis == axis and data.rank == rank
             return data.copy(upper=upper)
         
         elif isinstance(data, dict):
@@ -781,7 +799,7 @@ class BCBase1stOrder(BCBase):
             # calculate necessary constants
             const, factor, index = self.get_virtual_point_data(compiled=True)
             
-            @register_jitable
+            @nb.njit
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the point adjacent to `idx` """
                 # extract the 1d array
@@ -812,7 +830,7 @@ class BCBase1stOrder(BCBase):
             # calculate necessary constants
             const, factor, index = self.get_virtual_point_data(compiled=True)
             
-            @register_jitable
+            @nb.njit
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the point adjacent to `idx` """
                 arr_1d, i, bc_idx = get_arr_1d(arr, idx)
@@ -857,10 +875,7 @@ class DirichletBC(BCBase1stOrder):
         """        
         const = 2 * self.value
         factor = -1 if np.isscalar(const) else -np.ones_like(const)
-        if self.upper:
-            index = self.grid.shape[self.axis] - 1
-        else:
-            index = 0
+        index = self.grid.shape[self.axis] - 1 if self.upper else 0
             
         if not compiled:
             return (const, factor, index)
@@ -892,7 +907,7 @@ class DirichletBC(BCBase1stOrder):
     def differentiated(self) -> BCBase:
         """ BCBase: differentiated version of this boundary condition """
         return NeumannBC(grid=self.grid, axis=self.axis, upper=self.upper,
-                         value=np.zeros_like(self.value))
+                         rank=self.rank, value=np.zeros_like(self.value))
 
 
 
@@ -920,10 +935,7 @@ class NeumannBC(BCBase1stOrder):
         
         const = dx * self.value
         factor = 1 if np.isscalar(const) else np.ones_like(const)
-        if self.upper:
-            index = self.grid.shape[self.axis] - 1
-        else:
-            index = 0
+        index = self.grid.shape[self.axis] - 1 if self.upper else 0
             
         if not compiled:
             return (const, factor, index)
@@ -954,7 +966,7 @@ class NeumannBC(BCBase1stOrder):
     def differentiated(self) -> BCBase:
         """ BCBase: differentiated version of this boundary condition """
         return CurvatureBC(grid=self.grid, axis=self.axis, upper=self.upper,
-                           value=np.zeros_like(self.value))
+                           rank=self.rank, value=np.zeros_like(self.value))
 
 
 
@@ -1028,17 +1040,29 @@ class MixedBC(BCBase1stOrder):
         return super().__eq__(other) and self.const == other.const
 
 
-    def copy(self, upper: Optional[bool] = None, value=None, const=None) \
-            -> "MixedBC":
+    def _cache_hash(self) -> int:
+        """ returns a value to determine when a cache needs to be updated """ 
+        if isinstance(self.const, np.ndarray):
+            const = self.const.tobytes()
+        else:
+            const = self.const  
+        return hash((super()._cache_hash(), const))
+    
+    
+    def copy(self, upper: Optional[bool] = None,
+             rank: int = None,
+             value: Union[float, np.ndarray] = None,
+             const: Union[float, np.ndarray] = None) -> "MixedBC":
         """ return a copy of itself, but with a reference to the same grid """
-        if upper is None:
-            upper = self.upper
-        if value is None:
-            value = self._value_expression
-        if const is None:
-            const = self.const
-        return self.__class__(grid=self.grid, axis=self.axis, upper=upper,
-                              value=value, const=const)        
+        obj = self.__class__(grid=self.grid,
+                             axis=self.axis,
+                             upper=self.upper if upper is None else upper,
+                             rank=self.rank if rank is None else rank,
+                             value=self.value if value is None else value,
+                             const=self.const if const is None else const)
+        if self.value_is_linked:
+            obj.link_value(self.value)
+        return obj
         
         
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple:
@@ -1072,56 +1096,53 @@ class MixedBC(BCBase1stOrder):
             const[np.isinf(factor)] = 0  # type: ignore
             factor[np.isinf(factor)] = -1
             
-        if self.upper:
-            index = self.grid.shape[self.axis] - 1
-        else:
-            index = 0
+        index = self.grid.shape[self.axis] - 1 if self.upper else 0
 
         if not compiled:
             return (const, factor, index)
+        
+        # return boundary data such that dynamically calculated values can
+        # be used in numba compiled code. This is a work-around since numpy
+        # arrays are copied into closures, making them compile-time
+        # constants
+
+        if self.value_is_linked:
+            const_val = float(self.const)  # only support scalar values
+            value_func = self._make_value_getter()
+            @nb.njit(inline='always')
+            def const_func():
+                value = value_func()
+                const = np.empty_like(value)
+                for i in range(value.size):
+                    val = value.flat[i]
+                    if np.isinf(val):
+                        const.flat[i] = 0
+                    else:
+                        const.flat[i] = 2 * dx * const_val / (2 + dx * val)
+                return const
+
+            @nb.njit(inline='always')
+            def factor_func():
+                value = value_func()
+                factor = np.empty_like(value)
+                for i in range(value.size):
+                    val = value.flat[i]
+                    if np.isinf(val):
+                        factor.flat[i] = -1
+                    else:
+                        factor.flat[i] = (2 - dx * val) / (2 + dx * val)
+                return factor
+            
         else:
-            # return boundary data such that dynamically calculated values can
-            # be used in numba compiled code. This is a work-around since numpy
-            # arrays are copied into closures, making them compile-time
-            # constants
-
-            if self.value_is_linked:
-                const_val = self.const
-                value = self._make_value_getter()
-                @nb.njit(inline='always')
-                def const_func():
-                    value = value()
-                    const = np.empty_like(value)
-                    for i in range(value.flat):
-                        val = value.flat[i]
-                        if np.isinf(val):
-                            const.flat[i] = 0
-                        else:
-                            const.flat[i] = 2 * dx * const_val / (2 + dx * val)
-                    return const
-
-                @nb.njit(inline='always')
-                def factor_func():
-                    value = value()
-                    factor = np.empty_like(value)
-                    for i in range(value.flat):
-                        val = value.flat[i]
-                        if np.isinf(val):
-                            factor.flat[i] = -1
-                        else:
-                            factor.flat[i] = (2 - dx * val) / (2 + dx * val)
-                    return factor
-                
-            else:
-                @nb.njit(inline='always')
-                def const_func():
-                    return const          
-                
-                @nb.njit(inline='always')
-                def factor_func():
-                    return factor
-                
-            return (const_func, factor_func, index)
+            @nb.njit(inline='always')
+            def const_func():
+                return const          
+            
+            @nb.njit(inline='always')
+            def factor_func():
+                return factor
+            
+        return (const_func, factor_func, index)
     
     
 
