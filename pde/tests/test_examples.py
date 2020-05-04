@@ -8,7 +8,6 @@ import os
 import subprocess as sp
 from pathlib import Path
 from typing import List  # @UnusedImport
-from tempfile import NamedTemporaryFile
 
 import pytest
 import numba as nb
@@ -60,7 +59,7 @@ def test_example(path):
 @pytest.mark.skipif(nb.config.DISABLE_JIT,
                     reason='pytest seems to check code coverage')
 @pytest.mark.parametrize('path', NOTEBOOKS)
-def test_jupyter_notebooks(path):
+def test_jupyter_notebooks(path, tmp_path):
     """ run the jupyter notebooks """
     if os.path.basename(path).startswith('_'):
         pytest.skip('skip examples starting with an underscore')
@@ -69,7 +68,7 @@ def test_jupyter_notebooks(path):
     my_env = os.environ.copy()
     my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env["PATH"]        
         
-    with NamedTemporaryFile(suffix='.ipynb') as fp:
-        sp.check_call([sys.executable, '-m', 'jupyter', 'nbconvert', 
-                       '--to', 'notebook', '--output', fp.name,
-                       '--execute', path], env=my_env)
+    outfile = tmp_path / os.path.basename(path)
+    sp.check_call([sys.executable, '-m', 'jupyter', 'nbconvert', 
+                   '--to', 'notebook', '--output', outfile,
+                   '--execute', path], env=my_env)

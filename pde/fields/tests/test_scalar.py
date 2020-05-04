@@ -2,8 +2,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-import tempfile
-
 import numpy as np
 import pytest
 
@@ -216,13 +214,13 @@ def test_interpolation_inhomogeneous_bc():
 
 
 @skipUnlessModule("matplotlib")
-def test_from_image():
+def test_from_image(tmp_path):
     from matplotlib.pyplot import imsave
     img_data = np.random.uniform(size=(9, 8, 3))
     img_data_gray = img_data @ np.array([0.299, 0.587, 0.114])
-    with tempfile.NamedTemporaryFile(suffix='.png') as fp:
-        imsave(fp.name, img_data, vmin=0, vmax=1)
-        sf = ScalarField.from_image(fp.name)
+    path = tmp_path / 'test_from_image.png'
+    imsave(path, img_data, vmin=0, vmax=1)
+    sf = ScalarField.from_image(path)
     np.testing.assert_allclose(sf.data, img_data_gray.T[:, ::-1], atol=0.05)
     
 

@@ -3,9 +3,7 @@
 '''
 
 import math
-import os.path
 import random
-import tempfile
 
 import pytest
 import numpy as np
@@ -98,7 +96,7 @@ def test_spherical_voronoi():
             
             
 @pytest.mark.parametrize('dim', range(1, 4))
-def test_points_on_sphere(dim):
+def test_points_on_sphere(dim, tmp_path):
     """ test spatial.SphericalVoronoi """
     shell = spherical.PointsOnSphere.make_uniform(dim=dim)
     assert shell.dim == dim
@@ -111,9 +109,9 @@ def test_points_on_sphere(dim):
     ws = shell.get_area_weights(balance_axes=True)
     np.testing.assert_allclose(ws @ shell.points, 0, atol=1e-15)
     
-    with tempfile.NamedTemporaryFile(suffix='.xyz') as fp:
-        shell.write_to_xyz(path=fp.name)
-        assert os.path.getsize(fp.name) > 0
+    path = tmp_path / f'test_points_on_sphere_{dim}.xyz'
+    shell.write_to_xyz(path=path)
+    assert path.stat().st_size > 0
         
         
         

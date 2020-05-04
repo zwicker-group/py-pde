@@ -4,7 +4,6 @@
 
 import os
 import json
-import tempfile
 
 import pytest
 import numpy as np
@@ -13,20 +12,20 @@ from .. import misc
 
 
 
-def test_ensure_directory_exists():
+def test_ensure_directory_exists(tmp_path):
     """ tests the ensure_directory_exists function """
     # create temporary name
-    path = tempfile.mktemp()
-    assert not os.path.exists(path)
+    path = tmp_path / "test_ensure_directory_exists"
+    assert not path.exists()
     # create the folder
     misc.ensure_directory_exists(path)
-    assert os.path.exists(path)
+    assert path.is_dir()
     # check that a second call has the same result
     misc.ensure_directory_exists(path)
-    assert os.path.exists(path)
+    assert path.is_dir()
     # remove the folder again
     os.rmdir(path)
-    assert not os.path.exists(path)
+    assert not path.exists()
     
     
     
@@ -103,31 +102,29 @@ def test_progress_bars():
     
     
 @misc.skipUnlessModule('h5py')
-def test_hdf_write_attributes():
+def test_hdf_write_attributes(tmp_path):
     """ test hdf_write_attributes function """
     import h5py
+    path = tmp_path / "test_hdf_write_attributes.hdf5"
 
     # test normal case    
     data = {'a': 3, 'b': 'asd'}
-    with tempfile.NamedTemporaryFile(suffix='.hdf') as fp:
-        with h5py.File(fp.name, 'w') as hdf_file:
-            misc.hdf_write_attributes(hdf_file, data)
-            data2 = {k: json.loads(v) for k, v in hdf_file.attrs.items()}
+    with h5py.File(path, 'w') as hdf_file:
+        misc.hdf_write_attributes(hdf_file, data)
+        data2 = {k: json.loads(v) for k, v in hdf_file.attrs.items()}
             
     assert data == data2
     assert data is not data2
 
     # test silencing of problematic items
-    with tempfile.NamedTemporaryFile(suffix='.hdf') as fp:
-        with h5py.File(fp.name, 'w') as hdf_file:
-            misc.hdf_write_attributes(hdf_file, {'a': 1, 'b': object()})
-            data2 = {k: json.loads(v) for k, v in hdf_file.attrs.items()}
+    with h5py.File(path, 'w') as hdf_file:
+        misc.hdf_write_attributes(hdf_file, {'a': 1, 'b': object()})
+        data2 = {k: json.loads(v) for k, v in hdf_file.attrs.items()}
     assert data2 == {'a': 1}
             
     # test raising problematic items
-    with tempfile.NamedTemporaryFile(suffix='.hdf') as fp:
-        with h5py.File(fp.name, 'w') as hdf_file:
-            with pytest.raises(TypeError):
-                misc.hdf_write_attributes(hdf_file, {'a': object()},
-                                          raise_serialization_error=True)
+    with h5py.File(path, 'w') as hdf_file:
+        with pytest.raises(TypeError):
+            misc.hdf_write_attributes(hdf_file, {'a': object()},
+                                      raise_serialization_error=True)
                 

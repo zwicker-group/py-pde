@@ -3,7 +3,6 @@
 '''
 
 import functools
-import tempfile
 
 import numpy as np
 
@@ -15,13 +14,13 @@ from ...tools.misc import module_available
 
 
 
-def test_storage_write():
+def test_storage_write(tmp_path):
     """ test simple memory storage """
     dim = 5
     grid = UnitGrid([dim])
     field = ScalarField(grid)
 
-    file = tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True)
+    file = tmp_path / "test_storage_write.hdf5"
     
     storage_classes = {'MemoryStorage': MemoryStorage}
     if module_available("h5py"):
@@ -54,10 +53,10 @@ def test_storage_write():
         
         
 
-def test_storage_truncation():
+def test_storage_truncation(tmp_path):
     """ test whether simple trackers can be used """
     for truncate in [True, False]:
-        file = tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True)
+        file = tmp_path / "test_storage_truncation.hdf5"
         storages = [MemoryStorage()]
         if module_available("h5py"):
             storages.append(FileStorage(file.name))

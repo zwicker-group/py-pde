@@ -2,8 +2,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-import tempfile
-
 import numpy as np
 from scipy import ndimage
 import pytest
@@ -194,7 +192,7 @@ def test_data_managment():
 
             
 @skipUnlessModule("h5py")
-def test_hdf_input_output():
+def test_hdf_input_output(tmp_path):
     """ test writing and reading files """
     grid = UnitGrid([4, 4])
     s = ScalarField.random_uniform(grid, label='scalar')
@@ -202,19 +200,19 @@ def test_hdf_input_output():
     t = Tensor2Field.random_uniform(grid, label='tensor')
     col = FieldCollection([s, v, t], label='collection')
     
-    with tempfile.NamedTemporaryFile(suffix='.hdf5') as fp:
-        for f in [s, v, t, col]:
-            f.to_file(fp.name)
-            f2 = FieldBase.from_file(fp.name)
-            assert f == f2
-            assert f.label == f2.label
-            assert isinstance(str(f), str)
-            assert isinstance(repr(f), str)
+    path = tmp_path / 'test_hdf_input_output.hdf5'
+    for f in [s, v, t, col]:
+        f.to_file(path)
+        f2 = FieldBase.from_file(path)
+        assert f == f2
+        assert f.label == f2.label
+        assert isinstance(str(f), str)
+        assert isinstance(repr(f), str)
             
       
       
 @skipUnlessModule("matplotlib")
-def test_writing_images():
+def test_writing_images(tmp_path):
     """ test writing and reading files """
     from matplotlib.pyplot import imread
     
@@ -223,11 +221,12 @@ def test_writing_images():
     v = VectorField.random_uniform(grid, label='vector')
     t = Tensor2Field.random_uniform(grid, label='tensor')
     
-    with tempfile.NamedTemporaryFile(suffix='.png') as fp:
-        for f in [s, v, t]:
-            f.to_file(fp.name)
-            # try reading the file
-            imread(fp.name)
+    path = tmp_path / 'test_writing_images.png'
+    for f in [s, v, t]:
+        f.to_file(path)
+        # try reading the file
+        with path.open('br') as fp:
+            imread(fp)
       
            
            
