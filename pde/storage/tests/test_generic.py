@@ -24,8 +24,7 @@ def test_storage_write(tmp_path):
     
     storage_classes = {'MemoryStorage': MemoryStorage}
     if module_available("h5py"):
-        storage_classes['FileStorage'] = \
-                                functools.partial(FileStorage, file.name)
+        storage_classes['FileStorage'] = functools.partial(FileStorage, file)
     
     for name, storage_cls in storage_classes.items():
         storage = storage_cls(info={'a': 1})
@@ -55,11 +54,11 @@ def test_storage_write(tmp_path):
 
 def test_storage_truncation(tmp_path):
     """ test whether simple trackers can be used """
+    file = tmp_path / "test_storage_truncation.hdf5"
     for truncate in [True, False]:
-        file = tmp_path / "test_storage_truncation.hdf5"
         storages = [MemoryStorage()]
         if module_available("h5py"):
-            storages.append(FileStorage(file.name))
+            storages.append(FileStorage(file))
         tracker_list = [s.tracker(interval=0.01) for s in storages]
       
         grid = UnitGrid([8, 8])
@@ -77,4 +76,5 @@ def test_storage_truncation(tmp_path):
             times = np.r_[np.arange(0, 0.101, 0.01), times]
         for storage in storages:
             msg = f'truncate={truncate}, storage={storage}'
-            np.testing.assert_allclose(storage.times, times, err_msg=msg) 
+            np.testing.assert_allclose(storage.times, times, err_msg=msg)
+             

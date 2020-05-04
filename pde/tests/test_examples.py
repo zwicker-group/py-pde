@@ -25,7 +25,7 @@ if not module_available("matplotlib"):
     SKIP_EXAMPLES.append('trackers.py')
 
 
-
+@pytest.mark.skipif(sys.platform == 'win32', reason="Assumes unix setup")
 @pytest.mark.skipif(nb.config.DISABLE_JIT,
                     reason='pytest seems to check code coverage')
 @pytest.mark.parametrize('path', EXAMPLES)
