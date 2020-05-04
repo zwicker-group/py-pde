@@ -94,6 +94,11 @@ class BoundaryPair(BoundaryAxisBase):
                 self.high != other.high)
         
                 
+    def _cache_hash(self) -> int:
+        """ returns a value to determine when a cache needs to be updated """ 
+        return hash((self.low._cache_hash(), self.high._cache_hash()))
+    
+                
     def copy(self) -> "BoundaryPair":
         """ return a copy of itself, but with a reference to the same grid """
         return self.__class__(self.low.copy(), self.high.copy())
@@ -395,6 +400,13 @@ class BoundaryPeriodic(BoundaryAxisBase):
         """
         self.grid = grid
         self.axis = axis
+            
+            
+    def __repr__(self):
+        return f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis})"
+            
+    def __str__(self):
+        return '"periodic"'
     
     
     def __eq__(self, other):
@@ -410,13 +422,11 @@ class BoundaryPeriodic(BoundaryAxisBase):
         return (self.__class__ != other.__class__ or
                 self.grid != other.grid or
                 self.axis != other.axis)
-            
-            
-    def __repr__(self):
-        return f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis})"
-            
-    def __str__(self):
-        return '"periodic"'
+    
+                
+    def _cache_hash(self) -> int:
+        """ returns a value to determine when a cache needs to be updated """ 
+        return hash((self.grid._cache_hash(), self.axis))
     
     
     def copy(self) -> "BoundaryPeriodic":

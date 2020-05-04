@@ -41,8 +41,6 @@ class Boundaries(list):
             raise ValueError('Need boundary conditions for '
                              f'{self.grid.num_axes} axes.')
 
-        # TODO: Check whether the rank of all boundaries are consistent
-
         # check consistency
         for axis, boundary in enumerate(boundaries):
             if boundary.grid != self.grid:
@@ -128,6 +126,11 @@ class Boundaries(list):
         if not isinstance(other, Boundaries):
             return NotImplemented
         return super().__eq__(other) and self.grid == other.grid
+    
+    
+    def _cache_hash(self) -> int:
+        """ returns a value to determine when a cache needs to be updated """ 
+        return hash(tuple(bc_ax._cache_hash() for bc_ax in self))
     
     
     def check_value_rank(self, rank: int):

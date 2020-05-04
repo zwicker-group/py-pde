@@ -1,7 +1,6 @@
 TODO
 ====
 * Implement hashing for boundary conditions to accelerate operator caching
-* Show more details for the boundary conditions in str and repr
 * Think about interface for changing boundary values in numba
     - We might need to support optional `bc` argument for operators 
 * Support 3d plots in plot_image (use for Laplace and Poisson eq) 
