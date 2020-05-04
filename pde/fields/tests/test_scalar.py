@@ -31,7 +31,12 @@ def test_interpolation_singular():
           {'type': 'derivative', 'value': 2}]
     x = np.linspace(0, 1, 7).reshape((7, 1))
     y = field.interpolate(x, method='numba', bc=bc)
-    np.testing.assert_allclose(y, 2 + 2*x.ravel())
+    np.testing.assert_allclose(y, 2 + 2 * x.ravel())
+    
+    # test boundary interpolation
+    for upper in [True, False]:
+        val = field.get_boundary_values(axis=0, upper=upper, bc=[{'value': 1}])
+        assert val == pytest.approx(1)
 
 
 
@@ -80,7 +85,7 @@ def test_scalars():
     # test options for plotting images
     if module_available("matplotlib"):
         s1.plot(transpose=True, colorbar=True)
-
+        
 
 
 def test_laplacian():
@@ -352,4 +357,17 @@ def test_interpolation_mutuable():
         field.data = 2
         np.testing.assert_allclose(field.interpolate([0.5], method=method), 2)
 
+
+
+def test_boundary_interpolation():
+    """ test boundary interpolation """
+    grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
+    field = ScalarField.random_normal(grid)
+    
+    # test boundary interpolation
+    bndry_val = np.random.randn(3)
+    for bndry in grid._iter_boundaries():
+        val = field.get_boundary_values(*bndry, bc={'value': bndry_val})
+        np.testing.assert_allclose(val, bndry_val)
+    
     

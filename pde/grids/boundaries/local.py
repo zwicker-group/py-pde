@@ -49,7 +49,7 @@ BoundaryData = Union[Dict, str, "BCBase"]
 
 
 def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) \
-        -> Tuple[Any, int, Tuple[int, ...]]:
+        -> Tuple[np.ndarray, int, Tuple]:
     """ extract the 1d array along axis at point idx
     
     Args:
@@ -68,31 +68,31 @@ def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) \
     # extract the correct indices
     if dim == 1:
         i = idx[0]
-        bc_idx: Tuple[int, ...] = tuple()
+        bc_idx: Tuple = (...,)
         arr_1d = arr
         
     elif dim == 2:
         if axis == 0:
             i, y = idx
-            bc_idx = (y,)
+            bc_idx = (..., y)
             arr_1d = arr[..., :, y]
         elif axis == 1:
             x, i = idx
-            bc_idx = (x,)
+            bc_idx = (..., x)
             arr_1d = arr[..., x, :]
             
     elif dim == 3:
         if axis == 0:
             i, y, z = idx
-            bc_idx = (y, z)
+            bc_idx = (..., y, z)
             arr_1d = arr[..., :, y, z]
         elif axis == 1:
             x, i, z = idx
-            bc_idx = (x, z)
+            bc_idx = (..., x, z)
             arr_1d = arr[..., x, :, z]
         elif axis == 2:
             x, y, i = idx
-            bc_idx = (x, y)
+            bc_idx = (..., x, y)
             arr_1d = arr[..., x, y, :]
             
     else:
@@ -122,37 +122,36 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
     assert 0 <= axis < dim
     
     @register_jitable
-    def get_arr_1d(arr, idx: Tuple[int, ...]) \
-            -> Tuple[Any, int, Tuple[int, ...]]:
+    def get_arr_1d(arr, idx: Tuple[int, ...]) -> Tuple[np.ndarray, int, Tuple]:
         """ extract the 1d array along axis at point idx """
         # extract the correct indices
         if dim == 1:
             i = idx[0]
-            bc_idx: Tuple[int, ...] = tuple()
+            bc_idx: Tuple = (...,)
             arr_1d = arr
             
         elif dim == 2:
             if axis == 0:
                 i, y = idx
-                bc_idx = (y,)
+                bc_idx = (..., y)
                 arr_1d = arr[..., :, y]
             elif axis == 1:
                 x, i = idx
-                bc_idx = (x,)
+                bc_idx = (..., x)
                 arr_1d = arr[..., x, :]
                 
         elif dim == 3:
             if axis == 0:
                 i, y, z = idx
-                bc_idx = (y, z)
+                bc_idx = (..., y, z)
                 arr_1d = arr[..., :, y, z]
             elif axis == 1:
                 x, i, z = idx
-                bc_idx = (x, z)
+                bc_idx = (..., x, z)
                 arr_1d = arr[..., x, :, z]
             elif axis == 2:
                 x, y, i = idx
-                bc_idx = (x, y)
+                bc_idx = (..., x, y)
                 arr_1d = arr[..., x, y, :]
                 
         else:

@@ -5,13 +5,14 @@ Bases classes
  
 '''
 
+import itertools
 import json
 import functools
 import logging
 import inspect
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (List, Tuple, Dict, Any, Union, Callable, Generator,
-                    Sequence, Set, NamedTuple, TYPE_CHECKING)
+                    Sequence, Set, NamedTuple, Iterator, TYPE_CHECKING)
 
 import numpy as np
 
@@ -294,8 +295,60 @@ class GridBase(metaclass=ABCMeta):
         return np.linalg.norm(diff, axis=-1)  # type: ignore
 
 
+    def _iter_boundaries(self) -> Iterator[Tuple[int, bool]]:
+        """ iterate over all boundaries of the grid
+        
+        Yields:
+            tuple: for each boundary, the generator returns a tuple indicating
+            the axis of the boundary together with a boolean value indicating 
+            whether the boundary lies on the upper side of the axis.
+        """
+        return itertools.product(range(self.num_axes), [True, False])
+        
+        
+    def _boundary_coordinates(self, axis: int, upper: bool) -> np.ndarray:
+        """ get indices for accessing the points on the boundary
+    
+        Args:
+            axis (int):
+                The axis perpendicular to the boundary
+            upper (bool):
+                Whether the boundary is at the upper side of the axis 
+    
+        Returns:
+            :class:`~numpy.ndarray`: Coordinates of the boundary points.
+        """
+        # get coordinate along the axis determining the boundary
+        if upper:
+            c_bndry = np.array([self._axes_bounds[axis][1]])
+        else:
+            c_bndry = np.array([self._axes_bounds[axis][0]])
+    
+        # get orthogonal coordinates
+        coords = tuple(c_bndry if i == axis else self._axes_coords[i]
+                       for i in range(self.num_axes))
+        points = np.meshgrid(*coords, indexing='ij')
+        
+        # assemble into array 
+        shape = tuple(self.shape[i]
+                      for i in range(self.num_axes)
+                      if i != axis) + (self.num_axes,)
+        return np.stack(points, -1).reshape(shape)
+        
+
 #     def _boundary_indices(self, axis: int, upper: bool) -> Tuple:
-#         """ get indices for accessing the points on the boundary """
+#         """ get indices for accessing the points on the boundary
+#         
+#         Args:
+#             axis (int):
+#                 The axis perpendicular to the boundary
+#             upper (bool):
+#                 Whether the boundary is at the upper side of the axis 
+#             
+#         Returns:
+#             tuple: Indices that can be used on the underlying grid data to
+#             obtain the values of the grid points closest to the boundaries.
+#         """
 #         i_bndry = self.shape[axis] - 1 if upper else 0
 #         return tuple(i_bndry if i == axis else slice(None)
 #                      for i in range(self.num_axes))
@@ -537,6 +590,7 @@ class GridBase(metaclass=ABCMeta):
     
     @fill_in_docstring
     def make_interpolator_compiled(self, bc: "BoundariesData" = 'natural',
+                                   rank: int = 0,
                                    fill: float = None) -> Callable:
         """ return a compiled function for linear interpolation on the grid
         
@@ -548,6 +602,9 @@ class GridBase(metaclass=ABCMeta):
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
+            rank (int, optional):
+                The tensorial rank of the value associated with the boundary
+                condition.
             fill (float, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -560,7 +617,7 @@ class GridBase(metaclass=ABCMeta):
             containing the field data and position is denotes the position in
             grid coordinates.
         """
-        bcs = self.get_boundary_conditions(bc)
+        bcs = self.get_boundary_conditions(bc, rank=rank)
         
         if self.num_axes == 1:
             # specialize for 1-dimensional interpolation

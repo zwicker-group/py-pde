@@ -975,7 +975,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 fill = float(fill)
             else:
                 fill = np.broadcast_to(fill, data_shape).astype(float)
-        interpolate_single = grid.make_interpolator_compiled(bc=bc, fill=fill)
+        interpolate_single = \
+            grid.make_interpolator_compiled(bc=bc, rank=self.rank, fill=fill)
         
         # define wrapper function to always access current data of field
         @jit
@@ -1191,6 +1192,28 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         for coords, weight in cells:
             chng = weight * amount / (total_weight * grid.cell_volumes[coords])
             self.data[(Ellipsis,) + coords] += chng                                                  
+        
+        
+    @fill_in_docstring
+    def get_boundary_values(self, axis: int,
+                            upper: bool = True,
+                            bc: BoundariesData = 'natural') -> np.ndarray:
+        """ get the field values directly on the specified boundary 
+        
+        Args:
+            axis (int):
+                The axis perpendicular to the boundary
+            upper (bool):
+                Whether the boundary is at the upper side of the axis 
+            bc:
+                The boundary conditions applied to the field. {ARG_BOUNDARIES}
+            
+        Returns:
+            :class:`~numpy.ndarray`: The discretized values on the boundary
+        """
+        interpolator = self.make_interpolator(bc=bc)
+        points = self.grid._boundary_coordinates(axis, upper)
+        return interpolator(points)
         
         
     def apply(self: TDataField, func: Callable,

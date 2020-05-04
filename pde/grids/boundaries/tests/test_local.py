@@ -16,36 +16,36 @@ def test_get_arr_1d():
     a = np.arange(3)
     arr_1d, i, bc_idx = _get_arr_1d(a, [1], 0)
     assert i == 1
-    assert bc_idx == ()
+    assert bc_idx == (...,)
     np.testing.assert_equal(arr_1d, a)
 
     # 2d
     a = np.arange(4).reshape(2, 2)
     arr_1d, i, bc_idx = _get_arr_1d(a, [0, 0], 0)
     assert i == 0
-    assert bc_idx == (0,)
+    assert bc_idx == (..., 0)
     np.testing.assert_equal(arr_1d, a[:, 0])
     
     arr_1d, i, bc_idx = _get_arr_1d(a, [1, 1], 1)
     assert i == 1
-    assert bc_idx == (1,)
+    assert bc_idx == (..., 1)
     np.testing.assert_equal(arr_1d, a[1, :])
 
     # 3d
     a = np.arange(8).reshape(2, 2, 2)
     arr_1d, i, bc_idx = _get_arr_1d(a, [0, 0, 0], 0)
     assert i == 0
-    assert bc_idx == (0, 0)
+    assert bc_idx == (..., 0, 0)
     np.testing.assert_equal(arr_1d, a[:, 0, 0])
     
     arr_1d, i, bc_idx = _get_arr_1d(a, [1, 1, 0], 1)
     assert i == 1
-    assert bc_idx == (1, 0)
+    assert bc_idx == (..., 1, 0)
     np.testing.assert_equal(arr_1d, a[1, :, 0])
     
     arr_1d, i, bc_idx = _get_arr_1d(a, [1, 1, 0], 2)
     assert i == 0
-    assert bc_idx == (1, 1)
+    assert bc_idx == (..., 1, 1)
     np.testing.assert_equal(arr_1d, a[1, 1, :])
 
 
