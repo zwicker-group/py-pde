@@ -104,6 +104,16 @@ class BoundaryPair(BoundaryAxisBase):
         return self.__class__(self.low.copy(), self.high.copy())
     
             
+    def __getitem__(self, index: Union[int, bool]) -> BCBase:
+        """ returns one of the sides """
+        if index == 0 or index is False:
+            return self.low
+        elif index == 1 or index is True:
+            return self.high
+        else:
+            raise IndexError('Index can be either 0/False or 1/True')
+            
+            
     def set_value(self, value=0):
         """ set the value of both boundary conditions
         
@@ -249,15 +259,15 @@ class BoundaryPair(BoundaryAxisBase):
         self.high.check_value_rank(rank)
    
    
-    def get_virtual_point_data(self):
-        """ return data suitable for calculating virtual points
-        
-        Returns:
-            tuple: Two tuples with data associated with the lower and upper
-            boundary, respectively.
-        """        
-        return (self.low.get_virtual_point_data(),
-                self.high.get_virtual_point_data())
+#     def get_virtual_point_data(self):
+#         """ return data suitable for calculating virtual points
+#         
+#         Returns:
+#             tuple: Two tuples with data associated with the lower and upper
+#             boundary, respectively.
+#         """        
+#         return (self.low.get_virtual_point_data(),
+#                 self.high.get_virtual_point_data())
 
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
@@ -476,17 +486,17 @@ class BoundaryPeriodic(BoundaryAxisBase):
         
         return (value_low, value_high)
 
-
-    def get_virtual_point_data(self):
-        """ return data suitable for calculating virtual points
-            
-        Returns:
-            tuple: Two tuples with data associated with the lower and upper
-            boundary, respectively.
-        """     
-        size = self.grid.shape[self.axis]
-        return ((0., 1., size - 1, 0., 0),
-                (0., 1., 0, 0., 0))
+# 
+#     def get_virtual_point_data(self):
+#         """ return data suitable for calculating virtual points
+#             
+#         Returns:
+#             tuple: Two tuples with data associated with the lower and upper
+#             boundary, respectively.
+#         """     
+#         size = self.grid.shape[self.axis]
+#         return ((0., 1., size - 1, 0., 0),
+#                 (0., 1., 0, 0., 0))
 
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:

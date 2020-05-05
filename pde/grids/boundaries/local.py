@@ -325,6 +325,8 @@ class BCBase(metaclass=ABCMeta):
     
     def link_value(self, value: np.ndarray):
         """ link value of this boundary condition to external array """
+        assert value.data.c_contiguous
+        
         shape = self._shape_tensor + self._shape_boundary
         if value.shape != shape:
             raise ValueError(f"The shape of the value, {value.shape}, is "
@@ -359,8 +361,9 @@ class BCBase(metaclass=ABCMeta):
         # obtains memory address of array
         mem_addr = value.ctypes.data  # type: ignore
         
-        @nb.jit(nb.typeof(value)())
+        @nb.jit(nb.typeof(value)(), inline='always')
         def get_value():
+            """ helper function returning the linked array """
             return nb.carray(address_as_void_pointer(mem_addr),
                              value.shape, value.dtype)
         
@@ -761,7 +764,7 @@ class BCBase1stOrder(BCBase):
         const, factor, index = self.get_virtual_point_data(compiled=True)
         
         if self.homogeneous:
-            @register_jitable
+            @register_jitable(inline='always')
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, _ = get_arr_1d(arr, idx)
@@ -769,7 +772,7 @@ class BCBase1stOrder(BCBase):
                         
                 
         else:
-            @register_jitable
+            @register_jitable(inline='always')
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the virtual point at `idx` """
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
@@ -788,40 +791,39 @@ class BCBase1stOrder(BCBase):
             point along the axis associated with this boundary condition in the
             upper (lower) direction when `upper` is True (False).
         """
-        size = self.grid.shape[self.axis]
-        upper = self.upper
+        # get values distinguishing upper from lower boundary   
+        if self.upper:
+            i_bndry = self.grid.shape[self.axis] - 1
+            i_dx = 1
+        else:
+            i_bndry = 0
+            i_dx = -1
+            
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-        
+            
         if self.homogeneous:
             # the boundary condition does not depend on space
             
             # calculate necessary constants
             const, factor, index = self.get_virtual_point_data(compiled=True)
-            
-            @nb.njit
+
+            @register_jitable(inline='always')
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the point adjacent to `idx` """
                 # extract the 1d array
-                arr_1d, i, _ = get_arr_1d(arr, idx)
+                arr_1d, i_point, _ = get_arr_1d(arr, idx)
 
                 # determine the parameters for evaluating adjacent point. Note
-                # that this is an optimization that apparently accelerates the
-                # computation. The alternative direct calculation (that is also
-                # used in the inhomogeneous case below) turned out to be
-                # significantly slower.
-                if upper:
-                    if i == size - 1:
-                        data = (const(), factor(), index)  
-                    else:
-                        data = (0., 1., i + 1)  # INTENTIONAL; see comment above
+                # that defining the variables c and f for the interior points
+                # seems needless, but it turns out that this results in a 10x
+                # faster function (because of branch prediction?).
+                if i_point == i_bndry:
+                    c, f, i = const(), factor(), index
                 else:
-                    if i == 0:
-                        data = (const(), factor(), index)  
-                    else:
-                        data = (0., 1., i - 1)  # INTENTIONAL; see comment above
+                    c, f, i = 0., 1., i_point + i_dx  # INTENTIONAL; see above
                 
                 # calculate the values
-                return data[0] + data[1] * arr_1d[..., data[2]]  # type: ignore
+                return c + f * arr_1d[..., i]  # type: ignore
                 
         else:
             # the boundary condition is a function of space
@@ -829,26 +831,30 @@ class BCBase1stOrder(BCBase):
             # calculate necessary constants
             const, factor, index = self.get_virtual_point_data(compiled=True)
             
-            @nb.njit
+            shape = tuple(self.grid.shape[i]
+                          for i in range(self.grid.num_axes)
+                          if i != self.axis)
+            zeros, ones = np.zeros(shape), np.ones(shape)
+            
+            @register_jitable(inline='always')
             def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
                 """ evaluate the point adjacent to `idx` """
-                arr_1d, i, bc_idx = get_arr_1d(arr, idx)
-
-                # determine the parameters for evaluating adjacent point
-                if upper:
-                    if i == size - 1:
-                        data = (const()[bc_idx], factor()[bc_idx], index)  
-                    else:
-                        data = (0., 1., i + 1)  # INTENTIONAL; see comment above
+                arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
+ 
+                # determine the parameters for evaluating adjacent point. Note
+                # that defining the variables c and f for the interior points
+                # seems needless, but it turns out that this results in a 10x
+                # faster function (because of branch prediction?). This is
+                # surprising, because it uses arrays zeros and ones that are
+                # quite pointless 
+                if i_point == i_bndry:
+                    c, f, i = const(), factor(), index
                 else:
-                    if i == 0:
-                        data = (const()[bc_idx], factor()[bc_idx], index)  
-                    else:
-                        data = (0., 1., i - 1)  # INTENTIONAL; see comment above
-
+                    c, f, i = zeros, ones, i_point + i_dx  # INTENTIONAL
+ 
                 # calculate the values
-                return data[0] + data[1] * arr_1d[..., data[2]]  # type: ignore
-        
+                return c[bc_idx] + f[bc_idx] * arr_1d[..., i]  # type: ignore
+
         return adjacent_point  # type: ignore    
     
 
@@ -887,7 +893,7 @@ class DirichletBC(BCBase1stOrder):
             if self.value_is_linked:
                 value = self._make_value_getter()
                 
-                @nb.njit(inline='always')
+                @register_jitable(inline='always')
                 def const_func():
                     return 2 * value()
             else:
@@ -946,7 +952,7 @@ class NeumannBC(BCBase1stOrder):
             
             if self.value_is_linked:
                 value = self._make_value_getter()
-                @nb.njit(inline='always')
+                @register_jitable(inline='always')
                 def const_func():
                     return dx * value()
             else:
@@ -1108,7 +1114,7 @@ class MixedBC(BCBase1stOrder):
         if self.value_is_linked:
             const_val = float(self.const)  # only support scalar values
             value_func = self._make_value_getter()
-            @nb.njit(inline='always')
+            @register_jitable(inline='always')
             def const_func():
                 value = value_func()
                 const = np.empty_like(value)
@@ -1120,7 +1126,7 @@ class MixedBC(BCBase1stOrder):
                         const.flat[i] = 2 * dx * const_val / (2 + dx * val)
                 return const
 
-            @nb.njit(inline='always')
+            @register_jitable(inline='always')
             def factor_func():
                 value = value_func()
                 factor = np.empty_like(value)
@@ -1133,11 +1139,11 @@ class MixedBC(BCBase1stOrder):
                 return factor
             
         else:
-            @nb.njit(inline='always')
+            @register_jitable(inline='always')
             def const_func():
                 return const          
             
-            @nb.njit(inline='always')
+            @register_jitable(inline='always')
             def factor_func():
                 return factor
             
@@ -1280,12 +1286,19 @@ class BCBase2ndOrder(BCBase):
             upper (lower) direction when `upper` is True (False).
         """
         size = self.grid.shape[self.axis]
-        upper = self.upper
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-        
         if size < 2:
             raise ValueError('Need at least two support points along axis '
                              f'{self.axis} to apply boundary conditions')
+
+        # get values distinguishing upper from lower boundary   
+        if self.upper:
+            i_bndry = size - 1
+            i_dx = 1
+        else:
+            i_bndry = 0
+            i_dx = -1
+
+        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
 
         # calculate necessary constants
         data_vp = self.get_virtual_point_data()
@@ -1304,16 +1317,10 @@ class BCBase2ndOrder(BCBase):
                 arr_1d, i, _ = get_arr_1d(arr, idx)
 
                 # determine the parameters for evaluating adjacent point
-                if upper:
-                    if i == size - 1:
-                        data = data_vp
-                    else:
-                        data = (zero, 1., i + 1, 0., 0)
+                if i == i_bndry:
+                    data = data_vp
                 else:
-                    if i == 0:
-                        data = data_vp
-                    else:
-                        data = (zero, 1., i - 1, 0., 0)
+                    data = (zero, 1., i + i_dx, 0., 0)
                 
                 # calculate the values
                 return (data[0] +
@@ -1322,6 +1329,10 @@ class BCBase2ndOrder(BCBase):
                 
         else:
             # the boundary condition is a function of space
+            shape = tuple(self.grid.shape[i]
+                          for i in range(self.grid.num_axes)
+                          if i != self.axis)
+            zeros, ones = np.zeros(shape), np.ones(shape)
             
             @register_jitable
             def adjacent_point(arr, idx: Tuple[int, ...]):
@@ -1329,22 +1340,14 @@ class BCBase2ndOrder(BCBase):
                 arr_1d, i, bc_idx = get_arr_1d(arr, idx)
 
                 # determine the parameters for evaluating adjacent point
-                if upper:
-                    if i == size - 1:
-                        val = (data_vp[0][bc_idx] +
-                               data_vp[1][bc_idx] * arr_1d[..., data_vp[2]] + 
-                               data_vp[3][bc_idx] * arr_1d[..., data_vp[4]])
-                    else:
-                        val = arr_1d[..., i + 1]
+                if i == i_bndry:
+                    data = data_vp
                 else:
-                    if i == 0:
-                        val = (data_vp[0][bc_idx] +
-                               data_vp[1][bc_idx] * arr_1d[..., data_vp[2]] +
-                               data_vp[3][bc_idx] * arr_1d[..., data_vp[4]])
-                    else:
-                        val = arr_1d[..., i - 1]
+                    data = (zeros, ones, i + i_dx, zeros, 0)  # INTENTIONAL
                 
-                return val
+                return (data[0][bc_idx] +
+                        data[1][bc_idx] * arr_1d[..., data[2]] +
+                        data[3][bc_idx] * arr_1d[..., data[4]])
         
         return adjacent_point  # type: ignore    
 
