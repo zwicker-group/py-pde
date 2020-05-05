@@ -259,17 +259,6 @@ class BoundaryPair(BoundaryAxisBase):
         self.high.check_value_rank(rank)
    
    
-#     def get_virtual_point_data(self):
-#         """ return data suitable for calculating virtual points
-#         
-#         Returns:
-#             tuple: Two tuples with data associated with the lower and upper
-#             boundary, respectively.
-#         """        
-#         return (self.low.get_virtual_point_data(),
-#                 self.high.get_virtual_point_data())
-
-
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         """ sets the elements of the sparse representation of this condition
         
@@ -486,19 +475,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
         
         return (value_low, value_high)
 
-# 
-#     def get_virtual_point_data(self):
-#         """ return data suitable for calculating virtual points
-#             
-#         Returns:
-#             tuple: Two tuples with data associated with the lower and upper
-#             boundary, respectively.
-#         """     
-#         size = self.grid.shape[self.axis]
-#         return ((0., 1., size - 1, 0., 0),
-#                 (0., 1., 0, 0., 0))
-
-
+    
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         """ sets the elements of the sparse representation of this condition
         
@@ -620,6 +597,3 @@ def get_boundary_axis(grid: GridBase, axis: int, data, rank: int = 0) \
     else:
         # initialize independent boundary conditions for the two sides
         return BoundaryPair.from_data(grid, axis, data, rank=rank)
-
-
-
