@@ -223,18 +223,20 @@ def test_inhomogeneous_bcs():
     assert bc_x.rank == 0
     assert bc_x.get_virtual_point(data, (1, 0)) == pytest.approx(1.5)
     assert bc_x.get_virtual_point(data, (1, 1)) == pytest.approx(2.5)
+    
     ev = bc_x.make_virtual_point_evaluator()
     assert ev(data, (1, 0)) == pytest.approx(1.5)
     assert ev(data, (1, 1)) == pytest.approx(2.5)
+
     ev = bc_x.make_adjacent_evaluator()
-    assert ev(data, (0, 0)) == pytest.approx(1)
-    assert ev(data, (0, 1)) == pytest.approx(1)
-    assert ev(data, (1, 0)) == pytest.approx(1.5)
-    assert ev(data, (1, 1)) == pytest.approx(2.5)
+    assert ev(*_get_arr_1d(data, (0, 0), axis=0)) == pytest.approx(1)
+    assert ev(*_get_arr_1d(data, (0, 1), axis=0)) == pytest.approx(1)
+    assert ev(*_get_arr_1d(data, (1, 0), axis=0)) == pytest.approx(1.5)
+    assert ev(*_get_arr_1d(data, (1, 1), axis=0)) == pytest.approx(2.5)
     # test lower bc
     bc_x = BCBase.from_data(g, 0, False, {'curvature': 'y'})
     ev = bc_x.make_adjacent_evaluator()
-    assert ev(data, (1, 0)) == pytest.approx(1)
-    assert ev(data, (1, 1)) == pytest.approx(1)
-    assert ev(data, (0, 0)) == pytest.approx(1.5)
-    assert ev(data, (0, 1)) == pytest.approx(2.5)
+    assert ev(*_get_arr_1d(data, (1, 0), axis=0)) == pytest.approx(1)
+    assert ev(*_get_arr_1d(data, (1, 1), axis=0)) == pytest.approx(1)
+    assert ev(*_get_arr_1d(data, (0, 0), axis=0)) == pytest.approx(1.5)
+    assert ev(*_get_arr_1d(data, (0, 1), axis=0)) == pytest.approx(2.5)

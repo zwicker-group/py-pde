@@ -786,10 +786,15 @@ class BCBase1stOrder(BCBase):
         """ returns a function evaluating the value adjacent to a given point 
 
         Returns:
-            function: A function that takes the data array and an index marking
-            the current point. The result is the data value at the adjacent 
-            point along the axis associated with this boundary condition in the
-            upper (lower) direction when `upper` is True (False).
+            function: A function with signature (arr_1d, i_point, bc_idx), where
+            `arr_1d` is the one-dimensional data array (the data points along 
+            the axis perpendicular to the boundary), `i_point` is the index into
+            this array for the current point and bc_idx are the remaining
+            indices of the current point, which indicate the location on the 
+            boundary plane. The result of the function is the data value at the
+            adjacent point along the axis associated with this boundary
+            condition in the upper (lower) direction when `upper` is True
+            (False).
         """
         # get values distinguishing upper from lower boundary   
         if self.upper:
@@ -799,8 +804,6 @@ class BCBase1stOrder(BCBase):
             i_bndry = 0
             i_dx = -1
             
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-            
         if self.homogeneous:
             # the boundary condition does not depend on space
             
@@ -808,11 +811,8 @@ class BCBase1stOrder(BCBase):
             const, factor, index = self.get_virtual_point_data(compiled=True)
 
             @register_jitable(inline='always')
-            def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
-                """ evaluate the point adjacent to `idx` """
-                # extract the 1d array
-                arr_1d, i_point, _ = get_arr_1d(arr, idx)
-
+            def adjacent_point(arr_1d, i_point, bc_idx) -> float:
+                """ evaluate the point adjacent current point """
                 # determine the parameters for evaluating adjacent point. Note
                 # that defining the variables c and f for the interior points
                 # seems needless, but it turns out that this results in a 10x
@@ -837,10 +837,8 @@ class BCBase1stOrder(BCBase):
             zeros, ones = np.zeros(shape), np.ones(shape)
             
             @register_jitable(inline='always')
-            def adjacent_point(arr, idx: Tuple[int, ...]) -> float:
-                """ evaluate the point adjacent to `idx` """
-                arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
- 
+            def adjacent_point(arr_1d, i_point, bc_idx) -> float:
+                """ evaluate the point adjacent current point """
                 # determine the parameters for evaluating adjacent point. Note
                 # that defining the variables c and f for the interior points
                 # seems needless, but it turns out that this results in a 10x
@@ -1280,10 +1278,15 @@ class BCBase2ndOrder(BCBase):
         """ returns a function evaluating the value adjacent to a given point 
 
         Returns:
-            function: A function that takes the data array and an index marking
-            the current point. The result is the data value at the adjacent 
-            point along the axis associated with this boundary condition in the
-            upper (lower) direction when `upper` is True (False).
+            function: A function with signature (arr_1d, i_point, bc_idx), where
+            `arr_1d` is the one-dimensional data array (the data points along 
+            the axis perpendicular to the boundary), `i_point` is the index into
+            this array for the current point and bc_idx are the remaining
+            indices of the current point, which indicate the location on the 
+            boundary plane. The result of the function is the data value at the
+            adjacent point along the axis associated with this boundary
+            condition in the upper (lower) direction when `upper` is True
+            (False).
         """
         size = self.grid.shape[self.axis]
         if size < 2:
@@ -1298,29 +1301,24 @@ class BCBase2ndOrder(BCBase):
             i_bndry = 0
             i_dx = -1
 
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
         # calculate necessary constants
         data_vp = self.get_virtual_point_data()
         
         if self.homogeneous:
             # the boundary condition does not depend on space
             if self.is_scalar:
-                zero = 0.
+                zeros = 0.
             else:
-                zero = np.zeros((self.grid.dim,) * self.rank)
+                zeros = np.zeros((self.grid.dim,) * self.rank)
             
             @register_jitable
-            def adjacent_point(arr, idx: Tuple[int, ...]):
-                """ evaluate the point adjacent to `idx` """
-                # extract the 1d array
-                arr_1d, i, _ = get_arr_1d(arr, idx)
-
+            def adjacent_point(arr_1d, i_point, bc_idx):
+                """ evaluate the point adjacent current point """
                 # determine the parameters for evaluating adjacent point
-                if i == i_bndry:
+                if i_point == i_bndry:
                     data = data_vp
                 else:
-                    data = (zero, 1., i + i_dx, 0., 0)
+                    data = (zeros, 1., i_point + i_dx, 0., 0)
                 
                 # calculate the values
                 return (data[0] +
@@ -1335,15 +1333,13 @@ class BCBase2ndOrder(BCBase):
             zeros, ones = np.zeros(shape), np.ones(shape)
             
             @register_jitable
-            def adjacent_point(arr, idx: Tuple[int, ...]):
-                """ evaluate the point adjacent to `idx` """
-                arr_1d, i, bc_idx = get_arr_1d(arr, idx)
-
+            def adjacent_point(arr_1d, i_point, bc_idx):
+                """ evaluate the point adjacent current point """
                 # determine the parameters for evaluating adjacent point
-                if i == i_bndry:
+                if i_point == i_bndry:
                     data = data_vp
                 else:
-                    data = (zeros, ones, i + i_dx, zeros, 0)  # INTENTIONAL
+                    data = (zeros, ones, i_point + i_dx, zeros, 0)
                 
                 return (data[0][bc_idx] +
                         data[1][bc_idx] * arr_1d[..., data[2]] +

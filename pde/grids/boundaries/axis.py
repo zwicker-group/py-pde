@@ -375,8 +375,10 @@ class BoundaryPair(BoundaryAxisBase):
                 -> Tuple[float, float, float]:
             """ compiled function return the values in the region """
             # extract the 1d array along axis
-            arr_1d, i, _ = get_arr_1d(arr, idx)
-            return ap_low(arr, idx), arr_1d[..., i], ap_high(arr, idx)
+            arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
+            return (ap_low(arr_1d, i_point, bc_idx),
+                    arr_1d[..., i_point],
+                    ap_high(arr_1d, i_point, bc_idx))
         
         return region_evaluator  # type: ignore
 
