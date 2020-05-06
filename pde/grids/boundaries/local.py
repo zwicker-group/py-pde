@@ -812,7 +812,7 @@ class BCBase1stOrder(BCBase):
 
             @register_jitable(inline='always')
             def adjacent_point(arr_1d, i_point, bc_idx) -> float:
-                """ evaluate the point adjacent current point """
+                """ evaluate the value adjacent to the current point """
                 # determine the parameters for evaluating adjacent point. Note
                 # that defining the variables c and f for the interior points
                 # seems needless, but it turns out that this results in a 10x
@@ -831,14 +831,12 @@ class BCBase1stOrder(BCBase):
             # calculate necessary constants
             const, factor, index = self.get_virtual_point_data(compiled=True)
             
-            shape = tuple(self.grid.shape[i]
-                          for i in range(self.grid.num_axes)
-                          if i != self.axis)
+            shape = self._shape_tensor + self._shape_boundary
             zeros, ones = np.zeros(shape), np.ones(shape)
             
             @register_jitable(inline='always')
             def adjacent_point(arr_1d, i_point, bc_idx) -> float:
-                """ evaluate the point adjacent current point """
+                """ evaluate the value adjacent to the current point """
                 # determine the parameters for evaluating adjacent point. Note
                 # that defining the variables c and f for the interior points
                 # seems needless, but it turns out that this results in a 10x
@@ -1313,7 +1311,7 @@ class BCBase2ndOrder(BCBase):
             
             @register_jitable
             def adjacent_point(arr_1d, i_point, bc_idx):
-                """ evaluate the point adjacent current point """
+                """ evaluate the value adjacent to the current point """
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
                     data = data_vp
@@ -1334,7 +1332,7 @@ class BCBase2ndOrder(BCBase):
             
             @register_jitable
             def adjacent_point(arr_1d, i_point, bc_idx):
-                """ evaluate the point adjacent current point """
+                """ evaluate the value adjacent to the current point """
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
                     data = data_vp
