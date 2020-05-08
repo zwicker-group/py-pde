@@ -3,7 +3,8 @@ TODO
 * Count the number of compilations and store it in the info field of the simulation
 * Implement hashing for boundary conditions to accelerate operator caching
 * Think about interface for changing boundary values in numba
-    - We might need to support optional `bc` argument for operators 
+    - We might need to support optional `bc` argument for operators
+    - Try using https://cffi.readthedocs.io/en/latest/overview.html#purely-for-performance-api-level-out-of-line 
 * Support 3d plots in plot_image (use for Laplace and Poisson eq) 
 * Add Glossary or something to development guide
     - e.g., state = attributes + data

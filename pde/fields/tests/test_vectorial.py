@@ -162,4 +162,7 @@ def test_boundary_interpolation_vector():
         val = field.get_boundary_values(*bndry, bc={'value': bndry_val})
         np.testing.assert_allclose(val, bndry_val)
     
+        ev = field.make_get_boundary_values(*bndry, bc={'value': bndry_val})
+        np.testing.assert_allclose(ev(), bndry_val)
+    
             

@@ -346,8 +346,8 @@ def test_poisson_solver_2d():
     
     
     
-def test_interpolation_mutuable():
-    """ test interpolation on mutuable fields """
+def test_interpolation_mutable():
+    """ test interpolation on mutable fields """
     grid = UnitGrid([2], periodic=True)
     field = ScalarField(grid)
     
@@ -370,4 +370,6 @@ def test_boundary_interpolation():
         val = field.get_boundary_values(*bndry, bc={'value': bndry_val})
         np.testing.assert_allclose(val, bndry_val)
     
+        ev = field.make_get_boundary_values(*bndry, bc={'value': bndry_val})
+        np.testing.assert_allclose(ev(), bndry_val)
     
