@@ -356,6 +356,11 @@ def test_interpolation_mutable():
         np.testing.assert_allclose(field.interpolate([0.5], method=method), 1)
         field.data = 2
         np.testing.assert_allclose(field.interpolate([0.5], method=method), 2)
+        
+    # test overwriting field values
+    data = np.full_like(field.data, 3)
+    intp = field.make_interpolator(method='numba')
+    np.testing.assert_allclose(intp(np.array([0.5]), data), 3)
 
 
 
@@ -371,5 +376,8 @@ def test_boundary_interpolation():
         np.testing.assert_allclose(val, bndry_val)
     
         ev = field.make_get_boundary_values(*bndry, bc={'value': bndry_val})
-        np.testing.assert_allclose(ev(), bndry_val)
+        out = ev()
+        np.testing.assert_allclose(out, bndry_val)
+        ev(out=out, data=field.data)
+        np.testing.assert_allclose(out, bndry_val)
     

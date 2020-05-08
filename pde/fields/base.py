@@ -984,13 +984,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         shape, dtype = self.data.shape, self.data.dtype
         
         @jit
-        def interpolator(point: np.ndarray) -> np.ndarray:
+        def interpolator(point: np.ndarray, data: np.ndarray = None) \
+                -> np.ndarray:
             """ return the interpolated value at the position `point`
              
             Args:
                 point (:class:`numpy.ndarray`):
                     The list of points. This point coordinates should be given
                     along the last axis, i.e., the shape should be `(..., dim)`.
+                data (:class:`numpy.ndarray`, optional):
+                    The discretized field values. If omitted, the data of the 
+                    current field is used, which should be the default. However,
+                    this option can be useful to interpolate other fields
+                    defined on the same grid without recreating the interpolator 
                      
             Returns:
                 :class:`numpy.ndarray`: The interpolated values at the points
@@ -1003,8 +1009,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             point_shape = point.shape[:-1]
             
             # reconstruct data field from memory address
-            data = nb.carray(address_as_void_pointer(data_addr), shape,
-                             dtype)
+            if data is None:
+                data = nb.carray(address_as_void_pointer(data_addr), shape,
+                                 dtype)
              
             # interpolate at every point
             out = np.empty(data_shape + point_shape)
@@ -1013,7 +1020,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
              
             return out
 
-        return interpolator
+        return interpolator  # type: ignore
 
 
     @cached_method()
@@ -1221,14 +1228,32 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 The boundary conditions applied to the field. {ARG_BOUNDARIES}
             
         Returns:
-            callable: A function returning the values on the boundary
+            callable: A function returning the values on the boundary. The
+            function has the signature `(out=None, data=None)`, which allows
+            specifying an output and an input :class:`~numpy.ndarray`. If `data`
+            is omitted, the data of the current field is used. The resulting
+            interpolation is written to `out` if it is present. Otherwise, a new
+            array is created.
         """
         interpolator = self.make_interpolator(bc=bc)
         points = self.grid._boundary_coordinates(axis, upper)
         
         @jit
-        def inner(out=None):
-            res = interpolator(points)
+        def inner(out: np.ndarray = None, data: np.ndarray = None):
+            """ interpolate the field at the boundary
+            
+            Args:
+                out (:class:`~numpy.ndarray`, optional):
+                    The array into which the interpolated results are written. A
+                    new array is created if `out = None`.
+                data (:class:`~numpy.ndarray`, optional):
+                    The data values that are used for interpolation. The data of
+                    the current field is used if `data = None`.
+                    
+            Returns:
+                :class:`numpy.ndarray`: The interpolated values on the boundary.
+            """
+            res = interpolator(points, data)
             if out is None:
                 return res
             else:
