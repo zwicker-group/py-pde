@@ -52,7 +52,7 @@ class BoundaryPair(BoundaryAxisBase):
                 Instance describing the upper boundary
         """
         # check data consistency
-        assert low.grid is high.grid
+        assert low.grid == high.grid
         assert low.axis == high.axis
         assert low.rank == high.rank
         assert high.upper and not low.upper
