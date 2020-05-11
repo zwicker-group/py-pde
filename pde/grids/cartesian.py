@@ -570,7 +570,15 @@ class UnitGrid(CartesianGridBase):
         
         
     def get_subgrid(self, indices: Sequence[int]) -> "UnitGrid":
-        """ return a subgrid of only the specified axes """
+        """ return a subgrid of only the specified axes
+        
+        Args:
+            indices (list):
+                Indices indicating the axes that are retained in the subgrid
+                
+        Returns:
+            :class:`UnitGrid`: The subgrid
+        """
         subgrid = self.__class__(shape=[self.shape[i] for i in indices],
                                  periodic=[self.periodic[i] for i in indices])
         subgrid.axes = [self.axes[i] for i in indices]
@@ -797,7 +805,15 @@ class CartesianGrid(CartesianGridBase):
 
 
     def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":
-        """ return a subgrid of only the specified axes """
+        """ return a subgrid of only the specified axes
+        
+        Args:
+            indices (list):
+                Indices indicating the axes that are retained in the subgrid
+                
+        Returns:
+            :class:`CartesianGrid`: The subgrid
+        """
         subgrid = self.__class__(bounds=[self.axes_bounds[i] for i in indices],
                                  shape=[self.shape[i] for i in indices],
                                  periodic=[self.periodic[i] for i in indices])

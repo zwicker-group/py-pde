@@ -527,7 +527,17 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
     def get_subgrid(self, indices: Sequence[int]) \
             -> Union["CartesianGrid", "PolarGrid"]:
-        """ return a subgrid of only the specified axes """
+        """ return a subgrid of only the specified axes
+        
+        
+        Args:
+            indices (list):
+                Indices indicating the axes that are retained in the subgrid
+                
+        Returns:
+            :class:`~pde.grids.cartesian.CartesianGrid` or 
+            :class:`~pde.grids.spherical.PolarGrid`: The subgrid
+        """
         if len(indices) != 1:
             raise ValueError(f'Can only get sub-grid for one axis.')
         
