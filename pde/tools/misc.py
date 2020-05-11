@@ -30,7 +30,6 @@ import importlib
 import unittest
 import warnings
 from pathlib import Path
-from collections import OrderedDict
 from typing import Callable, Dict, Any, List, Union
 
 import numpy as np
@@ -55,11 +54,15 @@ def module_available(module_name: str) -> bool:
 
 
 
-def environment() -> Dict[str, Any]:
+def environment(dict_type=dict) -> Dict[str, Any]:
     """ obtain information about the compute environment
     
+    Args:
+        dict_type: The type to create the returned dictionaries. The default is
+            `dict`, but :class:`collections.OrderedDict` is an alternative.
+    
     Returns:
-        A dictionary with information about the python installation and packages
+        dict: information about the python installation and packages
     """
     from .. import __version__ as package_version
 
@@ -67,7 +70,7 @@ def environment() -> Dict[str, Any]:
 
     def get_package_versions(packages: List[str]) -> Dict[str, str]:
         """ tries to load certain python packages and returns their version """
-        versions: Dict[str, str] = OrderedDict()
+        versions: Dict[str, str] = dict_type()
         for name in sorted(packages):
             try:
                 module = importlib.import_module(name)
@@ -77,7 +80,7 @@ def environment() -> Dict[str, Any]:
                 versions[name] = module.__version__  # type: ignore
         return versions
 
-    result: Dict[str, Any] = OrderedDict()
+    result: Dict[str, Any] = dict_type()
     result['package version'] = package_version
     result['python version'] = sys.version
     result['mandatory packages'] = get_package_versions(
