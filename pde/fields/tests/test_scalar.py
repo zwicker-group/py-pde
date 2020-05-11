@@ -378,6 +378,6 @@ def test_boundary_interpolation():
         ev = field.make_get_boundary_values(*bndry, bc={'value': bndry_val})
         out = ev()
         np.testing.assert_allclose(out, bndry_val)
-        ev(out=out, data=field.data)
+        ev(data=field.data, out=out)
         np.testing.assert_allclose(out, bndry_val)
     

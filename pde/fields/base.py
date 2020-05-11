@@ -1229,8 +1229,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             
         Returns:
             callable: A function returning the values on the boundary. The
-            function has the signature `(out=None, data=None)`, which allows
-            specifying an output and an input :class:`~numpy.ndarray`. If `data`
+            function has the signature `(data=None, out=None)`, which allows
+            specifying an input and an output :class:`~numpy.ndarray`. If `data`
             is omitted, the data of the current field is used. The resulting
             interpolation is written to `out` if it is present. Otherwise, a new
             array is created.
@@ -1239,16 +1239,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         points = self.grid._boundary_coordinates(axis, upper)
         
         @jit
-        def inner(out: np.ndarray = None, data: np.ndarray = None):
+        def inner(data: np.ndarray = None, out: np.ndarray = None):
             """ interpolate the field at the boundary
             
             Args:
-                out (:class:`~numpy.ndarray`, optional):
-                    The array into which the interpolated results are written. A
-                    new array is created if `out = None`.
                 data (:class:`~numpy.ndarray`, optional):
                     The data values that are used for interpolation. The data of
                     the current field is used if `data = None`.
+                out (:class:`~numpy.ndarray`, optional):
+                    The array into which the interpolated results are written. A
+                    new array is created if `out = None`.
                     
             Returns:
                 :class:`numpy.ndarray`: The interpolated values on the boundary.
