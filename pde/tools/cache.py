@@ -59,7 +59,7 @@ def hash_mutable(obj) -> int:
     
     if isinstance(obj, collections.OrderedDict):
         return _hash_iter((k, hash_mutable(v))
-                          for k, v in sorted(obj.items())
+                          for k, v in obj.items()
                           if not (isinstance(k, str) and
                                   k.startswith('_cache')))
     

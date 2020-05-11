@@ -131,6 +131,30 @@ def test_serializer_hash_mutable():
     # test special serializer
     encode = cache.make_serializer('hash_mutable')
     assert encode({'a': 1, 'b': 2}) == encode({'b': 2, 'a': 1})
+    
+    c1 = collections.OrderedDict([('a', 1), ('b', 2)])
+    c2 = collections.OrderedDict([('b', 2), ('a', 1)])
+    assert cache.hash_mutable(c1) != cache.hash_mutable(c2)
+    assert cache.hash_mutable(dict(c1)) == cache.hash_mutable(dict(c2))
+    
+    
+    class Test():
+        """ test class that neither implements __eq__ nor __hash__ """
+        def __init__(self, a):
+            self.a = a
+            
+    assert cache.hash_mutable(Test(1)) != cache.hash_mutable(Test(1)) 
+
+    class TestEq():
+        """ test class that only implements __eq__ and not __hash__ """
+        def __init__(self, a):
+            self.a = a
+            
+        def __eq__(self, other):
+            return self.a == other.a
+            
+    assert cache.hash_mutable(TestEq(1)) == cache.hash_mutable(TestEq(1)) 
+    assert cache.hash_mutable(TestEq(1)) != cache.hash_mutable(TestEq(2)) 
 
 
 
