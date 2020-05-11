@@ -4,9 +4,6 @@ Integration tests that use multiple modules together
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-
-import tempfile
-
 import numpy as np
 
 from .. import UnitGrid, CartesianGrid, ScalarField, DiffusionPDE, FileStorage
@@ -15,15 +12,15 @@ from ..tools.misc import skipUnlessModule
 
 
 @skipUnlessModule('h5py')
-def test_writing_to_storage():
+def test_writing_to_storage(tmp_path):
     """ test whether data is written to storage """
     state = ScalarField.random_uniform(UnitGrid([3]))
     pde = DiffusionPDE()
-    with tempfile.NamedTemporaryFile(suffix='.hdf5', delete=True) as file:
-        data = FileStorage(filename=file.name)
-        pde.solve(state, t_range=1.1, dt=0.1, tracker=[data.tracker(0.5)])
-        
-        assert len(data) == 3
+    path = tmp_path / 'test_writing_to_storage.hdf5'
+    data = FileStorage(filename=path)
+    pde.solve(state, t_range=1.1, dt=0.1, tracker=[data.tracker(0.5)])
+    
+    assert len(data) == 3
 
 
 

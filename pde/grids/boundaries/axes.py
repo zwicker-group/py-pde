@@ -63,7 +63,8 @@ class Boundaries(list):
 
     
     @classmethod
-    def from_data(cls, grid: GridBase, boundaries) -> "Boundaries":
+    def from_data(cls, grid: GridBase, boundaries, rank: int = 0) \
+            -> "Boundaries":
         """
         Creates all boundaries from given data
         
@@ -79,6 +80,9 @@ class Boundaries(list):
                 * string specifying a single type for all boundaries
                 * dictionary specifying the type and values for all boundaries
                 * tuple pair specifying the low and high boundary individually
+            rank (int):
+                The tensorial rank of the value associated with the boundary
+                conditions.
                 
         """
         # handle boundary conditions that are set to natural
@@ -99,17 +103,17 @@ class Boundaries(list):
         # create the list of BoundaryAxis objects
         if isinstance(boundaries, (str, dict)):
             # one specification for all axes
-            bcs = [get_boundary_axis(grid, i, boundaries)
+            bcs = [get_boundary_axis(grid, i, boundaries, rank=rank)
                    for i in range(grid.num_axes)]
             
         elif len(boundaries) == grid.num_axes:
             # assume that data is given for each boundary
-            bcs = [get_boundary_axis(grid, i, boundary)
+            bcs = [get_boundary_axis(grid, i, boundary, rank=rank)
                    for i, boundary in enumerate(boundaries)]
             
         elif grid.num_axes == 1 and len(boundaries) == 2:
             # special case where the two sides can be specified directly
-            bcs = [get_boundary_axis(grid, 0, boundaries)]
+            bcs = [get_boundary_axis(grid, 0, boundaries, rank=rank)]
             
         else:
             raise ValueError(f'Unsupported boundary format: `{boundaries}`. '
@@ -122,6 +126,11 @@ class Boundaries(list):
         if not isinstance(other, Boundaries):
             return NotImplemented
         return super().__eq__(other) and self.grid == other.grid
+    
+    
+    def _cache_hash(self) -> int:
+        """ returns a value to determine when a cache needs to be updated """ 
+        return hash(tuple(bc_ax._cache_hash() for bc_ax in self))
     
     
     def check_value_rank(self, rank: int):

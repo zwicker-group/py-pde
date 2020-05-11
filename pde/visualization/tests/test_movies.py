@@ -2,9 +2,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-import os
-import tempfile
-
 from .. import movies
 from ...grids import UnitGrid
 from ...fields import ScalarField
@@ -15,7 +12,7 @@ from ...tools.misc import skipUnlessModule
 
 
 @skipUnlessModule("matplotlib")
-def test_movie():
+def test_movie(tmp_path):
     """ test Movie class"""
     import matplotlib.pyplot as plt
     
@@ -25,18 +22,22 @@ def test_movie():
         movie.add_figure()
         movie.add_figure()
         
-        with tempfile.TemporaryDirectory() as path:
-            movie.save_frames(path + '/frame_%09d.png')
-            num_files = sum(1
-                            for e in os.scandir(path)
-                            if e.is_file() and not e.name.startswith('.'))
-            assert num_files == 2
+        folder = tmp_path / 'test_movie' 
+        folder.mkdir(exist_ok=True)
+        movie.save_frames(folder / "frame_%09d.png")
+        num_files = sum(1
+                        for e in folder.iterdir()
+                        if e.is_file() and not e.name.startswith('.'))
+        assert num_files == 2
     
-        with tempfile.NamedTemporaryFile(suffix='.mov') as fp:        
-            try:
-                movie.save(fp.name)
-            except FileNotFoundError:
-                pass  # can happen when ffmpeg is not installed
+        # save movie
+        path = tmp_path / "test_movie.mov"
+        try:
+            movie.save(path)
+        except FileNotFoundError:
+            pass  # can happen when ffmpeg is not installed
+        else:
+            assert path.stat().st_size > 0
 
 
 

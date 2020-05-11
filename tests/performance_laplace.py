@@ -95,8 +95,8 @@ def flexible_laplace_2d(bcs):
     dx_2 = 1 / dx**2
     dim_x, dim_y = bcs.grid.shape
      
-    region_x = bc_x.get_region_evaluator()
-    region_y = bc_y.get_region_evaluator()
+    region_x = bc_x.make_region_evaluator()
+    region_y = bc_y.make_region_evaluator()
      
     @jit_allocate_out
     def laplace(arr, out=None):
@@ -186,7 +186,7 @@ def main():
                 # call once to pre-compile and test result 
                 np.testing.assert_allclose(laplace(data), result)
                 speed = estimate_computation_speed(laplace, data)
-                print(f'{method:>8s}: {int(speed)}')
+                print(f'{method:>8s}: {int(speed):>9d}')
             print()
  
     # Cylindrical grid with different shapes
@@ -208,7 +208,7 @@ def main():
             # call once to pre-compile and test result 
             np.testing.assert_allclose(laplace(data), result)
             speed = estimate_computation_speed(laplace, data)
-            print(f'{method:>8s}: {int(speed)}')
+            print(f'{method:>8s}: {int(speed):>9d}')
         print()
 
     # Spherical grid with different shapes
@@ -224,7 +224,8 @@ def main():
             # call once to pre-compile 
             laplace(data)
             speed = estimate_computation_speed(laplace, data)
-            print(f' numba (conservative={str(conservative):<5}): {int(speed)}')
+            print(f' numba (conservative={str(conservative):<5}): '
+                  f'{int(speed):>9d}')
         print()
 
 

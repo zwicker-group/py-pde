@@ -127,7 +127,7 @@ class Movie:
         for f in frames:
             shutil.copy(
                 "%s/frame_%09d.png" % (self.image_folder, f),
-                filename_pattern % f
+                str(filename_pattern) % f
             )
 
 
@@ -160,7 +160,7 @@ class Movie:
             "-i", "%s/frame_%%09d.png" % self.image_folder,  # input data
             "-pix_fmt", "yuv420p",  # pixel format for compatibility
             "-b:v", "1024k",  # high bit rate for good quality
-            filename  # output file
+            str(filename)  # output file
         ]
 
         # spawn the subprocess and capture its output

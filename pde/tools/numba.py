@@ -310,7 +310,54 @@ def jit_allocate_out(func: Callable,
                  
         return wrapper  # type: ignore
     
+
+
+if nb.config.DISABLE_JIT:    
+    # dummy function that creates a ctypes pointer
+    def address_as_void_pointer(addr):
+        """ returns a void pointer from a given memory address
+        
+        Example:
+            This can for instance be used together with `numba.carray`:
+            
+            >>> addr = arr.ctypes.data
+            >>> numba.carray(address_as_void_pointer(addr), arr.shape, arr.dtype
+            
+        Args:
+            addr (int): The memory address
+            
+        Returns:
+            :class:`ctypes.c_void_p`: Pointer to the memory address
+        """
+        import ctypes
+        return ctypes.cast(addr, ctypes.c_void_p)
     
+else:
+    # actually useful function that creates a numba pointer
+    @nb.extending.intrinsic
+    def address_as_void_pointer(typingctx, src):
+        """ returns a void pointer from a given memory address
+        
+        Example:
+            This can for instance be used together with `numba.carray`:
+            
+            >>> addr = arr.ctypes.data
+            >>> numba.carray(address_as_void_pointer(addr), arr.shape, arr.dtype
+            
+        Args:
+            addr (int): The memory address
+            
+        Returns:
+            :class:`numba.core.types.voidptr`: Pointer to the memory address
+        """
+        from numba.core import types, cgutils
+        sig = types.voidptr(src)
+        
+        def codegen(cgctx, builder, sig, args):
+            return builder.inttoptr(args[0], cgutils.voidptr_t)
+        return sig, codegen
+
+
 
 if NUMBA_VERSION < [0, 45]:
     warnings.warn('Your numba version is outdated. Please install at least '

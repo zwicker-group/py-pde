@@ -107,7 +107,8 @@ class PDEBase(metaclass=ABCMeta):
             rhs._backend = 'numpy'  # type: ignore
             
         elif backend != 'auto':
-            raise ValueError(f'Unknown backend `{backend}`')
+            raise ValueError(f"Unknown backend `{backend}`. Possible values "
+                             "are ['auto', 'numpy', 'numba']")
         
         if (self.check_implementation and
                 rhs._backend == 'numba'):  # type: ignore

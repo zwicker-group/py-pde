@@ -1,0 +1,382 @@
+\documentclass[
+	superscriptaddress,
+	twocolumn,
+	aps, prl
+]{revtex4-1}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+
+\input{../common.tex}
+\newcommand{\dx}{\Delta x}
+\newcommand{\dr}{\Delta r}
+\renewcommand{\L}{_\mathrm{L}}
+\newcommand{\R}{_\mathrm{R}}
+\newcommand{\dom}{\Omega}
+\newcommand{\bndry}{\partial\Omega}
+
+\begin{document}
+
+\title{Boundary conditions in the finite difference python package `py-pde`}
+\author{David Zwicker}
+\date{\today}
+
+\begin{abstract}
+We here document the differential operators and the associated boundary conditions that are used in the finite difference approximation.
+\end{abstract}
+
+
+\maketitle
+\tableofcontents
+
+
+\section{General considerations}
+We start with general considerations that are independent of the grid type.
+
+\subsection{Differential operators}
+We first define the differential operators that act on fields defined in a domain~$\dom$.
+In particular, we discuss the boundary conditions that can be enforced with each type of operator.
+
+\paragraph{Laplace operator:}
+The Laplace operator $\partial_\alpha^2 c$ is defined to act on scalar fields~$c(\vect r)$.
+Possible boundary conditions are
+\begin{salign}[eqn:bc_laplace]
+	\text{value:} &&	c &= A
+\\
+	\text{derivative:} && n_\alpha \partial_\alpha c &= B
+\end{salign}
+which are applied at positions $\vect r \in \bndry$.
+Consequently, either the value~$A$ of the field can be determined, \ie, $c(\vect r) = A$ at $\vect r \in \bndry$, or the derivative can be specified, $n_\alpha \partial_\alpha c = B$, where $n_\alpha$ is the outwards oriented normal vector at the boundary.
+
+
+\paragraph{Gradient operator:}
+The gradient operator $\partial_\alpha c$ acts on a scalar field $c(\vect r)$ yielding a vector field.
+Possible boundary conditions are
+\begin{salign}[eqn:bc_gradient]
+	\text{value:} &&	c &= A
+\\
+	\text{derivative:} && n_\alpha \partial_\alpha c &= B
+\end{salign}
+
+\paragraph{Divergence operator:}
+The divergence operator $\partial_\alpha v_\alpha$ acts on a vector field $v_\alpha(\vect r)$ with possible boundary conditions
+\begin{salign}[eqn:bc_divergence]
+	\text{value:} && n_\alpha v_\alpha  &= A
+\\
+	\text{derivative:} && \partial_\alpha v_\alpha &= B
+\end{salign}
+Note that the Dirichlet condition in this case imposes the dot product between the normal vector and the vector field, which in a simple 1d system implies $v_1(x=x\L)=-A$ and $v_1(x=x\R)=A$ for the lower and upper boundary, respectively.
+
+\paragraph{Vector gradient operator:}
+The vector gradient  operator $\partial_\alpha v_\beta$ acts on a vector field $v_\alpha(\vect r)$ and yields a tensorial field.
+This operator can be though of as a gradient applied to each component of $v_\beta$ and the boundary conditions thus are also applied to each component,
+\begin{salign}
+	\text{value:} &&	v_\alpha &= A_\alpha
+\\
+	\text{derivative:} && n_\alpha \partial_\alpha v_\beta &= B_\beta
+\end{salign}
+
+\paragraph{Tensor divergence operator:}
+The vector gradient  operator $\partial_\beta t_{\alpha\beta}$ acts on a tensor field $t_{\alpha\beta}(\vect r)$ and yields a vector field.
+This operator can be though of as a divergence applied along the $\beta$-direction to each $\alpha$-component.
+The boundary conditions thus are applied to each component,
+\begin{subequations}
+\begin{align}
+	\text{value:} &&	n_\beta t_{\alpha\beta} &= A_\alpha
+\\
+	\text{derivative:} &&\partial_\beta t_{\alpha\beta}&= B_\alpha
+\end{align}
+\end{subequations}
+
+\paragraph{Operators not implemented:}
+Currently not implemented are the following operators
+\begin{subequations}
+\begin{align}
+	\text{Curl:} &&
+		\epsilon_{\alpha\beta\gamma} \partial_\beta v_\gamma
+\\
+	\text{Vector laplacian:} &&
+		\partial_\alpha^2 v_\beta
+\\
+	\text{Material derivative:}&&
+		w_\alpha \partial_\alpha v_\beta
+\end{align} 
+\end{subequations}
+
+
+%\subsection{Boundary conditions of compound operators}
+%The Laplace operator can be written as a gradient operator followed by a divergence operator, $\partial_\alpha^2 c = \partial_\alpha(\partial_\alpha c)$.
+%When implementing the involved operators in finite difference, one necessarily needs to determine boundary conditions for all three differential operators.
+%Clearly, boundary conditions given in \Eqref{eqn:bc_laplace} for the Laplace operator can also be applied to the gradient operator, which employs the same conditions; see \Eqref{eqn:bc_gradient}.
+%Conversely, the boundary conditions on the divergence operator specify 
+
+
+
+\section{Cartesian Grid}
+We consider a linear domain of length $L$ discretized by $N$ support points.
+We place these points equidistantly at $x_n = (n+\frac12)\dx$ for $n=0,1,\ldots, N-1$ using the discretization $\dx=L/N$.
+Any function $y=f(x)$ is then represented by discretized values $y_n = f(x_n)$.
+
+In the finite difference schemes we discuss, we require differential operators of first and second order.
+Targeting second order accuracy, we obtain these as 
+\begin{subequations}
+\begin{align}
+	f'(x_n) &\sim \frac{y_{n+1} - y_{n-1}}{2\dx}
+\\	
+	f''(x_n) &\sim \frac{y_{n+1} - 2 y_n + y_{n-1}}{\dx^2}
+\end{align}
+\end{subequations}
+where $\sim$ denotes the finite difference approximation.
+
+These derivatives can only be evaluated directly for $n=1,2,\ldots, n-2$, while the boundary points $n=0$ and $n=N-1$ require knowledge of the value at the respective virtual points $x_{-1}$ and $x_N$ outside the domain.
+We can derive expressions for the associated function values $y_{-1}$ and $y_N$  taking the boundary conditions in to account, which typically specify the value at the boundary or the (outward) derivative.
+A particular simple case are periodic boundary conditions, where we have $y_{-1} = y_{N-1}$ and $y_N = y_0$, allowing the above formula to be used everywhere.
+For more complicated boundary conditions, we need to treat both sides separately.
+
+\subsection{Lower boundary}
+Let us first consider conditions at the lower boundary, which we place at $x=0$.
+We thus need to evaluate the virtual support point $y_{-1}$ from the boundary condition.
+Using estimates for the value and the derivative at the boundary,
+\begin{align}
+	f(0) &\sim \frac{y_0 + y_{-1}}{2}
+&
+	f'(0) &\sim \frac{y_0 - y_{-1}}{\dx}
+\end{align}
+we can now handle several boundary conditions.
+
+\paragraph{Dirichlet (Constant value):}
+Assuming the boundary condition $f(0) = a$, we obtain $y_{-1} = 2a - y_0$.
+
+\paragraph{Neumann (Constant derivative):}
+Here, we consider the boundary condition $-f'(0) = b$, which specifies the outward derivative to equal the value $b$.
+We obtain $y_{-1} = y_0 + b \dx$.
+
+\paragraph{Robin (Mixed):}
+Assuming the boundary condition $-f'(0) + c f(0) = b $, we obtain $y_{-1} = A - B y_0$
+where 
+\begin{align}
+	A &= \frac{2\dx}{c \dx + 2} b
+&
+	B &= \frac{c\dx - 2}{c \dx + 2}
+\end{align}
+%Hence,
+%\begin{align}
+%	\takenat{\pfrac{^2 f}{x^2}}{x_0} \sim \frac{A - (2 + B) y_0 + y_{1}}{\dx^2}
+%\end{align}
+As a sanity check, we obtain Dirichlet conditions in the limit $b \rightarrow \infty$ with $b/c = a$, where $A=2a, B=1$.
+Likewise, we recover Neumann condition for $c=0$.
+
+\paragraph{Summary:}
+Taken together, we can express the value of the support point as
+\begin{align}
+	y_{-1} &= \alpha\L + \beta\L y_{k\L}
+	\;,
+\end{align}
+where the coefficients $\alpha\L$, $\beta\L$, and $k\L$ are taken from \tabref{tab:cartesian_lower}.
+
+
+\begin{table}[t]
+\caption{\label{tab:cartesian_lower}%
+Coefficients for lower cartesian boundary
+}
+\begin{ruledtabular}
+	\begin{tabular}{cccc}
+		Boundary condition & Offset $\alpha\L$ & Pre-factor $\beta\L$  & Index $k\L$\\
+		\colrule
+		Periodic & $0$ & $1$ & $N-1$ \\
+		Dirichlet & $2a$ & $-1$ & $0$ \\
+		Neumann & $b\dx$ & $1$  & $0$ \\
+		Robin & $\frac{2b\dx}{2 + c \dx}$ &
+				$\frac{2 - c\dx}{2 + c \dx}$ & $0$ \\
+	\end{tabular}
+\end{ruledtabular}
+\end{table}
+
+
+\subsection{Upper boundary}
+The upper boundary at $x=L$ can be treated analogously to the lower one by introducing a virtual point at $x=x_N$.
+Consequently, we find the following conditions for the virtual support point $y_N$:
+\paragraph{Dirichlet (Constant value):}
+Assuming the boundary condition $f(L) = a$, we obtain $y_N = 2a - y_{N-1}$.
+
+\paragraph{Neumann (Constant derivative):}
+Here, we consider the boundary condition $f'(L) = b$, which specifies the outward derivative to equal the value $b$.
+We obtain $y_N = y_{N-1} + b \dx$.
+
+
+Taken together, we express the value at the virtual support point as
+\begin{align}
+	y_N &= \alpha\R + \beta\R y_{k\R}
+	\;,
+\end{align}
+where the coefficients $\alpha\R$, $\beta\R$, and $k\R$ are taken from \tabref{tab:cartesian_upper}.
+
+
+\begin{table}[t]
+\caption{\label{tab:cartesian_upper}%
+Coefficients for upper cartesian boundary
+}
+\begin{ruledtabular}
+	\begin{tabular}{cccc}
+		Boundary condition & Offset $\alpha\R$ & Pre-factor $\beta\R$  & Index $k\R$\\
+		\colrule
+		Periodic & $0$ & $1$ & $0$ \\
+		Dirichlet & $2a$ & $-1$ & $N-1$ \\
+		Neumann & $b\dx$ & $1$  & $N-1$ \\
+		Robin & $\frac{2b\dx}{2 + c \dx}$ &
+				$\frac{2 - c\dx}{2 + c \dx}$ & $N-1$ \\
+	\end{tabular}
+\end{ruledtabular}
+\end{table}
+
+
+\section{Cylindrical Grid}
+We here consider fields in $3$ dimensions that possess angular symmetry and thus only depend on the radial coordinate~$r$ and the axial coordinate~$z$.
+Clearly, the axial coordinate behaves exactly as the Cartesian ones described above, so we here only have to deal with the polar symmetry.
+Similar to Cartesian grids, we discretize the associated radial coordinate as $r_n = r_0 + (n + \frac12) \dr$, where $r_0$ is the inner radius, which often will be zero.
+
+The radial part of the gradient operator in cylindrical coordinates is simply given by $\partial_r f(r)$ and thus obeys the same discretization as in a Cartesian grid.
+The divergence of a vector field $v_\alpha(r) = \rho(r) \vect e_r$ reads
+$\partial_\alpha v_\alpha(r) =  \rho'(r) + \frac{\rho(r)}{r}$, implying the discretized version
+\begin{align}
+	\partial_\alpha v_\alpha \sim
+		\frac{y_{n+1} - y_{n-1}}{2\dr}
+		+ \frac{y_n}{r_n}
+\end{align}
+Moreover, the Laplace operator in spherical coordinates reads $\nabla^2 f(r) = f''(r) + \frac{f'(r)}{r}$, which in the discretized version becomes
+\begin{align}
+	\partial_\alpha^2 f \sim
+		\frac{y_{n+1} - 2 y_n + y_{n-1}}{\dr^2}
+		+ \frac{y_{n+1} - y_{n-1}}{2 r_n \dr}
+\end{align}
+
+\subsection{Boundary condition at the origin}
+Due to the symmetry, only vanishing derivatives are allowed at the inner boundary at the origin, implying the virtual support point $y_{-1} = y_0$.
+Hence, the differential operators become
+\begin{subequations}
+\begin{align}
+	\takenat{\partial_\alpha v_\alpha(r)}{r=0} &\sim
+		\frac{y_1 - y_0}{2\dr}
+		+ \frac{2y_0}{\dr}
+\\
+	\takenat{\partial_\alpha^2 f(r)}{r=0} &\sim
+		2\frac{y_1 - y_0}{\dr^2}
+%		\frac{y_1 - 2 y_0 + y_0}{\dr^2}
+%		+ \frac{2(y_1 - y_0)}{\dr^2}
+%		\frac{3y_1 -  3y_0}{\dr^2}
+\end{align}
+\end{subequations}
+
+
+\subsection{Boundary condition at the outer side}
+At the outer boundary, we can impose boundary conditions similar to the Cartesian grid.
+
+\paragraph{Dirichlet (Constant value):}
+Assuming the boundary condition $f(R) = a$, we obtain $y_N = 2a - y_{N-1}$.
+
+\paragraph{Neumann (Constant derivative):}
+Here, we consider the boundary condition $f'(L) = b$, which specifies the outward derivative to equal the value $b$.
+We obtain $y_n = y_{n-1} + b \dx$.
+
+
+
+\section{Spherical Grid}
+We here consider fields that a spherically symmetric in $3$ dimensions and thus only depend on the radial coordinate~$r$.
+Similar to Cartesian grids, we discretize the radial coordinate as $r_n = (n + \frac12) \dr$.
+
+The radial part fo the gradient operator in spherical coordinates is simply given by $\partial_r f(r)$ and thus obeys the same discretization as in a Cartesian grid.
+The divergence of a vector field $v_\alpha(r) = \rho(r) \vect e_r$ reads
+$\partial_\alpha v_\alpha(r) =  \rho'(r) + \frac{2\rho(r)}{r}$, implying the discretized version
+\begin{align}
+	\partial_\alpha v_\alpha \sim
+		\frac{y_{n+1} - y_{n-1}}{2\dr}
+		+ \frac{2y_n}{r_n}
+\end{align}
+Moreover, the naive implementation of Laplace operator in spherical coordinates reads $\nabla^2 f(r) = f''(r) + \frac{2f'(r)}{r}$, which in the discretized version becomes
+\begin{align}
+	\partial_\alpha^2 f \sim
+		\frac{y_{n+1} - 2 y_n + y_{n-1}}{\dr^2}
+		+ \frac{y_{n+1} - y_{n-1}}{r_n \dr}
+\end{align}
+Note that this form of the Laplace operator is not conservative, \ie, the discretized version of the integral $\int \partial_\alpha^2 f \diff r$  does not vanish.
+
+A conservative operator can be derived by integrating the definition of the Laplace operator over one spherical shell from $r=r_n - \dr/2$ to $r=r_n  + \dr/2$,
+\begin{subequations}
+\begin{align}
+%	r^2 \partial_\alpha^2 f &= \partial_r\bigl(r^2 \partial_r f(r)\bigr)
+%\\
+	\int_{r_n - \dr/2}^{r_n + \dr/2} r^2 \partial_\alpha^2 f \diff r
+		&= \int_{r_n - \dr/2}^{r_n + \dr/2} \partial_r\bigl(r^2 \partial_r f(r)\bigr) \diff r
+\\
+	\partial_\alpha^2 f \left[ \frac{r^3}{3} \right]_{r_n - \dr/2}^{r_n + \dr/2}
+		&\sim \Bigl[r^2 \partial_r f(r)\Bigr]_{r_n - \dr/2}^{r_n + \dr/2}
+\end{align}
+\end{subequations}
+where we skipped the factors $4\pi$ stemming from the angle integration.
+Using $r_n = r_0 + (n + \frac12)\dr$ and introduced the (normalized) shell volumes
+\begin{align}
+%	V_n &= \frac{\dr^3}{3}\bigl[(n + 1)^3 - n^3\bigr]
+	V_n &= \frac{1}{3}\left[
+		\left(r_n + \frac{\dr}{2}\right)^3 - 
+		\left(r_n - \frac{\dr}{2}\right)^3
+	\right]
+\notag\\&= \dr \left(	r_n^2 + \frac{\dr^2}{12} \right)
+\end{align}
+we then arrive at
+\begin{align}
+	\partial_\alpha^2 f
+%		&\sim \dr^2 \frac{(n + 1)^2 f'\left(r_n + \frac{\dr}{2}\right) - n^2 f'\left(r_n - \frac{\dr}{2}\right)}{V_n}
+		&\sim \frac{r_{n+\frac12}^2 f'\left(r_{n+\frac12}\right) - r_{n-\frac12}^2 f'\left(r_{n-\frac12}\right)}{V_n}
+\end{align}
+where the derivatives $f'(r)$ are evaluated at the midpoints can can thus be evaluated using
+\begin{subequations}
+\begin{align}
+	f'\left(r_n + \frac{\dr}{2}\right) \sim \frac{y_{n+1} - y_n}{\dr}
+\\
+	f'\left(r_n - \frac{\dr}{2}\right) \sim \frac{y_n - y_{n-1}}{\dr}
+\end{align}
+\end{subequations}
+In the special case $r_0=0$, we then arrive at
+\begin{align}
+	\partial_\alpha^2 f
+		&\sim \frac{3}{\dr^2} \, \frac{(n + 1)^2 (y_{n+1} - y_n) - n^2 (y_n - y_{n-1})}{(n + 1)^3 - n^3}
+	\;,
+\end{align}
+which is a conservative discretization of the spherical laplacian by construction.
+
+\subsection{Boundary condition at the origin}
+Due to the symmetry, only vanishing derivatives are allowed at the inner boundary at the origin, implying the virtual support point $y_{-1} = y_0$.
+Hence, the differential operators become
+\begin{subequations}
+\begin{align}
+	\takenat{\partial_\alpha v_\alpha(r)}{r=0} &\sim
+		\frac{y_1 - y_0}{2\dr}
+		+ \frac{4y_0}{\dr}
+\\
+	\takenat{\partial_\alpha^2 f(r)}{r=0} &\sim
+%		\frac{y_1 - 2 y_0 + y_0}{\dr^2}
+%		+ \frac{2(y_1 - y_0)}{\dr^2}
+		3\frac{y_1 -  y_0}{\dr^2}
+\end{align}
+\end{subequations}
+Note that the latter expression applies to both the non-conservative and the conservative form of the Laplacian.
+
+\subsection{Boundary condition at the outer side}
+At the outer boundary, we can impose boundary conditions similar to the Cartesian grid.
+
+\paragraph{Dirichlet (Constant value):}
+Assuming the boundary condition $f(R) = a$, we obtain $y_N = 2a - y_{N-1}$.
+
+\paragraph{Neumann (Constant derivative):}
+Here, we consider the boundary condition $f'(L) = b$, which specifies the outward derivative to equal the value $b$.
+We obtain $y_n = y_{n-1} + b \dx$.
+
+
+
+
+%\bibliographystyle{apsrev4-1}
+%\bibliography{bibdesk.bib}
+
+\end{document}  

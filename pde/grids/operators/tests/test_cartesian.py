@@ -19,7 +19,7 @@ from ....fields import ScalarField
 
 
 
-def _get_random_grid_bcs(ndim: int, dx='random', periodic='random'):
+def _get_random_grid_bcs(ndim: int, dx='random', periodic='random', rank=0):
     """ create a random Cartesian grid with natural bcs """
     shape = np.random.randint(2, 5, ndim)
     
@@ -35,7 +35,7 @@ def _get_random_grid_bcs(ndim: int, dx='random', periodic='random'):
         
     sizes = [(0, s * d) for s, d in zip(shape, dx)]
     grid = CartesianGrid(sizes, shape, periodic=periodic)
-    return grid.get_boundary_conditions('natural')
+    return grid.get_boundary_conditions('natural', rank=rank)
 
 
 
@@ -186,7 +186,7 @@ def test_divergence(ndim):
 @pytest.mark.parametrize('ndim', [1, 2, 3])
 def test_vector_gradient(ndim):
     """ test different vector gradient operators """
-    bcs = _get_random_grid_bcs(ndim, dx='uniform', periodic='random')
+    bcs = _get_random_grid_bcs(ndim, dx='uniform', periodic='random', rank=1)
     mvg = ops.make_vector_gradient
     op1 = mvg(bcs, method='scipy')
     op2 = mvg(bcs, method='numba')
@@ -200,7 +200,7 @@ def test_vector_gradient(ndim):
 @pytest.mark.parametrize('ndim', [1, 2, 3])
 def test_vector_laplace(ndim):
     """ test different vector laplace operators """
-    bcs = _get_random_grid_bcs(ndim, dx='uniform', periodic='random')
+    bcs = _get_random_grid_bcs(ndim, dx='uniform', periodic='random', rank=1)
     mvg = ops.make_vector_laplace
     op1 = mvg(bcs, method='scipy')
     op2 = mvg(bcs, method='numba')
@@ -214,7 +214,7 @@ def test_vector_laplace(ndim):
 @pytest.mark.parametrize('ndim', [1, 2, 3])
 def test_tensor_divergence(ndim):
     """ test different tensor divergence operators """
-    bcs = _get_random_grid_bcs(ndim, dx='uniform', periodic='random')
+    bcs = _get_random_grid_bcs(ndim, dx='uniform', periodic='random', rank=1)
     op1 = ops.make_tensor_divergence(bcs, method='scipy')
     op2 = ops.make_tensor_divergence(bcs, method='numba')
     arr = np.random.random((ndim, ndim) + bcs.grid.shape)
@@ -337,8 +337,8 @@ def test_2nd_order_bc():
 def test_make_derivative(ndim, axis):
     """ test the make derivative function """
     periodic = random.choice([True, False])
-    grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 128, periodic=periodic)
-    field = ScalarField.random_harmonic(grid, modes=2, axis_combination=np.add)
+    grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
+    field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add)
     
     bcs = grid.get_boundary_conditions('natural')
     grad = field.gradient(bcs)

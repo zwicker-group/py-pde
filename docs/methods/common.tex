@@ -1,0 +1,145 @@
+% This file defines common macros used in many LaTeX files.
+% They are collected here for convenience use.
+
+% packages
+\usepackage{amsmath}
+\usepackage{xcolor}
+\usepackage{dsfont} % double stroke font
+\usepackage{xspace}
+\usepackage{xparse}
+
+
+% abbrevations - use \mbox instead of \nolinebreak since this works in captions, too
+\newcommand{\ie}{\mbox{i.\hspace{0.125em}e.}\@\xspace}
+\newcommand{\eg}{\mbox{e.\hspace{0.125em}g.}\@\xspace}
+\newcommand{\etal}{\mbox{et al.}\@\xspace}
+\newcommand{\kb}{k_\textnormal{B}}
+\newcommand{\kB}{k_\textnormal{B}}
+\newcommand{\kbT}{k_\textnormal{B}T}
+\newcommand{\kBT}{k_\textnormal{B}T}
+\newcommand{\const}{\text{const.}}
+
+% colors, which are often used
+\definecolor{plot1}{RGB}{6,115,183}
+\definecolor{plot2}{RGB}{255,118,0}
+\definecolor{plot3}{RGB}{0,169,25}
+\definecolor{plot4}{RGB}{230,0,28}
+\definecolor{plot5}{RGB}{0,0,0}
+\definecolor{plotBlue}{RGB}{6,115,183}
+\definecolor{plotOrange}{RGB}{255,118,0}
+\definecolor{plotGreen}{RGB}{0,169,25}
+\definecolor{plotRed}{RGB}{230,0,28}
+
+% draft commands
+\newcommand{\fixme}[1]{\textcolor{red}{FIXME: #1}}
+\newcommand{\todo}[1]{\textcolor{red}{TODO: #1}}
+\newcommand{\edit}[1]{\textcolor{blue}{#1}}
+
+% references - use \mbox instead of \nolinebreak since this works in captions, too
+\newcommand{\Eqref}[1]{\mbox{Eq.\hspace{0.25em}\eqref{#1}}}
+\newcommand{\Eqsref}[1]{\mbox{Eqs.\hspace{0.25em}\eqref{#1}}}
+\newcommand{\figref}[1]{\mbox{Fig.\hspace{0.25em}\ref{#1}}}
+\newcommand{\figsref}[1]{\mbox{Figs.\hspace{0.25em}\ref{#1}}}
+\newcommand{\tabref}[1]{\mbox{Tab.\hspace{0.25em}\ref{#1}}}
+\newcommand{\refcite}[1]{\mbox{Ref.\hspace{0.25em}\cite{#1}}}
+
+% math constructs
+\newcommand{\im}{{\mathbf{i}}}
+\newcommand{\diff}{\text{d}}
+\newcommand{\pfrac}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\deltafrac}[2]{\frac{\delta #1}{\delta #2}}
+\newcommand{\difffrac}[2]{\frac{\diff #1}{\diff #2}}
+\newcommand{\Difffrac}[2]{\frac{\text{D} #1}{\text{D} #2}}
+\newcommand{\takenat}[2]{\left.{#1}\right|_{#2}}
+\newcommand{\abs}[1]{|{#1}|}
+\newcommand{\Abs}[1]{\left| {#1} \right|}
+\newcommand{\norm}[1]{\|{#1}\|}
+\newcommand{\Norm}[1]{\left\| {#1} \right\|}
+\newcommand{\order}[1]{\mathcal{O}(#1)}
+\newcommand{\Order}[1]{\mathcal{O}\left(#1\right)}
+\newcommand{\set}[1]{\{{#1}\}}
+\newcommand{\Set}[1]{\left\{{#1}\right\}}
+\newcommand{\unity}{\mathds{1}}
+\newcommand{\identity}{\mathds{1}}
+\newcommand{\transpose}[1]{{#1}^\top}
+\newcommand{\scalarproduct}[2]{\langle #1 ,\, #2 \rangle}
+\newcommand{\Scalarproduct}[2]{\left\langle #1 ,\, #2 \right\rangle}
+
+% math font sizes
+\newcommand{\msmall}[1]{\mbox{\small $#1$}}
+\newcommand{\mscriptsize}[1]{\mbox{\scriptsize $#1$}}
+\newcommand{\mtiny}[1]{\mbox{\tiny $#1$}}
+
+%\newcommand{smallequation}[1]{\begingroup\small#1\endgroup}
+\newenvironment{smallequation}{\begingroup\small\ignorespaces}{\endgroup\ignorespacesafterend}
+
+% math sets
+\newcommand{\natnum}{\mathds{N}}
+\newcommand{\integers}{\mathds{Z}}
+\newcommand{\rationals}{\mathds{Q}}
+\newcommand{\reals}{\mathds{R}}
+\newcommand{\complexes}{\mathds{C}}
+
+% math operators
+\DeclareMathOperator{\arctanh}{arctanh}
+\DeclareMathOperator{\sech}{sech}
+\DeclareMathOperator{\sgn}{sgn}
+%\DeclareMathOperator{\max}{max}
+%\DeclareMathOperator{\min}{min}
+\DeclareMathOperator{\std}{std}
+\DeclareMathOperator{\var}{var}
+\DeclareMathOperator{\cov}{cov}
+\DeclareMathOperator{\CV}{Cv}
+\DeclareMathOperator{\STD}{STD}
+\DeclareMathOperator{\SEM}{SEM}
+\DeclareMathOperator{\erf}{erf}
+\DeclareMathOperator{\erfc}{erfc}
+\newcommand{\mean}[1]{\langle #1 \rangle}
+\newcommand{\Mean}[1]{\left\langle #1 \right\rangle}
+\renewcommand\Re{\operatorname{\mathfrak Re}}
+\renewcommand\Im{\operatorname{\mathfrak Im}}
+\newcommand{\Floor}[1]{\left\lfloor #1 \right\rfloor}
+\newcommand{\floor}[1]{\lfloor #1 \rfloor}
+\newcommand{\Ceil}[1]{\left\lceil #1 \right\rceil}
+\newcommand{\ceil}[1]{\lceil #1 \rceil}
+\newcommand{\Nabla}{\vect\nabla}
+
+% special words
+\newcommand{\gene}[1]{\mbox{\textit{#1}}}
+
+% special symbols
+\DeclareFontFamily{U}{mathx}{\hyphenchar\font45}
+\DeclareFontShape{U}{mathx}{m}{n}{<-> mathx10}{}
+\DeclareSymbolFont{mathx}{U}{mathx}{m}{n}
+\DeclareMathAccent{\widebar}{0}{mathx}{"73}
+\newcommand{\vect}{\boldsymbol}
+\newcommand{\mat}[1]{\underline{\underline{#1}}}
+
+% symbols for perturbation analysis
+\newcommand{\eps}{\varepsilon}
+\newcommand{\pert}{\widehat}
+\newcommand{\steady}{\widebar}
+\newcommand{\pprime}{\prime\prime}
+\newcommand{\ppprime}{\prime\prime\prime}
+
+% roman numbers with bars
+\def\barroman#1{\sbox0{#1}\dimen0=\dimexpr\wd0+1pt\relax
+  \makebox[\dimen0]{\rlap{\vrule width\dimen0 height 0.06ex depth 0.06ex}%
+    \rlap{\vrule width\dimen0 height\dimexpr\ht0+0.03ex\relax 
+            depth\dimexpr-\ht0+0.09ex\relax}%
+    \kern.5pt#1\kern.5pt}}
+ 
+% new environments
+\ExplSyntaxOn
+\NewDocumentEnvironment{salign} {o}
+{\subequations
+      \IfNoValueTF{#1} {}{\label{#1}}
+      \align}
+{\endalign\endsubequations}
+\ExplSyntaxOff
+
+% hyphenation
+
+\hyphenation{non-equilibrium}
+
+

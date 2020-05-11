@@ -46,8 +46,8 @@ def make_laplace(bcs: Boundaries) -> Callable:
     dim_r, dim_z = bcs.grid.shape
     dr_2, dz_2 = 1 / bcs.grid.discretization**2
     
-    value_outer = boundary_r.high.get_virtual_point_evaluator()
-    region_z = boundary_z.get_region_evaluator()
+    value_outer = boundary_r.high.make_virtual_point_evaluator()
+    region_z = boundary_z.make_region_evaluator()
     
     # use processing for large enough arrays 
     parallel = (dim_r * dim_z >= PARALLELIZATION_THRESHOLD_2D**2)
@@ -112,8 +112,8 @@ def make_gradient(bcs: Boundaries) -> Callable:
     dim_r, dim_z = bcs.grid.shape
     scale_r, scale_z = 1 / (2 * bcs.grid.discretization)
     
-    value_outer = boundary_r.high.get_virtual_point_evaluator()
-    region_z = boundary_z.get_region_evaluator()
+    value_outer = boundary_r.high.make_virtual_point_evaluator()
+    region_z = boundary_z.make_region_evaluator()
 
     # use processing for large enough arrays 
     parallel = (dim_r * dim_z >= PARALLELIZATION_THRESHOLD_2D**2)
@@ -171,8 +171,8 @@ def make_divergence(bcs: Boundaries) -> Callable:
     dr = bcs.grid.discretization[0]
     scale_r, scale_z = 1 / (2 * bcs.grid.discretization)
     
-    value_outer = boundary_r.high.get_virtual_point_evaluator()
-    region_z = boundary_z.get_region_evaluator()
+    value_outer = boundary_r.high.make_virtual_point_evaluator()
+    region_z = boundary_z.make_region_evaluator()
 
     # use processing for large enough arrays 
     parallel = (dim_r * dim_z >= PARALLELIZATION_THRESHOLD_2D**2)
@@ -307,10 +307,16 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
 
 
 # register all operators with the grid class
-CylindricalGrid.register_operator('laplace', make_laplace)
-CylindricalGrid.register_operator('gradient', make_gradient)
-CylindricalGrid.register_operator('divergence', make_divergence)
-CylindricalGrid.register_operator('vector_gradient', make_vector_gradient)
-CylindricalGrid.register_operator('vector_laplace', make_vector_laplace)
-CylindricalGrid.register_operator('tensor_divergence', make_tensor_divergence)
+CylindricalGrid.register_operator('laplace', make_laplace,
+                                  rank_in=0, rank_out=0)
+CylindricalGrid.register_operator('gradient', make_gradient,
+                                  rank_in=0, rank_out=1)
+CylindricalGrid.register_operator('divergence', make_divergence,
+                                  rank_in=1, rank_out=0)
+CylindricalGrid.register_operator('vector_gradient', make_vector_gradient,
+                                  rank_in=1, rank_out=2)
+CylindricalGrid.register_operator('vector_laplace', make_vector_laplace,
+                                  rank_in=1, rank_out=1)
+CylindricalGrid.register_operator('tensor_divergence', make_tensor_divergence,
+                                  rank_in=2, rank_out=1)
 

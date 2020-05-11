@@ -383,13 +383,17 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
             
 
     @fill_in_docstring
-    def get_boundary_conditions(self, bc='natural') -> "Boundaries":
+    def get_boundary_conditions(self, bc='natural', rank: int = 0) \
+            -> "Boundaries":
         """ constructs boundary conditions from a flexible data format
         
         Args:
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field. 
                 {ARG_BOUNDARIES}  
+            rank (int):
+                The tensorial rank of the value associated with the boundary
+                conditions.
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -397,7 +401,7 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
                 periodic axes of the grid. 
         """            
         from .boundaries import Boundaries  # @Reimport
-        return Boundaries.from_data(self, bc)
+        return Boundaries.from_data(self, bc, rank=rank)
     
 
 
@@ -566,7 +570,15 @@ class UnitGrid(CartesianGridBase):
         
         
     def get_subgrid(self, indices: Sequence[int]) -> "UnitGrid":
-        """ return a subgrid of only the specified axes """
+        """ return a subgrid of only the specified axes
+        
+        Args:
+            indices (list):
+                Indices indicating the axes that are retained in the subgrid
+                
+        Returns:
+            :class:`UnitGrid`: The subgrid
+        """
         subgrid = self.__class__(shape=[self.shape[i] for i in indices],
                                  periodic=[self.periodic[i] for i in indices])
         subgrid.axes = [self.axes[i] for i in indices]
@@ -793,7 +805,15 @@ class CartesianGrid(CartesianGridBase):
 
 
     def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":
-        """ return a subgrid of only the specified axes """
+        """ return a subgrid of only the specified axes
+        
+        Args:
+            indices (list):
+                Indices indicating the axes that are retained in the subgrid
+                
+        Returns:
+            :class:`CartesianGrid`: The subgrid
+        """
         subgrid = self.__class__(bounds=[self.axes_bounds[i] for i in indices],
                                  shape=[self.shape[i] for i in indices],
                                  periodic=[self.periodic[i] for i in indices])

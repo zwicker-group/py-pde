@@ -34,7 +34,10 @@ jobs:
         python -m mypy --config-file tests/mypy.ini --pretty --package pde
         
     - name: Test with pytest
+      env:
+        NUMBA_WARNINGS: 1
+        MPLBACKEND: agg
       run: |
         pip install pytest
         cd tests
-        ./tests_run.sh
+        python -m pytest -c pytest.ini -rs . ..

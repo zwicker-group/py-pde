@@ -52,8 +52,8 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
     r_min, r_max = bcs.grid.axes_bounds[0]
 
     # prepare boundary values
-    value_lower_bc = bcs[0].low.get_virtual_point_evaluator()
-    value_upper_bc = bcs[0].high.get_virtual_point_evaluator()
+    value_lower_bc = bcs[0].low.make_virtual_point_evaluator()
+    value_upper_bc = bcs[0].high.make_virtual_point_evaluator()
     
     if conservative:
         # create a conservative spherical laplace operator
@@ -181,8 +181,8 @@ def make_gradient(bcs: Boundaries) -> Callable:
     
     # prepare boundary values
     boundary = bcs[0]
-    value_lower_bc = boundary.low.get_virtual_point_evaluator()
-    value_upper_bc = boundary.high.get_virtual_point_evaluator()
+    value_lower_bc = boundary.low.make_virtual_point_evaluator()
+    value_upper_bc = boundary.high.make_virtual_point_evaluator()
     
     @jit_allocate_out(out_shape=(3, dim_r))
     def gradient(arr, out=None):
@@ -237,8 +237,8 @@ def make_divergence(bcs: Boundaries) -> Callable:
     
     # prepare boundary values
     boundary = bcs[0]
-    value_lower_bc = boundary.low.get_virtual_point_evaluator()
-    value_upper_bc = boundary.high.get_virtual_point_evaluator()
+    value_lower_bc = boundary.low.make_virtual_point_evaluator()
+    value_upper_bc = boundary.high.make_virtual_point_evaluator()
 
     if r_min == 0:
         @jit_allocate_out(out_shape=(dim_r,))
@@ -428,9 +428,15 @@ def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 # register all operators with the grid class
-SphericalGrid.register_operator('laplace', make_laplace)
-SphericalGrid.register_operator('gradient', make_gradient)
-SphericalGrid.register_operator('divergence', make_divergence)
-SphericalGrid.register_operator('vector_gradient', make_vector_gradient)
-SphericalGrid.register_operator('tensor_divergence', make_tensor_divergence)
-SphericalGrid.register_operator('poisson_solver', make_poisson_solver)
+SphericalGrid.register_operator('laplace', make_laplace,
+                                rank_in=0, rank_out=0)
+SphericalGrid.register_operator('gradient', make_gradient,
+                                rank_in=0, rank_out=1)
+SphericalGrid.register_operator('divergence', make_divergence,
+                                rank_in=1, rank_out=0)
+SphericalGrid.register_operator('vector_gradient', make_vector_gradient,
+                                rank_in=1, rank_out=2)
+SphericalGrid.register_operator('tensor_divergence', make_tensor_divergence,
+                                rank_in=2, rank_out=1)
+SphericalGrid.register_operator('poisson_solver', make_poisson_solver,
+                                rank_in=0, rank_out=0)

@@ -3,11 +3,11 @@
 '''
 
 import glob
+import sys
 import os
 import subprocess as sp
 from pathlib import Path
 from typing import List  # @UnusedImport
-from tempfile import NamedTemporaryFile
 
 import pytest
 import numba as nb
@@ -25,7 +25,7 @@ if not module_available("matplotlib"):
     SKIP_EXAMPLES.append('trackers.py')
 
 
-
+@pytest.mark.skipif(sys.platform == 'win32', reason="Assumes unix setup")
 @pytest.mark.skipif(nb.config.DISABLE_JIT,
                     reason='pytest seems to check code coverage')
 @pytest.mark.parametrize('path', EXAMPLES)
@@ -38,7 +38,7 @@ def test_example(path):
     
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
-    proc = sp.Popen(['python3', path], env=env, stdout=sp.PIPE,
+    proc = sp.Popen([sys.executable, path], env=env, stdout=sp.PIPE,
                     stderr=sp.PIPE)
     try:
         outs, errs = proc.communicate(timeout=30)
@@ -59,7 +59,7 @@ def test_example(path):
 @pytest.mark.skipif(nb.config.DISABLE_JIT,
                     reason='pytest seems to check code coverage')
 @pytest.mark.parametrize('path', NOTEBOOKS)
-def test_jupyter_notebooks(path):
+def test_jupyter_notebooks(path, tmp_path):
     """ run the jupyter notebooks """
     if os.path.basename(path).startswith('_'):
         pytest.skip('skip examples starting with an underscore')
@@ -68,7 +68,7 @@ def test_jupyter_notebooks(path):
     my_env = os.environ.copy()
     my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env["PATH"]        
         
-    with NamedTemporaryFile(suffix='.ipynb') as fp:
-        sp.check_call(['python3', '-m', 'jupyter', 'nbconvert', 
-                       '--to', 'notebook', '--output', fp.name,
-                       '--execute', path], env=my_env)
+    outfile = tmp_path / os.path.basename(path)
+    sp.check_call([sys.executable, '-m', 'jupyter', 'nbconvert', 
+                   '--to', 'notebook', '--output', outfile,
+                   '--execute', path], env=my_env)

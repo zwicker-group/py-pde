@@ -47,6 +47,9 @@ def hash_mutable(obj) -> int:
     Returns:
         int: A hash value associated with the data of `obj`
     """
+    if hasattr(obj, "_cache_hash"):
+        return int(obj._cache_hash())
+    
     # deal with some special classes
     if isinstance(obj, (list, tuple)):
         return _hash_iter(hash_mutable(v) for v in obj)
@@ -54,11 +57,18 @@ def hash_mutable(obj) -> int:
     if isinstance(obj, (set, frozenset)):
         return hash(frozenset(hash_mutable(v) for v in obj))
     
+    if isinstance(obj, collections.OrderedDict):
+        return _hash_iter((k, hash_mutable(v))
+                          for k, v in obj.items()
+                          if not (isinstance(k, str) and
+                                  k.startswith('_cache')))
+    
     if isinstance(obj, (dict, collections.abc.MutableMapping,
-                        collections.OrderedDict, collections.defaultdict,
-                        collections.Counter)):
-        return _hash_iter(frozenset((k, hash_mutable(v))
-                          for k, v in sorted(obj.items())))
+                        collections.defaultdict, collections.Counter)):
+        return hash(frozenset((k, hash_mutable(v))
+                              for k, v in sorted(obj.items())
+                              if not (isinstance(k, str) and
+                                      k.startswith('_cache'))))
     
     if isinstance(obj, np.ndarray):
         return hash(obj.tostring())

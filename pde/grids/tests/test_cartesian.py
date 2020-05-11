@@ -60,43 +60,47 @@ def test_generic_cartesian_grid():
 
 
 
-def test_unit_grid_1d():
+@pytest.mark.parametrize("periodic", [True, False])
+def test_unit_grid_1d(periodic):
     """ test 1D grids """
-    for periodic in [True, False]:
-        grid = UnitGrid(4, periodic=periodic)
-        assert grid.dim == 1
-        assert grid.numba_type == "f8[:]"
-        assert grid.volume == 4
-        np.testing.assert_array_equal(grid.discretization, np.ones(1))
-        dist, angle = grid.polar_coordinates_real(0, ret_angle=True)
-        if periodic:
-            np.testing.assert_allclose(dist, [0.5, 1.5, 1.5, 0.5])
-        else:
-            np.testing.assert_allclose(dist, np.arange(4) + 0.5)
-        assert angle.shape == (4,)
-        
-        grid = UnitGrid(8, periodic=periodic)
-        assert grid.dim == 1
-        assert grid.volume == 8
-
-        normalize = grid.normalize_point
-        if periodic:
-            np.testing.assert_allclose(normalize(-1e-10), 8 - 1e-10)
-            np.testing.assert_allclose(normalize(1e-10), 1e-10)
-            np.testing.assert_allclose(normalize(8 - 1e-10), 8 - 1e-10)
-            np.testing.assert_allclose(normalize(8 + 1e-10), 1e-10)
-        else:
-            for x in [-1e-10, 1e-10, 8 - 1e-10, 8 + 1e-10]:
-                np.testing.assert_allclose(normalize(x), x)
+    grid = UnitGrid(4, periodic=periodic)
+    assert grid.dim == 1
+    assert grid.numba_type == "f8[:]"
+    assert grid.volume == 4
+    np.testing.assert_array_equal(grid.discretization, np.ones(1))
+    dist, angle = grid.polar_coordinates_real(0, ret_angle=True)
+    if periodic:
+        np.testing.assert_allclose(dist, [0.5, 1.5, 1.5, 0.5])
+    else:
+        np.testing.assert_allclose(dist, np.arange(4) + 0.5)
+    assert angle.shape == (4,)
     
-        grid = UnitGrid(8, periodic=periodic)
-        
-        # test conversion between polar and Cartesian coordinates
-        c1 = grid.cell_coords
-        p = np.random.random(1) * grid.shape
-        d, a = grid.polar_coordinates_real(p, ret_angle=True)
-        c2 = grid.from_polar_coordinates(d, a, p)
-        assert np.allclose(grid.distance_real(c1, c2), 0)
+    grid = UnitGrid(8, periodic=periodic)
+    assert grid.dim == 1
+    assert grid.volume == 8
+
+    normalize = grid.normalize_point
+    if periodic:
+        np.testing.assert_allclose(normalize(-1e-10), 8 - 1e-10)
+        np.testing.assert_allclose(normalize(1e-10), 1e-10)
+        np.testing.assert_allclose(normalize(8 - 1e-10), 8 - 1e-10)
+        np.testing.assert_allclose(normalize(8 + 1e-10), 1e-10)
+    else:
+        for x in [-1e-10, 1e-10, 8 - 1e-10, 8 + 1e-10]:
+            np.testing.assert_allclose(normalize(x), x)
+
+    grid = UnitGrid(8, periodic=periodic)
+    
+    # test conversion between polar and Cartesian coordinates
+    c1 = grid.cell_coords
+    p = np.random.random(1) * grid.shape
+    d, a = grid.polar_coordinates_real(p, ret_angle=True)
+    c2 = grid.from_polar_coordinates(d, a, p)
+    assert np.allclose(grid.distance_real(c1, c2), 0)
+    
+    # test boundary points
+    np.testing.assert_equal(grid._boundary_coordinates(0, False), np.array([0]))
+    np.testing.assert_equal(grid._boundary_coordinates(0, True), np.array([8]))
     
     
     
@@ -132,6 +136,16 @@ def test_unit_grid_2d():
     d, a = grid.polar_coordinates_real(p, ret_angle=True)
     c2 = grid.from_polar_coordinates(d, a, p)
     assert np.allclose(grid.distance_real(c1, c2), 0)
+    
+    # test boundary points
+    np.testing.assert_equal(grid._boundary_coordinates(0, False),
+                            np.c_[np.full(8, 0), np.linspace(0.5, 7.5, 8)])
+    np.testing.assert_equal(grid._boundary_coordinates(0, True),
+                            np.c_[np.full(8, 4), np.linspace(0.5, 7.5, 8)])
+    np.testing.assert_equal(grid._boundary_coordinates(1, False),
+                            np.c_[np.linspace(0.5, 3.5, 4), np.full(4, 0)])
+    np.testing.assert_equal(grid._boundary_coordinates(1, True),
+                            np.c_[np.linspace(0.5, 3.5, 4), np.full(4, 8)])
 
 
 
@@ -160,6 +174,10 @@ def test_unit_grid_3d():
         assert np.all(not_too_large)
     large_enough = grid.polar_coordinates_real((0, 0, 0)) > np.sqrt(6)
     assert np.any(large_enough)
+
+    # test boundary points
+    for bndry in grid._iter_boundaries():
+        assert grid._boundary_coordinates(*bndry).shape == (4, 4, 3)
 
 
 

@@ -26,12 +26,9 @@ def test_boundary_pair():
         if bl == bh:
             assert bc == BoundaryPair.from_data(g, 0, bl)
                       
-        assert bc.check_value_rank(0) is None
-        if bl == bh == 'value':
-            assert bc.check_value_rank(1) is None
-        else:
-            with pytest.raises(RuntimeError):
-                bc.check_value_rank(1)
+        bc.check_value_rank(0)
+        with pytest.raises(RuntimeError):
+            bc.check_value_rank(1)
                 
     data = {'low': {'value': 1}, 'high': {'derivative': 2}}
     bc1 = BoundaryPair.from_data(g, 0, data)

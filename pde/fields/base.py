@@ -15,13 +15,14 @@ from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar,
                     TYPE_CHECKING)
 
 import numpy as np
+import numba as nb        
 from scipy import interpolate, ndimage
 
 from ..grids.base import (GridBase, discretize_interval, DimensionError,
                           DomainError)
 from ..grids.cartesian import CartesianGridBase
 from ..grids.boundaries.axes import BoundariesData
-from ..tools.numba import jit
+from ..tools.numba import jit, address_as_void_pointer
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 
@@ -971,59 +972,55 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # create an interpolator for a single point
         if fill is not None:
-            if data_shape == tuple():
+            if self.rank == 0:
                 fill = float(fill)
             else:
-                fill = np.broadcast_to(fill, data_shape).astype(float)
-        interpolate_single = grid.make_interpolator_compiled(bc=bc, fill=fill)
+                fill = np.broadcast_to(fill, self.data_shape).astype(float)
+        interpolate_single = \
+            grid.make_interpolator_compiled(bc=bc, rank=self.rank, fill=fill)
         
-        # define wrapper function to always access current data of field
+        # extract information about the data field
+        data_addr = self.data.ctypes.data
+        shape, dtype = self.data.shape, self.data.dtype
+        
         @jit
-        def interpolate_many(data: np.ndarray, point: np.ndarray) -> np.ndarray:
+        def interpolator(point: np.ndarray, data: np.ndarray = None) \
+                -> np.ndarray:
             """ return the interpolated value at the position `point`
-            
-            Args:
-                data (:class:`numpy.ndarray`):
-                    The data of the field that is to be interpolated
-                point (:class:`numpy.ndarray`):
-                    The list of points. This function only accepts 2d arrays of
-                    points: a collection of point coordinates, such that the
-                    array shape is `(num_point, dim)`.
-                    
-            Returns:
-                :class:`numpy.ndarray`: The interpolated values at the points
-            """
-            out = np.empty(data_shape + (point.shape[0],))
-            for i in range(point.shape[0]):
-                out[..., i] = interpolate_single(data, point[i])
-            return out
-        
-
-        def interpolator(point: np.ndarray) -> np.ndarray:
-            """ return the interpolated value at the position `point`
-            
+             
             Args:
                 point (:class:`numpy.ndarray`):
                     The list of points. This point coordinates should be given
                     along the last axis, i.e., the shape should be `(..., dim)`.
-                    
+                data (:class:`numpy.ndarray`, optional):
+                    The discretized field values. If omitted, the data of the 
+                    current field is used, which should be the default. However,
+                    this option can be useful to interpolate other fields
+                    defined on the same grid without recreating the interpolator 
+                     
             Returns:
                 :class:`numpy.ndarray`: The interpolated values at the points
             """
-            # turn points into a linear array
+            # check input
             point = np.atleast_1d(point)
             if point.shape[-1] != grid_dim:
                 raise DimensionError('Dimension of the interpolation point '
                                      'does not match grid dimension')
-            points_shape = point.shape[:-1]  # keep original shape of points
-                
-            num_points = functools.reduce(operator.mul, points_shape, 1)
-            point = point.reshape(num_points, grid_dim)
+            point_shape = point.shape[:-1]
             
-            out = interpolate_many(self.data, point)
-            return out.reshape(self.data_shape + points_shape)
-        
-        return interpolator
+            # reconstruct data field from memory address
+            if data is None:
+                data = nb.carray(address_as_void_pointer(data_addr), shape,
+                                 dtype)
+             
+            # interpolate at every point
+            out = np.empty(data_shape + point_shape)
+            for idx in np.ndindex(point_shape):
+                out[(...,) + idx] = interpolate_single(data, point[idx])
+             
+            return out
+
+        return interpolator  # type: ignore
 
 
     @cached_method()
@@ -1094,6 +1091,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             :class:`numpy.ndarray`: the values of the field
         """
+        point = np.asarray(point)
         return self.make_interpolator(method=method, fill=fill, **kwargs)(point)
 
 
@@ -1191,6 +1189,78 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         for coords, weight in cells:
             chng = weight * amount / (total_weight * grid.cell_volumes[coords])
             self.data[(Ellipsis,) + coords] += chng                                                  
+        
+        
+    @fill_in_docstring
+    def get_boundary_values(self, axis: int,
+                            upper: bool = True,
+                            bc: BoundariesData = 'natural') -> np.ndarray:
+        """ get the field values directly on the specified boundary 
+        
+        Args:
+            axis (int):
+                The axis perpendicular to the boundary
+            upper (bool):
+                Whether the boundary is at the upper side of the axis 
+            bc:
+                The boundary conditions applied to the field. {ARG_BOUNDARIES}
+            
+        Returns:
+            :class:`~numpy.ndarray`: The discretized values on the boundary
+        """
+        interpolator = self.make_interpolator(bc=bc)
+        points = self.grid._boundary_coordinates(axis, upper)
+        return interpolator(points)
+        
+        
+    @fill_in_docstring
+    def make_get_boundary_values(self, axis: int,
+                                 upper: bool = True,
+                                 bc: BoundariesData = 'natural') -> np.ndarray:
+        """ make a function calculating field values on the specified boundary 
+        
+        Args:
+            axis (int):
+                The axis perpendicular to the boundary
+            upper (bool):
+                Whether the boundary is at the upper side of the axis 
+            bc:
+                The boundary conditions applied to the field. {ARG_BOUNDARIES}
+            
+        Returns:
+            callable: A function returning the values on the boundary. The
+            function has the signature `(data=None, out=None)`, which allows
+            specifying an input and an output :class:`~numpy.ndarray`. If `data`
+            is omitted, the data of the current field is used. The resulting
+            interpolation is written to `out` if it is present. Otherwise, a new
+            array is created.
+        """
+        interpolator = self.make_interpolator(bc=bc)
+        points = self.grid._boundary_coordinates(axis, upper)
+        
+        @jit
+        def inner(data: np.ndarray = None, out: np.ndarray = None):
+            """ interpolate the field at the boundary
+            
+            Args:
+                data (:class:`~numpy.ndarray`, optional):
+                    The data values that are used for interpolation. The data of
+                    the current field is used if `data = None`.
+                out (:class:`~numpy.ndarray`, optional):
+                    The array into which the interpolated results are written. A
+                    new array is created if `out = None`.
+                    
+            Returns:
+                :class:`numpy.ndarray`: The interpolated values on the boundary.
+            """
+            res = interpolator(points, data)
+            if out is None:
+                return res
+            else:
+                out[:] = res
+                return out
+            
+        return inner
         
         
     def apply(self: TDataField, func: Callable,

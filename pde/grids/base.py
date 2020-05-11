@@ -5,13 +5,14 @@ Bases classes
  
 '''
 
+import itertools
 import json
 import functools
 import logging
 import inspect
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (List, Tuple, Dict, Any, Union, Callable, Generator,
-                    Sequence, Set, TYPE_CHECKING)
+                    Sequence, Set, NamedTuple, Iterator, TYPE_CHECKING)
 
 import numpy as np
 
@@ -29,6 +30,13 @@ if TYPE_CHECKING:
 
 PI_4 = 4 * np.pi
 PI_43 = 4 / 3 * np.pi
+
+
+class Operator(NamedTuple):
+    """ stores information about an operator """
+    factory: Callable
+    rank_in: int
+    rank_out: int
 
 
 
@@ -103,7 +111,7 @@ class GridBase(metaclass=ABCMeta):
     """ Base class for all grids defining common methods and interfaces """
     
     _subclasses: Dict[str, 'GridBase'] = {}  # all classes inheriting from this
-    _operators: Dict[str, Callable] = {}  # all operators defined for the grid
+    _operators: Dict[str, Operator] = {}  # all operators defined for the grid
     
     # properties that are defined in subclasses
     dim: int  # int: The spatial dimension in which the grid is embedded
@@ -214,6 +222,14 @@ class GridBase(metaclass=ABCMeta):
                 self.axes_bounds == other.axes_bounds and
                 self.periodic == other.periodic)
         
+
+    def _cache_hash(self) -> int:
+        """ returns a value to determine when a cache needs to be updated """ 
+        return hash((self.__class__.__name__, 
+                     self.shape,
+                     self.axes_bounds,
+                     hash(tuple(self.periodic))))
+        
          
     def compatible_with(self, other) -> bool:
         """ tests whether this class is compatible with other grids.
@@ -279,6 +295,65 @@ class GridBase(metaclass=ABCMeta):
         return np.linalg.norm(diff, axis=-1)  # type: ignore
 
 
+    def _iter_boundaries(self) -> Iterator[Tuple[int, bool]]:
+        """ iterate over all boundaries of the grid
+        
+        Yields:
+            tuple: for each boundary, the generator returns a tuple indicating
+            the axis of the boundary together with a boolean value indicating 
+            whether the boundary lies on the upper side of the axis.
+        """
+        return itertools.product(range(self.num_axes), [True, False])
+        
+        
+    def _boundary_coordinates(self, axis: int, upper: bool) -> np.ndarray:
+        """ get indices for accessing the points on the boundary
+    
+        Args:
+            axis (int):
+                The axis perpendicular to the boundary
+            upper (bool):
+                Whether the boundary is at the upper side of the axis 
+    
+        Returns:
+            :class:`~numpy.ndarray`: Coordinates of the boundary points.
+        """
+        # get coordinate along the axis determining the boundary
+        if upper:
+            c_bndry = np.array([self._axes_bounds[axis][1]])
+        else:
+            c_bndry = np.array([self._axes_bounds[axis][0]])
+    
+        # get orthogonal coordinates
+        coords = tuple(c_bndry if i == axis else self._axes_coords[i]
+                       for i in range(self.num_axes))
+        points = np.meshgrid(*coords, indexing='ij')
+        
+        # assemble into array 
+        shape = tuple(self.shape[i]
+                      for i in range(self.num_axes)
+                      if i != axis) + (self.num_axes,)
+        return np.stack(points, -1).reshape(shape)
+        
+
+#     def _boundary_indices(self, axis: int, upper: bool) -> Tuple:
+#         """ get indices for accessing the points on the boundary
+#         
+#         Args:
+#             axis (int):
+#                 The axis perpendicular to the boundary
+#             upper (bool):
+#                 Whether the boundary is at the upper side of the axis 
+#             
+#         Returns:
+#             tuple: Indices that can be used on the underlying grid data to
+#             obtain the values of the grid points closest to the boundaries.
+#         """
+#         i_bndry = self.shape[axis] - 1 if upper else 0
+#         return tuple(i_bndry if i == axis else slice(None)
+#                      for i in range(self.num_axes))
+
+
     @abstractproperty
     def volume(self) -> float: pass
     @abstractmethod
@@ -302,7 +377,9 @@ class GridBase(metaclass=ABCMeta):
                            only_periodic: bool = True) -> Generator: pass
                            
     @abstractmethod
-    def get_boundary_conditions(self, bc='natural') -> "Boundaries": pass
+    def get_boundary_conditions(self, bc='natural', rank: int = 0) \
+        -> "Boundaries": pass
+        
     @abstractmethod
     def get_line_data(self, data, extract: str = 'auto'): pass
     @abstractmethod
@@ -313,8 +390,9 @@ class GridBase(metaclass=ABCMeta):
 
     
     @classmethod
-    def register_operator(cls, name: str, factory_func: Callable):
-        """ register an operator for this class
+    def register_operator(cls, name: str, factory_func: Callable,
+                          rank_in: int = 0, rank_out: int = 0):
+        """ register an operator for this grid
         
         Args:
             name (str):
@@ -325,10 +403,16 @@ class GridBase(metaclass=ABCMeta):
                 returns an implementation of the given operator. This
                 implementation is a function that takes a
                 :class:`~numpy.ndarray` of discretized values as arguments and
-                returns the resulting :class:`~numpy.ndarray` after applying the
-                operator.
+                returns the resulting discretized data in a
+                :class:`~numpy.ndarray` after applying the operator.
+            rank_in (int):
+                The rank of the input field for the operator
+            rank_out (int):
+                The rank of the field that is returned by the operator
         """
-        cls._operators[name] = factory_func
+        cls._operators[name] = Operator(factory=factory_func,
+                                        rank_in=rank_in,
+                                        rank_out=rank_out)
              
              
     @classproperty  # type: ignore
@@ -372,8 +456,10 @@ class GridBase(metaclass=ABCMeta):
         classes = inspect.getmro(self.__class__)[:-1]
         for cls in classes:
             if name in cls._operators:  # type: ignore
-                bcs = self.get_boundary_conditions(bc)
-                return cls._operators[name](bcs, **kwargs)  # type: ignore
+                operator = cls._operators[name]  # type: ignore
+                rank = min(operator.rank_in, operator.rank_out)
+                bcs = self.get_boundary_conditions(bc, rank=rank)
+                return operator.factory(bcs, **kwargs)  # type: ignore
             
         # operator was not found
         raise ValueError(f"'{name}' is not one of the defined operators: "
@@ -504,6 +590,7 @@ class GridBase(metaclass=ABCMeta):
     
     @fill_in_docstring
     def make_interpolator_compiled(self, bc: "BoundariesData" = 'natural',
+                                   rank: int = 0,
                                    fill: float = None) -> Callable:
         """ return a compiled function for linear interpolation on the grid
         
@@ -515,6 +602,9 @@ class GridBase(metaclass=ABCMeta):
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
+            rank (int, optional):
+                The tensorial rank of the value associated with the boundary
+                condition.
             fill (float, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -527,7 +617,7 @@ class GridBase(metaclass=ABCMeta):
             containing the field data and position is denotes the position in
             grid coordinates.
         """
-        bcs = self.get_boundary_conditions(bc)
+        bcs = self.get_boundary_conditions(bc, rank=rank)
         
         if self.num_axes == 1:
             # specialize for 1-dimensional interpolation

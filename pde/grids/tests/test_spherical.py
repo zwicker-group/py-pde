@@ -87,6 +87,10 @@ def test_polar_annulus():
 
     assert grid.contains_point(grid.get_random_point())
     assert grid.contains_point(grid.get_random_point(1.99))
+    
+    # test boundary points
+    np.testing.assert_equal(grid._boundary_coordinates(0, False), np.array([2]))
+    np.testing.assert_equal(grid._boundary_coordinates(0, True), np.array([4]))
 
 
 
@@ -165,6 +169,10 @@ def test_spherical_annulus():
 
     assert grid.contains_point(grid.get_random_point())
     assert grid.contains_point(grid.get_random_point(1.99))
+
+    # test boundary points
+    np.testing.assert_equal(grid._boundary_coordinates(0, False), np.array([2]))
+    np.testing.assert_equal(grid._boundary_coordinates(0, True), np.array([4]))
 
  
  

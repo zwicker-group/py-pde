@@ -2,8 +2,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-import tempfile
-
 import numpy as np
 import pytest
 
@@ -33,7 +31,12 @@ def test_interpolation_singular():
           {'type': 'derivative', 'value': 2}]
     x = np.linspace(0, 1, 7).reshape((7, 1))
     y = field.interpolate(x, method='numba', bc=bc)
-    np.testing.assert_allclose(y, 2 + 2*x.ravel())
+    np.testing.assert_allclose(y, 2 + 2 * x.ravel())
+    
+    # test boundary interpolation
+    for upper in [True, False]:
+        val = field.get_boundary_values(axis=0, upper=upper, bc=[{'value': 1}])
+        assert val == pytest.approx(1)
 
 
 
@@ -82,7 +85,7 @@ def test_scalars():
     # test options for plotting images
     if module_available("matplotlib"):
         s1.plot(transpose=True, colorbar=True)
-
+        
 
 
 def test_laplacian():
@@ -216,13 +219,13 @@ def test_interpolation_inhomogeneous_bc():
 
 
 @skipUnlessModule("matplotlib")
-def test_from_image():
+def test_from_image(tmp_path):
     from matplotlib.pyplot import imsave
     img_data = np.random.uniform(size=(9, 8, 3))
     img_data_gray = img_data @ np.array([0.299, 0.587, 0.114])
-    with tempfile.NamedTemporaryFile(suffix='.png') as fp:
-        imsave(fp.name, img_data, vmin=0, vmax=1)
-        sf = ScalarField.from_image(fp.name)
+    path = tmp_path / 'test_from_image.png'
+    imsave(path, img_data, vmin=0, vmax=1)
+    sf = ScalarField.from_image(path)
     np.testing.assert_allclose(sf.data, img_data_gray.T[:, ::-1], atol=0.05)
     
 
@@ -343,8 +346,8 @@ def test_poisson_solver_2d():
     
     
     
-def test_interpolation_mutuable():
-    """ test interpolation on mutuable fields """
+def test_interpolation_mutable():
+    """ test interpolation on mutable fields """
     grid = UnitGrid([2], periodic=True)
     field = ScalarField(grid)
     
@@ -353,5 +356,28 @@ def test_interpolation_mutuable():
         np.testing.assert_allclose(field.interpolate([0.5], method=method), 1)
         field.data = 2
         np.testing.assert_allclose(field.interpolate([0.5], method=method), 2)
+        
+    # test overwriting field values
+    data = np.full_like(field.data, 3)
+    intp = field.make_interpolator(method='numba')
+    np.testing.assert_allclose(intp(np.array([0.5]), data), 3)
 
+
+
+def test_boundary_interpolation():
+    """ test boundary interpolation """
+    grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
+    field = ScalarField.random_normal(grid)
+    
+    # test boundary interpolation
+    bndry_val = np.random.randn(3)
+    for bndry in grid._iter_boundaries():
+        val = field.get_boundary_values(*bndry, bc={'value': bndry_val})
+        np.testing.assert_allclose(val, bndry_val)
+    
+        ev = field.make_get_boundary_values(*bndry, bc={'value': bndry_val})
+        out = ev()
+        np.testing.assert_allclose(out, bndry_val)
+        ev(data=field.data, out=out)
+        np.testing.assert_allclose(out, bndry_val)
     

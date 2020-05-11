@@ -149,3 +149,20 @@ def test_vector_plot_quiver_reduction():
     res = field.plot(method='quiver', max_points=4)
     assert len(res.U) == 16
         
+
+
+def test_boundary_interpolation_vector():
+    """ test boundary interpolation """
+    grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
+    field = VectorField.random_normal(grid)
+    
+    # test boundary interpolation
+    bndry_val = np.random.randn(2, 3)
+    for bndry in grid._iter_boundaries():
+        val = field.get_boundary_values(*bndry, bc={'value': bndry_val})
+        np.testing.assert_allclose(val, bndry_val)
+    
+        ev = field.make_get_boundary_values(*bndry, bc={'value': bndry_val})
+        np.testing.assert_allclose(ev(), bndry_val)
+    
+            
