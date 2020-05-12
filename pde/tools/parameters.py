@@ -144,12 +144,16 @@ class Parameterized():
         Args:
             parameters (dict):
                 A dictionary of parameters to change the defaults. The allowed
-                parameters can be shown by calling 
+                parameters can be obtained from
+                :meth:`~Parameterized.get_parameters` or displayed by calling
                 :meth:`~Parameterized.show_parameters`.
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
+        # set logger if this has not happened, yet
+        if not hasattr(self, '_logger'):
+            self._logger = logging.getLogger(self.__class__.__name__)
+            
+        # set parameters if they have not been initialized, yet
         if not hasattr(self, 'parameters'):
-            # only set parameters automatically if they are not yet set
             self.parameters = self._parse_parameters(parameters)
 
 
