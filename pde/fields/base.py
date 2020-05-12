@@ -794,13 +794,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(attributes.pop('grid'), data=data, **attributes)
         
         
-    def copy(self: TDataField, data=None, label: str = None) -> TDataField:
+    def copy(self: TDataField, data: np.ndarray = None, label: str = None) \
+            -> TDataField:
         """ return a copy of the data, but not of the grid
         
         Args:
-            data (:class:`numpy.ndarray`, optional): Data values at the support
-                points of the grid that define the field.
-            label (str, optional): Name of the copied field
+            data (:class:`numpy.ndarray`, optional):
+                Data values at the support points of the grid that define the
+                field.
+            label (str, optional):
+                Name of the copied field
         """
         if label is None:
             label = self.label
@@ -1030,7 +1033,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         r""" returns a function that can be used to interpolate values.
         
         Args:
-            method (str): Determines the method being used for interpolation.
+            method (str):
+                Determines the method being used for interpolation.
                 Possible values are:
                 
                 * `scipy_nearest`: Use scipy to interpolate to nearest neighbors
@@ -1041,8 +1045,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
-                  
-            \**kwargs: Additional keyword arguments are passed to the individual
+            \**kwargs:
+                Additional keyword arguments are passed to the individual
                 interpolator methods and can be used to further affect the
                 behavior.
                   
@@ -1269,11 +1273,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """ applies a function to the data and returns it as a field
         
         Args:
-            func (callable): The (vectorized) function being applied to the
-                data.
-            out (FieldBase, optional): Optional field into which the data is
-                written
-            label (str, optional): Name of the returned field
+            func (callable):
+                The (vectorized) function being applied to the data.
+            out (FieldBase, optional):
+                Optional field into which the data is written
+            label (str, optional):
+                Name of the returned field
 
         Returns:
             Field with new data. This is stored at `out` if given. 

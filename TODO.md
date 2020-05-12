@@ -1,5 +1,6 @@
 TODO
 ====
+* Improve Parameterized output style (notebook html widget?)
 * Count the number of compilations and store it in the info field of the simulation
 * Implement hashing for boundary conditions to accelerate operator caching
 * Think about interface for changing boundary values in numba

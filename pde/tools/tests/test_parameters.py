@@ -7,7 +7,7 @@ import pickle
 
 import pytest
 
-from ..parameters import (Parameter, DeprecatedParameter, ObsoleteParameter,
+from ..parameters import (Parameter, DeprecatedParameter, HideParameter,
                           Parameterized, get_all_parameters)
 
 
@@ -36,10 +36,11 @@ def test_parameters():
     assert t.get_parameter_default('a') == 1
     
     with pytest.raises(ValueError):
-        t = Test1(parameters={'b': 1})
-    t = Test1(parameters={'b': 1}, check_validity=False)
-    assert t.parameters['a'] == 1
-    assert t.parameters['b'] == 1
+        t = Test1(parameters={'b': 3})
+    t = Test1()
+    ps = t._parse_parameters({'b': 3}, check_validity=False)
+    assert ps['a'] == 1
+    assert ps['b'] == 3
     
     
     class Test2(Test1):
@@ -99,22 +100,23 @@ def test_parameter_help(capsys):
     
     
     
-def test_obsolete_parameter():
-    """ test how parameters are shown """
+def test_hidden_parameter():
+    """ test how hidden parameters are handled """
     class Test1(Parameterized):
         parameters_default = [Parameter('a', 1), Parameter('b', 2)]
          
     assert Test1().parameters == {'a': 1, 'b': 2}
     
     class Test2(Test1):
-        parameters_default = [ObsoleteParameter('b')]
+        parameters_default = [HideParameter('b')]
         
-    assert 'b' in Test2._obsolete_parameters
-    assert 'b' not in Test2._get_parameters()
+    assert 'b' not in Test2.get_parameters()
+    assert len(Test2.get_parameters()) == 1
     t2 = Test2()
-    assert t2.parameters == {'a': 1}
-    with pytest.raises(KeyError):
-        t2.get_parameter_default('b')
+    assert t2.parameters == {'a': 1, 'b': 2}
+    assert t2.get_parameter_default('b') == 2
+    with pytest.raises(ValueError):
+        t2._parse_parameters({'b': 2}, check_validity=True, allow_hidden=False)
         
     class Test3(Test1):
         parameters_default = [Parameter('b', 3)]

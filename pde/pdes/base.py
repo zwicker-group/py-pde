@@ -39,7 +39,7 @@ class PDEBase(metaclass=ABCMeta):
         Args:
             noise (float):
                 Magnitude of the additive Gaussian white noise that is supported
-                by default. If set to zero, a determinitics partial differential
+                by default. If set to zero, a deterministic partial differential
                 equation will be solved. If another noise structure is required
                 the respective methods need to be overwritten.
         """
