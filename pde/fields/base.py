@@ -1295,6 +1295,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         
     @abstractproperty
     def integral(self) -> Union[np.ndarray, float]: pass 
+    
     @abstractmethod
     def to_scalar(self, scalar: Union[str, int] = 'norm',
                   label: Optional[str] = None) -> "ScalarField": pass

@@ -948,6 +948,7 @@ class NeumannBC(BCBase1stOrder):
             
             if self.value_is_linked:
                 value = self._make_value_getter()
+                
                 @register_jitable(inline='always')
                 def const_func():
                     return dx * value()
@@ -1110,6 +1111,7 @@ class MixedBC(BCBase1stOrder):
         if self.value_is_linked:
             const_val = float(self.const)  # only support scalar values
             value_func = self._make_value_getter()
+            
             @register_jitable(inline='always')
             def const_func():
                 value = value_func()

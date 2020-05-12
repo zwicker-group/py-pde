@@ -372,6 +372,7 @@ class GridBase(metaclass=ABCMeta):
     def polar_coordinates_real(self, origin, ret_angle=False): pass
     @abstractmethod
     def contains_point(self, point): pass
+    
     @abstractmethod
     def iter_mirror_points(self, point, with_self: bool = False,
                            only_periodic: bool = True) -> Generator: pass
@@ -384,6 +385,7 @@ class GridBase(metaclass=ABCMeta):
     def get_line_data(self, data, extract: str = 'auto'): pass
     @abstractmethod
     def get_image_data(self, data): pass
+    
     @abstractmethod
     def get_random_point(self, boundary_distance: float = 0,
                          cartesian: bool = True): pass
