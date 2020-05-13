@@ -387,16 +387,13 @@ class BCBase(metaclass=ABCMeta):
     
     def __repr__(self):
         if self.value_is_linked:
-            return (f"{self.__class__.__name__}("
-                    f"axis={self.axis}, upper={self.upper}, "
-                    f"value=<linked: {self.value.ctypes.data}>)")
+            value_str = f", value=<linked: {self.value.ctypes.data}>"
         elif np.array_equal(self.value, 0):
-            return (f"{self.__class__.__name__}("
-                    f"axis={self.axis}, upper={self.upper}, rank={self.rank})")
+            value_str = ""
         else:
-            return (f"{self.__class__.__name__}("
-                    f"axis={self.axis}, upper={self.upper}, "
-                    f"value={self.value!r})")
+            value_str = f", value={self.value!r}"
+        return (f"{self.__class__.__name__}(axis={self.axis}, "
+                f"upper={self.upper}, rank={self.rank}{value_str})")
     
     
     def __str__(self):

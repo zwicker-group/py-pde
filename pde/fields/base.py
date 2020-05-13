@@ -1242,8 +1242,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         interpolator = self.make_interpolator(bc=bc)
         points = self.grid._boundary_coordinates(axis, upper)
         
+        # TODO: use jit_allocated_out with pre-calculated shape
+        
         @jit
-        def inner(data: np.ndarray = None, out: np.ndarray = None):
+        def get_boundary_values(data: np.ndarray = None,
+                                out: np.ndarray = None):
             """ interpolate the field at the boundary
             
             Args:
@@ -1261,10 +1264,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if out is None:
                 return res
             else:
-                out[:] = res
+                # the following just copies the data from res to out. It is a
+                # workaround for a bug in numba existing up to at least ver 0.49
+                out[...] = res[()]
                 return out
             
-        return inner
+        return get_boundary_values
         
         
     def apply(self: TDataField, func: Callable,

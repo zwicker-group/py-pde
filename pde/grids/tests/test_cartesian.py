@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from .. import UnitGrid, CartesianGrid
-from ..boundaries import Boundaries, PeriodicityError
+from ..boundaries import Boundaries, PeriodicityError, DomainError
 
 
 
@@ -370,6 +370,15 @@ def test_interpolate_1d():
     
     assert intp(np.zeros(2), np.zeros(1)) == pytest.approx(1)
     assert intp(np.zeros(2), np.ones(1)) == pytest.approx(0)
+    with pytest.raises(DomainError):
+        intp(np.zeros(2), np.array([-1]))
+    with pytest.raises(DomainError):
+        intp(np.zeros(2), np.array([3]))
+    
+    grid_per = UnitGrid(2, periodic=True)
+    intp = grid_per.make_interpolator_compiled(bc='natural')
+    for pos in [-1, 0, 1, 2, 3]:
+        assert intp(np.arange(2), np.array([pos])) == pytest.approx(0.5)
 
 
 

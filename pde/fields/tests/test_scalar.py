@@ -364,8 +364,27 @@ def test_interpolation_mutable():
 
 
 
-def test_boundary_interpolation():
-    """ test boundary interpolation """
+def test_boundary_interpolation_1d():
+    """ test boundary interpolation for 1d fields """
+    grid = UnitGrid([5])
+    field = ScalarField(grid, np.arange(grid.shape[0]))
+    
+    # test boundary interpolation
+    bndry_val = 0.25
+    for bndry in grid._iter_boundaries():
+        val = field.get_boundary_values(*bndry, bc={'value': bndry_val})
+        np.testing.assert_allclose(val, bndry_val)
+    
+        ev = field.make_get_boundary_values(*bndry, bc={'value': bndry_val})
+        out = ev()
+        np.testing.assert_allclose(out, bndry_val)
+        ev(data=field.data, out=out)
+        np.testing.assert_allclose(out, bndry_val)
+    
+
+
+def test_boundary_interpolation_2d():
+    """ test boundary interpolation for 2d fields """
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
     field = ScalarField.random_normal(grid)
     
