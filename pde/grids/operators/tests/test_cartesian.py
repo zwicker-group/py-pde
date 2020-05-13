@@ -319,7 +319,7 @@ def test_poisson_solver_general(dim):
     
     d = np.random.random(bcs.grid.shape)
     d -= d.mean()  # balance the right hand side
-    np.testing.assert_allclose(laplace(poisson(d)), d, rtol=1e-5,
+    np.testing.assert_allclose(laplace(poisson(d)), d, atol=1e-5, rtol=1e-5,
                                err_msg=f'bcs = {bcs}')
 
 

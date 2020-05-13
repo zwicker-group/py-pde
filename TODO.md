@@ -3,7 +3,7 @@ TODO
 * Improve Parameterized output style (notebook html widget?)
     - setup sphinx such that it shows the parameters in a table or something
 * Count the number of compilations and store it in the info field of the simulation
-* Implement hashing for boundary conditions to accelerate operator caching
+    - raise a warning when this number became too large in a simulation?
 * Think about interface for changing boundary values in numba
     - We might need to support optional `bc` argument for operators
     - Try using https://cffi.readthedocs.io/en/latest/overview.html#purely-for-performance-api-level-out-of-line 
@@ -11,6 +11,7 @@ TODO
 * Add Glossary or something to development guide
     - e.g., state = attributes + data
 * Add noise to PDE class (additive, but different for each field)
+    - add tests?!
 * Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable
