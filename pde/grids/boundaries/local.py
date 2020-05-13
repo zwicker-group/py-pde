@@ -207,7 +207,7 @@ class BCBase(metaclass=ABCMeta):
             rank (int):
                 The tensorial rank of the value associated with the boundary
                 condition.
-            value (float or str or array):
+            value (float or str or :class:`~numpy.ndarray`):
                 a value stored with the boundary condition. The interpretation
                 of this value depends on the type of boundary condition. If
                 value is a single value (or tensor in case of tensorial boundary

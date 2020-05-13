@@ -25,6 +25,7 @@ def test_boundary_pair():
         assert bc == BoundaryPair(blo, bho)
         if bl == bh:
             assert bc == BoundaryPair.from_data(g, 0, bl)
+        assert list(bc) == [blo, bho]
                       
         bc.check_value_rank(0)
         with pytest.raises(RuntimeError):
@@ -54,5 +55,8 @@ def test_get_axis_boundaries():
         
         if data == 'periodic':
             assert b.periodic
+            assert len(list(b)) == 0
         else:
             assert not b.periodic
+            assert len(list(b)) == 2
+            

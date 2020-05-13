@@ -403,6 +403,9 @@ class BoundaryPeriodic(BoundaryAxisBase):
         self.axis = axis
             
             
+    def __iter__(self):
+        return iter(())  # there are no sub-boundaries to iterate over
+            
     def __repr__(self):
         return f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis})"
             
