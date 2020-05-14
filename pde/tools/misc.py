@@ -17,6 +17,8 @@ Miscallenous python functions
    classproperty
    hybridmethod
    estimate_computation_speed
+   hdf_write_attributes
+   in_jupyter_notebook
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
@@ -412,3 +414,18 @@ def hdf_write_attributes(hdf_path,
         else:
             hdf_path.attrs[key] = value_serialized
 
+
+
+def in_jupyter_notebook() -> bool:
+    """ checks whether we are in a jupyter notebook """
+    try:
+        from IPython import get_ipython
+    except ImportError:
+        return False
+        
+    try:
+        ipython_config = get_ipython().config
+    except AttributeError:
+        return False
+        
+    return ('IPKernelApp' in ipython_config)

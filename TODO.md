@@ -1,7 +1,8 @@
 TODO
 ====
-* Improve Parameterized output style (notebook html widget?)
+* Improve Parameterized output style
     - setup sphinx such that it shows the parameters in a table or something
+    - hook into autodoc: https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#docstring-preprocessing
 * Count the number of compilations and store it in the info field of the simulation
     - raise a warning when this number became too large in a simulation?
 * Think about interface for changing boundary values in numba

@@ -7,7 +7,7 @@ aim is to allow easy management of inheritance of parameters.
 
    Parameter
    DeprecatedParameter
-   ObsoleteParameter
+   HideParameter
    Parameterized
    get_all_parameters
 
@@ -19,7 +19,7 @@ import logging
 from collections import OrderedDict
 from typing import Sequence, Dict, Any, Union
 
-from pde.tools.misc import import_class, hybridmethod
+from pde.tools.misc import import_class, hybridmethod, in_jupyter_notebook
 
 
 
@@ -268,7 +268,7 @@ class Parameterized():
         
         
     @classmethod
-    def _show_parameters(cls, description: bool = False,
+    def _show_parameters(cls, description: bool = None,
                          sort: bool = False,
                          show_hidden: bool = False,
                          show_deprecated: bool = False,
@@ -277,7 +277,9 @@ class Parameterized():
         
         Args:
             description (bool):
-                Flag determining whether the parameter description is shown
+                Flag determining whether the parameter description is shown. The
+                default is to show the description only when we are in a jupyter
+                notebook environment.
             sort (bool):
                 Flag determining whether the parameters are sorted
             show_hidden (bool):
@@ -290,13 +292,32 @@ class Parameterized():
         
         All flags default to `False`.
         """
+        # determine whether we are in a jupyter notebook and can return HTML
+        in_notebook = in_jupyter_notebook()
+        try:
+            from IPython.display import HTML, display
+        except ImportError:
+            in_notebook = False
+        
+        if description is None:
+            description = in_notebook
+        
         # set the templates for displaying the data 
-        if description:
-            template = '{name}: {type} = {value!r} ({description})'
-            template_object = '{name} = {value!r} ({description})'
+        if in_notebook:
+            # templates for HTML output
+            template = '<tr><td><b>{name}</b></td><td>{value!r}</td>'
+            if description:
+                template += '<td>{description}</td>'
+            template += '</tr>'
+            html = ''
         else:
-            template = '{name}: {type} = {value!r}'
-            template_object = '{name} = {value!r}'
+            # template for normal output
+            if description:
+                template = '{name}: {type} = {value!r} ({description})'
+                template_object = '{name} = {value!r} ({description})'
+            else:
+                template = '{name}: {type} = {value!r}'
+                template_object = '{name} = {value!r}'
             
         # iterate over all parameters
         params = cls.get_parameters(include_deprecated=show_deprecated,
@@ -316,15 +337,26 @@ class Parameterized():
             else:
                 data['value'] = parameter_values[param.name]
             
-            # print the data
-            if param.cls is object:
-                print((template_object.format(**data)))
+            if in_notebook:
+                # collect the data for later printing as HTML
+                html += template.format(**data)
             else:
-                print((template.format(**data)))
+                # print the data to stdout
+                if param.cls is object:
+                    print((template_object.format(**data)))
+                else:
+                    print((template.format(**data)))
+            
+        if in_notebook:
+            # output html with minimal styling
+            html = ('<style type="text/css">table.py-pde_parameters td '
+                    '{vertical-align:top;text-align:left}</style>'
+                    '<table class="py-pde_parameters">' + html + '</table>')
+            display(HTML(html))
             
 
     @hybridmethod
-    def show_parameters(cls, description: bool = False,  # @NoSelf
+    def show_parameters(cls, description: bool = None,  # @NoSelf
                         sort: bool = False,
                         show_hidden: bool = False,
                         show_deprecated: bool = False):
@@ -332,7 +364,9 @@ class Parameterized():
         
         Args:
             description (bool):
-                Flag determining whether the parameter description is shown
+                Flag determining whether the parameter description is shown. The
+                default is to show the description only when we are in a jupyter
+                notebook environment.
             sort (bool):
                 Flag determining whether the parameters are sorted
             show_hidden (bool):
@@ -346,7 +380,7 @@ class Parameterized():
 
 
     @show_parameters.instancemethod  # type: ignore
-    def show_parameters(self, description: bool = False,  # @NoSelf
+    def show_parameters(self, description: bool = None,  # @NoSelf
                         sort: bool = False,
                         show_hidden: bool = False,
                         show_deprecated: bool = False,
@@ -355,7 +389,9 @@ class Parameterized():
         
         Args:
             description (bool):
-                Flag determining whether the parameter description is shown
+                Flag determining whether the parameter description is shown. The
+                default is to show the description only when we are in a jupyter
+                notebook environment.
             sort (bool):
                 Flag determining whether the parameters are sorted
             show_hidden (bool):
