@@ -678,7 +678,7 @@ class BCBase1stOrder(BCBase):
 
     @abstractmethod
     def get_virtual_point_data(self, compiled: bool = False) \
-        -> Tuple: pass
+        -> Tuple[Any, Any, int]: pass
 
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
@@ -806,6 +806,8 @@ class BCBase1stOrder(BCBase):
             
             # calculate necessary constants
             const, factor, index = self.get_virtual_point_data(compiled=True)
+            zeros = np.zeros(self._shape_tensor)
+            ones = np.ones(self._shape_tensor)
 
             @register_jitable(inline='always')
             def adjacent_point(arr_1d, i_point, bc_idx) -> float:
@@ -817,7 +819,7 @@ class BCBase1stOrder(BCBase):
                 if i_point == i_bndry:
                     c, f, i = const(), factor(), index
                 else:
-                    c, f, i = 0., 1., i_point + i_dx  # INTENTIONAL; see above
+                    c, f, i = zeros, ones, i_point + i_dx  # INTENTIONAL
                 
                 # calculate the values
                 return c + f * arr_1d[..., i]  # type: ignore
@@ -827,9 +829,8 @@ class BCBase1stOrder(BCBase):
 
             # calculate necessary constants
             const, factor, index = self.get_virtual_point_data(compiled=True)
-            
-            shape = self._shape_tensor + self._shape_boundary
-            zeros, ones = np.zeros(shape), np.ones(shape)
+            zeros = np.zeros(self._shape_tensor + self._shape_boundary)
+            ones = np.ones(self._shape_tensor + self._shape_boundary)
             
             @register_jitable(inline='always')
             def adjacent_point(arr_1d, i_point, bc_idx) -> float:
@@ -858,7 +859,8 @@ class DirichletBC(BCBase1stOrder):
     names = ['value', 'dirichlet']  # identifiers for this boundary condition
 
     
-    def get_virtual_point_data(self, compiled: bool = False) -> Tuple:
+    def get_virtual_point_data(self, compiled: bool = False) \
+            -> Tuple[Any, Any, int]:
         """ return data suitable for calculating virtual points
         
         Args:
@@ -872,16 +874,19 @@ class DirichletBC(BCBase1stOrder):
             virtual point
         """        
         const = 2 * self.value
-        factor = -1 if np.isscalar(const) else -np.ones_like(const)
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
             
         if not compiled:
+            factor = -1 if np.isscalar(const) else -np.ones_like(const)
             return (const, factor, index)
         else:
             # return boundary data such that dynamically calculated values can
             # be used in numba compiled code. This is a work-around since numpy
             # arrays are copied into closures, making them compile-time
             # constants
+            
+            const = np.array(const, np.double)
+            factor = np.full_like(const, -1)
             
             if self.value_is_linked:
                 value = self._make_value_getter()
@@ -916,7 +921,8 @@ class NeumannBC(BCBase1stOrder):
     names = ['derivative', 'neumann']  # identifiers for this boundary condition        
 
     
-    def get_virtual_point_data(self, compiled: bool = False) -> Tuple:
+    def get_virtual_point_data(self, compiled: bool = False) \
+            -> Tuple[Any, Any, int]:
         """ return data suitable for calculating virtual points
         
         Args:
@@ -932,16 +938,19 @@ class NeumannBC(BCBase1stOrder):
         dx = self.grid.discretization[self.axis]
         
         const = dx * self.value
-        factor = 1 if np.isscalar(const) else np.ones_like(const)
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
             
         if not compiled:
+            factor = 1 if np.isscalar(const) else np.ones_like(const)
             return (const, factor, index)
         else:
             # return boundary data such that dynamically calculated values can
             # be used in numba compiled code. This is a work-around since numpy
             # arrays are copied into closures, making them compile-time
             # constants
+            
+            const = np.array(const, np.double)
+            factor = np.ones_like(const)
             
             if self.value_is_linked:
                 value = self._make_value_getter()
@@ -1064,7 +1073,8 @@ class MixedBC(BCBase1stOrder):
         return obj
         
         
-    def get_virtual_point_data(self, compiled: bool = False) -> Tuple:
+    def get_virtual_point_data(self, compiled: bool = False) \
+            -> Tuple[Any, Any, int]:
         """ return data suitable for calculating virtual points
         
         Args:
@@ -1106,7 +1116,7 @@ class MixedBC(BCBase1stOrder):
         # constants
 
         if self.value_is_linked:
-            const_val = float(self.const)  # only support scalar values
+            const_val = np.array(self.const, np.double)
             value_func = self._make_value_getter()
             
             @register_jitable(inline='always')
@@ -1134,6 +1144,9 @@ class MixedBC(BCBase1stOrder):
                 return factor
             
         else:
+            const = np.array(const, np.double)
+            factor = np.array(factor, np.double)
+            
             @register_jitable(inline='always')
             def const_func():
                 return const          
