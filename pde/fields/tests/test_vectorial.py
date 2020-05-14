@@ -32,7 +32,7 @@ def test_vectors():
     v1.data[0, :] = 3
     v1.data[1, :] = 4
     for method, value in [('min', 3), ('max', 4), ('norm', 5),
-                          ('squared_sum', 25), (0, 3), (1, 4)]:
+                          ('squared_sum', 25), ('auto', 5)]:
         p1 = v1.to_scalar(method)
         assert p1.data.shape == grid.shape
         np.testing.assert_allclose(p1.data, value)

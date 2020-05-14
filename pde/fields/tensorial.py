@@ -233,7 +233,7 @@ class Tensor2Field(DataFieldBase):
         return out
     
     
-    def to_scalar(self, scalar: Union[str, int] = 'norm',
+    def to_scalar(self, scalar: str = 'auto',
                   label: Optional[str] = 'scalar `{scalar}`') -> ScalarField:
         r""" return a scalar field by applying `method`
         
@@ -255,15 +255,19 @@ class Tensor2Field(DataFieldBase):
             
         Args:
             scalar (str):
-                Choose the method to use. Possible choices include `norm`,
-                `min`, `max`, `squared_sum`, `trace` (or `invariant1`),
-                `invariant2`, and `determinant` (or `invariant3`).
+                Choose the method to use. Possible choices include `norm` (the 
+                default), `min`, `max`, `squared_sum`, `trace` (or
+                `invariant1`), `invariant2`, and `determinant` (or `invariant3`)
             label (str, optional):
                 Name of the returned field
             
         Returns:
-            ScalarField: the scalar field after applying the operation
+            :class:`pde.fields.scalar.ScalarField`: the scalar field after
+            applying the operation
         """
+        if scalar == 'auto':
+            scalar = 'norm'
+        
         if scalar == 'norm':
             data = np.linalg.norm(self.data, axis=(0, 1))
             
@@ -328,7 +332,7 @@ class Tensor2Field(DataFieldBase):
         return self.to_scalar(scalar='trace', label=label)
 
     
-    def get_line_data(self, scalar: str = 'norm',  # type: ignore
+    def get_line_data(self, scalar: str = 'auto',  # type: ignore
                       extract: str = 'auto') -> Dict[str, Any]:
         """ return data for a line plot of the field
         
@@ -342,7 +346,7 @@ class Tensor2Field(DataFieldBase):
         return self.to_scalar(scalar=scalar).get_line_data(extract=extract)
                     
     
-    def get_image_data(self, scalar: str = 'norm', **kwargs) -> Dict[str, Any]:
+    def get_image_data(self, scalar: str = 'auto', **kwargs) -> Dict[str, Any]:
         r""" return data for plotting an image of the field
 
         Args:

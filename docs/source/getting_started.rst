@@ -74,6 +74,7 @@ The following packages should be installed to use some miscellaneous features:
 Package      Usage                                      
 ===========  =========
 h5py         Storing data in the hierarchical file format
+napari       Displaying images interactively
 pandas       Handling tabular data
 pyfftw       Faster Fourier transforms
 tqdm         Display progress bars during calculations

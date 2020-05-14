@@ -12,6 +12,7 @@ Functions and classes for plotting simulation data
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
+import contextlib
 import logging
 import warnings
 import time
@@ -19,6 +20,7 @@ from typing import (Union, Callable, Optional, Any, Dict, List, Tuple)
 
 import numpy as np
 
+from ..grids.base import GridBase
 from ..fields import FieldCollection
 from ..fields.base import FieldBase, DataFieldBase
 from ..storage.base import StorageBase
@@ -676,3 +678,27 @@ def plot_kymograph(storage: StorageBase,
                   close_figure=close_figure)
     
     return res
+
+
+
+@contextlib.contextmanager
+def napari_viewer(grid: GridBase, **kwargs):
+    """ creates an napari viewer for interactive plotting
+    
+    Args:
+        grid (:class:`pde.grids.base.GridBase`): The grid defining the space
+        **kwargs: Extra arguments are passed to :class:`napari.Viewer`
+    """
+    import napari
+    
+    if grid.num_axes == 1:
+        raise RuntimeError('Interactive plotting only works for data with '
+                           'at least 2 dimensions')
+    
+    viewer_args = kwargs
+    viewer_args.setdefault('axis_labels', grid.axes)
+    viewer_args.setdefault('ndisplay', 3 if grid.num_axes >= 3 else 2)
+    
+    with napari.gui_qt():  # create Qt GUI context
+        yield napari.Viewer(**viewer_args)
+    

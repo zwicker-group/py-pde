@@ -522,14 +522,31 @@ class FieldCollection(FieldBase):
             plot.fig.savefig(filename)
         
         
+    def plot_interactive(self, scalar: str = 'auto', **kwargs):
+        """ create an interactive plot of the field using :mod:`napari`
+
+        Args:
+            scalar (str): The method for obtaining scalar values of fields        
+            **kwargs: Extra arguments are passed to :class:`napari.Viewer`
+        """
+        from ..visualization.plotting import napari_viewer
+        with napari_viewer(self.grid, **kwargs) as viewer:
+            for field in self:
+                viewer.add_image(field.to_scalar(scalar).data,
+                                 name=field.label,
+                                 rgb=False,
+                                 scale=self.grid.discretization)
+
+        
     def plot(self, kind: str = 'auto', **kwargs):
         r""" visualize the field collection
         
         Args:
             kind (str):
                 Determines how to visualize the collection. Supported values are
-                `image`,  `line`, or `vector`. Alternatively, `auto` determines
-                the best visualization based on each individual field itself.
+                `image`, `line`, `vector`, or `interactive`. Alternatively,
+                `auto` determines the best visualization based on each
+                individual field itself.
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual
                 plotting functions. They include the keyword arguments `title`
@@ -546,6 +563,8 @@ class FieldCollection(FieldBase):
             self.plot_line(**kwargs)
         elif kind == 'vector':
             self.plot_vector(**kwargs)
+        elif kind == 'interactive':
+            self.plot_interactive(**kwargs)
         else:
             raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
                              '`image`, `line`, `vector`, or `auto`.')

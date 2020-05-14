@@ -79,15 +79,22 @@ def test_unit_grid_1d(periodic):
     assert grid.dim == 1
     assert grid.volume == 8
 
-    normalize = grid.normalize_point
-    if periodic:
-        np.testing.assert_allclose(normalize(-1e-10), 8 - 1e-10)
-        np.testing.assert_allclose(normalize(1e-10), 1e-10)
-        np.testing.assert_allclose(normalize(8 - 1e-10), 8 - 1e-10)
-        np.testing.assert_allclose(normalize(8 + 1e-10), 1e-10)
-    else:
-        for x in [-1e-10, 1e-10, 8 - 1e-10, 8 + 1e-10]:
-            np.testing.assert_allclose(normalize(x), x)
+    norm_numba = grid.make_normalize_point_compiled()
+    
+    def norm_numba_wrap(x):
+        y = np.array([x])
+        norm_numba(y)
+        return y
+    
+    for normalize in [grid.normalize_point, norm_numba_wrap]:
+        if periodic:
+            np.testing.assert_allclose(normalize(-1e-10), 8 - 1e-10)
+            np.testing.assert_allclose(normalize(1e-10), 1e-10)
+            np.testing.assert_allclose(normalize(8 - 1e-10), 8 - 1e-10)
+            np.testing.assert_allclose(normalize(8 + 1e-10), 1e-10)
+        else:
+            for x in [-1e-10, 1e-10, 8 - 1e-10, 8 + 1e-10]:
+                np.testing.assert_allclose(normalize(x), x)
 
     grid = UnitGrid(8, periodic=periodic)
     

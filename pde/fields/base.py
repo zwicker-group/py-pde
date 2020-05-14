@@ -1302,7 +1302,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def integral(self) -> Union[np.ndarray, float]: pass 
     
     @abstractmethod
-    def to_scalar(self, scalar: Union[str, int] = 'norm',
+    def to_scalar(self, scalar: str = 'auto',
                   label: Optional[str] = None) -> "ScalarField": pass
                   
                   
@@ -1616,6 +1616,21 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         finalize_plot(ax, title=title, filename=filename, show=show)
             
         return res
+    
+    
+    def plot_interactive(self, scalar: str = 'auto', **kwargs):
+        """ create an interactive plot of the field using :mod:`napari`
+        
+        Args:
+            scalar (str): The method for obtaining scalar values of fields        
+            **kwargs: Extra arguments are passed to :class:`napari.Viewer`
+        """
+        from ..visualization.plotting import napari_viewer
+        with napari_viewer(self.grid, **kwargs) as viewer:
+            viewer.add_image(self.to_scalar(scalar).data,
+                             name=self.label,
+                             rgb=False,
+                             scale=self.grid.discretization)
 
 
     def plot(self, kind: str = 'auto', **kwargs):
@@ -1624,8 +1639,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Args:
             kind (str):
                 Determines the visualizations. Supported values are `image`, 
-                `line`, or `vector`. Alternatively, `auto` determines the best
-                visualization based on the field itself.
+                `line`, `vector`, or `interactive`. Alternatively, `auto`
+                determines the best visualization based on the field itself.
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual
                 plotting functions. This includes `ax` to determine the
@@ -1655,6 +1670,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             res = self.plot_line(**kwargs)
         elif kind == 'vector':
             res = self.plot_vector(**kwargs)
+        elif kind == 'interactive':
+            res = self.plot_interactive(**kwargs)
         else:
             raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
                              '`image`, `line`, `vector`, or `auto`.')

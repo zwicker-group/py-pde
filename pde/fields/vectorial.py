@@ -345,36 +345,40 @@ class VectorField(DataFieldBase):
         return self.grid.integrate(self.data)
                 
     
-    def to_scalar(self, scalar: Union[str, int] = 'norm',
+    def to_scalar(self, scalar: str = 'auto',
                   label: Optional[str] = 'scalar `{scalar}`') -> ScalarField:
         """ return a scalar field by applying `method`
         
         The two tensor invariants are given by
         
         Args:
-            scalar (str or int):
-                Choose the method to use. Possible  choices are `norm`, `max`,
-                `min`, `squared_sum`, and an integer which specifies a
-                particular component.
+            scalar (str):
+                Choose the method to use. Possible  choices are `norm` (the
+                default), `max`, `min`, or `squared_sum`.
             label (str, optional):
                 Name of the returned field
             
         Returns:
-            ScalarField: the scalar result
+            :class:`pde.fields.scalar.ScalarField`: the scalar field after
+            applying the operation
         """
+        if scalar == 'auto':
+            scalar = 'norm'
+            
         if scalar == 'norm':
             data = np.linalg.norm(self.data, axis=0)
+            
         elif scalar == 'max':
             data = np.max(self.data, axis=0)
+            
         elif scalar == 'min':
             data = np.min(self.data, axis=0)
+            
         elif scalar == 'squared_sum' or scalar == 'norm_squared':
             data = np.sum(self.data**2, axis=0)
-        elif isinstance(scalar, str):
-            raise ValueError(f'Unknown method `{scalar}` for `to_scalar`')
+            
         else:
-            # assume that `scalar` is an index to extract a component
-            data = self.data[scalar]
+            raise ValueError(f'Unknown method `{scalar}` for `to_scalar`')
             
         if label is not None:
             label = label.format(scalar=scalar)
@@ -382,7 +386,7 @@ class VectorField(DataFieldBase):
         return ScalarField(self.grid, data, label=label)
 
     
-    def get_line_data(self, scalar: Union[str, int] = 'norm',  # type: ignore
+    def get_line_data(self, scalar: str = 'auto',  # type: ignore
                       extract: str = 'auto') -> Dict[str, Any]:
         """ return data for a line plot of the field
         
@@ -397,7 +401,7 @@ class VectorField(DataFieldBase):
         return self.to_scalar(scalar=scalar).get_line_data(extract=extract)
                     
     
-    def get_image_data(self, scalar: str = 'norm', **kwargs) -> Dict[str, Any]:
+    def get_image_data(self, scalar: str = 'auto', **kwargs) -> Dict[str, Any]:
         r""" return data for plotting an image of the field
 
         Args:

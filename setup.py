@@ -26,7 +26,8 @@ setup(
                     'sympy'],
   extras_require={
         "hdf":  ["h5py>=2"],
-        "progress": ["tqdm>=4.40"]
+        "progress": ["tqdm>=4.40"],
+        "interactive": ["napari>=0.3"]
     },
   classifiers=[
     'Development Status :: 4 - Beta',

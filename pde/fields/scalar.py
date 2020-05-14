@@ -364,22 +364,32 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=subgrid, data=subdata, label=label)
     
         
-    def to_scalar(self, scalar: Union[str, int] = 'abs',
+    def to_scalar(self, scalar: str = 'auto',
                   label: Optional[str] = None) -> "ScalarField":
         """ return a modified scalar field by applying `method`
         
         Args:
-            scalar (str or int): For scalar fields, only `abs` is supported.
+            scalar (str or int):
+                How to obtain the scalar. For ScalarField, the default `0`
+                simply returns the actual field. Setting this to 'norm' returns
+                the absolute value at each point.
             label (str, optional): Name of the returned field
             
         Returns:
-            ScalarField: the scalar result
+            :class:`pde.fields.scalar.ScalarField`: the scalar field after
+            applying the operation
         """
-        if scalar == 'abs' or scalar == 'norm':
+        if scalar == 'auto':
+            data = self.data
+            
+        elif scalar == 'abs' or scalar == 'norm':
             data = np.abs(self.data)
+            
         elif scalar == 'squared_sum':
             data = self.data**2
+            
         else:
             raise ValueError(f'Unknown method `{scalar}` for `to_scalar`')
+        
         return ScalarField(grid=self.grid, data=data, label=label)
 
