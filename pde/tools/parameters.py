@@ -17,7 +17,7 @@ aim is to allow easy management of inheritance of parameters.
 
 import logging
 from collections import OrderedDict
-from typing import Sequence, Dict, Any, Set, Union  # @UnusedImport
+from typing import Sequence, Dict, Any, Union
 
 from pde.tools.misc import import_class, hybridmethod
 

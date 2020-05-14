@@ -1197,7 +1197,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         
     @fill_in_docstring
     def get_boundary_values(self, axis: int,
-                            upper: bool = True,
+                            upper: bool,
                             bc: BoundariesData = 'natural') -> np.ndarray:
         """ get the field values directly on the specified boundary 
         
@@ -1219,7 +1219,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         
     @fill_in_docstring
     def make_get_boundary_values(self, axis: int,
-                                 upper: bool = True,
+                                 upper: bool,
                                  bc: BoundariesData = 'natural') -> np.ndarray:
         """ make a function calculating field values on the specified boundary 
         
