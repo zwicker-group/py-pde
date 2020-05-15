@@ -429,18 +429,16 @@ class BCBase(metaclass=ABCMeta):
     def _cache_hash(self) -> int:
         """ returns a value to determine when a cache needs to be updated """ 
         if self.value_is_linked:
-            return hash((self.__class__.__name__,
-                         self.grid._cache_hash(),
-                         self.axis))
+            value = self.value.ctypes.data  # type: ignore
+        elif isinstance(self.value, np.ndarray):
+            value = self.value.tobytes()
         else:
-            if isinstance(self.value, np.ndarray):
-                value = self.value.tobytes()
-            else:
-                value = self.value
-            return hash((self.__class__.__name__,
-                         self.grid._cache_hash(),
-                         self.axis,
-                         value))
+            value = self.value
+
+        return hash((self.__class__.__name__,
+                     self.grid._cache_hash(),
+                     self.axis,
+                     value))
 
 
     def copy(self, upper: Optional[bool] = None,
