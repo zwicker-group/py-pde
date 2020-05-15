@@ -408,11 +408,18 @@ class Parameterized():
         
         
 
-def get_all_parameters(data: str = None) -> Dict[str, Any]:
-    """ get a dictionary with all parameters of all registered classes """
+def get_all_parameters(data: str = 'name') -> Dict[str, Any]:
+    """ get a dictionary with all parameters of all registered classes
+    
+    Args:
+        data (str):
+            Determines what data is returned. Possible values are 'name',
+            'value', or 'description', to return the respective information
+            about the parameters.
+    """
     result = {}
     for cls_name, cls in Parameterized._subclasses.items():
-        if data is None:
+        if data == 'name':
             parameters = set(cls.get_parameters().keys())
         elif data == 'value':
             parameters = {k: v.default_value  # type: ignore
@@ -426,4 +433,30 @@ def get_all_parameters(data: str = None) -> Dict[str, Any]:
         result[cls_name] = parameters
     return result
         
-                
+        
+
+def sphinx_display_parameters(app, what, name, obj, options, lines):
+    """ helper function to display parameters in sphinx documentation
+    
+    Example: 
+        This function should be connected to the 'autodoc-process-docstring'
+        event like so:
+    
+            app.connect('autodoc-process-docstring', sphinx_display_parameters)
+    """
+    if what == 'class' and issubclass(obj, Parameterized):
+        if any(':param parameters:' in line for line in lines):
+            # parse parameters
+            parameters = obj.get_parameters(sort=False)
+            if parameters:
+                lines.append('.. admonition::')
+                lines.append(f'   Parameters of {obj.__name__}:')
+                lines.append('   ')
+                for p in parameters.values():
+                    lines.append(f'   {p.name}')
+                    text = p.description.splitlines()
+                    text.append(f'(Default value: :code:`{p.default_value!r}`)')
+                    text = ['     ' + t for t in text]
+                    lines.extend(text)
+                    lines.append('')
+                lines.append('')
