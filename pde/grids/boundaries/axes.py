@@ -85,9 +85,16 @@ class Boundaries(list):
                 conditions.
                 
         """
-        # handle boundary conditions that are set to natural
+        # check whether this is already the correct class
+        if isinstance(boundaries, Boundaries):
+            # boundaries are already in the correct format
+            assert boundaries.grid == grid
+            boundaries.check_value_rank(rank)
+            return boundaries
+        
+        # convert natural boundary conditions if present
         if boundaries == 'natural':
-            # convert all boundary from 'natural' 
+            # set the respective natural conditions for all axes 
             boundaries = ['periodic' if periodic else 'no-flux'
                           for periodic in grid.periodic]
             

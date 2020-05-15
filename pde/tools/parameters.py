@@ -157,7 +157,6 @@ class Parameterized():
             self.parameters = self._parse_parameters(parameters)
 
 
-
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """ register all subclasses to reconstruct them later """
         # normalize the parameters_default attribute

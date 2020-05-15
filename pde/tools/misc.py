@@ -272,15 +272,28 @@ def display_progress(iterator, total=None, enabled=True, **kwargs):
 
 
 
-def add_scaled_colorbar(im, ax, aspect=20, pad_fraction=0.5, **kwargs):
+def add_scaled_colorbar(im, ax,
+                        aspect: float = 20,
+                        pad_fraction: float = 0.5,
+                        **kwargs):
     """ add a vertical color bar to an image plot
     
     The height of the colorbar is now adjusted to the plot, so that the width
     determined by `aspect` is now given relative to the height. Moreover, the
     gap between the colorbar and the plot is now given in units of the fraction
     of the width by `pad_fraction`. 
-    
+
     Inspired by https://stackoverflow.com/a/33505522/932593
+    
+    Args:
+        im: object returned from :meth:`matplotlib.pyplot.imshow`
+        ax: the current figure axes
+        aspect (float): the target aspect ratio of the colorbar
+        pad_fraction (float): Width of the gap between colorbar and image
+        **kwargs: Additional parameters are passed to colorbar call
+
+    Returns:
+        the result of the colorbar call
     """
     import matplotlib.pyplot as plt
     from mpl_toolkits import axes_grid1
@@ -296,10 +309,12 @@ def add_scaled_colorbar(im, ax, aspect=20, pad_fraction=0.5, **kwargs):
 def import_class(identifier: str):
     """ import a class or module given an identifier 
     
-    The identifier can be a module or a class. For instance, calling the
-    function with the string `identifier == 'numpy.linalg.norm'` is roughly
-    equivalent to running `from numpy.linalg import norm` and would return a
-    reference to `norm`.
+    Args:
+        identifier (str):
+            The identifier can be a module or a class. For instance, calling the
+            function with the string `identifier == 'numpy.linalg.norm'` is
+            roughly equivalent to running `from numpy.linalg import norm` and
+            would return a reference to `norm`.
     """
     module_path, _, class_name = identifier.rpartition('.')
     if module_path:
