@@ -12,13 +12,13 @@ from typing import TypeVar
 
 DOCSTRING_REPLACEMENTS = {
     # description of function arguments
-    '{ARG_BOUNDARIES_INSTANCE}': """
+    'ARG_BOUNDARIES_INSTANCE': """
         Specifies the boundary conditions applied to the field. This must be an
         instance of :class:`~pde.grids.boundaries.axes.Boundaries`, which can be
         created from various data formats using the class method
        :func:`~pde.grids.boundaries.axes.Boundaries.from_data`."""[1:],
        
-    '{ARG_BOUNDARIES}': """
+    'ARG_BOUNDARIES': """
         Boundary conditions are generally given as a list with one condition for
         each axis. For periodic axis, only periodic boundary conditions are
         allowed (indicated by 'periodic'). For non-periodic axes, different 
@@ -32,7 +32,7 @@ DOCSTRING_REPLACEMENTS = {
         be found in the
         :ref:`boundaries documentation <documentation-boundaries>`."""[1:],
 
-    '{ARG_TRACKER_INTERVAL}': """
+    'ARG_TRACKER_INTERVAL': """
         Determines how often the tracker interrupts the simulation. Simple
         numbers are interpreted as durations measured in the simulation time
         variable. Alternatively, a string using the format 'hh:mm:ss' can be
@@ -40,7 +40,7 @@ DOCSTRING_REPLACEMENTS = {
         defined in :mod:`~pde.trackers.intervals` can be given for more control.
         """[1:-1],
         
-    '{ARG_PLOT_QUANTITIES}': """
+    'ARG_PLOT_QUANTITIES': """
         A 2d list of quantities that are shown in a rectangular arrangement.
         If `quantities` is a simple list, the panels will be rendered as a
         single row.
@@ -54,7 +54,7 @@ DOCSTRING_REPLACEMENTS = {
         the range [0, scale] is assumed), and 'cmap' (defining the colormap
         being used)."""[1:],
         
-    '{ARG_PLOT_SCALE}': """
+    'ARG_PLOT_SCALE': """
         Flag determining how the range of the color scale is determined. In the
         simplest case a tuple of numbers marks the lower and upper end of the 
         scalar values that will be shown. If only a single number is supplied,
@@ -63,7 +63,7 @@ DOCSTRING_REPLACEMENTS = {
         values."""[1:-1],
     
     # descriptions of the discretization and the symmetries         
-    '{DESCR_CYLINDRICAL_GRID}': r"""
+    'DESCR_CYLINDRICAL_GRID': r"""
         The cylindrical grid assumes polar symmetry, so that fields only depend
         on the radial coordinate `r` and the axial coordinate `z`. Here, the
         first axis is along the radius, while the second axis is along the axis
@@ -71,7 +71,7 @@ DOCSTRING_REPLACEMENTS = {
         :math:`r_i = (i + \frac12) \Delta r` for :math:`i=0, \ldots, N_r-1`.
         """[1:-1],
         
-    '{DESCR_POLAR_GRID}': r"""
+    'DESCR_POLAR_GRID': r"""
         The polar grid assumes polar symmetry, so that fields only depend on the
         radial coordinate `r`. The radial discretization is defined as
         :math:`r_i = r_\mathrm{min} + (i + \frac12) \Delta r` for
@@ -80,7 +80,7 @@ DOCSTRING_REPLACEMENTS = {
         the outer boundary is given by
         :math:`r_\mathrm{max} = r_\mathrm{min} + N_r \Delta r`."""[1:],
         
-    '{DESCR_SPHERICAL_GRID}': r"""
+    'DESCR_SPHERICAL_GRID': r"""
         The spherical grid assumes spherical symmetry, so that fields only
         depend on the radial coordinate `r`. The radial discretization is
         defined as :math:`r_i = r_\mathrm{min} + (i + \frac12) \Delta r` for
@@ -90,10 +90,24 @@ DOCSTRING_REPLACEMENTS = {
         :math:`r_\mathrm{max} = r_\mathrm{min} + N_r \Delta r`."""[1:],
         
     # notes in the docstring
-    '{WARNING_EXEC}': r"""
+    'WARNING_EXEC': r"""
         This implementation uses :func:`exec` and should therefore not be used 
         in a context where malicious input could occur."""[1:]
 }
+
+
+
+def get_text_block(identifier: str) -> str:
+    """ return a single text block
+    
+    Args:
+        identifier (str): The name of the text block
+        
+    Returns:
+        str: the text block as one long line.
+    """
+    raw_text = DOCSTRING_REPLACEMENTS[identifier]
+    return ''.join(textwrap.dedent(raw_text))
 
 
 
@@ -107,7 +121,7 @@ def fill_in_docstring(f: TFunc) -> TFunc:
                               replace_whitespace=True, drop_whitespace=True)
             
     docstring = f.__doc__
-    for token, value in DOCSTRING_REPLACEMENTS.items():
+    for name, value in DOCSTRING_REPLACEMENTS.items():
         
         def repl(matchobj) -> str:
             """ helper function replacing token in docstring """
@@ -115,6 +129,7 @@ def fill_in_docstring(f: TFunc) -> TFunc:
             return tw.fill(textwrap.dedent(value))
 
         # replace the token with the correct indentation
+        token = '{' + name + '}'
         docstring = re.sub(f"^([ \t]*){token}", repl, docstring,  # type: ignore
                            flags=re.MULTILINE)
 
