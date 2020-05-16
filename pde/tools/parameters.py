@@ -299,32 +299,29 @@ class Parameterized():
             in_notebook = False
         
         if description is None:
-            description = in_notebook
+            description = in_notebook  # show only in notebook by default
         
         # set the templates for displaying the data 
         if in_notebook:
             # templates for HTML output
-            template = '<tr><td><b>{name}</b></td><td>{value!r}</td>'
+            template = '<dt>{name} = {value!r}</dt>'
             if description:
-                template += '<td>{description}</td>'
-            template += '</tr>'
+                template += '<dd>{description}</dd>'
             html = ''
+
         else:
             # template for normal output
+            template = '{name}: {type} = {value!r}'
+            template_object = '{name} = {value!r}'
             if description:
-                template = '{name}: {type} = {value!r} ({description})'
-                template_object = '{name} = {value!r} ({description})'
-            else:
-                template = '{name}: {type} = {value!r}'
-                template_object = '{name} = {value!r}'
+                template += ' ({description})'
+                template_object += ' ({description})'
             
         # iterate over all parameters
-        params = cls.get_parameters(include_deprecated=show_deprecated,
-                                     sort=sort)
+        params = cls.get_parameters(include_hidden=show_hidden,
+                                    include_deprecated=show_deprecated,
+                                    sort=sort)
         for param in params.values():
-            if not show_hidden and param.hidden:
-                continue  # skip hidden parameters
-            
             # initialize the data to show
             data = {'name': param.name,
                     'type': param.cls.__name__,
@@ -348,10 +345,9 @@ class Parameterized():
             
         if in_notebook:
             # output html with minimal styling
-            html = ('<style type="text/css">table.py-pde_parameters td '
-                    '{vertical-align:top;text-align:left}</style>'
-                    '<table class="py-pde_parameters">' + html + '</table>')
-            display(HTML(html))
+            css = 'dl.py-pde_parameters dd {padding-left:2em}'
+            display(HTML(f'<style type="text/css">{css}</style>'
+                         f'<dl class="py-pde_parameters">{html}</dl>'))
             
 
     @hybridmethod

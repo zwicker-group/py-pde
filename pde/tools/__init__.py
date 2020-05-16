@@ -6,6 +6,7 @@ Package containing several tools required in py-pde
 
    cache
    cuboid
+   docstrings
    expressions
    math
    misc
