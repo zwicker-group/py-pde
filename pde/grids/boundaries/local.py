@@ -187,7 +187,7 @@ class BCBase(metaclass=ABCMeta):
                  axis: int,
                  upper: bool,
                  rank: int = 0,
-                 value: Union[float, np.ndarray] = 0):
+                 value: Union[float, np.ndarray, str] = 0):
         """ 
         Warning:
             {WARNING_EXEC} However, the function is safe when `value` cannot be
@@ -239,7 +239,7 @@ class BCBase(metaclass=ABCMeta):
 
     @fill_in_docstring          
     def _parse_value(self, value: Union[float, np.ndarray, str]) -> np.ndarray:
-        """ parses the given value
+        """ parses a boundary value
         
         Warning:
             {WARNING_EXEC}
@@ -288,18 +288,17 @@ class BCBase(metaclass=ABCMeta):
                 result[idx] = expr(**coords)
             
         elif np.isscalar(value):
-            # homogeneous value
+            # scalar value applied to all positions
             result = np.broadcast_to(float(value), self._shape_tensor)
             
         else:
             # assume tensorial and/or inhomogeneous values
             value = np.asarray(value, dtype=np.double)
-            shape = self._shape_tensor + self._shape_boundary
             
             if value.ndim == 0:
                 # value is a scalar
                 result = np.broadcast_to(value, self._shape_tensor)
-            elif value.shape == shape:
+            elif value.shape == self._shape_tensor + self._shape_boundary:
                 # inhomogeneous field with all tensor components
                 result = value
             elif value.shape == self._shape_tensor:
@@ -375,16 +374,15 @@ class BCBase(metaclass=ABCMeta):
             If the address of self.value changes, a new function needs to be
             created by calling this factory function again.
         """
-        value = self.value
+        # obtain details about the array
+        mem_addr = self.value.ctypes.data
+        shape = self.value.shape
+        dtype = self.value.dtype
         
-        # obtains memory address of array
-        mem_addr = value.ctypes.data
-        
-        @nb.jit(nb.typeof(value)(), inline='always')
+        @nb.jit(nb.typeof(self.value)(), inline='always')
         def get_value():
             """ helper function returning the linked array """
-            return nb.carray(address_as_void_pointer(mem_addr),
-                             value.shape, value.dtype)
+            return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)
         
         return get_value  # type: ignore
         
@@ -472,12 +470,6 @@ class BCBase(metaclass=ABCMeta):
         return obj
         
         
-    @property
-    def is_scalar(self) -> bool:
-        """ bool: whether the boundary condition is a scalar """
-        return self.rank == 0
-    
-
     def extract_component(self, *indices):
         """ extracts the boundary conditions for the given component
 
@@ -713,12 +705,13 @@ class BCBase1stOrder(BCBase):
         """ calculate the value of the virtual point outside the boundary 
         
         Args:
-            arr (array): The data values associated with the grid
-            idx (tuple): The index of the point to evaluate. This is a tuple of
-                length `grid.num_axes` with the either -1 or `dim` as the entry
-                for the axis associated with this boundary condition. Here,
-                `dim` is the dimension of the axis. The index is optional if
-                dim == 1.                 
+            arr (array):
+                The data values associated with the grid
+            idx (tuple):
+                The index of the point to evaluate. This is a tuple of length
+                `grid.num_axes` with the either -1 or `dim` as the entry for the
+                axis associated with this boundary condition. Here, `dim` is the
+                dimension of the axis. The index is optional if dim == 1.                 
             
         Returns:
             float: Value at the virtual support point
@@ -1011,8 +1004,8 @@ class MixedBC(BCBase1stOrder):
                  axis: int,
                  upper: bool,
                  rank: int = 0,
-                 value=0,
-                 const: float = 0):
+                 value: Union[float, np.ndarray, str] = 0,
+                 const: Union[float, np.ndarray, str] = 0):
         r""" 
         Args:
             grid (:class:`~pde.grids.GridBase`):
@@ -1034,14 +1027,13 @@ class MixedBC(BCBase1stOrder):
                 value is applied to all points.  Inhomogeneous boundary
                 conditions are possible by supplying an expression as a string,
                 which then may depend on the axes names of the respective grid.
-            const (float):
+            const (float or :class:`~numpy.ndarray` or str):
                 The parameter :math:`\beta` determining the constant term for 
-                the boundary condition. This term does not yet allow for
-                tensorial or spatially varying values.
+                the boundary condition. Supports the same input as `value`.
         """
         super().__init__(grid, axis, upper, rank, value)
-        # TODO: support spatially varying constant terms β
-        self.const = np.array(const, dtype=np.double)  
+        self.const = self._parse_value(const)  
+        
         
     def __eq__(self, other):
         """ checks for equality neglecting the `upper` property """
@@ -1194,12 +1186,13 @@ class BCBase2ndOrder(BCBase):
         """ calculate the value of the virtual point outside the boundary 
         
         Args:
-            arr (array): The data values associated with the grid
-            idx (tuple): The index of the point to evaluate. This is a tuple of
-                length `grid.num_axes` with the either -1 or `dim` as the entry
-                for the axis associated with this boundary condition. Here,
-                `dim` is the dimension of the axis. The index is optional if
-                dim == 1.                 
+            arr (array):
+                The data values associated with the grid
+            idx (tuple):
+                The index of the point to evaluate. This is a tuple of length
+                `grid.num_axes` with the either -1 or `dim` as the entry for the
+                axis associated with this boundary condition. Here, `dim` is the
+                dimension of the axis. The index is optional if dim == 1.                 
             
         Returns:
             float: Value at the virtual support point
@@ -1303,12 +1296,15 @@ class BCBase2ndOrder(BCBase):
         # calculate necessary constants
         data_vp = self.get_virtual_point_data()
         
+        zeros = np.zeros_like(self.value)
+        ones = np.ones_like(self.value)
+        
         if self.homogeneous:
             # the boundary condition does not depend on space
-            if self.is_scalar:
-                zeros = 0.
-            else:
-                zeros = np.zeros((self.grid.dim,) * self.rank)
+#             if self.rank == 0:
+#                 zeros = 0.
+#             else:
+#                 zeros = np.zeros((self.grid.dim,) * self.rank)
             
             @register_jitable
             def adjacent_point(arr_1d, i_point, bc_idx):
@@ -1317,7 +1313,7 @@ class BCBase2ndOrder(BCBase):
                 if i_point == i_bndry:
                     data = data_vp
                 else:
-                    data = (zeros, 1., i_point + i_dx, 0., 0)
+                    data = (zeros, ones, i_point + i_dx, zeros, 0)
                 
                 # calculate the values
                 return (data[0] +
@@ -1326,10 +1322,10 @@ class BCBase2ndOrder(BCBase):
                 
         else:
             # the boundary condition is a function of space
-            shape = tuple(self.grid.shape[i]
-                          for i in range(self.grid.num_axes)
-                          if i != self.axis)
-            zeros, ones = np.zeros(shape), np.ones(shape)
+#             shape = tuple(self.grid.shape[i]
+#                           for i in range(self.grid.num_axes)
+#                           if i != self.axis)
+#             zeros, ones = np.zeros(shape), np.ones(shape)
             
             @register_jitable
             def adjacent_point(arr_1d, i_point, bc_idx):
@@ -1376,7 +1372,7 @@ class ExtrapolateBC(BCBase2ndOrder):
         else:
             i1 = 0
             i2 = 1
-        return (0., 2., i1, -1., i2)
+        return (np.array(0.), np.array(2.), i1, np.array(-1.), i2)
 
 
 
@@ -1400,12 +1396,11 @@ class CurvatureBC(BCBase2ndOrder):
             raise RuntimeError('Need at least 2 support points to use the '
                                'curvature boundary condition.')
 
-        value = self.value * dx**2
-        ones = np.ones_like(value)
+        value = np.asarray(self.value * dx**2)
+        f1 = np.full_like(value, 2.)
+        f2 = np.full_like(value, -1.)
         if self.upper:
-            f1, i1 = 2., size - 1
-            f2, i2 = -1., size - 2
+            i1, i2 = size - 1, size - 2
         else:
-            f1, i1 = 2., 0
-            f2, i2 = -1., 1
-        return (value, f1 * ones, i1, f2 * ones, i2)
+            i1, i2 = 0, 1
+        return (value, f1, i1, f2, i2)

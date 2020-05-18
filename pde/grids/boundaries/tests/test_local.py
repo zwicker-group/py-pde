@@ -202,6 +202,13 @@ def test_mixed_condition():
     assert bc.get_virtual_point(data) == pytest.approx(-1)
     bc = BCBase.from_data(g, 0, True, {'type': 'mixed', 'value': np.inf})
     assert bc.get_virtual_point(data) == pytest.approx(-2)
+    
+    g = UnitGrid([2, 2])
+    data = np.ones(g.shape)
+    bc = BCBase.from_data(g, 0, False, {'type': 'mixed', 'value': [1, 2],
+                                        'const': [3, 4]})
+    assert bc.get_virtual_point(data, (0, 0)) == pytest.approx(2 + 1/3)
+    assert bc.get_virtual_point(data, (0, 1)) == pytest.approx(2)
         
         
         
