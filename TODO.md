@@ -1,6 +1,5 @@
 TODO
 ====
-* Add extension mechanism for parsing custom boundary conditions
 * Count the number of compilations and store it in the info field of the simulation
     - raise a warning when this number became too large in a simulation?
 * Think about interface for changing boundary values in numba
