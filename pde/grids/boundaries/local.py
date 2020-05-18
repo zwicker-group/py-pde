@@ -1301,10 +1301,6 @@ class BCBase2ndOrder(BCBase):
         
         if self.homogeneous:
             # the boundary condition does not depend on space
-#             if self.rank == 0:
-#                 zeros = 0.
-#             else:
-#                 zeros = np.zeros((self.grid.dim,) * self.rank)
             
             @register_jitable
             def adjacent_point(arr_1d, i_point, bc_idx):
@@ -1322,10 +1318,6 @@ class BCBase2ndOrder(BCBase):
                 
         else:
             # the boundary condition is a function of space
-#             shape = tuple(self.grid.shape[i]
-#                           for i in range(self.grid.num_axes)
-#                           if i != self.axis)
-#             zeros, ones = np.zeros(shape), np.ones(shape)
             
             @register_jitable
             def adjacent_point(arr_1d, i_point, bc_idx):
