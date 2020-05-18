@@ -56,7 +56,7 @@ def parse_number(expression: Union[str, float],
     if variables is None:
         variables = {}
     
-    expr = sympy_parser.parse_expr(str(expression)).simplify()
+    expr = sympy_parser.parse_expr(str(expression))
     try:
         value = float(expr.subs(variables))
     except TypeError as err:
@@ -301,7 +301,7 @@ class ScalarExpression(ExpressionBase):
                 The signature defines which variables are expected in the
                 expression. This is typically a list of strings identifying
                 the variable names. Individual names can be specified as lists,
-                in which case any of these names can be used. The first item in
+                in which case any of these names can be used. The firstm item in
                 such a list is the definite name and if another name of the list
                 is used, the associated variable is renamed to the definite
                 name. If signature is `None`, all variables in `expressions`
@@ -342,7 +342,7 @@ class ScalarExpression(ExpressionBase):
 
             # parse the expression using sympy                
             from sympy.parsing import sympy_parser
-            sympy_expr = sympy_parser.parse_expr(expression).simplify()
+            sympy_expr = sympy_parser.parse_expr(expression)
             
         else:
             # expression is empty, False or None => set it to zero                

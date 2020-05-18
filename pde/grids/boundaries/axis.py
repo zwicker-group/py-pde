@@ -170,7 +170,7 @@ class BoundaryPair(BoundaryAxisBase):
                     raise ValueError(f'Data items {data_copy.keys()} were not '
                                      'used.')
             else:
-                # one condition for low and high
+                # one condition for both sides
                 low = BCBase.from_data(grid, axis, upper=False, data=data,
                                        rank=rank)
                 high = BCBase.from_data(grid, axis, upper=True, data=data,

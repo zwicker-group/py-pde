@@ -308,6 +308,17 @@ class BCBase(metaclass=ABCMeta):
                 raise ValueError(f"Dimensions {value.shape} of the value are "
                                  f"incompatible with rank {self.rank} and "
                                  f"spatial dimensions {self._shape_boundary}.")
+                
+        # check consistency
+        if np.any(np.isnan(result)):
+            try:
+                logger = self._logger
+            except AttributeError:
+                # this can happen when _parse_value is called before the object
+                # is fully initialized
+                logger = logging.getLogger(self.__class__.__name__)
+            logger.warning('In valid values in %s', self)
+                
         return result
     
                 
@@ -600,6 +611,10 @@ class BCBase(metaclass=ABCMeta):
             # already in the correct format
             assert data.grid == grid and data.axis == axis and data.rank == rank
             return data.copy(upper=upper)
+
+        elif data == 'natural':
+            # special case of a vanishing derivative
+            return DirichletBC(grid, axis, upper=upper, rank=rank)
         
         elif isinstance(data, dict):
             # create from dictionary

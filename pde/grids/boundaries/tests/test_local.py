@@ -54,7 +54,7 @@ def test_individual_boundaries():
     """ test setting individual boundaries """
     g = UnitGrid([2])
     for data in ['value', {'value': 1}, {'type': 'value', 'value': 1},
-                 'derivative', {'derivative': 1},
+                 'natural', 'derivative', {'derivative': 1},
                  {'type': 'derivative', 'value': 1}, {'mixed': 1},
                  {'type': 'mixed', 'value': 1}, 'extrapolate']:
         bc = BCBase.from_data(g, 0, upper=True, data=data, rank=0)

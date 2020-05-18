@@ -209,8 +209,7 @@ class ScalarFieldPlot():
                      quantities=None,
                      scale: ScaleData = 'automatic',
                      tight: bool = False,
-                     show: bool = True) \
-            -> "ScalarFieldPlot":
+                     show: bool = True) -> "ScalarFieldPlot":
         """ create ScalarFieldPlot from storage
         
         Args:
@@ -282,12 +281,18 @@ class ScalarFieldPlot():
                     quantities.append(quantity)
             else:
                 quantities = [{'title': 'Concentration', 'source': None}]
-            
+                
         # make sure panels is a 2d array
         if isinstance(quantities, dict):
             quantities = [[quantities]]
         elif isinstance(quantities[0], dict):
             quantities = [quantities]
+            
+        # set the scaling for quantities where it is not yet set
+        for row in quantities:
+            for col in row:
+                col.setdefault('scale', scale)
+            
         return quantities  # type: ignore
         
         
