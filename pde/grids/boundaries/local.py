@@ -548,30 +548,14 @@ class BCBase(metaclass=ABCMeta):
         data = data.copy()  # need to make a copy since we modify it below
         
         # parse all possible variants that could be given
-        if data.keys() == {'value'}:
-            # only a value is given => Assume Dirichlet conditions
-            b_type = 'value'
-            b_value = data.pop('value')
-            
-        elif data.keys() == {'derivative'}:
-            # the derivative is obviously given => Assume Neumann conditions
-            b_type = 'derivative'
-            b_value = data.pop('derivative')
-            
-        elif data.keys() == {'mixed'}:
-            # short notation for mixed condition
-            b_type = 'mixed'
-            b_value = data.pop('mixed')
-            
-        elif data.keys() == {'curvature'}:
-            # short notation for curvature condition
-            b_type = 'curvature'
-            b_value = data.pop('curvature')
-            
-        elif 'type' in data.keys():
+        if 'type' in data.keys():
             # type is given (optionally with a value)
             b_type = data.pop('type')
             b_value = data.pop('value', 0)
+
+        elif len(data) == 1:
+            # only a single items is given
+            b_type, b_value = data.popitem()
             
         else:
             raise ValueError('Boundary condition defined by '
