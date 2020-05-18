@@ -178,9 +178,8 @@ class BCBase(metaclass=ABCMeta):
 
     _subclasses: Dict[str, 'BCBase'] = {}  # all classes inheriting from this
     _conditions: Dict[str, 'BCBase'] = {}  # mapping from all names to classes
-    
 
-    _value: Union[float, np.ndarray]
+    _value: np.ndarray
     
 
     @fill_in_docstring    
@@ -237,27 +236,25 @@ class BCBase(metaclass=ABCMeta):
             for name in cls.names:
                 cls._conditions[name] = cls
 
-                
-    @property
-    def value(self) -> Union[float, np.ndarray]:
-        return self._value
-                
-          
-    @value.setter  # type: ignore
+
     @fill_in_docstring          
-    def value(self, value: Union[float, np.ndarray] = 0):
-        """ set the value of this boundary condition
+    def _parse_value(self, value: Union[float, np.ndarray, str]) -> np.ndarray:
+        """ parses the given value
         
         Warning:
             {WARNING_EXEC}
         
         Args:
-            value (float or str or array):
-                a value stored with the boundary condition. The interpretation
-                of this value depends on the type of boundary condition.
+            value (array-like or str):
+                The value given as a array of tensorial character and optionally
+                dependent on space (along the boundary). Alternatively, a string
+                can specify a mathematical expression that can optionally depend
+                on the coordinates along the boundary. This expression is only
+                supported for scalar boundary conditions.
+                
+        Returns:
+            :class:`numpy.ndarray`: The value at the boundary
         """
-        self._value_expression = value
-        
         if isinstance(value, str):
             # inhomogeneous value given by an expression 
             if self.rank != 0:
@@ -265,7 +262,6 @@ class BCBase(metaclass=ABCMeta):
                                           'only supported for scalar values.')
             
             from ...tools.expressions import ScalarExpression
-            self.homogeneous = False
 
             # determine which coordinates are allowed to vary            
             axes_ids = (list(range(self.axis)) +
@@ -284,17 +280,16 @@ class BCBase(metaclass=ABCMeta):
             # iterate explicitly over all points because the expression might
             # not depend on some of the variables, but we still want the array
             # self._value to contain a value at each boundary point
-            self._value = np.empty_like(bc_coords[0])
+            result = np.empty_like(bc_coords[0])
             coords = {name: 0 for name in bc_vars}
-            for idx in np.ndindex(*self._value.shape):
+            for idx in np.ndindex(*result.shape):
                 for i, name in enumerate(bc_vars):
                     coords[name] = bc_coords[i][idx]
-                self._value[idx] = expr(**coords)
+                result[idx] = expr(**coords)
             
         elif np.isscalar(value):
-            # homogeneous, scalar value
-            self.homogeneous = True
-            self._value = float(value)
+            # homogeneous value
+            result = np.broadcast_to(float(value), self._shape_tensor)
             
         else:
             # assume tensorial and/or inhomogeneous values
@@ -302,24 +297,52 @@ class BCBase(metaclass=ABCMeta):
             shape = self._shape_tensor + self._shape_boundary
             
             if value.ndim == 0:
-                # value is a scalar, although np.isscalar(np.array(0)) == False
-                self.homogeneous = True
-                self._value = np.broadcast_to(value, self._shape_tensor)
-                    
+                # value is a scalar
+                result = np.broadcast_to(value, self._shape_tensor)
             elif value.shape == shape:
                 # inhomogeneous field with all tensor components
-                self.homogeneous = False
-                self._value = value
-            
+                result = value
             elif value.shape == self._shape_tensor:
                 # homogeneous field with all tensor components
-                self.homogeneous = True
-                self._value = value
-                    
+                result = value
             else:
                 raise ValueError(f"Dimensions {value.shape} of the value are "
                                  f"incompatible with rank {self.rank} and "
                                  f"spatial dimensions {self._shape_boundary}.")
+        return result
+    
+                
+    @property
+    def value(self) -> np.ndarray:
+        return self._value
+                
+          
+    @value.setter  # type: ignore
+    @fill_in_docstring
+    def value(self, value: Union[float, np.ndarray, str] = 0):
+        """ set the value of this boundary condition
+        
+        Warning:
+            {WARNING_EXEC}
+        
+        Args:
+            value (float or str or array):
+                a value stored with the boundary condition. The interpretation
+                of this value depends on the type of boundary condition.
+        """
+        self._value = self._parse_value(value)
+    
+        if self._value.shape == self._shape_tensor:
+            # value does not depend on space
+            self.homogeneous = True
+        elif self._value.shape == self._shape_tensor + self._shape_boundary:
+            # inhomogeneous field
+            self.homogeneous = False
+        else:
+            raise ValueError(f"Dimensions {self._value.shape} of the value are "
+                             f"incompatible with rank {self.rank} and "
+                             f"spatial dimensions {self._shape_boundary}.")
+        
         self.value_is_linked = False
     
     
@@ -352,14 +375,10 @@ class BCBase(metaclass=ABCMeta):
             If the address of self.value changes, a new function needs to be
             created by calling this factory function again.
         """
-        
         value = self.value
-        if not isinstance(value, np.ndarray):
-            RuntimeError('self.value must be a `numpy.ndarray` for creating '
-                         'a value getter.')
         
         # obtains memory address of array
-        mem_addr = value.ctypes.data  # type: ignore
+        mem_addr = value.ctypes.data
         
         @nb.jit(nb.typeof(value)(), inline='always')
         def get_value():
@@ -429,12 +448,10 @@ class BCBase(metaclass=ABCMeta):
     def _cache_hash(self) -> int:
         """ returns a value to determine when a cache needs to be updated """ 
         if self.value_is_linked:
-            value = self.value.ctypes.data  # type: ignore
-        elif isinstance(self.value, np.ndarray):
-            value = self.value.tobytes()
+            value = self.value.ctypes.data
         else:
-            value = self.value
-
+            value = self.value.tobytes()
+        
         return hash((self.__class__.__name__,
                      self.grid._cache_hash(),
                      self.axis,
@@ -468,21 +485,8 @@ class BCBase(metaclass=ABCMeta):
             *indices:
                 One or two indices for vector or tensor fields, respectively
         """
-        if not self.homogeneous:
-            raise NotImplementedError('Only homogeneous boundary conditions '
-                                      'support tensorial values')
-            
-        if np.array_equal(self.value, 0):  # special case for all ranks
-            value = 0
-            
-        elif len(indices) == 0:  # scalar conditions
-            value = self.value
-            
-        else:  # tensorial boundary conditions
-            value = self.value[indices]
-            
-        rank = self.rank - len(indices)
-        return self.copy(value=value, rank=rank)
+        return self.copy(value=self.value[indices],
+                         rank=self.rank - len(indices))
 
                 
     @classmethod
@@ -875,7 +879,7 @@ class DirichletBC(BCBase1stOrder):
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
             
         if not compiled:
-            factor = -1 if np.isscalar(const) else -np.ones_like(const)
+            factor = -np.ones_like(const)
             return (const, factor, index)
         else:
             # return boundary data such that dynamically calculated values can
@@ -939,7 +943,7 @@ class NeumannBC(BCBase1stOrder):
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
             
         if not compiled:
-            factor = 1 if np.isscalar(const) else np.ones_like(const)
+            factor = np.ones_like(const)
             return (const, factor, index)
         else:
             # return boundary data such that dynamically calculated values can
@@ -1037,7 +1041,7 @@ class MixedBC(BCBase1stOrder):
         """
         super().__init__(grid, axis, upper, rank, value)
         # TODO: support spatially varying constant terms β
-        self.const = float(const)  
+        self.const = np.array(const, dtype=np.double)  
         
     def __eq__(self, other):
         """ checks for equality neglecting the `upper` property """
@@ -1048,11 +1052,7 @@ class MixedBC(BCBase1stOrder):
 
     def _cache_hash(self) -> int:
         """ returns a value to determine when a cache needs to be updated """ 
-        if isinstance(self.const, np.ndarray):
-            const = self.const.tobytes()
-        else:
-            const = self.const  
-        return hash((super()._cache_hash(), const))
+        return hash((super()._cache_hash(), self.const.tobytes()))
     
     
     def copy(self, upper: Optional[bool] = None,
@@ -1085,23 +1085,15 @@ class MixedBC(BCBase1stOrder):
             :class:`BC1stOrderData`: the data structure associated with this
             virtual point
         """        
+        # calculate values assuming finite factor
         dx = self.grid.discretization[self.axis]
+        with np.errstate(invalid='ignore'):
+            const = np.asarray(2 * dx * self.const / (2 + dx * self.value))
+            factor = np.asarray((2 - dx * self.value) / (2 + dx * self.value))
         
-        factor = dx * self.value
-        if np.isscalar(factor):
-            if np.isinf(factor):
-                const = 0
-                factor = -1
-            else:
-                const = 2 * dx * self.const / (2 + factor)
-                factor = (2 - factor) / (2 + factor)
-        else:
-            # calculate values assuming finite factor
-            const = 2 * dx * self.const / (2 + factor)
-            factor = (2 - factor) / (2 + factor)
-            # correct at places of infinite values 
-            const[np.isinf(factor)] = 0  # type: ignore
-            factor[np.isinf(factor)] = -1
+        # correct at places of infinite values 
+        const[~np.isfinite(factor)] = 0
+        factor[~np.isfinite(factor)] = -1
             
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
 
@@ -1112,7 +1104,6 @@ class MixedBC(BCBase1stOrder):
         # be used in numba compiled code. This is a work-around since numpy
         # arrays are copied into closures, making them compile-time
         # constants
-
         if self.value_is_linked:
             const_val = np.array(self.const, np.double)
             value_func = self._make_value_getter()
@@ -1410,7 +1401,7 @@ class CurvatureBC(BCBase2ndOrder):
                                'curvature boundary condition.')
 
         value = self.value * dx**2
-        ones = 1 if np.isscalar(value) else np.ones_like(value)
+        ones = np.ones_like(value)
         if self.upper:
             f1, i1 = 2., size - 1
             f2, i2 = -1., size - 2

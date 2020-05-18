@@ -223,7 +223,7 @@ class BoundaryPair(BoundaryAxisBase):
             raise RuntimeError('Incompatible boundaries')
 
         # check whether both sides have no-flux conditions        
-        no_flux = all(isinstance(b, NeumannBC) and b.value == 0
+        no_flux = all(isinstance(b, NeumannBC) and np.all(b.value == 0)
                       for b in [self.low, self.high])
         if no_flux:
             return {'mode': 'reflect'}
