@@ -120,46 +120,63 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
         Consequently, `i = idx[axis]` and `arr[..., idx] == arr_1d[..., i]`.
     """
     assert 0 <= axis < dim
+    ResultType = Tuple[np.ndarray, int, Tuple]
     
-    @register_jitable
-    def get_arr_1d(arr, idx: Tuple[int, ...]) -> Tuple[np.ndarray, int, Tuple]:
-        """ extract the 1d array along axis at point idx """
-        # extract the correct indices
-        if dim == 1:
+    # extract the correct indices
+    if dim == 1:
+        def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+            """ extract the 1d array along axis at point idx """
             i = idx[0]
             bc_idx: Tuple = (...,)
             arr_1d = arr
+            return arr_1d, i, bc_idx
             
-        elif dim == 2:
-            if axis == 0:
+    elif dim == 2:
+        if axis == 0:
+            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+                """ extract the 1d array along axis at point idx """
                 i, y = idx
                 bc_idx = (..., y)
                 arr_1d = arr[..., :, y]
-            elif axis == 1:
+                return arr_1d, i, bc_idx
+
+        elif axis == 1:
+            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+                """ extract the 1d array along axis at point idx """
                 x, i = idx
                 bc_idx = (..., x)
                 arr_1d = arr[..., x, :]
+                return arr_1d, i, bc_idx
                 
-        elif dim == 3:
-            if axis == 0:
+    elif dim == 3:
+        if axis == 0:
+            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+                """ extract the 1d array along axis at point idx """
                 i, y, z = idx
                 bc_idx = (..., y, z)
                 arr_1d = arr[..., :, y, z]
-            elif axis == 1:
+                return arr_1d, i, bc_idx
+
+        elif axis == 1:
+            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+                """ extract the 1d array along axis at point idx """
                 x, i, z = idx
                 bc_idx = (..., x, z)
                 arr_1d = arr[..., x, :, z]
-            elif axis == 2:
+                return arr_1d, i, bc_idx
+
+        elif axis == 2:
+            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+                """ extract the 1d array along axis at point idx """
                 x, y, i = idx
                 bc_idx = (..., x, y)
                 arr_1d = arr[..., x, y, :]
+                return arr_1d, i, bc_idx
                 
-        else:
-            raise NotImplementedError    
+    else:
+        raise NotImplementedError    
         
-        return arr_1d, i, bc_idx
-        
-    return get_arr_1d  # type: ignore
+    return register_jitable(inline='always')(get_arr_1d)  # type: ignore
 
 
 
@@ -390,10 +407,17 @@ class BCBase(metaclass=ABCMeta):
         shape = self.value.shape
         dtype = self.value.dtype
         
-        @nb.jit(nb.typeof(self.value)(), inline='always')
+        # Note that we tried using register_jitable here, but this lead to
+        # problems with address_as_void_pointer
+        
+        @nb.jit(nb.typeof(self._value)(), inline='always')
         def get_value():
             """ helper function returning the linked array """
             return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)
+        
+        
+        # keep a reference to the array to prevent garbage collection
+        get_value._value_ref = self._value
         
         return get_value  # type: ignore
         
@@ -469,7 +493,7 @@ class BCBase(metaclass=ABCMeta):
 
     def copy(self, upper: Optional[bool] = None,
              rank: int = None,
-             value: Union[float, np.ndarray] = None) -> "BCBase":
+             value: Union[float, np.ndarray, str] = None) -> "BCBase":
         """ return a copy of itself, but with a reference to the same grid """
         obj = self.__class__(grid=self.grid,
                              axis=self.axis,
