@@ -110,13 +110,19 @@ def test_hidden_parameter():
     class Test2(Test1):
         parameters_default = [HideParameter('b')]
         
-    assert 'b' not in Test2.get_parameters()
-    assert len(Test2.get_parameters()) == 1
-    t2 = Test2()
-    assert t2.parameters == {'a': 1, 'b': 2}
-    assert t2.get_parameter_default('b') == 2
-    with pytest.raises(ValueError):
-        t2._parse_parameters({'b': 2}, check_validity=True, allow_hidden=False)
+    class Test2a(Parameterized):
+        parameters_default = [Parameter('a', 1), Parameter('b', 2, hidden=True)]
+        
+    for t_class in [Test2, Test2a]:
+        assert 'b' not in t_class.get_parameters()
+        assert len(t_class.get_parameters()) == 1
+        assert len(t_class.get_parameters(include_hidden=True)) == 2
+        t2 = t_class()
+        assert t2.parameters == {'a': 1, 'b': 2}
+        assert t2.get_parameter_default('b') == 2
+        with pytest.raises(ValueError):
+            t2._parse_parameters({'b': 2}, check_validity=True,
+                                 allow_hidden=False)
         
     class Test3(Test1):
         parameters_default = [Parameter('b', 3)]

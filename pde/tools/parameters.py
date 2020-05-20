@@ -171,7 +171,7 @@ class Parameterized():
         cls._subclasses[cls.__name__] = cls
             
 
-    @classmethod        
+    @classmethod
     def get_parameters(cls, include_hidden: bool = False,
                        include_deprecated: bool = False,
                        sort: bool = True) -> Dict[str, Parameter]:
@@ -186,6 +186,7 @@ class Parameterized():
             dict: a dictionary of instance of :class:`Parameter` with their
             names as keys.
         """
+        # collect the parameters from the class hierarchy
         parameters: Dict[str, Parameter] = {}
         for cls in reversed(cls.__mro__):
             if hasattr(cls, 'parameters_default'):
@@ -195,13 +196,27 @@ class Parameterized():
                             parameters[p.name].hidden = True
                         else:
                             del parameters[p.name]
-                    elif (include_deprecated or
-                            not isinstance(p, DeprecatedParameter)):
+                            
+                    else:
                         parameters[p.name] = p
                         
+        # filter parameters based on hidden and deprecated flags
+        def show(p):
+            """ helper function to decide whether parameter will be shown """
+            # show based on hidden flag?
+            show1 = include_hidden or not p.hidden
+            # show based on deprecated flag?
+            show2 = include_deprecated or not isinstance(p, DeprecatedParameter)
+            return show1 and show2
+        
+        # filter parameters based on `show`
+        result = {name: parameter
+                  for name, parameter in parameters.items()
+                  if show(parameter)}
+            
         if sort:
-            parameters = OrderedDict(sorted(parameters.items()))
-        return parameters
+            result = OrderedDict(sorted(result.items()))
+        return result
             
         
     @classmethod    
@@ -230,7 +245,7 @@ class Parameterized():
         
         # obtain all possible parameters
         param_objs = cls.get_parameters(include_hidden=allow_hidden,
-                                         include_deprecated=include_deprecated)
+                                        include_deprecated=include_deprecated)
         
         # initialize parameters with default ones from all parent classes
         result: Dict[str, Any] = {}
