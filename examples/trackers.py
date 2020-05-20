@@ -20,7 +20,6 @@ trackers = [
     PlotTracker(show=True),        # show images during simulation
     # print some output every 5 real seconds:
     PrintTracker(interval=RealtimeIntervals(duration=5))
-    
 ]
 
 eq = DiffusionPDE()  # define the PDE

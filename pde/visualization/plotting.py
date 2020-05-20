@@ -32,8 +32,14 @@ ScaleData = Union[str, float, Tuple[float, float]]
 
 
 
-def _add_horizontal_colorbar(im, ax, num_loc: int = 5):
-    """ adds a horizontal colorbar for image `im` to the axis `ax` """
+def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
+    """ adds a horizontal colorbar for image `im` to the axis `ax`
+    
+    Args:
+        im: The result of calling :func:`matplotlib.pyplot.imshow`
+        ax: The matplotlib axes to which the colorbar is added
+        num_loc (int): Number of ticks
+    """
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib.ticker import MaxNLocator
     
