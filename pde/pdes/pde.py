@@ -118,6 +118,12 @@ class PDE(PDEBase):
                         'operators_detected': self.operators}
         self._cache: Dict[str, Any] = {}
             
+        
+    @property
+    def expressions(self) -> Dict[str, str]:
+        """ show the expressions of the PDE """
+        return {k: v.expression for k, v in self._rhs_expr.items()}
+            
            
     def _prepare(self, state: FieldBase) -> None:
         """ prepare the expression by setting internal variables in the cache

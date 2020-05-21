@@ -19,13 +19,15 @@ def test_pde_wrong_input():
         
     grid = UnitGrid([4])
     eq = PDE({'u': 1})
+    assert eq.expressions == {'u': '1.0'}
     with pytest.raises(ValueError):
         eq.evolution_rate(FieldCollection.scalar_random_uniform(2, grid))
     
     eq = PDE({'u': 1, 'v': 2})
+    assert eq.expressions == {'u': '1.0', 'v': '2.0'}
     with pytest.raises(ValueError):
         eq.evolution_rate(ScalarField.random_uniform(grid))
-    
+        
 
 
 def test_pde_scalar():
