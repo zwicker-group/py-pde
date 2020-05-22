@@ -10,4 +10,5 @@ User manual
    advanced_usage
    performance
    contributing
+   citing
    code_of_conduct
