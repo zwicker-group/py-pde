@@ -11,7 +11,8 @@ from typing import (Callable, Optional, TYPE_CHECKING, Union,  # @UnusedImport
 
 import numpy as np
 
-from ..fields.base import FieldBase
+from ..fields import FieldCollection
+from ..fields.base import FieldBase, OptionalArrayLike
 from ..trackers.base import TrackerCollectionDataType
 from ..tools.numba import jit
 
@@ -34,14 +35,20 @@ class PDEBase(metaclass=ABCMeta):
     explicit time dependence. """
 
 
-    def __init__(self, noise: float = 0):
+    def __init__(self, noise: OptionalArrayLike = 0):
         """
         Args:
-            noise (float):
+            noise (float or :class:`numpy.ndarray`):
                 Magnitude of the additive Gaussian white noise that is supported
                 by default. If set to zero, a deterministic partial differential
-                equation will be solved. If another noise structure is required
-                the respective methods need to be overwritten.
+                equation will be solved. Different noise magnitudes can be
+                supplied for each field in coupled PDEs.
+                
+        Note:
+            If more complicated noise structures are required, the methods
+            :meth:`PDEBase.noise_realization` and
+            :meth:`PDEBase._make_noise_realization_numba` need to be overwritten
+            for the `numpy` and `numba` backend, respectively.
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self.noise = noise
@@ -126,23 +133,43 @@ class PDEBase(metaclass=ABCMeta):
         return rhs
             
             
-    def noise_realization(self, state: FieldBase, t: float = 0) -> FieldBase:
+    def noise_realization(self, state: FieldBase, t: float = 0,
+                          label: str = 'Noise realization') -> FieldBase:
         """ returns a realization for the noise
         
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 The scalar field describing the concentration distribution
-            t (float): The current time point
+            t (float):
+                The current time point
+            label (str):
+                The label for the returned field
             
         Returns:
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE 
         """
         if self.noise:
-            data = np.random.normal(scale=self.noise, size=state.data.shape)
-            return state.copy(data=data, label='Noise realization')
+            if np.isscalar(self.noise):
+                # a single noise value is given for all fields
+                data = np.random.normal(scale=self.noise, size=state.data.shape)
+                return state.copy(data=data, label=label)
+            
+            elif isinstance(state, FieldCollection):
+                # different noise strengths, assuming one for each field
+                noise = np.broadcast_to(self.noise, len(state))
+                fields = [f.copy(data=np.random.normal(scale=n,
+                                                       size=f.data.shape))
+                          for f, n in zip(state, noise)]
+                return FieldCollection(fields, label=label)
+            
+            else:
+                # different noise strengths, but a single field 
+                raise RuntimeError('Multiple noise strengths were given for '
+                                   f'the single field {state}')
+                
         else:
-            return state.copy(data=0, label='Noise realization')
+            return state.copy(data=0, label=label)
 
        
     def _make_noise_realization_numba(self, state: FieldBase) -> Callable:            
@@ -157,18 +184,41 @@ class PDEBase(metaclass=ABCMeta):
             Function determining the right hand side of the PDE
         """
         if self.noise:        
-            noise_strength = float(self.noise)
             data_shape = state.data.shape
             
-            @jit
-            def noise_realization(state_data: np.ndarray, t: float):
-                """ compiled helper function returning a noise realization """ 
-                return noise_strength * np.random.randn(*data_shape)
+            if np.isscalar(self.noise):
+                # a single noise value is given for all fields
+                noise_strength = float(self.noise)
+                            
+                @jit
+                def noise_realization(state_data: np.ndarray, t: float):
+                    """ helper function returning a noise realization """ 
+                    return noise_strength * np.random.randn(*data_shape)
+                
+            elif isinstance(state, FieldCollection):
+                # different noise strengths, assuming one for each field
+                noise_strengths = np.empty(data_shape[0])
+                noise_arr = np.broadcast_to(self.noise, len(state))
+                for i, noise in enumerate(noise_arr):
+                    noise_strengths[state._slices[i]] = noise
+                
+                @jit
+                def noise_realization(state_data: np.ndarray, t: float):
+                    """ helper function returning a noise realization """ 
+                    out = np.random.randn(*data_shape)
+                    for i in range(data_shape[0]):
+                        out[i] *= noise_strengths[i]
+                    return out
+                
+            else:
+                # different noise strengths, but a single field 
+                raise RuntimeError('Multiple noise strengths were given for '
+                                   f'the single field {state}')
             
         else:
             @jit
             def noise_realization(state_data: np.ndarray, t: float):
-                """ compiled helper function returning a noise realization """ 
+                """ helper function returning a noise realization """ 
                 return None
         
         return noise_realization  # type: ignore    

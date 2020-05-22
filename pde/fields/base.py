@@ -193,7 +193,8 @@ class FieldBase(metaclass=ABCMeta):
 
     
     @abstractmethod
-    def copy(self: TField, data=None, label: str = None) -> TField: pass
+    def copy(self: TField, data: OptionalArrayLike = None, label: str = None) \
+        -> TField: pass
             
          
     def assert_field_compatible(self, other: 'FieldBase',
@@ -794,8 +795,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(attributes.pop('grid'), data=data, **attributes)
         
         
-    def copy(self: TDataField, data: np.ndarray = None, label: str = None) \
-            -> TDataField:
+    def copy(self: TDataField,
+             data: OptionalArrayLike = None,
+             label: str = None) -> TDataField:
         """ return a copy of the data, but not of the grid
         
         Args:

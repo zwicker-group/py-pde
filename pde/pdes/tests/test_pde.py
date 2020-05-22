@@ -124,3 +124,20 @@ def test_custom_operators():
     np.testing.assert_allclose(field.data, res.data)
     
     del UnitGrid._operators['undefined']  # reset original state
+    
+    
+    
+@pytest.mark.parametrize('backend', ['numpy', 'numba'])
+def test_pde_noise(backend):
+    """ test noise operator on PDE class """
+    grid = UnitGrid([64, 64])
+    state = FieldCollection([ScalarField(grid), ScalarField(grid)])
+    
+    eq = PDE({'a': 0, 'b': 0}, noise=.5)
+    res = eq.solve(state, t_range=1, backend=backend, dt=1)
+    assert res.data.std() == pytest.approx(.5, rel=0.1)
+
+    eq = PDE({'a': 0, 'b': 0}, noise=[0.01, 2.])
+    res = eq.solve(state, t_range=1, backend=backend, dt=1)
+    assert res.data[0].std() == pytest.approx(0.01, rel=0.1)
+    assert res.data[1].std() == pytest.approx(2., rel=0.1)

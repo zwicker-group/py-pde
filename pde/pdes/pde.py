@@ -12,7 +12,7 @@ import numpy as np
 
 from pde.pdes.base import PDEBase
 from pde.fields import FieldCollection
-from pde.fields.base import FieldBase, DataFieldBase
+from pde.fields.base import FieldBase, DataFieldBase, OptionalArrayLike
 from pde.grids.boundaries.axes import BoundariesData
 from pde.tools.numba import nb, jit
 from pde.tools.docstrings import fill_in_docstring
@@ -39,6 +39,7 @@ class PDE(PDEBase):
     @fill_in_docstring
     def __init__(self,
                  rhs: "OrderedDict[str, str]",
+                 noise: OptionalArrayLike = 0,
                  bc: BoundariesData = 'natural',
                  bc_ops: Dict[str, BoundariesData] = None):
         """
@@ -56,6 +57,11 @@ class PDE(PDEBase):
                 Note that operators need to be specified with their full name,
                 i.e., `laplace` for a scalar Laplacian and `vector_laplace` for
                 a Laplacian operating on a vector field.
+            noise (float or :class:`numpy.ndarray`):
+                Magnitude of additive Gaussian white noise. The default value of
+                zero implies deterministic partial differential equations will
+                be solved. Different noise magnitudes can be supplied for each
+                field in coupled PDEs.
             bc:
                 Boundary conditions for the operators used in the expression.
                 The conditions here are applied to all operators that do not
@@ -71,15 +77,14 @@ class PDE(PDEBase):
         Note:
             The order in which the fields are given in `rhs` defines the order
             in which they need to appear in the `state` variable when the
-            evolution rate is calculated. In Python version 3.6, the insertion
-            order of a normal dictionary was not guaranteed and might thus lead
-            to surprising results.
-                
+            evolution rate is calculated. Note that the insertion order of
+            `dict` is guaranteed since Python version 3.7, so a normal
+            dictionary can be used to define the equations.
         """
         from ..tools.expressions import ScalarExpression
         from sympy.core.function import AppliedUndef
         
-        super().__init__()
+        super().__init__(noise=noise)
         
         # validate input
         if not isinstance(rhs, OrderedDict):

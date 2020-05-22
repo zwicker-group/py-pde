@@ -11,7 +11,7 @@ from typing import (Sequence, Optional, Union, Any, Dict,
 
 import numpy as np
 
-from .base import FieldBase, DataFieldBase
+from .base import FieldBase, DataFieldBase, OptionalArrayLike
 from .scalar import ScalarField
 from ..grids.base import GridBase
 
@@ -22,7 +22,7 @@ class FieldCollection(FieldBase):
 
 
     def __init__(self, fields: Sequence[DataFieldBase],
-                 data=None,
+                 data: OptionalArrayLike = None,
                  copy_fields: bool = False,
                  label: Optional[str] = None):
         """ 
@@ -35,7 +35,8 @@ class FieldCollection(FieldBase):
             copy_fields (bool):
                 Flag determining whether the individual fields given in `fields`
                 are copied. 
-            label (str): Label of the field collection
+            label (str):
+                Label of the field collection
             
         Warning:
             If `data` is given and `copy_fields == False`, the data in the
@@ -67,7 +68,7 @@ class FieldCollection(FieldBase):
         for field in self.fields:
             if not isinstance(field, DataFieldBase):
                 raise RuntimeError('Individual fields must be of type '
-                                   'DataFieldBase. FieldCollections cannot be '
+                                   'DataFieldBase. Field collections cannot be '
                                    'nested')
             start = len(new_data)
             this_data = field._data_flat
@@ -78,15 +79,15 @@ class FieldCollection(FieldBase):
         # combine into one data field
         data_shape = (dof,) + grid.shape
         if data is None:
-            data = np.array(new_data, dtype=np.double)
+            data_arr = np.array(new_data, dtype=np.double)
         else:
-            data = np.asarray(data, dtype=np.double)
-            if data.shape != data_shape:
-                data = np.array(np.broadcast_to(data, data_shape))
-        assert data.shape == data_shape
+            data_arr = np.asarray(data, dtype=np.double)
+            if data_arr.shape != data_shape:
+                data_arr = np.array(np.broadcast_to(data_arr, data_shape))
+        assert data_arr.shape == data_shape
         
         # initialize the class
-        super().__init__(grid, data, label=label)        
+        super().__init__(grid, data_arr, label=label)        
             
         # link the data of the original fields back to self._data if they were
         # not copied
@@ -307,14 +308,16 @@ class FieldCollection(FieldBase):
         return results
     
     
-    def copy(self, data=None, label: str = None) -> 'FieldCollection':
+    def copy(self, data: OptionalArrayLike = None, label: str = None) \
+            -> 'FieldCollection':
         """ return a copy of the data, but not of the grid
         
         Args:
-            data (:class:`numpy.ndarray`, optional): Data values at the support
-                points of the grid that define the field. Note that the data is
-                not copied but used directly.
-            label (str, optional): Name of the copied field
+            data (:class:`numpy.ndarray`, optional):
+                Data values at the support points of the grid that define the
+                field. Note that the data is not copied but used directly.
+            label (str, optional):
+                Name of the copied field
         """
         if label is None:
             label = self.label
