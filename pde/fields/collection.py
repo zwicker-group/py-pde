@@ -6,6 +6,7 @@ grid.
 '''
 
 import json
+import warnings
 from typing import (Sequence, Optional, Union, Any, Dict,
                     List, Iterator)  # @UnusedImport
 
@@ -478,7 +479,9 @@ class FieldCollection(FieldBase):
                 
         # decide what to do with the final plot
         if show:
-            plt.show()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                plt.show()
         if close_figure:
             plt.close(fig)        
                 

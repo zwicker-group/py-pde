@@ -9,6 +9,7 @@ import functools
 import operator
 import logging
 import json
+import warnings
 from pathlib import Path 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar,
@@ -1758,7 +1759,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 
         # decide what to do with the final plot
         if show:
-            plt.show()
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                plt.show()
         if close_figure:
             plt.close(fig)        
             

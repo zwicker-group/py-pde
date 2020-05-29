@@ -317,7 +317,8 @@ def test_simple_plotting(grid):
         if grid.dim >= 2:
             f.plot('image')
         if isinstance(f, VectorField) and grid.dim == 2:
-            f.plot('vector')
+            f.plot('quiver')
+            f.plot('streamplot')
         plt.close('all')
         
             
