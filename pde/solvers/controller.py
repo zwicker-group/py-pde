@@ -203,7 +203,7 @@ class Controller():
             except StopIteration as err:
                 # error detected in the final handling of the tracker
                 msg_level, msg = _handle_stop_iteration(err)
-            
+        
         # calculate final statistics
         profiler['tracker'] += time.process_time() - prof_start_tracker
         duration = datetime.datetime.now() - solver_start

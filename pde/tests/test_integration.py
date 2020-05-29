@@ -31,6 +31,6 @@ def test_inhomogeneous_bcs():
     state = ScalarField(grid)
     pde = DiffusionPDE(bc=['natural', {'type': 'value', 'value': 'sin(x)'}])
     sol = pde.solve(state, t_range=1e1, dt=1e-2, tracker=None)
-    data = sol.get_line_data('project_x')
+    data = sol.get_line_data(extract='project_x')
     np.testing.assert_almost_equal(data['data_y'],
                                    0.9 * np.sin(data['data_x']), decimal=2)

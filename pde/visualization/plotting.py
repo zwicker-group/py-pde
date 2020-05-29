@@ -19,6 +19,9 @@ import time
 from typing import (Union, Callable, Optional, Any, Dict, List, Tuple)
 
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.axes as mpl_axes
 
 from ..grids.base import GridBase
 from ..fields import FieldCollection
@@ -30,6 +33,35 @@ from ..tools.docstrings import fill_in_docstring
 
 ScaleData = Union[str, float, Tuple[float, float]]
 
+
+
+def get_figure_axes(fig_or_ax: Union[mpl.figure.Figure, mpl_axes.Axes] = None) \
+        -> mpl_axes.Axes:
+    """ get axes object from figure or axes object
+    
+    Args:
+        fig_or_ax (:class:`~matplotlib.figure.Figure` or :class:`~matplotlib.\
+            axes.Axes`): The figure or axes object
+            
+    Returns:
+        :class:`~matplotlib.axes.Axes`: A set of axes that can be plotted onto
+    """
+    if fig_or_ax is None:
+        # create a new figure with a new set of axes
+        return plt.figure().gca()
+    
+    elif isinstance(fig_or_ax, mpl_axes.Axes):
+        # return the given axes unchanged
+        return fig_or_ax
+    
+    elif fig_or_ax.axes:
+        # take the given figure and return the last added axes
+        return fig_or_ax.axes[-1]
+    
+    else:
+        # take the given figure and add a new set of axes
+        return fig_or_ax.add_subplot()
+        
 
 
 def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
@@ -76,8 +108,6 @@ def finalize_plot(fig_or_ax=None,
     Returns:
         tuple: The figure and the axes that were used to finalize the plot
     """
-    import matplotlib.pyplot as plt
-    
     # determine which figure to modify    
     if fig_or_ax is None:
         fig = plt.gcf()  # current figure
@@ -112,17 +142,20 @@ def extract_field(fields: FieldBase,
     """Extracts a single field from a possible collection.
     
     Args:
-        fields: An instance of :class:`~pde.fields.FieldBase`.
-        source (int or callable, optional): Determines how a field is extracted
-            from `fields`. If `None`, `fields` is passed as is, assuming it is
-            already a scalar field. This works for the simple, standard case
-            where only a single ScalarField is treated. Alternatively, `source`
-            can be an integer, indicating which field is extracted from an
-            instance of :class:`~pde.fields.FieldCollection`.
+        fields (:class:`~pde.fields.FieldBase`):
+            The field from which data is extracted
+        source (int or callable, optional):
+            Determines how a field is extracted from `fields`. If `None`,
+            `fields` is passed as is, assuming it is already a scalar field.
+            This works for the simple, standard case where only a single
+            :class:`~pde.fields.scalar.ScalarField` is treated. Alternatively,
+            `source` can be an integer, indicating which field is extracted from
+            an instance of :class:`~pde.fields.FieldCollection`.
             Lastly, `source` can be a function that takes `fields` as an
             argument and returns the desired field.
-        check_rank (int, optional): Can be given to check whether the extracted
-            field has the correct rank (0 = ScalarField, 1 = VectorField, ...).
+        check_rank (int, optional):
+            Can be given to check whether the extracted field has the correct
+            rank (0 = ScalarField, 1 = VectorField, ...).
             
     Returns:
         :class:`~pde.fields.DataFieldBase`: The extracted field
@@ -155,9 +188,11 @@ class ScalarFieldPlot():
     
     
     @fill_in_docstring
-    def __init__(self, fields: FieldBase,
+    def __init__(self,                 
+                 fields: FieldBase,
                  quantities=None,
                  scale: ScaleData = 'automatic',
+                 fig=None,
                  title: Optional[str] = None,
                  tight: bool = False,
                  show: bool = True):
@@ -169,6 +204,9 @@ class ScalarFieldPlot():
                 {ARG_PLOT_QUANTITIES}
             scale (str, float, tuple of float):
                 {ARG_PLOT_SCALE}
+            fig (:class:`matplotlib.figure.Figure):
+                Figure to be used for plotting. If `None`, a new figure is
+                created.
             title (str):
                 Title of the plot.
             tight (bool):
@@ -197,13 +235,13 @@ class ScalarFieldPlot():
             from IPython.display import display
             self._ipython_out = Output()
             with self._ipython_out:
-                self._initialize(fields, scale, title, tight)
+                self._initialize(fields, scale, fig, title, tight)
             display(self._ipython_out)
             
         else:
             # plotting is done using a simple matplotlib backend
             self._ipython_out = None
-            self._initialize(fields, scale, title, tight)
+            self._initialize(fields, scale, fig, title, tight)
             
         if self.show:
             self._show()
@@ -304,17 +342,16 @@ class ScalarFieldPlot():
         
     def __del__(self):
         try:
-            import matplotlib.pyplot as plt
-        except TypeError:
-            pass  # can occur when shutting down python interpreter
-        else:
             if hasattr(self, 'fig') and self.fig:
                 plt.close(self.fig)
+        except Exception:
+            pass  # can occur when shutting down python interpreter
 
     
     @fill_in_docstring
     def _initialize(self, fields: FieldBase,
                     scale: ScaleData = 'automatic',
+                    fig=None,
                     title: Optional[str] = None,
                     tight: bool = False):         
         """ initialize the plot creating the figure and the axes
@@ -324,13 +361,15 @@ class ScalarFieldPlot():
                 Collection of fields
             scale (str, float, tuple of float):
                 {ARG_PLOT_SCALE}
+            fig (:class:`matplotlib.figure.Figure):
+                Figure to be used for plotting. If `None`, a new figure is
+                created.
             title (str):
                 Title of the plot.
             tight (bool):
                 Whether to call :func:`matplotlib.pyplot.tight_layout`. This
                 affects the layout of all plot elements.
         """        
-        import matplotlib.pyplot as plt
         import matplotlib.cm as cm
         
         num_rows = len(self.quantities)
@@ -339,9 +378,15 @@ class ScalarFieldPlot():
         example_image = fields.get_image_data()
         
         # set up the figure
-        self.fig, self.axes = plt.subplots(num_rows, num_cols,
-                                           sharey=True, squeeze=False,
-                                           figsize=(4 * num_cols, 4 * num_rows))
+        if fig is None:
+            figsize = (4 * num_cols, 4 * num_rows)
+            self.fig, self.axes = plt.subplots(num_rows, num_cols, sharey=True,
+                                               squeeze=False, figsize=figsize)
+        else:
+            self.fig = fig
+            self.axes = fig.axes
+            
+            
         if title is None:
             title = ""        
         self.sup_title = plt.suptitle(title)
@@ -448,7 +493,6 @@ class ScalarFieldPlot():
             
         else:
             # seems to be in a normal matplotlib window => update it
-            import matplotlib.pyplot as plt
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # add a small pause to allow the GUI to run it's event loop
@@ -547,8 +591,6 @@ def plot_magnitudes(storage: StorageBase,
         \**kwargs:
             All remaining parameters are forwarded to the `ax.plot` method
     """
-    import matplotlib.pyplot as plt
-    
     if quantities is None:
         fields = storage.get_field(0)
         if fields.label:
@@ -610,6 +652,7 @@ def plot_magnitudes(storage: StorageBase,
 
 def plot_kymograph(storage: StorageBase,
                    filename: str = None,
+                   scalar: str = 'auto',
                    extract: str = 'auto',
                    colorbar: bool = True,
                    transpose: bool = False,
@@ -631,6 +674,9 @@ def plot_kymograph(storage: StorageBase,
             The storage instance that contains all the data for the movie
         filename (str):
             If given, the resulting image is written to this file.
+        scalar (str):
+            The method for extracting scalars as described in
+            :meth:`DataFieldBase.to_scalar`.
         extract (str):
             The method used for extracting the line data. See the docstring
             of the grid method `get_line_data` to find supported values.
@@ -651,16 +697,13 @@ def plot_kymograph(storage: StorageBase,
     Returns:
         Result of :func:`matplotlib.pyplot.imshow`
     """
-    import matplotlib.pyplot as plt
-
     close_figure = (bool(filename) and ax is None)
     if ax is None:
-        # create new figure
-        ax = plt.figure().gca()
+        ax = plt.figure().gca()  # create new figure
 
     full_data = []
     for _, data in storage.items():
-        img_data = data.get_line_data(extract=extract)
+        img_data = data.get_line_data(scalar=scalar, extract=extract)
         full_data.append(img_data['data_y'])
         
     full_data = np.array(full_data)

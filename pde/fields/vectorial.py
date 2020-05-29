@@ -385,41 +385,19 @@ class VectorField(DataFieldBase):
             
         return ScalarField(self.grid, data, label=label)
 
-    
-    def get_line_data(self, scalar: str = 'auto',  # type: ignore
-                      extract: str = 'auto') -> Dict[str, Any]:
-        """ return data for a line plot of the field
         
-        Args:
-            method (str or int):
-                The method for extracting scalars as described in
-                `self.to_scalar`.
-                
-        Returns:
-            dict: Information useful for performing a line plot of the field
-        """
-        return self.to_scalar(scalar=scalar).get_line_data(extract=extract)
-                    
-    
-    def get_image_data(self, scalar: str = 'auto', **kwargs) -> Dict[str, Any]:
-        r""" return data for plotting an image of the field
-
-        Args:
-            scalar (str or int):
-                The method for extracting scalars as described in
-                `self.to_scalar`.
-            \**kwargs: Additional parameters are forwarded to `get_image_data`
-                
-        Returns:
-            dict: Information useful for plotting an image of the field
-        """
-        return self.to_scalar(scalar=scalar).get_image_data(**kwargs)
-    
-    
-    def get_vector_data(self, **kwargs) -> Dict[str, Any]:
+    def get_vector_data(self,
+                        transpose: bool = False,
+                        max_points: int = None,
+                        **kwargs) -> Dict[str, Any]:
         r""" return data for a vector plot of the field
         
         Args:
+            transpose (bool):
+                Determines whether the transpose of the data should be plotted.
+            max_points (int):
+                The maximal number of points that is used along each axis. This
+                option can be used to subsample the data.
             \**kwargs: Additional parameters are forwarded to
                 `grid.get_image_data`
         
@@ -431,11 +409,34 @@ class VectorField(DataFieldBase):
         if self.grid.dim == 2:
             vx = self[0].get_image_data(**kwargs)
             vy = self[1].get_image_data(**kwargs)
-            vx['data_x'] = vx.pop('data')
-            vx['data_y'] = vy['data']
-            vx['title'] = self.label
-            return vx
+            data = vx  # use one of the fields to extract basic information
+            data['data_x'] = vx.pop('data')
+            data['data_y'] = vy['data']
+            data['title'] = self.label
             
         else:
             raise NotImplementedError()
-    
+        
+        # transpose the data if requested
+        if transpose:
+            data['x'], data['y'] = data['y'], data['x']
+            data['data_x'], data['data_y'] = data['data_y'].T, data['data_x'].T
+            data['label_x'], data['label_y'] = data['label_y'], data['label_x']        
+
+        # reduce the sampling of the vector points
+        if max_points is not None:
+            shape = data['data_x'].shape
+            for axis, size in enumerate(shape):
+                if size > max_points:
+                    # sub-sample the data
+                    idx_f = np.linspace(0, size - 1, max_points)
+                    idx_i = np.round(idx_f).astype(int)
+                    #
+                    data['data_x'] = np.take(data['data_x'], idx_i, axis=axis)
+                    data['data_y'] = np.take(data['data_y'], idx_i, axis=axis)
+                    if axis == 0:
+                        data['y'] = data['y'][idx_i]
+                    elif axis == 1:
+                        data['x'] = data['x'][idx_i]
+        
+        return data    

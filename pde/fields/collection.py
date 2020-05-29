@@ -11,7 +11,7 @@ from typing import (Sequence, Optional, Union, Any, Dict,
 
 import numpy as np
 
-from .base import FieldBase, DataFieldBase, OptionalArrayLike
+from .base import FieldBase, DataFieldBase, PlotReference, OptionalArrayLike
 from .scalar import ScalarField
 from ..grids.base import GridBase
 
@@ -390,20 +390,28 @@ class FieldCollection(FieldBase):
             f_in.smooth(sigma=sigma, out=f_out)
              
         return out   
-         
+
         
-    def get_line_data(self, index: int = 0,  # type: ignore
-                      **kwargs) -> Dict[str, Any]:
+    def get_line_data(self,  # type: ignore
+                      index: int = 0,
+                      scalar: str = 'auto',
+                      extract: str = 'auto') -> Dict[str, Any]:
         r""" return data for a line plot of the field
         
         Args:
-            index (int): Index of the field whose data is returned
-            \**kwargs: Arguments forwarded to the `get_line_data` method
+            index (int):
+                Index of the field whose data is returned
+            scalar (str or int):
+                The method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
+            extract (str):
+                The method used for extracting the line data. See the docstring
+                of the grid method `get_line_data` to find supported values.
                 
         Returns:
             dict: Information useful for performing a line plot of the field
         """
-        return self[index].get_line_data(**kwargs)
+        return self[index].get_line_data(scalar=scalar, extract=extract)
     
     
     def get_image_data(self, index: int = 0, **kwargs) -> Dict[str, Any]:
@@ -418,8 +426,74 @@ class FieldCollection(FieldBase):
         """
         return self[index].get_image_data(**kwargs)
     
+
+    def plot(self,
+             kind='auto',
+             title: str = None,
+             filename: str = None,
+             show: bool = False,
+             close_figure: bool = False,
+             **kwargs) -> List[PlotReference]:
+        r""" visualize all the fields in the collection
+        
+        Args:
+            kind (str):
+                Determines the visualizations. Supported values are `image`, 
+                `line`, `vector`, or `interactive`. Alternatively, `auto`
+                determines the best visualization based on each field itself.
+            title (str):
+                Title of the plot. If omitted, the title is chosen
+                automatically based on the label the data field.
+            filename (str, optional):
+                If given, the plot is written to the specified file.
+            show (bool):
+                Flag setting whether :func:`matplotlib.pyplot.show` is called
+            close_figure (bool):
+                Flag setting whether the figure is closed (after it was shown)
+            \**kwargs:
+                All additional keyword arguments are forwarded to the actual
+                plotting functions.
+                
+        Returns:
+            list of :class:`PlotReference`: Instances that contain information
+            to update all the plots with new data later.
+        """
+        import matplotlib.pyplot as plt
+        
+        # create a plot with all the panels 
+        fig, axs = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
+        
+        # plot all the elements into the respective axes 
+        references = [field.plot(kind, ax=ax, **kwargs)
+                      for field, ax in zip(self.fields, axs)]
+                
+        # set some default values and finalize the plot            
+        if title is not None:
+            fig.suptitle(title)
+        
+        if filename:
+            fig.savefig(filename)
+        if show:
+            plt.show()
+        if close_figure:
+            plt.close(fig)        
+                
+        # create all the references
+        return references
     
-    def plot_collection(self,
+
+    def update_plot(self, reference: List[PlotReference]) -> None:
+        """ update a plot collection with the current field values
+        
+        Args:
+            reference (list of :class:`PlotReference`):
+                All references of the plot to update
+        """
+        for field, ref in zip(self.fields, reference):
+            field.update_plot(ref)
+        
+    
+    def plot_collection(self, fig=None,
                         title: Optional[str] = None,
                         tight: bool = True,
                         filename: str = None,
@@ -428,6 +502,9 @@ class FieldCollection(FieldBase):
         r""" visualize all fields by plotting them next to each other
         
         Args:
+            fig (:class:`matplotlib.figure.Figure):
+                Figure to be used for plotting. If `None`, a new figure is
+                created.
             title (str):
                 Title of the plot. If omitted, the title is chosen automatically
                 based on the label the data field.
@@ -445,7 +522,10 @@ class FieldCollection(FieldBase):
         import matplotlib.pyplot as plt
         
         # plot the individual panels
-        fig, axes = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
+        if fig is None:
+            fig, axes = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
+        else:
+            axes = fig.axes
         for field, ax in zip(self.fields, axes):
             field.plot(ax=ax, **kwargs)
             
@@ -458,73 +538,8 @@ class FieldCollection(FieldBase):
             
         from ..visualization.plotting import finalize_plot
         finalize_plot(fig, filename=filename, show=show)
-    
-    
-    def plot_line(self, **kwargs):
-        r""" visualize all fields using line plots
         
-        Args:
-            \**kwargs:
-                Supported keyword arguments include `title` to set the title,
-                `tight` to adjust the layout, `filename` to write the image to a
-                file, and `show` to call :func:`matplotlib.pyplot.show`. These
-                are described in :meth:`~FieldCollection.plot_collection`.
-        """
-        self.plot_collection(kind='line', **kwargs)
-        
-        
-    def plot_vector(self, **kwargs):
-        r""" visualize all fields using vector plots
-        
-        Args:
-            \**kwargs:
-                Supported keyword arguments include `title` to set the title,
-                `tight` to adjust the layout, `filename` to write the image to a
-                file, and `show` to call :func:`matplotlib.pyplot.show`. These
-                are described in :meth:`~FieldCollection.plot_collection`.
-        """
-        self.plot_collection(kind='vector', **kwargs)
-
-    
-    def plot_image(self, quantities=None,
-                   title: Optional[str] = None,
-                   tight: bool = True,
-                   filename: str = None,
-                   show: bool = True,
-                   **kwargs):
-        r""" visualize all fields using density plots
-        
-        Args:
-            quantities:
-                Determines what exactly is plotted. See
-                :class:`~pde.visualization.plotting.ScalarfieldPlot` for details
-            title (str):
-                Title of the plot. If omitted, the title is chosen automatically
-                based on the label the data field.
-            tight (bool):
-                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
-                affects the layout of all plot elements.
-            filename (str, optional):
-                If given, the plot is written to the specified file.
-            show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is called
-            \**kwargs:
-                Additional keyword arguments are passed to the plot methods of
-                the individual fields
-        """
-        if title is None:
-            title = self.label
             
-        # create the plot panels
-        from ..visualization.plotting import ScalarFieldPlot
-        plot = ScalarFieldPlot(self, quantities=quantities, title=title,
-                               tight=tight, show=show)
-        
-        # save plot to file if requested
-        if filename:
-            plot.fig.savefig(filename)
-        
-        
     def plot_interactive(self, scalar: str = 'auto', **kwargs):
         """ create an interactive plot of the field using :mod:`napari`
 
@@ -539,36 +554,3 @@ class FieldCollection(FieldBase):
                                  name=field.label,
                                  rgb=False,
                                  scale=self.grid.discretization)
-
-        
-    def plot(self, kind: str = 'auto', **kwargs):
-        r""" visualize the field collection
-        
-        Args:
-            kind (str):
-                Determines how to visualize the collection. Supported values are
-                `image`, `line`, `vector`, or `interactive`. Alternatively,
-                `auto` determines the best visualization based on each
-                individual field itself.
-            \**kwargs:
-                All additional keyword arguments are forwarded to the actual
-                plotting functions. They include the keyword arguments `title`
-                to set the title, `tight` to adjust the layout, `filename` to
-                write the image to a file, and `show` to call
-                :func:`matplotlib.pyplot.show`. These arguments are described in
-                :meth:`~FieldCollection.plot_collection`.
-        """
-        if kind == 'auto':
-            self.plot_collection(**kwargs)
-        elif kind == 'image':
-            self.plot_image(**kwargs)
-        elif kind == 'line':
-            self.plot_line(**kwargs)
-        elif kind == 'vector':
-            self.plot_vector(**kwargs)
-        elif kind == 'interactive':
-            self.plot_interactive(**kwargs)
-        else:
-            raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
-                             '`image`, `line`, `vector`, or `auto`.')
-    

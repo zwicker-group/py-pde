@@ -10,6 +10,7 @@ The trackers defined in this module are:
    ProgressTracker
    PrintTracker
    PlotTracker
+   PlotCollectionTracker
    DataTracker
    SteadyStateTracker
    RuntimeTracker
@@ -25,7 +26,7 @@ import sys
 import os.path
 import time
 from typing import (Callable, Optional, Union, IO, List, Any,  # @UnusedImport
-                    TYPE_CHECKING)
+                    Dict, TYPE_CHECKING)
 
 import numpy as np
 
@@ -239,14 +240,126 @@ class PrintTracker(TrackerBase):
 
 
 class PlotTracker(TrackerBase):
-    """ Tracker that plots data on screen, to files, or writes a movie
+    """ Tracker that plots data on screen, to files, or writes a movie """
+     
+    name = 'plot'
+    
+    @fill_in_docstring
+    def __init__(self, interval: IntervalData = 1,
+                 output_file: Optional[str] = None,
+                 output_folder: Optional[str] = None,
+                 movie_file: Optional[str] = None,
+                 show: bool = True,
+                 close_final: bool = False,
+                 plot_arguments: Dict[str, Any] = None):
+        """
+        Args:
+            interval:
+                {ARG_TRACKER_INTERVAL}
+            output_file (str, optional):
+                Specifies a single image file, which is updated periodically, so
+                that the progress can be monitored (e.g. on a compute cluster)
+            output_folder (str, optional):
+                Specifies a folder to which all images are written. The files
+                will have names with increasing numbers.
+            movie_file (str, optional):
+                Specifies a filename to which a movie of all the frames is
+                written after the simulation.
+            show (bool, optional):
+                Determines whether the plot is shown while the simulation is
+                running. If `False`, the files are created in the background.
+            plot_arguments (dict):
+                Extra arguments supplied to the plot call
+        """
+        super().__init__(interval=interval)
+        self.output_file = output_file
+        self.output_folder = output_folder
+        self.show = show
+        self.close_final = close_final
+        self.plot_arguments = {} if plot_arguments is None else plot_arguments
+        
+        if movie_file is not None or output_folder is not None:
+            from ..visualization.movies import Movie
+            movie = Movie(filename=movie_file, image_folder=output_folder)
+            self.movie: Optional[Movie] = movie
+            self.movie._start()  # initialize movie
+        else:
+            self.movie = None
+         
+     
+    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
+        """ initialize the tracker with information about the simulation
+        
+        Args:
+            field (:class:`~pde.fields.FieldBase`):
+                An example of the data that will be analyzed by the tracker
+            info (dict):
+                Extra information from the simulation
+                
+        Returns:
+            float: The first time the tracker needs to handle data
+        """
+        # initialize the plotting context
+        from ..visualization.contexts import get_plotting_context
+        self._context = get_plotting_context(title='Initializing...')
+        
+        # do the actual plotting
+        with self._context:
+            self._plot_reference = field.plot(**self.plot_arguments)
+            
+        return super().initialize(field, info=info)
+        
+         
+    def handle(self, field: FieldBase, t: float) -> None:
+        """ handle data supplied to this tracker
+        
+        Args:
+            field (:class:`~pde.fields.FieldBase`):
+                The current state of the simulation
+            t (float):
+                The associated time
+        """
+        self._context.title = f'Time: {t:g}'
+        
+        # update the plot in the correct plotting context
+        with self._context:
+            field.update_plot(reference=self._plot_reference)
+        if self.output_file:
+            self._context.fig.savefig(self.output_file)
+        if self.movie:
+            self.movie.add_figure(self._context.fig)
+          
+
+    def finalize(self, info: InfoDict = None) -> None:
+        """ finalize the tracker, supplying additional information
+
+        Args:
+            info (dict):
+                Extra information from the simulation        
+        """
+        super().finalize(info)
+        if self.movie:
+            if self.movie.filename:
+                # write out movie file if requested
+                self._logger.info(f'Writing movie to {self.movie.filename}...')
+                self.movie.save()
+            # finalize movie (e.g. delete temporary files)
+            self.movie._end()
+            
+        if not self.show or self.close_final:
+            self._context.close()
+    
+              
+    
+class PlotCollectionTracker(TrackerBase):
+    """ Tracker that plots a collection of 2d images
     
     The plot tracker uses the 
     :class:`~pde.visualization.plotting.ScalarFieldPlot` class to show fields
     and field collections. Most options are thus forwarded to this class.
     """
      
-    name = 'plot'
+    name = 'plot_collection'
     
     @fill_in_docstring
     def __init__(self, interval: IntervalData = 1,
@@ -319,7 +432,6 @@ class PlotTracker(TrackerBase):
                                     title='Initializing...',
                                     tight=self.tight,
                                     show=self.show)
-         
         return super().initialize(field, info=info)
         
          
@@ -334,7 +446,7 @@ class PlotTracker(TrackerBase):
         """
         self.plot.update(field, title=f'Time: {t:g}')
         if self.output_file:
-            self.plot.fig.savefig(self.output_file)
+            self.plot.savefig(self.output_file)
         if self.movie:
             self.movie.add_figure(self.plot.fig)
           
@@ -354,7 +466,10 @@ class PlotTracker(TrackerBase):
                 self.movie.save()
             # finalize movie (e.g. delete temporary files)
             self.movie._end()
+            
         if not self.show:
+            import matplotlib.pyplot as plt
+            plt.close(self.plot.fig)
             del self.plot
     
               
@@ -693,5 +808,6 @@ class MaterialConservationTracker(TrackerBase):
             
             
 __all__ = ['CallbackTracker', 'ProgressTracker', 'PrintTracker', 'PlotTracker',
-           'DataTracker', 'SteadyStateTracker', 'RuntimeTracker',
-           'ConsistencyTracker', 'MaterialConservationTracker']
+           'PlotCollectionTracker', 'DataTracker', 'SteadyStateTracker',
+           'RuntimeTracker', 'ConsistencyTracker',
+           'MaterialConservationTracker']

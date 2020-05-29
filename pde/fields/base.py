@@ -28,7 +28,28 @@ from ..tools.docstrings import fill_in_docstring
 
 
 if TYPE_CHECKING:
+    import matplotlib as mpl  # @UnusedImport
     from .scalar import ScalarField  # @UnusedImport
+
+
+
+class PlotReference():
+    """ contains all information to update a plot element """
+    
+    __slots__ = ['ax', 'element', 'parameters']
+    
+    def __init__(self, ax: 'mpl.axes.Axes', element: Any,
+                 parameters: Dict[str, Any] = None):
+        """
+        Args:
+            ax (:class:`matplotlib.axes.Axes`): The axes of the element
+            element (:class:`matplotlib.artist.Artist`): The actual element 
+            parameters (dict): Parameters to recreate the plot element
+        """
+        self.ax = ax
+        self.element = element
+        self.parameters = {} if parameters is None else parameters
+        
 
 
 ArrayLike = Union[np.ndarray, float]
@@ -460,54 +481,19 @@ class FieldBase(metaclass=ABCMeta):
             raise NotImplementedError('Only scalar exponents are supported')
         self.data **= exponent
         return self
-
-
-    def get_line_data(self, extract: str = 'auto') -> Dict[str, Any]:
-        """ return data for a line plot of the field
-        
-        Args:
-            extract (str):
-                The method used for extracting the line data. See the docstring
-                of the grid method `get_line_data` to find supported values.
-        
-        Returns:
-            dict: Information useful for performing a line plot of the field
-        """
-        result = self.grid.get_line_data(self.data, extract=extract)
-        if 'label_y' in result and result['label_y']:
-            if self.label:
-                result['label_y'] = f"{self.label} ({result['label_y']})"
-        else:
-            result['label_y'] = self.label
-        return result  # type: ignore  
-        
-        
-    def get_image_data(self, **kwargs) -> Dict[str, Any]:
-        r""" return data for plotting an image of the field
-        
-        Args:
-            \**kwargs: Additional parameters are forwarded to
-                `grid.get_image_data`
-        
-        Returns:
-            dict: Information useful for plotting an image of the field        
-        """
-        result = self.grid.get_image_data(self.data, **kwargs)  # type: ignore 
-        result['title'] = self.label
-        return result  # type: ignore  
     
+
+    @abstractmethod
+    def get_line_data(self, scalar: str = 'auto', extract: str = 'auto'): pass
+
+    @abstractmethod
+    def get_image_data(self): pass
     
-    def get_vector_data(self, **kwargs) -> Dict[str, Any]:
-        r""" return data for a vector plot of the field
-        
-        Args:
-            \**kwargs: Additional parameters are forwarded to
-                `grid.get_image_data`
-        
-        Returns:
-            dict: Information useful for plotting an vector field        
-        """
-        raise NotImplementedError()
+    @abstractmethod
+    def plot(self, **kwargs): pass
+    
+    @abstractmethod
+    def update_plot(self, reference): pass
     
 
 
@@ -1395,51 +1381,115 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if label:
             out.label = label
         return out
+
+
+    def get_line_data(self, scalar: str = 'auto', extract: str = 'auto') \
+            -> Dict[str, Any]:
+        """ return data for a line plot of the field
+        
+        Args:
+            scalar (str or int):
+                The method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
+            extract (str):
+                The method used for extracting the line data. See the docstring
+                of the grid method `get_line_data` to find supported values.
+        
+        Returns:
+            dict: Information useful for performing a line plot of the field
+        """
+        # turn field into scalar field
+        scalar_data = self.to_scalar(scalar).data
+        
+        # extract the line data
+        data = self.grid.get_line_data(scalar_data, extract=extract)
+        if 'label_y' in data and data['label_y']:
+            if self.label:
+                data['label_y'] = f"{self.label} ({data['label_y']})"
+        else:
+            data['label_y'] = self.label
+        return data  # type: ignore  
+        
+                
+    def get_image_data(self, scalar: str = 'auto',
+                       transpose: bool = False,
+                       **kwargs) -> Dict[str, Any]:
+        r""" return data for plotting an image of the field
+        
+        Args:
+            scalar (str or int):
+                The method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
+            transpose (bool):
+                Determines whether the transpose of the data should is plotted
+            \**kwargs:
+                Additional parameters are forwarded to `grid.get_image_data`
+        
+        Returns:
+            dict: Information useful for plotting an image of the field        
+        """
+        # turn field into scalar field
+        scalar_data = self.to_scalar(scalar).data
+        
+        # extract the image data
+        data = self.grid.get_image_data(scalar_data, **kwargs)  # type: ignore 
+        data['title'] = self.label
+        
+        if transpose:
+            # adjust image data such that the transpose is plotted
+            data['data'] = data['data'].T
+            data['label_x'], data['label_y'] = data['label_y'], data['label_x']
             
-            
+        return data  # type: ignore  
+
+    
+    def get_vector_data(self, **kwargs) -> Dict[str, Any]:
+        r""" return data for a vector plot of the field
+        
+        Args:
+            \**kwargs: Additional parameters are forwarded to
+                `grid.get_image_data`
+        
+        Returns:
+            dict: Information useful for plotting an vector field        
+        """
+        raise NotImplementedError()
+    
+                
     def plot_line(self, 
-                  ax=None,
                   extract: str = 'auto',
                   ylabel: str = None,
-                  title: str = None,
-                  filename: str = None,
-                  show: bool = False,
-                  **kwargs):
+                  ax=None,
+                  **kwargs) -> PlotReference:
         r""" visualize a field using a 1d line plot
         
         Args:
-            ax:
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created
             extract (str):
                 The method used for extracting the line data.
             ylabel (str):
                 Label of the y-axis. If omitted, the label is chosen 
                 automatically from the data field.
-            title (str):
-                Title of the plot.
-            filename (str, optional):
-                If given, the plot is written to the specified file.
-            show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is called
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting. If `None`, a new figure is
+                created. This has no effect if a `reference` is supplied.
             \**kwargs:
                 Additional keyword arguments are passed to
                 :func:`matplotlib.pyplot.plot`
                 
         Returns:
-            Instance of the line returned by `plt.plot`
+            :class:`PlotReference`: Instance that contains information to update
+            the plot with new data later.
         """
-        import matplotlib.pyplot as plt
-        
-        # obtain data
+        # obtain data for the plot
         line_data = self.get_line_data(extract=extract)
         
-        # plot the data (either using pyplot or the supplied axes)
+        # create new plot
         if ax is None:
-            line, = plt.plot(line_data['data_x'], line_data['data_y'], **kwargs)
+            import matplotlib.pyplot as plt
             ax = plt.gca()
-        else:
-            line, = ax.plot(line_data['data_x'], line_data['data_y'], **kwargs)
+        
+        line2d, = ax.plot(line_data['data_x'], line_data['data_y'],
+                              **kwargs)
 
         # set some default properties
         ax.set_xlabel(line_data['label_x'])
@@ -1447,37 +1497,52 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ylabel = line_data.get('label_y', self.label)
         if ylabel:
             ax.set_ylabel(ylabel)
-            
-        from ..visualization.plotting import finalize_plot
-        finalize_plot(ax, title=title, filename=filename, show=show)
-            
-        return line
+                
+        return PlotReference(ax, line2d, {'extract': extract})
     
     
-    def plot_image(self, ax=None,
+    def _update_line_plot(self, reference: PlotReference) -> None:
+        """ update a line plot with the current field values
+        
+        Args:
+            reference (:class:`PlotReference`):
+                The reference to the plot that is updated
+        """
+        import matplotlib as mpl  # @Reimport
+        
+        # obtain data for the plot
+        extract = reference.parameters.get('extract', 'auto')
+        line_data = self.get_line_data(extract=extract)
+        
+        line2d = reference.element
+        if isinstance(line2d, mpl.lines.Line2D):
+            # update old plot
+            line2d.set_xdata(line_data['data_x'])
+            line2d.set_ydata(line_data['data_y'])
+            
+        else:
+            raise ValueError(f'Unsupported plot reference {reference}')
+
+
+    def plot_image(self,
                    colorbar: bool = False,
+                   scalar: str = 'auto',
                    transpose: bool = False,
-                   title: Optional[str] = None,
-                   filename: str = None,
-                   show: bool = False,
-                   **kwargs):
+                   ax=None,
+                   **kwargs) -> PlotReference:
         r""" visualize a field using a 2d density plot
 
         Args:
-            ax:
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created
             colorbar (bool):
                 Determines whether a colorbar is shown
+            scalar (str or int):
+                The method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
             transpose (bool):
                 Determines whether the transpose of the data should is plotted
-            title (str):
-                Title of the plot. If omitted, the title is chosen automatically
-                based on the label the data field.
-            filename (str, optional):
-                If given, the plot is written to the specified file.
-            show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is called
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting. If `None`, a new figure is
+                created. This has no effect if a `reference` is supplied.
             \**kwargs:
                 Additional keyword arguments that affect the image. For
                 instance, some fields support a `scalar` argument that
@@ -1488,68 +1553,154 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 :func:`matplotlib.pyplot.imshow` to affect the appearance.
                 
         Returns:
-            Result of :func:`matplotlib.pyplot.imshow`
+            :class:`PlotReference`: Instance that contains information to update
+            the plot with new data later.
         """
-        import matplotlib.pyplot as plt
-        
         # obtain image data
-        get_image_args = {}
-        for key in ['performance_goal', 'scalar']:
-            if key in kwargs:
-                get_image_args[key] = kwargs.pop(key)
-        data = self.get_image_data(**get_image_args)
-        
-        if transpose:
-            # adjust image data such that the transpose is plotted
-            data['data'] = data['data'].T
-            data['label_x'], data['label_y'] = data['label_y'], data['label_x']
+        data = self.get_image_data(scalar, transpose)
         
         # plot the image (either using pyplot or the supplied axes)
+        if ax is None:
+            import matplotlib.pyplot as plt
+            ax = plt.gca()
+            
         kwargs.setdefault('origin', 'lower')
         kwargs.setdefault('interpolation', 'none')
-        if ax is None:
-            ax = plt.figure().gca()
-        img = ax.imshow(data['data'], extent=data['extent'], **kwargs)
+        axes_image = ax.imshow(data['data'], extent=data['extent'], **kwargs)
             
         # set some default properties
         ax.set_xlabel(data['label_x'])
         ax.set_ylabel(data['label_y'])
-        if title is None:
-            title = data.get('title', self.label)
+        ax.set_title(data.get('title', self.label))
 
         if colorbar:
             from ..tools.misc import add_scaled_colorbar
-            add_scaled_colorbar(img, ax=ax)
+            add_scaled_colorbar(axes_image, ax=ax)
+                
+        parameters = {'scalar': scalar, 'transpose': transpose}
+        return PlotReference(ax, axes_image, parameters)
 
-        from ..visualization.plotting import finalize_plot
-        finalize_plot(ax, title=title, filename=filename, show=show)
-            
-        return img
+    
+    def _update_image_plot(self, reference: PlotReference) -> None:
+        """ update an image plot with the current field values
+        
+        Args:
+            reference (:class:`PlotReference`):
+                The reference to the plot that is updated
+        """
+        # obtain image data
+        p = reference.parameters
+        data = self.get_image_data(scalar=p.get('scalar', 'auto'),
+                                   transpose=p.get('transpose', False))
+        
+        # update the axes image
+        reference.element.set_array(data['data'])
 
 
     def plot_vector(self,
                     method: str = 'quiver',
-                    ax=None,
                     transpose: bool = False,
                     max_points: int = 16,
-                    title: Optional[str] = None,
-                    filename: str = None,
-                    show: bool = False,
-                    **kwargs):
+                    ax=None,
+                    **kwargs) -> PlotReference:
         r""" visualize a field using a 2d vector plot
 
         Args:
             method (str):
                 Plot type that is used. This can be either `quiver` or
                 `streamplot`.
-            ax:
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created
             transpose (bool):
                 Determines whether the transpose of the data should be plotted.
             max_points (int):
                 The maximal number of points that is used along each axis. This
-                is only used for quiver plots.
+                argument is only used for quiver plots.
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting. If `None`, a new figure is
+                created. This has no effect if a `reference` is supplied.
+            \**kwargs:
+                Additional keyword arguments are passed to
+                :func:`matplotlib.pyplot.quiver` or
+                :func:`matplotlib.pyplot.streamplot`.
+                
+        Returns:
+            :class:`PlotReference`: Instance that contains information to update
+            the plot with new data later.
+        """
+        if ax is None:
+            import matplotlib.pyplot as plt
+            ax = plt.gca()
+        
+        # do the plotting using the chosen method
+        if method == 'quiver':
+            data = self.get_vector_data(transpose=transpose,
+                                        max_points=max_points)
+            element = ax.quiver(data['x'], data['y'], data['data_x'],
+                                data['data_y'], **kwargs)        
+            
+        elif method == 'streamplot':
+            data = self.get_vector_data(transpose=transpose)
+            element = ax.streamplot(data['x'], data['y'], data['data_x'],
+                                    data['data_y'], **kwargs)        
+                
+        else:
+            raise ValueError(f'Vector plot `{method}` is not supported.')
+            
+        # set some default properties of the plot
+        ax.set_aspect('equal')
+        ax.set_xlabel(data['label_x'])
+        ax.set_ylabel(data['label_y'])
+        ax.set_title(data.get('title', self.label))
+
+        parameters = {'method': method, 'transpose': transpose,
+                      'max_points': max_points, 'kwargs': kwargs}
+        return PlotReference(ax, element, parameters)
+
+    
+    def _update_vector_plot(self, reference: PlotReference) -> None:
+        """ update a vector plot with the current field values
+        
+        Args:
+            reference (:class:`PlotReference`):
+                The reference to the plot that is updated
+        """
+        method = reference.parameters.get('method', 'quiver')
+        transpose = reference.parameters.get('transpose', False)
+        if method == 'quiver':
+            max_points = reference.parameters.get('max_points')
+            data = self.get_vector_data(transpose=transpose,
+                                        max_points=max_points)
+            reference.element.set_UVC(data['data_x'], data['data_y'])
+            
+        elif method == 'streamplot':
+            ax = reference.ax
+            kwargs = reference.parameters.get('kwargs', {})
+            data = self.get_vector_data(transpose=transpose)
+            # remove old streamplot
+            reference.element.remove()  
+            # update with new streamplot
+            reference.element = ax.streamplot(data['x'], data['y'],
+                                              data['data_x'], data['data_y'],
+                                              **kwargs)        
+                
+        else:
+            raise ValueError(f'Vector plot `{method}` is not supported.')
+
+
+    def plot(self,
+             kind: str = 'auto',
+             title: str = None,
+             filename: str = None,
+             show: bool = False,
+             close_figure: bool = False,
+             ax=None,
+             **kwargs):
+        r""" visualize the field
+        
+        Args:
+            kind (str):
+                Determines the visualizations. Supported values are `image`, 
+                `line`, `vector`, or `interactive`. Alternatively, `auto`
+                determines the best visualization based on the field itself.
             title (str):
                 Title of the plot. If omitted, the title is chosen
                 automatically based on the label the data field.
@@ -1557,67 +1708,86 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 If given, the plot is written to the specified file.
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
+            close_figure (bool):
+                Flag setting whether the figure is closed (after it was shown)
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting. If `None`, a new figure is
+                created. This has no effect if a `reference` is supplied.
             \**kwargs:
-                Additional keyword arguments are passed to
-                :func:`matplotlib.pyplot.quiver` or
-                :func:`matplotlib.pyplot.streamplot`.
+                All additional keyword arguments are forwarded to the actual
+                plotting functions.
                 
         Returns:
-            Result of :func:`matplotlib.pyplot.quiver` or
-            :func:`matplotlib.pyplot.streamplot`
+            :class:`PlotReference`: Instance that contains information to update
+            the plot with new data later.
         """
         import matplotlib.pyplot as plt
         
-        # obtain image data
-        data = self.get_vector_data()
-
-        if ax is None:                
-            ax = plt.figure().gca()
-        
-        if transpose:
-            # adjust image data such that the transpose is plotted
-            data['x'], data['y'] = data['y'], data['x']
-            data['data_x'], data['data_y'] = data['data_y'].T, data['data_x'].T
-            data['label_x'], data['label_y'] = data['label_y'], data['label_x']
-        
-        # determine which plotting function to use
-        if method == 'quiver':
-            # potentially reduce the number of points along each axis
-            shape = data['data_x'].shape
-            for axis, size in enumerate(shape):
-                if size > max_points:
-                    idx_f = np.linspace(0, size - 1, max_points)
-                    idx_i = np.round(idx_f).astype(int)
-                    #
-                    data['data_x'] = np.take(data['data_x'], idx_i, axis=axis)
-                    data['data_y'] = np.take(data['data_y'], idx_i, axis=axis)
-                    if axis == 0:
-                        data['y'] = data['y'][idx_i]
-                    elif axis == 1:
-                        data['x'] = data['x'][idx_i]
-            plot_func = ax.quiver
-            
-        elif method == 'streamplot':
-            plot_func = ax.streamplot
+        # pre-process the kinds
+        if kind == 'auto':
+            # determine best plot for this field
+            if (isinstance(self, DataFieldBase) and self.rank == 1 and
+                    self.grid.dim == 2):
+                kind = 'vector'
+            elif len(self.grid.shape) == 1:
+                kind = 'line'
+            else:
+                kind = 'image'
                 
-        else:
-            raise ValueError(f'Vector plot `{method}` is not supported.')
+        elif kind == 'quiver':
+            kind = 'vector'
+            kwargs['method'] = 'quiver'
+
+        elif kind == 'streamplot':
+            kind = 'vector'
+            kwargs['method'] = 'streamplot'
 
         # do the actual plotting
-        res = plot_func(data['x'], data['y'], data['data_x'], data['data_y'],
-                        **kwargs)        
-            
-        # set some default properties
-        ax.set_aspect('equal')
-        ax.set_xlabel(data['label_x'])
-        ax.set_ylabel(data['label_y'])
-        if title is None:
-            title = data.get('title', self.label)
+        if kind == 'image':
+            reference = self.plot_image(ax=ax, **kwargs)
+        elif kind == 'line':
+            reference = self.plot_line(ax=ax, **kwargs)
+        elif kind == 'vector':
+            reference = self.plot_vector(ax=ax, **kwargs)
+        else:
+            raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
+                             '`image`, `line`, `vector`, or `auto`.')
 
-        from ..visualization.plotting import finalize_plot
-        finalize_plot(ax, title=title, filename=filename, show=show)
+        fig = reference.ax.get_figure()  # obtain figure from axes
+
+        # set some default values and finalize the plot            
+        if title is not None:
+            reference.ax.set_title(title)
+        
+        if filename:
+            fig.savefig(filename)
+        if show:
+            plt.show()
+        if close_figure:
+            plt.close(fig)        
             
-        return res
+        return reference
+
+    
+    def update_plot(self, reference: PlotReference) -> None:
+        """ update a plot with the current field values
+        
+        Args:
+            reference (:class:`PlotReference`):
+                The reference to the plot to updated
+        """
+        import matplotlib as mpl  # @Reimport
+        
+        # update the plot based on the given reference
+        el = reference.element
+        if isinstance(el, mpl.lines.Line2D):
+            self._update_line_plot(reference)
+        elif isinstance(el, mpl.image.AxesImage):
+            self._update_image_plot(reference)
+        elif isinstance(el, (mpl.quiver.Quiver, mpl.streamplot.StreamplotSet)):
+            self._update_vector_plot(reference)
+        else:
+            raise ValueError(f'Unknown plot element {el.__class__.__name__}')
     
     
     def plot_interactive(self, scalar: str = 'auto', **kwargs):
@@ -1628,55 +1798,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             **kwargs: Extra arguments are passed to :class:`napari.Viewer`
         """
         from ..visualization.plotting import napari_viewer
+        
         with napari_viewer(self.grid, **kwargs) as viewer:
             viewer.add_image(self.to_scalar(scalar).data,
                              name=self.label,
                              rgb=False,
                              scale=self.grid.discretization)
-
-
-    def plot(self, kind: str = 'auto', **kwargs):
-        r""" visualize the field
-        
-        Args:
-            kind (str):
-                Determines the visualizations. Supported values are `image`, 
-                `line`, `vector`, or `interactive`. Alternatively, `auto`
-                determines the best visualization based on the field itself.
-            \**kwargs:
-                All additional keyword arguments are forwarded to the actual
-                plotting functions. This includes `ax` to determine the
-                matplotlib axis in which the plot is done, `title` to set the
-                title of the plot, `filename` to write the plot to a specific
-                file, and `show` to determine whether
-                :func:`matplotlib.pyplot.show` is called. These parameters are
-                described in detail in :meth:`~DataFieldBase.plot_line`.
-                
-        Returns:
-            The result of the respective matplotlib plotting function
-        """
-        if kind == 'auto':
-            # determine best plot for this field
-            if (isinstance(self, DataFieldBase) and self.rank == 1 and
-                    self.grid.dim == 2):
-                kind = 'vector'
-            elif len(self.grid.shape) == 1:
-                kind = 'line'
-            else:
-                kind = 'image'
-
-        # do the actual plotting
-        if kind == 'image':
-            res = self.plot_image(**kwargs)
-        elif kind == 'line':
-            res = self.plot_line(**kwargs)
-        elif kind == 'vector':
-            res = self.plot_vector(**kwargs)
-        elif kind == 'interactive':
-            res = self.plot_interactive(**kwargs)
-        else:
-            raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
-                             '`image`, `line`, `vector`, or `auto`.')
-            
-        return res
     
