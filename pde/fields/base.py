@@ -1456,22 +1456,20 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         raise NotImplementedError()
     
                 
-    def plot_line(self, 
-                  extract: str = 'auto',
-                  ylabel: str = None,
-                  ax=None,
-                  **kwargs) -> PlotReference:
+    def _plot_line(self, ax,
+                   extract: str = 'auto',
+                   ylabel: str = None,
+                   **kwargs) -> PlotReference:
         r""" visualize a field using a 1d line plot
         
         Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting.
             extract (str):
                 The method used for extracting the line data.
             ylabel (str):
                 Label of the y-axis. If omitted, the label is chosen 
                 automatically from the data field.
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created. This has no effect if a `reference` is supplied.
             \**kwargs:
                 Additional keyword arguments are passed to
                 :func:`matplotlib.pyplot.plot`
@@ -1483,11 +1481,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # obtain data for the plot
         line_data = self.get_line_data(extract=extract)
         
-        # create new plot
-        if ax is None:
-            import matplotlib.pyplot as plt
-            ax = plt.gca()
-        
+        # do the plot
         line2d, = ax.plot(line_data['data_x'], line_data['data_y'],
                               **kwargs)
 
@@ -1524,15 +1518,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise ValueError(f'Unsupported plot reference {reference}')
 
 
-    def plot_image(self,
-                   colorbar: bool = False,
-                   scalar: str = 'auto',
-                   transpose: bool = False,
-                   ax=None,
-                   **kwargs) -> PlotReference:
+    def _plot_image(self, ax,
+                    colorbar: bool = False,
+                    scalar: str = 'auto',
+                    transpose: bool = False,
+                    **kwargs) -> PlotReference:
         r""" visualize a field using a 2d density plot
 
         Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting.
             colorbar (bool):
                 Determines whether a colorbar is shown
             scalar (str or int):
@@ -1540,9 +1535,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 :meth:`DataFieldBase.to_scalar`.
             transpose (bool):
                 Determines whether the transpose of the data should is plotted
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created. This has no effect if a `reference` is supplied.
             \**kwargs:
                 Additional keyword arguments that affect the image. For
                 instance, some fields support a `scalar` argument that
@@ -1559,10 +1551,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # obtain image data
         data = self.get_image_data(scalar, transpose)
         
-        # plot the image (either using pyplot or the supplied axes)
         if ax is None:
+            # create new figure
             import matplotlib.pyplot as plt
-            ax = plt.gca()
+            ax = plt.subplots()[1]
             
         kwargs.setdefault('origin', 'lower')
         kwargs.setdefault('interpolation', 'none')
@@ -1597,15 +1589,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         reference.element.set_array(data['data'])
 
 
-    def plot_vector(self,
-                    method: str = 'quiver',
-                    transpose: bool = False,
-                    max_points: int = 16,
-                    ax=None,
-                    **kwargs) -> PlotReference:
+    def _plot_vector(self, ax,
+                     method: str = 'quiver',
+                     transpose: bool = False,
+                     max_points: int = 16,
+                     **kwargs) -> PlotReference:
         r""" visualize a field using a 2d vector plot
 
         Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting.
             method (str):
                 Plot type that is used. This can be either `quiver` or
                 `streamplot`.
@@ -1614,9 +1607,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             max_points (int):
                 The maximal number of points that is used along each axis. This
                 argument is only used for quiver plots.
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created. This has no effect if a `reference` is supplied.
             \**kwargs:
                 Additional keyword arguments are passed to
                 :func:`matplotlib.pyplot.quiver` or
@@ -1626,10 +1616,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
         """
-        if ax is None:
-            import matplotlib.pyplot as plt
-            ax = plt.gca()
-        
         # do the plotting using the chosen method
         if method == 'quiver':
             data = self.get_vector_data(transpose=transpose,
@@ -1690,7 +1676,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
              kind: str = 'auto',
              title: str = None,
              filename: str = None,
-             show: bool = False,
+             show: bool = True,
              close_figure: bool = False,
              ax=None,
              **kwargs):
@@ -1722,6 +1708,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the plot with new data later.
         """
         import matplotlib.pyplot as plt
+        from ..visualization.contexts import disable_interactive
         
         # pre-process the kinds
         if kind == 'auto':
@@ -1742,25 +1729,34 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             kind = 'vector'
             kwargs['method'] = 'streamplot'
 
-        # do the actual plotting
-        if kind == 'image':
-            reference = self.plot_image(ax=ax, **kwargs)
-        elif kind == 'line':
-            reference = self.plot_line(ax=ax, **kwargs)
-        elif kind == 'vector':
-            reference = self.plot_vector(ax=ax, **kwargs)
-        else:
-            raise ValueError(f'Unsupported plot `{kind}`. Possible choices are '
-                             '`image`, `line`, `vector`, or `auto`.')
+        # disable interactive plotting temporarily
+        with disable_interactive():
+            
+            if ax is None:
+                # create new figure
+                ax = plt.subplots()[1]
+            
+            # do the actual plotting
+            if kind == 'image':
+                reference = self._plot_image(ax=ax, **kwargs)
+            elif kind == 'line':
+                reference = self._plot_line(ax=ax, **kwargs)
+            elif kind == 'vector':
+                reference = self._plot_vector(ax=ax, **kwargs)
+            else:
+                raise ValueError(f'Unsupported plot `{kind}`. Possible choices '
+                                 'are `image`, `line`, `vector`, or `auto`.')
 
-        fig = reference.ax.get_figure()  # obtain figure from axes
-
-        # set some default values and finalize the plot            
-        if title is not None:
-            reference.ax.set_title(title)
-        
-        if filename:
-            fig.savefig(filename)
+            # obtain figure from axes
+            fig = reference.ax.get_figure()  
+    
+            # finishing touches...            
+            if title is not None:
+                reference.ax.set_title(title)
+            if filename:
+                fig.savefig(filename)
+                
+        # decide what to do with the final plot
         if show:
             plt.show()
         if close_figure:

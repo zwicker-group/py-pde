@@ -431,7 +431,7 @@ class FieldCollection(FieldBase):
              kind='auto',
              title: str = None,
              filename: str = None,
-             show: bool = False,
+             show: bool = True,
              close_figure: bool = False,
              **kwargs) -> List[PlotReference]:
         r""" visualize all the fields in the collection
@@ -459,27 +459,31 @@ class FieldCollection(FieldBase):
             to update all the plots with new data later.
         """
         import matplotlib.pyplot as plt
+        from ..visualization.contexts import disable_interactive
         
-        # create a plot with all the panels 
-        fig, axs = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
-        
-        # plot all the elements into the respective axes 
-        references = [field.plot(kind, ax=ax, **kwargs)
-                      for field, ax in zip(self.fields, axs)]
+        # disable interactive plotting temporarily
+        with disable_interactive():
+            # create a plot with all the panels 
+            fig, axs = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
+            
+            # plot all the elements into the respective axes 
+            reference = [field.plot(kind, ax=ax, **kwargs)
+                         for field, ax in zip(self.fields, axs)]
+                    
+            # finishing touches...            
+            if title is not None:
+                fig.suptitle(title)
+            if filename:
+                fig.savefig(filename)
                 
-        # set some default values and finalize the plot            
-        if title is not None:
-            fig.suptitle(title)
-        
-        if filename:
-            fig.savefig(filename)
+        # decide what to do with the final plot
         if show:
             plt.show()
         if close_figure:
             plt.close(fig)        
                 
-        # create all the references
-        return references
+        # return the references for all subplots
+        return reference
     
 
     def update_plot(self, reference: List[PlotReference]) -> None:

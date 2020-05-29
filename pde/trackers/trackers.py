@@ -246,6 +246,7 @@ class PlotTracker(TrackerBase):
     
     @fill_in_docstring
     def __init__(self, interval: IntervalData = 1,
+                 title: str = '',
                  output_file: Optional[str] = None,
                  output_folder: Optional[str] = None,
                  movie_file: Optional[str] = None,
@@ -256,6 +257,9 @@ class PlotTracker(TrackerBase):
         Args:
             interval:
                 {ARG_TRACKER_INTERVAL}
+            title (str):
+                Text to show in the title. The current time point will be
+                appended to this text, so include a space for optimal results.
             output_file (str, optional):
                 Specifies a single image file, which is updated periodically, so
                 that the progress can be monitored (e.g. on a compute cluster)
@@ -272,6 +276,7 @@ class PlotTracker(TrackerBase):
                 Extra arguments supplied to the plot call
         """
         super().__init__(interval=interval)
+        self.title = title
         self.output_file = output_file
         self.output_folder = output_folder
         self.show = show
@@ -301,7 +306,10 @@ class PlotTracker(TrackerBase):
         """
         # initialize the plotting context
         from ..visualization.contexts import get_plotting_context
-        self._context = get_plotting_context(title='Initializing...')
+        title = self.title + 'Initializing...'
+        self._context = get_plotting_context(title=title, show=self.show)
+        
+        self.plot_arguments['show'] = False  # this is handled by the context
         
         # do the actual plotting
         with self._context:
@@ -319,11 +327,15 @@ class PlotTracker(TrackerBase):
             t (float):
                 The associated time
         """
-        self._context.title = f'Time: {t:g}'
+        self._context.title = f'{self.title}Time: {t:g}'
         
         # update the plot in the correct plotting context
         with self._context:
-            field.update_plot(reference=self._plot_reference)
+            if self._context.replot:
+                field.plot(**self.plot_arguments)
+            else:
+                field.update_plot(reference=self._plot_reference)
+                
         if self.output_file:
             self._context.fig.savefig(self.output_file)
         if self.movie:

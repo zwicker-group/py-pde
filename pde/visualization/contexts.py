@@ -4,6 +4,7 @@ Classes for controlling plot output using context managers
 .. autosummary::
    :nosignatures:
 
+   disable_interactive
    BasicPlottingContext
    JupyterPlottingContext
    get_plotting_context
@@ -11,14 +12,33 @@ Classes for controlling plot output using context managers
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
+import contextlib
 import logging
-import time
 import warnings
 from typing import Type  # @UnusedImport
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.axes as mpl_axes
+
+
+
+@contextlib.contextmanager
+def disable_interactive():
+    """ context manager disabling the interactive mode of matplotlib
+    
+    This context manager restores the previous state after it is done. Details
+    of the interactive mode are described in :func:`matplotlib.interactive`.
+    """
+    if plt.isinteractive():
+        # interactive mode is enabled => disable it temporarily
+        plt.interactive(False) 
+        yield
+        plt.interactive(True)
+        
+    else:
+        # interactive mode is already disabled => do nothing
+        yield
 
 
 
@@ -32,6 +52,9 @@ class PlottingContextBase(object):
             plt.plot(...)
             plt.title(...)
     """
+    
+    replot = False
+    
     
     def __init__(self,
                  title: str = None,
@@ -49,39 +72,35 @@ class PlottingContextBase(object):
         self.show = show
         
         self.initial_plot = True
+        self.fig = None
         self._logger = logging.getLogger(__name__)
+        self._logger.info(f'Initialize {self.__class__.__name__}')
     
 
     def __enter__(self):
         # start the plotting process
-        if hasattr(self, 'fig'):
+        if self.fig is not None:
             plt.figure(self.fig.number)
     
 
     def __exit__(self, *exc): 
-        if self.initial_plot:
+        if self.replot or self.initial_plot:
             self.fig = plt.gcf()
-            if len(self.fig.axes) > 1:
-                self._title = plt.suptitle(self.title)
-            else:
+            if len(self.fig.axes) == 0:
+                raise RuntimeError('Plot figure does not contain axes')
+            elif len(self.fig.axes) == 1:
                 self._title = plt.title(self.title)
+            else:
+                self._title = plt.suptitle(self.title)
             self.initial_plot = False
         else:
             self._title.set_text(self.title)
-        
-        
-    def _show(self):
-        """ show the updated plot """
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            # add a small pause to allow the GUI to run it's event loop
-            plt.pause(0.001)
 
 
     def close(self):
         """ close the plot """
         # close matplotlib figure
-        if hasattr(self, 'fig'):
+        if self.fig is not None:
             plt.close(self.fig)
 
 
@@ -118,48 +137,48 @@ class BasicPlottingContext(PlottingContextBase):
     def __exit__(self, *exc): 
         super().__exit__(*exc)
         if self.show:
-            self._show()
+            self.fig.canvas.draw()  # required for display in nbagg backend
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                # add a small pause to allow the GUI to run it's event loop
+                plt.pause(1e-3)
 
 
 
 class JupyterPlottingContext(PlottingContextBase):
     """ plotting in a jupyter widget """
     
+    replot = True
+    
     def __enter__(self):
+        from IPython.display import display
         from ipywidgets import Output
         
         if self.initial_plot:
-            self._logger.info('Initialize jupyter plotting context')
+            # create output widget for capturing all plotting
             self._ipython_out = Output()
-            self._ipython_out.__enter__()
-    
-    
-    def __exit__(self, *exc): 
-        # need to copy the initial plot state, since it can be overwritten by
-        # the call to super().__exit__
-        initial_plot = self.initial_plot
-        # finalize plot and set self.initial_plot = False
-        super().__exit__(*exc)  
-        if initial_plot:
-            self._ipython_out.__exit__(*exc)
-        if self.show:
-            self._show(initial_plot)
+            if self.show:
+                # only show the widget if necessary
+                display(self._ipython_out)
             
+        # capture plots in the output widget
+        self._ipython_out.__enter__()
+    
+    
+    def __exit__(self, *exc):
+        # finalize plot
+        super().__exit__(*exc)
         
-    def _show(self, initial_plot):
-        """ show the updated plot """
-        from IPython.display import display
+        if self.show:
+            # show the plot, but ...
+            plt.show()
+            # ... also clear it the next time something is done        
+            self._ipython_out.clear_output(wait=True)
+            
+        # stop capturing plots in the output widget
+        self._ipython_out.__exit__(*exc)
 
-        if initial_plot:
-            display(self._ipython_out)
-        else:
-            with self._ipython_out:
-                display(self.fig)
-        self._ipython_out.clear_output(wait=True)
-
-        # add a small pause to allow the GUI to run it's event loop
-        time.sleep(0.001)
-        
+ 
 
     def close(self):
         """ close the plot """
@@ -197,8 +216,9 @@ def get_plotting_context(context=None,
     if context is None:
         # figure out whether plots are shown in jupyter notebook
         
-        if show and 'ipykernel' in mpl.get_backend():
+        if 'ipykernel' in mpl.get_backend():
             try:
+                from IPython.display import display  # @UnusedImport
                 from ipywidgets import Output  # @UnusedImport
             except ImportError:
                 context_class: Type[PlottingContextBase] = BasicPlottingContext
@@ -222,4 +242,6 @@ def get_plotting_context(context=None,
                                     show=show)
     
     raise RuntimeError(f'Unknown plotting context `{context}`')
+
+
         
