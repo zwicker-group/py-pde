@@ -29,7 +29,6 @@ from ..tools.docstrings import fill_in_docstring
 
 
 if TYPE_CHECKING:
-    import matplotlib as mpl  # @UnusedImport
     from .scalar import ScalarField  # @UnusedImport
 
 
@@ -491,7 +490,12 @@ class FieldBase(metaclass=ABCMeta):
     def get_image_data(self): pass
     
     @abstractmethod
-    def plot(self, **kwargs): pass
+    def plot(self,
+             kind: str = 'auto',
+             title: str = None,
+             filename: str = None,
+             show: bool = True,
+             close_figure: bool = False, **kwargs): pass
     
     @abstractmethod
     def update_plot(self, reference): pass
@@ -1503,7 +1507,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             reference (:class:`PlotReference`):
                 The reference to the plot that is updated
         """
-        import matplotlib as mpl  # @Reimport
+        import matplotlib as mpl
         
         # obtain data for the plot
         extract = reference.parameters.get('extract', 'auto')
@@ -1775,7 +1779,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             reference (:class:`PlotReference`):
                 The reference to the plot to updated
         """
-        import matplotlib as mpl  # @Reimport
+        import matplotlib as mpl
         
         # update the plot based on the given reference
         el = reference.element

@@ -426,15 +426,15 @@ class FieldCollection(FieldBase):
             dict: Information useful for plotting an image of the field
         """
         return self[index].get_image_data(**kwargs)
-    
+
 
     def plot(self,
              kind='auto',
              title: str = None,
-             tight: bool = True,
              filename: str = None,
              show: bool = True,
              close_figure: bool = False,
+             tight: bool = True,
              **kwargs) -> List[PlotReference]:
         r""" visualize all the fields in the collection
         
@@ -446,15 +446,15 @@ class FieldCollection(FieldBase):
             title (str):
                 Title of the plot. If omitted, the title is chosen
                 automatically based on the label the data field.
-            tight (bool):
-                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
-                affects the layout of all plot elements.
             filename (str, optional):
                 If given, the plot is written to the specified file.
             show (bool):
                 Flag setting whether :func:`matplotlib.pyplot.show` is called
             close_figure (bool):
                 Flag setting whether the figure is closed (after it was shown)
+            tight (bool):
+                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
+                affects the layout of all plot elements.
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual
                 plotting functions.
