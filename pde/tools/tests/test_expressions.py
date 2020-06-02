@@ -62,7 +62,7 @@ def test_single_arg():
     assert e.differentiate('b').value == 0
     assert e.shape == tuple()
     assert e.rank == 0
-    assert bool(e) == True
+    assert bool(e)
     assert not e.is_zero
     
     assert e == ScalarExpression(e.expression)
