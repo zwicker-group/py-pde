@@ -272,7 +272,8 @@ def display_progress(iterator, total=None, enabled=True, **kwargs):
 
 
 
-def add_scaled_colorbar(im, ax,
+def add_scaled_colorbar(im,
+                        ax=None,
                         aspect: float = 20,
                         pad_fraction: float = 0.5,
                         **kwargs):
@@ -287,7 +288,7 @@ def add_scaled_colorbar(im, ax,
     
     Args:
         im: object returned from :meth:`matplotlib.pyplot.imshow`
-        ax: the current figure axes
+        ax (:class:`matplotlib.axes.Axes`): the current figure axes
         aspect (float): the target aspect ratio of the colorbar
         pad_fraction (float): Width of the gap between colorbar and image
         **kwargs: Additional parameters are passed to colorbar call
@@ -301,7 +302,8 @@ def add_scaled_colorbar(im, ax,
     width = axes_grid1.axes_size.AxesY(im.axes, aspect=1./aspect)
     pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
     cax = divider.append_axes("right", size=width, pad=pad)
-    plt.sca(ax)
+    if ax is not None:
+        plt.sca(ax)
     return im.axes.figure.colorbar(im, cax=cax, **kwargs)            
        
 

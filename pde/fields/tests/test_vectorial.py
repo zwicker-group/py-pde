@@ -146,8 +146,8 @@ def test_vector_plot_quiver_reduction():
     """ test whether quiver plots reduce the resolution """
     grid = UnitGrid([6, 6])
     field = VectorField.random_normal(grid)
-    res = field.plot(method='quiver', max_points=4)
-    assert len(res.U) == 16
+    ref = field.plot(method='quiver', max_points=4)
+    assert len(ref.element.U) == 16
         
 
 

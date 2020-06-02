@@ -4,7 +4,7 @@ Defines a tensorial field of rank 2 over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-from typing import Tuple, Optional, Union, Any, Dict, Callable, TYPE_CHECKING
+from typing import Tuple, Optional, Union, Callable, TYPE_CHECKING
 
 import numpy as np
 import numba as nb
@@ -331,32 +331,4 @@ class Tensor2Field(DataFieldBase):
         """
         return self.to_scalar(scalar='trace', label=label)
 
-    
-    def get_line_data(self, scalar: str = 'auto',  # type: ignore
-                      extract: str = 'auto') -> Dict[str, Any]:
-        """ return data for a line plot of the field
-        
-        Args:
-            method (str or int): The method for extracting scalars as described
-                in `self.to_scalar`.
-                
-        Returns:
-            dict: Information useful for performing a line plot of the field
-        """
-        return self.to_scalar(scalar=scalar).get_line_data(extract=extract)
-                    
-    
-    def get_image_data(self, scalar: str = 'auto', **kwargs) -> Dict[str, Any]:
-        r""" return data for plotting an image of the field
-
-        Args:
-            method (str or int): The method for extracting scalars as described
-                in `self.to_scalar`.
-            \**kwargs: Additional parameters are forwarded to `get_image_data`
-                
-        Returns:
-            dict: Information useful for plotting an image of the field
-        """
-        return self.to_scalar(scalar=scalar).get_image_data(**kwargs)
-        
     
