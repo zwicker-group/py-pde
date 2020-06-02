@@ -272,6 +272,7 @@ class PlotTracker(TrackerBase):
             show (bool, optional):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
+                This option can slow down a simulation severely.
             plot_arguments (dict):
                 Extra arguments supplied to the plot call
         """
@@ -341,7 +342,7 @@ class PlotTracker(TrackerBase):
             else:
                 field.plot(**self.plot_arguments)
                 
-        if self.output_file:
+        if self.output_file and self._context.fig is not None:
             self._context.fig.savefig(self.output_file)
         if self.movie:
             self.movie.add_figure(self._context.fig)

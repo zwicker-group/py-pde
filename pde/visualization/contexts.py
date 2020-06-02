@@ -46,11 +46,12 @@ class PlottingContextBase(object):
     """ base class of the plotting contexts
     
     Example:
-        context = PlottingContext()
-        
-        with context:
-            plt.plot(...)
-            plt.title(...)
+        The context wraps calls to the :mod:`matplotlib.pyplot` interface::
+    
+            context = PlottingContext()
+            with context:
+                plt.plot(...)
+                plt.xlabel(...)
     """
     
     supports_update: bool = True
@@ -60,17 +61,13 @@ class PlottingContextBase(object):
     
     def __init__(self,
                  title: str = None,
-                 filename: str = None,
                  show: bool = True):
-        """ initialize the plotting context 
-        
+        """ 
         Args:
             title (str): The shown in the plot
-            filename (str): The filename to which the file is written
             show (bool): Flag determining whether plots are actually shown
         """
         self.title = title
-        self.filename = filename
         self.show = show
         
         self.initial_plot = True
@@ -116,7 +113,6 @@ class BasicPlottingContext(PlottingContextBase):
     def __init__(self,
                  fig_or_ax=None,
                  title: str = None,
-                 filename: str = None,
                  show: bool = True):
         """
         Args:
@@ -125,12 +121,10 @@ class BasicPlottingContext(PlottingContextBase):
                 set as active.
             title (str):
                 The shown in the plot
-            filename (str):
-                The filename to which the file is written
             show (bool):
                 Flag determining whether plots are actually shown
         """
-        super().__init__(title=title, filename=filename, show=show)
+        super().__init__(title=title, show=show)
         
         # determine which figure to modify
         if isinstance(fig_or_ax, mpl_axes.Axes):
@@ -151,9 +145,12 @@ class BasicPlottingContext(PlottingContextBase):
 
 
 class JupyterPlottingContext(PlottingContextBase):
-    """ plotting in a jupyter widget """
+    """ plotting in a jupyter widget using the `inline` backend """
     
     supports_update = False
+    """ flag indicating whether the context supports that plots can be updated
+    with out redrawing the entire plot. The jupyter backend (`inline`) requires
+    replotting of the entire figure, so an update is not supported."""
     
     def __enter__(self):
         from IPython.display import display
@@ -182,7 +179,6 @@ class JupyterPlottingContext(PlottingContextBase):
             
         # stop capturing plots in the output widget
         self._ipython_out.__exit__(*exc)
-
  
 
     def close(self):
@@ -198,19 +194,17 @@ class JupyterPlottingContext(PlottingContextBase):
         
 def get_plotting_context(context=None,
                          title: str = None,
-                         filename: str = None,
                          show: bool = True) -> PlottingContextBase:
-    """
+    """ returns a suitable plotting context
+    
     Args:
         context:
             An instance of :class:`PlottingContextBase` or an instance of
-            :class:`mpl_axes.Axes` or :class:`mpl.figure.Figure` to determine
-            where the plotting will happen. If omitted, the context is
-            determined automatically.
+            :class:`matplotlib.axes.Axes` or :class:`matplotlib.figure.Figure`
+            to determine where the plotting will happen. If omitted, the context
+            is determined automatically.
         title (str):
-            The shown in the plot
-        filename (str):
-            The filename to which the file is written
+            The title shown in the plot
         show (bool):
             Determines whether the plot is shown while the simulation is
             running. If `False`, the files are created in the background.
@@ -221,7 +215,8 @@ def get_plotting_context(context=None,
     if context is None:
         # figure out whether plots are shown in jupyter notebook
         
-        if 'ipykernel' in mpl.get_backend():
+        if 'backend_inline' in mpl.get_backend():
+            # special context to support the `inline` backend
             try:
                 from IPython.display import display  # @UnusedImport
                 from ipywidgets import Output  # @UnusedImport
@@ -229,24 +224,23 @@ def get_plotting_context(context=None,
                 context_class: Type[PlottingContextBase] = BasicPlottingContext
             else:
                 context_class = JupyterPlottingContext
+                
         else:
+            # standard context for all other backends
             context_class = BasicPlottingContext
         
-        return context_class(title=title, filename=filename, show=show)    
+        return context_class(title=title, show=show)    
     
     elif isinstance(context, PlottingContextBase):
+        # re-use an existing context
         context.title = title
-        context.filename = filename
         context.show = show
         return context
     
     elif isinstance(context, (mpl_axes.Axes, mpl.figure.Figure)):
-        return BasicPlottingContext(fig_or_ax=context,
-                                    title=title,
-                                    filename=filename,
-                                    show=show)
+        # create a basic context based on the given axes or figure
+        return BasicPlottingContext(fig_or_ax=context, title=title, show=show)
     
-    raise RuntimeError(f'Unknown plotting context `{context}`')
-
-
+    else:
+        raise RuntimeError(f'Unknown plotting context `{context}`')
         
