@@ -38,8 +38,7 @@ class PlotReference():
     
     __slots__ = ['ax', 'element', 'parameters']
     
-    def __init__(self, ax: 'mpl.axes.Axes', element: Any,
-                 parameters: Dict[str, Any] = None):
+    def __init__(self, ax, element: Any, parameters: Dict[str, Any] = None):
         """
         Args:
             ax (:class:`matplotlib.axes.Axes`): The axes of the element
