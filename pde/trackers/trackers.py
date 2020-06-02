@@ -314,6 +314,11 @@ class PlotTracker(TrackerBase):
         # do the actual plotting
         with self._context:
             self._plot_reference = field.plot(**self.plot_arguments)
+
+        # determine whether this plot can be updated in the following
+        self._update_plot = (self._context.supports_update and 
+                             hasattr(field, 'update_plot') and
+                             self._plot_reference is not None)
             
         return super().initialize(field, info=info)
         
@@ -331,10 +336,10 @@ class PlotTracker(TrackerBase):
         
         # update the plot in the correct plotting context
         with self._context:
-            if self._context.replot:
-                field.plot(**self.plot_arguments)
-            else:
+            if self._update_plot:
                 field.update_plot(reference=self._plot_reference)
+            else:
+                field.plot(**self.plot_arguments)
                 
         if self.output_file:
             self._context.fig.savefig(self.output_file)

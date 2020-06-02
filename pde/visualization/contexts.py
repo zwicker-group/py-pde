@@ -53,7 +53,9 @@ class PlottingContextBase(object):
             plt.title(...)
     """
     
-    replot = False
+    supports_update: bool = True
+    """ flag indicating whether the context supports that plots can be updated
+    with out redrawing the entire plot """
     
     
     def __init__(self,
@@ -84,7 +86,8 @@ class PlottingContextBase(object):
     
 
     def __exit__(self, *exc): 
-        if self.replot or self.initial_plot:
+        if self.initial_plot or not self.supports_update:
+            # recreate the entire figure
             self.fig = plt.gcf()
             if len(self.fig.axes) == 0:
                 raise RuntimeError('Plot figure does not contain axes')
@@ -93,7 +96,9 @@ class PlottingContextBase(object):
             else:
                 self._title = plt.suptitle(self.title)
             self.initial_plot = False
+            
         else:
+            # update the old figure
             self._title.set_text(self.title)
 
 
@@ -148,7 +153,7 @@ class BasicPlottingContext(PlottingContextBase):
 class JupyterPlottingContext(PlottingContextBase):
     """ plotting in a jupyter widget """
     
-    replot = True
+    supports_update = False
     
     def __enter__(self):
         from IPython.display import display
@@ -194,7 +199,7 @@ class JupyterPlottingContext(PlottingContextBase):
 def get_plotting_context(context=None,
                          title: str = None,
                          filename: str = None,
-                         show: bool = True):
+                         show: bool = True) -> PlottingContextBase:
     """
     Args:
         context:
