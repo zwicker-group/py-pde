@@ -361,6 +361,12 @@ class ScalarExpression(ExpressionBase):
             raise TypeError('Only constant expressions have a defined value')
         
         
+    @property
+    def is_zero(self) -> bool:
+        """ bool: returns whether the expression is zero """
+        return self.constant and self.value == 0
+        
+        
     def __bool__(self):
         """ tests whether the expression is nonzero """
         return not self.constant or self.value != 0

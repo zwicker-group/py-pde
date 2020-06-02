@@ -38,6 +38,7 @@ def test_const():
         assert e.shape == tuple()
         assert e.rank == 0
         assert bool(e) == (val != 0)
+        assert e.is_zero == (val == 0)
         
         g = e.derivatives
         assert g.constant
@@ -61,6 +62,9 @@ def test_single_arg():
     assert e.differentiate('b').value == 0
     assert e.shape == tuple()
     assert e.rank == 0
+    assert bool(e) == True
+    assert not e.is_zero
+    
     assert e == ScalarExpression(e.expression)
     with pytest.raises(TypeError):
         e.value
