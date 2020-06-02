@@ -431,6 +431,7 @@ class FieldCollection(FieldBase):
     def plot(self,
              kind='auto',
              title: str = None,
+             tight: bool = True,
              filename: str = None,
              show: bool = True,
              close_figure: bool = False,
@@ -445,6 +446,9 @@ class FieldCollection(FieldBase):
             title (str):
                 Title of the plot. If omitted, the title is chosen
                 automatically based on the label the data field.
+            tight (bool):
+                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
+                affects the layout of all plot elements.
             filename (str, optional):
                 If given, the plot is written to the specified file.
             show (bool):
@@ -470,6 +474,11 @@ class FieldCollection(FieldBase):
             # plot all the elements into the respective axes 
             reference = [field.plot(kind, ax=ax, show=False, **kwargs)
                          for field, ax in zip(self.fields, axs)]
+                    
+                    
+            # adjust layout
+            if tight:
+                plt.tight_layout()
                     
             # finishing touches...            
             if title is not None:
@@ -498,53 +507,6 @@ class FieldCollection(FieldBase):
         """
         for field, ref in zip(self.fields, reference):
             field.update_plot(ref)
-        
-    
-    def plot_collection(self, fig=None,
-                        title: Optional[str] = None,
-                        tight: bool = True,
-                        filename: str = None,
-                        show: bool = False,
-                        **kwargs):
-        r""" visualize all fields by plotting them next to each other
-        
-        Args:
-            fig (:class:`matplotlib.figure.Figure):
-                Figure to be used for plotting. If `None`, a new figure is
-                created.
-            title (str):
-                Title of the plot. If omitted, the title is chosen automatically
-                based on the label the data field.
-            tight (bool):
-                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
-                affects the layout of all plot elements.
-            filename (str, optional):
-                If given, the plot is written to the specified file.
-            show (bool):
-                Whether to call :func:`matplotlib.pyplot.show`
-            \**kwargs:
-                Additional keyword arguments are passed to the method
-                plotting function of the individual fields.
-        """
-        import matplotlib.pyplot as plt
-        
-        # plot the individual panels
-        if fig is None:
-            fig, axes = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
-        else:
-            axes = fig.axes
-        for field, ax in zip(self.fields, axes):
-            field.plot(ax=ax, **kwargs)
-            
-        # set the title above all panels
-        fig.suptitle(self.label if title is None else title)
-            
-        # adjust layout
-        if tight:
-            fig.tight_layout()
-            
-        from ..visualization.plotting import finalize_plot
-        finalize_plot(fig, filename=filename, show=show)
         
             
     def plot_interactive(self, scalar: str = 'auto', **kwargs):

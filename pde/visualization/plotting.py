@@ -20,8 +20,6 @@ from typing import (Union, Callable, Optional, Any, Dict, List, Tuple)
 
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-import matplotlib.axes as mpl_axes
 
 from ..grids.base import GridBase
 from ..fields import FieldCollection
@@ -33,35 +31,6 @@ from ..tools.docstrings import fill_in_docstring
 
 ScaleData = Union[str, float, Tuple[float, float]]
 
-
-
-def get_figure_axes(fig_or_ax: Union[mpl.figure.Figure, mpl_axes.Axes] = None) \
-        -> mpl_axes.Axes:
-    """ get axes object from figure or axes object
-    
-    Args:
-        fig_or_ax (:class:`~matplotlib.figure.Figure` or :class:`~matplotlib.\
-            axes.Axes`): The figure or axes object
-            
-    Returns:
-        :class:`~matplotlib.axes.Axes`: A set of axes that can be plotted onto
-    """
-    if fig_or_ax is None:
-        # create a new figure with a new set of axes
-        return plt.figure().gca()
-    
-    elif isinstance(fig_or_ax, mpl_axes.Axes):
-        # return the given axes unchanged
-        return fig_or_ax
-    
-    elif fig_or_ax.axes:
-        # take the given figure and return the last added axes
-        return fig_or_ax.axes[-1]
-    
-    else:
-        # take the given figure and add a new set of axes
-        return fig_or_ax.add_subplot()
-        
 
 
 def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:

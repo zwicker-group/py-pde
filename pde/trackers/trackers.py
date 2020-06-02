@@ -10,7 +10,6 @@ The trackers defined in this module are:
    ProgressTracker
    PrintTracker
    PlotTracker
-   PlotCollectionTracker
    DataTracker
    SteadyStateTracker
    RuntimeTracker
@@ -34,7 +33,6 @@ from .base import TrackerBase, InfoDict, FinishedSimulation, Real
 from .intervals import IntervalData, RealtimeIntervals
 from ..fields.base import FieldBase
 from ..fields import FieldCollection
-from ..visualization.plotting import ScaleData
 from ..tools.parse_duration import parse_duration
 from ..tools.misc import get_progress_bar_class
 from ..tools.docstrings import fill_in_docstring
@@ -366,129 +364,6 @@ class PlotTracker(TrackerBase):
             
         if not self.show or self.close_final:
             self._context.close()
-    
-              
-    
-class PlotCollectionTracker(TrackerBase):
-    """ Tracker that plots a collection of 2d images
-    
-    The plot tracker uses the 
-    :class:`~pde.visualization.plotting.ScalarFieldPlot` class to show fields
-    and field collections. Most options are thus forwarded to this class.
-    """
-     
-    name = 'plot_collection'
-    
-    @fill_in_docstring
-    def __init__(self, interval: IntervalData = 1,
-                 output_file: Optional[str] = None,
-                 output_folder: Optional[str] = None,
-                 movie_file: Optional[str] = None,
-                 quantities=None,
-                 scale: ScaleData = 'automatic',
-                 tight: bool = False,
-                 show: bool = True):
-        """
-        Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
-            output_file (str, optional):
-                Specifies a single image file, which is updated periodically, so
-                that the progress can be monitored (e.g. on a compute cluster)
-            output_folder (str, optional):
-                Specifies a folder to which all images are written. The files
-                will have names with increasing numbers.
-            movie_file (str, optional):
-                Specifies a filename to which a movie of all the frames is
-                written after the simulation.
-            quantities:
-                {ARG_PLOT_QUANTITIES}
-            scale (str, float, tuple of float):
-                {ARG_PLOT_SCALE}
-            tight (bool):
-                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
-                affects the layout of all plot elements.
-            show (bool, optional):
-                Determines whether the plot is shown while the simulation is
-                running. If `False`, the files are created in the background.
-        """
-        super().__init__(interval=interval)
-        self.output_file = output_file
-        self.output_folder = output_folder
-        self.quantities = quantities
-        self.scale = scale
-        self.tight = tight
-        self.show = show
-        
-        if movie_file is not None or output_folder is not None:
-            from ..visualization.movies import Movie
-            movie = Movie(filename=movie_file, image_folder=output_folder)
-            self.movie: Optional[Movie] = movie
-            self.movie._start()  # initialize movie
-        else:
-            self.movie = None
-         
-     
-    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
-        """ initialize the tracker with information about the simulation
-        
-        Args:
-            field (:class:`~pde.fields.FieldBase`):
-                An example of the data that will be analyzed by the tracker
-            info (dict):
-                Extra information from the simulation
-                
-        Returns:
-            float: The first time the tracker needs to handle data
-        """
-        from ..visualization.plotting import ScalarFieldPlot
-        
-        # initialize the plotting panels
-        self.plot = ScalarFieldPlot(field,
-                                    quantities=self.quantities,
-                                    scale=self.scale,
-                                    title='Initializing...',
-                                    tight=self.tight,
-                                    show=self.show)
-        return super().initialize(field, info=info)
-        
-         
-    def handle(self, field: FieldBase, t: float) -> None:
-        """ handle data supplied to this tracker
-        
-        Args:
-            field (:class:`~pde.fields.FieldBase`):
-                The current state of the simulation
-            t (float):
-                The associated time
-        """
-        self.plot.update(field, title=f'Time: {t:g}')
-        if self.output_file:
-            self.plot.savefig(self.output_file)
-        if self.movie:
-            self.movie.add_figure(self.plot.fig)
-          
-
-    def finalize(self, info: InfoDict = None) -> None:
-        """ finalize the tracker, supplying additional information
-
-        Args:
-            info (dict):
-                Extra information from the simulation        
-        """
-        super().finalize(info)
-        if self.movie:
-            if self.movie.filename:
-                # write out movie file if requested
-                self._logger.info(f'Writing movie to {self.movie.filename}...')
-                self.movie.save()
-            # finalize movie (e.g. delete temporary files)
-            self.movie._end()
-            
-        if not self.show:
-            import matplotlib.pyplot as plt
-            plt.close(self.plot.fig)
-            del self.plot
     
               
     
@@ -826,6 +701,5 @@ class MaterialConservationTracker(TrackerBase):
             
             
 __all__ = ['CallbackTracker', 'ProgressTracker', 'PrintTracker', 'PlotTracker',
-           'PlotCollectionTracker', 'DataTracker', 'SteadyStateTracker',
-           'RuntimeTracker', 'ConsistencyTracker',
-           'MaterialConservationTracker']
+           'DataTracker', 'SteadyStateTracker', 'RuntimeTracker',
+           'ConsistencyTracker', 'MaterialConservationTracker']

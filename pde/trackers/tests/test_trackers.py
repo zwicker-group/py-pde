@@ -43,30 +43,6 @@ def test_plot_tracker(tmp_path):
     
     
     
-@skipUnlessModule("matplotlib")
-def test_plot_collection_tracker(tmp_path):
-    """ test whether the plot tracker creates files without errors """
-    output_file = tmp_path / "img.png"
-    output_folder = tmp_path / "folder/"
-    output_folder.mkdir()
-    
-    grid = UnitGrid([4, 4])
-    state = ScalarField.random_uniform(grid)
-    pde = DiffusionPDE()
-    tracker = trackers.PlotCollectionTracker(output_file=output_file,
-                                             output_folder=output_folder,
-                                             interval=0.1, show=False)
-    
-    pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend='numpy')
-    
-    assert output_file.exists()
-    assert len(list(output_folder.iterdir())) == 6
-    
-    import matplotlib.pyplot as plt
-    plt.close('all')
-    
-    
-    
 def test_simple_progress():
     """ simple test for basic progress bar """
     pbar = trackers.ProgressTracker(interval=1)
