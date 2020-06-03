@@ -36,6 +36,28 @@ _IS_PLOTTING = False  # global flag to detect nested plotting calls
 
 
 
+@contextlib.contextmanager
+def nested_plotting_check():
+    """ context manager that checks whether it is the root plotting call
+    
+    Yields:
+        bool: The context manager yields True for the first usage and False for
+        all nested calls.
+    """
+    global _IS_PLOTTING
+
+    if _IS_PLOTTING:
+        # this is a nested plot call
+        yield False
+        
+    else:
+        # this is the outermost plot call
+        _IS_PLOTTING = True
+        yield True
+        _IS_PLOTTING = False
+
+
+
 def finalize_plot(fig_or_ax=None,
                   title: str = None,
                   filename: str = None,
@@ -165,54 +187,48 @@ class plot_on_axes:
                     shown)
             """
             # some logic to check for nested plotting calls:
-            global _IS_PLOTTING
-            root_plotting_call = not _IS_PLOTTING
-            if show is None:
-                show = root_plotting_call  # only call show outer routine
-            _IS_PLOTTING = True
+            with nested_plotting_check() as is_outermost_plot_call:
             
-            # disable interactive plotting temporarily
-            with disable_interactive():
-                
-                if ax is None:
-                    # create new figure
-                    backend = mpl.get_backend()
-                    if 'backend_inline' in backend or 'nbAgg' == backend:
-                        plt.close('all')  # close figures that were left over
-                    fig, ax = plt.subplots()
-                else:
-                    fig = ax.get_figure()
-            
-                # call the actual plotting function
-                reference = method(obj, ax=ax, **kwargs)
-                
-                # finishing touches...            
-                if title is not None:
-                    reference.ax.set_title(title)
-                if filename:
-                    fig.savefig(filename)
+                # disable interactive plotting temporarily
+                with disable_interactive():
                     
-            # decide what to do with the final plot
-            if show:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    plt.show()
-            if close_figure:
-                plt.close(fig)
+                    if ax is None:
+                        # create new figure
+                        backend = mpl.get_backend()
+                        if 'backend_inline' in backend or 'nbAgg' == backend:
+                            plt.close('all')  # close left over figures
+                        fig, ax = plt.subplots()
+                    else:
+                        fig = ax.get_figure()
                 
-            if root_plotting_call:
-                _IS_PLOTTING = False
+                    # call the actual plotting function
+                    reference = method(obj, ax=ax, **kwargs)
+                    
+                    # finishing touches...            
+                    if title is not None:
+                        reference.ax.set_title(title)
+                    if filename:
+                        fig.savefig(filename)
+                        
+                # decide whether to show the final plot
+                if show or (show is None and is_outermost_plot_call):
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        plt.show()
+                if close_figure:
+                    plt.close(fig)
                 
             return reference
             
         wrapper.__name__ = method.__name__        
         wrapper.__module__ = method.__module__
-        
-        doc_fragment = wrapper.__doc__.splitlines()[:-1]
-        doc_fragment = '\n'.join(line[4:] for line in doc_fragment)
-        wrapper.__doc__ = re.sub(r'Args:\s*$', doc_fragment, method.__doc__,
-                                 flags=re.MULTILINE)
         wrapper.__dict__.update(method.__dict__)
+        
+        if method.__doc__:
+            doc_fragment = wrapper.__doc__.splitlines()[:-1]
+            doc_fragment = '\n'.join(line[4:] for line in doc_fragment)
+            wrapper.__doc__ = re.sub(r'Args:\s*$', doc_fragment, method.__doc__,
+                                     flags=re.MULTILINE)
 
         wrapper.mpl_class = 'axes'
         wrapper.update_method = self.update_method
@@ -270,53 +286,47 @@ class plot_on_figure:
                     shown).
             """
             # some logic to check for nested plotting calls:
-            global _IS_PLOTTING
-            root_plotting_call = not _IS_PLOTTING
-            if show is None:
-                show = root_plotting_call  # only call show outer routine
-            _IS_PLOTTING = True
-
-            # disable interactive plotting temporarily
-            with disable_interactive():
+            with nested_plotting_check() as is_outermost_plot_call:
                 
-                if fig is None:
-                    # create new figure
-                    backend = mpl.get_backend()
-                    if 'backend_inline' in backend or 'nbAgg' == backend:
-                        plt.close('all')  # close figures that were left over
-                    fig = plt.figure(constrained_layout=constrained_layout)
-            
-                # call the actual plotting function
-                reference = method(obj, fig=fig, **kwargs)
-                
-                # finishing touches...            
-                if title is not None:
-                    fig.suptitle(title)
-                if filename:
-                    fig.savefig(filename)
+                # disable interactive plotting temporarily
+                with disable_interactive():
                     
-            # decide what to do with the final plot
-            if show:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    plt.show()
-                    
-            if close_figure:
-                plt.close(fig)    
+                    if fig is None:
+                        # create new figure
+                        backend = mpl.get_backend()
+                        if 'backend_inline' in backend or 'nbAgg' == backend:
+                            plt.close('all')  # close left over figures
+                        fig = plt.figure(constrained_layout=constrained_layout)
                 
-            if root_plotting_call:
-                _IS_PLOTTING = False
+                    # call the actual plotting function
+                    reference = method(obj, fig=fig, **kwargs)
+                    
+                    # finishing touches...            
+                    if title is not None:
+                        fig.suptitle(title)
+                    if filename:
+                        fig.savefig(filename)
+                        
+                # decide whether to show the final plot
+                if show or (show is None and is_outermost_plot_call):
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        plt.show()
+                        
+                if close_figure:
+                    plt.close(fig)
                 
             return reference    
             
         wrapper.__name__ = method.__name__        
         wrapper.__module__ = method.__module__
-        
-        doc_fragment = wrapper.__doc__.splitlines()[:-1]
-        doc_fragment = '\n'.join(line[4:] for line in doc_fragment)
-        wrapper.__doc__ = re.sub(r'Args:\s*$', doc_fragment, method.__doc__,
-                                 flags=re.MULTILINE)
         wrapper.__dict__.update(method.__dict__)
+        
+        if method.__doc__:
+            doc_fragment = wrapper.__doc__.splitlines()[:-1]
+            doc_fragment = '\n'.join(line[4:] for line in doc_fragment)
+            wrapper.__doc__ = re.sub(r'Args:\s*$', doc_fragment, method.__doc__,
+                                     flags=re.MULTILINE)
 
         wrapper.mpl_class = 'figure'
         wrapper.update_method = self.update_method

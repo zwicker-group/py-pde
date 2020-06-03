@@ -1,6 +1,5 @@
 '''
-Defines base classes
-
+Defines base classes of fields, which are discretized on grids
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
@@ -1691,7 +1690,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
         """
-        # pre-process the kinds
+        # determine the correct kind of plotting
         if kind == 'auto':
             # determine best plot for this field
             if (isinstance(self, DataFieldBase) and self.rank == 1 and
