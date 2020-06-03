@@ -6,14 +6,14 @@ grid.
 '''
 
 import json
-import warnings
 from typing import (Sequence, Optional, Union, Any, Dict,
                     List, Iterator)  # @UnusedImport
 
 import numpy as np
 
-from .base import FieldBase, DataFieldBase, PlotReference, OptionalArrayLike
+from .base import FieldBase, DataFieldBase, OptionalArrayLike
 from .scalar import ScalarField
+from ..tools.plotting import plot_on_figure, PlotReference
 from ..grids.base import GridBase
 
 
@@ -428,77 +428,7 @@ class FieldCollection(FieldBase):
         return self[index].get_image_data(**kwargs)
 
 
-    def plot(self,
-             kind='auto',
-             title: str = None,
-             filename: str = None,
-             show: bool = True,
-             close_figure: bool = False,
-             tight: bool = True,
-             **kwargs) -> List[PlotReference]:
-        r""" visualize all the fields in the collection
-        
-        Args:
-            kind (str):
-                Determines the visualizations. Supported values are `image`, 
-                `line`, `vector`, or `interactive`. Alternatively, `auto`
-                determines the best visualization based on each field itself.
-            title (str):
-                Title of the plot. If omitted, the title is chosen
-                automatically based on the label the data field.
-            filename (str, optional):
-                If given, the plot is written to the specified file.
-            show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is called
-            close_figure (bool):
-                Flag setting whether the figure is closed (after it was shown)
-            tight (bool):
-                Whether to call :func:`matplotlib.pyplot.tight_layout`. This
-                affects the layout of all plot elements.
-            \**kwargs:
-                All additional keyword arguments are forwarded to the actual
-                plotting functions.
-                
-        Returns:
-            list of :class:`PlotReference`: Instances that contain information
-            to update all the plots with new data later.
-        """
-        import matplotlib.pyplot as plt
-        from ..visualization.contexts import disable_interactive
-        
-        # disable interactive plotting temporarily
-        with disable_interactive():
-            # create a plot with all the panels 
-            fig, axs = plt.subplots(1, len(self), figsize=(4 * len(self), 3))
-            
-            # plot all the elements into the respective axes 
-            reference = [field.plot(kind, ax=ax, show=False, **kwargs)
-                         for field, ax in zip(self.fields, axs)]
-                    
-                    
-            # adjust layout
-            if tight:
-                plt.tight_layout()
-                    
-            # finishing touches...            
-            if title is not None:
-                fig.suptitle(title)
-            if filename:
-                fig.savefig(filename)
-                
-        # decide what to do with the final plot
-        if show:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                plt.show()
-        if close_figure:
-            plt.close(fig)        
-                
-        # return the references for all subplots
-        return reference
-    
-
-    def update_plot(self, reference: List[PlotReference]) -> None:
+    def _update_plot(self, reference: List[PlotReference]) -> None:
         """ update a plot collection with the current field values
         
         Args:
@@ -506,8 +436,48 @@ class FieldCollection(FieldBase):
                 All references of the plot to update
         """
         for field, ref in zip(self.fields, reference):
-            field.update_plot(ref)
+            field._update_plot(ref)
         
+        
+    @plot_on_figure(update_method='_update_plot')
+    def plot(self,
+             fig,
+             kind: str = 'auto',
+             resize_fig: bool = True,
+             **kwargs) -> List[PlotReference]:
+        r""" visualize all the fields in the collection
+        
+        Args:
+            fig (:class:`matplotlib.figures.Figure`):
+                Figure that is used for plotting. If omitted, a new figure is
+                created.
+            kind (str):
+                Determines the visualizations. Supported values are `image`, 
+                `line`, `vector`, or `interactive`. Alternatively, `auto`
+                determines the best visualization based on each field itself.
+            resize_fig (bool):
+                Whether to resize the figure
+            \**kwargs:
+                All additional keyword arguments are forwarded to the actual
+                plotting function.
+                
+        Returns:
+            list of :class:`PlotReference`: Instances that contain information
+            to update all the plots with new data later.
+        """
+        # disable interactive plotting temporarily
+        # create a plot with all the panels 
+        if resize_fig:
+            fig.set_size_inches((4 * len(self), 3), forward=True)
+        axs = fig.subplots(1, len(self))
+        
+        # plot all the elements into the respective axes
+        reference = [field.plot(kind=kind, ax=ax, show=False, **kwargs)
+                     for field, ax in zip(self.fields, axs)]
+                
+        # return the references for all subplots
+        return reference
+    
             
     def plot_interactive(self, scalar: str = 'auto', **kwargs):
         """ create an interactive plot of the field using :mod:`napari`
@@ -516,7 +486,7 @@ class FieldCollection(FieldBase):
             scalar (str): The method for obtaining scalar values of fields        
             **kwargs: Extra arguments are passed to :class:`napari.Viewer`
         """
-        from ..visualization.plotting import napari_viewer
+        from ..tools.plotting import napari_viewer
         with napari_viewer(self.grid, **kwargs) as viewer:
             for field in self:
                 viewer.add_image(field.to_scalar(scalar).data,

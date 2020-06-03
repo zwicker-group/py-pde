@@ -313,12 +313,12 @@ def test_simple_plotting(grid):
     fc = FieldCollection([sf, vf])
     for f in [sf, vf, tf, fc]:
         f.plot()
-        f.plot('line')
+        f.plot(kind='line')
         if grid.dim >= 2:
-            f.plot('image')
+            f.plot(kind='image')
         if isinstance(f, VectorField) and grid.dim == 2:
-            f.plot('quiver')
-            f.plot('streamplot')
+            f.plot(kind='quiver')
+            f.plot(kind='streamplot')
         plt.close('all')
         
             

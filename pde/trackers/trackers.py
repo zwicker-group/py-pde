@@ -250,7 +250,7 @@ class PlotTracker(TrackerBase):
                  movie_file: Optional[str] = None,
                  show: bool = True,
                  close_final: bool = False,
-                 plot_arguments: Dict[str, Any] = None):
+                 plot_args: Dict[str, Any] = None):
         """
         Args:
             interval:
@@ -271,7 +271,7 @@ class PlotTracker(TrackerBase):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
                 This option can slow down a simulation severely.
-            plot_arguments (dict):
+            plot_args (dict):
                 Extra arguments supplied to the plot call
         """
         super().__init__(interval=interval)
@@ -280,7 +280,9 @@ class PlotTracker(TrackerBase):
         self.output_folder = output_folder
         self.show = show
         self.close_final = close_final
-        self.plot_arguments = {} if plot_arguments is None else plot_arguments
+        
+        self.plot_args = {} if plot_args is None else plot_args
+        self.plot_args['show'] = False  # this is handled by the context
         
         if movie_file is not None or output_folder is not None:
             from ..visualization.movies import Movie
@@ -291,7 +293,7 @@ class PlotTracker(TrackerBase):
             self.movie = None
          
      
-    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
+    def initialize(self, state: FieldBase, info: InfoDict = None) -> float:
         """ initialize the tracker with information about the simulation
         
         Args:
@@ -304,25 +306,43 @@ class PlotTracker(TrackerBase):
             float: The first time the tracker needs to handle data
         """
         # initialize the plotting context
-        from ..visualization.contexts import get_plotting_context
+        from ..tools.plotting import get_plotting_context
         title = self.title + 'Initializing...'
         self._context = get_plotting_context(title=title, show=self.show)
-        
-        self.plot_arguments['show'] = False  # this is handled by the context
-        
+
         # do the actual plotting
         with self._context:
-            self._plot_reference = field.plot(**self.plot_arguments)
+            self._plot_reference = state.plot(**self.plot_args)
 
-        # determine whether this plot can be updated in the following
-        self._update_plot = (self._context.supports_update and 
-                             hasattr(field, 'update_plot') and
-                             self._plot_reference is not None)
+        if self._context.supports_update:
+            # the context supports reusing figures
+            if hasattr(state.plot, 'update_method'):
+                # the plotting method supports updating the plot
+                if state.plot.update_method is None:  # type: ignore
+                    if state.plot.mpl_class == 'axes':  # type: ignore
+                        self._update_method = 'update_ax'
+                    elif state.plot.mpl_class == 'figure':  # type: ignore
+                        self._update_method = 'update_fig'
+                    else:
+                        mpl_class = state.plot.mpl_class  # type: ignore
+                        raise RuntimeError('Unknown mpl_class on plot method: '
+                                           f'{mpl_class}')
+                else: 
+                    self._update_method = 'update_data'
+            else:
+                raise RuntimeError('PlotTracker does not  work since the state '
+                                   f'of type {state.__class__.__name__} does '
+                                   'not use the plot protocol of '
+                                   '`pde.tools.plotting`.')
+        else:
+            self._update_method = 'replot'
             
-        return super().initialize(field, info=info)
+        self._logger.info(f'Update method: "{self._update_method}"')
+                
+        return super().initialize(state, info=info)
         
          
-    def handle(self, field: FieldBase, t: float) -> None:
+    def handle(self, state: FieldBase, t: float) -> None:
         """ handle data supplied to this tracker
         
         Args:
@@ -335,10 +355,29 @@ class PlotTracker(TrackerBase):
         
         # update the plot in the correct plotting context
         with self._context:
-            if self._update_plot:
-                field.update_plot(reference=self._plot_reference)
+            if self._update_method == 'update_data':
+                # the state supports updating the plot data
+                update_func = getattr(state,
+                                      state.plot.update_method)  # type: ignore
+                update_func(self._plot_reference)
+                
+            elif self._update_method == 'update_fig':
+                fig = self._context.fig
+                fig.clf()  # type: ignore
+                state.plot(fig=fig, **self.plot_args)
+                
+            elif self._update_method == 'update_ax':
+                fig = self._context.fig
+                fig.clf()  # type: ignore
+                ax = fig.add_subplot(1, 1, 1)  # type: ignore
+                state.plot(ax=ax, **self.plot_args)
+                
+            elif self._update_method == 'replot':
+                state.plot(**self.plot_args)
+                
             else:
-                field.plot(**self.plot_arguments)
+                raise RuntimeError('Unknown update method '
+                                   f'`{self._update_method}`')
                 
         if self.output_file and self._context.fig is not None:
             self._context.fig.savefig(self.output_file)

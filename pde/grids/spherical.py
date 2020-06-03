@@ -17,6 +17,7 @@ from .cartesian import CartesianGrid
 from ..tools.spherical import volume_from_radius
 from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
+from ..tools.plotting import plot_on_axes
 
 
 
@@ -566,37 +567,34 @@ class PolarGrid(SphericalGridBase):
         return np.stack((x, y), axis=-1)
 
 
-    def plot(self, title: str = None, show: bool = False, **kwargs):
+    @plot_on_axes()
+    def plot(self, ax, **kwargs):
         r""" visualize the polar grid
         
         Args:
-            title (str):
-                Determines the title of the figure
-            show (bool):
-                Determines whether :func:`matplotlib.pyplot.show` is called
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting. If `None`, a new figure is
+                created. This has no effect if a `reference` is supplied.
             \**kwargs: Extra arguments are passed on the to the matplotlib
                 plotting routines, e.g., to set the color of the lines
         """
-        import matplotlib.pyplot as plt
-        from ..visualization.plotting import finalize_plot
+        from matplotlib import patches
         
         kwargs.setdefault('color', 'k')
         rb, = self.axes_bounds
         rmax = rb[1]
-        ax = plt.gca()
+
         for r in np.linspace(*rb, self.shape[0] + 1):
             if r == 0:
-                plt.plot(0, 0, '.', **kwargs)
+                ax.plot(0, 0, '.', **kwargs)
             else:
-                c = plt.Circle((0, 0), r, fill=False, **kwargs)
+                c = patches.Circle((0, 0), r, fill=False, **kwargs)
                 ax.add_artist(c)
-        plt.xlim(-rmax, rmax)
-        plt.xlabel('x')
-        plt.ylim(-rmax, rmax)
-        plt.ylabel('y')
+        ax.set_xlim(-rmax, rmax)
+        ax.set_xlabel('x')
+        ax.set_ylim(-rmax, rmax)
+        ax.set_ylabel('y')
         ax.set_aspect(1)
-        
-        finalize_plot(title=title, show=show)
             
             
     

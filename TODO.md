@@ -1,6 +1,6 @@
 TODO
 ====
-* Plotting tools need to be reorganized in actual API and utils
+* Try to not import matplotlib by default
 * Think about logger names (add `pde.` before class name)
 * Count the number of compilations and store it in the info field of the simulation
     - raise a warning when this number became too large in a simulation?

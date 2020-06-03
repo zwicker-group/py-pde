@@ -34,4 +34,4 @@ print()
 
 # plot both fields and give the deviation as the title
 title = f'Deviation: {((sol1 - sol2)**2).average:.2g}'
-FieldCollection([sol1, sol2]).plot(title=title, show=True)
+FieldCollection([sol1, sol2]).plot(title=title)

@@ -15,6 +15,7 @@ import numpy as np
 from .base import GridBase, _check_shape, DimensionError
 from ..tools.cuboid import Cuboid
 from ..tools.docstrings import fill_in_docstring
+from ..tools.plotting import plot_on_axes
 
 
 if TYPE_CHECKING:
@@ -345,20 +346,17 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
         return self.normalize_point(coords)
 
 
-    def plot(self, title: str = None, show: bool = False, **kwargs):
+    @plot_on_axes()
+    def plot(self, ax, **kwargs):
         r""" visualize the grid
         
         Args:
-            title (str):
-                Determines the title of the figure
-            show (bool):
-                Determines whether :func:`matplotlib.pyplot.show` is called
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting. If `None`, a new figure is
+                created. This has no effect if a `reference` is supplied.
             \**kwargs: Extra arguments are passed on the to the matplotlib
                 plotting routines, e.g., to set the color of the lines
         """
-        import matplotlib.pyplot as plt
-        from ..visualization.plotting import finalize_plot
-        
         if self.dim not in {1, 2}:
             raise NotImplementedError('Plotting is not implemented for grids '
                                       f'of dimension {self.dim}')
@@ -366,20 +364,18 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
         kwargs.setdefault('color', 'k')
         xb = self.axes_bounds[0]
         for x in np.linspace(*xb, self.shape[0] + 1):
-            plt.axvline(x, **kwargs)
-        plt.xlim(*xb)
-        plt.xlabel(self.axes[0])
+            ax.axvline(x, **kwargs)
+        ax.set_xlim(*xb)
+        ax.set_xlabel(self.axes[0])
         
         if self.dim == 2:
             yb = self.axes_bounds[1]
             for y in np.linspace(*yb, self.shape[1] + 1):
-                plt.axhline(y, **kwargs)
-            plt.ylim(*yb)
-            plt.ylabel(self.axes[1])
+                ax.axhline(y, **kwargs)
+            ax.set_ylim(*yb)
+            ax.set_ylabel(self.axes[1])
             
-            plt.gca().set_aspect(1)
-            
-        finalize_plot(title=title, show=show)
+            ax.set_aspect(1)
             
 
     @fill_in_docstring

@@ -13,6 +13,7 @@ Package containing several tools required in py-pde
    numba
    parameters
    parse_duration
+   plotting
    spectral
    spherical
    

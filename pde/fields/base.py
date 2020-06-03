@@ -9,7 +9,6 @@ import functools
 import operator
 import logging
 import json
-import warnings
 from pathlib import Path 
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar,
@@ -23,6 +22,7 @@ from ..grids.base import (GridBase, discretize_interval, DimensionError,
                           DomainError)
 from ..grids.cartesian import CartesianGridBase
 from ..grids.boundaries.axes import BoundariesData
+from ..tools.plotting import plot_on_axes, PlotReference
 from ..tools.numba import jit, address_as_void_pointer
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
@@ -31,24 +31,6 @@ from ..tools.docstrings import fill_in_docstring
 if TYPE_CHECKING:
     from .scalar import ScalarField  # @UnusedImport
 
-
-
-class PlotReference():
-    """ contains all information to update a plot element """
-    
-    __slots__ = ['ax', 'element', 'parameters']
-    
-    def __init__(self, ax, element: Any, parameters: Dict[str, Any] = None):
-        """
-        Args:
-            ax (:class:`matplotlib.axes.Axes`): The axes of the element
-            element (:class:`matplotlib.artist.Artist`): The actual element 
-            parameters (dict): Parameters to recreate the plot element
-        """
-        self.ax = ax
-        self.element = element
-        self.parameters = {} if parameters is None else parameters
-        
 
 
 ArrayLike = Union[np.ndarray, float]
@@ -489,15 +471,7 @@ class FieldBase(metaclass=ABCMeta):
     def get_image_data(self): pass
     
     @abstractmethod
-    def plot(self,
-             kind: str = 'auto',
-             title: str = None,
-             filename: str = None,
-             show: bool = True,
-             close_figure: bool = False, **kwargs): pass
-    
-    @abstractmethod
-    def update_plot(self, reference): pass
+    def plot(self, *args, **kwargs): pass
     
 
 
@@ -1556,19 +1530,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         data = self.get_image_data(scalar, transpose)
         
         if ax is None:
-            # create new figure
             import matplotlib.pyplot as plt
+            # create new figure
             ax = plt.subplots()[1]
-            
+
         kwargs.setdefault('origin', 'lower')
         kwargs.setdefault('interpolation', 'none')
         axes_image = ax.imshow(data['data'], extent=data['extent'], **kwargs)
-            
+        
         # set some default properties
         ax.set_xlabel(data['label_x'])
         ax.set_ylabel(data['label_y'])
         ax.set_title(data.get('title', self.label))
-
+        
         if colorbar:
             from ..tools.misc import add_scaled_colorbar
             add_scaled_colorbar(axes_image, ax=ax)
@@ -1675,103 +1649,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             raise ValueError(f'Vector plot `{method}` is not supported.')
 
-
-    def plot(self,
-             kind: str = 'auto',
-             title: str = None,
-             filename: str = None,
-             show: bool = True,
-             close_figure: bool = False,
-             ax=None,
-             **kwargs):
-        r""" visualize the field
-        
-        Args:
-            kind (str):
-                Determines the visualizations. Supported values are `image`, 
-                `line`, `vector`, or `interactive`. Alternatively, `auto`
-                determines the best visualization based on the field itself.
-            title (str):
-                Title of the plot. If omitted, the title is chosen
-                automatically based on the label the data field.
-            filename (str, optional):
-                If given, the plot is written to the specified file.
-            show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is called
-            close_figure (bool):
-                Flag setting whether the figure is closed (after it was shown)
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created. This has no effect if a `reference` is supplied.
-            \**kwargs:
-                All additional keyword arguments are forwarded to the actual
-                plotting functions.
-                
-        Returns:
-            :class:`PlotReference`: Instance that contains information to update
-            the plot with new data later.
-        """
-        import matplotlib.pyplot as plt
-        from ..visualization.contexts import disable_interactive
-        
-        # pre-process the kinds
-        if kind == 'auto':
-            # determine best plot for this field
-            if (isinstance(self, DataFieldBase) and self.rank == 1 and
-                    self.grid.dim == 2):
-                kind = 'vector'
-            elif len(self.grid.shape) == 1:
-                kind = 'line'
-            else:
-                kind = 'image'
-                
-        elif kind == 'quiver':
-            kind = 'vector'
-            kwargs['method'] = 'quiver'
-
-        elif kind == 'streamplot':
-            kind = 'vector'
-            kwargs['method'] = 'streamplot'
-
-        # disable interactive plotting temporarily
-        with disable_interactive():
-            
-            if ax is None:
-                # create new figure
-                ax = plt.subplots()[1]
-            
-            # do the actual plotting
-            if kind == 'image':
-                reference = self._plot_image(ax=ax, **kwargs)
-            elif kind == 'line':
-                reference = self._plot_line(ax=ax, **kwargs)
-            elif kind == 'vector':
-                reference = self._plot_vector(ax=ax, **kwargs)
-            else:
-                raise ValueError(f'Unsupported plot `{kind}`. Possible choices '
-                                 'are `image`, `line`, `vector`, or `auto`.')
-
-            # obtain figure from axes
-            fig = reference.ax.get_figure()  
     
-            # finishing touches...            
-            if title is not None:
-                reference.ax.set_title(title)
-            if filename:
-                fig.savefig(filename)
-                
-        # decide what to do with the final plot
-        if show:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                plt.show()
-        if close_figure:
-            plt.close(fig)        
-            
-        return reference
-
-    
-    def update_plot(self, reference: PlotReference) -> None:
+    def _update_plot(self, reference: PlotReference) -> None:
         """ update a plot with the current field values
         
         Args:
@@ -1791,6 +1670,59 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             raise ValueError(f'Unknown plot element {el.__class__.__name__}')
     
+
+    @plot_on_axes(update_method='_update_plot')
+    def plot(self, ax, kind: str = 'auto', **kwargs):
+        r""" visualize the field
+        
+        Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting. If `None`, a new figure is
+                created. This has no effect if a `reference` is supplied.
+            kind (str):
+                Determines the visualizations. Supported values are `image`, 
+                `line`, `vector`, or `interactive`. Alternatively, `auto`
+                determines the best visualization based on the field itself.
+            \**kwargs:
+                All additional keyword arguments are forwarded to the actual
+                plotting function.
+                
+        Returns:
+            :class:`PlotReference`: Instance that contains information to update
+            the plot with new data later.
+        """
+        # pre-process the kinds
+        if kind == 'auto':
+            # determine best plot for this field
+            if (isinstance(self, DataFieldBase) and self.rank == 1 and
+                    self.grid.dim == 2):
+                kind = 'vector'
+            elif len(self.grid.shape) == 1:
+                kind = 'line'
+            else:
+                kind = 'image'
+                
+        elif kind == 'quiver':
+            kind = 'vector'
+            kwargs['method'] = 'quiver'
+
+        elif kind == 'streamplot':
+            kind = 'vector'
+            kwargs['method'] = 'streamplot'
+
+        # do the actual plotting
+        if kind == 'image':
+            reference = self._plot_image(ax=ax, **kwargs)
+        elif kind == 'line':
+            reference = self._plot_line(ax=ax, **kwargs)
+        elif kind == 'vector':
+            reference = self._plot_vector(ax=ax, **kwargs)
+        else:
+            raise ValueError(f'Unsupported plot `{kind}`. Possible choices '
+                             'are `image`, `line`, `vector`, or `auto`.')
+
+        return reference
+
     
     def plot_interactive(self, scalar: str = 'auto', **kwargs):
         """ create an interactive plot of the field using :mod:`napari`
@@ -1799,7 +1731,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             scalar (str): The method for obtaining scalar values of fields        
             **kwargs: Extra arguments are passed to :class:`napari.Viewer`
         """
-        from ..visualization.plotting import napari_viewer
+        from ..tools.plotting import napari_viewer
         
         with napari_viewer(self.grid, **kwargs) as viewer:
             viewer.add_image(self.to_scalar(scalar).data,

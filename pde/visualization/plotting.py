@@ -12,7 +12,6 @@ Functions and classes for plotting simulation data
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-import contextlib
 import logging
 import warnings
 import time
@@ -21,12 +20,12 @@ from typing import (Union, Callable, Optional, Any, Dict, List, Tuple)
 import numpy as np
 import matplotlib.pyplot as plt
 
-from ..grids.base import GridBase
 from ..fields import FieldCollection
 from ..fields.base import FieldBase, DataFieldBase
 from ..storage.base import StorageBase
 from ..tools.misc import display_progress
 from ..tools.docstrings import fill_in_docstring
+from ..tools.plotting import finalize_plot
 
 
 ScaleData = Union[str, float, Tuple[float, float]]
@@ -52,57 +51,6 @@ def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
     cb.locator = MaxNLocator(num_loc)
     cb.update_ticks()
 
-
-
-def finalize_plot(fig_or_ax=None,
-                  title: str = None,
-                  filename: str = None,
-                  show: bool = False,
-                  close_figure: bool = False) -> Tuple[Any, Any]:
-    r""" finalizes a figure by adjusting relevant parameters
-    
-    Args:
-        fig_or_ax:
-            The figure or axes that are affected. If `None`, the current figure
-            is used.
-        title (str):
-            Determines the title of the figure
-        filename (str):
-            If given, the resulting image is written to this file.
-        show (bool):
-            Flag determining whether :func:`matplotlib.pyplot.show` is called
-        close_figure (bool):
-            Whether the figure should be closed in the end
-            
-    Returns:
-        tuple: The figure and the axes that were used to finalize the plot
-    """
-    # determine which figure to modify    
-    if fig_or_ax is None:
-        fig = plt.gcf()  # current figure
-        ax = fig.gca()
-    elif hasattr(fig_or_ax, 'savefig'):
-        fig = fig_or_ax  # figure is given
-        ax = fig.gca()
-    else:
-        ax = fig_or_ax  # assume that axes are given
-        try:
-            fig = fig_or_ax.figure
-        except AttributeError:
-            fig = fig_or_ax.fig
-    
-    if title is not None:
-        ax.set_title(title)
-    
-    if filename:
-        fig.savefig(filename)
-    if show:
-        plt.show()
-    if close_figure:
-        plt.close(fig)
-        
-    return fig, ax
-    
 
 
 def extract_field(fields: FieldBase,
@@ -702,26 +650,4 @@ def plot_kymograph(storage: StorageBase,
     
     return res
 
-
-
-@contextlib.contextmanager
-def napari_viewer(grid: GridBase, **kwargs):
-    """ creates an napari viewer for interactive plotting
-    
-    Args:
-        grid (:class:`pde.grids.base.GridBase`): The grid defining the space
-        **kwargs: Extra arguments are passed to :class:`napari.Viewer`
-    """
-    import napari
-    
-    if grid.num_axes == 1:
-        raise RuntimeError('Interactive plotting only works for data with '
-                           'at least 2 dimensions')
-    
-    viewer_args = kwargs
-    viewer_args.setdefault('axis_labels', grid.axes)
-    viewer_args.setdefault('ndisplay', 3 if grid.num_axes >= 3 else 2)
-    
-    with napari.gui_qt():  # create Qt GUI context
-        yield napari.Viewer(**viewer_args)
     

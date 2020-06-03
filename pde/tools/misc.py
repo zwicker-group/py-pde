@@ -296,15 +296,14 @@ def add_scaled_colorbar(im,
     Returns:
         the result of the colorbar call
     """
-    import matplotlib.pyplot as plt
     from mpl_toolkits import axes_grid1
     divider = axes_grid1.make_axes_locatable(im.axes)
     width = axes_grid1.axes_size.AxesY(im.axes, aspect=1./aspect)
     pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
     cax = divider.append_axes("right", size=width, pad=pad)
-    if ax is not None:
-        plt.sca(ax)
-    return im.axes.figure.colorbar(im, cax=cax, **kwargs)            
+#     if ax is not None:
+#         plt.sca(ax)
+    return im.axes.figure.colorbar(im, ax=ax, cax=cax, **kwargs)            
        
 
 
