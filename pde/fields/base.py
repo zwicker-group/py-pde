@@ -937,6 +937,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid = self.grid
         grid_dim = len(grid.axes)
         data_shape = self.data_shape
+        
+        dim_error_msg = ('Dimension of the interpolation point does not match '
+                         f'grid dimension {grid_dim}')
 
         # create an interpolator for a single point
         if fill is not None:
@@ -972,8 +975,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # check input
             point = np.atleast_1d(point)
             if point.shape[-1] != grid_dim:
-                raise DimensionError('Dimension of the interpolation point '
-                                     'does not match grid dimension')
+                raise DimensionError(dim_error_msg)
             point_shape = point.shape[:-1]
             
             # reconstruct data field from memory address

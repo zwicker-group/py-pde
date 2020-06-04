@@ -27,6 +27,7 @@ TODO
   on the scalar operators –> could this work for all grids?
 * Add conservative Laplace operator for polar and cylindrical grid?
 * Add tests:
+    - update plotting of fields and field collections
 	- general Trackers
 	- Different intervals for trackers
 	- Interpolating using boundary conditions
@@ -38,6 +39,7 @@ TODO
 	- can we just add an option coords='cells', coords='cartesian', coords='grid'
 	  to methods that return points (or accept points)
 	- there should also be a method `convert_coords(from, to)`
+
 
 
 LOW-PRIORITY (Future ideas)

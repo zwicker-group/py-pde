@@ -19,11 +19,12 @@ The trackers defined in this module are:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from datetime import timedelta
 import inspect
 import sys
 import os.path
 import time
+from datetime import timedelta
+from pathlib import Path
 from typing import (Callable, Optional, Union, IO, List, Any,  # @UnusedImport
                     Dict, TYPE_CHECKING)
 
@@ -41,6 +42,7 @@ from ..tools.docstrings import fill_in_docstring
 
 if TYPE_CHECKING:
     import pandas  # @UnusedImport
+    from ..visualization.movies import Movie  # @UnusedImport
 
 
 
@@ -239,34 +241,34 @@ class PrintTracker(TrackerBase):
 
 class PlotTracker(TrackerBase):
     """ Tracker that plots data on screen, to files, or writes a movie """
-     
-    name = 'plot'
     
     @fill_in_docstring
     def __init__(self, interval: IntervalData = 1,
-                 title: str = '',
+                 title: Union[str, Callable] = 'Time: {time:g}',
                  output_file: Optional[str] = None,
-                 output_folder: Optional[str] = None,
-                 movie_file: Optional[str] = None,
+                 movie: Union[str, Path, 'Movie'] = None,
                  show: bool = True,
                  close_final: bool = False,
-                 plot_args: Dict[str, Any] = None):
+                 plot_args: Dict[str, Any] = None,
+                 **kwargs):
         """
         Args:
             interval:
                 {ARG_TRACKER_INTERVAL}
-            title (str):
-                Text to show in the title. The current time point will be
-                appended to this text, so include a space for optimal results.
+            title (str or callable):
+                Title text of the figure. If this is a string, it is shown with
+                a potential placeholder named `time` being replaced by the
+                current simulation time. Conversely, if `title` is a function,
+                it is called with the current state and the time as arguments.
+                This function is expected to return a string.
             output_file (str, optional):
                 Specifies a single image file, which is updated periodically, so
                 that the progress can be monitored (e.g. on a compute cluster)
-            output_folder (str, optional):
-                Specifies a folder to which all images are written. The files
-                will have names with increasing numbers.
-            movie_file (str, optional):
-                Specifies a filename to which a movie of all the frames is
-                written after the simulation.
+            movie (str or :class:`~pde.visualization.movies.Movie`):
+                Create a movie. If a filename is given, all frames are written
+                to this file in the format deduced from the extension after the
+                simulation ran. If a :class:`~pde.visualization.movies.Movie` is
+                supplied, frames are appended to the instance.
             show (bool, optional):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
@@ -274,24 +276,51 @@ class PlotTracker(TrackerBase):
             plot_args (dict):
                 Extra arguments supplied to the plot call
         """
+        from ..visualization.movies import Movie  # @Reimport
+        
+        # handle deprecated parameters
+        if 'movie_file' in kwargs:
+            # Deprecated this method on 2020-06-04
+            import warnings
+            warnings.warn("Argument `movie_file` is deprecated. Use `movie` "
+                          "instead.", DeprecationWarning)
+            if movie is None:
+                movie = kwargs.pop('movie_file')
+        if 'output_folder' in kwargs:
+            # Deprecated this method on 2020-06-04
+            import warnings  # @Reimport
+            warnings.warn("Argument `output_folder` is deprecated. Use an "
+                          "instance of pde.visualization.movies.Movie with "
+                          "`image_folder` and supply it to the `movie` "
+                          "argument instead.", DeprecationWarning)
+            del kwargs['output_folder']
+        if kwargs:
+            raise ValueError(f"Unused kwargs: {kwargs}")
+        
+        # initialize the tracker
         super().__init__(interval=interval)
         self.title = title
         self.output_file = output_file
-        self.output_folder = output_folder
         self.show = show
         self.close_final = close_final
         
         self.plot_args = {} if plot_args is None else plot_args
         self.plot_args['show'] = False  # this is handled by the context
+
+        # initialize the movie class        
+        if movie is None:
+            self.movie: Optional[Movie] = None
+            self._movie_path = None
+            
+        elif isinstance(movie, Movie):
+            self.movie = movie
+            self._movie_path = None
+            
+        elif isinstance(movie, (str, Path)):
+            self.movie = Movie()
+            self.movie._start()  # start recording the movie
+            self._movie_path = str(movie)
         
-        if movie_file is not None or output_folder is not None:
-            from ..visualization.movies import Movie
-            movie = Movie(filename=movie_file, image_folder=output_folder)
-            self.movie: Optional[Movie] = movie
-            self.movie._start()  # initialize movie
-        else:
-            self.movie = None
-         
      
     def initialize(self, state: FieldBase, info: InfoDict = None) -> float:
         """ initialize the tracker with information about the simulation
@@ -307,8 +336,8 @@ class PlotTracker(TrackerBase):
         """
         # initialize the plotting context
         from ..tools.plotting import get_plotting_context
-        title = self.title + 'Initializing...'
-        self._context = get_plotting_context(title=title, show=self.show)
+        self._context = get_plotting_context(title='Initializing...',
+                                             show=self.show)
 
         # do the actual plotting
         with self._context:
@@ -351,7 +380,10 @@ class PlotTracker(TrackerBase):
             t (float):
                 The associated time
         """
-        self._context.title = f'{self.title}Time: {t:g}'
+        if callable(self.title):
+            self._context.title = str(self.title(state, t))
+        else:
+            self._context.title = self.title.format(time=t)
         
         # update the plot in the correct plotting context
         with self._context:
@@ -393,16 +425,53 @@ class PlotTracker(TrackerBase):
                 Extra information from the simulation        
         """
         super().finalize(info)
-        if self.movie:
-            if self.movie.filename:
-                # write out movie file if requested
-                self._logger.info(f'Writing movie to {self.movie.filename}...')
-                self.movie.save()
-            # finalize movie (e.g. delete temporary files)
-            self.movie._end()
+        if self._movie_path:
+            # write out movie file
+            self._logger.info(f'Writing movie to {self._movie_path}...')
+            self.movie.save(self._movie_path)  # type: ignore
+            # end recording the movie (e.g. delete temporary files)
+            self.movie._end()  # type: ignore
             
         if not self.show or self.close_final:
             self._context.close()
+    
+    
+
+class PlotInteractiveTracker(PlotTracker):
+    """ Tracker that plots data on screen, to files, or writes a movie
+    
+    The only difference to :class:`PlotTracker` is the changed default interval,
+    that is more suitable for interactive plotting.    
+    """
+     
+    name = 'plot'
+    
+    @fill_in_docstring
+    def __init__(self, interval: IntervalData = '0:02', **kwargs):
+        """
+        Args:
+            interval:
+                {ARG_TRACKER_INTERVAL}
+            title (str):
+                Text to show in the title. The current time point will be
+                appended to this text, so include a space for optimal results.
+            output_file (str, optional):
+                Specifies a single image file, which is updated periodically, so
+                that the progress can be monitored (e.g. on a compute cluster)
+            output_folder (str, optional):
+                Specifies a folder to which all images are written. The files
+                will have names with increasing numbers.
+            movie_file (str, optional):
+                Specifies a filename to which a movie of all the frames is
+                written after the simulation.
+            show (bool, optional):
+                Determines whether the plot is shown while the simulation is
+                running. If `False`, the files are created in the background.
+                This option can slow down a simulation severely.
+            plot_args (dict):
+                Extra arguments supplied to the plot call
+        """
+        super().__init__(interval=interval, **kwargs)    
     
               
     
