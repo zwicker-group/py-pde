@@ -469,7 +469,7 @@ class ScalarFieldPlot():
         else:
             data_iter = storage.items()
             
-        with Movie(filename=filename, verbose=False) as movie:
+        with Movie(filename=filename) as movie:
             # iterate over all time steps
             for t, data in data_iter:
                 self.update(data, title=f'Time {t:g}')
