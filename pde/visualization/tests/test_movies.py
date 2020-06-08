@@ -18,19 +18,19 @@ def test_movie(tmp_path):
     
     path = tmp_path / "test_movie.mov"
     
-    with movies.Movie(path) as movie:
-        # iterate over all time steps
-        plt.plot([0, 1], [0, 1])
-        movie.add_figure()
-        movie.add_figure()
-    
-        # save movie
-        try:
+    try:
+        with movies.Movie(path) as movie:
+            # iterate over all time steps
+            plt.plot([0, 1], [0, 1])
+            movie.add_figure()
+            movie.add_figure()
+        
+            # save movie
             movie.save()
-        except RuntimeError:
-            pass  # can happen when ffmpeg is not installed
-        else:
-            assert path.stat().st_size > 0
+    except RuntimeError:
+        pass  # can happen when ffmpeg is not installed
+    else:
+        assert path.stat().st_size > 0
 
 
 
