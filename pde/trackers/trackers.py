@@ -310,16 +310,19 @@ class PlotTracker(TrackerBase):
         # initialize the movie class        
         if movie is None:
             self.movie: Optional[Movie] = None
-            self._movie_path = None
+            self._save_movie = False
             
         elif isinstance(movie, Movie):
             self.movie = movie
-            self._movie_path = None
+            self._save_movie = False
             
         elif isinstance(movie, (str, Path)):
-            self.movie = Movie()
-            self.movie._start()  # start recording the movie
-            self._movie_path = str(movie)
+            self.movie = Movie(filename=str(movie))
+            self._save_movie = True
+            
+        else:
+            raise TypeError('Unknown type of argument `movie`: '
+                            f'{movie.__class__.__name__}')
         
      
     def initialize(self, state: FieldBase, info: InfoDict = None) -> float:
@@ -425,10 +428,9 @@ class PlotTracker(TrackerBase):
                 Extra information from the simulation        
         """
         super().finalize(info)
-        if self._movie_path:
+        if self._save_movie:
             # write out movie file
-            self._logger.info(f'Writing movie to {self._movie_path}...')
-            self.movie.save(self._movie_path)  # type: ignore
+            self.movie.save()  # type: ignore
             # end recording the movie (e.g. delete temporary files)
             self.movie._end()  # type: ignore
             
