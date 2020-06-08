@@ -27,7 +27,7 @@ def test_movie(tmp_path):
         # save movie
         try:
             movie.save()
-        except FileNotFoundError:
+        except RuntimeError:
             pass  # can happen when ffmpeg is not installed
         else:
             assert path.stat().st_size > 0
@@ -50,7 +50,7 @@ def test_movie_scalar(tmp_path):
     
     try:
         movies.movie_scalar(storage, filename=path, progress=False)
-    except FileNotFoundError:
+    except RuntimeError:
         pass  # can happen when ffmpeg is not installed
     else:
         assert path.stat().st_size > 0
