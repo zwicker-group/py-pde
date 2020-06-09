@@ -1,5 +1,10 @@
 TODO
 ====
+* pde.PDE:
+    - add test for dot operator and custom boundary conditions
+* Plot tracker:
+    - plot final state in the live view (finalize does not get the final state yet)
+    - plot_args, allow to set ylim in 1d plots
 * Try to not import matplotlib by default
 * Think about logger names (add `pde.` before class name)
 * Count the number of compilations and store it in the info field of the simulation

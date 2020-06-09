@@ -4,14 +4,15 @@ Defines a PDE class whose right hand side is given as a string
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from collections import OrderedDict, defaultdict
+import re
+from collections import OrderedDict
 from typing import Callable, Dict, Any  # @UnusedImport
 
 import numpy as np
 
 
 from pde.pdes.base import PDEBase
-from pde.fields import FieldCollection
+from pde.fields import FieldCollection, VectorField
 from pde.fields.base import FieldBase, DataFieldBase, OptionalArrayLike
 from pde.grids.boundaries.axes import BoundariesData
 from pde.tools.numba import nb, jit
@@ -26,10 +27,6 @@ class PDE(PDEBase):
         variables (tuple):
             The name of the variables (i.e., fields) in the order they are
             expected to appear in the `state`.
-        operators (tuple):
-            The name of the operators that need to be defined for the expression
-            to be useful. These should only contain operators defined in the
-            :mod:`pde` package.
         diagnostics (dict): 
             Additional diagnostic information that might help with analyzing
             problems, e.g., when :mod:`sympy` cannot parse or :mod`numba` cannot
@@ -56,7 +53,9 @@ class PDE(PDEBase):
                 by sympy, and the operators defined in the :mod:`pde` package.
                 Note that operators need to be specified with their full name,
                 i.e., `laplace` for a scalar Laplacian and `vector_laplace` for
-                a Laplacian operating on a vector field.
+                a Laplacian operating on a vector field. Moreover, the dot
+                product between two vector fields can be denoted by using
+                `dot(field1, field2)` in the expression.
             noise (float or :class:`numpy.ndarray`):
                 Magnitude of additive Gaussian white noise. The default value of
                 zero implies deterministic partial differential equations will
@@ -69,10 +68,11 @@ class PDE(PDEBase):
                 {ARG_BOUNDARIES} 
             bc_ops (dict):
                 Special boundary conditions for some operators. The keys in this
-                dictionary specify the operators appearing in `rhs` and the
-                associated values support the same boundary conditions specified
-                in `bc`. Operators that are not specified in `bc_ops` will use
-                the conditions specified by `bc`
+                dictionary specify where the boundary condition will be applied.
+                The keys follow the format "FIELD:OPERATOR", where FIELD is the
+                name of a field and OPERATOR denotes the name of an operator.
+                For both identifiers, the wildcard symbol "*" denotes that all
+                fields and operators are affected, respectively.
                 
         Note:
             The order in which the fields are given in `rhs` defines the order
@@ -95,7 +95,7 @@ class PDE(PDEBase):
         
         # turn the expression strings into sympy expressions
         signature = tuple(rhs.keys()) + ('t',)
-        self._rhs_expr, operators = {}, set()
+        self._rhs_expr, self._operators = {}, {}
         explicit_time_dependence = False
         for var, rhs_str in rhs.items():
             rhs_expr = ScalarExpression(rhs_str, signature=signature)
@@ -104,23 +104,51 @@ class PDE(PDEBase):
             if rhs_expr.depends_on('t'):
                 explicit_time_dependence = True
             
-            for func in rhs_expr._sympy_expr.atoms(AppliedUndef):
-                operators.add(func.__class__.__name__)
-                
-        
+            # determine undefined functions in the expression
+            self._operators[var] = {
+                        func.__class__.__name__
+                        for func in rhs_expr._sympy_expr.atoms(AppliedUndef)}
+
         # set public instance attributes
         self.rhs = rhs
         self.variables = tuple(rhs.keys())
-        self.operators = tuple(sorted(operators))
         self.explicit_time_dependence = explicit_time_dependence
-        self.bcs: Dict[str, BoundariesData] = defaultdict(lambda: bc)
-        if bc_ops is not None:
-            self.bcs.update(bc_ops)
+        operators = frozenset().union(*self._operators.values())
+
+        # setup boundary conditions
+        if bc_ops is None:
+            bcs = {'*:*': bc}
+        else:
+            bcs = OrderedDict(bc_ops)
+            if '*:*' in bcs and bc != 'natural':
+                self._logger.warning('Two default boundary conditions.')
+            bcs['*:*'] = bc  # append default boundary conditions
+            
+        self.bcs = {}
+        for key_str, value in bcs.items():            
+            # split on . and :
+            parts = re.split('\.|:', key_str)
+            if len(parts) == 1:
+                if len(self.variables):
+                    key = f'{self.variables[0]}:{key_str}'
+                else:
+                    raise ValueError(f'Boundary condition "{key_str}" is '
+                                     'ambiguous. Use format '
+                                     '"VARIABLE:OPERATOR" instead.')
+            elif len(parts) == 2:
+                key = ':'.join(parts)
+            else:
+                raise ValueError(f'Cannot parse boundary condition "{key_str}"')
+            if key in self.bcs:
+                self._.logger.warning(f'Two boundary conditions for key {key}')
+            self.bcs[key] = value
+        
+        # save information for easy inspection
         self.diagnostics = {
                         'variables': self.variables,
                         'function_signature': signature,
                         'explicit_time_dependence': explicit_time_dependence,
-                        'operators_detected': self.operators}
+                        'operators': operators}
         self._cache: Dict[str, Any] = {}
             
         
@@ -160,15 +188,40 @@ class PDE(PDEBase):
         else:
             raise ValueError(f'Unknown state class {state.__class__.__name__}')
         
-        # obtain the (differential) operators
-        user_funcs = {}
-        for func in self.operators:
-            user_funcs[func] = state.grid.get_operator(func, bc=self.bcs[func])
-            
+        # obtain functions used in the expression
+        ops_general = {}
+        
+        # create a dot operator if necessary
+        if 'dot' in self.diagnostics['operators']:
+            # add dot product between two vector fields. This can for instance
+            # appear when two gradients of scalar fields need to be multiplied
+            ops_general['dot'] = VectorField(state.grid).get_dot_operator()
+        
         # obtain the python functions for the rhs
-        self._cache['rhs_funcs'] = [self._rhs_expr[var].
-                                        _get_function(user_funcs=user_funcs)
-                                    for var in self.variables]
+        rhs_funcs = []
+        for var in self.variables:
+            ops = ops_general.copy()
+            
+            # obtain the (differential) operators 
+            for func in self._operators[var]:
+                if func in ops:
+                    continue
+                # determine boundary conditions
+                for bc_key, bc in self.bcs.items():
+                    bc_var, bc_func = bc_key.split(':')
+                    var_match = (bc_var == var or bc_var == '*')
+                    func_match = (bc_func == func or bc_func == '*')
+                    if var_match and func_match:
+                        break  # found a matching boundary condition
+                else:
+                    raise RuntimeError('Could not find suitable boundary '
+                                       'condition for ')
+                
+                ops[func] = state.grid.get_operator(func, bc=bc)
+            
+            rhs_funcs.append(self._rhs_expr[var]._get_function(user_funcs=ops))
+
+        self._cache['rhs_funcs'] = rhs_funcs
 
         # add extra information for field collection
         if isinstance(state, FieldCollection):
