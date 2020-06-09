@@ -6,7 +6,7 @@ Defines a PDE class whose right hand side is given as a string
 
 import re
 from collections import OrderedDict
-from typing import Callable, Dict, Any  # @UnusedImport
+from typing import Callable, Dict, Any, FrozenSet  # @UnusedImport
 
 import numpy as np
 
@@ -113,7 +113,7 @@ class PDE(PDEBase):
         self.rhs = rhs
         self.variables = tuple(rhs.keys())
         self.explicit_time_dependence = explicit_time_dependence
-        operators = frozenset().union(*self._operators.values())
+        operators = frozenset().union(*self._operators.values())  # type: ignore
 
         # setup boundary conditions
         if bc_ops is None:
@@ -124,10 +124,10 @@ class PDE(PDEBase):
                 self._logger.warning('Two default boundary conditions.')
             bcs['*:*'] = bc  # append default boundary conditions
             
-        self.bcs = {}
+        self.bcs: Dict[str, Any] = {}
         for key_str, value in bcs.items():            
             # split on . and :
-            parts = re.split('\.|:', key_str)
+            parts = re.split(r'\.|:', key_str)
             if len(parts) == 1:
                 if len(self.variables):
                     key = f'{self.variables[0]}:{key_str}'
@@ -140,7 +140,7 @@ class PDE(PDEBase):
             else:
                 raise ValueError(f'Cannot parse boundary condition "{key_str}"')
             if key in self.bcs:
-                self._.logger.warning(f'Two boundary conditions for key {key}')
+                self._logger.warning(f'Two boundary conditions for key {key}')
             self.bcs[key] = value
         
         # save information for easy inspection
@@ -192,7 +192,7 @@ class PDE(PDEBase):
         ops_general = {}
         
         # create a dot operator if necessary
-        if 'dot' in self.diagnostics['operators']:
+        if 'dot' in self.diagnostics['operators']:  # type: ignore
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
             ops_general['dot'] = VectorField(state.grid).get_dot_operator()
