@@ -17,7 +17,7 @@ from ..fields.base import FieldBase
     
     
 class MemoryStorage(StorageBase):
-    """ simple storage in memory """
+    """ store discretized fields in memory """
     
     
     def __init__(self, times: Optional[Sequence[float]] = None,

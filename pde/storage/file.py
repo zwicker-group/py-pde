@@ -19,7 +19,7 @@ from ..tools.misc import ensure_directory_exists, hdf_write_attributes
 
 
 class FileStorage(StorageBase):
-    """ store data in a hdf5 file """
+    """ store discretized fields in a hdf5 file """
     
     def __init__(self, filename: str,
                  info: InfoDict = None,

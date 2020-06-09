@@ -274,7 +274,10 @@ class PlotTracker(TrackerBase):
                 running. If `False`, the files are created in the background.
                 This option can slow down a simulation severely.
             plot_args (dict):
-                Extra arguments supplied to the plot call
+                Extra arguments supplied to the plot call. For example, this can
+                be used to specify axes ranges when a single panel is shown. For
+                instance, the value `{'ax_style': {'ylim': (0, 1)}}` enforces
+                the y-axis to lie between 0 and 1.
         """
         from ..visualization.movies import Movie  # @Reimport
         
@@ -304,7 +307,7 @@ class PlotTracker(TrackerBase):
         self.show = show
         self.close_final = close_final
         
-        self.plot_args = {} if plot_args is None else plot_args
+        self.plot_args = {} if plot_args is None else plot_args.copy()
         self.plot_args['show'] = False  # this is handled by the context
 
         # initialize the movie class        

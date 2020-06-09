@@ -20,7 +20,7 @@ from ..tools.docstrings import fill_in_docstring
 
     
 class StorageBase(metaclass=ABCMeta):
-    """ base class for storage of discretized fields """
+    """ base class for storing discretized fields """
     
     
     times: Sequence[float]  # :class:`numpy.ndarray`): stored time points

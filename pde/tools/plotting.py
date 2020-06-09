@@ -17,6 +17,7 @@ Tools for plotting and controlling plot output using context managers
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
+
 import re
 import contextlib
 import logging
@@ -125,12 +126,30 @@ def disable_interactive():
 
 
 
+class PlotReference():
+    """ contains all information to update a plot element """
+    
+    __slots__ = ['ax', 'element', 'parameters']
+    
+    def __init__(self, ax, element: Any, parameters: Dict[str, Any] = None):
+        """
+        Args:
+            ax (:class:`matplotlib.axes.Axes`): The axes of the element
+            element (:class:`matplotlib.artist.Artist`): The actual element 
+            parameters (dict): Parameters to recreate the plot element
+        """
+        self.ax = ax
+        self.element = element
+        self.parameters = {} if parameters is None else parameters
+
+
+
 class plot_on_axes:
     """ wrapper for a plot method that fills an axes
     
     Example:
-        The following example illustrates how the classes in this module can be
-        used to implement plotting on a class. In particular, supplying the
+        The following example illustrates how this decorator can be used to
+        implement plotting for a given class. In particular, supplying the
         `update_method` will allow efficient dynamical plotting::
     
             class State:
@@ -144,6 +163,10 @@ class plot_on_axes:
                 def plot(self, ax):
                     line, = ax.plot(np.arange(8), self.data)
                     return PlotReference(ax, line)
+                    
+        When `update_method` is not supplied, the method can still be used for
+        plotting, but dynamic updating, e.g., by
+        :class:`pde.trackers.PlotTracker`, is not possible.
     """
     
     
@@ -169,6 +192,7 @@ class plot_on_axes:
                     filename: str = None,
                     show: bool = None,
                     close_figure: bool = False,
+                    ax_style: Dict[str, Any] = None,
                     ax=None,
                     **kwargs):
             """
@@ -185,7 +209,14 @@ class plot_on_axes:
                 close_figure (bool):
                     Flag setting whether the figure is closed (after it was
                     shown)
+                ax_style (dict):
+                    Dictionary with properties that will be changed on the axis
+                    after the plot has been drawn by calling
+                    :meth:`matplotlib.pyplot.setp`.
             """
+            # Note on docstring: This docstring is basically prepended to the
+            # 'Args:' section of the wrapped function.
+            
             # some logic to check for nested plotting calls:
             with nested_plotting_check() as is_outermost_plot_call:
             
@@ -207,6 +238,8 @@ class plot_on_axes:
                     # finishing touches...            
                     if title is not None:
                         reference.ax.set_title(title)
+                    if ax_style is not None:
+                        plt.setp(reference.ax, **ax_style)
                     if filename:
                         fig.savefig(filename)
                         
@@ -238,7 +271,33 @@ class plot_on_axes:
 
 
 class plot_on_figure:
-    """ wrapper for a plot method that fills an entire figure """
+    """ wrapper for a plot method that fills an entire figure
+    
+    Example:
+        The following example illustrates how this decorator can be used to
+        implement plotting for a given class. In particular, supplying the
+        `update_method` will allow efficient dynamical plotting::
+    
+            class State:
+                def __init__(self):
+                    self.data = np.random.random((2, 8))
+    
+                def _update_plot(self, reference):
+                    ref1, ref2 = reference
+                    ref1.element.set_ydata(self.data[0])
+                    ref2.element.set_ydata(self.data[1])
+    
+                @plot_on_figure(update_method='_update_plot')
+                def plot(self, fig):
+                    ax1, ax2 = fig.subplots(1, 2)
+                    l1, = ax1.plot(np.arange(8), self.data[0])
+                    l2, = ax2.plot(np.arange(8), self.data[1])
+                    return [PlotReference(ax1, l1), PlotReference(ax2, l2)]
+                    
+        When `update_method` is not supplied, the method can still be used for
+        plotting, but dynamic updating, e.g., by
+        :class:`pde.trackers.PlotTracker`, is not possible.
+    """
     
     
     def __init__(self, update_method=None):
@@ -264,6 +323,8 @@ class plot_on_figure:
                     filename: str = None,
                     show: bool = None,
                     close_figure: bool = False,
+                    ax_style: Dict[str, Any] = None,
+                    fig_style: Dict[str, Any] = None,
                     fig=None,
                     **kwargs):
             """
@@ -284,7 +345,14 @@ class plot_on_figure:
                 close_figure (bool):
                     Flag setting whether the figure is closed (after it was
                     shown).
+                fig_style (dict):
+                    Dictionary with properties that will be changed on the
+                    figure after the plot has been drawn by calling
+                    :meth:`matplotlib.pyplot.setp`.
             """
+            # Note on docstring: This docstring is basically prepended to the
+            # 'Args:' section of the wrapped function.
+            
             # some logic to check for nested plotting calls:
             with nested_plotting_check() as is_outermost_plot_call:
                 
@@ -304,6 +372,8 @@ class plot_on_figure:
                     # finishing touches...            
                     if title is not None:
                         fig.suptitle(title)
+                    if fig_style is not None:
+                        plt.setp(fig, **fig_style)
                     if filename:
                         fig.savefig(filename)
                         
@@ -332,24 +402,6 @@ class plot_on_figure:
         wrapper.update_method = self.update_method
         
         return wrapper
-
-
-
-class PlotReference():
-    """ contains all information to update a plot element """
-    
-    __slots__ = ['ax', 'element', 'parameters']
-    
-    def __init__(self, ax, element: Any, parameters: Dict[str, Any] = None):
-        """
-        Args:
-            ax (:class:`matplotlib.axes.Axes`): The axes of the element
-            element (:class:`matplotlib.artist.Artist`): The actual element 
-            parameters (dict): Parameters to recreate the plot element
-        """
-        self.ax = ax
-        self.element = element
-        self.parameters = {} if parameters is None else parameters
 
 
 
