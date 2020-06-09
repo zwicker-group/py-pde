@@ -4,12 +4,13 @@ Defines a class storing data in memory.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Optional, List, Sequence
+from typing import Optional, Sequence, Union, Tuple, List  # @UnusedImport
 from contextlib import contextmanager
 
 import numpy as np
 
 from .base import StorageBase, InfoDict
+from ..grids.base import GridBase
 from ..fields import FieldCollection
 from ..fields.base import FieldBase 
 
@@ -19,16 +20,19 @@ class MemoryStorage(StorageBase):
     """ simple storage in memory """
     
     
-    def __init__(self, times: Optional[List[float]] = None,
-                 fields: Optional[Sequence[FieldBase]] = None,
+    def __init__(self, times: Optional[Sequence[float]] = None,
+                 data: Optional[List[np.ndarray]] = None,
+                 grid: GridBase = None,
                  info: InfoDict = None,
                  write_mode: str = 'truncate_once'):
         """
         Args:
             times (:class:`numpy.ndarray`):
                 Sequence of times for which data is known
-            fields (list of :class:`~pde.fields.FieldBase`):
+            data (list of :class:`~numpy.ndarray`):
                 The field data at the given times
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid on which the data is defined
             info (dict):
                 Supplies extra information that is stored in the storage
             write_mode (str):
@@ -40,18 +44,10 @@ class MemoryStorage(StorageBase):
                 'readonly' will disable writing completely.
         """
         super().__init__(info=info, write_mode=write_mode)
-        self.times: List[float] = [] if times is None else times
-        
-        if fields is None:
-            self._grid = None
-            self.data = []
-        else:
-            self._grid = fields[0].grid
-            self.data = [fields[0].data]
-            for field in fields[1:]:
-                if self._grid != field.grid:
-                    raise ValueError('Grids of the fields are incompatible')
-                self.data.append(field.data)
+        self.times: List[float] = [] if times is None else list(times)
+        self._grid = grid
+        self.data: List[np.ndarray] = [] if data is None else data
+        if len(self.data) > 0:
             self._data_shape = self.data[0].shape
             
         # check consistency
@@ -60,11 +56,52 @@ class MemoryStorage(StorageBase):
                              f'inconsistent ({len(self.times)} != '
                              f'{len(self.data)}).')
             
+            
+    @classmethod
+    def from_fields(cls, times: Optional[Sequence[float]] = None,
+                    fields: Optional[Sequence[FieldBase]] = None,
+                    info: InfoDict = None,
+                    write_mode: str = 'truncate_once') -> "MemoryStorage":
+        """ create MemoryStorage from a list of fields
+        
+        Args:
+            times (:class:`numpy.ndarray`):
+                Sequence of times for which data is known
+            fields (list of :class:`~pde.fields.FieldBase`):
+                The fields at all given time points
+            info (dict):
+                Supplies extra information that is stored in the storage
+            write_mode (str):
+                Determines how new data is added to already existing data.
+                Possible values are: 'append' (data is always appended),
+                'truncate' (data is cleared every time this storage is used
+                for writing), or 'truncate_once' (data is cleared for the first
+                writing, but appended subsequently). Alternatively, specifying
+                'readonly' will disable writing completely.
+        """
+        if fields is None:
+            grid = None
+            data = None
+        else:
+            grid = fields[0].grid
+            data = [fields[0].data]
+            for field in fields[1:]:
+                if grid != field.grid:
+                    raise ValueError('Grids of the fields are incompatible')
+                data.append(field.data)
+            
+        return cls(times, data=data, grid=grid, info=info,
+                   write_mode=write_mode)
+    
 
     @classmethod            
     def from_collection(cls, storages: Sequence["StorageBase"],
                         label: str = None) -> "MemoryStorage":
         """ combine multiple memory storages into one
+        
+        This method can be used to combine multiple time series of different
+        fields into a single representation. This requires that all time series
+        contain data at the same time points.
         
         Args:
             storages (list): 
@@ -98,7 +135,7 @@ class MemoryStorage(StorageBase):
         fields = [FieldCollection(d, label=label)  # type: ignore
                   for d in data]
         
-        return cls(times, fields=fields)  # type: ignore
+        return cls.from_fields(times, fields=fields)
             
         
     def clear(self, clear_data_shape: bool = False) -> None:
@@ -159,8 +196,46 @@ class MemoryStorage(StorageBase):
         if time is None:
             time = 0 if len(self.times) == 0 else self.times[-1] + 1
         self.times.append(time)
-
-
+        
+        
+    def extract(self, t_range: Union[float, Tuple[float, float]] = None) \
+            -> "MemoryStorage":
+        """ extract a particular time interval
+        
+        Note:
+            This might return a view into the original data, so modifying the
+            original data can also change the underlying data.
+        
+        Args:
+            t_range (float or tuple):
+                Determines the range of time points included in the result. If
+                only a single number is given, all data up to this time point
+                are included.
+                
+        Returns:
+            :class:`MemoryStorage`: a storage instance that contains the
+            extracted data.
+        """
+        # get the time bracket
+        try:
+            t_start, t_end = t_range  # type: ignore
+        except TypeError:
+            t_start, t_end = None, t_range
+        if t_start is None:
+            t_start = self.times[0]
+        if t_end is None:
+            t_end = self.times[-1]
+        
+        # determine the associated indices
+        i_start = np.searchsorted(self.times, t_start, side='left')
+        i_end = np.searchsorted(self.times, t_end, side='right')
+        
+        # extract the actual memory
+        return MemoryStorage(times=self.times[i_start:i_end],
+                             data=self.data[i_start:i_end],
+                             grid=self._grid,
+                             info=self.info)
+        
 
 @contextmanager
 def get_memory_storage(field: FieldBase, info: InfoDict = None):

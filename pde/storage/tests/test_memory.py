@@ -22,9 +22,27 @@ def test_memory_storage():
     s2.start_writing(sf)
     s2.append(np.array([1]), 0)
     s2.append(np.array([3]), 1)
+
+    # test from_fields
+    s3 = MemoryStorage.from_fields(s1.times, [s1.get_field(0), s1.get_field(1)])
+    assert s3.times == s1.times
+    np.testing.assert_allclose(s3.data, s1.data)
     
+    # test from_collection
     s3 = MemoryStorage.from_collection([s1, s2])
+    assert s3.times == s1.times
     np.testing.assert_allclose(np.ravel(s3.data), np.arange(4))
+    
+    # test extraction
+    s4 = s1.extract()
+    assert s4.times == s1.times
+    np.testing.assert_allclose(s4.data, s1.data)
+    s4 = s1.extract(0.5)
+    assert s4.times == s1.times[:1]
+    np.testing.assert_allclose(s4.data, s1.data[:1])
+    s4 = s1.extract((0.5, 1.5))
+    assert s4.times == s1.times[1:]
+    np.testing.assert_allclose(s4.data, s1.data[1:])
 
 
 

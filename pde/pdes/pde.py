@@ -38,7 +38,7 @@ class PDE(PDEBase):
                  rhs: "OrderedDict[str, str]",
                  noise: OptionalArrayLike = 0,
                  bc: BoundariesData = 'natural',
-                 bc_ops: Dict[str, BoundariesData] = None):
+                 bc_ops: "OrderedDict[str, BoundariesData]" = None):
         """
         Warning:
             {WARNING_EXEC}

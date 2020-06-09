@@ -1,5 +1,7 @@
 TODO
 ====
+* plot_kymograph:
+    - Support FieldCollections
 * pde.PDE:
     - add test for dot operator and custom boundary conditions
 * Plot tracker:
