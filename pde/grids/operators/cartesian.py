@@ -949,7 +949,7 @@ def _make_vector_gradient_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
-@CartesianGridBase.register_operator('vector_gradient',  rank_in=1, rank_out=2)
+@CartesianGridBase.register_operator('vector_gradient', rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a vector gradient operator on a Cartesian grid
@@ -1298,7 +1298,7 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
 
 
 
-@CartesianGridBase.register_operator('poisson_solver',  rank_in=0, rank_out=0)
+@CartesianGridBase.register_operator('poisson_solver', rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a operator that solves Poisson's equation
