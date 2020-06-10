@@ -1,12 +1,26 @@
 TODO
 ====
-* plot_kymograph:
-    - Support FieldCollections
+* Introduce gradient squared operator
+* Can we support np.log, np.exp and such for ScalarFields?
+    - look at https://numpy.org/devdocs/user/basics.dispatch.html
+    - add tests that some methods, like np.sum, np.concatenate, are not supported
+* Add method to extract time course of a single field from a field collecion Storage 
+* Support FieldCollections in plot_kymograph:
+    - need to have method for adding kymograph to axes
+    - parent method needs to decide whether there is one or many kymographs
 * pde.PDE:
     - add test for dot operator and custom boundary conditions
 * Plot tracker:
     - plot final state in the live view (finalize does not get the final state yet)
+    - we could for instance have a flag on trackers, whether they are being handled a final time
+    - an alternative would be to pass the final state to the `finalize` method 
 * plotting: replace show and close_figure by `mode` argument
+   - mode='show', plot directly with show=True -> show window
+       - default mode for outermost plot call
+   - mode='close', plot to file with show=False -> destroy window after saving
+   - mode='init', create plot to keep for later manipulation with show=False
+   - mode='???' create and show plot, but capture in ipython output
+   - Plot wrapper must keep track of whether they handle the window? 
 * Try to not import matplotlib by default
 * Think about logger names (add `pde.` before class name)
 * Count the number of compilations and store it in the info field of the simulation

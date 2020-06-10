@@ -392,10 +392,21 @@ class GridBase(metaclass=ABCMeta):
 
     
     @classmethod
-    def register_operator(cls, name: str, factory_func: Callable,
+    def register_operator(cls, name: str, factory_func: Callable = None,
                           rank_in: int = 0, rank_out: int = 0):
         """ register an operator for this grid
         
+        Example:
+            The method can either be used directly::
+            
+                GridClass.register_operator("operator", make_operator)
+                
+            or as a decorator for the factory function::
+                
+                @GridClass.register_operator("operator")
+                def make_operator():
+                    ...
+                    
         Args:
             name (str):
                 The name of the operator to register
@@ -412,9 +423,19 @@ class GridBase(metaclass=ABCMeta):
             rank_out (int):
                 The rank of the field that is returned by the operator
         """
-        cls._operators[name] = Operator(factory=factory_func,
-                                        rank_in=rank_in,
-                                        rank_out=rank_out)
+        def register_operator(factor_func_arg: Callable):
+            """ helper function to register the operator """
+            cls._operators[name] = Operator(factory=factor_func_arg,
+                                            rank_in=rank_in,
+                                            rank_out=rank_out)
+            return factor_func_arg
+            
+        if factory_func is None:
+            # method is used as a decorator, so return the helper function
+            return register_operator
+        else:
+            # method is used directly
+            register_operator(factory_func)
              
              
     @classproperty  # type: ignore

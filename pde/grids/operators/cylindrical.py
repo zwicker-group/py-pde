@@ -25,6 +25,7 @@ from ...tools.docstrings import fill_in_docstring
 
         
         
+@CylindricalGrid.register_operator('laplace', rank_in=0, rank_out=0)        
 @fill_in_docstring
 def make_laplace(bcs: Boundaries) -> Callable:
     """ make a discretized laplace operator for a cylindrical grid
@@ -91,6 +92,7 @@ def make_laplace(bcs: Boundaries) -> Callable:
 
 
 
+@CylindricalGrid.register_operator('gradient', rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(bcs: Boundaries) -> Callable:
     """ make a discretized gradient operator for a cylindrical grid
@@ -149,6 +151,7 @@ def make_gradient(bcs: Boundaries) -> Callable:
 
 
 
+@CylindricalGrid.register_operator('divergence', rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(bcs: Boundaries) -> Callable:
     """ make a discretized divergence operator for a cylindrical grid
@@ -210,6 +213,7 @@ def make_divergence(bcs: Boundaries) -> Callable:
 
 
 
+@CylindricalGrid.register_operator('vector_gradient', rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(bcs: Boundaries) -> Callable:
     """ make a discretized vector gradient operator for a cylindrical grid
@@ -243,6 +247,7 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
 
 
 
+@CylindricalGrid.register_operator('vector_laplace', rank_in=1, rank_out=1)
 @fill_in_docstring
 def make_vector_laplace(bcs: Boundaries) -> Callable:
     """ make a discretized vector laplace operator for a cylindrical grid
@@ -275,6 +280,7 @@ def make_vector_laplace(bcs: Boundaries) -> Callable:
 
 
 
+@CylindricalGrid.register_operator('tensor_divergence', rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(bcs: Boundaries) -> Callable:
     """ make a discretized tensor divergence operator for a cylindrical grid
@@ -304,19 +310,3 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
         return out
         
     return tensor_divergence  # type: ignore
-
-
-# register all operators with the grid class
-CylindricalGrid.register_operator('laplace', make_laplace,
-                                  rank_in=0, rank_out=0)
-CylindricalGrid.register_operator('gradient', make_gradient,
-                                  rank_in=0, rank_out=1)
-CylindricalGrid.register_operator('divergence', make_divergence,
-                                  rank_in=1, rank_out=0)
-CylindricalGrid.register_operator('vector_gradient', make_vector_gradient,
-                                  rank_in=1, rank_out=2)
-CylindricalGrid.register_operator('vector_laplace', make_vector_laplace,
-                                  rank_in=1, rank_out=1)
-CylindricalGrid.register_operator('tensor_divergence', make_tensor_divergence,
-                                  rank_in=2, rank_out=1)
-

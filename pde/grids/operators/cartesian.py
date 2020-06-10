@@ -424,6 +424,7 @@ def _make_laplace_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@CartesianGridBase.register_operator('laplace', rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a laplace operator on a Cartesian grid
@@ -468,11 +469,6 @@ def make_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
         raise ValueError(f'Method `{method}` is not defined')
         
     return laplace
-
-
-# register operators with the grid class
-CartesianGridBase.register_operator('laplace', make_laplace,
-                                    rank_in=0, rank_out=0)
 
 
 
@@ -610,6 +606,7 @@ def _make_gradient_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@CartesianGridBase.register_operator('gradient', rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a gradient operator on a Cartesian grid
@@ -651,11 +648,6 @@ def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
         raise ValueError(f'Method `{method}` is not defined')
         
     return gradient
-
-
-# register operators with the grid class
-CartesianGridBase.register_operator('gradient', make_gradient,
-                                    rank_in=0, rank_out=1)
 
 
 
@@ -803,6 +795,7 @@ def _make_divergence_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@CartesianGridBase.register_operator('divergence', rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a divergence operator on a Cartesian grid
@@ -844,11 +837,6 @@ def make_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
         raise ValueError(f'Method `{method}` is not defined')
         
     return divergence
-
-
-# register operators with the grid class
-CartesianGridBase.register_operator('divergence', make_divergence,
-                                    rank_in=1, rank_out=0)
 
 
 
@@ -961,6 +949,7 @@ def _make_vector_gradient_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@CartesianGridBase.register_operator('vector_gradient',  rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a vector gradient operator on a Cartesian grid
@@ -1001,11 +990,6 @@ def make_vector_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
         raise ValueError(f'Method `{method}` is not defined')
         
     return gradient
-
-
-# register operators with the grid class
-CartesianGridBase.register_operator('vector_gradient', make_vector_gradient,
-                                    rank_in=1, rank_out=2)
 
 
 
@@ -1114,6 +1098,7 @@ def _make_vector_laplace_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@CartesianGridBase.register_operator('vector_laplace', rank_in=1, rank_out=1)
 @fill_in_docstring
 def make_vector_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a vector Laplacian on a Cartesian grid
@@ -1154,11 +1139,6 @@ def make_vector_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
         raise ValueError(f'Method `{method}` is not defined')
         
     return gradient
-
-
-# register operators with the grid class
-CartesianGridBase.register_operator('vector_laplace', make_vector_laplace,
-                                    rank_in=1, rank_out=1)
 
 
 
@@ -1273,6 +1253,7 @@ def _make_tensor_divergence_numba_3d(bcs: Boundaries) -> Callable:
 
 
 
+@CartesianGridBase.register_operator('tensor_divergence', rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a tensor divergence operator on a Cartesian grid
@@ -1316,12 +1297,8 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
     return func
 
 
-# register operators with the grid class
-CartesianGridBase.register_operator('tensor_divergence', make_tensor_divergence,
-                                    rank_in=2, rank_out=1)
 
-
-
+@CartesianGridBase.register_operator('poisson_solver',  rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a operator that solves Poisson's equation
@@ -1338,11 +1315,6 @@ def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
     """
     matrix, vector = _get_laplace_matrix(bcs)
     return make_general_poisson_solver(matrix, vector, method)
-
-
-# register operators with the grid class
-CartesianGridBase.register_operator('poisson_solver', make_poisson_solver,
-                                    rank_in=0, rank_out=0)
 
 
 

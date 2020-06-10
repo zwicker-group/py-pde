@@ -27,6 +27,7 @@ from ...tools.docstrings import fill_in_docstring
 
 
 
+@SphericalGrid.register_operator('laplace', rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
     """ make a discretized laplace operator for a spherical grid
@@ -156,6 +157,7 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
 
 
 
+@SphericalGrid.register_operator('gradient', rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(bcs: Boundaries) -> Callable:
     """ make a discretized gradient operator for a spherical grid
@@ -211,6 +213,7 @@ def make_gradient(bcs: Boundaries) -> Callable:
 
     
 
+@SphericalGrid.register_operator('divergence', rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(bcs: Boundaries) -> Callable:
     """ make a discretized divergence operator for a spherical grid
@@ -284,6 +287,7 @@ def make_divergence(bcs: Boundaries) -> Callable:
 
 
     
+@SphericalGrid.register_operator('vector_gradient', rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(bcs: Boundaries) -> Callable:
     """ make a discretized vector gradient operator for a spherical grid
@@ -316,6 +320,7 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
 
 
 
+@SphericalGrid.register_operator('tensor_divergence', rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(bcs: Boundaries) -> Callable:
     """ make a discretized tensor divergence operator for a spherical grid
@@ -410,6 +415,7 @@ def _get_laplace_matrix(bcs):
 
 
 
+@SphericalGrid.register_operator('poisson_solver', rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
     """ make a operator that solves Poisson's equation
@@ -425,18 +431,3 @@ def make_poisson_solver(bcs: Boundaries, method: str = 'auto') -> Callable:
     """
     matrix, vector = _get_laplace_matrix(bcs)
     return make_general_poisson_solver(matrix, vector, method)
-
-
-# register all operators with the grid class
-SphericalGrid.register_operator('laplace', make_laplace,
-                                rank_in=0, rank_out=0)
-SphericalGrid.register_operator('gradient', make_gradient,
-                                rank_in=0, rank_out=1)
-SphericalGrid.register_operator('divergence', make_divergence,
-                                rank_in=1, rank_out=0)
-SphericalGrid.register_operator('vector_gradient', make_vector_gradient,
-                                rank_in=1, rank_out=2)
-SphericalGrid.register_operator('tensor_divergence', make_tensor_divergence,
-                                rank_in=2, rank_out=1)
-SphericalGrid.register_operator('poisson_solver', make_poisson_solver,
-                                rank_in=0, rank_out=0)
