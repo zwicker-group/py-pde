@@ -18,7 +18,6 @@ Tools for plotting and controlling plot output using context managers
 '''
 
 
-import re
 import contextlib
 import logging
 import warnings
@@ -198,29 +197,6 @@ class plot_on_axes:
         """ apply the actual decorator """
         import inspect
 
-        extra_doc = """
-            title (str):
-                Title of the plot. If omitted, the title might be chosen
-                automatically.
-            filename (str, optional):
-                If given, the plot is written to the specified file.
-            show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is
-                called. The value `None` sets show to `True` by default, but
-                disables it for nested calls.                    
-            close_figure (bool):
-                Flag setting whether the figure is closed (after it was
-                shown)
-            ax_style (dict):
-                Dictionary with properties that will be changed on the axis
-                after the plot has been drawn by calling
-                :meth:`matplotlib.pyplot.setp`.
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting. If `None`, a new figure
-                is created. This has no effect if a `reference` is supplied.
-        """[1:-1]
-
-
         def wrapper(*args, **kwargs):
             """
             title (str):
@@ -296,12 +272,8 @@ class plot_on_axes:
         wrapper.__dict__.update(wrapped.__dict__)
         
         if wrapped.__doc__:
-            replace_in_docstring(wrapper, '{PLOT_ARGS}', extra_doc,
+            replace_in_docstring(wrapper, '{PLOT_ARGS}', wrapper.__doc__,
                                  docstring=wrapped.__doc__)
-#             doc_fragment = wrapper.__doc__.splitlines()[:-1]
-#             doc_fragment = '\n'.join(doc_fragment)
-#             wrapper.__doc__ = re.sub(r'\s*{PLOT_ARGS}\s*$', doc_fragment,
-#                                      wrapped.__doc__, flags=re.MULTILINE)
 
         wrapper.mpl_class = 'axes'
         wrapper.update_method = self.update_method
@@ -447,10 +419,8 @@ class plot_on_figure:
         wrapper.__dict__.update(wrapped.__dict__)
         
         if wrapped.__doc__:
-            doc_fragment = wrapper.__doc__.splitlines()[:-1]
-            doc_fragment = '\n'.join(doc_fragment)
-            wrapper.__doc__ = re.sub(r'\s*{PLOT_ARGS}\s*$', doc_fragment,
-                                     wrapped.__doc__, flags=re.MULTILINE)
+            replace_in_docstring(wrapper, '{PLOT_ARGS}', wrapper.__doc__,
+                                 docstring=wrapped.__doc__)
 
         wrapper.mpl_class = 'figure'
         wrapper.update_method = self.update_method
