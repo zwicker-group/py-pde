@@ -1,6 +1,6 @@
 TODO
 ====
-* Introduce gradient squared operator
+* Introduce gradient squared operator -> ask Noah
 * Can we support np.log, np.exp and such for ScalarFields?
     - look at https://numpy.org/devdocs/user/basics.dispatch.html
     - add tests that some methods, like np.sum, np.concatenate, are not supported
@@ -18,7 +18,7 @@ TODO
    - mode='show', plot directly with show=True -> show window
        - default mode for outermost plot call
    - mode='close', plot to file with show=False -> destroy window after saving
-   - mode='init', create plot to keep for later manipulation with show=False
+   - mode='init' or 'create', create plot to keep for later manipulation with show=False
    - mode='???' create and show plot, but capture in ipython output
    - Plot wrapper must keep track of whether they handle the window? 
 * Try to not import matplotlib by default
@@ -28,11 +28,9 @@ TODO
 * Think about interface for changing boundary values in numba
     - We might need to support optional `bc` argument for operators
     - Try using https://cffi.readthedocs.io/en/latest/overview.html#purely-for-performance-api-level-out-of-line 
-* Support 3d plots in plot_image (use for Laplace and Poisson eq) 
+* Support 3d plots in plot (use for Laplace and Poisson eq) 
 * Add Glossary or something to development guide
     - e.g., state = attributes + data
-* Add noise to PDE class (additive, but different for each field)
-    - add tests?!
 * Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable
@@ -40,6 +38,7 @@ TODO
 	- this might be helpful to implement lagrange multipliers and the like
 	- generally, we should use a state class that contains the state of a pde
 	  (in most cases, this would be a FieldBase)
+	- the state class should also handle serialization and io with hdf
 * Fix progress bar when starting from non-zero t_start?
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`

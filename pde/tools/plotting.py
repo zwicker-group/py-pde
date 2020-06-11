@@ -178,9 +178,9 @@ class plot_on_axes:
                 method will be the result of the initial call of the wrapped
                 method.
         """
-        # initialize the decorator
         if callable(update_method):
-            raise RuntimeError('Wrapper needs to be called with brackets')
+            # decorator has been used without brackets
+            self.__call__(update_method)
         self.update_method = update_method
         
         
@@ -308,9 +308,9 @@ class plot_on_figure:
                 method will be the result of the initial call of the wrapped
                 method.
         """
-        # initialize the decorator
         if callable(update_method):
-            raise RuntimeError('Wrapper needs to be called with brackets')
+            # decorator has been used without brackets
+            self.__call__(update_method)
         self.update_method = update_method
         
         

@@ -20,7 +20,13 @@ from ..tools.docstrings import fill_in_docstring
 
     
 class StorageBase(metaclass=ABCMeta):
-    """ base class for storing discretized fields """
+    """ base class for storing time series of discretized fields
+    
+    These classes store time series of subclasses of
+    :class:`~pde.fields.base.FieldBase`, i.e., they store the values of the
+    fields at particular time points. Iterating of the storage will return the
+    fields in order and indivdual time points can also be accessed.
+    """
     
     
     times: Sequence[float]  # :class:`numpy.ndarray`): stored time points
@@ -109,20 +115,23 @@ class StorageBase(metaclass=ABCMeta):
         return self._grid
     
     
-    def get_field(self, index: int) -> FieldBase:
-        """ return the field corresponding to index
+    def _get_field(self, t_index: int) -> FieldBase:
+        """ return the field corresponding to the given time index
         
         Load the data associated with a given index, i.e., with time 
-        `self.times[index]`.
+        `self.times[t_index]`.
         
         Args:
-            index (int):
+            t_index (int):
                 The index of the data to load
                 
         Returns:
             :class:`~pde.fields.FieldBase`:
             The field class containing the grid and data
         """
+        if not 0 <= t_index < len(self):
+            raise IndexError("Time index out of range") 
+        
         if self._field is None:
             # we need to determine the field type
             
@@ -145,7 +154,7 @@ class StorageBase(metaclass=ABCMeta):
                 # dimensions). What is left should be the (local) data stored
                 # at each grid point for each time step. Note that self.data
                 # might be a list of arrays
-                local_shape = self.data[index].shape[:-self.grid.num_axes]
+                local_shape = self.data[t_index].shape[:-self.grid.num_axes]
                 dim = self.grid.dim
                 if len(local_shape) == 0:  # rank 0
                     self._field = ScalarField(self.grid)
@@ -162,16 +171,16 @@ class StorageBase(metaclass=ABCMeta):
                                      f'{self._field.__class__.__name__}.')
                     
         # create the field with the data of the given index
-        return self._field.copy(data=self.data[index])
+        return self._field.copy(data=self.data[t_index])
         
         
     def __getitem__(self, key: Union[int, slice]) \
             -> Union[FieldBase, List[FieldBase]]:
         """ return field at given index or a list of fields for a slice """
         if isinstance(key, int):
-            return self.get_field(key)
+            return self._get_field(key)
         elif isinstance(key, slice):
-            return [self.get_field(i)
+            return [self._get_field(i)
                     for i in range(*key.indices(len(self)))]
         else:
             raise TypeError('Unknown key type')

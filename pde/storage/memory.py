@@ -10,7 +10,6 @@ from contextlib import contextmanager
 import numpy as np
 
 from .base import StorageBase, InfoDict
-from ..grids.base import GridBase
 from ..fields import FieldCollection
 from ..fields.base import FieldBase 
 
@@ -22,7 +21,7 @@ class MemoryStorage(StorageBase):
     
     def __init__(self, times: Optional[Sequence[float]] = None,
                  data: Optional[List[np.ndarray]] = None,
-                 grid: GridBase = None,
+                 field_obj: FieldBase = None,
                  info: InfoDict = None,
                  write_mode: str = 'truncate_once'):
         """
@@ -31,8 +30,9 @@ class MemoryStorage(StorageBase):
                 Sequence of times for which data is known
             data (list of :class:`~numpy.ndarray`):
                 The field data at the given times
-            grid (:class:`~pde.grids.base.GridBase`):
-                The grid on which the data is defined
+            field_obj (:class:`~pde.fields.base.FieldBase`):
+                An instance of the field class that can store data for a single
+                time point.
             info (dict):
                 Supplies extra information that is stored in the storage
             write_mode (str):
@@ -45,7 +45,9 @@ class MemoryStorage(StorageBase):
         """
         super().__init__(info=info, write_mode=write_mode)
         self.times: List[float] = [] if times is None else list(times)
-        self._grid = grid
+        if field_obj is not None:
+            self._field = field_obj.copy()
+            self._grid = field_obj.grid
         self.data: List[np.ndarray] = [] if data is None else data
         if len(self.data) > 0:
             self._data_shape = self.data[0].shape
@@ -80,17 +82,17 @@ class MemoryStorage(StorageBase):
                 'readonly' will disable writing completely.
         """
         if fields is None:
-            grid = None
+            field_obj = None
             data = None
         else:
-            grid = fields[0].grid
+            field_obj = fields[0]
             data = [fields[0].data]
             for field in fields[1:]:
-                if grid != field.grid:
+                if field_obj.grid != field.grid:
                     raise ValueError('Grids of the fields are incompatible')
                 data.append(field.data)
             
-        return cls(times, data=data, grid=grid, info=info,
+        return cls(times, data=data, field_obj=field_obj, info=info,
                    write_mode=write_mode)
     
 
@@ -196,15 +198,48 @@ class MemoryStorage(StorageBase):
         if time is None:
             time = 0 if len(self.times) == 0 else self.times[-1] + 1
         self.times.append(time)
+         
+         
+    def extract_field(self, field_index: int) -> "MemoryStorage":
+        """ extract the time course of a single field in a collection
+         
+        Note:
+            This might return a view into the original data, so modifying the
+            returned data can also change the underlying original data.
+         
+        Args:
+            field_index (index):
+                The index into the field collection
+                 
+        Returns:
+            :class:`MemoryStorage`: a storage instance that contains the data
+            for the single field
+        """
+        # get the field to check its type
+        if not isinstance(self._field, FieldCollection):
+            raise TypeError('Can only extract fields from FieldCollections')
         
+        # extract the field and the associated time series
+        field_obj = self._field[field_index]
+        field_slice = self._field._slices[field_index]
+        data = [d[field_slice].reshape(field_obj.data.shape)
+                for d in self.data]
         
-    def extract(self, t_range: Union[float, Tuple[float, float]] = None) \
+        # create the corresponding MemoryStorage
+        return MemoryStorage(times=self.times,
+                             data=data,
+                             field_obj=field_obj,
+                             info=self.info)
+                 
+          
+    def extract_time_range(self,
+                           t_range: Union[float, Tuple[float, float]] = None) \
             -> "MemoryStorage":
         """ extract a particular time interval
         
         Note:
             This might return a view into the original data, so modifying the
-            original data can also change the underlying data.
+            returned data can also change the underlying original data.
         
         Args:
             t_range (float or tuple):
@@ -233,7 +268,7 @@ class MemoryStorage(StorageBase):
         # extract the actual memory
         return MemoryStorage(times=self.times[i_start:i_end],
                              data=self.data[i_start:i_end],
-                             grid=self._grid,
+                             field_obj=self._field,
                              info=self.info)
         
 

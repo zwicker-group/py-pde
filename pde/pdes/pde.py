@@ -6,7 +6,7 @@ Defines a PDE class whose right hand side is given as a string
 
 import re
 from collections import OrderedDict
-from typing import Callable, Dict, Any, FrozenSet  # @UnusedImport
+from typing import Callable, Dict, Any  # @UnusedImport
 
 import numpy as np
 

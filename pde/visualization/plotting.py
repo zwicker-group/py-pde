@@ -190,8 +190,12 @@ class ScalarFieldPlot():
         Returns:
             :class:`~pde.visualization.plotting.ScalarFieldPlot`
         """
-        fields = storage.get_field(0)
-        quantities = cls._prepare_quantities(fields, quantities=quantities,
+        fields = storage[0]
+        assert isinstance(fields, FieldBase)
+        
+        # prepare the data that needs to be plotted
+        quantities = cls._prepare_quantities(fields,
+                                             quantities=quantities,
                                              scale=scale)
         
         # resolve automatic scaling
@@ -509,7 +513,8 @@ def plot_magnitudes(storage: StorageBase,
             All remaining parameters are forwarded to the `ax.plot` method
     """
     if quantities is None:
-        fields = storage.get_field(0)
+        fields = storage[0]
+        assert isinstance(fields, FieldBase)
         if fields.label:
             label_base = fields.label 
         else:

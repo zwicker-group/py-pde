@@ -98,8 +98,8 @@ class FieldCollection(FieldBase):
                 field._data_flat = self.data[self._slices[i]]
                 
                 # check whether the field data is based on our data field
-                assert field.data.base is self.data
                 assert field.data.shape == field_shape
+                assert field.data.base is self.data
          
          
     def __repr__(self):
@@ -326,7 +326,7 @@ class FieldCollection(FieldBase):
         # if data is None, the data of the individual fields is copied in their
         # copy() method above. The underlying data is therefore independent from
         # the current field 
-        return self.__class__(fields, data=data, label=label)
+        return self.__class__(fields, data=data, label=label, copy_fields=False)
 
 
     def interpolate_to_grid(self, grid: GridBase,
