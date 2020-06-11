@@ -32,38 +32,6 @@ def test_memory_storage():
     s3 = MemoryStorage.from_collection([s1, s2])
     assert s3.times == s1.times
     np.testing.assert_allclose(np.ravel(s3.data), np.arange(4))
-    
-    # test extraction
-    s4 = s1.extract_time_range()
-    assert s4.times == s1.times
-    np.testing.assert_allclose(s4.data, s1.data)
-    s4 = s1.extract_time_range(0.5)
-    assert s4.times == s1.times[:1]
-    np.testing.assert_allclose(s4.data, s1.data[:1])
-    s4 = s1.extract_time_range((0.5, 1.5))
-    assert s4.times == s1.times[1:]
-    np.testing.assert_allclose(s4.data, s1.data[1:])
-
-
-
-def test_memory_storage_collection():
-    """ test methods specific to FieldCollections in memory storage """
-    grid = UnitGrid([2, 2])
-    f1 = ScalarField.random_uniform(grid, 0.1, 0.4)
-    f2 = VectorField.random_uniform(grid, 0.1, 0.4)
-    f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4)
-    fc = FieldCollection([f1, f2, f3])    
-    
-    # store some data
-    storage = MemoryStorage()
-    storage.start_writing(fc)
-    storage.append(fc.data, 0)
-    storage.append(fc.data, 1)
-    storage.end_writing()
-    
-    assert storage.extract_field(0)[0] == f1
-    assert storage.extract_field(1)[0] == f2
-    assert storage.extract_field(2)[0] == f3
 
 
 

@@ -1673,17 +1673,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     
 
     @plot_on_axes(update_method='_update_plot')
-    def plot(self, ax, kind: str = 'auto', **kwargs):
+    def plot(self, kind: str = 'auto', **kwargs):
         r""" visualize the field
         
         Args:
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created. This has no effect if a `reference` is supplied.
             kind (str):
                 Determines the visualizations. Supported values are `image`, 
                 `line`, `vector`, or `interactive`. Alternatively, `auto`
                 determines the best visualization based on the field itself.
+            {PLOT_ARGS}
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual
                 plotting function.
@@ -1713,11 +1711,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # do the actual plotting
         if kind == 'image':
-            reference = self._plot_image(ax=ax, **kwargs)
+            reference = self._plot_image(**kwargs)
         elif kind == 'line':
-            reference = self._plot_line(ax=ax, **kwargs)
+            reference = self._plot_line(**kwargs)
         elif kind == 'vector':
-            reference = self._plot_vector(ax=ax, **kwargs)
+            reference = self._plot_vector(**kwargs)
         else:
             raise ValueError(f'Unsupported plot `{kind}`. Possible choices '
                              'are `image`, `line`, `vector`, or `auto`.')

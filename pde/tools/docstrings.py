@@ -114,24 +114,53 @@ def get_text_block(identifier: str) -> str:
 TFunc = TypeVar('TFunc')
 
 
+def replace_in_docstring(f: TFunc,
+                         token: str,
+                         value: str,
+                         docstring: str = None) -> TFunc:
+    """ replace a text in a docstring using the correct indentation
+    
+    Args:
+        f (callable): The function with the docstring to handle
+        token (str): The token to search for
+        value (str): The replacement string
+        docstring (str): A docstring that should be used instead of f.__doc__
+        
+    Returns:
+        callable: The function with the modified docstring
+    """
+    # initialize textwrapper for formatting docstring
+    
+    def repl(matchobj) -> str:
+        """ helper function replacing token in docstring """
+        bare_text = textwrap.dedent(value).strip()
+        return textwrap.indent(bare_text, matchobj.group(1)) 
+
+    if docstring is None:
+        docstring = f.__doc__
+
+    # replace the token with the correct indentation
+    f.__doc__ = re.sub(f"^([ \t]*){token}", repl, docstring,  # type: ignore
+                       flags=re.MULTILINE)
+
+    return f
+
+
+
 def fill_in_docstring(f: TFunc) -> TFunc:
     """ decorator that replaces text in the docstring of a function """
-    # initialize textwrapper for formatting docstring
-    tw = textwrap.TextWrapper(width=80, expand_tabs=True,
-                              replace_whitespace=True, drop_whitespace=True)
-            
-    docstring = f.__doc__
+    tw = textwrap.TextWrapper(width=80,
+                              expand_tabs=True,
+                              replace_whitespace=True,
+                              drop_whitespace=True)
+    
     for name, value in DOCSTRING_REPLACEMENTS.items():
-        
         def repl(matchobj) -> str:
             """ helper function replacing token in docstring """
             tw.initial_indent = tw.subsequent_indent = matchobj.group(1)
             return tw.fill(textwrap.dedent(value))
-
-        # replace the token with the correct indentation
+    
         token = '{' + name + '}'
-        docstring = re.sub(f"^([ \t]*){token}", repl, docstring,  # type: ignore
+        f.__doc__ = re.sub(f"^([ \t]*){token}", repl, f.__doc__,  # type: ignore
                            flags=re.MULTILINE)
-
-    f.__doc__ = docstring
     return f

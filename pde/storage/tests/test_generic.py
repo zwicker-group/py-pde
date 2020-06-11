@@ -8,7 +8,7 @@ import numpy as np
 
 from .. import MemoryStorage, FileStorage
 from ...grids import UnitGrid
-from ...fields import ScalarField
+from ...fields import ScalarField, VectorField, Tensor2Field, FieldCollection
 from ...pdes import DiffusionPDE
 from ...tools.misc import module_available
 
@@ -78,3 +78,62 @@ def test_storage_truncation(tmp_path):
             msg = f'truncate={truncate}, storage={storage}'
             np.testing.assert_allclose(storage.times, times, err_msg=msg)
              
+
+
+def test_storing_extract_range(tmp_path):
+    """ test methods specific to FieldCollections in memory storage """
+    sf = ScalarField(UnitGrid([1]))
+    
+    file = tmp_path / "test_storage_write.hdf5"
+    
+    storage_classes = {'MemoryStorage': MemoryStorage}
+    if module_available("h5py"):
+        storage_classes['FileStorage'] = functools.partial(FileStorage, file)
+    
+    for storage_cls in storage_classes.values():
+        # store some data
+        s1 = storage_cls()
+        s1.start_writing(sf)
+        s1.append(np.array([0]), 0)
+        s1.append(np.array([2]), 1)
+        s1.end_writing()
+    
+        # test extraction
+        s2 = s1.extract_time_range()
+        assert s2.times == list(s1.times)
+        np.testing.assert_allclose(s2.data, s1.data)
+        s3 = s1.extract_time_range(0.5)
+        assert s3.times == s1.times[:1]
+        np.testing.assert_allclose(s3.data, s1.data[:1])
+        s4 = s1.extract_time_range((0.5, 1.5))
+        assert s4.times == s1.times[1:]
+        np.testing.assert_allclose(s4.data, s1.data[1:])
+
+
+
+def test_storing_collection(tmp_path):
+    """ test methods specific to FieldCollections in memory storage """
+    grid = UnitGrid([2, 2])
+    f1 = ScalarField.random_uniform(grid, 0.1, 0.4)
+    f2 = VectorField.random_uniform(grid, 0.1, 0.4)
+    f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4)
+    fc = FieldCollection([f1, f2, f3])    
+    
+    file = tmp_path / "test_storage_write.hdf5"
+    
+    storage_classes = {'MemoryStorage': MemoryStorage}
+    if module_available("h5py"):
+        storage_classes['FileStorage'] = functools.partial(FileStorage, file)
+    
+    for storage_cls in storage_classes.values():
+        # store some data
+        storage = storage_cls()
+        storage.start_writing(fc)
+        storage.append(fc.data, 0)
+        storage.append(fc.data, 1)
+        storage.end_writing()
+        
+        assert storage.extract_field(0)[0] == f1
+        assert storage.extract_field(1)[0] == f2
+        assert storage.extract_field(2)[0] == f3
+

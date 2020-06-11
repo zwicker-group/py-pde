@@ -25,7 +25,7 @@ from ..fields.base import FieldBase, DataFieldBase
 from ..storage.base import StorageBase
 from ..tools.misc import display_progress
 from ..tools.docstrings import fill_in_docstring
-from ..tools.plotting import finalize_plot
+from ..tools.plotting import plot_on_axes
 
 
 ScaleData = Union[str, float, Tuple[float, float]]
@@ -481,34 +481,21 @@ class ScalarFieldPlot():
 
 
 
+@plot_on_axes()
 @fill_in_docstring
 def plot_magnitudes(storage: StorageBase,
-                    filename: str = None,
                     quantities=None,
                     ax=None,
-                    title: str = None,
-                    show: bool = False,
                     **kwargs) -> None:
     r""" create a plot of spatially integrated quantities from a given storage.
-    
-    Note that the plot will not be displayed when a filename is given and no
-    plot axes are specified.
     
     Args:
         storage:
             Instance of :class:`~pde.storage.base.StorageBase` that contains
             the simulation data that will be plotted
-        filename (str):
-            If given, the resulting image is written to this file.
         quantities:
             {ARG_PLOT_QUANTITIES}
-        ax:
-            Matplotlib figure axes to be used for plotting. If `None`, a new
-            figure is created
-        title (str):
-            Determines the title of the figure
-        show (bool):
-            Flag determining whether :func:`matplotlib.pyplot.show` is called
+        {PLOT_ARGS}
         \**kwargs:
             All remaining parameters are forwarded to the `ax.plot` method
     """
@@ -550,11 +537,6 @@ def plot_magnitudes(storage: StorageBase,
             value *= quantity.get('scale', 1)
             data[i]['values'].append(value)
     
-    close_figure = (bool(filename) and ax is None)
-    if ax is None:
-        # create new figure
-        ax = plt.figure().gca()
-    
     # plot the data
     for d in data:
         kwargs['label'] = d['label']
@@ -566,20 +548,15 @@ def plot_magnitudes(storage: StorageBase,
         
     if len(data) > 1:
         ax.legend(loc='best')
-    
-    finalize_plot(ax, title=title, filename=filename, show=show,
-                  close_figure=close_figure)
             
 
 
+@plot_on_axes()
 def plot_kymograph(storage: StorageBase,
-                   filename: str = None,
                    scalar: str = 'auto',
                    extract: str = 'auto',
                    colorbar: bool = True,
                    transpose: bool = False,
-                   title: str = None,
-                   show: bool = False,
                    ax=None,
                    **kwargs):
     r""" plots a simple kymograph from stored data
@@ -588,14 +565,9 @@ def plot_kymograph(storage: StorageBase,
     resulting image shows space along the horizontal axis and time along the
     vertical axis.
     
-    Note that the plot will not be displayed when a filename is given and no
-    plot axes are specified.
-    
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
             The storage instance that contains all the data for the movie
-        filename (str):
-            If given, the resulting image is written to this file.
         scalar (str):
             The method for extracting scalars as described in
             :meth:`DataFieldBase.to_scalar`.
@@ -606,12 +578,7 @@ def plot_kymograph(storage: StorageBase,
             Whether to show a colorbar or not
         transpose (bool):
             Determines whether the transpose of the data should is plotted
-        title (str):
-            Determines the title of the figure
-        show (bool):
-            Flag determining whether :func:`matplotlib.pyplot.show` is called
-        ax: Figure axes to be used for plotting. If `None`, a new figure is
-            created
+        {PLOT_ARGS}
         \**kwargs:
             Additional keyword arguments are passed to
             :func:`matplotlib.pyplot.imshow`.
@@ -619,10 +586,6 @@ def plot_kymograph(storage: StorageBase,
     Returns:
         Result of :func:`matplotlib.pyplot.imshow`
     """
-    close_figure = (bool(filename) and ax is None)
-    if ax is None:
-        ax = plt.figure().gca()  # create new figure
-
     full_data = []
     for _, data in storage.items():
         img_data = data.get_line_data(scalar=scalar, extract=extract)
@@ -647,12 +610,6 @@ def plot_kymograph(storage: StorageBase,
         from ..tools.misc import add_scaled_colorbar
         add_scaled_colorbar(res, ax=ax)
         
-    if title is None:
-        title = img_data['label_y']
-
-    finalize_plot(ax, title=title, filename=filename, show=show,
-                  close_figure=close_figure)
-    
     return res
 
     

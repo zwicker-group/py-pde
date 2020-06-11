@@ -448,15 +448,13 @@ class FieldCollection(FieldBase):
         r""" visualize all the fields in the collection
         
         Args:
-            fig (:class:`matplotlib.figures.Figure`):
-                Figure that is used for plotting. If omitted, a new figure is
-                created.
             kind (str):
                 Determines the visualizations. Supported values are `image`, 
                 `line`, `vector`, or `interactive`. Alternatively, `auto`
                 determines the best visualization based on each field itself.
             resize_fig (bool):
                 Whether to resize the figure
+            {PLOT_ARGS}
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual
                 plotting function.

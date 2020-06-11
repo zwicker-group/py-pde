@@ -572,9 +572,7 @@ class PolarGrid(SphericalGridBase):
         r""" visualize the polar grid
         
         Args:
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting. If `None`, a new figure is
-                created. This has no effect if a `reference` is supplied.
+            {PLOT_ARGS}
             \**kwargs: Extra arguments are passed on the to the matplotlib
                 plotting routines, e.g., to set the color of the lines
         """

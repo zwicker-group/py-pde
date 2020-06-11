@@ -6,16 +6,20 @@ Base classes for storing data
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Optional, List, Tuple, Iterator, Union, Sequence, Any
+from typing import (Optional, List, Tuple, Iterator, Union, Sequence, Any,
+                    TYPE_CHECKING)
 
 import numpy as np
 
 from ..grids.base import GridBase
-from ..fields import ScalarField, VectorField, Tensor2Field
+from ..fields import ScalarField, VectorField, Tensor2Field, FieldCollection
 from ..fields.base import FieldBase
 from ..trackers.base import TrackerBase, InfoDict
 from ..trackers.intervals import IntervalType, IntervalData
 from ..tools.docstrings import fill_in_docstring
+
+if TYPE_CHECKING:
+    from .memory import MemoryStorage  # @UnusedImport
 
 
     
@@ -241,8 +245,85 @@ class StorageBase(metaclass=ABCMeta):
         """ finalize the storage after writing """
         pass
 
+         
+    def extract_field(self, field_index: int) -> "MemoryStorage":
+        """ extract the time course of a single field in a collection
+         
+        Note:
+            This might return a view into the original data, so modifying the
+            returned data can also change the underlying original data.
+         
+        Args:
+            field_index (index):
+                The index into the field collection
+                 
+        Returns:
+            :class:`MemoryStorage`: a storage instance that contains the data
+            for the single field
+        """
+        from .memory import MemoryStorage
+        
+        # get the field to check its type
+        if not isinstance(self._field, FieldCollection):
+            raise TypeError('Can only extract fields from FieldCollections')
+        
+        # extract the field and the associated time series
+        field_obj = self._field[field_index]
+        field_slice = self._field._slices[field_index]
+        data = [d[field_slice].reshape(field_obj.data.shape)
+                for d in self.data]
+        
+        # create the corresponding MemoryStorage
+        return MemoryStorage(times=self.times,
+                             data=data,
+                             field_obj=field_obj,
+                             info=self.info)
 
-    
+
+          
+    def extract_time_range(self,
+                           t_range: Union[float, Tuple[float, float]] = None) \
+            -> "MemoryStorage":
+        """ extract a particular time interval
+        
+        Note:
+            This might return a view into the original data, so modifying the
+            returned data can also change the underlying original data.
+        
+        Args:
+            t_range (float or tuple):
+                Determines the range of time points included in the result. If
+                only a single number is given, all data up to this time point
+                are included.
+                
+        Returns:
+            :class:`MemoryStorage`: a storage instance that contains the
+            extracted data.
+        """
+        from .memory import MemoryStorage
+
+        # get the time bracket
+        try:
+            t_start, t_end = t_range  # type: ignore
+        except TypeError:
+            t_start, t_end = None, t_range
+        if t_start is None:
+            t_start = self.times[0]
+        if t_end is None:
+            t_end = self.times[-1]
+        
+        # determine the associated indices
+        i_start = np.searchsorted(self.times, t_start, side='left')
+        i_end = np.searchsorted(self.times, t_end, side='right')
+        
+        # extract the actual memory
+        return MemoryStorage(times=self.times[i_start:i_end],
+                             data=self.data[i_start:i_end],
+                             field_obj=self._field,
+                             info=self.info)
+        
+        
+            
 class StorageTracker(TrackerBase):
     """ Tracker that stores data in special storage classes 
     

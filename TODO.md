@@ -1,10 +1,10 @@
 TODO
 ====
+* Deprecate `finalize_plot` and remove it from other packages
 * Introduce gradient squared operator -> ask Noah
 * Can we support np.log, np.exp and such for ScalarFields?
     - look at https://numpy.org/devdocs/user/basics.dispatch.html
     - add tests that some methods, like np.sum, np.concatenate, are not supported
-* Add method to extract time course of a single field from a field collecion Storage 
 * Support FieldCollections in plot_kymograph:
     - need to have method for adding kymograph to axes
     - parent method needs to decide whether there is one or many kymographs
