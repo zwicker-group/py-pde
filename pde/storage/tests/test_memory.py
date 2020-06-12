@@ -49,6 +49,7 @@ def test_field_type_guessing():
         s._field = None
         s.info = {}
         
+        assert not s.has_collection
         assert len(s) == 2
         assert s[0] == field
         
@@ -56,6 +57,8 @@ def test_field_type_guessing():
     s = MemoryStorage()
     s.start_writing(field)
     s.append(field.data, 0)
+    
+    assert s.has_collection
     
     # delete information
     s._field = None

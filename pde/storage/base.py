@@ -92,7 +92,7 @@ class StorageBase(metaclass=ABCMeta):
     def __len__(self):
         """ return the number of stored items, i.e., time steps """
         return len(self.times)
-        
+
 
     @property
     def shape(self) -> Optional[Tuple[int, ...]]:
@@ -102,6 +102,17 @@ class StorageBase(metaclass=ABCMeta):
         else:
             return None
     
+    
+    @property
+    def has_collection(self) -> bool:
+        """ bool: whether the storage is storing a collection """
+        if self._field is not None:
+            return isinstance(self._field, FieldCollection)
+        elif len(self) > 0:
+            return isinstance(self._get_field(0), FieldCollection)            
+        else:
+            raise RuntimeError('Storage is empty')
+
     
     @property
     def grid(self) -> Optional[GridBase]:
@@ -261,7 +272,7 @@ class StorageBase(metaclass=ABCMeta):
             :class:`MemoryStorage`: a storage instance that contains the data
             for the single field
         """
-        from .memory import MemoryStorage
+        from .memory import MemoryStorage  # @Reimport
         
         # get the field to check its type
         if not isinstance(self._field, FieldCollection):
@@ -300,7 +311,7 @@ class StorageBase(metaclass=ABCMeta):
             :class:`MemoryStorage`: a storage instance that contains the
             extracted data.
         """
-        from .memory import MemoryStorage
+        from .memory import MemoryStorage  # @Reimport
 
         # get the time bracket
         try:

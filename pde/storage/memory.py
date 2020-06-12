@@ -203,7 +203,16 @@ class MemoryStorage(StorageBase):
 
 @contextmanager
 def get_memory_storage(field: FieldBase, info: InfoDict = None):
-    """ initialize the storage for writing data
+    """ a context manager that can be used to create a MemoryStorage
+    
+    Example:
+        This can be used to quickly store data::
+        
+            with get_memory_storage(field_class) as storage:
+                storage.append(numpy_array0, 0)
+                storage.append(numpy_array1, 1)
+                
+            # use storage thereafter
     
     Args:
         field (:class:`~pde.fields.FieldBase`):
@@ -211,6 +220,9 @@ def get_memory_storage(field: FieldBase, info: InfoDict = None):
             and the data_shape
         info (dict):
             Supplies extra information that is stored in the storage
+            
+    Yields:
+        :class:`MemoryStorage`
     """
     storage = MemoryStorage()
     storage.start_writing(field, info)

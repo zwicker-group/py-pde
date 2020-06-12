@@ -7,7 +7,7 @@ Functions and classes for plotting simulation data
    ScalarFieldPlot
    plot_magnitudes
    plot_kymograph
-   
+   plot_kymographs
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
@@ -25,9 +25,10 @@ from ..fields.base import FieldBase, DataFieldBase
 from ..storage.base import StorageBase
 from ..tools.misc import display_progress
 from ..tools.docstrings import fill_in_docstring
-from ..tools.plotting import PlotReference, plot_on_axes
+from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
 
 
+_logger = logging.getLogger(__name__)
 ScaleData = Union[str, float, Tuple[float, float]]
 
 
@@ -487,7 +488,7 @@ def plot_magnitudes(storage: StorageBase,
                     quantities=None,
                     ax=None,
                     **kwargs) -> PlotReference:
-    r""" create a plot of spatially integrated quantities from a given storage.
+    r""" plot spatially integrated quantities as a function of time
     
     Args:
         storage:
@@ -498,6 +499,9 @@ def plot_magnitudes(storage: StorageBase,
         {PLOT_ARGS}
         \**kwargs:
             All remaining parameters are forwarded to the `ax.plot` method
+            
+    Returns:
+        :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
     """
     if quantities is None:
         fields = storage[0]
@@ -555,15 +559,131 @@ def plot_magnitudes(storage: StorageBase,
             
 
 
+def _plot_kymograph(img_data: Dict[str, Any],
+                    ax,
+                    colorbar: bool = True,
+                    transpose: bool = False,
+                    **kwargs) -> PlotReference:
+    r""" plots a simple kymograph from given data
+    
+    Args:
+        img_data (dict):
+            Contains the kymograph data
+        ax (:class:`~matplotlib.axes.Axes`):
+            The axes to which the plot is added
+        colorbar (bool):
+            Whether to show a colorbar or not
+        transpose (bool):
+            Determines whether the transpose of the data should is plotted
+        \**kwargs:
+            Additional keyword arguments are passed to
+            :func:`matplotlib.pyplot.imshow`.
+            
+    Returns:
+        :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
+    """
+    # transpose data if requested
+    if transpose:
+        # avoid changing the img_data that was passed into the function
+        extent = np.r_[img_data['extent_y'], img_data['extent_x']]
+        img_data = {'data': img_data['data'].T,
+                    'label_x': img_data['label_y'],
+                    'label_y': img_data['label_x']}
+    else:
+        extent = np.r_[img_data['extent_x'], img_data['extent_y']]
+    
+    # create the actual plot
+    ref = ax.imshow(img_data['data'], extent=extent, origin='lower', **kwargs)
+    
+    # adjust some settings
+    ax.set_xlabel(img_data['label_x'])
+    ax.set_ylabel(img_data['label_y'])
+    ax.set_aspect('auto') 
+
+    if colorbar:
+        from ..tools.misc import add_scaled_colorbar
+        add_scaled_colorbar(ref, ax=ax)
+        
+    return PlotReference(ax, ref)
+
+
+
 @plot_on_axes()
 def plot_kymograph(storage: StorageBase,
+                   field_index: int = None,
                    scalar: str = 'auto',
                    extract: str = 'auto',
                    colorbar: bool = True,
                    transpose: bool = False,
                    ax=None,
                    **kwargs) -> PlotReference:
-    r""" plots a simple kymograph from stored data
+    r""" plots a single kymograph from stored data
+    
+    The kymograph shows line data stacked along time. Consequently, the
+    resulting image shows space along the horizontal axis and time along the
+    vertical axis.
+    
+    Args:
+        storage (:class:`~droplets.simulation.storage.StorageBase`):
+            The storage instance that contains all the data for the movie
+        field_index (int):
+            An index to choose a single field out of many in a collection
+            stored in `storage`. This option should not be used if only a single
+            field is stored in a collection.
+        scalar (str):
+            The method for extracting scalars as described in
+            :meth:`DataFieldBase.to_scalar`.
+        extract (str):
+            The method used for extracting the line data. See the docstring
+            of the grid method `get_line_data` to find supported values.
+        colorbar (bool):
+            Whether to show a colorbar or not
+        transpose (bool):
+            Determines whether the transpose of the data should is plotted
+        {PLOT_ARGS}
+        \**kwargs:
+            Additional keyword arguments are passed to
+            :func:`matplotlib.pyplot.imshow`.
+            
+    Returns:
+        :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
+    """
+    if len(storage) == 0:
+        raise RuntimeError('Storage is empty')
+    line_data_args: Dict[str, Any] = {'scalar': scalar, 'extract': extract}
+    
+    if field_index is not None:
+        if storage.has_collection:
+            line_data_args['index'] = field_index
+        else:
+            _logger.warning('`field_index` should only be set for '
+                            'FieldCollections')
+    
+    # prepare the image data for one kymograph
+    image = []
+    for _, field in storage.items():
+        img_data = field.get_line_data(**line_data_args)
+        image.append(img_data['data_y'])
+        
+    img_data['data'] = np.array(image)
+    img_data['extent_y'] = (storage.times[0], storage.times[-1])
+    img_data['label_y'] = 'Time'
+    
+    return _plot_kymograph(img_data, ax, colorbar=colorbar, transpose=transpose,
+                           **kwargs)
+    
+    
+
+@plot_on_figure()
+def plot_kymographs(storage: StorageBase,
+                    scalar: str = 'auto',
+                    extract: str = 'auto',
+                    colorbar: bool = True,
+                    transpose: bool = False,
+                    resize_fig: bool = True,
+                    fig=None,
+                    **kwargs) -> List[PlotReference]:
+    r""" plots kymographs for all fields stored in `storage`
     
     The kymograph shows line data stacked along time. Consequently, the
     resulting image shows space along the horizontal axis and time along the
@@ -582,38 +702,57 @@ def plot_kymograph(storage: StorageBase,
             Whether to show a colorbar or not
         transpose (bool):
             Determines whether the transpose of the data should is plotted
+        resize_fig (bool):
+            Whether to resize the figure to adjust to the number of panels
         {PLOT_ARGS}
         \**kwargs:
-            Additional keyword arguments are passed to
+            Additional keyword arguments are passed to the calls to
             :func:`matplotlib.pyplot.imshow`.
             
     Returns:
-        Result of :func:`matplotlib.pyplot.imshow`
+        list of :class:`~pde.tools.plotting.PlotReference`: The references to
+        all plots
     """
-    full_data = []
-    for _, data in storage.items():
-        img_data = data.get_line_data(scalar=scalar, extract=extract)
-        full_data.append(img_data['data_y'])
-        
-    full_data = np.array(full_data)
-    extent = np.r_[img_data['extent_x'], storage.times[0], storage.times[-1]]
-    
-    if transpose:
-        full_data = full_data.T  # type: ignore
-        label_x, label_y = 'Time', img_data['label_x']
+    if len(storage) == 0:
+        raise RuntimeError('Storage is empty')
+    line_data_args = {'scalar': scalar, 'extract': extract}
+    if storage.has_collection:
+        num_fields = len(storage[0])  # type: ignore
     else:
-        label_x, label_y = img_data['label_x'], 'Time'
+        num_fields = 1
     
-    ref = ax.imshow(full_data, extent=extent, origin='lower', **kwargs)
+    # prepare the image data for one kymograph
+    images = []
+    for _, field in storage.items():
+        if storage.has_collection:
+            image_lines = []
+            for f_id in range(num_fields):
+                img_data = field.get_line_data(index=f_id,  # type: ignore
+                                               **line_data_args)
+                image_lines.append(img_data['data_y'])
+        else:
+            img_data = field.get_line_data(**line_data_args)
+            image_lines = [img_data['data_y']]
+        images.append(image_lines)
     
-    ax.set_xlabel(label_x)
-    ax.set_ylabel(label_y)
-    ax.set_aspect('auto') 
+    img_arr = np.array(images)
+    img_data['extent_y'] = (storage.times[0], storage.times[-1])
+    img_data['label_y'] = 'Time'
+    
+    # disable interactive plotting temporarily
+    # create a plot with all the panels 
+    if resize_fig:
+        fig.set_size_inches((4 * num_fields, 3), forward=True)
+    axs = fig.subplots(1, num_fields, squeeze=False)
+    
+    # iterate over all axes and plot the kymograph
+    refs = []
+    for i, ax in enumerate(axs[0]):
+        img_data['data'] = img_arr[:, i]
+        ref = _plot_kymograph(img_data, ax, colorbar=colorbar,
+                              transpose=transpose, **kwargs)
+        if storage.has_collection:
+            ax.set_title(storage._field[i].label)  # type: ignore
+        refs.append(ref)
 
-    if colorbar:
-        from ..tools.misc import add_scaled_colorbar
-        add_scaled_colorbar(ref, ax=ax)
-        
-    return PlotReference(ax, ref)
-
-    
+    return refs

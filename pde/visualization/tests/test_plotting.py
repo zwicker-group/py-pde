@@ -2,6 +2,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
+import numpy as np
+
 from .. import plotting
 from ...grids import UnitGrid
 from ...fields import ScalarField, FieldCollection
@@ -62,3 +64,47 @@ def test_collection_plot(tmp_path):
     plotting.plot_magnitudes(storage, filename=path)
     assert path.stat().st_size > 0
 
+
+
+def test_kymograph_single(tmp_path):
+    """ test making kymographs for single fields """
+    # create some storage
+    field = ScalarField(UnitGrid(8))
+    with get_memory_storage(field) as storage:
+        for i in range(8):
+            storage.append(np.full(8, i), i)
+    
+    # create single kymograph
+    path = tmp_path / 'test1.png'
+    plotting.plot_kymograph(storage, colorbar=True, transpose=True,
+                            filename=path)
+    assert path.stat().st_size > 0
+    
+    # create multiple kymographs
+    path = tmp_path / 'test2.png'
+    plotting.plot_kymographs(storage, filename=path)
+    assert path.stat().st_size > 0
+    
+  
+
+def test_kymograph_collection(tmp_path):
+    """ test making kymographs for field collections """
+    # create some storage
+    field = FieldCollection([ScalarField(UnitGrid(8), label='a'),
+                             ScalarField(UnitGrid(8), label='b')])
+    with get_memory_storage(field) as storage:
+        for i in range(8):
+            storage.append(np.full((2, 8), i), i)
+    
+    # create single kymograph
+    path = tmp_path / 'test1.png'
+    plotting.plot_kymograph(storage, field_index=1, colorbar=True,
+                            transpose=True, filename=path)
+    assert path.stat().st_size > 0
+    
+    # create multiple kymographs
+    path = tmp_path / 'test2.png'
+    plotting.plot_kymographs(storage, filename=path)
+    assert path.stat().st_size > 0
+    
+      

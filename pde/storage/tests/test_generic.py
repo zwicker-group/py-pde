@@ -32,6 +32,8 @@ def test_storage_write(tmp_path):
         storage.append(np.arange(dim), 0)
         storage.append(np.arange(dim), 1)
         storage.end_writing()
+        
+        assert not storage.has_collection
             
         np.testing.assert_allclose(storage.times, np.arange(2))
         for f in storage:
@@ -77,6 +79,8 @@ def test_storage_truncation(tmp_path):
         for storage in storages:
             msg = f'truncate={truncate}, storage={storage}'
             np.testing.assert_allclose(storage.times, times, err_msg=msg)
+             
+        assert not storage.has_collection
              
 
 
@@ -133,6 +137,7 @@ def test_storing_collection(tmp_path):
         storage.append(fc.data, 1)
         storage.end_writing()
         
+        assert storage.has_collection
         assert storage.extract_field(0)[0] == f1
         assert storage.extract_field(1)[0] == f2
         assert storage.extract_field(2)[0] == f3

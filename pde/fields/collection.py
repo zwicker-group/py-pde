@@ -441,9 +441,9 @@ class FieldCollection(FieldBase):
         
     @plot_on_figure(update_method='_update_plot')
     def plot(self,
-             fig,
              kind: str = 'auto',
              resize_fig: bool = True,
+             fig=None,
              **kwargs) -> List[PlotReference]:
         r""" visualize all the fields in the collection
         
@@ -453,7 +453,7 @@ class FieldCollection(FieldBase):
                 `line`, `vector`, or `interactive`. Alternatively, `auto`
                 determines the best visualization based on each field itself.
             resize_fig (bool):
-                Whether to resize the figure
+                Whether to resize the figure to adjust to the number of panels
             {PLOT_ARGS}
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual

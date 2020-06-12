@@ -6,9 +6,7 @@ TODO
 * Can we support np.log, np.exp and such for ScalarFields?
     - look at https://numpy.org/devdocs/user/basics.dispatch.html
     - add tests that some methods, like np.sum, np.concatenate, are not supported
-* Support FieldCollections in plot_kymograph:
-    - need to have method for adding kymograph to axes
-    - parent method needs to decide whether there is one or many kymographs
+* Fix scaling of `add_scaled_colorbar`
 * pde.PDE:
     - add test for dot operator and custom boundary conditions
 * Plot tracker:
