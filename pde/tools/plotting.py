@@ -19,6 +19,7 @@ Tools for plotting and controlling plot output using context managers
 
 
 import contextlib
+import functools
 import logging
 import warnings
 from typing import Type, Dict, Tuple, Any, TYPE_CHECKING  # @UnusedImport
@@ -145,8 +146,8 @@ class PlotReference():
 
 
 
-class plot_on_axes:
-    """ wrapper for a plot method that fills an axes
+def plot_on_axes(wrapped=None, update_method=None):
+    """ decorator for a plot method or function that uses a single axes
     
     This decorator adds typical options for creating plots that fill a single
     axes. These options are available via keyword arguments. These options can
@@ -172,128 +173,121 @@ class plot_on_axes:
                     return PlotReference(ax, line)
                     
                     
-            @plot_on_axes()
+            @plot_on_axes
             def make_plot(ax):
                 ax.plot(...)
                     
         When `update_method` is not supplied, the method can still be used for
         plotting, but dynamic updating, e.g., by
         :class:`pde.trackers.PlotTracker`, is not possible.
+
+    Args:
+        wrapped (callable):
+            Function to be wrapped
+        update_method (callable or str):
+            Method to call to update the plot. The argument of the new
+            method will be the result of the initial call of the wrapped
+            method.
     """
+    if wrapped is None:
+        # handle the case where decorator was called without brackets
+        return functools.partial(plot_on_axes, update_method=update_method)    
     
-    
-    def __init__(self, update_method=None):
+    def wrapper(*args, **kwargs):
         """
-        Args:
-            update_method (callable):
-                Method to call to update the plot. The argument of the new
-                method will be the result of the initial call of the wrapped
-                method.
+        title (str):
+            Title of the plot. If omitted, the title might be chosen
+            automatically.
+        filename (str, optional):
+            If given, the plot is written to the specified file.
+        show (bool):
+            Flag setting whether :func:`matplotlib.pyplot.show` is
+            called. The value `None` sets show to `True` by default, but
+            disables it for nested calls.                    
+        close_figure (bool):
+            Flag setting whether the figure is closed (after it was
+            shown)
+        ax_style (dict):
+            Dictionary with properties that will be changed on the axis
+            after the plot has been drawn by calling
+            :meth:`matplotlib.pyplot.setp`.
+        ax (:class:`matplotlib.axes.Axes`):
+            Figure axes to be used for plotting. If `None`, a new figure
+            is created. This has no effect if a `reference` is supplied.
         """
-        if callable(update_method):
-            # decorator has been used without brackets
-            raise RuntimeError('missing brackets for initializing decorator')
-        self.update_method = update_method
+        # Note on docstring: This docstring is basically prepended to the
+        # 'Args:' section of the wrapped function.
         
+        ax = kwargs.pop('ax', None)
+        title = kwargs.pop('title', None)
+        filename = kwargs.pop('filename', None)
+        show = kwargs.pop('show', None)
+        close_figure = kwargs.pop('close_figure', False)
+        ax_style = kwargs.pop('ax_style', {})
         
-    def __call__(self, wrapped):
-        """ apply the actual decorator """
-        import inspect
-
-        def wrapper(*args, **kwargs):
-            """
-            title (str):
-                Title of the plot. If omitted, the title might be chosen
-                automatically.
-            filename (str, optional):
-                If given, the plot is written to the specified file.
-            show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is
-                called. The value `None` sets show to `True` by default, but
-                disables it for nested calls.                    
-            close_figure (bool):
-                Flag setting whether the figure is closed (after it was
-                shown)
-            ax_style (dict):
-                Dictionary with properties that will be changed on the axis
-                after the plot has been drawn by calling
-                :meth:`matplotlib.pyplot.setp`.
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting. If `None`, a new figure
-                is created. This has no effect if a `reference` is supplied.
-            """
-            # Note on docstring: This docstring is basically prepended to the
-            # 'Args:' section of the wrapped function.
-            
-            ax = kwargs.pop('ax', None)
-            title = kwargs.pop('title', None)
-            filename = kwargs.pop('filename', None)
-            show = kwargs.pop('show', None)
-            close_figure = kwargs.pop('close_figure', False)
-            ax_style = kwargs.pop('ax_style', {})
-            
-            # some logic to check for nested plotting calls:
-            with nested_plotting_check() as is_outermost_plot_call:
-            
-                # disable interactive plotting temporarily
-                with disable_interactive():
-                    
-                    if ax is None:
-                        # create new figure
-                        backend = mpl.get_backend()
-                        if 'backend_inline' in backend or 'nbAgg' == backend:
-                            plt.close('all')  # close left over figures
-                        fig, ax = plt.subplots()
-                    else:
-                        fig = ax.get_figure()
+        # some logic to check for nested plotting calls:
+        with nested_plotting_check() as is_outermost_plot_call:
+        
+            # disable interactive plotting temporarily
+            with disable_interactive():
                 
-                    # call the actual plotting function
-                    reference = wrapped(*args, ax=ax, **kwargs)
-                    
-                    # finishing touches...            
-                    if title is not None:
-                        ax.set_title(title)
-                    if ax_style:
-                        plt.setp(ax, **ax_style)
-                    if filename:
-                        fig.savefig(filename)
-                        
-                # decide whether to show the final plot
-                if show or (show is None and is_outermost_plot_call):
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")
-                        plt.show()
-                if close_figure:
-                    plt.close(fig)
+                if ax is None:
+                    # create new figure
+                    backend = mpl.get_backend()
+                    if 'backend_inline' in backend or 'nbAgg' == backend:
+                        plt.close('all')  # close left over figures
+                    fig, ax = plt.subplots()
+                else:
+                    fig = ax.get_figure()
+            
+                # call the actual plotting function
+                reference = wrapped(*args, ax=ax, **kwargs)
                 
-            return reference
+                # finishing touches...            
+                if title is not None:
+                    ax.set_title(title)
+                if ax_style:
+                    plt.setp(ax, **ax_style)
+                if filename:
+                    fig.savefig(filename)
+                    
+            # decide whether to show the final plot
+            if show or (show is None and is_outermost_plot_call):
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    plt.show()
+            if close_figure:
+                plt.close(fig)
             
-        # adjusting properties of the returned function to match the original
-        signature = inspect.signature(wrapped)
-        if 'kwargs' not in signature.parameters:
-            # add the kwargs argument to the signature
-            kwargs = inspect.signature(wrapper).parameters['kwargs']
-            parameters = tuple(signature.parameters.values()) + (kwargs,)
-            signature = signature.replace(parameters=parameters)
+        return reference
         
-        wrapper.__signature__ = signature 
-        wrapper.__name__ = wrapped.__name__        
-        wrapper.__module__ = wrapped.__module__
-        wrapper.__dict__.update(wrapped.__dict__)
-        
-        if wrapped.__doc__:
-            replace_in_docstring(wrapper, '{PLOT_ARGS}', wrapper.__doc__,
-                                 docstring=wrapped.__doc__)
+    # adjusting properties of the returned function to match the original
+    import inspect
+    signature = inspect.signature(wrapped)
+    if 'kwargs' not in signature.parameters:
+        # add the kwargs argument to the signature
+        kwargs = inspect.signature(wrapper).parameters['kwargs']
+        parameters = tuple(signature.parameters.values()) + (kwargs,)
+        signature = signature.replace(parameters=parameters)
+    
+    wrapper.__signature__ = signature 
+    wrapper.__name__ = wrapped.__name__        
+    wrapper.__module__ = wrapped.__module__
+    wrapper.__dict__.update(wrapped.__dict__)
+    
+    if wrapped.__doc__:
+        replace_in_docstring(wrapper, '{PLOT_ARGS}', wrapper.__doc__,
+                             docstring=wrapped.__doc__)
 
-        wrapper.mpl_class = 'axes'
-        wrapper.update_method = self.update_method
-            
-        return wrapper
+    wrapper.mpl_class = 'axes'
+    wrapper.update_method = update_method
+        
+    return wrapper
     
 
 
-class plot_on_figure:
-    """ wrapper for a plot method or function that fills an entire figure
+def plot_on_figure(wrapped=None, update_method=None):
+    """ decorator for a plot method or function that fills an entire figure
     
     This decorator adds typical options for creating plots that fill an
     entire figure. These options are available via keyword arguments. These
@@ -323,7 +317,7 @@ class plot_on_figure:
                     return [PlotReference(ax1, l1), PlotReference(ax2, l2)]
                    
                     
-            @plot_on_figure()
+            @plot_on_figure
             def make_plot(fig):
                 ...
                     
@@ -331,120 +325,115 @@ class plot_on_figure:
         When `update_method` is not supplied, the method can still be used for
         plotting, but dynamic updating, e.g., by
         :class:`pde.trackers.PlotTracker`, is not possible. 
+        
+        
+    Args:
+        wrapped (callable):
+            Function to be wrapped
+        update_method (callable or str):
+            Method to call to update the plot. The argument of the new
+            method will be the result of the initial call of the wrapped
+            method.
     """
+    if wrapped is None:
+        # handle the case where decorator was called without brackets
+        return functools.partial(plot_on_figure, update_method=update_method)    
     
     
-    def __init__(self, update_method=None):
+    def wrapper(*args, **kwargs):
         """
-        Args:
-            update_method (callable):
-                Method to call to update the plot. The argument of the new
-                method will be the result of the initial call of the wrapped
-                method.
+        title (str):
+            Title of the plot. If omitted, the title might be chosen
+            automatically. This is shown above all panels.
+        constrained_layout (bool):
+            Whether to use `constrained_layout` in 
+            :func:`matplotlib.pyplot.figure` call to create a figure. 
+            This affects the layout of all plot elements.
+        filename (str, optional):
+            If given, the figure is written to the specified file.
+        show (bool):
+            Flag setting whether :func:`matplotlib.pyplot.show` is
+            called. The value `None` sets `show` to `True` by default,
+            but disables it for nested calls.                  
+        close_figure (bool):
+            Flag setting whether the figure is closed (after it was
+            shown).
+        fig_style (dict):
+            Dictionary with properties that will be changed on the
+            figure after the plot has been drawn by calling
+            :meth:`matplotlib.pyplot.setp`.
+        fig (:class:`matplotlib.figures.Figure`):
+            Figure that is used for plotting. If omitted, a new figure is
+            created.
         """
-        if callable(update_method):
-            # decorator has been used without brackets
-            raise RuntimeError('missing brackets for initializing decorator')
-        self.update_method = update_method
+        # Note on docstring: This docstring is basically prepended to the
+        # 'Args:' section of the wrapped function.
         
+        title = kwargs.pop('title', None)
+        constrained_layout = kwargs.pop('constrained_layout', True)
+        filename = kwargs.pop('filename', None)
+        show = kwargs.pop('show', None)
+        close_figure = kwargs.pop('close_figure', False)
+        fig_style = kwargs.pop('fig_style', {})
+        fig = kwargs.pop('fig', None)
         
-    def __call__(self, wrapped):
-        """ apply the actual decorator """
-        import inspect
-        
-        def wrapper(*args, **kwargs):
-            """
-            title (str):
-                Title of the plot. If omitted, the title might be chosen
-                automatically. This is shown above all panels.
-            constrained_layout (bool):
-                Whether to use `constrained_layout` in 
-                :func:`matplotlib.pyplot.figure` call to create a figure. 
-                This affects the layout of all plot elements.
-            filename (str, optional):
-                If given, the figure is written to the specified file.
-            show (bool):
-                Flag setting whether :func:`matplotlib.pyplot.show` is
-                called. The value `None` sets `show` to `True` by default,
-                but disables it for nested calls.                  
-            close_figure (bool):
-                Flag setting whether the figure is closed (after it was
-                shown).
-            fig_style (dict):
-                Dictionary with properties that will be changed on the
-                figure after the plot has been drawn by calling
-                :meth:`matplotlib.pyplot.setp`.
-            fig (:class:`matplotlib.figures.Figure`):
-                Figure that is used for plotting. If omitted, a new figure is
-                created.
-            """
-            # Note on docstring: This docstring is basically prepended to the
-            # 'Args:' section of the wrapped function.
+        # some logic to check for nested plotting calls:
+        with nested_plotting_check() as is_outermost_plot_call:
             
-            title = kwargs.pop('title', None)
-            constrained_layout = kwargs.pop('constrained_layout', True)
-            filename = kwargs.pop('filename', None)
-            show = kwargs.pop('show', None)
-            close_figure = kwargs.pop('close_figure', False)
-            fig_style = kwargs.pop('fig_style', {})
-            fig = kwargs.pop('fig', None)
-            
-            # some logic to check for nested plotting calls:
-            with nested_plotting_check() as is_outermost_plot_call:
+            # disable interactive plotting temporarily
+            with disable_interactive():
                 
-                # disable interactive plotting temporarily
-                with disable_interactive():
+                if fig is None:
+                    # create new figure
+                    backend = mpl.get_backend()
+                    if 'backend_inline' in backend or 'nbAgg' == backend:
+                        plt.close('all')  # close left over figures
+                    fig = plt.figure(constrained_layout=constrained_layout)
+            
+                # call the actual plotting function
+                reference = wrapped(*args, fig=fig, **kwargs)
+                
+                # finishing touches...            
+                if title is not None:
+                    fig.suptitle(title)
+                if fig_style:
+                    plt.setp(fig, **fig_style)
+                if filename:
+                    fig.savefig(filename)
                     
-                    if fig is None:
-                        # create new figure
-                        backend = mpl.get_backend()
-                        if 'backend_inline' in backend or 'nbAgg' == backend:
-                            plt.close('all')  # close left over figures
-                        fig = plt.figure(constrained_layout=constrained_layout)
-                
-                    # call the actual plotting function
-                    reference = wrapped(*args, fig=fig, **kwargs)
+            # decide whether to show the final plot
+            if show or (show is None and is_outermost_plot_call):
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    plt.show()
                     
-                    # finishing touches...            
-                    if title is not None:
-                        fig.suptitle(title)
-                    if fig_style:
-                        plt.setp(fig, **fig_style)
-                    if filename:
-                        fig.savefig(filename)
-                        
-                # decide whether to show the final plot
-                if show or (show is None and is_outermost_plot_call):
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")
-                        plt.show()
-                        
-                if close_figure:
-                    plt.close(fig)
-                
-            return reference    
+            if close_figure:
+                plt.close(fig)
             
-        # adjusting properties of the returned function to match the original
-        signature = inspect.signature(wrapped)
-        if 'kwargs' not in signature.parameters:
-            # add the kwargs argument to the signature
-            kwargs = inspect.signature(wrapper).parameters['kwargs']
-            parameters = tuple(signature.parameters.values()) + (kwargs,)
-            signature = signature.replace(parameters=parameters)
-
-        wrapper.__signature__ = inspect.signature(wrapped)
-        wrapper.__name__ = wrapped.__name__        
-        wrapper.__module__ = wrapped.__module__
-        wrapper.__dict__.update(wrapped.__dict__)
+        return reference    
         
-        if wrapped.__doc__:
-            replace_in_docstring(wrapper, '{PLOT_ARGS}', wrapper.__doc__,
-                                 docstring=wrapped.__doc__)
+    # adjusting properties of the returned function to match the original
+    import inspect
+    signature = inspect.signature(wrapped)
+    if 'kwargs' not in signature.parameters:
+        # add the kwargs argument to the signature
+        kwargs = inspect.signature(wrapper).parameters['kwargs']
+        parameters = tuple(signature.parameters.values()) + (kwargs,)
+        signature = signature.replace(parameters=parameters)
 
-        wrapper.mpl_class = 'figure'
-        wrapper.update_method = self.update_method
-        
-        return wrapper
+    wrapper.__signature__ = inspect.signature(wrapped)
+    wrapper.__name__ = wrapped.__name__        
+    wrapper.__module__ = wrapped.__module__
+    wrapper.__dict__.update(wrapped.__dict__)
+    
+    if wrapped.__doc__:
+        replace_in_docstring(wrapper, '{PLOT_ARGS}', wrapper.__doc__,
+                             docstring=wrapped.__doc__)
+
+    wrapper.mpl_class = 'figure'
+    wrapper.update_method = update_method
+    
+    return wrapper
 
 
 
