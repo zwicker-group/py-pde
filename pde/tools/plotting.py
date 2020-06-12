@@ -149,8 +149,11 @@ class plot_on_axes:
     """ wrapper for a plot method that fills an axes
     
     This decorator adds typical options for creating plots that fill a single
-    axes. The decorator can be used on both functions and methods.
-    
+    axes. These options are available via keyword arguments. These options can
+    be described in the docstring, if the placeholder `{PLOT_ARGS}` is mentioned
+    in the docstring of the wrapped function or method. Note that the decorator
+    can be used on both functions and methods.
+
     Example:
         The following example illustrates how this decorator can be used to
         implement plotting for a given class. In particular, supplying the
@@ -249,9 +252,9 @@ class plot_on_axes:
                     
                     # finishing touches...            
                     if title is not None:
-                        reference.ax.set_title(title)
+                        ax.set_title(title)
                     if ax_style:
-                        plt.setp(reference.ax, **ax_style)
+                        plt.setp(ax, **ax_style)
                     if filename:
                         fig.savefig(filename)
                         
@@ -266,7 +269,14 @@ class plot_on_axes:
             return reference
             
         # adjusting properties of the returned function to match the original
-        wrapper.__signature__ = inspect.signature(wrapped)
+        signature = inspect.signature(wrapped)
+        if 'kwargs' not in signature.parameters:
+            # add the kwargs argument to the signature
+            kwargs = inspect.signature(wrapper).parameters['kwargs']
+            parameters = tuple(signature.parameters.values()) + (kwargs,)
+            signature = signature.replace(parameters=parameters)
+        
+        wrapper.__signature__ = signature 
         wrapper.__name__ = wrapped.__name__        
         wrapper.__module__ = wrapped.__module__
         wrapper.__dict__.update(wrapped.__dict__)
@@ -286,7 +296,10 @@ class plot_on_figure:
     """ wrapper for a plot method or function that fills an entire figure
     
     This decorator adds typical options for creating plots that fill an
-    entire figure. The decorator can be used on both functions and methods.
+    entire figure. These options are available via keyword arguments. These
+    options can be described in the docstring, if the placeholder `{PLOT_ARGS}`
+    is mentioned in the docstring of the wrapped function or method. Note that
+    the decorator can be used on both functions and methods.
     
     Example:
         The following example illustrates how this decorator can be used to
@@ -317,7 +330,7 @@ class plot_on_figure:
                     
         When `update_method` is not supplied, the method can still be used for
         plotting, but dynamic updating, e.g., by
-        :class:`pde.trackers.PlotTracker`, is not possible.
+        :class:`pde.trackers.PlotTracker`, is not possible. 
     """
     
     
@@ -411,8 +424,14 @@ class plot_on_figure:
                 
             return reference    
             
-            
         # adjusting properties of the returned function to match the original
+        signature = inspect.signature(wrapped)
+        if 'kwargs' not in signature.parameters:
+            # add the kwargs argument to the signature
+            kwargs = inspect.signature(wrapper).parameters['kwargs']
+            parameters = tuple(signature.parameters.values()) + (kwargs,)
+            signature = signature.replace(parameters=parameters)
+
         wrapper.__signature__ = inspect.signature(wrapped)
         wrapper.__name__ = wrapped.__name__        
         wrapper.__module__ = wrapped.__module__

@@ -25,7 +25,7 @@ from ..fields.base import FieldBase, DataFieldBase
 from ..storage.base import StorageBase
 from ..tools.misc import display_progress
 from ..tools.docstrings import fill_in_docstring
-from ..tools.plotting import plot_on_axes
+from ..tools.plotting import PlotReference, plot_on_axes
 
 
 ScaleData = Union[str, float, Tuple[float, float]]
@@ -486,7 +486,7 @@ class ScalarFieldPlot():
 def plot_magnitudes(storage: StorageBase,
                     quantities=None,
                     ax=None,
-                    **kwargs) -> None:
+                    **kwargs) -> PlotReference:
     r""" create a plot of spatially integrated quantities from a given storage.
     
     Args:
@@ -538,9 +538,11 @@ def plot_magnitudes(storage: StorageBase,
             data[i]['values'].append(value)
     
     # plot the data
+    lines = []
     for d in data:
         kwargs['label'] = d['label']
-        ax.plot(storage.times, d['values'], **kwargs)
+        l, = ax.plot(storage.times, d['values'], **kwargs)
+        lines.append(l)
         
     ax.set_xlabel('Time')
     if len(data) == 1:
@@ -548,6 +550,8 @@ def plot_magnitudes(storage: StorageBase,
         
     if len(data) > 1:
         ax.legend(loc='best')
+        
+    return PlotReference(ax, lines)
             
 
 
@@ -558,7 +562,7 @@ def plot_kymograph(storage: StorageBase,
                    colorbar: bool = True,
                    transpose: bool = False,
                    ax=None,
-                   **kwargs):
+                   **kwargs) -> PlotReference:
     r""" plots a simple kymograph from stored data
     
     The kymograph shows line data stacked along time. Consequently, the
@@ -600,7 +604,7 @@ def plot_kymograph(storage: StorageBase,
     else:
         label_x, label_y = img_data['label_x'], 'Time'
     
-    res = ax.imshow(full_data, extent=extent, origin='lower', **kwargs)
+    ref = ax.imshow(full_data, extent=extent, origin='lower', **kwargs)
     
     ax.set_xlabel(label_x)
     ax.set_ylabel(label_y)
@@ -608,8 +612,8 @@ def plot_kymograph(storage: StorageBase,
 
     if colorbar:
         from ..tools.misc import add_scaled_colorbar
-        add_scaled_colorbar(res, ax=ax)
+        add_scaled_colorbar(ref, ax=ax)
         
-    return res
+    return PlotReference(ax, ref)
 
     

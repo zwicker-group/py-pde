@@ -1,6 +1,7 @@
 TODO
 ====
 * Deprecate `finalize_plot` and remove it from other packages
+* Accelerate some tests by not compiling
 * Introduce gradient squared operator -> ask Noah
 * Can we support np.log, np.exp and such for ScalarFields?
     - look at https://numpy.org/devdocs/user/basics.dispatch.html
