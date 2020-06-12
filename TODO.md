@@ -3,10 +3,7 @@ TODO
 * Deprecate `finalize_plot` and remove it from other packages
 * Accelerate some tests by not compiling
 * Introduce gradient squared operator -> ask Noah
-* Can we support np.log, np.exp and such for ScalarFields?
-    - look at https://numpy.org/devdocs/user/basics.dispatch.html
-    - add tests that some methods, like np.sum, np.concatenate, are not supported
-* Fix scaling of `add_scaled_colorbar`
+* Fix scaling of `add_scaled_colorbar
 * pde.PDE:
     - add test for dot operator and custom boundary conditions
 * Plot tracker:

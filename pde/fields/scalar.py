@@ -111,6 +111,37 @@ class ScalarField(DataFieldBase):
         """ set the data from a value from a collection """
         self._data = value[0]
 
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        """ support unary numpy ufuncs, like np.sin """
+        if method == '__call__': 
+            # only support unary functions in simple calls
+            
+            # check the input
+            arrs = []
+            for arg in inputs:
+                if np.isscalar(arg):
+                    arrs.append(arg)
+                elif isinstance(arg, self.__class__):
+                    self.assert_field_compatible(arg)
+                    arrs.append(arg.data)
+                else:
+                    # unsupported type
+                    return NotImplemented
+            
+            if 'out' in kwargs:
+                # write to given field
+                out = kwargs.pop('out')[0]
+                self.assert_field_compatible(out)
+                kwargs['out'] = (out.data,)
+                ufunc(*arrs, **kwargs)
+                return out
+            else:
+                # return new field
+                return self.copy(data=ufunc(*arrs, **kwargs))
+        else:
+            return NotImplemented
+
         
     @fill_in_docstring
     def laplace(self, bc: "BoundariesData",

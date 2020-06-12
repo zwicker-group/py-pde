@@ -400,3 +400,21 @@ def test_boundary_interpolation_2d():
         ev(data=field.data, out=out)
         np.testing.assert_allclose(out, bndry_val)
     
+    
+    
+def test_numpy_ufuncs():
+    """ test numpy ufuncs """
+    grid = UnitGrid([2, 2])
+    f1 = ScalarField.random_uniform(grid, 0.1, 0.9)
+    
+    f2 = np.sin(f1)
+    np.testing.assert_allclose(f2.data, np.sin(f1.data))
+    f2.data = 0
+    np.sin(f1, out=f2)
+    np.testing.assert_allclose(f2.data, np.sin(f1.data))
+    
+    np.testing.assert_allclose(np.add(f1, 2).data, f1.data + 2)
+    
+    with pytest.raises(TypeError):
+        np.sum(f1, 1)
+    
