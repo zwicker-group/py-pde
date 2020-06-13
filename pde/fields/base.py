@@ -1545,7 +1545,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         ax.set_title(data.get('title', self.label))
         
         if colorbar:
-            from ..tools.misc import add_scaled_colorbar
+            from ..tools.plotting import add_scaled_colorbar
             add_scaled_colorbar(axes_image, ax=ax)
                 
         parameters = {'scalar': scalar, 'transpose': transpose}

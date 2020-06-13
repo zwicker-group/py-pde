@@ -593,7 +593,8 @@ def _plot_kymograph(img_data: Dict[str, Any],
         extent = np.r_[img_data['extent_x'], img_data['extent_y']]
     
     # create the actual plot
-    ref = ax.imshow(img_data['data'], extent=extent, origin='lower', **kwargs)
+    axes_image = ax.imshow(img_data['data'], extent=extent, origin='lower',
+                           **kwargs)
     
     # adjust some settings
     ax.set_xlabel(img_data['label_x'])
@@ -601,10 +602,10 @@ def _plot_kymograph(img_data: Dict[str, Any],
     ax.set_aspect('auto') 
 
     if colorbar:
-        from ..tools.misc import add_scaled_colorbar
-        add_scaled_colorbar(ref, ax=ax)
+        from ..tools.plotting import add_scaled_colorbar
+        add_scaled_colorbar(axes_image, ax=ax)
         
-    return PlotReference(ax, ref)
+    return PlotReference(ax, axes_image)
 
 
 

@@ -4,6 +4,7 @@ Tools for plotting and controlling plot output using context managers
 .. autosummary::
    :nosignatures:
 
+   add_scaled_colorbar
    finalize_plot
    disable_interactive
    plot_on_axes
@@ -34,6 +35,38 @@ if TYPE_CHECKING:
     from ..grids.base import GridBase  # @UnusedImport
 
  
+
+def add_scaled_colorbar(axes_image,
+                        aspect: float = 20,
+                        pad_fraction: float = 0.5,
+                        **kwargs):
+    """ add a vertical color bar to an image plot
+    
+    The height of the colorbar is now adjusted to the plot, so that the width
+    determined by `aspect` is now given relative to the height. Moreover, the
+    gap between the colorbar and the plot is now given in units of the fraction
+    of the width by `pad_fraction`. 
+
+    Inspired by https://stackoverflow.com/a/33505522/932593
+    
+    Args:
+        axes_image: object returned from :meth:`matplotlib.pyplot.imshow`
+        ax (:class:`matplotlib.axes.Axes`): the current figure axes
+        aspect (float): the target aspect ratio of the colorbar
+        pad_fraction (float): Width of the gap between colorbar and image
+        **kwargs: Additional parameters are passed to colorbar call
+
+    Returns:
+        the result of the colorbar call
+    """
+    from mpl_toolkits import axes_grid1
+    divider = axes_grid1.make_axes_locatable(axes_image.axes)
+    width = axes_grid1.axes_size.AxesY(axes_image.axes, aspect=1./aspect)
+    pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
+    cax = divider.append_axes("right", size=width, pad=pad)
+    return axes_image.axes.figure.colorbar(axes_image, cax=cax, **kwargs)            
+       
+
 
 class nested_plotting_check():
     """ context manager that checks whether it is the root plotting call
@@ -363,7 +396,14 @@ def plot_on_figure(wrapped=None, update_method=None):
         return functools.partial(plot_on_figure, update_method=update_method)    
     
     
-    def wrapper(*args, **kwargs):
+    def wrapper(*args,
+                title: str = None,
+                constrained_layout: bool = True,
+                filename: str = None,
+                action: str = 'auto',
+                fig_style: Dict[str, Any] = None,
+                fig=None,
+                **kwargs):
         """
         title (str):
             Title of the plot. If omitted, the title might be chosen
@@ -391,13 +431,6 @@ def plot_on_figure(wrapped=None, update_method=None):
         """
         # Note on docstring: This docstring replaces the token {PLOT_ARGS} in 
         # the wrapped function
-        
-        title = kwargs.pop('title', None)
-        constrained_layout = kwargs.pop('constrained_layout', True)
-        filename = kwargs.pop('filename', None)
-        action = kwargs.pop('action', 'auto')
-        fig_style = kwargs.pop('fig_style', {})
-        fig = kwargs.pop('fig', None)
         
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
