@@ -34,30 +34,36 @@ if TYPE_CHECKING:
     from ..grids.base import GridBase  # @UnusedImport
 
  
- 
-_IS_PLOTTING = False  # global flag to detect nested plotting calls
 
-
-
-@contextlib.contextmanager
-def nested_plotting_check():
+class nested_plotting_check():
     """ context manager that checks whether it is the root plotting call
     
-    Yields:
-        bool: The context manager yields True for the first usage and False for
-        all nested calls.
-    """
-    global _IS_PLOTTING
-
-    if _IS_PLOTTING:
-        # this is a nested plot call
-        yield False
+    Example:
+        The context manager can be used in plotting calls to check for nested
+        plotting calls::
         
-    else:
-        # this is the outermost plot call
-        _IS_PLOTTING = True
-        yield True
-        _IS_PLOTTING = False
+            with nested_plotting_check() as is_outermost_plot_call:
+                make_plot(...)  # could potentially call other plotting methods
+                if is_outermost_plot_call:
+                    plt.show()
+    
+    """
+    
+    _is_plotting = False  # class variable keeping track of nesting
+    
+    
+    def __init__(self):
+        self.is_nested = None  # determines whether the this context is nested
+    
+    
+    def __enter__(self):
+        self.is_nested = nested_plotting_check._is_plotting
+        nested_plotting_check._is_plotting = True
+        return not self.is_nested
+    
+    def __exit__(self, *exc):
+        if not self.is_nested:
+            nested_plotting_check._is_plotting = False
 
 
 

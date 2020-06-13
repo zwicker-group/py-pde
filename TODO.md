@@ -1,7 +1,5 @@
 TODO
 ====
-* Nested plotting detecting is not reset after error
-* Deprecate `finalize_plot` and remove it from other packages
 * Accelerate some tests by not compiling
 * Introduce gradient squared operator -> ask Noah
 * Fix scaling of `add_scaled_colorbar
