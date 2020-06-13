@@ -57,13 +57,14 @@ class nested_plotting_check():
     
     
     def __enter__(self):
-        self.is_nested = nested_plotting_check._is_plotting
-        nested_plotting_check._is_plotting = True
+        self.is_nested = self.__class__._is_plotting
+        self.__class__._is_plotting = True
         return not self.is_nested
+    
     
     def __exit__(self, *exc):
         if not self.is_nested:
-            nested_plotting_check._is_plotting = False
+            self.__class__._is_plotting = False
 
 
 

@@ -4,7 +4,7 @@ Defines a class storing data in memory.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Optional, Sequence, Union, Tuple, List  # @UnusedImport
+from typing import Optional, Sequence, List
 from contextlib import contextmanager
 
 import numpy as np
