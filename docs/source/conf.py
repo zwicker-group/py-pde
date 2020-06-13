@@ -248,6 +248,18 @@ intersphinx_mapping = {'https://docs.python.org/3/': None,
 
 # -- Options for sphinx-gallery extension ---------------------------------------
 
+# filter toctree, inspired by https://stackoverflow.com/a/46600038/932593
+sys.path.append(os.path.abspath('../sphinx_ext/'))
+extensions.append('toctree_filter')
+if tags.has('exclude_gallery'):
+    # exclude gallery from toc when creating a latex document
+    print('Example gallery will be excluded...')
+    toc_filter_exclude = ['gallery']
+else:
+    print('NORMAL DOC')
+    toc_filter_exclude = []
+
+
 sphinx_gallery_conf = {
      'examples_dirs': '../../examples',
      'gallery_dirs': 'examples_gallery',

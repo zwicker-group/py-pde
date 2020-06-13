@@ -1,9 +1,8 @@
 TODO
 ====
 * Accelerate some tests by not compiling
-* Try running movie tests (if ffmpeg is available)
 * Introduce gradient squared operator -> ask Noah
-* Fix scaling of `add_scaled_colorbar
+* Fix scaling of `add_scaled_colorbar` for kymographs
 * pde.PDE:
     - add test for dot operator and custom boundary conditions
 * Plot tracker:

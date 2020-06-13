@@ -27,12 +27,12 @@ translated to a function evaluating the evolution rate of the PDE.
 
 **Contents**
 
-.. toctree::
+.. toctree-filt::
     :maxdepth: 2
     :numbered:
 
     getting_started
-    examples_gallery/index
+    :gallery:examples_gallery/index
     manual/index
     packages/pde
  
