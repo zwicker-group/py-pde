@@ -63,6 +63,17 @@ class Movie:
 
         self._writer = None
         
+        
+    @classmethod
+    def is_available(cls) -> bool:
+        """ check whether the movie infrastructure is available
+        
+        Returns:
+            bool: True if movies can be created
+        """
+        from matplotlib.animation import FFMpegWriter
+        return FFMpegWriter.isAvailable()  # type: ignore
+        
 
     def __enter__(self):
         return self

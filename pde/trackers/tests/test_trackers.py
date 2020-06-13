@@ -15,11 +15,11 @@ from ...fields import ScalarField
 from ...pdes import DiffusionPDE, CahnHilliardPDE, AllenCahnPDE
 from ...solvers import ExplicitSolver, Controller
 from ...storage import MemoryStorage
-from ...tools.misc import skipUnlessModule, module_available
+from ...tools.misc import module_available
+from ...visualization.movies import Movie
         
 
 
-@skipUnlessModule("matplotlib")
 def test_plot_tracker(tmp_path):
     """ test whether the plot tracker creates files without errors """
     output_file = tmp_path / "img.png"
@@ -36,11 +36,31 @@ def test_plot_tracker(tmp_path):
     
     pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend='numpy')
     
-    assert output_file.exists()
+    assert output_file.stat().st_size > 0
     
     import matplotlib.pyplot as plt
     plt.close('all')
     
+    
+
+@pytest.mark.skipif(not Movie.is_available(), reason='no ffmpeg')
+def test_plot_movie_tracker(tmp_path):
+    """ test whether the plot tracker creates files without errors """
+    output_file = tmp_path / "movie.mov"
+    
+    grid = UnitGrid([4, 4])
+    state = ScalarField.random_uniform(grid)
+    pde = DiffusionPDE()
+    tracker = trackers.PlotTracker(movie=output_file,
+                                   interval=0.1, show=False)
+    
+    pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend='numpy')
+    
+    assert output_file.stat().st_size > 0
+    
+    import matplotlib.pyplot as plt
+    plt.close('all')
+        
     
     
 def test_simple_progress():

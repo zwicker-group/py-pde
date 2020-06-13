@@ -2,16 +2,17 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
+import pytest
+
 from .. import movies
 from ...grids import UnitGrid
 from ...fields import ScalarField
 from ...storage import MemoryStorage
 from ...pdes import DiffusionPDE
-from ...tools.misc import skipUnlessModule
 
 
 
-@skipUnlessModule("matplotlib")
+@pytest.mark.skipif(not movies.Movie.is_available(), reason='no ffmpeg')
 def test_movie(tmp_path):
     """ test Movie class"""
     import matplotlib.pyplot as plt
@@ -34,7 +35,7 @@ def test_movie(tmp_path):
 
 
 
-@skipUnlessModule("matplotlib")
+@pytest.mark.skipif(not movies.Movie.is_available(), reason='no ffmpeg')
 def test_movie_scalar(tmp_path):
     """ test Movie class"""
     

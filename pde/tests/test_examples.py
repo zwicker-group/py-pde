@@ -12,7 +12,8 @@ from typing import List  # @UnusedImport
 import pytest
 import numba as nb
 
-from ..tools.misc import module_available, skipUnlessModule
+from ..tools.misc import skipUnlessModule
+from ..visualization.movies import Movie
 
 
 
@@ -20,9 +21,9 @@ PACKAGE_PATH = Path(__file__).resolve().parents[2]
 EXAMPLES = glob.glob(str(PACKAGE_PATH / 'examples' / '*.py'))
 NOTEBOOKS = glob.glob(str(PACKAGE_PATH / 'examples' / 'jupyter' / '*.ipynb'))
 
-SKIP_EXAMPLES: List[str] = ['make_movie.py']
-if not module_available("matplotlib"):
-    SKIP_EXAMPLES.append('trackers.py')
+SKIP_EXAMPLES: List[str] = []
+if not Movie.is_available():
+    SKIP_EXAMPLES.append('make_movie.py')
 
 
 @pytest.mark.skipif(sys.platform == 'win32', reason="Assumes unix setup")
