@@ -1,6 +1,7 @@
 TODO
 ====
 * Accelerate some tests by not compiling
+* Try running movie tests (if ffmpeg is available)
 * Introduce gradient squared operator -> ask Noah
 * Fix scaling of `add_scaled_colorbar
 * pde.PDE:
@@ -9,7 +10,6 @@ TODO
     - plot final state in the live view (finalize does not get the final state yet)
     - we could for instance have a flag on trackers, whether they are being handled a final time
     - an alternative would be to pass the final state to the `finalize` method 
-* Try to not import matplotlib by default
 * Think about logger names (add `pde.` before class name)
 * Count the number of compilations and store it in the info field of the simulation
     - raise a warning when this number became too large in a simulation?

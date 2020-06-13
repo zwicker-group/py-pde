@@ -18,7 +18,6 @@ import time
 from typing import (Union, Callable, Optional, Any, Dict, List, Tuple)
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 from ..fields import FieldCollection
 from ..fields.base import FieldBase, DataFieldBase
@@ -265,6 +264,7 @@ class ScalarFieldPlot():
     def __del__(self):
         try:
             if hasattr(self, 'fig') and self.fig:
+                import matplotlib.pyplot as plt
                 plt.close(self.fig)
         except Exception:
             pass  # can occur when shutting down python interpreter
@@ -292,6 +292,7 @@ class ScalarFieldPlot():
                 Whether to call :func:`matplotlib.pyplot.tight_layout`. This
                 affects the layout of all plot elements.
         """        
+        import matplotlib.pyplot as plt
         import matplotlib.cm as cm
         
         num_rows = len(self.quantities)
@@ -418,6 +419,7 @@ class ScalarFieldPlot():
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # add a small pause to allow the GUI to run it's event loop
+                import matplotlib.pyplot as plt
                 plt.pause(0.01)
         
         

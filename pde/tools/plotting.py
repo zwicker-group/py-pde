@@ -25,10 +25,6 @@ import logging
 import warnings
 from typing import Type, Dict, Tuple, Any, TYPE_CHECKING  # @UnusedImport
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.axes as mpl_axes
-
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
@@ -124,6 +120,8 @@ def finalize_plot(fig_or_ax=None,
     Returns:
         tuple: The figure and the axes that were used to finalize the plot
     """
+    import matplotlib.pyplot as plt
+    
     # Deprecated this method on 2020-06-13
     warnings.warn("finalize_plot() method is deprecated. Use the decorators "
                   "plot_on_axes or plot_on_figure to control plots instead.",
@@ -161,6 +159,8 @@ def disable_interactive():
     This context manager restores the previous state after it is done. Details
     of the interactive mode are described in :func:`matplotlib.interactive`.
     """
+    import matplotlib.pyplot as plt
+
     if plt.isinteractive():
         # interactive mode is enabled => disable it temporarily
         plt.interactive(False) 
@@ -268,6 +268,8 @@ def plot_on_axes(wrapped=None, update_method=None):
         """
         # Note on docstring: This docstring replaces the token {PLOT_ARGS} in 
         # the wrapped function
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
         
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
@@ -431,6 +433,8 @@ def plot_on_figure(wrapped=None, update_method=None):
         """
         # Note on docstring: This docstring replaces the token {PLOT_ARGS} in 
         # the wrapped function
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
         
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
@@ -540,12 +544,14 @@ class PlottingContextBase(object):
     def __enter__(self):
         # start the plotting process
         if self.fig is not None:
+            import matplotlib.pyplot as plt
             plt.figure(self.fig.number)
     
 
     def __exit__(self, *exc): 
         if self.initial_plot or not self.supports_update:
             # recreate the entire figure
+            import matplotlib.pyplot as plt
             self.fig = plt.gcf()
             if len(self.fig.axes) == 0:
                 # The figure seems to be empty, which must be a mistake
@@ -573,6 +579,7 @@ class PlottingContextBase(object):
         """ close the plot """
         # close matplotlib figure
         if self.fig is not None:
+            import matplotlib.pyplot as plt
             plt.close(self.fig)
 
 
@@ -594,12 +601,15 @@ class BasicPlottingContext(PlottingContextBase):
             show (bool):
                 Flag determining whether plots are actually shown
         """
+        import matplotlib.axes as mpl_axes
+        import matplotlib.figure as mpl_figure
+        
         super().__init__(title=title, show=show)
         
         # determine which figure to modify
         if isinstance(fig_or_ax, mpl_axes.Axes):
             self.fig = fig_or_ax.get_figure()  # assume that axes are given
-        elif isinstance(fig_or_ax, mpl.figure.Figure):
+        elif isinstance(fig_or_ax, mpl_figure.Figure):
             self.fig = fig_or_ax
     
 
@@ -610,6 +620,7 @@ class BasicPlottingContext(PlottingContextBase):
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # add a small pause to allow the GUI to run it's event loop
+                import matplotlib.pyplot as plt
                 plt.pause(1e-3)
 
 
@@ -628,6 +639,7 @@ class JupyterPlottingContext(PlottingContextBase):
         
         if self.initial_plot:
             # close all previous plots
+            import matplotlib.pyplot as plt
             plt.close('all')
             
             # create output widget for capturing all plotting
@@ -642,6 +654,7 @@ class JupyterPlottingContext(PlottingContextBase):
     
     
     def __exit__(self, *exc):
+        import matplotlib.pyplot as plt
         # finalize plot
         super().__exit__(*exc)
         
@@ -689,6 +702,10 @@ def get_plotting_context(context=None,
     Returns:
         :class:`PlottingContextBase`: The plotting context
     """
+    import matplotlib as mpl
+    import matplotlib.axes as mpl_axes
+    import matplotlib.figure as mpl_figure
+    
     if context is None:
         # figure out whether plots are shown in jupyter notebook
         
@@ -714,7 +731,7 @@ def get_plotting_context(context=None,
         context.show = show
         return context
     
-    elif isinstance(context, (mpl_axes.Axes, mpl.figure.Figure)):
+    elif isinstance(context, (mpl_axes.Axes, mpl_figure.Figure)):
         # create a basic context based on the given axes or figure
         return BasicPlottingContext(fig_or_ax=context, title=title, show=show)
     

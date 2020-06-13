@@ -3,6 +3,7 @@ tqdm>=4.45
 pandas>=1.0
 h5py>=2.10
 pycodestyle>=2.5
+pyinstrument>=3
 pytest>=5.4
 pytest-cov>=2.8
 pytest-xdist>=1.30
