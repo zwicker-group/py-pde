@@ -18,4 +18,4 @@ bc_y = 'periodic'
 eq = DiffusionPDE(bc=[bc_x, bc_y])
 
 result = eq.solve(state, t_range=10, dt=0.005)
-result.plot(show=True)
+result.plot()

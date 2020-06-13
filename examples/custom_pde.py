@@ -30,4 +30,4 @@ state = ScalarField.random_uniform(grid)  # generate initial condition
 
 eq = KuramotoSivashinskyPDE()  # define the pde
 result = eq.solve(state, t_range=10, dt=0.01)
-result.plot(show=True)
+result.plot()

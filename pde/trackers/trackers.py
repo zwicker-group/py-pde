@@ -308,7 +308,9 @@ class PlotTracker(TrackerBase):
         self.close_final = close_final
         
         self.plot_args = {} if plot_args is None else plot_args.copy()
-        self.plot_args['show'] = False  # this is handled by the context
+        # make sure the plot is only create and not shown since the context
+        # handles showing the plot itself
+        self.plot_args['action'] = 'create'  
 
         # initialize the movie class        
         if movie is None:

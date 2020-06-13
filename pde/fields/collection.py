@@ -470,7 +470,7 @@ class FieldCollection(FieldBase):
         axs = fig.subplots(1, len(self))
         
         # plot all the elements into the respective axes
-        reference = [field.plot(kind=kind, ax=ax, show=False, **kwargs)
+        reference = [field.plot(kind=kind, ax=ax, action='create', **kwargs)
                      for field, ax in zip(self.fields, axs)]
                 
         # return the references for all subplots

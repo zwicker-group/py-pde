@@ -1,5 +1,6 @@
 TODO
 ====
+* Nested plotting detecting is not reset after error
 * Deprecate `finalize_plot` and remove it from other packages
 * Accelerate some tests by not compiling
 * Introduce gradient squared operator -> ask Noah
@@ -10,13 +11,6 @@ TODO
     - plot final state in the live view (finalize does not get the final state yet)
     - we could for instance have a flag on trackers, whether they are being handled a final time
     - an alternative would be to pass the final state to the `finalize` method 
-* plotting: replace show and close_figure by `mode` argument
-   - mode='show', plot directly with show=True -> show window
-       - default mode for outermost plot call
-   - mode='close', plot to file with show=False -> destroy window after saving
-   - mode='init' or 'create', create plot to keep for later manipulation with show=False
-   - mode='???' create and show plot, but capture in ipython output
-   - Plot wrapper must keep track of whether they handle the window? 
 * Try to not import matplotlib by default
 * Think about logger names (add `pde.` before class name)
 * Count the number of compilations and store it in the info field of the simulation

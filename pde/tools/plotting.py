@@ -84,6 +84,11 @@ def finalize_plot(fig_or_ax=None,
     Returns:
         tuple: The figure and the axes that were used to finalize the plot
     """
+    # Deprecated this method on 2020-06-13
+    warnings.warn("finalize_plot() method is deprecated. Use the decorators "
+                  "plot_on_axes or plot_on_figure to control plots instead.",
+                  DeprecationWarning)
+    
     # determine which figure to modify    
     if fig_or_ax is None:
         fig = plt.gcf()  # current figure
@@ -193,20 +198,26 @@ def plot_on_axes(wrapped=None, update_method=None):
         # handle the case where decorator was called without brackets
         return functools.partial(plot_on_axes, update_method=update_method)    
     
-    def wrapper(*args, **kwargs):
+    def wrapper(*args,
+                title: str = None,
+                filename: str = None,
+                action: str = 'auto',
+                ax_style: Dict[str, Any] = None,
+                ax=None,
+                **kwargs):
         """
         title (str):
             Title of the plot. If omitted, the title might be chosen
             automatically.
         filename (str, optional):
             If given, the plot is written to the specified file.
-        show (bool):
-            Flag setting whether :func:`matplotlib.pyplot.show` is
-            called. The value `None` sets show to `True` by default, but
-            disables it for nested calls.                    
-        close_figure (bool):
-            Flag setting whether the figure is closed (after it was
-            shown)
+        action (str):
+            Decides what to do with the figure. If the argument is set to `show`
+            :func:`matplotlib.pyplot.show` will be called to show the plot, if
+            the value is `create`, the figure will be created, but not shown,
+            and the value `close` closes the figure, after saving it to a file 
+            when `filename` is given. The default value `auto` implies that the
+            plot is shown if it is not a nested plot call.
         ax_style (dict):
             Dictionary with properties that will be changed on the axis
             after the plot has been drawn by calling
@@ -215,15 +226,8 @@ def plot_on_axes(wrapped=None, update_method=None):
             Figure axes to be used for plotting. If `None`, a new figure
             is created. This has no effect if a `reference` is supplied.
         """
-        # Note on docstring: This docstring is basically prepended to the
-        # 'Args:' section of the wrapped function.
-        
-        ax = kwargs.pop('ax', None)
-        title = kwargs.pop('title', None)
-        filename = kwargs.pop('filename', None)
-        show = kwargs.pop('show', None)
-        close_figure = kwargs.pop('close_figure', False)
-        ax_style = kwargs.pop('ax_style', {})
+        # Note on docstring: This docstring replaces the token {PLOT_ARGS} in 
+        # the wrapped function
         
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
@@ -251,26 +255,38 @@ def plot_on_axes(wrapped=None, update_method=None):
                 if filename:
                     fig.savefig(filename)
                     
-            # decide whether to show the final plot
-            if show or (show is None and is_outermost_plot_call):
+            # decide what to do with the final plot
+            if action == 'auto':
+                if is_outermost_plot_call:
+                    action = 'show'
+                else:
+                    action = 'create'
+                    
+            if action == 'show':
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     plt.show()
-            if close_figure:
+                    
+            elif action == 'close':
                 plt.close(fig)
+                
+            elif action != 'create':
+                raise ValueError(f'Unknown action `{action}`')
             
         return reference
         
-    # adjusting properties of the returned function to match the original
+    # adjusting the signature of the wrapped function to include wrapper args
     import inspect
-    signature = inspect.signature(wrapped)
-    if 'kwargs' not in signature.parameters:
-        # add the kwargs argument to the signature
-        kwargs = inspect.signature(wrapper).parameters['kwargs']
-        parameters = tuple(signature.parameters.values()) + (kwargs,)
-        signature = signature.replace(parameters=parameters)
+    sig_wrapped = inspect.signature(wrapped)
+    parameters = tuple(arg
+                       for name, arg in sig_wrapped.parameters.items()
+                       if name != 'kwargs' and name != 'ax')
     
-    wrapper.__signature__ = signature 
+    sig_wrapper = inspect.signature(wrapper)
+    parameters += tuple(sig_wrapper.parameters.values())
+    wrapper.__signature__ = sig_wrapped.replace(parameters=parameters)
+    
+    # adjusting additional properties of the function to match the wrapped one
     wrapper.__name__ = wrapped.__name__        
     wrapper.__module__ = wrapped.__module__
     wrapper.__dict__.update(wrapped.__dict__)
@@ -351,13 +367,13 @@ def plot_on_figure(wrapped=None, update_method=None):
             This affects the layout of all plot elements.
         filename (str, optional):
             If given, the figure is written to the specified file.
-        show (bool):
-            Flag setting whether :func:`matplotlib.pyplot.show` is
-            called. The value `None` sets `show` to `True` by default,
-            but disables it for nested calls.                  
-        close_figure (bool):
-            Flag setting whether the figure is closed (after it was
-            shown).
+        action (str):
+            Decides what to do with the figure. If the argument is set to `show`
+            :func:`matplotlib.pyplot.show` will be called to show the plot, if
+            the value is `create`, the figure will be created, but not shown,
+            and the value `close` closes the figure, after saving it to a file 
+            when `filename` is given. The default value `auto` implies that the
+            plot is shown if it is not a nested plot call.
         fig_style (dict):
             Dictionary with properties that will be changed on the
             figure after the plot has been drawn by calling
@@ -366,14 +382,13 @@ def plot_on_figure(wrapped=None, update_method=None):
             Figure that is used for plotting. If omitted, a new figure is
             created.
         """
-        # Note on docstring: This docstring is basically prepended to the
-        # 'Args:' section of the wrapped function.
+        # Note on docstring: This docstring replaces the token {PLOT_ARGS} in 
+        # the wrapped function
         
         title = kwargs.pop('title', None)
         constrained_layout = kwargs.pop('constrained_layout', True)
         filename = kwargs.pop('filename', None)
-        show = kwargs.pop('show', None)
-        close_figure = kwargs.pop('close_figure', False)
+        action = kwargs.pop('action', 'auto')
         fig_style = kwargs.pop('fig_style', {})
         fig = kwargs.pop('fig', None)
         
@@ -401,27 +416,38 @@ def plot_on_figure(wrapped=None, update_method=None):
                 if filename:
                     fig.savefig(filename)
                     
-            # decide whether to show the final plot
-            if show or (show is None and is_outermost_plot_call):
+            # decide what to do with the final plot
+            if action == 'auto':
+                if is_outermost_plot_call:
+                    action = 'show'
+                else:
+                    action = 'create'
+                    
+            if action == 'show':
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     plt.show()
                     
-            if close_figure:
+            elif action == 'close':
                 plt.close(fig)
-            
+                
+            elif action != 'create':
+                raise ValueError(f'Unknown action `{action}`')  
+                      
         return reference    
         
-    # adjusting properties of the returned function to match the original
+    # adjusting the signature of the wrapped function to include wrapper args
     import inspect
-    signature = inspect.signature(wrapped)
-    if 'kwargs' not in signature.parameters:
-        # add the kwargs argument to the signature
-        kwargs = inspect.signature(wrapper).parameters['kwargs']
-        parameters = tuple(signature.parameters.values()) + (kwargs,)
-        signature = signature.replace(parameters=parameters)
-
-    wrapper.__signature__ = inspect.signature(wrapped)
+    sig_wrapped = inspect.signature(wrapped)
+    parameters = tuple(arg
+                       for name, arg in sig_wrapped.parameters.items()
+                       if name != 'kwargs' and name != 'fig')
+    
+    sig_wrapper = inspect.signature(wrapper)
+    parameters += tuple(sig_wrapper.parameters.values())
+    wrapper.__signature__ = sig_wrapped.replace(parameters=parameters)
+    
+    # adjusting additional properties of the function to match the wrapped one
     wrapper.__name__ = wrapped.__name__        
     wrapper.__module__ = wrapped.__module__
     wrapper.__dict__.update(wrapped.__dict__)

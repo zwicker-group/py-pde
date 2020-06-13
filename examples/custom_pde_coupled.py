@@ -41,4 +41,4 @@ state = FieldCollection.scalar_random_uniform(2, grid)
 
 eq = FitzhughNagumoPDE()
 result = eq.solve(state, t_range=10, dt=0.01)
-result.plot(show=True)
+result.plot()
