@@ -404,7 +404,7 @@ class GridBase(metaclass=ABCMeta):
             or as a decorator for the factory function::
                 
                 @GridClass.register_operator("operator")
-                def make_operator():
+                def make_operator(bcs: Boundaries):
                     ...
                     
         Args:
@@ -485,10 +485,10 @@ class GridBase(metaclass=ABCMeta):
                 return operator.factory(bcs, **kwargs)  # type: ignore
             
         # operator was not found
-        raise ValueError(f"'{name}' is not one of the defined operators: "
-                         f"{', '.join(sorted(self.operators))}. Custom "
-                         "operators can be added using the `register_operator` "
-                         "method.")
+        op_list = ', '.join(sorted(self.operators))
+        raise ValueError(f"'{name}' is not one of the defined operators "
+                         f"({op_list}). Custom operators can be added using "
+                         "the `register_operator` method.")
             
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":

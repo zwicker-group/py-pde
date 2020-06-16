@@ -1,7 +1,7 @@
 TODO
 ====
 * Accelerate some tests by not compiling
-* Introduce gradient squared operator -> ask Noah
+* Introduce gradient squared operator for Cartesian and Cylindrical grid
 * Fix scaling of `add_scaled_colorbar` for kymographs
 * pde.PDE:
     - add test for dot operator and custom boundary conditions
@@ -60,8 +60,6 @@ LOW-PRIORITY (Future ideas)
 * Think about implementing helmholtz solver
     - generally useful to discuss eigenvalues of laplace operator?
 * Add method showing the boundary condition as a mathematical equation
-* Use Parametrized for some simulations
-    - add to documentation how to use it
 * Consider using @numba.overload decorator instead of generated jit to support
 	out=None idiom
 * Ensure that stochastic simulations on a single core can be resumed from any

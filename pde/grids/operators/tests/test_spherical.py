@@ -88,8 +88,19 @@ def test_grid_laplace():
     np.testing.assert_allclose(b_1d_3.data[i, i, i], b_3d.data[i, i, i],
                                rtol=0.2, atol=0.2)
      
-     
 
+     
+@pytest.mark.parametrize('r_inner', (0, 1))
+def test_gradient_squared(r_inner):
+    """ compare gradient squared operator """
+    grid = SphericalGrid((r_inner, 5), 128)
+    field = ScalarField.random_harmonic(grid)
+    s1 = field.gradient_squared('natural')
+    s2 = field.gradient('natural').to_scalar('squared_sum')
+    np.testing.assert_allclose(s1.data, s2.data, rtol=0.2, atol=0.2)
+    
+     
+     
 def test_grid_div_grad():
     """ compare div grad to laplacian """
     grid = SphericalGrid(2*np.pi, 16)

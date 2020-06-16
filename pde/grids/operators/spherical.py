@@ -211,6 +211,59 @@ def make_gradient(bcs: Boundaries) -> Callable:
         
     return gradient  # type: ignore
 
+
+
+@SphericalGrid.register_operator('gradient_squared', rank_in=0, rank_out=0)
+@fill_in_docstring
+def make_gradient_squared(bcs: Boundaries) -> Callable:
+    """ make a discretized gradient squared operator for a spherical grid
+    
+    {DESCR_SPHERICAL_GRID}
+
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+        
+    Returns:
+        A function that can be applied to an array of values
+    """
+    assert isinstance(bcs.grid, SphericalGrid)
+    bcs.check_value_rank(0)
+
+    # calculate preliminary quantities
+    dim_r = bcs.grid.shape[0]
+    r_min, _ = bcs.grid.axes_bounds[0]
+    dr = bcs.grid.discretization[0]
+    scale_r2 = 1 / (2 * dr)**2
+    
+    # prepare boundary values
+    boundary = bcs[0]
+    value_lower_bc = boundary.low.make_virtual_point_evaluator()
+    value_upper_bc = boundary.high.make_virtual_point_evaluator()
+    
+    @jit_allocate_out(out_shape=(dim_r,))
+    def gradient_squared(arr, out=None):
+        """ apply gradient operator to array `arr` """
+        # no-flux at the origin 
+        i = 0
+        if r_min == 0:
+            out[i] = (arr[1] - arr[0])**2 * scale_r2
+        else:
+            arr_r_l = value_lower_bc(arr, (i,))
+            out[i] = (arr[1] - arr_r_l)**2 * scale_r2            
+        
+        for i in range(1, dim_r - 1):  # iterate inner radial points
+            out[i] = ((arr[i + 1] - arr[i])**2 +
+                      (arr[i] - arr[i - 1])**2) * 2 * scale_r2
+
+        i = dim_r - 1
+        arr_r_h = value_upper_bc(arr, (i,))
+        out[i] = (arr_r_h - arr[i - 1])**2 * scale_r2
+        
+        return out
+    
+    return gradient_squared  # type: ignore
+
     
 
 @SphericalGrid.register_operator('divergence', rank_in=1, rank_out=0)
