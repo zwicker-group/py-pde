@@ -243,7 +243,7 @@ def make_gradient_squared(bcs: Boundaries) -> Callable:
     
     @jit_allocate_out(out_shape=(dim_r,))
     def gradient_squared(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """ apply squared gradient operator to array `arr` """
         # no-flux at the origin 
         i = 0
         if r_min == 0:

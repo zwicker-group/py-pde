@@ -136,6 +136,16 @@ def test_grid_laplace():
      
      
      
+def test_gradient_squared():
+    """ compare gradient squared operator """
+    grid = CylindricalGrid(2*np.pi, [0, 2*np.pi], 128)
+    field = ScalarField.random_harmonic(grid)
+    s1 = field.gradient_squared('natural')
+    s2 = field.gradient('natural').to_scalar('squared_sum')
+    np.testing.assert_allclose(s1.data, s2.data, rtol=0.1, atol=0.1)
+    
+     
+     
 def test_grid_div_grad():
     """ compare div grad to laplacian """
     grid = CylindricalGrid(2*np.pi, (0, 2*np.pi), (16, 16), periodic_z=True)
