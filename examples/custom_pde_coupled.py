@@ -21,24 +21,26 @@ from pde import UnitGrid, FieldCollection, PDEBase
 
 class FitzhughNagumoPDE(PDEBase):
     """ FitzHugh–Nagumo model with diffusive coupling """
-    
-    def __init__(self, stimulus=.1, ε=1, bc='natural'):
+
+    def __init__(self, stimulus=.5, τ=10, a=0, b=0, bc='natural'):
         self.bc = bc
         self.stimulus = stimulus
-        self.ε = ε
-                
+        self.τ = τ
+        self.a = a
+        self.b = b
+
     def evolution_rate(self, state, t=0):
-        u, w = state  # membrane potential and recovery variable
-        
-        u_t = u.laplace(bc=self.bc) + u * (u - self.stimulus) * (1 - u) + w
-        w_t = self.ε * u
-        
-        return FieldCollection([u_t, w_t])
+        v, w = state  # membrane potential and recovery variable
+
+        v_t = v.laplace(bc=self.bc) + v - v**3 / 3 - w + self.stimulus
+        w_t = (v + self.a - self.b * w) / self.τ
+
+        return FieldCollection([v_t, w_t])
 
 
-grid = UnitGrid([16, 16])
+grid = UnitGrid([32, 32])
 state = FieldCollection.scalar_random_uniform(2, grid)
 
 eq = FitzhughNagumoPDE()
-result = eq.solve(state, t_range=10, dt=0.01)
+result = eq.solve(state, t_range=100, dt=0.01)
 result.plot()

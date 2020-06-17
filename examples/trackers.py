@@ -8,8 +8,8 @@ This example illustrates how trackers can be used to analyze simulations.
 from pde import (DiffusionPDE, UnitGrid, ScalarField, MemoryStorage,
                  PlotTracker, PrintTracker, RealtimeIntervals)
 
-grid = UnitGrid([16, 16])  # generate grid
-state = ScalarField.random_uniform(grid, 0.2, 0.3)  # generate initial condition
+grid = UnitGrid([32, 32])  # generate grid
+state = ScalarField.random_uniform(grid)  # generate initial condition
 
 storage = MemoryStorage()
 
@@ -22,8 +22,8 @@ trackers = [
     PrintTracker(interval=RealtimeIntervals(duration=5))
 ]
 
-eq = DiffusionPDE()  # define the PDE
-eq.solve(state, 10, dt=0.1, tracker=trackers)
+eq = DiffusionPDE(0.1)  # define the PDE
+eq.solve(state, 3, dt=0.1, tracker=trackers)
 
 
 for field in storage:

@@ -25,7 +25,7 @@ class KuramotoSivashinskyPDE(PDEBase):
         return -state_grad.to_scalar('squared_sum') / 2 - state_lap - state_lap2 
 
 
-grid = UnitGrid([16, 16])  # generate grid
+grid = UnitGrid([32, 32])  # generate grid
 state = ScalarField.random_uniform(grid)  # generate initial condition
 
 eq = KuramotoSivashinskyPDE()  # define the pde
