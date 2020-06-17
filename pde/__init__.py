@@ -3,7 +3,7 @@ The py-pde package provides classes and methods for solving partial differential
 equations.
 """
 
-__version__ = "0.8.3"
+__version__ = "0.8.4"
 
 from .fields import *  # @UnusedWildImport
 from .grids import *  # @UnusedWildImport
