@@ -19,6 +19,8 @@ import logging
 from collections import OrderedDict
 from typing import Sequence, Dict, Any, Union
 
+import numpy as np
+
 from pde.tools.misc import import_class, hybridmethod, in_jupyter_notebook
 
 
@@ -51,9 +53,16 @@ class Parameter():
         self.cls = cls
         self.description = description
         self.hidden = hidden
-        if cls is not object and cls(default_value) != default_value:
-            logging.warning('Default value `%s` does not seem to be of type '
-                            '`%s`', name, cls.__name__)
+        if cls is not object:
+            # check whether the default value is of the correct type
+            converted_value = cls(default_value) 
+            if isinstance(converted_value, np.ndarray):
+                valid_default = np.allclose(converted_value, default_value) 
+            else:
+                valid_default = (converted_value == default_value)
+            if not valid_default:
+                logging.warning('Default value `%s` does not seem to be of '
+                                'type `%s`', name, cls.__name__)
     
         
     def __repr__(self):

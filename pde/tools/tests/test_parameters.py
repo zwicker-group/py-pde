@@ -4,8 +4,10 @@
 
 import itertools
 import pickle
+import logging
 
 import pytest
+import numpy as np
 
 from ..parameters import (Parameter, DeprecatedParameter, HideParameter,
                           Parameterized, get_all_parameters)
@@ -141,3 +143,30 @@ def test_get_all_parameters():
         assert set(p1) == p2.keys()
     
     
+    
+def test_convert_default_values(caplog):
+    """ test how default values are handled """
+    class Test1(Parameterized):
+        parameters_default = [Parameter('a', 1, float)]
+    with caplog.at_level(logging.WARNING):
+        t1 = Test1()
+    assert 'Default value' not in caplog.text
+    assert isinstance(t1.parameters['a'], float)
+    
+    class Test2(Parameterized):
+        parameters_default = [Parameter('a', np.arange(3), np.array)]
+    t2 = Test2()
+    np.testing.assert_equal(t2.parameters['a'], np.arange(3))
+            
+    class Test3(Parameterized):
+        parameters_default = [Parameter('a', [0, 1, 2], np.array)]
+    t3 = Test3()
+    np.testing.assert_equal(t3.parameters['a'], np.arange(3))
+            
+    class Test4(Parameterized):
+        parameters_default = [Parameter('a', 1, str)]
+    with caplog.at_level(logging.WARNING):
+        t4 = Test4()
+    assert 'Default value' in caplog.text
+    np.testing.assert_equal(t4.parameters['a'], '1')
+        
