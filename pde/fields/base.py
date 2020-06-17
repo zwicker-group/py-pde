@@ -1245,8 +1245,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """ applies a function to the data and returns it as a field
         
         Args:
-            func (callable):
-                The (vectorized) function being applied to the data.
+            func (callable or str):
+                The (vectorized) function being applied to the data or the name
+                of an operator that is defined for the grid of this field.
             out (FieldBase, optional):
                 Optional field into which the data is written
             label (str, optional):
