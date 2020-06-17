@@ -30,6 +30,41 @@ import numpy as np
 
 
 
+def objects_equal(a, b) -> bool:
+    """ compares two objects to see whether they are equal
+    
+    In particular, this uses :func:`numpy.array_equal` to check for numpy arrays
+    
+    Args:
+        a: The first object
+        b: The second object
+        
+    Returns:
+        bool: Whether the two objects are considered equal
+    """
+    # compare numpy arrays
+    if isinstance(a, np.ndarray):
+        return np.array_equal(a, b)  # type: ignore
+    if isinstance(b, np.ndarray):
+        return np.array_equal(b, a)  # type: ignore
+
+    # compare dictionaries     
+    if isinstance(a, dict):
+        if not isinstance(b, dict) or len(a) != len(b):
+            return False
+        return all(objects_equal(v, b[k])
+                   for k, v in a.items())
+    
+    if isinstance(a, (tuple, list)):
+        if a.__class__ != b.__class__ or len(a) != len(b):
+            return False
+        return all(objects_equal(x, y) for x, y in zip(a, b))
+    
+    # use direct comparison
+    return a == b  # type: ignore
+
+
+
 def _hash_iter(it: Iterable) -> int:
     """ get hash of an iterable but turning it into a tuple first """
     return hash(tuple(it))

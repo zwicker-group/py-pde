@@ -60,6 +60,35 @@ def deep_getsizeof(obj, ids=None):
 
 
 
+def test_objects_equal():
+    """ test the objects_equal function """
+    # basic python objects
+    eq = cache.objects_equal
+    assert eq(1, 1)
+    assert eq(1, 1.)
+    assert eq((1,), (1,))
+    assert eq([1], [1])
+    assert eq({'a': 1}, {'a': 1})
+    
+    assert not eq(1, "1")
+    assert not eq(1, (1,))
+    assert not eq(1, [1])
+    assert not eq((1,), [1])
+    assert not eq(1, {'a': 1})
+    assert not eq({'a': 1}, {'a': 1, 'b': 2})
+
+    # test numpy arrays
+    a = np.arange(3)
+    b = np.arange(4)
+    assert eq(a, a)
+    assert eq(a, [0, 1, 2])
+    assert eq([0, 1, 2], a)
+    assert not eq(a, b)
+    assert eq([a], [a])
+    assert eq({'a': a}, {'a': a})
+
+
+
 def get_serialization_methods(with_none=True):
     """ returns possible methods for serialization that are supported """
     methods = ['json', 'pickle']
