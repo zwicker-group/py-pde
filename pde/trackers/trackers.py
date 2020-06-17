@@ -10,6 +10,7 @@ The trackers defined in this module are:
    ProgressTracker
    PrintTracker
    PlotTracker
+   PlotInteractiveTracker
    DataTracker
    SteadyStateTracker
    RuntimeTracker
@@ -240,15 +241,20 @@ class PrintTracker(TrackerBase):
 
 
 class PlotTracker(TrackerBase):
-    """ Tracker that plots data on screen, to files, or writes a movie """
+    """ Tracker that plots the state, either on screen or to a file
+    
+    This tracker can be used to create movies from simulations or to simply
+    update a single image file on the fly (i.e. to monitor simulations running
+    on a cluster). The default values of this tracker are chosen with regular
+    output to a file in mind.
+    """
     
     @fill_in_docstring
-    def __init__(self, interval: IntervalData = 1,
+    def __init__(self, interval: IntervalData = 1, *,
                  title: Union[str, Callable] = 'Time: {time:g}',
                  output_file: Optional[str] = None,
                  movie: Union[str, Path, 'Movie'] = None,
-                 show: bool = True,
-                 close_final: bool = False,
+                 show: bool = False,
                  plot_args: Dict[str, Any] = None,
                  **kwargs):
         """
@@ -278,6 +284,16 @@ class PlotTracker(TrackerBase):
                 be used to specify axes ranges when a single panel is shown. For
                 instance, the value `{'ax_style': {'ylim': (0, 1)}}` enforces
                 the y-axis to lie between 0 and 1.
+                
+        Note:
+            If an instance of :class:`~pde.visualization.movies.Movie` is given
+            as the `movie` argument, it can happen that the movie is not written
+            to the file when the simulation ends. This is because, the movie 
+            could still be extended by appending frames. To write the movie to
+            a file call its :meth:`~pde.visualization.movies.Movie.save` method.
+            Beside adding frames before and after the simulation, an explicit
+            movie object can also be used to adjust the output, e.g., by setting
+            the `dpi` argument or the `frame_rate`. 
         """
         from ..visualization.movies import Movie  # @Reimport
         
@@ -305,7 +321,6 @@ class PlotTracker(TrackerBase):
         self.title = title
         self.output_file = output_file
         self.show = show
-        self.close_final = close_final
         
         self.plot_args = {} if plot_args is None else plot_args.copy()
         # make sure the plot is only create and not shown since the context
@@ -439,7 +454,7 @@ class PlotTracker(TrackerBase):
             # end recording the movie (e.g. delete temporary files)
             self.movie._end()  # type: ignore
             
-        if not self.show or self.close_final:
+        if not self.show:
             self._context.close()
     
     
@@ -447,14 +462,18 @@ class PlotTracker(TrackerBase):
 class PlotInteractiveTracker(PlotTracker):
     """ Tracker that plots data on screen, to files, or writes a movie
     
-    The only difference to :class:`PlotTracker` is the changed default interval,
-    that is more suitable for interactive plotting.    
+    The only difference to :class:`PlotTracker` are the changed default values,
+    where output is by default shown on screen and the `interval` is set
+    something more suitable for interactive plotting. In particular, this
+    tracker can be enabled by simply listing 'plot' as a tracker. 
     """
      
     name = 'plot'
     
     @fill_in_docstring
-    def __init__(self, interval: IntervalData = '0:02', **kwargs):
+    def __init__(self, interval: IntervalData = '0:02', *,
+                 show: bool = True,
+                 **kwargs):
         """
         Args:
             interval:
@@ -478,7 +497,7 @@ class PlotInteractiveTracker(PlotTracker):
             plot_args (dict):
                 Extra arguments supplied to the plot call
         """
-        super().__init__(interval=interval, **kwargs)    
+        super().__init__(interval=interval, show=show, **kwargs)    
     
               
     
@@ -816,5 +835,6 @@ class MaterialConservationTracker(TrackerBase):
             
             
 __all__ = ['CallbackTracker', 'ProgressTracker', 'PrintTracker', 'PlotTracker',
-           'DataTracker', 'SteadyStateTracker', 'RuntimeTracker',
-           'ConsistencyTracker', 'MaterialConservationTracker']
+           'PlotInteractiveTracker', 'DataTracker', 'SteadyStateTracker',
+           'RuntimeTracker', 'ConsistencyTracker',
+           'MaterialConservationTracker']
