@@ -151,6 +151,106 @@ def make_gradient(bcs: Boundaries) -> Callable:
 
 
 
+@CylindricalGrid.register_operator('gradient_squared', rank_in=0, rank_out=0)
+@fill_in_docstring
+def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
+    """ make a discretized gradient squared operator for a cylindrical grid
+    
+    {DESCR_CYLINDRICAL_GRID}
+
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+        central (bool):
+            Whether a central difference approximation is used for the gradient
+            operator. If this is False, the squared gradient is calculated as
+            the mean of the squared values of the forward and backward
+            derivatives.
+        
+    Returns:
+        A function that can be applied to an array of values
+    """
+    assert isinstance(bcs.grid, CylindricalGrid)
+    bcs.check_value_rank(0)
+    boundary_r, boundary_z = bcs
+
+    # calculate preliminary quantities
+    dim_r, dim_z = bcs.grid.shape
+    
+    value_outer = boundary_r.high.make_virtual_point_evaluator()
+    region_z = boundary_z.make_region_evaluator()
+
+    # use processing for large enough arrays 
+    parallel = (dim_r * dim_z >= PARALLELIZATION_THRESHOLD_2D**2)
+
+    if central:
+        # use central differences
+        scale_r, scale_z = 1 / (2 * bcs.grid.discretization)**2
+            
+        @jit_allocate_out(parallel=parallel, out_shape=(dim_r, dim_z))
+        def gradient_squared(arr, out=None):
+            """ apply gradient operator to array `arr` """
+            for j in nb.prange(0, dim_z):  # iterate axial points
+                # inner radial boundary condition (Neumann condition)
+                i = 0
+                arr_z_l, _, arr_z_h = region_z(arr, (i, j))
+                term_r = (arr[1, j] - arr[0, j])**2 * scale_r
+                term_z = (arr_z_h - arr_z_l)**2 * scale_z
+                out[i, j] = term_r + term_z
+                
+                for i in range(1, dim_r - 1):  # iterate radial points
+                    arr_z_l, _, arr_z_h = region_z(arr, (i, j))
+                    term_r = (arr[i + 1, j] - arr[i - 1, j])**2 * scale_r
+                    term_z = (arr_z_h - arr_z_l)**2 * scale_z
+                    out[i, j] = term_r + term_z
+                    
+                # outer radial boundary condition
+                i = dim_r - 1
+                arr_z_l, _, arr_z_h = region_z(arr, (i, j))
+                arr_r_h = value_outer(arr, (i, j))
+                term_r = (arr_r_h - arr[i - 1, j])**2 * scale_r
+                term_z = (arr_z_h - arr_z_l)**2 * scale_z
+                out[i, j] = term_r + term_z
+                
+            return out        
+    else:
+        # use forward and backward differences
+        scale_r, scale_z = 1 / (2 * bcs.grid.discretization**2)
+            
+        @jit_allocate_out(parallel=parallel, out_shape=(dim_r, dim_z))
+        def gradient_squared(arr, out=None):
+            """ apply gradient operator to array `arr` """
+            for j in nb.prange(0, dim_z):  # iterate axial points
+                # inner radial boundary condition (Neumann condition)
+                i = 0
+                arr_z_l, arr_c, arr_z_h = region_z(arr, (i, j))
+                term_r = (arr[1, j] - arr[0, j])**2 * scale_r
+                term_z = ((arr_z_h - arr_c)**2 + (arr_c - arr_z_l)**2) * scale_z
+                out[i, j] = term_r + term_z
+                
+                for i in range(1, dim_r - 1):  # iterate radial points
+                    arr_z_l, arr_c, arr_z_h = region_z(arr, (i, j))
+                    term_r = ((arr[i + 1, j] - arr_c)**2 +
+                              (arr_c - arr[i - 1, j])**2) * scale_r
+                    term_z = ((arr_z_h - arr_c)**2 +
+                              (arr_c - arr_z_l)**2) * scale_z
+                    out[i, j] = term_r + term_z
+                    
+                # outer radial boundary condition
+                i = dim_r - 1
+                arr_z_l, arr_c, arr_z_h = region_z(arr, (i, j))
+                arr_r_h = value_outer(arr, (i, j))
+                term_r = ((arr_r_h - arr_c)**2 +
+                          (arr_c - arr[i - 1, j])**2) * scale_r
+                term_z = ((arr_z_h - arr_c)**2 + (arr_c - arr_z_l)**2) * scale_z
+                out[i, j] = term_r + term_z
+                
+            return out
+    
+    return gradient_squared  # type: ignore
+
+
+
 @CylindricalGrid.register_operator('divergence', rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(bcs: Boundaries) -> Callable:

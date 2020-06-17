@@ -169,8 +169,9 @@ class ScalarField(DataFieldBase):
         
     @fill_in_docstring
     def gradient_squared(self, bc: "BoundariesData",
+                         central: bool = True,
                          out: Optional['ScalarField'] = None,
-                         label: str = 'gradient_squared') -> 'ScalarField':
+                         label: str = 'squared gradient') -> 'ScalarField':
         r""" apply squared gradient operator and return result as a field
         
         This evaluates :math:`|\nabla \phi|^2` for the scalar field :math:`\phi`
@@ -179,6 +180,12 @@ class ScalarField(DataFieldBase):
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
+            central (bool):
+                Determines whether a central difference approximation is used
+                for the gradient operator or not. If not, the squared gradient
+                is calculated as the mean of the squared values of the forward
+                and backward derivatives, which thus includes the value at a
+                support point in the result at the same point.
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
             label (str, optional):
@@ -189,7 +196,8 @@ class ScalarField(DataFieldBase):
         """
         if out is not None:
             assert isinstance(out, ScalarField)
-        gradient_squared = self.grid.get_operator('gradient_squared', bc=bc)
+        gradient_squared = self.grid.get_operator('gradient_squared', bc=bc,
+                                                  central=central)
         return self.apply(gradient_squared, out=out, label=label)
         
         

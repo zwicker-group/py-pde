@@ -52,7 +52,7 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
                                  'does not match grid dimension '
                                  f'({len(periodic)} != {self.dim})')
         else:
-            self.periodic = periodic
+            self.periodic = list(periodic)
         
         if self.dim <= 3:
             self.axes = list('xyz'[:self.dim])

@@ -1,7 +1,10 @@
 TODO
 ====
+* Improve style of examples (better resolution)
 * Accelerate some tests by not compiling
 * Introduce gradient squared operator for Cartesian and Cylindrical grid
+    - write the kernel for all operators and use the boundary conditions also
+      in the case of polar and spherical grids
 * Fix scaling of `add_scaled_colorbar` for kymographs
 * pde.PDE:
     - add test for dot operator and custom boundary conditions

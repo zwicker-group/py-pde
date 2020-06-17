@@ -639,7 +639,7 @@ def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
             gradient = _make_gradient_numba_3d(bcs)
         else:
             raise NotImplementedError('Numba gradient operator not '
-                                      f'implemented for {dim}')
+                                      f'implemented for dimension {dim}')
                                       
     elif method == 'scipy':
         gradient = _make_gradient_scipy_nd(bcs)
@@ -648,6 +648,233 @@ def make_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
         raise ValueError(f'Method `{method}` is not defined')
         
     return gradient
+
+
+
+@fill_in_docstring
+def _make_gradient_squared_numba_1d(bcs: Boundaries, central: bool = True) \
+        -> Callable:
+    """ make a 1d squared gradient operator using numba compilation
+    
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+        central (bool):
+            Whether a central difference approximation is used for the gradient
+            operator. If this is False, the squared gradient is calculated as
+            the mean of the squared values of the forward and backward
+            derivatives.
+        
+    Returns:    
+        A function that can be applied to an array of values
+    """
+    dim_x = bcs.grid.shape[0]
+    region_x = bcs[0].make_region_evaluator()
+    
+    if central:
+        # use central differences
+        scale = 1 / (2 * bcs.grid.discretization[0])**2
+            
+        @jit_allocate_out(out_shape=(dim_x, ))
+        def gradient_squared(arr, out=None):
+            """ apply squared gradient operator to array `arr` """
+            for i in range(dim_x):
+                valm, _, valp = region_x(arr, (i,))
+                out[i] = (valp - valm)**2 * scale
+                    
+            return out
+                
+    else:
+        # use forward and backward differences
+        scale = 1 / (2 * bcs.grid.discretization[0]**2)
+            
+        @jit_allocate_out(out_shape=(dim_x, ))
+        def gradient_squared(arr, out=None):
+            """ apply squared gradient operator to array `arr` """
+            for i in range(dim_x):
+                valm, valc, valp = region_x(arr, (i,))
+                out[i] = ((valp - valc)**2 + (valc - valm)**2) * scale
+                    
+            return out        
+            
+    return gradient_squared  # type: ignore
+
+
+
+@fill_in_docstring
+def _make_gradient_squared_numba_2d(bcs: Boundaries, central: bool = True) \
+        -> Callable:
+    """ make a 2d squared gradient operator using numba compilation
+    
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+        central (bool):
+            Whether a central difference approximation is used for the gradient
+            operator. If this is False, the squared gradient is calculated as
+            the mean of the squared values of the forward and backward
+            derivatives.
+        
+    Returns:
+        A function that can be applied to an array of values    
+    """
+    dim_x, dim_y = bcs.grid.shape
+    
+    region_x = bcs[0].make_region_evaluator()
+    region_y = bcs[1].make_region_evaluator()
+
+    # use parallel processing for large enough arrays 
+    parallel = (dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D**2)
+            
+    if central:
+        # use central differences
+        scale_x, scale_y = 1 / (2 * bcs.grid.discretization)**2
+        
+        @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y))
+        def gradient_squared(arr, out=None):
+            """ apply squared gradient operator to array `arr` """
+            for i in nb.prange(dim_x):
+                for j in range(dim_y):
+                    arr_x_l, _, arr_x_h = region_x(arr, (i, j))
+                    arr_y_l, _, arr_y_h = region_y(arr, (i, j))
+                        
+                    term_x = (arr_x_h - arr_x_l)**2 * scale_x
+                    term_y = (arr_y_h - arr_y_l)**2 * scale_y
+                    out[i, j] = term_x + term_y
+                    
+            return out
+                
+    else:
+        # use forward and backward differences
+        scale_x, scale_y = 1 / (2 * bcs.grid.discretization**2)
+            
+        @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y))
+        def gradient_squared(arr, out=None):
+            """ apply squared gradient operator to array `arr` """
+            for i in nb.prange(dim_x):
+                for j in range(dim_y):
+                    arr_x_l, arr_c, arr_x_h = region_x(arr, (i, j))
+                    arr_y_l, _, arr_y_h = region_y(arr, (i, j))
+                        
+                    term_x = ((arr_x_h - arr_c)**2 +
+                              (arr_c - arr_x_l)**2) * scale_x
+                    term_y = ((arr_y_h - arr_c)**2 + 
+                              (arr_c - arr_y_l)**2) * scale_y
+                    out[i, j] = term_x + term_y
+                    
+            return out
+                
+            
+    return gradient_squared  # type: ignore
+
+
+
+@fill_in_docstring
+def _make_gradient_squared_numba_3d(bcs: Boundaries, central: bool = True) \
+        -> Callable:
+    """ make a 3d squared gradient operator using numba compilation
+    
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+        central (bool):
+            Whether a central difference approximation is used for the gradient
+            operator. If this is False, the squared gradient is calculated as
+            the mean of the squared values of the forward and backward
+            derivatives.
+        
+    Returns:
+        A function that can be applied to an array of values    
+    """
+    dim_x, dim_y, dim_z = bcs.grid.shape
+    
+    region_x = bcs[0].make_region_evaluator()
+    region_y = bcs[1].make_region_evaluator()
+    region_z = bcs[2].make_region_evaluator()
+    
+    # use parallel processing for large enough arrays 
+    parallel = (dim_x * dim_y * dim_z >= PARALLELIZATION_THRESHOLD_3D**3)
+    
+    if central:
+        # use central differences
+        scale_x, scale_y, scale_z = 1 / (2 * bcs.grid.discretization)**2
+        
+        @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y, dim_z))
+        def gradient_squared(arr, out=None):
+            """ apply squared gradient operator to array `arr` """
+            for i in nb.prange(dim_x):
+                for j in range(dim_y):
+                    for k in range(dim_z):
+                        arr_x_l, _, arr_x_h = region_x(arr, (i, j, k))
+                        arr_y_l, _, arr_y_h = region_y(arr, (i, j, k))
+                        arr_z_l, _, arr_z_h = region_z(arr, (i, j, k))
+    
+                        term_x = (arr_x_h - arr_x_l)**2 * scale_x
+                        term_y = (arr_y_h - arr_y_l)**2 * scale_y
+                        term_z = (arr_z_h - arr_z_l)**2 * scale_z
+                        out[i, j, k] = term_x + term_y + term_z
+                
+            return out        
+
+    else:
+        # use forward and backward differences
+        scale_x, scale_y, scale_z = 1 / (2 * bcs.grid.discretization**2)
+            
+        @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y, dim_z))
+        def gradient_squared(arr, out=None):
+            """ apply squared gradient operator to array `arr` """
+            for i in nb.prange(dim_x):
+                for j in range(dim_y):
+                    for k in range(dim_z):
+                        arr_x_l, arr_c, arr_x_h = region_x(arr, (i, j, k))
+                        arr_y_l, _, arr_y_h = region_y(arr, (i, j, k))
+                        arr_z_l, _, arr_z_h = region_z(arr, (i, j, k))
+    
+                        term_x = ((arr_x_h - arr_c)**2 +
+                                  (arr_c - arr_x_l)**2) * scale_x
+                        term_y = ((arr_y_h - arr_c)**2 + 
+                                  (arr_c - arr_y_l)**2) * scale_y
+                        term_z = ((arr_z_h - arr_c)**2 + 
+                                  (arr_z_l - arr_c)**2) * scale_z
+                        out[i, j, k] = term_x + term_y + term_z                        
+                
+            return out        
+        
+    return gradient_squared  # type: ignore
+
+
+
+@CartesianGridBase.register_operator('gradient_squared', rank_in=0, rank_out=0)
+@fill_in_docstring
+def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
+    """ make a gradient operator on a Cartesian grid
+
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+        central (bool):
+            Whether a central difference approximation is used for the gradient
+            operator. If this is False, the squared gradient is calculated as
+            the mean of the squared values of the forward and backward
+            derivatives.
+        
+    Returns:
+        A function that can be applied to an array of values
+    """
+    dim = bcs.grid.dim
+    bcs.check_value_rank(0)
+
+    if dim == 1:
+        gradient_squared = _make_gradient_squared_numba_1d(bcs, central=central)
+    elif dim == 2:
+        gradient_squared = _make_gradient_squared_numba_2d(bcs, central=central)
+    elif dim == 3:
+        gradient_squared = _make_gradient_squared_numba_3d(bcs, central=central)
+    else:
+        raise NotImplementedError('Squared gradient operator is not '
+                                  f'implemented for dimension {dim}')
+                                      
+    return gradient_squared
 
 
 
@@ -828,7 +1055,7 @@ def make_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
             divergence = _make_divergence_numba_3d(bcs)
         else:
             raise NotImplementedError('Numba divergence operator not '
-                                      f'implemented for {dim}')
+                                      f'implemented for dimension {dim}')
                                       
     elif method == 'scipy':
         divergence = _make_divergence_scipy_nd(bcs)
@@ -982,7 +1209,7 @@ def make_vector_gradient(bcs: Boundaries, method: str = 'auto') -> Callable:
             gradient = _make_vector_gradient_numba_3d(bcs)
         else:
             raise NotImplementedError('Numba vector gradient operator not '
-                                      f'implemented for {dim}')
+                                      f'implemented for dimension {dim}')
                                       
     elif method == 'scipy':
         gradient = _make_vector_gradient_scipy_nd(bcs)
@@ -1131,7 +1358,7 @@ def make_vector_laplace(bcs: Boundaries, method: str = 'auto') -> Callable:
             gradient = _make_vector_laplace_numba_3d(bcs)
         else:
             raise NotImplementedError('Numba vector gradient operator not '
-                                      f'implemented for {dim}')
+                                      f'implemented for dimension {dim}')
                                       
     elif method == 'scipy':
         gradient = _make_vector_laplace_scipy_nd(bcs)
@@ -1287,7 +1514,7 @@ def make_tensor_divergence(bcs: Boundaries, method: str = 'auto') -> Callable:
             func = _make_tensor_divergence_numba_3d(bcs)
         else:
             raise NotImplementedError('Numba tensor divergence operator not '
-                                      f'implemented for {dim}')
+                                      f'implemented for dimension {dim}')
                                       
     elif method == 'scipy':
         func = _make_tensor_divergence_scipy_nd(bcs)

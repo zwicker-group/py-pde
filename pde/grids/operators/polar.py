@@ -59,6 +59,7 @@ def make_laplace(bcs: Boundaries) -> Callable:
         """ apply laplace operator to array `arr` """
         i = 0
         if r_min == 0:
+            # Apply Neumann condition at the origin 
             out[i] = 2 * (arr[i + 1] - arr[i]) * dr_2
         else:
             arr_r_l = value_lower_bc(arr, (i,))
@@ -111,9 +112,9 @@ def make_gradient(bcs: Boundaries) -> Callable:
     @jit_allocate_out(out_shape=(2, dim_r))
     def gradient(arr, out=None):
         """ apply gradient operator to array `arr` """
-        # no-flux at the origin 
         i = 0
         if r_min == 0:
+            # Apply Neumann condition at the origin 
             out[0, i] = (arr[1] - arr[0]) * scale_r
         else:
             arr_r_l = value_lower_bc(arr, (i,))
@@ -137,7 +138,7 @@ def make_gradient(bcs: Boundaries) -> Callable:
 
 @PolarGrid.register_operator('gradient_squared', rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_gradient_squared(bcs: Boundaries) -> Callable:
+def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
     """ make a discretized gradient squared operator for a polar grid
     
     {DESCR_POLAR_GRID}
@@ -145,6 +146,11 @@ def make_gradient_squared(bcs: Boundaries) -> Callable:
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
+        central (bool):
+            Whether a central difference approximation is used for the gradient
+            operator. If this is False, the squared gradient is calculated as
+            the mean of the squared values of the forward and backward
+            derivatives.
         
     Returns:
         A function that can be applied to an array of values
@@ -156,33 +162,58 @@ def make_gradient_squared(bcs: Boundaries) -> Callable:
     dim_r = bcs.grid.shape[0]
     r_min, _ = bcs.grid.axes_bounds[0]
     dr = bcs.grid.discretization[0]
-    scale_r2 = 1 / (2 * dr)**2
     
     # prepare boundary values
     boundary = bcs[0]
     value_lower_bc = boundary.low.make_virtual_point_evaluator()
     value_upper_bc = boundary.high.make_virtual_point_evaluator()
+        
+    if central:
+        # use central differences
+        scale = 1 / (2 * dr)**2
+        
+        @jit_allocate_out(out_shape=(dim_r,))
+        def gradient_squared(arr, out=None):
+            """ apply squared gradient operator to array `arr` """
+            if r_min == 0:
+                # Apply Neumann condition at the origin 
+                out[0] = (arr[1] - arr[0])**2 * scale
+            else:
+                arr_r_l = value_lower_bc(arr, (0,))
+                out[0] = (arr[1] - arr_r_l)**2 * scale
+            
+            for i in range(1, dim_r - 1):  # iterate inner radial points
+                out[i] = (arr[i + 1] - arr[i - 1])**2 * scale
     
-    @jit_allocate_out(out_shape=(dim_r,))
-    def gradient_squared(arr, out=None):
-        """ apply gradient operator to array `arr` """
-        # no-flux at the origin 
-        i = 0
-        if r_min == 0:
-            out[i] = (arr[1] - arr[0])**2 * scale_r2
-        else:
-            arr_r_l = value_lower_bc(arr, (i,))
-            out[i] = (arr[1] - arr_r_l)**2 * scale_r2            
+            i = dim_r - 1
+            arr_r_h = value_upper_bc(arr, (i,))
+            out[i] = (arr_r_h - arr[i - 1])**2 * scale
+            
+            return out
+                
+    else:                
+        # use forward and backward differences
+        scale = 1 / (2 * dr**2)
         
-        for i in range(1, dim_r - 1):  # iterate inner radial points
-            out[i] = ((arr[i + 1] - arr[i])**2 +
-                      (arr[i] - arr[i - 1])**2) * 2 * scale_r2
-
-        i = dim_r - 1
-        arr_r_h = value_upper_bc(arr, (i,))
-        out[i] = (arr_r_h - arr[i - 1])**2 * scale_r2
-        
-        return out
+        @jit_allocate_out(out_shape=(dim_r,))
+        def gradient_squared(arr, out=None):
+            """ apply squared gradient operator to array `arr` """
+            if r_min == 0:
+                # Apply Neumann condition at the origin 
+                out[0] = (arr[1] - arr[0])**2 * scale
+            else:
+                arr_r_l = value_lower_bc(arr, (0,))
+                out[0] = ((arr[1] - arr[0])**2 + (arr[0] - arr_r_l)**2) * scale
+            
+            for i in range(1, dim_r - 1):  # iterate inner radial points
+                out[i] = ((arr[i + 1] - arr[i])**2 +
+                          (arr[i] - arr[i - 1])**2) * scale
+    
+            i = dim_r - 1
+            arr_r_h = value_upper_bc(arr, (i,))
+            out[i] = ((arr_r_h - arr[i])**2 + (arr[i] - arr[i - 1])**2) * scale
+            
+            return out
     
     return gradient_squared  # type: ignore
 
