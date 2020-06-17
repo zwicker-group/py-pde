@@ -138,13 +138,13 @@ def test_grid_laplace():
      
 def test_gradient_squared():
     """ compare gradient squared operator """
-    grid = CylindricalGrid(2*np.pi, [0, 2*np.pi], 128)
-    field = ScalarField.random_harmonic(grid)
+    grid = CylindricalGrid(2*np.pi, [0, 2*np.pi], 64)
+    field = ScalarField.random_harmonic(grid, modes=1)
     s1 = field.gradient('natural').to_scalar('squared_sum')
     s2 = field.gradient_squared('natural', central=True)
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.1, atol=0.1)
     s3 = field.gradient_squared('natural', central=False)
-    np.testing.assert_allclose(s1.data, s3.data, rtol=0.2, atol=0.2)
+    np.testing.assert_allclose(s1.data, s3.data, rtol=0.1, atol=0.1)
     assert not np.array_equal(s2.data, s3.data)
     
      
