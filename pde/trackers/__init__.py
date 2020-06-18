@@ -11,7 +11,6 @@ analyze, store, or output it.  The trackers defined in this module are:
    ~trackers.ProgressTracker
    ~trackers.PrintTracker
    ~trackers.PlotTracker
-   ~trackers.PlotInteractiveTracker
    ~trackers.DataTracker
    ~trackers.SteadyStateTracker
    ~trackers.RuntimeTracker

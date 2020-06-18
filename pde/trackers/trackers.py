@@ -10,7 +10,6 @@ The trackers defined in this module are:
    ProgressTracker
    PrintTracker
    PlotTracker
-   PlotInteractiveTracker
    DataTracker
    SteadyStateTracker
    RuntimeTracker
@@ -254,7 +253,7 @@ class PlotTracker(TrackerBase):
                  title: Union[str, Callable] = 'Time: {time:g}',
                  output_file: Optional[str] = None,
                  movie: Union[str, Path, 'Movie'] = None,
-                 show: bool = False,
+                 show: bool = None,
                  plot_args: Dict[str, Any] = None,
                  **kwargs):
         """
@@ -278,7 +277,9 @@ class PlotTracker(TrackerBase):
             show (bool, optional):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
-                This option can slow down a simulation severely.
+                This option can slow down a simulation severely. For the default
+                value of `None`, the images are only shown if neither 
+                `output_file` nor `movie` is set.
             plot_args (dict):
                 Extra arguments supplied to the plot call. For example, this can
                 be used to specify axes ranges when a single panel is shown. For
@@ -320,7 +321,6 @@ class PlotTracker(TrackerBase):
         super().__init__(interval=interval)
         self.title = title
         self.output_file = output_file
-        self.show = show
         
         self.plot_args = {} if plot_args is None else plot_args.copy()
         # make sure the plot is only create and not shown since the context
@@ -343,6 +343,12 @@ class PlotTracker(TrackerBase):
         else:
             raise TypeError('Unknown type of argument `movie`: '
                             f'{movie.__class__.__name__}')
+
+        # determine whether to show the images interactively            
+        if show is None:
+            self.show = not (self._save_movie or self.output_file)
+        else:
+            self.show = show
         
      
     def initialize(self, state: FieldBase, info: InfoDict = None) -> float:
@@ -835,6 +841,5 @@ class MaterialConservationTracker(TrackerBase):
             
             
 __all__ = ['CallbackTracker', 'ProgressTracker', 'PrintTracker', 'PlotTracker',
-           'PlotInteractiveTracker', 'DataTracker', 'SteadyStateTracker',
-           'RuntimeTracker', 'ConsistencyTracker',
-           'MaterialConservationTracker']
+           'DataTracker', 'SteadyStateTracker', 'RuntimeTracker',
+           'ConsistencyTracker', 'MaterialConservationTracker']
