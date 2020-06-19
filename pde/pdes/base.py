@@ -65,6 +65,28 @@ class PDEBase(metaclass=ABCMeta):
         # check for self.noise, in case __init__ is not called in a subclass
         return hasattr(self, 'noise') and self.noise != 0
 
+  
+
+
+    # predefine noise regularizer without function, can be overwritten  
+    def make_state_regularizer(self) -> Callable:
+        """ returns a function that can be called to regularize a state
+        
+        Returns:
+            Function that can be applied to a state to regularize it and which
+            returns a measure for the corrections applied to the state 
+        """
+        
+        def regularizer(phi):
+            """ returns neutral regularizer 
+            """
+            correction = 0
+            return correction
+
+        return regularizer
+
+
+
 
     @abstractmethod
     def evolution_rate(self, field: FieldBase, t: float = 0) \
