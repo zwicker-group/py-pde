@@ -76,7 +76,7 @@ class ExplicitSolver(SolverBase):
                     state_data += dt * evolution_rate
                     if noise_realization is not None:
                         state_data += np.sqrt(dt) * noise_realization
-                    regularize(state.data)
+                    regularize(state_data)
                 return t + dt        
 
             self.info['stochastic'] = True
@@ -92,6 +92,7 @@ class ExplicitSolver(SolverBase):
                     # calculate the right hand side
                     t = t_start + i * dt
                     state_data += dt * rhs(state_data, t)
+
                 return t + dt
         
             self.info['stochastic'] = False
