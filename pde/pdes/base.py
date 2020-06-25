@@ -23,7 +23,13 @@ if TYPE_CHECKING:
 
 
 class PDEBase(metaclass=ABCMeta):
-    """ base class for solving partial differential equations """
+    """ base class for solving partial differential equations
+    
+    Custom PDEs can be implemented by specifying their evolution rate. In the
+    simple case of deterministic PDEs, the methods
+    :meth:`PDEBase.evolution_rate` and :meth:`PDEBase._make_pde_rhs_numba` need 
+    to be overwritten for the `numpy` and `numba` backend, respectively.
+    """
 
     check_implementation: bool = True
     """ bool: Flag determining whether (some) numba-compiled functions should be

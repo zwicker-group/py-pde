@@ -294,6 +294,19 @@ def import_class(identifier: str):
 class classproperty:
     """ decorator that can be used to define read-only properties for classes. 
     Adopted from http://stackoverflow.com/a/5192374/932593
+    
+    Example:
+        The decorator can be used much like the `property` decorator::
+            
+            class Test():
+            
+                item: str = 'World'
+            
+                @classproperty
+                def message(cls):
+                    return 'Hello ' + cls.item
+                    
+            print(Test.message)
     """
     def __init__(self, f):
         self.f = f

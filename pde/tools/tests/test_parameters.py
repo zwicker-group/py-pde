@@ -17,13 +17,14 @@ from ..parameters import (Parameter, DeprecatedParameter, HideParameter,
 def test_parameters():
     """ test mixing Parameterized """
         
-    param = Parameter('a', 1, int, "help")
+    param = Parameter('a', 1, int, "help", extra={'b': 3})
     assert isinstance(str(param), str)
     
     p_string = pickle.dumps(param)
     param_new = pickle.loads(p_string)
     assert param.__dict__ == param_new.__dict__
     assert param is not param_new
+    assert param_new.extra['b'] == 3
         
     class Test1(Parameterized):
         parameters_default = [param]

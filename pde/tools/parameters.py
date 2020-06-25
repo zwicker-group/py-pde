@@ -14,7 +14,6 @@ aim is to allow easy management of inheritance of parameters.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 '''
 
-
 import logging
 from collections import OrderedDict
 from typing import Sequence, Dict, Any, Union
@@ -32,7 +31,8 @@ class Parameter():
                  default_value=None,
                  cls=object,
                  description: str = '',
-                 hidden: bool = False):
+                 hidden: bool = False,
+                 extra: Dict[str, Any] = None):
         """ initialize a parameter 
         
         Args:
@@ -47,12 +47,16 @@ class Parameter():
                 description appears in the parameter help
             hidden (bool):
                 Whether the parameter is hidden in the description summary
+            extra (dict):
+                Extra arguments that are stored with the parameter
         """
         self.name = name
         self.default_value = default_value
         self.cls = cls
         self.description = description
         self.hidden = hidden
+        self.extra = {} if extra is None else extra
+        
         if cls is not object:
             # check whether the default value is of the correct type
             converted_value = cls(default_value) 
@@ -78,7 +82,8 @@ class Parameter():
                 'default_value': self.convert(),
                 'cls': object.__module__ + '.' + self.cls.__name__,
                 'description': self.description,
-                'hidden': self.hidden}
+                'hidden': self.hidden,
+                'extra': self.extra}
     
         
     def __setstate__(self, state):

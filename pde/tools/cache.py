@@ -106,7 +106,7 @@ def hash_mutable(obj) -> int:
                                       k.startswith('_cache'))))
     
     if isinstance(obj, np.ndarray):
-        return hash(obj.tostring())
+        return hash(obj.tobytes())
     
     try:    
         # try using the internal hash function
