@@ -62,8 +62,8 @@ class ExplicitSolver(SolverBase):
                                  allow_stochastic=True)
         
         if self.pde.is_sde:
-            # handle stochastic version of the pde TODO: regularize state if necessary
-            regularize = jit(self.pde.make_state_regularizer())
+            # handle stochastic version of the pde
+            modify_after_step = jit(self.pde.make_modify_after_step())
             
             
             def stepper(state_data: np.ndarray, t_start: float, steps: int) \
@@ -76,7 +76,7 @@ class ExplicitSolver(SolverBase):
                     state_data += dt * evolution_rate
                     if noise_realization is not None:
                         state_data += np.sqrt(dt) * noise_realization
-                    regularize(state_data)
+                    modify_after_step(state_data)
                 return t + dt        
 
             self.info['stochastic'] = True

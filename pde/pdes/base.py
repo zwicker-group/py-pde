@@ -68,22 +68,22 @@ class PDEBase(metaclass=ABCMeta):
   
 
 
-    # predefine noise regularizer without function, can be overwritten  
-    def make_state_regularizer(self) -> Callable:
-        """ returns a function that can be called to regularize a state
+    # predefine modifier applied after each integration step without function, can be overwritten  
+    def make_modify_after_step(self) -> Callable:
+        """ returns a function that can be called to modify a state
         
         Returns:
-            Function that can be applied to a state to regularize it and which
+            Function that can be applied to a state to modify it and which
             returns a measure for the corrections applied to the state 
         """
         
-        def regularizer(phi):
-            """ returns neutral regularizer 
+        def modify_after_step(phi):
+            """ returns neutral modifier 
             """
-            correction = 0
-            return correction
+            
+            return None
 
-        return regularizer
+        return modify_after_step
 
 
 
