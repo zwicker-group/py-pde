@@ -63,6 +63,8 @@ class ExplicitSolver(SolverBase):
         
         if self.pde.is_sde:
             # handle stochastic version of the pde
+            modify_after_step = jit(self.pde.make_modify_after_step())
+            
             
             def stepper(state_data: np.ndarray, t_start: float, steps: int) \
                     -> float:
@@ -74,6 +76,7 @@ class ExplicitSolver(SolverBase):
                     state_data += dt * evolution_rate
                     if noise_realization is not None:
                         state_data += np.sqrt(dt) * noise_realization
+                    modify_after_step(state_data)
                 return t + dt        
 
             self.info['stochastic'] = True
@@ -89,6 +92,7 @@ class ExplicitSolver(SolverBase):
                     # calculate the right hand side
                     t = t_start + i * dt
                     state_data += dt * rhs(state_data, t)
+
                 return t + dt
         
             self.info['stochastic'] = False

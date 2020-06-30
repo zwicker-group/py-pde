@@ -71,6 +71,28 @@ class PDEBase(metaclass=ABCMeta):
         # check for self.noise, in case __init__ is not called in a subclass
         return hasattr(self, 'noise') and self.noise != 0
 
+  
+
+
+    # predefine modifier applied after each integration step without function, can be overwritten  
+    def make_modify_after_step(self) -> Callable:
+        """ returns a function that can be called to modify a state
+        
+        Returns:
+            Function that can be applied to a state to modify it and which
+            returns a measure for the corrections applied to the state 
+        """
+        
+        def modify_after_step(phi):
+            """ returns neutral modifier 
+            """
+            
+            return None
+
+        return modify_after_step
+
+
+
 
     @abstractmethod
     def evolution_rate(self, field: FieldBase, t: float = 0) \
