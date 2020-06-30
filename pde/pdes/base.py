@@ -70,28 +70,25 @@ class PDEBase(metaclass=ABCMeta):
         """
         # check for self.noise, in case __init__ is not called in a subclass
         return hasattr(self, 'noise') and self.noise != 0
-
   
 
-
-    # predefine modifier applied after each integration step without function, can be overwritten  
     def make_modify_after_step(self) -> Callable:
         """ returns a function that can be called to modify a state
+        
+        This function is applied to the state after each integration step when
+        an explicit stepper is used. The default behavior is to not change the
+        state.
         
         Returns:
             Function that can be applied to a state to modify it and which
             returns a measure for the corrections applied to the state 
         """
         
-        def modify_after_step(phi):
-            """ returns neutral modifier 
-            """
-            
-            return None
+        def modify_after_step(state: np.ndarray):
+            """ no-op function """
+            pass
 
         return modify_after_step
-
-
 
 
     @abstractmethod

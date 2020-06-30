@@ -61,10 +61,11 @@ class ExplicitSolver(SolverBase):
         rhs = self._make_pde_rhs(state, backend=self.backend,
                                  allow_stochastic=True)
         
+        # obtain post-step action function
+        modify_after_step = jit(self.pde.make_modify_after_step())
+        
         if self.pde.is_sde:
             # handle stochastic version of the pde
-            modify_after_step = jit(self.pde.make_modify_after_step())
-            
             
             def stepper(state_data: np.ndarray, t_start: float, steps: int) \
                     -> float:
@@ -77,6 +78,7 @@ class ExplicitSolver(SolverBase):
                     if noise_realization is not None:
                         state_data += np.sqrt(dt) * noise_realization
                     modify_after_step(state_data)
+                    
                 return t + dt        
 
             self.info['stochastic'] = True
@@ -92,6 +94,7 @@ class ExplicitSolver(SolverBase):
                     # calculate the right hand side
                     t = t_start + i * dt
                     state_data += dt * rhs(state_data, t)
+                    modify_after_step(state_data)
 
                 return t + dt
         
@@ -121,7 +124,9 @@ class ExplicitSolver(SolverBase):
         rhs = self._make_pde_rhs(state, backend=self.backend,
                                  allow_stochastic=False)
         self.info['stochastic'] = False
-            
+        
+        # obtain post-step action function
+        modify_after_step = jit(self.pde.make_modify_after_step())
         
         def stepper(state_data: np.ndarray, t_start: float, steps: int) \
                 -> float:
@@ -137,7 +142,8 @@ class ExplicitSolver(SolverBase):
                 k4 = dt * rhs(state_data + k3, t + dt)  
                 
                 state_data += (k1 + 2 * k2 + 2 * k3 + k4) / 6
-            
+                modify_after_step(state_data)
+
             return t + dt        
         
         self._logger.info(f'Initialized explicit Runge-Kutta-45 stepper with '

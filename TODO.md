@@ -1,5 +1,6 @@
 TODO
 ====
+* Fix classproperty so that the docstring is inherited from wrapped function
 * Accelerate some tests by not compiling
 * Fix scaling of `add_scaled_colorbar` for kymographs
 * pde.PDE:
