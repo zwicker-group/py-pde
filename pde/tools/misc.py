@@ -288,12 +288,14 @@ def import_class(identifier: str):
     else:
         # this happens when identifier does not contain a dot
         return importlib.import_module(class_name)
+ 
+ 
     
-
-
-class classproperty:
-    """ decorator that can be used to define read-only properties for classes. 
-    Adopted from http://stackoverflow.com/a/5192374/932593
+class classproperty(property):
+    """ decorator that can be used to define read-only properties for classes.
+    
+    This is inspired by the implementation of :mod:`astropy`, see
+    `astropy.org <http://astropy.org/>`_.
     
     Example:
         The decorator can be used much like the `property` decorator::
@@ -308,11 +310,56 @@ class classproperty:
                     
             print(Test.message)
     """
-    def __init__(self, f):
-        self.f = f
-         
-    def __get__(self, obj, owner):
-        return self.f(owner)
+
+    def __new__(cls, fget=None, doc=None):
+        if fget is None:
+            # use wrapper to support decorator without arguments
+            def wrapper(func):
+                return cls(func)
+
+            return wrapper
+
+        return super().__new__(cls)
+
+
+    def __init__(self, fget, doc=None):
+        fget = self._wrap_fget(fget)
+
+        super().__init__(fget=fget, doc=doc)
+
+        if doc is not None:
+            self.__doc__ = doc
+
+
+    def __get__(self, obj, objtype):
+        # The base property.__get__ will just return self here;
+        # instead we pass objtype through to the original wrapped
+        # function (which takes the class as its sole argument)
+        return self.fget.__wrapped__(objtype)
+
+
+    def getter(self, fget):
+        return super().getter(self._wrap_fget(fget))
+
+    
+    def setter(self, fset):
+        raise NotImplementedError("classproperty is read-only")
+
+
+    def deleter(self, fdel):
+        raise NotImplementedError("classproperty is read-only")
+
+
+    @staticmethod
+    def _wrap_fget(orig_fget):
+        if isinstance(orig_fget, classmethod):
+            orig_fget = orig_fget.__func__
+
+        @functools.wraps(orig_fget)
+        def fget(obj):
+            return orig_fget(obj.__class__)
+
+        return fget    
     
 
 
