@@ -68,7 +68,7 @@ def test_spherical_conversion():
     ps[:, 0] = np.abs(ps[:, 0])  # radius is positive
     ps[:, 1] %= np.pi            # θ is between 0 and pi
     ps[:, 2] %= 2 * np.pi        # φ is between 0 and 2 pi
-    np.testing.assert_allclose(c2s(s2c(ps)), ps)
+    np.testing.assert_allclose(c2s(s2c(ps)), ps, rtol=1e-6)
 
 
 
