@@ -527,7 +527,7 @@ def plot_magnitudes(storage: StorageBase,
     logging.getLogger(__name__).debug('Quantities: %s', quantities)
     
     # prepare data field
-    data = [{'label': quantity['label'], 'values': []}
+    data = [{'label': quantity.get('label', ''), 'values': []}
             for quantity in quantities]
     
     # calculate the data

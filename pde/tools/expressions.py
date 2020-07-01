@@ -320,7 +320,8 @@ class ScalarExpression(ExpressionBase):
         if isinstance(expression, ScalarExpression):
             # copy constructor
             sympy_expr = copy.copy(expression._sympy_expr)
-            signature = expression.vars
+            if signature is None:
+                signature = expression.vars
             self.allow_indexed = expression.allow_indexed
             if user_funcs is None:
                 user_funcs = expression.user_funcs

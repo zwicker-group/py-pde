@@ -197,4 +197,20 @@ def test_tensor_expression():
     assert isinstance(str(e2), str)
     assert e == e2
     assert e is not e2
-
+    
+    
+    
+def test_expression_from_expression():
+    """ test creating expressions from expressions """
+    expr = ScalarExpression('sin(a)')
+    assert expr == ScalarExpression(expr)
+    assert expr != ScalarExpression(expr, ['a', 'b'])
+    with pytest.raises(RuntimeError):
+        ScalarExpression(expr, 'b')
+    
+    expr = ScalarExpression('sin(a)', ['a', 'b'])
+    assert expr == ScalarExpression(expr)
+    assert expr != ScalarExpression(expr, 'a')
+    with pytest.raises(RuntimeError):
+        ScalarExpression(expr, 'b')
+    
