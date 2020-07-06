@@ -99,6 +99,7 @@ def test_trackers():
     data = trackers.DataTracker(get_data, interval=0.1)
     tracker_list = [trackers.PrintTracker(interval=0.1, stream=devnull),
                     trackers.CallbackTracker(store_time, interval=0.1),
+                    None,  # should be ignored
                     data]
     if module_available("matplotlib"):
         tracker_list.append(trackers.PlotTracker(interval=0.1, show=False))

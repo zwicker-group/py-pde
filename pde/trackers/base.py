@@ -173,7 +173,8 @@ class TrackerCollection():
             trackers = [TrackerBase.from_data(data, **kwargs)]
         else:
             trackers = [TrackerBase.from_data(tracker)
-                        for tracker in data]
+                        for tracker in data
+                        if tracker is not None]
         
         return cls(trackers)        
         
