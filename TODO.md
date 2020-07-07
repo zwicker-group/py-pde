@@ -1,5 +1,6 @@
 TODO
 ====
+* Switch to isort + black for code style
 * Accelerate some tests by not compiling
 * Fix scaling of `add_scaled_colorbar` for kymographs
 * pde.PDE:

@@ -146,4 +146,4 @@ def test_poisson_solver_spherical():
         d = np.random.random(grid.shape)
         d -= ScalarField(grid, d).average  # balance the right hand side
         np.testing.assert_allclose(laplace(poisson(d)), d,
-                                   err_msg=f'bcs = {bc_val}')
+                                   err_msg=f'bcs = {bc_val}', rtol=1e-6)
