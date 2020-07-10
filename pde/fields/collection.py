@@ -391,7 +391,13 @@ class FieldCollection(FieldBase):
             f_in.smooth(sigma=sigma, out=f_out)
              
         return out   
-
+    
+    
+    @property
+    def integrals(self):
+        """ return the integrals of all fields """
+        return [field.integral for field in self]
+    
         
     def get_line_data(self,  # type: ignore
                       index: int = 0,

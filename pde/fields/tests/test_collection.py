@@ -56,6 +56,7 @@ def test_collections():
     vf.data = 1
     tf.data = 1
     np.testing.assert_allclose(fields.data, 1)
+    assert [np.allclose(i, 1) for i in fields.integrals]
     
     assert sf.data.shape == (3, 4)
     assert vf.data.shape == (2, 3, 4)
