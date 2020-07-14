@@ -17,6 +17,7 @@ representations using :mod:`sympy`.
 
 
 from abc import ABCMeta, abstractproperty
+import builtins
 import copy
 import logging
 import re
@@ -26,6 +27,8 @@ from numbers import Number
 
 import sympy
 import numpy as np
+from sympy.printing.pycode import PythonCodePrinter
+from sympy.utilities.lambdify import _get_namespace
 
 from .cache import cached_property, cached_method
 from .docstrings import fill_in_docstring
@@ -65,6 +68,14 @@ def parse_number(expression: Union[str, float],
         err.args = err.args + (f"Expression: `{expr}`",)
         raise 
     return value
+
+
+
+class NumpyArrayPrinter(PythonCodePrinter):
+    """ special sympy printer returning numpy arrays """
+    def _print_ImmutableDenseNDimArray(self, arr):
+        expr = self._print(arr.tolist())
+        return f"array({expr})"
 
 
 
@@ -232,13 +243,22 @@ class ExpressionBase(metaclass=ABCMeta):
         Returns:
             function: the function
         """
-        if user_funcs is None:
-            user_funcs = {}
+        user_functions = self.user_funcs.copy()
+        if user_funcs is not None:
+            user_functions.update(user_funcs)
+        user_dict = {k: k for k in user_functions}
+        
+        printer = NumpyArrayPrinter({'fully_qualified_modules': False,
+                                     'inline': True,
+                                     'allow_unknown_functions': True,
+                                     'user_functions': user_dict})
+
         
         variables = (self.vars,) if single_arg else self.vars
         return sympy.lambdify(variables, self._sympy_expr,  # type: ignore
-                              modules=[user_funcs, self.user_funcs, 'numpy'])
-        
+                              modules=[user_functions, 'numpy'],
+                              printer=printer)
+                              
         
     @cached_method()
     def _get_function_cached(self, single_arg: bool = False) -> Callable:
@@ -420,8 +440,8 @@ class ScalarExpression(ExpressionBase):
         """ differentiate the expression with respect to all variables """ 
         if self.constant:
             # return empty expression
-            value = np.zeros(len(self.vars))
-            return TensorExpression(expression=value,
+            dim = len(self.vars)
+            return TensorExpression(expression=sympy.Array(np.zeros(dim), dim),
                                     signature=self.vars)
             
         if self.allow_indexed:
@@ -476,9 +496,9 @@ class TensorExpression(ExpressionBase):
             else:
                 user_funcs.update(expression.user_funcs)
             
-        elif isinstance(expression, np.ndarray):
+        elif isinstance(expression, (np.ndarray, list, tuple)):
             # expression is a constant array
-            sympy_expr = sympy.sympify(expression)
+            sympy_expr = sympy.Array(sympy.sympify(expression))
             
         elif isinstance(expression, ImmutableNDimArray):
             # expression is an array of sympy expressions
@@ -501,6 +521,16 @@ class TensorExpression(ExpressionBase):
     def shape(self) -> Tuple[int, ...]:
         """ tuple: the shape of the tensor """
         return self._sympy_expr.shape  # type: ignore
+
+
+    def __getitem__(self, index):
+        expr = self._sympy_expr[index]
+        if isinstance(expr, sympy.Array):
+            return TensorExpression(expr, signature=self.vars,
+                                    user_funcs=self.user_funcs)
+        else:
+            return ScalarExpression(expr, signature=self.vars,
+                                    user_funcs=self.user_funcs)
 
 
     @property
@@ -530,15 +560,48 @@ class TensorExpression(ExpressionBase):
         
         if self.constant:
             # return empty expression
-            return TensorExpression(np.zeros(shape), signature=self.vars)
+            return TensorExpression(sympy.Array(np.zeros(shape), shape),
+                                    signature=self.vars)
                 
         # perform the derivatives with respect to all variables
-        derivs = sympy.derive_by_array(self._sympy_expr,
-                                       [sympy.Symbol(s) for s in self.vars])
+        dx = sympy.Array([sympy.Symbol(s) for s in self.vars])
+        derivs = sympy.derive_by_array(self._sympy_expr, dx)
         return TensorExpression(derivs,
                                 signature=self.vars,
                                 user_funcs=self.user_funcs)
             
+                              
+    def get_compiled_array(self) -> Callable:
+        """ compile the tensor expression such that a numpy array is returned
+        
+        Note that the input to the returned function must be a single 1d array
+        with exactly as many entries as there are variables in the expression.
+        """
+        assert isinstance(self._sympy_expr, sympy.Array)
+        variables = ', '.join(v for v in self.vars)
+        shape = self._sympy_expr.shape
+        lines = [f"    out[{str(idx)[1:-1]}] = {val}"
+                 for idx, val in np.ndenumerate(self._sympy_expr)]
+        
+        if variables:
+            code = "def _generated_function(arr):\n"
+            code += f"    {variables} = arr\n"
+        else:
+            code = "def _generated_function(arr=None):\n"
             
+        code += f"    out = empty({shape})\n"
+        code += '\n'.join(lines) + "\n"
+        code += "    return out"
+        
+        namespace = _get_namespace('numpy')
+        namespace['builtins'] = builtins
+        namespace.update(self.user_funcs)
+        local_vars: Dict[str, Any] = {}
+        exec(code, namespace, local_vars)
+        function = local_vars['_generated_function']   
+        
+        return jit(function)  # type: ignore
+                
+                
             
 __all__ = ["ExpressionBase", "ScalarExpression", "TensorExpression"]

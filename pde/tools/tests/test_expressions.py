@@ -180,6 +180,9 @@ def test_tensor_expression():
     assert e.shape == (2, 2)
     assert e.rank == 2
     assert e.constant
+    np.testing.assert_allclose(e.get_compiled_array()(), [[0, 1], [2, 3]])
+    np.testing.assert_allclose(e.get_compiled_array()(tuple()),
+                               [[0, 1], [2, 3]])
     assert e.differentiate('a') == TensorExpression('[[0, 0], [0, 0]]')
     np.testing.assert_allclose(e.value, np.arange(4).reshape(2, 2))
     
@@ -192,6 +195,11 @@ def test_tensor_expression():
     np.testing.assert_allclose(e.differentiate('a').value, np.array([1, 2]))
     with pytest.raises(TypeError):
         e.value
+    assert e[0] == ScalarExpression('a')
+    assert e[1] == ScalarExpression('2*a')
+    assert e[0:1] == TensorExpression('[a]')
+    np.testing.assert_allclose(e.get_compiled_array()(1.), [1., 2.])
+    np.testing.assert_allclose(e.get_compiled_array()(2.), [2., 4.])
     
     e2 = TensorExpression(e)
     assert isinstance(str(e2), str)
