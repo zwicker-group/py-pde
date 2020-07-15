@@ -584,12 +584,13 @@ class TensorExpression(ExpressionBase):
                  for idx, val in np.ndenumerate(self._sympy_expr)]
         
         if variables:
-            code = "def _generated_function(arr):\n"
+            code = "def _generated_function(arr, out=None):\n"
             code += f"    {variables} = arr\n"
         else:
-            code = "def _generated_function(arr=None):\n"
+            code = "def _generated_function(arr=None, out=None):\n"
             
-        code += f"    out = empty({shape})\n"
+        code += f"    if out is None:\n"
+        code += f"        out = empty({shape})\n"
         code += '\n'.join(lines) + "\n"
         code += "    return out"
         
