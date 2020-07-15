@@ -24,11 +24,13 @@ jobs:
         python-version: ${{ matrix.python-version }}
         
     - name: Install dependencies
+      if: ${{ always() }}
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
     - name: Generate coverage report
+      if: ${{ always() }}
       run: |
         pip install pytest pytest-cov h5py pandas tqdm
         cd tests
