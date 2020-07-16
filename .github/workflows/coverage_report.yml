@@ -14,23 +14,21 @@ jobs:
     - uses: actions/checkout@v2
     
     - name: Install FFmpeg
+      continue-on-error: true
       run: |
         sudo apt-get install ffmpeg
     
     - name: Set up Python ${{ matrix.python-version }}
-      if: ${{ always() }}
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
         
     - name: Install dependencies
-      if: ${{ always() }}
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
     - name: Generate coverage report
-      if: ${{ always() }}
       run: |
         pip install pytest pytest-cov h5py pandas tqdm
         cd tests
