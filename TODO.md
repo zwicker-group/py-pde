@@ -1,5 +1,6 @@
 TODO
 ====
+* Add a flag to switch floating precisions to np.single or np.longdouble
 * Switch to isort + black for code style
 * Accelerate some tests by not compiling
 * Fix scaling of `add_scaled_colorbar` for kymographs

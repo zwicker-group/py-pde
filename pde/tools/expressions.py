@@ -252,7 +252,6 @@ class ExpressionBase(metaclass=ABCMeta):
                                      'inline': True,
                                      'allow_unknown_functions': True,
                                      'user_functions': user_dict})
-
         
         variables = (self.vars,) if single_arg else self.vars
         return sympy.lambdify(variables, self._sympy_expr,  # type: ignore
@@ -586,11 +585,13 @@ class TensorExpression(ExpressionBase):
         if variables:
             code = "def _generated_function(arr, out=None):\n"
             code += f"    {variables} = arr\n"
+            code += f"    if out is None:\n"
+            code += f"        out = empty({shape} + arr.shape[1:])\n"
         else:
             code = "def _generated_function(arr=None, out=None):\n"
+            code += f"    if out is None:\n"
+            code += f"        out = empty({shape})\n"
             
-        code += f"    if out is None:\n"
-        code += f"        out = empty({shape})\n"
         code += '\n'.join(lines) + "\n"
         code += "    return out"
         
