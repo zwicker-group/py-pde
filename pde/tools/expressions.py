@@ -27,6 +27,7 @@ from numbers import Number
 
 import sympy
 import numpy as np
+import numba as nb
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
@@ -579,8 +580,16 @@ class TensorExpression(ExpressionBase):
         assert isinstance(self._sympy_expr, sympy.Array)
         variables = ', '.join(v for v in self.vars)
         shape = self._sympy_expr.shape
-        lines = [f"    out[{str(idx + (...,))[1:-1]}] = convert_scalar({val})"
-                 for idx, val in np.ndenumerate(self._sympy_expr)]
+        
+        if nb.config.DISABLE_JIT:
+            # special path used by coverage test without jitting. This can be 
+            # removed once the `convert_scalar` wrapper is obsolete
+            lines = [f"    out[{str(idx + (...,))[1:-1]}] = {val}"
+                     for idx, val in np.ndenumerate(self._sympy_expr)]
+        else:
+            lines = [f"    out[{str(idx + (...,))[1:-1]}] = "
+                        f"convert_scalar({val})"
+                     for idx, val in np.ndenumerate(self._sympy_expr)]
         
         if variables:
             # the expression takes variables as input
