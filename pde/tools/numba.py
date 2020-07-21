@@ -363,7 +363,8 @@ else:
 def convert_scalar(arr):
     """ helper function that turns 0d-arrays into scalars
     
-    This helps to avoid the bug discussed in https://github.com/numba/numba/issues/6000
+    This helps to avoid the bug discussed in
+    https://github.com/numba/numba/issues/6000
     """
     if isinstance(arr, nb.types.Array) and arr.ndim == 0:
         return lambda arr: arr[()]
