@@ -33,7 +33,7 @@ from sympy.utilities.lambdify import _get_namespace
 from .cache import cached_property, cached_method
 from .docstrings import fill_in_docstring
 
-from .numba import jit
+from .numba import jit, convert_scalar
 
 
 
@@ -579,23 +579,30 @@ class TensorExpression(ExpressionBase):
         assert isinstance(self._sympy_expr, sympy.Array)
         variables = ', '.join(v for v in self.vars)
         shape = self._sympy_expr.shape
-        lines = [f"    out[{str(idx)[1:-1]}] = {val}"
+        lines = [f"    out[{str(idx + (...,))[1:-1]}] = convert_scalar({val})"
                  for idx, val in np.ndenumerate(self._sympy_expr)]
         
         if variables:
+            # the expression takes variables as input
+            first_dim = 0 if len(self.vars) == 1 else 1
             code = "def _generated_function(arr, out=None):\n"
+            code += f"    arr = asarray(arr)\n"
             code += f"    {variables} = arr\n"
             code += f"    if out is None:\n"
-            code += f"        out = empty({shape} + arr.shape[1:])\n"
+            code += f"        out = empty({shape} + arr.shape[{first_dim}:])\n"
         else:
+            # the expression is constant
             code = "def _generated_function(arr=None, out=None):\n"
             code += f"    if out is None:\n"
             code += f"        out = empty({shape})\n"
             
         code += '\n'.join(lines) + "\n"
         code += "    return out"
+
+        self._logger.debug('Code for `get_compiled_array`: %s', code)
         
         namespace = _get_namespace('numpy')
+        namespace['convert_scalar'] = convert_scalar
         namespace['builtins'] = builtins
         namespace.update(self.user_funcs)
         local_vars: Dict[str, Any] = {}
@@ -603,7 +610,8 @@ class TensorExpression(ExpressionBase):
         function = local_vars['_generated_function']   
         
         return jit(function)  # type: ignore
+    
                 
-                
+                     
             
 __all__ = ["ExpressionBase", "ScalarExpression", "TensorExpression"]

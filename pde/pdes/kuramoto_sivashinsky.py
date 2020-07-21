@@ -78,7 +78,7 @@ class KuramotoSivashinskyPDE(PDEBase):
         assert isinstance(state, ScalarField)
         state_lap = state.laplace(bc=self.bc)
         result = -self.nu * state_lap.laplace(bc=self.bc_lap) - state_lap \
-                 - 0.5 * state.gradient(bc=self.bc).to_scalar('squared_sum')
+                 - 0.5 * state.gradient_squared(bc=self.bc)
         result.label = 'evolution rate'
         return result  # type: ignore
     
@@ -98,23 +98,20 @@ class KuramotoSivashinskyPDE(PDEBase):
             the evolution rate.  
         """
         shape = state.grid.shape
-        dim = state.grid.dim
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))
         signature = arr_type(arr_type, nb.double)
         
         nu_value = self.nu
         laplace = state.grid.get_operator('laplace', bc=self.bc)
         laplace2 = state.grid.get_operator('laplace', bc=self.bc_lap)
-        gradient = state.grid.get_operator('gradient', bc=self.bc)
+        gradient_sq = state.grid.get_operator('gradient_squared', bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """ 
-            grad = gradient(state_data)
+            """ compiled helper function evaluating right hand side """
             result = -laplace(state_data)
-            result += nu_value * laplace2(result)
-            for i in range(dim):
-                result -= 0.5 * grad[i]**2
+            result += nu_value * laplace2(result) 
+            result -= 0.5 * gradient_sq(state_data)
             return result
             
         return pde_rhs  # type: ignore

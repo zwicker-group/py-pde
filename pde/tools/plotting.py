@@ -243,6 +243,7 @@ def plot_on_axes(wrapped=None, update_method=None):
                 filename: str = None,
                 action: str = 'auto',
                 ax_style: Dict[str, Any] = None,
+                fig_style: Dict[str, Any] = None,
                 ax=None,
                 **kwargs):
         """
@@ -262,6 +263,11 @@ def plot_on_axes(wrapped=None, update_method=None):
             Dictionary with properties that will be changed on the axis
             after the plot has been drawn by calling
             :meth:`matplotlib.pyplot.setp`.
+        fig_style (dict):
+            Dictionary with properties that will be changed on the
+            figure after the plot has been drawn by calling
+            :meth:`matplotlib.pyplot.setp`. For instance, using fig_style={'dpi': 200}
+            increases the resolution of the figure.
         ax (:class:`matplotlib.axes.Axes`):
             Figure axes to be used for plotting. If `None`, a new figure
             is created. This has no effect if a `reference` is supplied.
@@ -294,6 +300,8 @@ def plot_on_axes(wrapped=None, update_method=None):
                     ax.set_title(title)
                 if ax_style:
                     plt.setp(ax, **ax_style)
+                if fig_style:
+                    plt.setp(fig, **fig_style)
                 if filename:
                     fig.savefig(filename)
                     
@@ -426,7 +434,8 @@ def plot_on_figure(wrapped=None, update_method=None):
         fig_style (dict):
             Dictionary with properties that will be changed on the
             figure after the plot has been drawn by calling
-            :meth:`matplotlib.pyplot.setp`.
+            :meth:`matplotlib.pyplot.setp`. For instance, using fig_style={'dpi': 200}
+            increases the resolution of the figure.
         fig (:class:`matplotlib.figures.Figure`):
             Figure that is used for plotting. If omitted, a new figure is
             created.

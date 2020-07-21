@@ -477,7 +477,7 @@ class PlotInteractiveTracker(PlotTracker):
     name = 'plot'
     
     @fill_in_docstring
-    def __init__(self, interval: IntervalData = '0:02', *,
+    def __init__(self, interval: IntervalData = '0:03', *,
                  show: bool = True,
                  **kwargs):
         """
