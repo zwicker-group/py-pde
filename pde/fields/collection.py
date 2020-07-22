@@ -250,7 +250,8 @@ class FieldCollection(FieldBase):
     @classmethod
     def scalar_random_uniform(cls, num_fields: int, grid: GridBase,
                               vmin: float = 0, vmax: float = 1,
-                              label: Optional[str] = None):
+                              label: Optional[str] = None,
+                              labels: Optional[Sequence[str]] = None):
         """ create scalar fields with random values between `vmin` and `vmax`
         
         Args:
@@ -260,9 +261,13 @@ class FieldCollection(FieldBase):
             vmin (float): Smallest random value
             vmax (float): Largest random value
             label (str, optional): Name of the field collection
+            labels (list of str, optional): Names of the individual fields
         """
-        return cls([ScalarField.random_uniform(grid, vmin, vmax)
-                    for _ in range(num_fields)], label=label)
+        if labels is None:
+            labels = [None] * num_fields  # type: ignore
+        return cls([ScalarField.random_uniform(grid, vmin, vmax,
+                                               label=labels[i])
+                    for i in range(num_fields)], label=label)
     
     
     @property
