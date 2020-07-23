@@ -1,4 +1,4 @@
-'''
+"""
 This module provides infrastructure for managing classes with parameters. One
 aim is to allow easy management of inheritance of parameters.
 
@@ -12,27 +12,28 @@ aim is to allow easy management of inheritance of parameters.
    get_all_parameters
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
 import logging
 from collections import OrderedDict
-from typing import Sequence, Dict, Any, Union
+from typing import Any, Dict, Sequence, Union
 
 import numpy as np
-
-from pde.tools.misc import import_class, hybridmethod, in_jupyter_notebook
-
+from pde.tools.misc import hybridmethod, import_class, in_jupyter_notebook
 
 
-class Parameter():
+class Parameter:
     """ class representing a single parameter """
-    
-    def __init__(self, name: str,
-                 default_value=None,
-                 cls=object,
-                 description: str = '',
-                 hidden: bool = False,
-                 extra: Dict[str, Any] = None):
+
+    def __init__(
+        self,
+        name: str,
+        default_value=None,
+        cls=object,
+        description: str = "",
+        hidden: bool = False,
+        extra: Dict[str, Any] = None,
+    ):
         """ initialize a parameter 
         
         Args:
@@ -56,43 +57,47 @@ class Parameter():
         self.description = description
         self.hidden = hidden
         self.extra = {} if extra is None else extra
-        
+
         if cls is not object:
             # check whether the default value is of the correct type
-            converted_value = cls(default_value) 
+            converted_value = cls(default_value)
             if isinstance(converted_value, np.ndarray):
-                valid_default = np.allclose(converted_value, default_value) 
+                valid_default = np.allclose(converted_value, default_value)
             else:
-                valid_default = (converted_value == default_value)
+                valid_default = converted_value == default_value
             if not valid_default:
-                logging.warning('Default value `%s` does not seem to be of '
-                                'type `%s`', name, cls.__name__)
-    
-        
+                logging.warning(
+                    "Default value `%s` does not seem to be of " "type `%s`",
+                    name,
+                    cls.__name__,
+                )
+
     def __repr__(self):
-        return (f'{self.__class__.__name__}(name="{self.name}", default_value='
-                f'"{self.default_value}", cls="{self.cls.__name__}", '
-                f'description="{self.description}", hidden={self.hidden})')
+        return (
+            f'{self.__class__.__name__}(name="{self.name}", default_value='
+            f'"{self.default_value}", cls="{self.cls.__name__}", '
+            f'description="{self.description}", hidden={self.hidden})'
+        )
+
     __str__ = __repr__
-    
-    
+
     def __getstate__(self):
-        # replace the object class by its class path 
-        return {'name': str(self.name),
-                'default_value': self.convert(),
-                'cls': object.__module__ + '.' + self.cls.__name__,
-                'description': self.description,
-                'hidden': self.hidden,
-                'extra': self.extra}
-    
-        
+        # replace the object class by its class path
+        return {
+            "name": str(self.name),
+            "default_value": self.convert(),
+            "cls": object.__module__ + "." + self.cls.__name__,
+            "description": self.description,
+            "hidden": self.hidden,
+            "extra": self.extra,
+        }
+
     def __setstate__(self, state):
         # restore the object from the class path
-        state['cls'] = import_class(state['cls'])
+        state["cls"] = import_class(state["cls"])
         # restore the state
         self.__dict__.update(state)
-        
-        
+
     def convert(self, value=None):
         """ converts a `value` into the correct type for this parameter. If
         `value` is not given, the default value is converted.
@@ -105,32 +110,32 @@ class Parameter():
         
         Returns:
             The converted value, which is of type `self.cls`
-        """ 
+        """
         if value is None:
             value = self.default_value
-            
+
         if self.cls is object:
             return value
         else:
             try:
                 return self.cls(value)
             except ValueError:
-                raise ValueError(f"Could not convert {value!r} to "
-                                 f"{self.cls.__name__} for parameter "
-                                 f"'{self.name}'")
-
+                raise ValueError(
+                    f"Could not convert {value!r} to "
+                    f"{self.cls.__name__} for parameter "
+                    f"'{self.name}'"
+                )
 
 
 class DeprecatedParameter(Parameter):
     """ a parameter that can still be used normally but is deprecated """
+
     pass
 
 
-
-class HideParameter():
+class HideParameter:
     """ a helper class that allows hiding parameters of the parent classes """
-    
-    
+
     def __init__(self, name: str):
         """ 
         Args:
@@ -140,17 +145,14 @@ class HideParameter():
         self.name = name
 
 
-
 ParameterListType = Sequence[Union[Parameter, HideParameter]]
 
 
-
-class Parameterized():
+class Parameterized:
     """ a mixin that manages the parameters of a class """
 
     parameters_default: ParameterListType = []
-    _subclasses: Dict[str, 'Parameterized'] = {}
-
+    _subclasses: Dict[str, "Parameterized"] = {}
 
     def __init__(self, parameters: Dict[str, Any] = None):
         """ initialize the parameters of the object
@@ -163,32 +165,35 @@ class Parameterized():
                 :meth:`~Parameterized.show_parameters`.
         """
         # set logger if this has not happened, yet
-        if not hasattr(self, '_logger'):
+        if not hasattr(self, "_logger"):
             self._logger = logging.getLogger(self.__class__.__name__)
-            
-        # set parameters if they have not been initialized, yet
-        if not hasattr(self, 'parameters'):
-            self.parameters = self._parse_parameters(parameters)
 
+        # set parameters if they have not been initialized, yet
+        if not hasattr(self, "parameters"):
+            self.parameters = self._parse_parameters(parameters)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """ register all subclasses to reconstruct them later """
         # normalize the parameters_default attribute
-        if (hasattr(cls, 'parameters_default') and
-                isinstance(cls.parameters_default, dict)):
+        if hasattr(cls, "parameters_default") and isinstance(
+            cls.parameters_default, dict
+        ):
             # default parameters are given as a dictionary
-            cls.parameters_default = \
-                [Parameter(*args) for args in cls.parameters_default.items()]
-        
+            cls.parameters_default = [
+                Parameter(*args) for args in cls.parameters_default.items()
+            ]
+
         # register the subclasses
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
-            
 
     @classmethod
-    def get_parameters(cls, include_hidden: bool = False,
-                       include_deprecated: bool = False,
-                       sort: bool = True) -> Dict[str, Parameter]:
+    def get_parameters(
+        cls,
+        include_hidden: bool = False,
+        include_deprecated: bool = False,
+        sort: bool = True,
+    ) -> Dict[str, Parameter]:
         """ return a dictionary of parameters that the class supports
         
         Args:
@@ -203,17 +208,17 @@ class Parameterized():
         # collect the parameters from the class hierarchy
         parameters: Dict[str, Parameter] = {}
         for cls in reversed(cls.__mro__):
-            if hasattr(cls, 'parameters_default'):
+            if hasattr(cls, "parameters_default"):
                 for p in cls.parameters_default:
                     if isinstance(p, HideParameter):
                         if include_hidden:
                             parameters[p.name].hidden = True
                         else:
                             del parameters[p.name]
-                            
+
                     else:
                         parameters[p.name] = p
-                        
+
         # filter parameters based on hidden and deprecated flags
         def show(p):
             """ helper function to decide whether parameter will be shown """
@@ -222,22 +227,24 @@ class Parameterized():
             # show based on deprecated flag?
             show2 = include_deprecated or not isinstance(p, DeprecatedParameter)
             return show1 and show2
-        
+
         # filter parameters based on `show`
-        result = {name: parameter
-                  for name, parameter in parameters.items()
-                  if show(parameter)}
-            
+        result = {
+            name: parameter for name, parameter in parameters.items() if show(parameter)
+        }
+
         if sort:
             result = OrderedDict(sorted(result.items()))
         return result
-            
-        
-    @classmethod    
-    def _parse_parameters(cls, parameters: Dict[str, Any] = None,
-                          check_validity: bool = True,
-                          allow_hidden: bool = True,
-                          include_deprecated: bool = False) -> Dict[str, Any]:
+
+    @classmethod
+    def _parse_parameters(
+        cls,
+        parameters: Dict[str, Any] = None,
+        check_validity: bool = True,
+        allow_hidden: bool = True,
+        include_deprecated: bool = False,
+    ) -> Dict[str, Any]:
         """ parse parameters
 
         Args:
@@ -256,11 +263,12 @@ class Parameterized():
             parameters = {}
         else:
             parameters = parameters.copy()  # do not modify the original
-        
+
         # obtain all possible parameters
-        param_objs = cls.get_parameters(include_hidden=allow_hidden,
-                                        include_deprecated=include_deprecated)
-        
+        param_objs = cls.get_parameters(
+            include_hidden=allow_hidden, include_deprecated=include_deprecated
+        )
+
         # initialize parameters with default ones from all parent classes
         result: Dict[str, Any] = {}
         for name, param_obj in param_objs.items():
@@ -268,17 +276,18 @@ class Parameterized():
                 continue  # skip hidden parameters
             # take value from parameters or set default value
             result[name] = param_obj.convert(parameters.pop(name, None))
-                
+
         # update parameters with the supplied ones
         if check_validity and parameters:
-            raise ValueError(f'Parameters `{sorted(parameters.keys())}` were '
-                             'provided in instance specific parameters but are '
-                             f'not defined for the class `{cls.__name__}`.')
+            raise ValueError(
+                f"Parameters `{sorted(parameters.keys())}` were "
+                "provided in instance specific parameters but are "
+                f"not defined for the class `{cls.__name__}`."
+            )
         else:
             result.update(parameters)  # add remaining parameters
 
         return result
-            
 
     def get_parameter_default(self, name):
         """ return the default value for the parameter with `name` 
@@ -287,20 +296,22 @@ class Parameterized():
             name (str): The parameter name
         """
         for cls in self.__class__.__mro__:
-            if hasattr(cls, 'parameters_default'):
+            if hasattr(cls, "parameters_default"):
                 for p in cls.parameters_default:
                     if isinstance(p, Parameter) and p.name == name:
                         return p.default_value
 
-        raise KeyError(f'Parameter `{name}` is not defined')
-        
-        
+        raise KeyError(f"Parameter `{name}` is not defined")
+
     @classmethod
-    def _show_parameters(cls, description: bool = None,
-                         sort: bool = False,
-                         show_hidden: bool = False,
-                         show_deprecated: bool = False,
-                         parameter_values: Dict[str, Any] = None):
+    def _show_parameters(
+        cls,
+        description: bool = None,
+        sort: bool = False,
+        show_hidden: bool = False,
+        show_deprecated: bool = False,
+        parameter_values: Dict[str, Any] = None,
+    ):
         """ private method showing all parameters in human readable format
         
         Args:
@@ -326,42 +337,44 @@ class Parameterized():
             from IPython.display import HTML, display
         except ImportError:
             in_notebook = False
-        
+
         if description is None:
             description = in_notebook  # show only in notebook by default
-        
-        # set the templates for displaying the data 
+
+        # set the templates for displaying the data
         if in_notebook:
             # templates for HTML output
-            template = '<dt>{name} = {value!r}</dt>'
+            template = "<dt>{name} = {value!r}</dt>"
             if description:
-                template += '<dd>{description}</dd>'
-            html = ''
+                template += "<dd>{description}</dd>"
+            html = ""
 
         else:
             # template for normal output
-            template = '{name}: {type} = {value!r}'
-            template_object = '{name} = {value!r}'
+            template = "{name}: {type} = {value!r}"
+            template_object = "{name} = {value!r}"
             if description:
-                template += ' ({description})'
-                template_object += ' ({description})'
-            
+                template += " ({description})"
+                template_object += " ({description})"
+
         # iterate over all parameters
-        params = cls.get_parameters(include_hidden=show_hidden,
-                                    include_deprecated=show_deprecated,
-                                    sort=sort)
+        params = cls.get_parameters(
+            include_hidden=show_hidden, include_deprecated=show_deprecated, sort=sort
+        )
         for param in params.values():
             # initialize the data to show
-            data = {'name': param.name,
-                    'type': param.cls.__name__,
-                    'description': param.description}
-            
+            data = {
+                "name": param.name,
+                "type": param.cls.__name__,
+                "description": param.description,
+            }
+
             # determine the value to show
             if parameter_values is None:
-                data['value'] = param.default_value
+                data["value"] = param.default_value
             else:
-                data['value'] = parameter_values[param.name]
-            
+                data["value"] = parameter_values[param.name]
+
             if in_notebook:
                 # collect the data for later printing as HTML
                 html += template.format(**data)
@@ -371,19 +384,25 @@ class Parameterized():
                     print((template_object.format(**data)))
                 else:
                     print((template.format(**data)))
-            
+
         if in_notebook:
             # output html with minimal styling
-            css = 'dl.py-pde_parameters dd {padding-left:2em}'
-            display(HTML(f'<style type="text/css">{css}</style>'
-                         f'<dl class="py-pde_parameters">{html}</dl>'))
-            
+            css = "dl.py-pde_parameters dd {padding-left:2em}"
+            display(
+                HTML(
+                    f'<style type="text/css">{css}</style>'
+                    f'<dl class="py-pde_parameters">{html}</dl>'
+                )
+            )
 
     @hybridmethod
-    def show_parameters(cls, description: bool = None,  # @NoSelf
-                        sort: bool = False,
-                        show_hidden: bool = False,
-                        show_deprecated: bool = False):
+    def show_parameters(
+        cls,
+        description: bool = None,  # @NoSelf
+        sort: bool = False,
+        show_hidden: bool = False,
+        show_deprecated: bool = False,
+    ):
         """ show all parameters in human readable format
         
         Args:
@@ -400,15 +419,17 @@ class Parameterized():
         
         All flags default to `False`.
         """
-        cls._show_parameters(description, sort, show_hidden, show_deprecated)    
-
+        cls._show_parameters(description, sort, show_hidden, show_deprecated)
 
     @show_parameters.instancemethod  # type: ignore
-    def show_parameters(self, description: bool = None,  # @NoSelf
-                        sort: bool = False,
-                        show_hidden: bool = False,
-                        show_deprecated: bool = False,
-                        default_value: bool = False):
+    def show_parameters(
+        self,
+        description: bool = None,  # @NoSelf
+        sort: bool = False,
+        show_hidden: bool = False,
+        show_deprecated: bool = False,
+        default_value: bool = False,
+    ):
         """ show all parameters in human readable format
         
         Args:
@@ -428,12 +449,16 @@ class Parameterized():
         
         All flags default to `False`.
         """
-        self._show_parameters(description, sort, show_hidden, show_deprecated,
-                              None if default_value else self.parameters)
-        
-        
+        self._show_parameters(
+            description,
+            sort,
+            show_hidden,
+            show_deprecated,
+            None if default_value else self.parameters,
+        )
 
-def get_all_parameters(data: str = 'name') -> Dict[str, Any]:
+
+def get_all_parameters(data: str = "name") -> Dict[str, Any]:
     """ get a dictionary with all parameters of all registered classes
     
     Args:
@@ -444,21 +469,22 @@ def get_all_parameters(data: str = 'name') -> Dict[str, Any]:
     """
     result = {}
     for cls_name, cls in Parameterized._subclasses.items():
-        if data == 'name':
+        if data == "name":
             parameters = set(cls.get_parameters().keys())
-        elif data == 'value':
-            parameters = {k: v.default_value  # type: ignore
-                          for k, v in cls.get_parameters().items()}
-        elif data == 'description':
-            parameters = {k: v.description  # type: ignore
-                          for k, v in cls.get_parameters().items()}
+        elif data == "value":
+            parameters = {  # type: ignore
+                k: v.default_value for k, v in cls.get_parameters().items()
+            }
+        elif data == "description":
+            parameters = {  # type: ignore
+                k: v.description for k, v in cls.get_parameters().items()
+            }
         else:
-            raise ValueError(f'Cannot interpret data `{data}`')
-        
+            raise ValueError(f"Cannot interpret data `{data}`")
+
         result[cls_name] = parameters
     return result
-        
-        
+
 
 def sphinx_display_parameters(app, what, name, obj, options, lines):
     """ helper function to display parameters in sphinx documentation
@@ -469,19 +495,19 @@ def sphinx_display_parameters(app, what, name, obj, options, lines):
     
             app.connect('autodoc-process-docstring', sphinx_display_parameters)
     """
-    if what == 'class' and issubclass(obj, Parameterized):
-        if any(':param parameters:' in line for line in lines):
+    if what == "class" and issubclass(obj, Parameterized):
+        if any(":param parameters:" in line for line in lines):
             # parse parameters
             parameters = obj.get_parameters(sort=False)
             if parameters:
-                lines.append('.. admonition::')
-                lines.append(f'   Parameters of {obj.__name__}:')
-                lines.append('   ')
+                lines.append(".. admonition::")
+                lines.append(f"   Parameters of {obj.__name__}:")
+                lines.append("   ")
                 for p in parameters.values():
-                    lines.append(f'   {p.name}')
+                    lines.append(f"   {p.name}")
                     text = p.description.splitlines()
-                    text.append(f'(Default value: :code:`{p.default_value!r}`)')
-                    text = ['     ' + t for t in text]
+                    text.append(f"(Default value: :code:`{p.default_value!r}`)")
+                    text = ["     " + t for t in text]
                     lines.extend(text)
-                    lines.append('')
-                lines.append('')
+                    lines.append("")
+                lines.append("")

@@ -8,15 +8,13 @@ from typing import Callable
 
 import numpy as np
 
-
-from .base import PDEBase
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
-from ..tools.numba import nb, jit
 from ..tools.docstrings import fill_in_docstring
+from ..tools.numba import jit, nb
+from .base import PDEBase
 
 
-        
 class DiffusionPDE(PDEBase):
     r""" A simple diffusion equation
     
@@ -30,12 +28,11 @@ class DiffusionPDE(PDEBase):
     """
 
     explicit_time_dependence = False
-    
-    
+
     @fill_in_docstring
-    def __init__(self, diffusivity: float = 1,
-                 noise: float = 0,
-                 bc: BoundariesData = 'natural'):
+    def __init__(
+        self, diffusivity: float = 1, noise: float = 0, bc: BoundariesData = "natural"
+    ):
         """ 
         Args:
             diffusivity (float):
@@ -47,13 +44,13 @@ class DiffusionPDE(PDEBase):
                 {ARG_BOUNDARIES} 
         """
         super().__init__(noise=noise)
-        
+
         self.diffusivity = diffusivity
         self.bc = bc
-            
-            
-    def evolution_rate(self, state: ScalarField,  # type: ignore
-                       t: float = 0) -> ScalarField:
+
+    def evolution_rate(  # type: ignore
+        self, state: ScalarField, t: float = 0,
+    ) -> ScalarField:
         """ evaluate the right hand side of the PDE
         
         Args:
@@ -66,12 +63,10 @@ class DiffusionPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE 
         """
         assert isinstance(state, ScalarField)
-        laplace = state.laplace(bc=self.bc, label='evolution rate')
+        laplace = state.laplace(bc=self.bc, label="evolution rate")
         return self.diffusivity * laplace  # type: ignore
-    
-    
-    def _make_pde_rhs_numba(self, state: ScalarField  # type: ignore
-                            ) -> Callable:
+
+    def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
         """ create a compiled function evaluating the right hand side of the PDE
         
         Args:
@@ -87,16 +82,13 @@ class DiffusionPDE(PDEBase):
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))
         signature = arr_type(arr_type, nb.double)
-        
+
         diffusivity_value = self.diffusivity
-        laplace = state.grid.get_operator('laplace', bc=self.bc)
+        laplace = state.grid.get_operator("laplace", bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """ 
-            return diffusivity_value * laplace(state_data) 
-            
+            """ compiled helper function evaluating right hand side """
+            return diffusivity_value * laplace(state_data)
+
         return pde_rhs  # type: ignore
-    
-    
-    

@@ -1,12 +1,11 @@
-'''
+"""
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
 
 import numpy as np
 
 from ..math import SmoothData1D
-
 
 
 def test_SmoothData1D():

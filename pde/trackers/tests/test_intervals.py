@@ -1,17 +1,16 @@
-'''
+"""
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
 import pytest
 
 from .. import ConstantIntervals, LogarithmicIntervals
-        
 
 
 def test_intervals():
     """ test the interval classes """
     ival1 = ConstantIntervals(2)
-    ival2 = ival1.copy()   # test copying too
+    ival2 = ival1.copy()  # test copying too
     for ival in [ival1, ival2]:
         assert ival.next(3) == pytest.approx(5)
         assert ival.next(3) == pytest.approx(7)
@@ -21,6 +20,7 @@ def test_intervals():
     assert ival.next(3) == pytest.approx(5)
     assert ival.next(3) == pytest.approx(9)
     assert ival.next(3) == pytest.approx(17)
+
 
 #         ival = trackers.RealtimeIntervals(duration=1e-2, dt_initial=10)
 #         times = [ival.next(0)]
@@ -37,5 +37,3 @@ def test_interval_tstart():
     assert ival.next(3) == pytest.approx(9)
     assert ival.next(3) == pytest.approx(11)
     assert ival.next(3) == pytest.approx(13)
-
-

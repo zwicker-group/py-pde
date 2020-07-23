@@ -21,7 +21,6 @@ from .implicit import ImplicitSolver
 from .scipy import ScipySolver
 
 
-
 def registered_solvers() -> List[str]:
     """ returns all solvers that are registered in the package
     
@@ -29,9 +28,14 @@ def registered_solvers() -> List[str]:
         list of str: List with the names of the solvers
     """
     from .base import SolverBase
+
     return SolverBase.registered_solvers  # type: ignore
 
 
-
-__all__ = ['Controller', 'ExplicitSolver', 'ImplicitSolver', 'ScipySolver',
-           'registered_solvers']
+__all__ = [
+    "Controller",
+    "ExplicitSolver",
+    "ImplicitSolver",
+    "ScipySolver",
+    "registered_solvers",
+]

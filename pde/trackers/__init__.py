@@ -33,6 +33,5 @@ of the following classes:
 """
 
 
-from .intervals import (ConstantIntervals, LogarithmicIntervals,
-                        RealtimeIntervals)
+from .intervals import ConstantIntervals, LogarithmicIntervals, RealtimeIntervals
 from .trackers import *

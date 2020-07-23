@@ -4,22 +4,20 @@ Base classes
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from abc import ABCMeta, abstractmethod
 import logging
-from typing import (Callable, Optional, TYPE_CHECKING, Union,  # @UnusedImport
-                    Dict, Tuple, Any)
+from abc import ABCMeta, abstractmethod
+from typing import Dict  # @UnusedImport
+from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Union
 
 import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.base import FieldBase, OptionalArrayLike
-from ..trackers.base import TrackerCollectionDataType
 from ..tools.numba import jit
-
+from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
     from ..solvers.controller import TRangeType  # @UnusedImport
-
 
 
 class PDEBase(metaclass=ABCMeta):
@@ -35,11 +33,10 @@ class PDEBase(metaclass=ABCMeta):
     """ bool: Flag determining whether (some) numba-compiled functions should be
     checked against their numpy counter-parts. This can help with implementing a
     correct compiled version for a PDE class. """
-    
+
     explicit_time_dependence: Optional[bool] = None
     """ bool: Flag indicating whether the right hand side of the PDE has an
     explicit time dependence. """
-
 
     def __init__(self, noise: OptionalArrayLike = 0):
         """
@@ -59,7 +56,6 @@ class PDEBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
         self.noise = noise
 
-
     @property
     def is_sde(self) -> bool:
         """ flag indicating whether this is a stochastic differential equation
@@ -69,8 +65,7 @@ class PDEBase(metaclass=ABCMeta):
         is `True` if `self.noise != 0`.
         """
         # check for self.noise, in case __init__ is not called in a subclass
-        return hasattr(self, 'noise') and self.noise != 0
-  
+        return hasattr(self, "noise") and self.noise != 0
 
     def make_modify_after_step(self) -> Callable:
         """ returns a function that can be called to modify a state
@@ -83,25 +78,22 @@ class PDEBase(metaclass=ABCMeta):
             Function that can be applied to a state to modify it and which
             returns a measure for the corrections applied to the state 
         """
-        
+
         def modify_after_step(state: np.ndarray):
             """ no-op function """
             pass
 
         return modify_after_step
 
-
     @abstractmethod
-    def evolution_rate(self, field: FieldBase, t: float = 0) \
-        -> FieldBase: pass
-
+    def evolution_rate(self, field: FieldBase, t: float = 0) -> FieldBase:
+        pass
 
     def _make_pde_rhs_numba(self, state: FieldBase) -> Callable:
         """ create a compiled function for evaluating the right hand side """
         raise NotImplementedError
 
-
-    def make_pde_rhs(self, state: FieldBase, backend: str = 'auto') -> Callable:
+    def make_pde_rhs(self, state: FieldBase, backend: str = "auto") -> Callable:
         """ return a function for evaluating the right hand side of the PDE
         
         Args:
@@ -115,50 +107,53 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             Function determining the right hand side of the PDE
         """
-        if backend == 'auto':
+        if backend == "auto":
             try:
                 rhs = self._make_pde_rhs_numba(state)
             except NotImplementedError:
-                backend = 'numpy'
+                backend = "numpy"
             else:
-                rhs._backend = 'numba'  # type: ignore
-            
-        if backend == 'numba':
+                rhs._backend = "numba"  # type: ignore
+
+        if backend == "numba":
             rhs = self._make_pde_rhs_numba(state)
-            rhs._backend = 'numba'  # type: ignore
-                
-        elif backend == 'numpy':
+            rhs._backend = "numba"  # type: ignore
+
+        elif backend == "numpy":
             state = state.copy()
-            
+
             def evolution_rate_numpy(state_data, t: float):
                 """ evaluate the rhs given only a state without the grid """
                 state.data = state_data
                 return self.evolution_rate(state, t).data
-        
+
             rhs = evolution_rate_numpy
-            rhs._backend = 'numpy'  # type: ignore
-            
-        elif backend != 'auto':
-            raise ValueError(f"Unknown backend `{backend}`. Possible values "
-                             "are ['auto', 'numpy', 'numba']")
-        
-        if (self.check_implementation and
-                rhs._backend == 'numba'):  # type: ignore
+            rhs._backend = "numpy"  # type: ignore
+
+        elif backend != "auto":
+            raise ValueError(
+                f"Unknown backend `{backend}`. Possible values "
+                "are ['auto', 'numpy', 'numba']"
+            )
+
+        if self.check_implementation and rhs._backend == "numba":  # type: ignore
             # compare the numba implementation to the numpy implementation
             expected = self.evolution_rate(state.copy(), 0).data
             test_state = state.copy()
             result = rhs(test_state.data, 0)
-            msg = ('The numba compiled implementation of the right hand side '
-                   'is not compatible with the numpy implementation. This '
-                   'check can be disabled by setting the class attribute '
-                   '`check_implementation` to `False`.')
+            msg = (
+                "The numba compiled implementation of the right hand side "
+                "is not compatible with the numpy implementation. This "
+                "check can be disabled by setting the class attribute "
+                "`check_implementation` to `False`."
+            )
             np.testing.assert_allclose(result, expected, err_msg=msg)
-        
+
         return rhs
-            
-            
-    def noise_realization(self, state: FieldBase, t: float = 0,
-                          label: str = 'Noise realization') -> FieldBase:
+
+    def noise_realization(
+        self, state: FieldBase, t: float = 0, label: str = "Noise realization"
+    ) -> FieldBase:
         """ returns a realization for the noise
         
         Args:
@@ -178,25 +173,27 @@ class PDEBase(metaclass=ABCMeta):
                 # a single noise value is given for all fields
                 data = np.random.normal(scale=self.noise, size=state.data.shape)
                 return state.copy(data=data, label=label)
-            
+
             elif isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
                 noise = np.broadcast_to(self.noise, len(state))
-                fields = [f.copy(data=np.random.normal(scale=n,
-                                                       size=f.data.shape))
-                          for f, n in zip(state, noise)]
+                fields = [
+                    f.copy(data=np.random.normal(scale=n, size=f.data.shape))
+                    for f, n in zip(state, noise)
+                ]
                 return FieldCollection(fields, label=label)
-            
+
             else:
-                # different noise strengths, but a single field 
-                raise RuntimeError('Multiple noise strengths were given for '
-                                   f'the single field {state}')
-                
+                # different noise strengths, but a single field
+                raise RuntimeError(
+                    "Multiple noise strengths were given for "
+                    f"the single field {state}"
+                )
+
         else:
             return state.copy(data=0, label=label)
 
-       
-    def _make_noise_realization_numba(self, state: FieldBase) -> Callable:            
+    def _make_noise_realization_numba(self, state: FieldBase) -> Callable:
         """ return a function for evaluating the noise term of the PDE
         
         Args:
@@ -207,48 +204,50 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             Function determining the right hand side of the PDE
         """
-        if self.noise:        
+        if self.noise:
             data_shape = state.data.shape
-            
+
             if np.isscalar(self.noise):
                 # a single noise value is given for all fields
                 noise_strength = float(self.noise)
-                            
+
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float):
-                    """ helper function returning a noise realization """ 
+                    """ helper function returning a noise realization """
                     return noise_strength * np.random.randn(*data_shape)
-                
+
             elif isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
                 noise_strengths = np.empty(data_shape[0])
                 noise_arr = np.broadcast_to(self.noise, len(state))
                 for i, noise in enumerate(noise_arr):
                     noise_strengths[state._slices[i]] = noise
-                
+
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float):
-                    """ helper function returning a noise realization """ 
+                    """ helper function returning a noise realization """
                     out = np.random.randn(*data_shape)
                     for i in range(data_shape[0]):
                         out[i] *= noise_strengths[i]
                     return out
-                
+
             else:
-                # different noise strengths, but a single field 
-                raise RuntimeError('Multiple noise strengths were given for '
-                                   f'the single field {state}')
-            
+                # different noise strengths, but a single field
+                raise RuntimeError(
+                    "Multiple noise strengths were given for "
+                    f"the single field {state}"
+                )
+
         else:
+
             @jit
             def noise_realization(state_data: np.ndarray, t: float):
-                """ helper function returning a noise realization """ 
+                """ helper function returning a noise realization """
                 return None
-        
-        return noise_realization  # type: ignore    
-            
-       
-    def _make_sde_rhs_numba(self, state: FieldBase) -> Callable:            
+
+        return noise_realization  # type: ignore
+
+    def _make_sde_rhs_numba(self, state: FieldBase) -> Callable:
         """ return a function for evaluating the noise term of the PDE
         
         Args:
@@ -261,18 +260,15 @@ class PDEBase(metaclass=ABCMeta):
         """
         evolution_rate = self._make_pde_rhs_numba(state)
         noise_realization = self._make_noise_realization_numba(state)
-        
+
         @jit
         def sde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function returning a noise realization """ 
-            return (evolution_rate(state_data, t),
-                    noise_realization(state_data, t))
-        
-        return sde_rhs  # type: ignore    
-    
-                        
-    def make_sde_rhs(self, state: FieldBase, backend: str = 'auto') \
-            -> Callable:
+            """ compiled helper function returning a noise realization """
+            return (evolution_rate(state_data, t), noise_realization(state_data, t))
+
+        return sde_rhs  # type: ignore
+
+    def make_sde_rhs(self, state: FieldBase, backend: str = "auto") -> Callable:
         """ return a function for evaluating the right hand side of the SDE
         
         Args:
@@ -287,43 +283,47 @@ class PDEBase(metaclass=ABCMeta):
             Function determining the deterministic part of the right hand side
             of the PDE together with a noise realization.
         """
-        if backend == 'auto':
+        if backend == "auto":
             try:
                 sde_rhs = self._make_sde_rhs_numba(state)
             except NotImplementedError:
-                backend = 'numpy'
+                backend = "numpy"
             else:
-                sde_rhs._backend = 'numba'  # type: ignore
+                sde_rhs._backend = "numba"  # type: ignore
                 return sde_rhs
-             
-        if backend == 'numba':
+
+        if backend == "numba":
             sde_rhs = self._make_sde_rhs_numba(state)
-            sde_rhs._backend = 'numba'  # type: ignore
-                
-        elif backend == 'numpy':
+            sde_rhs._backend = "numba"  # type: ignore
+
+        elif backend == "numpy":
             state = state.copy()
-            
+
             def sde_rhs(state_data, t: float):
                 """ evaluate the rhs given only a state without the grid """
                 state.data = state_data
-                return (self.evolution_rate(state, t).data,
-                        self.noise_realization(state, t).data)
-        
-            sde_rhs._backend = 'numpy'  # type: ignore
-            
-        else:
-            raise ValueError(f'Unknown backend `{backend}`')
-        
-        return sde_rhs
-            
+                return (
+                    self.evolution_rate(state, t).data,
+                    self.noise_realization(state, t).data,
+                )
 
-    def solve(self, state: FieldBase,
-              t_range: "TRangeType",
-              dt: float = None,
-              tracker: TrackerCollectionDataType = ['progress', 'consistency'],
-              method: str = 'auto',
-              ret_info: bool = False,
-              **kwargs) -> Union[FieldBase, Tuple[FieldBase, Dict[str, Any]]]:
+            sde_rhs._backend = "numpy"  # type: ignore
+
+        else:
+            raise ValueError(f"Unknown backend `{backend}`")
+
+        return sde_rhs
+
+    def solve(
+        self,
+        state: FieldBase,
+        t_range: "TRangeType",
+        dt: float = None,
+        tracker: TrackerCollectionDataType = ["progress", "consistency"],
+        method: str = "auto",
+        ret_info: bool = False,
+        **kwargs,
+    ) -> Union[FieldBase, Tuple[FieldBase, Dict[str, Any]]]:
         """ convenience method for solving the partial differential equation 
         
         The method constructs a suitable solver
@@ -367,31 +367,33 @@ class PDEBase(metaclass=ABCMeta):
             information is returned.
         """
         from ..solvers.base import SolverBase
-        
-        if method == 'auto':
-            method = 'scipy' if dt is None else 'explicit'
-        
+
+        if method == "auto":
+            method = "scipy" if dt is None else "explicit"
+
         # create solver
         if callable(method):
             solver = method(pde=self, **kwargs)
             if not isinstance(solver, SolverBase):
-                self._logger.warn('Solver is not an instance of `SolverBase`. '
-                                  'Specified wrong method?')
+                self._logger.warn(
+                    "Solver is not an instance of `SolverBase`. "
+                    "Specified wrong method?"
+                )
         else:
             solver = SolverBase.from_name(method, pde=self, **kwargs)
-        
+
         # create controller
         from ..solvers import Controller
+
         controller = Controller(solver, t_range=t_range, tracker=tracker)
-        
+
         # run the simulation
         final_state = controller.run(state, dt)
-        
+
         if ret_info:
             info = controller.info.copy()
-            info.pop('solver_class')  # remove redundant information
-            info['solver'] = solver.info.copy()
+            info.pop("solver_class")  # remove redundant information
+            info["solver"] = solver.info.copy()
             return final_state, info
-        else: 
+        else:
             return final_state
-                

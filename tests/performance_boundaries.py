@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""
+This script tests the performance of the implementation of different boundary conditions
+"""
 
 import sys
 from pathlib import Path

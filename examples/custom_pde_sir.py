@@ -17,31 +17,31 @@ Here, :math:`D` is the diffusivity, :math:`\beta` the infection rate, and
 :math:`\gamma` the recovery rate.
 """
 
-from pde import UnitGrid, ScalarField, FieldCollection, PDEBase, PlotTracker
+from pde import FieldCollection, PDEBase, PlotTracker, ScalarField, UnitGrid
 
 
 class SIRPDE(PDEBase):
     """ SIR-model with diffusive mobility """
-    
-    def __init__(self, beta=0.3, gamma=0.9, diffusivity=0.1, bc='natural'):
+
+    def __init__(self, beta=0.3, gamma=0.9, diffusivity=0.1, bc="natural"):
         self.beta = beta  # transmission rate
         self.gamma = gamma  # recovery rate
         self.diffusivity = diffusivity  # spatial mobility
         self.bc = bc  # boundary condition
-        
+
     def get_state(self, s, i):
         """ generate a suitable initial state"""
         norm = (s + i).data.max()  # maximal density
         if norm > 1:
             s /= norm
             i /= norm
-        s.label = 'Susceptible'
-        i.label = 'Infected'
-            
+        s.label = "Susceptible"
+        i.label = "Infected"
+
         # create recovered field
-        r = ScalarField(s.grid, data=1 - s - i, label='Recovered')
+        r = ScalarField(s.grid, data=1 - s - i, label="Recovered")
         return FieldCollection([s, i, r])
-        
+
     def evolution_rate(self, state, t=0):
         s, i, r = state
         diff = self.diffusivity
@@ -61,5 +61,5 @@ i.data[0, 0] = 1
 state = eq.get_state(s, i)
 
 # simulate the pde
-tracker = PlotTracker(interval=10, plot_args={'vmin': 0, 'vmax': 1})
-sol = eq.solve(state, t_range=50, dt=1e-2, tracker=['progress', tracker])
+tracker = PlotTracker(interval=10, plot_args={"vmin": 0, "vmax": 1})
+sol = eq.solve(state, t_range=50, dt=1e-2, tracker=["progress", tracker])

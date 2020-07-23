@@ -6,51 +6,46 @@ Base classes for trackers
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Union, Dict, Any, List
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 
-from .intervals import IntervalData, get_interval
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
-
+from .intervals import IntervalData, get_interval
 
 Real = Union[float, int]
 InfoDict = Optional[Dict[str, Any]]
 TrackerDataType = Union["TrackerBase", str]
 
 
-
 class FinishedSimulation(StopIteration):
     """ exception for signaling that simulation finished successfully """
-    pass
 
+    pass
 
 
 class TrackerBase(metaclass=ABCMeta):
     """ base class for implementing trackers """
-    
-    _subclasses: Dict[str, 'TrackerBase'] = {}  # all inheriting classes
-    
-    
+
+    _subclasses: Dict[str, "TrackerBase"] = {}  # all inheriting classes
+
     @fill_in_docstring
     def __init__(self, interval: IntervalData = 1):
         """
         Args:
             interval:
                 {ARG_TRACKER_INTERVAL}
-        """ 
+        """
         self.interval = get_interval(interval)
         self._logger = logging.getLogger(self.__class__.__name__)
-
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """ register all subclassess to reconstruct them later """
         super().__init_subclass__(**kwargs)
-        if hasattr(cls, 'name'):
+        if hasattr(cls, "name"):
             cls._subclasses[cls.name] = cls
-            
-            
+
     @classmethod
     def from_data(cls, data: TrackerDataType, **kwargs) -> "TrackerBase":
         """ create tracker class from given data
@@ -67,12 +62,11 @@ class TrackerBase(metaclass=ABCMeta):
             try:
                 tracker_cls = cls._subclasses[data]
             except KeyError:
-                raise ValueError(f'Tracker `{data}` is not defined')
+                raise ValueError(f"Tracker `{data}` is not defined")
             return tracker_cls(**kwargs)  # type: ignore
         else:
-            raise ValueError(f'Unsupported tracker format: `{data}`.')
+            raise ValueError(f"Unsupported tracker format: `{data}`.")
 
-    
     def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
         """ initialize the tracker with information about the simulation
         
@@ -86,12 +80,11 @@ class TrackerBase(metaclass=ABCMeta):
             float: The first time the tracker needs to handle data
         """
         if info is not None:
-            t_start = info.get('solver', {}).get('t_start', 0)
+            t_start = info.get("solver", {}).get("t_start", 0)
         else:
             t_start = 0
         return self.interval._initialize(t_start)
-        
-    
+
     @abstractmethod
     def handle(self, field: FieldBase, t: float) -> None:
         """ handle data supplied to this tracker
@@ -103,8 +96,7 @@ class TrackerBase(metaclass=ABCMeta):
                 The associated time
         """
         pass
-    
-    
+
     def finalize(self, info: InfoDict = None) -> None:
         """ finalize the tracker, supplying additional information
 
@@ -115,24 +107,22 @@ class TrackerBase(metaclass=ABCMeta):
         pass
 
 
-
 TrackerCollectionDataType = Union[List[TrackerDataType], TrackerDataType, None]
 
 
-class TrackerCollection():
+class TrackerCollection:
     """ List of trackers providing methods to handle them efficiently
     
     Attributes:
         trackers (list):
             List of the trackers in the collection
     """
-    
+
     tracker_action_times: List[float]
     """ list: Times at which the trackers need to be handled next """
     time_next_action: float
     """ float: The time of the next interrupt of the simulation """
-    
-    
+
     def __init__(self, trackers: Optional[List[TrackerBase]] = None):
         """
         Args:
@@ -140,20 +130,21 @@ class TrackerCollection():
         """
         if trackers is None:
             self.trackers: List[TrackerBase] = []
-        elif not hasattr(trackers, '__iter__'):
-            raise ValueError('`trackers` must be a list of trackers, not '
-                             f'{trackers}')
+        elif not hasattr(trackers, "__iter__"):
+            raise ValueError(
+                "`trackers` must be a list of trackers, not " f"{trackers}"
+            )
         else:
-            self.trackers = trackers 
-                
+            self.trackers = trackers
+
         # do not check trackers before everything was initialized
         self.tracker_action_times = []
         self.time_next_action = np.inf
-        
-        
+
     @classmethod
-    def from_data(cls, data: TrackerCollectionDataType, **kwargs) \
-            -> "TrackerCollection":
+    def from_data(
+        cls, data: TrackerCollectionDataType, **kwargs
+    ) -> "TrackerCollection":
         """ create tracker collection from given data
         
         Args:
@@ -172,13 +163,14 @@ class TrackerCollection():
         elif isinstance(data, str):
             trackers = [TrackerBase.from_data(data, **kwargs)]
         else:
-            trackers = [TrackerBase.from_data(tracker)
-                        for tracker in data
-                        if tracker is not None]
-        
-        return cls(trackers)        
-        
-    
+            trackers = [
+                TrackerBase.from_data(tracker)
+                for tracker in data
+                if tracker is not None
+            ]
+
+        return cls(trackers)
+
     def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
         """ initialize the tracker with information about the simulation
         
@@ -192,19 +184,19 @@ class TrackerCollection():
             float: The first time the tracker needs to handle data
         """
         # initialize trackers and get their action times
-        self.tracker_action_times = [tracker.initialize(field, info)
-                                     for tracker in self.trackers]
+        self.tracker_action_times = [
+            tracker.initialize(field, info) for tracker in self.trackers
+        ]
 
         if self.trackers:
             # determine next time to check trackers
-            self.time_next_action = min(self.tracker_action_times)  
+            self.time_next_action = min(self.tracker_action_times)
         else:
             self.time_next_action = np.inf
-            
+
         return self.time_next_action
-        
-        
-    def handle(self, state: FieldBase, t: float, atol: float = 1.e-8) -> float:
+
+    def handle(self, state: FieldBase, t: float, atol: float = 1.0e-8) -> float:
         """ handle all trackers
         
         Args:
@@ -231,20 +223,18 @@ class TrackerCollection():
                 except StopIteration as err:
                     # stop iteration after all trackers have been handled
                     stop_iteration_err = err
-                    
+
                 # calculate next event (may skip some if too close)
-                self.tracker_action_times[i] = \
-                                    self.trackers[i].interval.next(t)
-                
+                self.tracker_action_times[i] = self.trackers[i].interval.next(t)
+
         if stop_iteration_err is not None:
             raise stop_iteration_err
-                
+
         # determine next time for checking handler
         if self.trackers:
             self.time_next_action = min(self.tracker_action_times)
         return self.time_next_action
 
-    
     def finalize(self, info: InfoDict = None) -> None:
         """ finalize the tracker, supplying additional information
 
@@ -254,4 +244,3 @@ class TrackerCollection():
         """
         for tracker in self.trackers:
             tracker.finalize(info=info)
-

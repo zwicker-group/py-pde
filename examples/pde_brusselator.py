@@ -19,20 +19,24 @@ Note that the same result can also be achieved with a
 allows for more flexibility at the cost of code complexity.
 """
 
-from pde import UnitGrid, ScalarField, FieldCollection, PDE, PlotTracker
+from pde import PDE, FieldCollection, PlotTracker, ScalarField, UnitGrid
 
 # define the PDE
 a, b = 1, 3
 d0, d1 = 1, 0.1
-eq = PDE({'u': f"{d0} * laplace(u) + {a} - ({b} + 1) * u + u**2 * v",
-          'v': f"{d1} * laplace(v) + {b} * u - u**2 * v"})
+eq = PDE(
+    {
+        "u": f"{d0} * laplace(u) + {a} - ({b} + 1) * u + u**2 * v",
+        "v": f"{d1} * laplace(v) + {b} * u - u**2 * v",
+    }
+)
 
 # initialize state
 grid = UnitGrid([64, 64])
-u = ScalarField(grid, a, label='Field $u$')
-v = b / a + 0.1 * ScalarField.random_normal(grid, label='Field $v$')
+u = ScalarField(grid, a, label="Field $u$")
+v = b / a + 0.1 * ScalarField.random_normal(grid, label="Field $v$")
 state = FieldCollection([u, v])
 
 # simulate the pde
-tracker = PlotTracker(interval=1, plot_args={'vmin': 0, 'vmax': 5})
+tracker = PlotTracker(interval=1, plot_args={"vmin": 0, "vmax": 5})
 sol = eq.solve(state, t_range=20, dt=1e-3, tracker=tracker)

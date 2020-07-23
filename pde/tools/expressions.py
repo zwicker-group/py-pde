@@ -16,31 +16,31 @@ representations using :mod:`sympy`.
 """
 
 
-from abc import ABCMeta, abstractproperty
 import builtins
 import copy
 import logging
 import re
-from typing import (Union, Callable, List, Optional, Dict, Any,
-                    Set, Sequence, Tuple)  # @UnusedImport
+from abc import ABCMeta, abstractproperty
 from numbers import Number
+from typing import Optional  # @UnusedImport
+from typing import Set  # @UnusedImport
+from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 
-import sympy
-import numpy as np
 import numba as nb
+import numpy as np
+import sympy
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
-from .cache import cached_property, cached_method
+from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
-
-from .numba import jit, convert_scalar
-
+from .numba import convert_scalar, jit
 
 
 @fill_in_docstring
-def parse_number(expression: Union[str, float],
-                 variables: Dict[str, float] = None) -> float:
+def parse_number(
+    expression: Union[str, float], variables: Dict[str, float] = None
+) -> float:
     r""" return a number compiled from an expression
     
     Warning:
@@ -56,28 +56,27 @@ def parse_number(expression: Union[str, float],
         float: the calculated value
     """
     from sympy.parsing import sympy_parser
-    
+
     if variables is None:
         variables = {}
-    
+
     expr = sympy_parser.parse_expr(str(expression))
     try:
         value = float(expr.subs(variables))
     except TypeError as err:
-        if not err.args: 
-            err.args = ('',)
+        if not err.args:
+            err.args = ("",)
         err.args = err.args + (f"Expression: `{expr}`",)
-        raise 
+        raise
     return value
-
 
 
 class NumpyArrayPrinter(PythonCodePrinter):
     """ special sympy printer returning numpy arrays """
+
     def _print_ImmutableDenseNDimArray(self, arr):
         expr = self._print(arr.tolist())
         return f"array({expr})"
-
 
 
 ExpressionType = Union[float, str, "ExpressionBase"]
@@ -87,9 +86,12 @@ class ExpressionBase(metaclass=ABCMeta):
     """ abstract base class for handling expressions """
 
     @fill_in_docstring
-    def __init__(self, expression: sympy.core.basic.Basic,
-                 signature: Optional[Sequence[Union[str, List[str]]]] = None,
-                 user_funcs: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        expression: sympy.core.basic.Basic,
+        signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        user_funcs: Optional[Dict[str, Any]] = None,
+    ):
         """
         Warning:
             {WARNING_EXEC}
@@ -121,19 +123,18 @@ class ExpressionBase(metaclass=ABCMeta):
         self.user_funcs = {} if user_funcs is None else user_funcs
         self._check_signature(signature)
 
-
     def __repr__(self):
-        return (f'{self.__class__.__name__}("{self.expression}", '
-                f'signature={self.vars})')
-        
-        
+        return (
+            f'{self.__class__.__name__}("{self.expression}", ' f"signature={self.vars})"
+        )
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
         # compare what the expressions depend on
         if set(self.vars) != set(other.vars):
             return False
-        
+
         # compare the expressions themselves by checking their difference
         diff = sympy.simplify(self._sympy_expr - other._sympy_expr)
         if isinstance(self._sympy_expr, sympy.NDimArray):
@@ -141,19 +142,16 @@ class ExpressionBase(metaclass=ABCMeta):
         else:
             return diff == 0
 
-
     @property
     def constant(self) -> bool:
         """ bool: whether the expression is a constant """
         return len(self._sympy_expr.free_symbols) == 0
 
-
     @abstractproperty
-    def shape(self) -> Tuple[int, ...]: pass
+    def shape(self) -> Tuple[int, ...]:
+        pass
 
-
-    def _check_signature(self,
-                         signature: Sequence[Union[str, List[str]]] = None):
+    def _check_signature(self, signature: Sequence[Union[str, List[str]]] = None):
         """ validate the variables of the expression against the signature """
         # get arguments of the expressions
         if self.constant:
@@ -161,28 +159,27 @@ class ExpressionBase(metaclass=ABCMeta):
             args: Set[str] = set()
             if signature is None:
                 signature = []
-                
+
         else:
             # general expressions might have a variable
-            args = set(str(s).split('[')[0]
-                       for s in self._sympy_expr.free_symbols)
+            args = set(str(s).split("[")[0] for s in self._sympy_expr.free_symbols)
             if signature is None:
                 # create signature from arguments
                 signature = list(sorted(args))
-        
-        self._logger.debug(f'Expression arguments: {args}')
-        
+
+        self._logger.debug(f"Expression arguments: {args}")
+
         # check whether variables are in signature
         self.vars: Any = []
         found = set()
         for sig in signature:
             sig_list = [sig] if isinstance(sig, str) else sig
-                
+
             # use the first item as the variable name
             arg_name = sig_list[0]
             self.vars.append(arg_name)
 
-            # check whether this part of the signature is present                 
+            # check whether this part of the signature is present
             for arg in args:
                 if arg in sig_list:
                     if arg != arg_name:  # synonym has been used
@@ -193,12 +190,13 @@ class ExpressionBase(metaclass=ABCMeta):
                     found.add(arg)
                     break
 
-        args = set(args) - found 
+        args = set(args) - found
         if len(args) > 0:
-            raise RuntimeError(f'Arguments {args} were not defined in '
-                               f'expression signature {signature}')
-            
-    
+            raise RuntimeError(
+                f"Arguments {args} were not defined in "
+                f"expression signature {signature}"
+            )
+
     @property
     def expression(self) -> str:
         """ str: the expression in string form """
@@ -207,17 +205,14 @@ class ExpressionBase(metaclass=ABCMeta):
             expr = self._sympy_expr.applyfunc(lambda x: x.evalf(chop=True))
         else:
             expr = self._sympy_expr.evalf(chop=True)
-            
-        return str(expr.xreplace({n: float(n)
-                                  for n in expr.atoms(sympy.Float)}))
 
-        
+        return str(expr.xreplace({n: float(n) for n in expr.atoms(sympy.Float)}))
+
     @property
     def rank(self) -> int:
         """ int: the rank of the expression """
         return len(self.shape)
-        
-        
+
     def depends_on(self, variable: str) -> bool:
         """ determine whether the expression depends on `variable`
         
@@ -230,12 +225,13 @@ class ExpressionBase(metaclass=ABCMeta):
         if self.constant:
             return False
         else:
-            return any(variable == str(symbol) 
-                       for symbol in self._sympy_expr.free_symbols) 
-    
-    
-    def _get_function(self, single_arg: bool = False,
-                      user_funcs: Dict[str, Callable] = None) -> Callable:
+            return any(
+                variable == str(symbol) for symbol in self._sympy_expr.free_symbols
+            )
+
+    def _get_function(
+        self, single_arg: bool = False, user_funcs: Dict[str, Callable] = None
+    ) -> Callable:
         """ return function evaluating expression
         
         Args:
@@ -253,18 +249,24 @@ class ExpressionBase(metaclass=ABCMeta):
         if user_funcs is not None:
             user_functions.update(user_funcs)
         user_dict = {k: k for k in user_functions}
-        
-        printer = NumpyArrayPrinter({'fully_qualified_modules': False,
-                                     'inline': True,
-                                     'allow_unknown_functions': True,
-                                     'user_functions': user_dict})
-        
+
+        printer = NumpyArrayPrinter(
+            {
+                "fully_qualified_modules": False,
+                "inline": True,
+                "allow_unknown_functions": True,
+                "user_functions": user_dict,
+            }
+        )
+
         variables = (self.vars,) if single_arg else self.vars
-        return sympy.lambdify(variables, self._sympy_expr,  # type: ignore
-                              modules=[user_functions, 'numpy'],
-                              printer=printer)
-                              
-        
+        return sympy.lambdify(  # type: ignore
+            variables,
+            self._sympy_expr,
+            modules=[user_functions, "numpy"],
+            printer=printer,
+        )
+
     @cached_method()
     def _get_function_cached(self, single_arg: bool = False) -> Callable:
         """ return function evaluating expression
@@ -280,14 +282,12 @@ class ExpressionBase(metaclass=ABCMeta):
         """
         return self._get_function(single_arg)
 
-
     def __call__(self, *args, **kwargs):
         """ return the value of the expression for the given values """
         return self._get_function_cached(single_arg=False)(*args, **kwargs)
 
-    
     @cached_method()
-    def get_compiled(self, single_arg: bool = False) -> Callable:  
+    def get_compiled(self, single_arg: bool = False) -> Callable:
         """ return numba function evaluating expression
         
         Args:
@@ -300,20 +300,21 @@ class ExpressionBase(metaclass=ABCMeta):
         """
         func = self._get_function_cached(single_arg=single_arg)
         return jit(func)  # type: ignore
-    
 
 
 class ScalarExpression(ExpressionBase):
     """ describes a mathematical expression of a scalar quantity """
-    
+
     shape: Tuple[int, ...] = tuple()
-    
-    
+
     @fill_in_docstring
-    def __init__(self, expression: ExpressionType = 0,
-                 signature: Optional[Sequence[Union[str, List[str]]]] = None,
-                 user_funcs: Optional[Dict[str, Any]] = None,
-                 allow_indexed: bool = False):
+    def __init__(
+        self,
+        expression: ExpressionType = 0,
+        signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        user_funcs: Optional[Dict[str, Any]] = None,
+        allow_indexed: bool = False,
+    ):
         """
         Warning:
             {WARNING_EXEC}
@@ -340,7 +341,7 @@ class ScalarExpression(ExpressionBase):
                 notation.
         """
         self.allow_indexed = allow_indexed
-        
+
         # parse the expression
         if isinstance(expression, ScalarExpression):
             # copy constructor
@@ -352,58 +353,56 @@ class ScalarExpression(ExpressionBase):
                 user_funcs = expression.user_funcs
             else:
                 user_funcs.update(expression.user_funcs)
-            
+
         elif callable(expression):
             # expression is some other callable -> not allowed anymore
-            raise TypeError('Expression must be provided as string and not as '
-                            'a callable function')
-        
+            raise TypeError(
+                "Expression must be provided as string and not as "
+                "a callable function"
+            )
+
         elif isinstance(expression, Number):
             # expression is a simple number
             sympy_expr = sympy.Float(expression)
-            
+
         elif bool(expression):
             # parse expression as a string
             expression = self._prepare_expression(str(expression))
 
-            # parse the expression using sympy                
+            # parse the expression using sympy
             from sympy.parsing import sympy_parser
+
             sympy_expr = sympy_parser.parse_expr(expression)
-            
+
         else:
-            # expression is empty, False or None => set it to zero                
+            # expression is empty, False or None => set it to zero
             sympy_expr = sympy.Float(0)
-            
-        super().__init__(expression=sympy_expr, signature=signature,
-                         user_funcs=user_funcs)
-    
-    
+
+        super().__init__(
+            expression=sympy_expr, signature=signature, user_funcs=user_funcs
+        )
+
     @property
     def value(self) -> float:
         """ float: the value for a constant expression """
         if self.constant:
             return float(self._sympy_expr)
         else:
-            raise TypeError('Only constant expressions have a defined value')
-        
-        
+            raise TypeError("Only constant expressions have a defined value")
+
     @property
     def is_zero(self) -> bool:
         """ bool: returns whether the expression is zero """
         return self.constant and self.value == 0
-        
-        
+
     def __bool__(self):
         """ tests whether the expression is nonzero """
         return not self.constant or self.value != 0
-        
-        
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return (super().__eq__(other) and
-                self.allow_indexed == other.allow_indexed)
-        
+        return super().__eq__(other) and self.allow_indexed == other.allow_indexed
 
     def _prepare_expression(self, expression: str) -> str:
         """ replace indexed variables, if allowed """
@@ -411,65 +410,70 @@ class ScalarExpression(ExpressionBase):
             return re.sub(r"(\w+)(\[\w+\])", r"IndexedBase(\1)\2", expression)
         else:
             return expression
-        
-        
+
     def _var_indexed(self, var: str) -> bool:
         """ checks whether the variable `var` is used in an indexed form """
         from sympy.tensor.indexed import Indexed
-        return any(isinstance(s, Indexed) and s.base.name == var
-                   for s in self._sympy_expr.free_symbols)
 
+        return any(
+            isinstance(s, Indexed) and s.base.name == var
+            for s in self._sympy_expr.free_symbols
+        )
 
     def differentiate(self, var: str) -> "ScalarExpression":
         """ return the expression differentiated with respect to var """
         if self.constant:
             # return empty expression
-            return ScalarExpression(expression=0,
-                                    signature=self.vars,
-                                    allow_indexed=self.allow_indexed)  
+            return ScalarExpression(
+                expression=0, signature=self.vars, allow_indexed=self.allow_indexed
+            )
         if self.allow_indexed:
             if self._var_indexed(var):
                 # TODO: implement this
-                raise NotImplementedError('Cannot differentiate with respect '
-                                          'to a vector')
-            
+                raise NotImplementedError(
+                    "Cannot differentiate with respect " "to a vector"
+                )
+
         var = self._prepare_expression(var)
-        return ScalarExpression(self._sympy_expr.diff(var),
-                                signature=self.vars,
-                                allow_indexed=self.allow_indexed,
-                                user_funcs=self.user_funcs)
-    
-    
+        return ScalarExpression(
+            self._sympy_expr.diff(var),
+            signature=self.vars,
+            allow_indexed=self.allow_indexed,
+            user_funcs=self.user_funcs,
+        )
+
     @cached_property()
     def derivatives(self) -> "TensorExpression":
-        """ differentiate the expression with respect to all variables """ 
+        """ differentiate the expression with respect to all variables """
         if self.constant:
             # return empty expression
             dim = len(self.vars)
             expression = sympy.Array(np.zeros(dim), shape=(dim,))
-            return TensorExpression(expression=expression,
-                                    signature=self.vars)
-            
+            return TensorExpression(expression=expression, signature=self.vars)
+
         if self.allow_indexed:
             if any(self._var_indexed(var) for var in self.vars):
-                raise RuntimeError('Cannot calculate gradient for expressions '
-                                   'with indexed variables')
-                
+                raise RuntimeError(
+                    "Cannot calculate gradient for expressions "
+                    "with indexed variables"
+                )
+
         grad = sympy.Array([self._sympy_expr.diff(v) for v in self.vars])
-        return TensorExpression(sympy.simplify(grad),
-                                signature=self.vars,
-                                user_funcs=self.user_funcs)
-        
-        
-        
+        return TensorExpression(
+            sympy.simplify(grad), signature=self.vars, user_funcs=self.user_funcs
+        )
+
+
 class TensorExpression(ExpressionBase):
     """ describes a mathematical expression of a tensorial quantity """
-    
-    
+
     @fill_in_docstring
-    def __init__(self, expression: ExpressionType,
-                 signature: Optional[Sequence[Union[str, List[str]]]] = None,
-                 user_funcs: Optional[Dict[str, Any]] = None):
+    def __init__(
+        self,
+        expression: ExpressionType,
+        signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        user_funcs: Optional[Dict[str, Any]] = None,
+    ):
         """
         Warning:
             {WARNING_EXEC}
@@ -501,26 +505,27 @@ class TensorExpression(ExpressionBase):
                 user_funcs = expression.user_funcs
             else:
                 user_funcs.update(expression.user_funcs)
-            
+
         elif isinstance(expression, (np.ndarray, list, tuple)):
             # expression is a constant array
             sympy_expr = sympy.Array(sympy.sympify(expression))
-            
+
         elif isinstance(expression, ImmutableNDimArray):
             # expression is an array of sympy expressions
             sympy_expr = expression
-            
+
         else:
             # parse expression as a string
             expression = str(expression)
 
-            # parse the expression using sympy                
+            # parse the expression using sympy
             from sympy.parsing import sympy_parser
+
             sympy_expr = sympy.Array(sympy_parser.parse_expr(expression))
 
-        super().__init__(expression=sympy_expr, signature=signature,
-                         user_funcs=user_funcs)
-
+        super().__init__(
+            expression=sympy_expr, signature=signature, user_funcs=user_funcs
+        )
 
     def __repr__(self):
         if self.shape == (0,):
@@ -528,23 +533,22 @@ class TensorExpression(ExpressionBase):
             return f'{self.__class__.__name__}("[]", signature={self.vars})'
         else:
             return super().__repr__()
-        
 
     @property
     def shape(self) -> Tuple[int, ...]:
         """ tuple: the shape of the tensor """
         return self._sympy_expr.shape  # type: ignore
 
-
     def __getitem__(self, index):
         expr = self._sympy_expr[index]
         if isinstance(expr, sympy.Array):
-            return TensorExpression(expr, signature=self.vars,
-                                    user_funcs=self.user_funcs)
+            return TensorExpression(
+                expr, signature=self.vars, user_funcs=self.user_funcs
+            )
         else:
-            return ScalarExpression(expr, signature=self.vars,
-                                    user_funcs=self.user_funcs)
-
+            return ScalarExpression(
+                expr, signature=self.vars, user_funcs=self.user_funcs
+            )
 
     @property
     def value(self):
@@ -552,38 +556,35 @@ class TensorExpression(ExpressionBase):
         if self.constant:
             return np.array(self._sympy_expr.tolist(), dtype=np.double)
         else:
-            raise TypeError('Only constant expressions have a defined value')
+            raise TypeError("Only constant expressions have a defined value")
 
-        
     def differentiate(self, var: str) -> "TensorExpression":
         """ return the expression differentiated with respect to var """
         if self.constant:
             # return empty expression
-            return TensorExpression(expression=np.zeros(self.shape),
-                                    signature=self.vars)
-        return TensorExpression(self._sympy_expr.diff(var),
-                                signature=self.vars,
-                                user_funcs=self.user_funcs)
-    
-    
+            return TensorExpression(
+                expression=np.zeros(self.shape), signature=self.vars
+            )
+        return TensorExpression(
+            self._sympy_expr.diff(var), signature=self.vars, user_funcs=self.user_funcs
+        )
+
     @cached_property()
     def derivatives(self) -> "TensorExpression":
-        """ differentiate the expression with respect to all variables """ 
+        """ differentiate the expression with respect to all variables """
         shape = (len(self.vars),) + self.shape
-        
+
         if self.constant:
             # return empty expression
-            return TensorExpression(sympy.Array(np.zeros(shape), shape),
-                                    signature=self.vars)
-                
+            return TensorExpression(
+                sympy.Array(np.zeros(shape), shape), signature=self.vars
+            )
+
         # perform the derivatives with respect to all variables
         dx = sympy.Array([sympy.Symbol(s) for s in self.vars])
         derivs = sympy.derive_by_array(self._sympy_expr, dx)
-        return TensorExpression(derivs,
-                                signature=self.vars,
-                                user_funcs=self.user_funcs)
-            
-                              
+        return TensorExpression(derivs, signature=self.vars, user_funcs=self.user_funcs)
+
     def get_compiled_array(self) -> Callable:
         """ compile the tensor expression such that a numpy array is returned
         
@@ -591,19 +592,22 @@ class TensorExpression(ExpressionBase):
         with exactly as many entries as there are variables in the expression.
         """
         assert isinstance(self._sympy_expr, sympy.Array)
-        variables = ', '.join(v for v in self.vars)
+        variables = ", ".join(v for v in self.vars)
         shape = self._sympy_expr.shape
-        
+
         if nb.config.DISABLE_JIT:
-            # special path used by coverage test without jitting. This can be 
+            # special path used by coverage test without jitting. This can be
             # removed once the `convert_scalar` wrapper is obsolete
-            lines = [f"    out[{str(idx + (...,))[1:-1]}] = {val}"
-                     for idx, val in np.ndenumerate(self._sympy_expr)]
+            lines = [
+                f"    out[{str(idx + (...,))[1:-1]}] = {val}"
+                for idx, val in np.ndenumerate(self._sympy_expr)
+            ]
         else:
-            lines = [f"    out[{str(idx + (...,))[1:-1]}] = "
-                        f"convert_scalar({val})"
-                     for idx, val in np.ndenumerate(self._sympy_expr)]
-        
+            lines = [
+                f"    out[{str(idx + (...,))[1:-1]}] = " f"convert_scalar({val})"
+                for idx, val in np.ndenumerate(self._sympy_expr)
+            ]
+
         if variables:
             # the expression takes variables as input
             first_dim = 0 if len(self.vars) == 1 else 1
@@ -617,23 +621,21 @@ class TensorExpression(ExpressionBase):
             code = "def _generated_function(arr=None, out=None):\n"
             code += f"    if out is None:\n"
             code += f"        out = empty({shape})\n"
-            
-        code += '\n'.join(lines) + "\n"
+
+        code += "\n".join(lines) + "\n"
         code += "    return out"
 
-        self._logger.debug('Code for `get_compiled_array`: %s', code)
-        
-        namespace = _get_namespace('numpy')
-        namespace['convert_scalar'] = convert_scalar
-        namespace['builtins'] = builtins
+        self._logger.debug("Code for `get_compiled_array`: %s", code)
+
+        namespace = _get_namespace("numpy")
+        namespace["convert_scalar"] = convert_scalar
+        namespace["builtins"] = builtins
         namespace.update(self.user_funcs)
         local_vars: Dict[str, Any] = {}
         exec(code, namespace, local_vars)
-        function = local_vars['_generated_function']   
-        
+        function = local_vars["_generated_function"]
+
         return jit(function)  # type: ignore
-    
-                
-                     
-            
+
+
 __all__ = ["ExpressionBase", "ScalarExpression", "TensorExpression"]

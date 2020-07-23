@@ -8,15 +8,13 @@ from typing import Callable
 
 import numpy as np
 
-
-from .base import PDEBase
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
-from ..tools.numba import nb, jit
 from ..tools.docstrings import fill_in_docstring
+from ..tools.numba import jit, nb
+from .base import PDEBase
 
 
-        
 class SwiftHohenbergPDE(PDEBase):
     r""" The Swift-Hohenberg equation 
     
@@ -33,14 +31,15 @@ class SwiftHohenbergPDE(PDEBase):
 
     explicit_time_dependence = False
 
-
     @fill_in_docstring
-    def __init__(self,
-                 rate: float = .1,
-                 kc2: float = 1.,
-                 delta: float = 1.,
-                 bc: BoundariesData = 'natural', 
-                 bc_lap: BoundariesData = None):
+    def __init__(
+        self,
+        rate: float = 0.1,
+        kc2: float = 1.0,
+        delta: float = 1.0,
+        bc: BoundariesData = "natural",
+        bc_lap: BoundariesData = None,
+    ):
         r""" 
         Args:
             rate (float):
@@ -59,16 +58,16 @@ class SwiftHohenbergPDE(PDEBase):
                 `bc`.
         """
         super().__init__()
-        
+
         self.rate = rate
         self.kc2 = kc2
         self.delta = delta
         self.bc = bc
         self.bc_lap = bc if bc_lap is None else bc_lap
-            
-            
-    def evolution_rate(self, state: ScalarField,  # type: ignore
-                       t: float = 0) -> ScalarField:
+
+    def evolution_rate(  # type: ignore
+        self, state: ScalarField, t: float = 0,
+    ) -> ScalarField:
         """ evaluate the right hand side of the PDE
         
         Args:
@@ -83,17 +82,18 @@ class SwiftHohenbergPDE(PDEBase):
         assert isinstance(state, ScalarField)
         state_laplace = state.laplace(bc=self.bc)
         state_laplace2 = state_laplace.laplace(bc=self.bc_lap)
-        
-        result = ((self.rate - self.kc2**2) * state
-                  - 2 * self.kc2 * state_laplace
-                  - state_laplace2
-                  + self.delta * state**2 - state**3)
-        result.label = 'evolution rate'
+
+        result = (
+            (self.rate - self.kc2 ** 2) * state
+            - 2 * self.kc2 * state_laplace
+            - state_laplace2
+            + self.delta * state ** 2
+            - state ** 3
+        )
+        result.label = "evolution rate"
         return result  # type: ignore
-     
-     
-    def _make_pde_rhs_numba(self, state: ScalarField  # type: ignore
-                            ) -> Callable:
+
+    def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
         """ create a compiled function evaluating the right hand side of the PDE
           
         Args:
@@ -109,24 +109,26 @@ class SwiftHohenbergPDE(PDEBase):
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))
         signature = arr_type(arr_type, nb.double)
-          
+
         rate = self.rate
         kc2 = self.kc2
         delta = self.delta
-        
-        laplace = state.grid.get_operator('laplace', bc=self.bc)
-        laplace2 = state.grid.get_operator('laplace', bc=self.bc_lap)
-  
+
+        laplace = state.grid.get_operator("laplace", bc=self.bc)
+        laplace2 = state.grid.get_operator("laplace", bc=self.bc_lap)
+
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """ 
+            """ compiled helper function evaluating right hand side """
             state_laplace = laplace(state_data)
             state_laplace2 = laplace2(state_laplace)
-              
-            return ((rate - kc2**2) * state_data
-                    - 2 * kc2 * state_laplace
-                    - state_laplace2
-                    + delta * state_data**2 - state_data**3)
-              
+
+            return (
+                (rate - kc2 ** 2) * state_data
+                - 2 * kc2 * state_laplace
+                - state_laplace2
+                + delta * state_data ** 2
+                - state_data ** 3
+            )
+
         return pde_rhs  # type: ignore
-      

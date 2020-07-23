@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+"""
+This script shows important information about the current python environment and the
+associated installed packages. This information can be helpful in understanding issues
+that occur with the package
+"""
 
 import sys
 from collections import OrderedDict

@@ -5,7 +5,7 @@ Diffusion on a Cartesian grid
 This example shows how to solve the diffusion equation on a Cartesian grid.
 """
 
-from pde import CartesianGrid, ScalarField, DiffusionPDE
+from pde import CartesianGrid, DiffusionPDE, ScalarField
 
 grid = CartesianGrid([[-1, 1], [0, 2]], [30, 16])  # generate grid
 state = ScalarField(grid)  # generate initial condition

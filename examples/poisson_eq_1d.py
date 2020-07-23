@@ -9,6 +9,6 @@ from pde import CartesianGrid, ScalarField, solve_poisson_equation
 
 grid = CartesianGrid([[0, 1]], 32, periodic=False)
 field = ScalarField(grid, 1)
-result = solve_poisson_equation(field, bc=[{'value': 0}, {'derivative': 1}])
+result = solve_poisson_equation(field, bc=[{"value": 0}, {"derivative": 1}])
 
 result.plot()

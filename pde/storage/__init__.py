@@ -11,5 +11,5 @@ Module defining classes for storing simulation data.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from .memory import MemoryStorage, get_memory_storage
 from .file import FileStorage
+from .memory import MemoryStorage, get_memory_storage

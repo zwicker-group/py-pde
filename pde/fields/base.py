@@ -1,41 +1,36 @@
-'''
+"""
 Defines base classes of fields, which are discretized on grids
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
 import functools
-import operator
-import logging
 import json
-from pathlib import Path 
+import logging
+import operator
 from abc import ABCMeta, abstractmethod, abstractproperty
-from typing import (Tuple, Callable, Optional, Union, Any, Dict, TypeVar,
-                    TYPE_CHECKING)
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
+import numba as nb
 import numpy as np
-import numba as nb        
 from scipy import interpolate, ndimage
 
-from ..grids.base import (GridBase, discretize_interval, DimensionError,
-                          DomainError)
-from ..grids.cartesian import CartesianGridBase
+from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..grids.boundaries.axes import BoundariesData
-from ..tools.plotting import plot_on_axes, PlotReference
-from ..tools.numba import jit, address_as_void_pointer
+from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
-
+from ..tools.numba import address_as_void_pointer, jit
+from ..tools.plotting import PlotReference, plot_on_axes
 
 if TYPE_CHECKING:
     from .scalar import ScalarField  # @UnusedImport
 
 
-
 ArrayLike = Union[np.ndarray, float]
 OptionalArrayLike = Optional[ArrayLike]
-TField = TypeVar('TField', bound='FieldBase')
-
+TField = TypeVar("TField", bound="FieldBase")
 
 
 class FieldBase(metaclass=ABCMeta):
@@ -44,15 +39,17 @@ class FieldBase(metaclass=ABCMeta):
     Attributes:
         label (str):
             Name of the field
-    """ 
-    
-    _subclasses: Dict[str, 'FieldBase'] = {}  # all classes inheriting from this
+    """
+
+    _subclasses: Dict[str, "FieldBase"] = {}  # all classes inheriting from this
     readonly = False
-    
-    
-    def __init__(self, grid: GridBase,
-                 data: OptionalArrayLike = None,
-                 label: Optional[str] = None):
+
+    def __init__(
+        self,
+        grid: GridBase,
+        data: OptionalArrayLike = None,
+        label: Optional[str] = None,
+    ):
         """ 
         Args:
             grid (:class:`~pde.grids.GridBase`):
@@ -67,16 +64,15 @@ class FieldBase(metaclass=ABCMeta):
         self.label = label
         self._logger = logging.getLogger(self.__class__.__name__)
 
-
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """ register all subclassess to reconstruct them later """
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
 
-
     @classmethod
-    def from_state(cls, attributes: Dict[str, Any],
-                   data: np.ndarray = None) -> "FieldBase":
+    def from_state(
+        cls, attributes: Dict[str, Any], data: np.ndarray = None
+    ) -> "FieldBase":
         """ create a field from given state.
         
         Args:
@@ -86,16 +82,14 @@ class FieldBase(metaclass=ABCMeta):
                 Data values at the support points of the grid defining the field
         """
         # base class was chosen => select correct class from attributes
-        class_name = attributes.pop('class')
+        class_name = attributes.pop("class")
 
         if class_name == cls.__name__:
-            raise RuntimeError('Cannot reconstruct abstract class' 
-                               f'`{class_name}`')
-        
+            raise RuntimeError("Cannot reconstruct abstract class" f"`{class_name}`")
+
         # call possibly overwritten classmethod from subclass
         return cls._subclasses[class_name].from_state(attributes, data)
 
-            
     @classmethod
     def from_file(cls, filename: str) -> "FieldBase":
         """ create field by reading file
@@ -104,45 +98,45 @@ class FieldBase(metaclass=ABCMeta):
             filename (str): Path to the file being read
         """
         import h5py
+
         from .collection import FieldCollection
-        
+
         with h5py.File(filename, "r") as fp:
-            if 'class' in fp.attrs:
+            if "class" in fp.attrs:
                 # this should be a field collection
-                assert json.loads(fp.attrs['class']) == 'FieldCollection'
+                assert json.loads(fp.attrs["class"]) == "FieldCollection"
                 obj = FieldCollection._from_hdf_dataset(fp)
-                
+
             elif len(fp) == 1:
                 # a single field is stored in the data
                 dataset = fp[list(fp.keys())[0]]  # retrieve only dataset
                 obj = cls._from_hdf_dataset(dataset)  # type: ignore
-                
+
             else:
-                raise RuntimeError('Multiple data fields were found in the '
-                                   'file but no FieldCollection is expected')
+                raise RuntimeError(
+                    "Multiple data fields were found in the "
+                    "file but no FieldCollection is expected"
+                )
         return obj
-                
-                
+
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> "FieldBase":
         """ construct a field by reading data from an hdf5 dataset """
         # copy attributes from hdf
         attributes = dict(dataset.attrs)
-        
+
         # determine class
-        class_name = json.loads(attributes.pop('class'))
+        class_name = json.loads(attributes.pop("class"))
         field_cls = cls._subclasses[class_name]
-        
+
         # unserialize the attributes
         attributes = field_cls.unserialize_attributes(attributes)
         return field_cls.from_state(attributes, data=dataset)
 
-    
     @property
     def grid(self) -> GridBase:
         """ GridBase: The grid on which the field is defined """
         return self._grid
-
 
     def to_file(self, filename: str, **kwargs):
         r""" store field in a file
@@ -159,29 +153,29 @@ class FieldBase(metaclass=ABCMeta):
                 Additional parameters may be supported for some formats 
         """
         extension = Path(filename).suffix.lower()
-        
-        if extension in {'.hdf', '.hdf5', '.he5', '.h5'}:
+
+        if extension in {".hdf", ".hdf5", ".he5", ".h5"}:
             import h5py
+
             with h5py.File(filename, "w") as fp:
                 self._write_hdf_dataset(fp, **kwargs)
-                
-        elif extension in {'.png', '.jpg', '.jpeg', '.tif', '.pdf', '.svg'}:
+
+        elif extension in {".png", ".jpg", ".jpeg", ".tif", ".pdf", ".svg"}:
             self._write_to_image(filename, **kwargs)
-            
+
         else:
-            raise ValueError('Do not know how to save data to file with '
-                             f'extensions `{extension}`')
+            raise ValueError(
+                "Do not know how to save data to file with " f"extensions `{extension}`"
+            )
 
-
-    def _write_hdf_dataset(self, hdf_path, key: str = 'data'):
+    def _write_hdf_dataset(self, hdf_path, key: str = "data"):
         """ write data to a given hdf5 path `hdf_path` """
         # write the data
         dataset = hdf_path.create_dataset(key, data=self.data)
 
-        # write attributes        
+        # write attributes
         for key, value in self.attributes_serialized.items():
             dataset.attrs[key] = value
-
 
     def _write_to_image(self, filename: str, **kwargs):
         """ write data to image 
@@ -189,17 +183,15 @@ class FieldBase(metaclass=ABCMeta):
         Args:
             filename (str): The path to the image that will be created
         """
-        raise NotImplementedError(f'Cannot save {self.__class__.__name__} as '
-                                  'an image')
+        raise NotImplementedError(
+            f"Cannot save {self.__class__.__name__} as " "an image"
+        )
 
-    
     @abstractmethod
-    def copy(self: TField, data: OptionalArrayLike = None, label: str = None) \
-        -> TField: pass
-            
-         
-    def assert_field_compatible(self, other: 'FieldBase',
-                                accept_scalar: bool = False):
+    def copy(self: TField, data: OptionalArrayLike = None, label: str = None) -> TField:
+        pass
+
+    def assert_field_compatible(self, other: "FieldBase", accept_scalar: bool = False):
         """ checks whether `other` is compatible with the current field
         
         Args:
@@ -209,58 +201,56 @@ class FieldBase(metaclass=ABCMeta):
                 :class:`~pde.fields.ScalarField`.
         """
         from .scalar import ScalarField  # @Reimport
-        
+
         # check whether they are the same class
-        class_compatible = (self.__class__ == other.__class__ or
-                            (accept_scalar and isinstance(other, ScalarField)))
+        class_compatible = self.__class__ == other.__class__ or (
+            accept_scalar and isinstance(other, ScalarField)
+        )
         if not class_compatible:
-            raise TypeError('Fields are incompatible')
-        
+            raise TypeError("Fields are incompatible")
+
         # check whether the associated grids are identical
         if not self.grid.compatible_with(other.grid):
-            raise ValueError('Grids incompatible')
-    
-         
+            raise ValueError("Grids incompatible")
+
     @property
     def data(self) -> np.ndarray:
         """ :class:`numpy.ndarray`: discretized data at the support points """
         return self._data
-    
+
     @data.setter
     def data(self, value):
         if self.readonly:
-            raise RuntimeError(f'Cannot write to {self.__class__.__name__}')
+            raise RuntimeError(f"Cannot write to {self.__class__.__name__}")
         if isinstance(value, FieldBase):
             # copy data into current field
             self.assert_field_compatible(value, accept_scalar=True)
             self._data[:] = value.data
         else:
             self._data[:] = value
-        
-        
+
     @property
     def attributes(self) -> Dict[str, Any]:
         """ dict: describes the state of the instance (without the data) """
-        return {'class': self.__class__.__name__,
-                'grid': self.grid,
-                'label': self.label}
-    
+        return {
+            "class": self.__class__.__name__,
+            "grid": self.grid,
+            "label": self.label,
+        }
 
     @property
     def attributes_serialized(self) -> Dict[str, str]:
         """ dict: serialized version of the attributes """
         results = {}
         for key, value in self.attributes.items():
-            if key == 'grid':
+            if key == "grid":
                 results[key] = value.state_serialized
             else:
                 results[key] = json.dumps(value)
         return results
-    
-    
+
     @classmethod
-    def unserialize_attributes(cls, attributes: Dict[str, str]) \
-            -> Dict[str, Any]:
+    def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
         """ unserializes the given attributes
         
         Args:
@@ -271,46 +261,41 @@ class FieldBase(metaclass=ABCMeta):
             dict: The unserialized attributes
         """
         # base class was chosen => select correct class from attributes
-        class_name = json.loads(attributes['class'])
+        class_name = json.loads(attributes["class"])
 
         if class_name == cls.__name__:
-            raise RuntimeError('Cannot reconstruct abstract class' 
-                               f'`{class_name}`')
-        
+            raise RuntimeError("Cannot reconstruct abstract class" f"`{class_name}`")
+
         # call possibly overwritten classmethod from subclass
         return cls._subclasses[class_name].unserialize_attributes(attributes)
-
 
     @property
     def _data_flat(self):
         """ :class:`numpy.ndarray`: flat version of discretized data """
         # flatten the first dimension of the internal data
         return self._data.reshape(-1, *self.grid.shape)
-    
+
     @_data_flat.setter
     def _data_flat(self, value):
         """ set the data from a value from a collection """
         if self.readonly:
-            raise RuntimeError(f'Cannot write to {self.__class__.__name__}')
+            raise RuntimeError(f"Cannot write to {self.__class__.__name__}")
         # simply set the data -> this might need to be overwritten
         self._data = value
-            
-    
+
     def __eq__(self, other):
         """ test fields for equality, ignoring the label """
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return (self.grid == other.grid and
-                np.array_equal(self.data, other.data))
-    
+        return self.grid == other.grid and np.array_equal(self.data, other.data)
 
     def __neg__(self):
         """ return the negative of the current field """
         return self.copy(data=-self.data)
 
-
-    def _binary_operation(self, other, op: Callable,
-                          scalar_second: bool = True) -> "FieldBase":
+    def _binary_operation(
+        self, other, op: Callable, scalar_second: bool = True
+    ) -> "FieldBase":
         """ perform a binary operation between this field and `other`
         
         Args:
@@ -328,32 +313,32 @@ class FieldBase(metaclass=ABCMeta):
         if isinstance(other, FieldBase):
             # right operator is a field
             from .scalar import ScalarField  # @Reimport
-            
+
             if scalar_second:
-                # right operator must be a scalar 
+                # right operator must be a scalar
                 if not isinstance(other, ScalarField):
-                    raise TypeError('Right operator must be a scalar field')
+                    raise TypeError("Right operator must be a scalar field")
                 self.grid.assert_grid_compatible(other.grid)
                 result: FieldBase = self.copy(op(self.data, other.data))
-                
+
             elif isinstance(self, ScalarField):
                 # left operator is a scalar field (right can be tensor)
                 self.grid.assert_grid_compatible(other.grid)
                 result = other.copy(op(self.data, other.data))
-                
+
             else:
                 # left operator is tensor and right one might be anything
                 self.assert_field_compatible(other, accept_scalar=True)
                 result = self.copy(op(self.data, other.data))
-                
+
         else:
             # the second operator is a number or a numpy array
             result = self.copy(op(self.data, other))
-        return result        
+        return result
 
-    
-    def _binary_operation_inplace(self, other, op_inplace: Callable,
-                                  scalar_second: bool = True) -> "FieldBase":
+    def _binary_operation_inplace(
+        self, other, op_inplace: Callable, scalar_second: bool = True
+    ) -> "FieldBase":
         """ perform an in-place binary operation between this field and `other`
         
         Args:
@@ -368,104 +353,90 @@ class FieldBase(metaclass=ABCMeta):
             FieldBase: The field `self` with updated data
         """
         if self.readonly:
-            raise RuntimeError(f'Cannot write to {self.__class__.__name__}')
-        
+            raise RuntimeError(f"Cannot write to {self.__class__.__name__}")
+
         if isinstance(other, FieldBase):
             # right operator is a field
             from .scalar import ScalarField  # @Reimport
-            
+
             if scalar_second:
-                # right operator must be a scalar 
+                # right operator must be a scalar
                 if not isinstance(other, ScalarField):
-                    raise TypeError('Right operator must be a scalar field')
+                    raise TypeError("Right operator must be a scalar field")
                 self.grid.assert_grid_compatible(other.grid)
             else:
                 # left operator is tensor and right one might be anything
                 self.assert_field_compatible(other, accept_scalar=True)
-                
+
             op_inplace(self.data, other.data)
-                
+
         else:
             # the second operator is a number or a numpy array
             op_inplace(self.data, other)
-            
-        return self        
 
-    
+        return self
+
     def __add__(self, other) -> "FieldBase":
         """ add two fields """
         return self._binary_operation(other, operator.add, scalar_second=False)
-    __radd__ = __add__
 
+    __radd__ = __add__
 
     def __iadd__(self, other) -> "FieldBase":
         """ add `other` to the current field """
-        return self._binary_operation_inplace(other, operator.iadd,
-                                              scalar_second=False)
-    
-    
+        return self._binary_operation_inplace(other, operator.iadd, scalar_second=False)
+
     def __sub__(self, other) -> "FieldBase":
         """ subtract two fields """
         return self._binary_operation(other, operator.sub, scalar_second=False)
 
-    
     def __rsub__(self, other) -> "FieldBase":
         """ subtract two fields """
-        return self._binary_operation(other, lambda x, y: y - x,
-                                      scalar_second=False)
-
+        return self._binary_operation(other, lambda x, y: y - x, scalar_second=False)
 
     def __isub__(self, other) -> "FieldBase":
         """ add `other` to the current field """
-        return self._binary_operation_inplace(other, operator.isub,
-                                              scalar_second=False)
-    
-    
+        return self._binary_operation_inplace(other, operator.isub, scalar_second=False)
+
     def __mul__(self, other) -> "FieldBase":
         """ multiply field by value """
         return self._binary_operation(other, operator.mul, scalar_second=False)
+
     __rmul__ = __mul__
-    
-       
+
     def __imul__(self, other) -> "FieldBase":
         """ multiply field by value """
-        return self._binary_operation_inplace(other, operator.imul,
-                                              scalar_second=False)
+        return self._binary_operation_inplace(other, operator.imul, scalar_second=False)
 
-    
     def __truediv__(self, other) -> "FieldBase":
         """ divide field by value """
-        return self._binary_operation(other, operator.truediv,
-                                      scalar_second=True)
-    
-    
+        return self._binary_operation(other, operator.truediv, scalar_second=True)
+
     def __itruediv__(self, other) -> "FieldBase":
         """ divide field by value """
-        return self._binary_operation_inplace(other, operator.itruediv,
-                                              scalar_second=True)
-       
-       
+        return self._binary_operation_inplace(
+            other, operator.itruediv, scalar_second=True
+        )
+
     def __pow__(self, exponent: float) -> "FieldBase":
         """ raise data of the field to a certain power """
         if not np.isscalar(exponent):
-            raise NotImplementedError('Only scalar exponents are supported')
+            raise NotImplementedError("Only scalar exponents are supported")
         return self.copy(data=self.data ** exponent)
-    
-    
+
     def __ipow__(self, exponent: float) -> "FieldBase":
         """ raise data of the field to a certain power in-place """
         if self.readonly:
-            raise RuntimeError(f'Cannot write to {self.__class__.__name__}')
-        
+            raise RuntimeError(f"Cannot write to {self.__class__.__name__}")
+
         if not np.isscalar(exponent):
-            raise NotImplementedError('Only scalar exponents are supported')
+            raise NotImplementedError("Only scalar exponents are supported")
         self.data **= exponent
         return self
-        
-        
-    def apply(self: TField, func: Callable,
-              out: Optional[TField] = None,
-              label: str = None) -> TField:
+
+    def apply(
+        self: TField, func: Callable, out: Optional[TField] = None, label: str = None
+    ) -> TField:
         """ applies a function to the data and returns it as a field
         
         Args:
@@ -488,20 +459,21 @@ class FieldBase(metaclass=ABCMeta):
             if label:
                 out.label = label
             return out
-        
-        
-    @abstractmethod
-    def get_line_data(self, scalar: str = 'auto', extract: str = 'auto'): pass
 
     @abstractmethod
-    def get_image_data(self): pass
-    
+    def get_line_data(self, scalar: str = "auto", extract: str = "auto"):
+        pass
+
     @abstractmethod
-    def plot(self, *args, **kwargs): pass
-    
+    def get_image_data(self):
+        pass
+
+    @abstractmethod
+    def plot(self, *args, **kwargs):
+        pass
 
 
-TDataField = TypeVar('TDataField', bound='DataFieldBase')
+TDataField = TypeVar("TDataField", bound="DataFieldBase")
 
 
 class DataFieldBase(FieldBase, metaclass=ABCMeta):
@@ -516,15 +488,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Shape of the `data` field
         label (str):
             Name of the field
-    """ 
-         
+    """
+
     rank: int  # the rank of the tensor field
     _allocate_memory = True  # determines whether the instances allocated memory
-             
 
-    def __init__(self, grid: GridBase,
-                 data: OptionalArrayLike = None,
-                 label: Optional[str] = None):
+    def __init__(
+        self,
+        grid: GridBase,
+        data: OptionalArrayLike = None,
+        label: Optional[str] = None,
+    ):
         """ 
         Args:
             grid (:class:`~pde.grids.GridBase`):
@@ -537,49 +511,57 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # determine data shape
         shape = (grid.dim,) * self.rank + grid.shape
-        
+
         if self._allocate_memory:
             # class manages its own data, which therefore needs to be allocated
             if data is None:
                 data = np.zeros(shape, dtype=np.double)
             elif isinstance(data, DataFieldBase):
-                # we need to make a copy to make sure the data is writeable 
-                data = np.array(np.broadcast_to(data.data, shape),
-                                dtype=np.double, copy=True)
+                # we need to make a copy to make sure the data is writeable
+                data = np.array(
+                    np.broadcast_to(data.data, shape), dtype=np.double, copy=True
+                )
             else:
-                # we need to make a copy to make sure the data is writeable 
-                data = np.array(np.broadcast_to(data, shape), dtype=np.double,
-                                copy=True)
-                
+                # we need to make a copy to make sure the data is writeable
+                data = np.array(
+                    np.broadcast_to(data, shape), dtype=np.double, copy=True
+                )
+
         elif data is not None:
             # class does not manage its own data
-            raise ValueError(f"{self.__class__.__name__} does not support data "
-                              "assignment.")
-            
+            raise ValueError(
+                f"{self.__class__.__name__} does not support data " "assignment."
+            )
+
         super().__init__(grid, data=data, label=label)
-            
-                     
+
     def __repr__(self):
         """ return instance as string """
         class_name = self.__class__.__name__
-        result = f'{class_name}(grid={self.grid!r}, data={self.data}'
+        result = f"{class_name}(grid={self.grid!r}, data={self.data}"
         if self.label:
             result += f', label="{self.label}"'
-        return result + ')'
+        return result + ")"
 
-    
     def __str__(self):
         """ return instance as string """
-        result = f'{self.__class__.__name__}(grid={self.grid}, ' \
-                 f'data=Array{self.data.shape}'
+        result = (
+            f"{self.__class__.__name__}(grid={self.grid}, "
+            f"data=Array{self.data.shape}"
+        )
         if self.label:
             result += f', label="{self.label}"'
-        return result + ')'
-
+        return result + ")"
 
     @classmethod
-    def random_uniform(cls, grid: GridBase, vmin: float = 0, vmax: float = 1,
-                       label: Optional[str] = None, seed: Optional[int] = None):
+    def random_uniform(
+        cls,
+        grid: GridBase,
+        vmin: float = 0,
+        vmax: float = 1,
+        label: Optional[str] = None,
+        seed: Optional[int] = None,
+    ):
         """ create field with uniform distributed random values
         
         These values are uncorrelated in space.
@@ -602,12 +584,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             np.random.seed(seed)
         data = np.random.uniform(vmin, vmax, shape)
         return cls(grid, data, label=label)
-    
-    
+
     @classmethod
-    def random_normal(cls, grid: GridBase, mean: float = 0, std: float = 1,
-                      scaling: str = 'physical', label: Optional[str] = None,
-                      seed: Optional[int] = None):
+    def random_normal(
+        cls,
+        grid: GridBase,
+        mean: float = 0,
+        std: float = 1,
+        scaling: str = "physical",
+        label: Optional[str] = None,
+        seed: Optional[int] = None,
+    ):
         """ create field with normal distributed random values
         
         These values are uncorrelated in space.
@@ -634,26 +621,28 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if seed is not None:
             np.random.seed(seed)
-        
-        if scaling == 'none':
+
+        if scaling == "none":
             noise_scale = std
-        elif scaling == 'physical':
+        elif scaling == "physical":
             noise_scale = std / np.sqrt(grid.cell_volumes)
         else:
-            raise ValueError(f'Unknown noise scaling {scaling}')
-            
+            raise ValueError(f"Unknown noise scaling {scaling}")
+
         shape = (grid.dim,) * cls.rank + grid.shape
         data = mean + noise_scale * np.random.randn(*shape)
         return cls(grid, data, label=label)
 
-    
     @classmethod
-    def random_harmonic(cls, grid: GridBase,
-                        modes: int = 3,
-                        harmonic=np.cos,
-                        axis_combination=np.multiply,
-                        label: Optional[str] = None,
-                        seed: Optional[int] = None):
+    def random_harmonic(
+        cls,
+        grid: GridBase,
+        modes: int = 3,
+        harmonic=np.cos,
+        axis_combination=np.multiply,
+        label: Optional[str] = None,
+        seed: Optional[int] = None,
+    ):
         r""" create a random field build from harmonics
         
         The resulting fields will be highly correlated in space and can thus
@@ -698,7 +687,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         tensor_shape = (grid.dim,) * cls.rank
         if seed is not None:
             np.random.seed(seed)
-    
+
         data = np.empty(tensor_shape + grid.shape)
         # determine random field for each component
         for index in np.ndindex(*tensor_shape):
@@ -707,21 +696,24 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             for i in range(len(grid.axes)):
                 # choose wave vectors
                 ampl = np.random.random(modes)  # amplitudes
-                x = discretize_interval(0, 2*np.pi, grid.shape[i])[0]
-                data_axis.append(sum(a * harmonic(n * x)
-                                     for n, a in enumerate(ampl, 1)))
+                x = discretize_interval(0, 2 * np.pi, grid.shape[i])[0]
+                data_axis.append(
+                    sum(a * harmonic(n * x) for n, a in enumerate(ampl, 1))
+                )
             # full dataset is product of values along axes
             data[index] = functools.reduce(axis_combination.outer, data_axis)
-            
+
         return cls(grid, data, label=label)
 
-
     @classmethod
-    def random_colored(cls, grid: GridBase,
-                       exponent: float = 0,
-                       scale: float = 1,
-                       label: Optional[str] = None, 
-                       seed: Optional[int] = None):
+    def random_colored(
+        cls,
+        grid: GridBase,
+        exponent: float = 0,
+        scale: float = 1,
+        label: Optional[str] = None,
+        seed: Optional[int] = None,
+    ):
         r""" create a field of random values with colored noise
                 
         The spatially correlated values obey
@@ -750,25 +742,27 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if seed is not None:
             np.random.seed(seed)
-        
-        # create function making colored noise    
+
+        # create function making colored noise
         from pde.tools.spectral import make_colored_noise
-        make_noise = make_colored_noise(grid.shape, dx=grid.discretization,
-                                        exponent=exponent, scale=scale)
-        
+
+        make_noise = make_colored_noise(
+            grid.shape, dx=grid.discretization, exponent=exponent, scale=scale
+        )
+
         # create random fields for each tensor component
         tensor_shape = (grid.dim,) * cls.rank
         data = np.empty(tensor_shape + grid.shape)
         # determine random field for each component
         for index in np.ndindex(*tensor_shape):
             data[index] = make_noise()
-         
+
         return cls(grid, data, label=label)
-    
 
     @classmethod
-    def from_state(cls, attributes: Dict[str, Any],
-                   data: np.ndarray = None) -> "DataFieldBase":
+    def from_state(
+        cls, attributes: Dict[str, Any], data: np.ndarray = None
+    ) -> "DataFieldBase":
         """ create a field from given state.
         
         Args:
@@ -777,17 +771,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data (:class:`numpy.ndarray`, optional):
                 Data values at the support points of the grid defining the field
         """
-        if 'class' in attributes:
-            class_name = attributes.pop('class')
+        if "class" in attributes:
+            class_name = attributes.pop("class")
             assert class_name == cls.__name__
-            
+
         # create the instance from the attributes
-        return cls(attributes.pop('grid'), data=data, **attributes)
-        
-        
-    def copy(self: TDataField,
-             data: OptionalArrayLike = None,
-             label: str = None) -> TDataField:
+        return cls(attributes.pop("grid"), data=data, **attributes)
+
+    def copy(
+        self: TDataField, data: OptionalArrayLike = None, label: str = None
+    ) -> TDataField:
         """ return a copy of the data, but not of the grid
         
         Args:
@@ -803,17 +796,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data = self.data
         # the actual data will be copied in our __init__ method
         return self.__class__(self.grid, data=data, label=label)
-    
-    
+
     @property
     def data_shape(self) -> Tuple[int, ...]:
         """ tuple: the shape of the data at each grid point """
         return (self.grid.dim,) * self.rank
-    
-    
+
     @classmethod
-    def unserialize_attributes(cls, attributes: Dict[str, str]) \
-            -> Dict[str, Any]:
+    def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
         """ unserializes the given attributes
         
         Args:
@@ -825,13 +815,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         results = {}
         for key, value in attributes.items():
-            if key == 'grid':
+            if key == "grid":
                 results[key] = GridBase.from_state(value)
             else:
                 results[key] = json.loads(value)
         return results
-    
-        
+
     def _write_to_image(self, filename: str, **kwargs):
         r""" write data to image 
         
@@ -848,19 +837,20 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 :func:`matplotlib.pyplot.imsave` to affect the appearance.
         """
         import matplotlib.pyplot as plt
+
         # obtain image data
         get_image_args = {}
-        for key in ['performance_goal', 'scalar']:
+        for key in ["performance_goal", "scalar"]:
             if key in kwargs:
                 get_image_args[key] = kwargs.pop(key)
         img = self.get_image_data(**get_image_args)
-        
-        kwargs.setdefault('cmap', 'gray')
-        plt.imsave(filename, img['data'], origin='lower', **kwargs)
-    
 
-    def _make_interpolator_scipy(self, method: str = 'linear',
-                                 fill: float = None, **kwargs) -> Callable:
+        kwargs.setdefault("cmap", "gray")
+        plt.imsave(filename, img["data"], origin="lower", **kwargs)
+
+    def _make_interpolator_scipy(
+        self, method: str = "linear", fill: float = None, **kwargs
+    ) -> Callable:
         r""" returns a function that can be used to interpolate values.
         
         This uses scipy.interpolate.RegularGridInterpolator and the
@@ -890,7 +880,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         coords_src = self.grid.axes_coords
         grid_dim = len(self.grid.axes)
-        
+
         if self.rank == 0:
             # scalar field => data layout is already usable
             data = self.data
@@ -904,23 +894,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data = data_flat.reshape(new_shape)
             assert data.shape[-1] == self.grid.dim ** self.rank
             revert_shape = True
-            
+
         # set the fill behavior
         if fill is None:
-            kwargs['bounds_error'] = True
+            kwargs["bounds_error"] = True
         else:
-            kwargs['bounds_error'] = False
-            kwargs['fill_value'] = fill
-            
+            kwargs["bounds_error"] = False
+            kwargs["fill_value"] = fill
+
         # prepare the interpolator
         intp = interpolate.RegularGridInterpolator(coords_src, data, **kwargs)
-        
+
         # determine under which conditions the axes can be squeezed
         if grid_dim == 1:
             scalar_dim = 0
         else:
             scalar_dim = 1
-            
+
         # introduce wrapper function to process arrays
         def interpolator(point, **kwargs):
             """ return the interpolated value at the position `point` """
@@ -932,17 +922,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 out = out[0]
             if revert_shape:
                 # revert the shuffling of spatial and local axes
-                out = np.moveaxis(out, point.ndim - 1, 0) 
+                out = np.moveaxis(out, point.ndim - 1, 0)
                 out = out.reshape(self.data_shape + point.shape[:-1])
-            
+
             return out
-            
+
         return interpolator
 
-
     @fill_in_docstring
-    def _make_interpolator_compiled(self, bc: BoundariesData = 'natural',
-                                    fill: float = None) -> Callable:
+    def _make_interpolator_compiled(
+        self, bc: BoundariesData = "natural", fill: float = None
+    ) -> Callable:
         """ return a compiled interpolator
         
         This interpolator respects boundary conditions and can thus interpolate
@@ -964,9 +954,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid = self.grid
         grid_dim = len(grid.axes)
         data_shape = self.data_shape
-        
-        dim_error_msg = ('Dimension of the interpolation point does not match '
-                         f'grid dimension {grid_dim}')
+
+        dim_error_msg = (
+            "Dimension of the interpolation point does not match "
+            f"grid dimension {grid_dim}"
+        )
 
         # create an interpolator for a single point
         if fill is not None:
@@ -974,16 +966,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 fill = float(fill)
             else:
                 fill = np.broadcast_to(fill, self.data_shape).astype(float)
-        interpolate_single = \
-            grid.make_interpolator_compiled(bc=bc, rank=self.rank, fill=fill)
-        
+        interpolate_single = grid.make_interpolator_compiled(
+            bc=bc, rank=self.rank, fill=fill
+        )
+
         # extract information about the data field
         data_addr = self.data.ctypes.data
         shape, dtype = self.data.shape, self.data.dtype
-        
+
         @jit
-        def interpolator(point: np.ndarray, data: np.ndarray = None) \
-                -> np.ndarray:
+        def interpolator(point: np.ndarray, data: np.ndarray = None) -> np.ndarray:
             """ return the interpolated value at the position `point`
              
             Args:
@@ -1004,26 +996,24 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if point.shape[-1] != grid_dim:
                 raise DimensionError(dim_error_msg)
             point_shape = point.shape[:-1]
-            
+
             # reconstruct data field from memory address
             if data is None:
-                data = nb.carray(address_as_void_pointer(data_addr), shape,
-                                 dtype)
-             
+                data = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
+
             # interpolate at every point
             out = np.empty(data_shape + point_shape)
             for idx in np.ndindex(point_shape):
                 out[(...,) + idx] = interpolate_single(data, point[idx])
-             
+
             return out
 
         return interpolator  # type: ignore
 
-
     @cached_method()
-    def make_interpolator(self, method: str = 'numba',
-                          fill: float = None,
-                          **kwargs) -> Callable:
+    def make_interpolator(
+        self, method: str = "numba", fill: float = None, **kwargs
+    ) -> Callable:
         r""" returns a function that can be used to interpolate values.
         
         Args:
@@ -1059,17 +1049,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             A function which returns interpolated values when called with
             arbitrary positions within the space of the grid. 
         """
-        if method.startswith('scipy'):
-            return self._make_interpolator_scipy(method=method[6:], fill=fill,
-                                                 **kwargs)
-        elif method == 'numba':
+        if method.startswith("scipy"):
+            return self._make_interpolator_scipy(method=method[6:], fill=fill, **kwargs)
+        elif method == "numba":
             return self._make_interpolator_compiled(fill=fill, **kwargs)
         else:
-            raise ValueError(f'Unknown interpolation method `{method}`')
-            
+            raise ValueError(f"Unknown interpolation method `{method}`")
 
-    def interpolate(self, point, method: str = 'numba', fill: float = None,
-                    **kwargs):
+    def interpolate(self, point, method: str = "numba", fill: float = None, **kwargs):
         r""" interpolate the field to points between support points
         
         Args:
@@ -1092,11 +1079,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         point = np.asarray(point)
         return self.make_interpolator(method=method, fill=fill, **kwargs)(point)
 
-
-    def interpolate_to_grid(self: TDataField, grid: GridBase,
-                            method: str = 'numba',
-                            fill: float = None,
-                            label: Optional[str] = None) -> TDataField:
+    def interpolate_to_grid(
+        self: TDataField,
+        grid: GridBase,
+        method: str = "numba",
+        fill: float = None,
+        label: Optional[str] = None,
+    ) -> TDataField:
         """ interpolate the data of this field to another grid.
         
         Args:
@@ -1117,29 +1106,32 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Field of the same rank as the current one.
         """
         if self.grid.dim != grid.dim:
-            raise DimensionError(f'Grid dimensions are incompatible '
-                                 f'({self.grid.dim:d} != {grid.dim:d})')
-            
+            raise DimensionError(
+                f"Grid dimensions are incompatible "
+                f"({self.grid.dim:d} != {grid.dim:d})"
+            )
+
         # determine the points at which data needs to be calculated
         if isinstance(grid, CartesianGridBase):
             # convert to a Cartesian grid
             points = self.grid.point_from_cartesian(grid.cell_coords)
-            
+
         elif self.grid.__class__ is grid.__class__:
             # convert within the same grid class
             points = grid.cell_coords
-            
+
         else:
             # this type of interpolation is not supported
-            raise NotImplementedError('Cannot convert '
-                                      f'{self.grid.__class__.__name__} to '
-                                      f'{grid.__class__.__name__}')
-        
+            raise NotImplementedError(
+                "Cannot convert "
+                f"{self.grid.__class__.__name__} to "
+                f"{grid.__class__.__name__}"
+            )
+
         # interpolate the data to the grid
         data = self.interpolate(points, method, fill)
         return self.__class__(grid, data, label=label)
-    
-    
+
     def add_interpolated(self, point, amount):
         """ adds an (integrated) value to the field at an interpolated position
         
@@ -1158,18 +1150,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         amount = np.broadcast_to(amount, self.data_shape)
         grid = self.grid
         grid_dim = len(grid.axes)
-    
+
         if point.size != grid_dim or point.ndim != 1:
-            raise DimensionError(f'Dimension mismatch for point {point}')
-        
+            raise DimensionError(f"Dimension mismatch for point {point}")
+
         point = grid.normalize_point(point, reduced_coords=True)
-    
+
         low = np.array(grid.axes_bounds)[:, 0]
-        c_l, d_l = np.divmod((point - low) / grid.discretization - 0.5, 1.)
+        c_l, d_l = np.divmod((point - low) / grid.discretization - 0.5, 1.0)
         c_l = c_l.astype(np.int)
         w_l = 1 - d_l  # weights of the low point
-        w_h = d_l      # weights of the high point
-    
+        w_h = d_l  # weights of the high point
+
         # determine the total weight in first iteration
         total_weight = 0
         cells = []
@@ -1179,20 +1171,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 weight = np.prod(np.choose(i, [w_l, w_h]))
                 total_weight += weight
                 cells.append((tuple(coords), weight))
-                
+
         if total_weight == 0:
-            raise DomainError('Point lies outside grid')
-    
+            raise DomainError("Point lies outside grid")
+
         # alter each point in second iteration
         for coords, weight in cells:
             chng = weight * amount / (total_weight * grid.cell_volumes[coords])
-            self.data[(Ellipsis,) + coords] += chng                                                  
-        
-        
+            self.data[(Ellipsis,) + coords] += chng
+
     @fill_in_docstring
-    def get_boundary_values(self, axis: int,
-                            upper: bool,
-                            bc: BoundariesData = 'natural') -> np.ndarray:
+    def get_boundary_values(
+        self, axis: int, upper: bool, bc: BoundariesData = "natural"
+    ) -> np.ndarray:
         """ get the field values directly on the specified boundary 
         
         Args:
@@ -1209,12 +1200,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         interpolator = self.make_interpolator(bc=bc)
         points = self.grid._boundary_coordinates(axis, upper)
         return interpolator(points)
-        
-        
+
     @fill_in_docstring
-    def make_get_boundary_values(self, axis: int,
-                                 upper: bool,
-                                 bc: BoundariesData = 'natural') -> np.ndarray:
+    def make_get_boundary_values(
+        self, axis: int, upper: bool, bc: BoundariesData = "natural"
+    ) -> np.ndarray:
         """ make a function calculating field values on the specified boundary 
         
         Args:
@@ -1235,12 +1225,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         interpolator = self.make_interpolator(bc=bc)
         points = self.grid._boundary_coordinates(axis, upper)
-        
+
         # TODO: use jit_allocated_out with pre-calculated shape
-        
+
         @jit
-        def get_boundary_values(data: np.ndarray = None,
-                                out: np.ndarray = None):
+        def get_boundary_values(data: np.ndarray = None, out: np.ndarray = None):
             """ interpolate the field at the boundary
             
             Args:
@@ -1262,18 +1251,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 # workaround for a bug in numba existing up to at least ver 0.49
                 out[...] = res[()]
                 return out
-            
+
         return get_boundary_values
-        
-        
+
     @abstractproperty
-    def integral(self) -> Union[np.ndarray, float]: pass 
-    
+    def integral(self) -> Union[np.ndarray, float]:
+        pass
+
     @abstractmethod
-    def to_scalar(self, scalar: str = 'auto',
-                  label: Optional[str] = None) -> "ScalarField": pass
-                  
-                  
+    def to_scalar(
+        self, scalar: str = "auto", label: Optional[str] = None
+    ) -> "ScalarField":
+        pass
+
     @property
     def average(self) -> Union[np.ndarray, float]:
         """ determine the average of data
@@ -1283,8 +1273,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         return self.integral / self.grid.volume
 
-
-    @property    
+    @property
     def fluctuations(self):
         """ :class:`numpy.ndarray`: fluctuations over the entire space.
         
@@ -1302,8 +1291,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         scaled_data = self.data * np.sqrt(self.grid.cell_volumes)
         axes = tuple(range(self.rank, self.data.ndim))
         return np.std(scaled_data, axis=axes)
-            
-    
+
     @property
     def magnitude(self) -> float:
         """ float: determine the magnitude of the field.
@@ -1317,13 +1305,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif self.rank > 0:
             return self.to_scalar().average
         else:
-            raise NotImplementedError('Magnitude cannot be determined for '
-                                      'field ' + self.__class__.__name__)
-            
-            
-    def smooth(self: TDataField, sigma: Optional[float] = 1,
-               out: Optional[TDataField] = None,
-               label: str = None) -> TDataField:
+            raise NotImplementedError(
+                "Magnitude cannot be determined for " "field " + self.__class__.__name__
+            )
+
+    def smooth(
+        self: TDataField,
+        sigma: Optional[float] = 1,
+        out: Optional[TDataField] = None,
+        label: str = None,
+    ) -> TDataField:
         """ applies Gaussian smoothing with the given standard deviation
 
         This function respects periodic boundary conditions of the underlying
@@ -1347,24 +1338,25 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             out = self.__class__(self.grid, label=self.label)
         else:
             self.assert_field_compatible(out)
-        
+
         # apply Gaussian smoothing for each axis
         data_out = out._data
         for axis in range(-len(self.grid.axes), 0):
             sigma_dx = sigma / self.grid.discretization[axis]
-            mode = 'wrap' if self.grid.periodic[axis] else 'reflect'
-            ndimage.gaussian_filter1d(data_in, sigma=sigma_dx, axis=axis,
-                                      output=data_out, mode=mode)
+            mode = "wrap" if self.grid.periodic[axis] else "reflect"
+            ndimage.gaussian_filter1d(
+                data_in, sigma=sigma_dx, axis=axis, output=data_out, mode=mode
+            )
             data_in = data_out
-            
+
         # return the data in the correct field class
         if label:
             out.label = label
         return out
 
-
-    def get_line_data(self, scalar: str = 'auto', extract: str = 'auto') \
-            -> Dict[str, Any]:
+    def get_line_data(
+        self, scalar: str = "auto", extract: str = "auto"
+    ) -> Dict[str, Any]:
         """ return data for a line plot of the field
         
         Args:
@@ -1380,20 +1372,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
-        
+
         # extract the line data
         data = self.grid.get_line_data(scalar_data, extract=extract)
-        if 'label_y' in data and data['label_y']:
+        if "label_y" in data and data["label_y"]:
             if self.label:
-                data['label_y'] = f"{self.label} ({data['label_y']})"
+                data["label_y"] = f"{self.label} ({data['label_y']})"
         else:
-            data['label_y'] = self.label
-        return data  # type: ignore  
-        
-                
-    def get_image_data(self, scalar: str = 'auto',
-                       transpose: bool = False,
-                       **kwargs) -> Dict[str, Any]:
+            data["label_y"] = self.label
+        return data  # type: ignore
+
+    def get_image_data(
+        self, scalar: str = "auto", transpose: bool = False, **kwargs
+    ) -> Dict[str, Any]:
         r""" return data for plotting an image of the field
         
         Args:
@@ -1410,19 +1401,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
-        
+
         # extract the image data
-        data = self.grid.get_image_data(scalar_data, **kwargs)  # type: ignore 
-        data['title'] = self.label
-        
+        data = self.grid.get_image_data(scalar_data, **kwargs)  # type: ignore
+        data["title"] = self.label
+
         if transpose:
             # adjust image data such that the transpose is plotted
-            data['data'] = data['data'].T
-            data['label_x'], data['label_y'] = data['label_y'], data['label_x']
-            
-        return data  # type: ignore  
+            data["data"] = data["data"].T
+            data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
 
-    
+        return data  # type: ignore
+
     def get_vector_data(self, **kwargs) -> Dict[str, Any]:
         r""" return data for a vector plot of the field
         
@@ -1434,12 +1424,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             dict: Information useful for plotting an vector field        
         """
         raise NotImplementedError()
-    
-                
-    def _plot_line(self, ax,
-                   extract: str = 'auto',
-                   ylabel: str = None,
-                   **kwargs) -> PlotReference:
+
+    def _plot_line(
+        self, ax, extract: str = "auto", ylabel: str = None, **kwargs
+    ) -> PlotReference:
         r""" visualize a field using a 1d line plot
         
         Args:
@@ -1460,21 +1448,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # obtain data for the plot
         line_data = self.get_line_data(extract=extract)
-        
+
         # do the plot
-        line2d, = ax.plot(line_data['data_x'], line_data['data_y'],
-                              **kwargs)
+        (line2d,) = ax.plot(line_data["data_x"], line_data["data_y"], **kwargs)
 
         # set some default properties
-        ax.set_xlabel(line_data['label_x'])
+        ax.set_xlabel(line_data["label_x"])
         if ylabel is None:
-            ylabel = line_data.get('label_y', self.label)
+            ylabel = line_data.get("label_y", self.label)
         if ylabel:
             ax.set_ylabel(ylabel)
-                
-        return PlotReference(ax, line2d, {'extract': extract})
-    
-    
+
+        return PlotReference(ax, line2d, {"extract": extract})
+
     def _update_line_plot(self, reference: PlotReference) -> None:
         """ update a line plot with the current field values
         
@@ -1483,26 +1469,28 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 The reference to the plot that is updated
         """
         import matplotlib as mpl
-        
+
         # obtain data for the plot
-        extract = reference.parameters.get('extract', 'auto')
+        extract = reference.parameters.get("extract", "auto")
         line_data = self.get_line_data(extract=extract)
-        
+
         line2d = reference.element
         if isinstance(line2d, mpl.lines.Line2D):
             # update old plot
-            line2d.set_xdata(line_data['data_x'])
-            line2d.set_ydata(line_data['data_y'])
-            
+            line2d.set_xdata(line_data["data_x"])
+            line2d.set_ydata(line_data["data_y"])
+
         else:
-            raise ValueError(f'Unsupported plot reference {reference}')
+            raise ValueError(f"Unsupported plot reference {reference}")
 
-
-    def _plot_image(self, ax,
-                    colorbar: bool = False,
-                    scalar: str = 'auto',
-                    transpose: bool = False,
-                    **kwargs) -> PlotReference:
+    def _plot_image(
+        self,
+        ax,
+        colorbar: bool = False,
+        scalar: str = "auto",
+        transpose: bool = False,
+        **kwargs,
+    ) -> PlotReference:
         r""" visualize a field using a 2d density plot
 
         Args:
@@ -1530,29 +1518,30 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # obtain image data
         data = self.get_image_data(scalar, transpose)
-        
+
         if ax is None:
             import matplotlib.pyplot as plt
+
             # create new figure
             ax = plt.subplots()[1]
 
-        kwargs.setdefault('origin', 'lower')
-        kwargs.setdefault('interpolation', 'none')
-        axes_image = ax.imshow(data['data'], extent=data['extent'], **kwargs)
-        
+        kwargs.setdefault("origin", "lower")
+        kwargs.setdefault("interpolation", "none")
+        axes_image = ax.imshow(data["data"], extent=data["extent"], **kwargs)
+
         # set some default properties
-        ax.set_xlabel(data['label_x'])
-        ax.set_ylabel(data['label_y'])
-        ax.set_title(data.get('title', self.label))
-        
+        ax.set_xlabel(data["label_x"])
+        ax.set_ylabel(data["label_y"])
+        ax.set_title(data.get("title", self.label))
+
         if colorbar:
             from ..tools.plotting import add_scaled_colorbar
+
             add_scaled_colorbar(axes_image, ax=ax)
-                
-        parameters = {'scalar': scalar, 'transpose': transpose}
+
+        parameters = {"scalar": scalar, "transpose": transpose}
         return PlotReference(ax, axes_image, parameters)
 
-    
     def _update_image_plot(self, reference: PlotReference) -> None:
         """ update an image plot with the current field values
         
@@ -1562,18 +1551,21 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # obtain image data
         p = reference.parameters
-        data = self.get_image_data(scalar=p.get('scalar', 'auto'),
-                                   transpose=p.get('transpose', False))
-        
+        data = self.get_image_data(
+            scalar=p.get("scalar", "auto"), transpose=p.get("transpose", False)
+        )
+
         # update the axes image
-        reference.element.set_array(data['data'])
+        reference.element.set_array(data["data"])
 
-
-    def _plot_vector(self, ax,
-                     method: str = 'quiver',
-                     transpose: bool = False,
-                     max_points: int = 16,
-                     **kwargs) -> PlotReference:
+    def _plot_vector(
+        self,
+        ax,
+        method: str = "quiver",
+        transpose: bool = False,
+        max_points: int = 16,
+        **kwargs,
+    ) -> PlotReference:
         r""" visualize a field using a 2d vector plot
 
         Args:
@@ -1597,31 +1589,35 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the plot with new data later.
         """
         # do the plotting using the chosen method
-        if method == 'quiver':
-            data = self.get_vector_data(transpose=transpose,
-                                        max_points=max_points)
-            element = ax.quiver(data['x'], data['y'], data['data_x'],
-                                data['data_y'], **kwargs)        
-            
-        elif method == 'streamplot':
-            data = self.get_vector_data(transpose=transpose)
-            element = ax.streamplot(data['x'], data['y'], data['data_x'],
-                                    data['data_y'], **kwargs)        
-                
-        else:
-            raise ValueError(f'Vector plot `{method}` is not supported.')
-            
-        # set some default properties of the plot
-        ax.set_aspect('equal')
-        ax.set_xlabel(data['label_x'])
-        ax.set_ylabel(data['label_y'])
-        ax.set_title(data.get('title', self.label))
+        if method == "quiver":
+            data = self.get_vector_data(transpose=transpose, max_points=max_points)
+            element = ax.quiver(
+                data["x"], data["y"], data["data_x"], data["data_y"], **kwargs
+            )
 
-        parameters = {'method': method, 'transpose': transpose,
-                      'max_points': max_points, 'kwargs': kwargs}
+        elif method == "streamplot":
+            data = self.get_vector_data(transpose=transpose)
+            element = ax.streamplot(
+                data["x"], data["y"], data["data_x"], data["data_y"], **kwargs
+            )
+
+        else:
+            raise ValueError(f"Vector plot `{method}` is not supported.")
+
+        # set some default properties of the plot
+        ax.set_aspect("equal")
+        ax.set_xlabel(data["label_x"])
+        ax.set_ylabel(data["label_y"])
+        ax.set_title(data.get("title", self.label))
+
+        parameters = {
+            "method": method,
+            "transpose": transpose,
+            "max_points": max_points,
+            "kwargs": kwargs,
+        }
         return PlotReference(ax, element, parameters)
 
-    
     def _update_vector_plot(self, reference: PlotReference) -> None:
         """ update a vector plot with the current field values
         
@@ -1629,29 +1625,27 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             reference (:class:`PlotReference`):
                 The reference to the plot that is updated
         """
-        method = reference.parameters.get('method', 'quiver')
-        transpose = reference.parameters.get('transpose', False)
-        if method == 'quiver':
-            max_points = reference.parameters.get('max_points')
-            data = self.get_vector_data(transpose=transpose,
-                                        max_points=max_points)
-            reference.element.set_UVC(data['data_x'], data['data_y'])
-            
-        elif method == 'streamplot':
+        method = reference.parameters.get("method", "quiver")
+        transpose = reference.parameters.get("transpose", False)
+        if method == "quiver":
+            max_points = reference.parameters.get("max_points")
+            data = self.get_vector_data(transpose=transpose, max_points=max_points)
+            reference.element.set_UVC(data["data_x"], data["data_y"])
+
+        elif method == "streamplot":
             ax = reference.ax
-            kwargs = reference.parameters.get('kwargs', {})
+            kwargs = reference.parameters.get("kwargs", {})
             data = self.get_vector_data(transpose=transpose)
             # remove old streamplot
-            reference.element.remove()  
+            reference.element.remove()
             # update with new streamplot
-            reference.element = ax.streamplot(data['x'], data['y'],
-                                              data['data_x'], data['data_y'],
-                                              **kwargs)        
-                
-        else:
-            raise ValueError(f'Vector plot `{method}` is not supported.')
+            reference.element = ax.streamplot(
+                data["x"], data["y"], data["data_x"], data["data_y"], **kwargs
+            )
 
-    
+        else:
+            raise ValueError(f"Vector plot `{method}` is not supported.")
+
     def _update_plot(self, reference: PlotReference) -> None:
         """ update a plot with the current field values
         
@@ -1660,7 +1654,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 The reference to the plot to updated
         """
         import matplotlib as mpl
-        
+
         # update the plot based on the given reference
         el = reference.element
         if isinstance(el, mpl.lines.Line2D):
@@ -1670,11 +1664,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif isinstance(el, (mpl.quiver.Quiver, mpl.streamplot.StreamplotSet)):
             self._update_vector_plot(reference)
         else:
-            raise ValueError(f'Unknown plot element {el.__class__.__name__}')
-    
+            raise ValueError(f"Unknown plot element {el.__class__.__name__}")
 
-    @plot_on_axes(update_method='_update_plot')
-    def plot(self, kind: str = 'auto', **kwargs):
+    @plot_on_axes(update_method="_update_plot")
+    def plot(self, kind: str = "auto", **kwargs):
         r""" visualize the field
         
         Args:
@@ -1692,39 +1685,43 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the plot with new data later.
         """
         # determine the correct kind of plotting
-        if kind == 'auto':
+        if kind == "auto":
             # determine best plot for this field
-            if (isinstance(self, DataFieldBase) and self.rank == 1 and
-                    self.grid.dim == 2):
-                kind = 'vector'
+            if (
+                isinstance(self, DataFieldBase)
+                and self.rank == 1
+                and self.grid.dim == 2
+            ):
+                kind = "vector"
             elif len(self.grid.shape) == 1:
-                kind = 'line'
+                kind = "line"
             else:
-                kind = 'image'
-                
-        elif kind == 'quiver':
-            kind = 'vector'
-            kwargs['method'] = 'quiver'
+                kind = "image"
 
-        elif kind == 'streamplot':
-            kind = 'vector'
-            kwargs['method'] = 'streamplot'
+        elif kind == "quiver":
+            kind = "vector"
+            kwargs["method"] = "quiver"
+
+        elif kind == "streamplot":
+            kind = "vector"
+            kwargs["method"] = "streamplot"
 
         # do the actual plotting
-        if kind == 'image':
+        if kind == "image":
             reference = self._plot_image(**kwargs)
-        elif kind == 'line':
+        elif kind == "line":
             reference = self._plot_line(**kwargs)
-        elif kind == 'vector':
+        elif kind == "vector":
             reference = self._plot_vector(**kwargs)
         else:
-            raise ValueError(f'Unsupported plot `{kind}`. Possible choices '
-                             'are `image`, `line`, `vector`, or `auto`.')
+            raise ValueError(
+                f"Unsupported plot `{kind}`. Possible choices "
+                "are `image`, `line`, `vector`, or `auto`."
+            )
 
         return reference
 
-    
-    def plot_interactive(self, scalar: str = 'auto', **kwargs):
+    def plot_interactive(self, scalar: str = "auto", **kwargs):
         """ create an interactive plot of the field using :mod:`napari`
         
         Args:
@@ -1732,10 +1729,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             **kwargs: Extra arguments are passed to :class:`napari.Viewer`
         """
         from ..tools.plotting import napari_viewer
-        
+
         with napari_viewer(self.grid, **kwargs) as viewer:
-            viewer.add_image(self.to_scalar(scalar).data,
-                             name=self.label,
-                             rgb=False,
-                             scale=self.grid.discretization)
-    
+            viewer.add_image(
+                self.to_scalar(scalar).data,
+                name=self.label,
+                rgb=False,
+                scale=self.grid.discretization,
+            )

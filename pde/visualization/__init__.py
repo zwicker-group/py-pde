@@ -1,4 +1,4 @@
-'''
+"""
 Functions and classes for visualizing simulations.
 
 
@@ -9,7 +9,7 @@ Functions and classes for visualizing simulations.
    plotting
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
-from .plotting import plot_magnitudes, plot_kymograph, plot_kymographs
-from .movies import movie_scalar, movie_multiple
+from .movies import movie_multiple, movie_scalar
+from .plotting import plot_kymograph, plot_kymographs, plot_magnitudes

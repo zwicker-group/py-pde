@@ -8,15 +8,13 @@ from typing import Callable
 
 import numpy as np
 
-
-from .base import PDEBase
-from ..fields import ScalarField, FieldCollection
+from ..fields import FieldCollection, ScalarField
 from ..grids.boundaries.axes import BoundariesData
-from ..tools.numba import nb, jit
 from ..tools.docstrings import fill_in_docstring
+from ..tools.numba import jit, nb
+from .base import PDEBase
 
 
-        
 class WavePDE(PDEBase):
     r""" A simple wave equation
     
@@ -36,11 +34,9 @@ class WavePDE(PDEBase):
     """
 
     explicit_time_dependence = False
-    
 
     @fill_in_docstring
-    def __init__(self, speed: float = 1,
-                 bc: BoundariesData = 'natural'):
+    def __init__(self, speed: float = 1, bc: BoundariesData = "natural"):
         """ 
         Args:
             speed (float):
@@ -50,11 +46,10 @@ class WavePDE(PDEBase):
                 {ARG_BOUNDARIES}
         """
         super().__init__()
-        
+
         self.speed = speed
         self.bc = bc
-        
-        
+
     def get_initial_condition(self, u: ScalarField, v: ScalarField = None):
         """ create a suitable initial condition
         
@@ -72,10 +67,10 @@ class WavePDE(PDEBase):
         if v is None:
             v = u.copy(data=0)
         return FieldCollection([u, v])
-            
-            
-    def evolution_rate(self, state: FieldCollection,  # type: ignore
-                       t: float = 0) -> FieldCollection:
+
+    def evolution_rate(  # type: ignore
+        self, state: FieldCollection, t: float = 0,
+    ) -> FieldCollection:
         """ evaluate the right hand side of the PDE
         
         Args:
@@ -91,12 +86,10 @@ class WavePDE(PDEBase):
         assert isinstance(state, FieldCollection)
         u, v = state
         u_t = v.copy()
-        v_t = self.speed**2 * u.laplace('natural')  # type: ignore
+        v_t = self.speed ** 2 * u.laplace("natural")  # type: ignore
         return FieldCollection([u_t, v_t])
-    
-    
-    def _make_pde_rhs_numba(self, state: FieldCollection  # type: ignore
-                            ) -> Callable:
+
+    def _make_pde_rhs_numba(self, state: FieldCollection) -> Callable:  # type: ignore
         """ create a compiled function evaluating the right hand side of the PDE
         
         Args:
@@ -112,9 +105,9 @@ class WavePDE(PDEBase):
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty((2,) + shape, dtype=np.double))
         signature = arr_type(arr_type, nb.double)
-        
-        speed2 = self.speed**2
-        laplace = state.grid.get_operator('laplace', bc=self.bc)
+
+        speed2 = self.speed ** 2
+        laplace = state.grid.get_operator("laplace", bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
@@ -124,6 +117,5 @@ class WavePDE(PDEBase):
             laplace(state_data[0], out=rate[1])
             rate[1] *= speed2
             return rate
-            
+
         return pde_rhs  # type: ignore
-    

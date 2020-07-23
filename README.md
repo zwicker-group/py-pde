@@ -8,6 +8,7 @@
 [![Build Status](https://travis-ci.org/zwicker-group/py-pde.svg?branch=master)](https://travis-ci.org/zwicker-group/py-pde)
 [![codecov](https://codecov.io/gh/zwicker-group/py-pde/branch/master/graph/badge.svg)](https://codecov.io/gh/zwicker-group/py-pde)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/zwicker-group/py-pde.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/zwicker-group/py-pde/context:python)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 `py-pde` is a Python package for solving partial differential equations (PDEs). 

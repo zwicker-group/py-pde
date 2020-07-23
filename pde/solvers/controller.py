@@ -1,40 +1,42 @@
-'''
+"""
 Defines the :class:`~pde.controller.Controller` class for solving pdes.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
 
-from typing import (Union, Tuple, Any, Dict, TypeVar,  # @UnusedImport
-                    TYPE_CHECKING)
 import datetime
-import time
 import logging
+import time
+from typing import TYPE_CHECKING, Any, Dict, Tuple, TypeVar, Union  # @UnusedImport
 
-from .. import __version__
+from ..trackers.base import (
+    FinishedSimulation,
+    TrackerCollection,
+    TrackerCollectionDataType,
+)
+from ..version import __version__
 from .base import SolverBase
-from ..trackers.base import (TrackerCollectionDataType, TrackerCollection,
-                             FinishedSimulation) 
 
 if TYPE_CHECKING:
     from ..fields.base import FieldBase  # @UnusedImport
 
 
 TRangeType = Union[float, Tuple[float, float]]
-TState = TypeVar('TState', bound='FieldBase')
+TState = TypeVar("TState", bound="FieldBase")
 
 
-
-class Controller():
+class Controller:
     """ class controlling a simulation """
-    
+
     _t_range: Tuple[float, float]
-    
-    
-    def __init__(self, solver: SolverBase,
-                 t_range: TRangeType,
-                 tracker: TrackerCollectionDataType =
-                    ['progress', 'consistency']):
+
+    def __init__(
+        self,
+        solver: SolverBase,
+        t_range: TRangeType,
+        tracker: TrackerCollectionDataType = ["progress", "consistency"],
+    ):
         """ initialize the controller
         
         Args:
@@ -56,30 +58,29 @@ class Controller():
         self.solver = solver
         self.t_range = t_range  # type: ignore
         self.trackers = TrackerCollection.from_data(tracker)
-        
-        self.info: Dict[str, Any] = {'package_version': __version__}
+
+        self.info: Dict[str, Any] = {"package_version": __version__}
         self._logger = logging.getLogger(self.__class__.__name__)
 
-        
     @property
     def t_range(self) -> Tuple[float, float]:
         return self._t_range
-    
-        
+
     @t_range.setter
     def t_range(self, value: TRangeType):
-        # determine time range        
+        # determine time range
         try:
             self._t_range = 0, float(value)  # type: ignore
         except TypeError:  # assume a single number was given
             if len(value) == 2:  # type: ignore
                 self._t_range = tuple(value)  # type: ignore
             else:
-                raise ValueError('t_range must be set to a single number or '
-                                 'a tuple of two numbers')
+                raise ValueError(
+                    "t_range must be set to a single number or "
+                    "a tuple of two numbers"
+                )
 
-
-    def run(self, state: TState, dt: float = None) -> TState: 
+    def run(self, state: TState, dt: float = None) -> TState:
         """ run the simulation 
         
         Diagnostic information about the solver procedure are available in the
@@ -102,121 +103,124 @@ class Controller():
         # copy the initial state to not modify the supplied one
         state = state.copy()
         t_start, t_end = self.t_range
-            
+
         # initialize solver information
-        self.info['t_start'] = t_start
-        self.info['t_end'] = t_end
-        self.info['solver_class'] = self.solver.__class__.__name__
-        self.diagnostics: Dict[str, Any] = {'controller': self.info,
-                                            'solver': self.solver.info}
+        self.info["t_start"] = t_start
+        self.info["t_end"] = t_end
+        self.info["solver_class"] = self.solver.__class__.__name__
+        self.diagnostics: Dict[str, Any] = {
+            "controller": self.info,
+            "solver": self.solver.info,
+        }
 
         # initialize trackers
         self.trackers.initialize(state, info=self.diagnostics)
-            
+
         def _handle_stop_iteration(err):
             """ helper function for handling interrupts raised by trackers """
             if isinstance(err, FinishedSimulation):
                 # tracker determined that the simulation finished
-                self.info['successful'] = True
-                msg = f'Simulation finished at t={t}'
+                self.info["successful"] = True
+                msg = f"Simulation finished at t={t}"
                 msg_level = logging.INFO
                 if err.value:
-                    self.info['stop_reason'] = err.value
-                    msg += f' ({err.value})'
+                    self.info["stop_reason"] = err.value
+                    msg += f" ({err.value})"
                 else:
-                    self.info['stop_reason'] = \
-                                            'Tracker raised FinishedSimulation'
-                    
+                    self.info["stop_reason"] = "Tracker raised FinishedSimulation"
+
             else:
                 # tracker determined that there was a problem
-                self.info['successful'] = False
-                msg = f'Simulation aborted at t={t}'
+                self.info["successful"] = False
+                msg = f"Simulation aborted at t={t}"
                 msg_level = logging.WARNING
                 if err.value:
-                    self.info['stop_reason'] = err.value
-                    msg += f' ({err.value})'
+                    self.info["stop_reason"] = err.value
+                    msg += f" ({err.value})"
                 else:
-                    self.info['stop_reason'] = 'Tracker raised StopIteration'
-                                        
+                    self.info["stop_reason"] = "Tracker raised StopIteration"
+
             return msg_level, msg
 
         # initialize the stepper
         stepper = self.solver.make_stepper(state=state, dt=dt)
-                           
+
         # initialize profiling information
         solver_start = datetime.datetime.now()
-        self.info['solver_start'] = str(solver_start)
-        profiler = {'solver': 0., 'tracker': 0.}
-        self.info['profiler'] = profiler
+        self.info["solver_start"] = str(solver_start)
+        profiler = {"solver": 0.0, "tracker": 0.0}
+        self.info["profiler"] = profiler
         prof_start_tracker = time.process_time()
-                                
+
         # add some tolerance to account for inaccurate float point math
         if dt is None:
-            dt = self.solver.info.get('dt')
+            dt = self.solver.info.get("dt")
             # Note that self.solver.info['dt'] might be None
 
         if dt is None:
             atol = 1e-12
         else:
             atol = 0.1 * dt
-            
+
         # evolve the system from t_start to t_end
         t = t_start
-        self._logger.debug(f'Start simulation at t={t}')
+        self._logger.debug(f"Start simulation at t={t}")
         try:
             while t < t_end:
                 # determine next time point with an action
                 t_next_action = self.trackers.handle(state, t, atol=atol)
                 t_next_action = max(t_next_action, t + atol)
                 t_break = min(t_next_action, t_end)
-                
+
                 prof_start_solve = time.process_time()
-                profiler['tracker'] += prof_start_solve - prof_start_tracker 
-                
+                profiler["tracker"] += prof_start_solve - prof_start_tracker
+
                 # advance the system to the new time point
                 t = stepper(state, t, t_break)
-                
+
                 prof_start_tracker = time.process_time()
-                profiler['solver'] += prof_start_tracker - prof_start_solve
-                
+                profiler["solver"] += prof_start_tracker - prof_start_solve
+
         except StopIteration as err:
             # iteration has been interrupted by a tracker
             msg_level, msg = _handle_stop_iteration(err)
-            
+
         except KeyboardInterrupt:
             # iteration has been interrupted by the user
-            self.info['successful'] = False
-            self.info['stop_reason'] = 'User interrupted simulation'
-            msg = f'Simulation interrupted at t={t}'
+            self.info["successful"] = False
+            self.info["stop_reason"] = "User interrupted simulation"
+            msg = f"Simulation interrupted at t={t}"
             msg_level = logging.INFO
-                
+
         else:
             # reached final time
-            self.info['successful'] = True
-            self.info['stop_reason'] = 'Reached final time'
-            msg = f'Simulation finished at t={t_end}.'
+            self.info["successful"] = True
+            self.info["stop_reason"] = "Reached final time"
+            msg = f"Simulation finished at t={t_end}."
             msg_level = logging.INFO
-            
+
             # handle trackers one more time when t_end is reached
             try:
                 self.trackers.handle(state, t, atol=atol)
             except StopIteration as err:
                 # error detected in the final handling of the tracker
                 msg_level, msg = _handle_stop_iteration(err)
-        
+
         # calculate final statistics
-        profiler['tracker'] += time.process_time() - prof_start_tracker
+        profiler["tracker"] += time.process_time() - prof_start_tracker
         duration = datetime.datetime.now() - solver_start
-        self.info['solver_duration'] = str(duration)
-        self.info['t_final'] = t
+        self.info["solver_duration"] = str(duration)
+        self.info["t_final"] = t
         self.trackers.finalize(info=self.diagnostics)
-        
+
         # show information after a potential progress bar has been deleted to
         # not mess up the display
         self._logger.log(msg_level, msg)
-        if profiler['tracker'] > max(profiler['solver'], 1):
-            self._logger.warning("Spent more time on handling trackers "
-                                 f"({profiler['tracker']}) than on the actual "
-                                 f"simulation ({profiler['solver']})")
-            
+        if profiler["tracker"] > max(profiler["solver"], 1):
+            self._logger.warning(
+                "Spent more time on handling trackers "
+                f"({profiler['tracker']}) than on the actual "
+                f"simulation ({profiler['solver']})"
+            )
+
         return state

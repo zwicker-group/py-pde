@@ -11,18 +11,18 @@ considered for flame front dynamics:
     \partial_t u = -\frac12 |\nabla u|^2 - \nabla^2 u - \nabla^4 u
 """
 
-from pde import UnitGrid, ScalarField, PDEBase
+from pde import PDEBase, ScalarField, UnitGrid
 
 
 class KuramotoSivashinskyPDE(PDEBase):
     """ Implementation of the normalized Kuramoto–Sivashinsky equation """
-    
+
     def evolution_rate(self, state, t=0):
         """ implement the python version of the evolution equation """
-        state_lap = state.laplace(bc='natural')
-        state_lap2 = state_lap.laplace(bc='natural')
-        state_grad = state.gradient(bc='natural')
-        return -state_grad.to_scalar('squared_sum') / 2 - state_lap - state_lap2 
+        state_lap = state.laplace(bc="natural")
+        state_lap2 = state_lap.laplace(bc="natural")
+        state_grad = state.gradient(bc="natural")
+        return -state_grad.to_scalar("squared_sum") / 2 - state_lap - state_lap2
 
 
 grid = UnitGrid([32, 32])  # generate grid

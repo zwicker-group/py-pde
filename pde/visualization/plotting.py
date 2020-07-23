@@ -1,4 +1,4 @@
-'''
+"""
 Functions and classes for plotting simulation data
 
 .. autosummary::
@@ -10,26 +10,24 @@ Functions and classes for plotting simulation data
    plot_kymographs
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
 import logging
-import warnings
 import time
-from typing import (Union, Callable, Optional, Any, Dict, List, Tuple)
+import warnings
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase, DataFieldBase
+from ..fields.base import DataFieldBase, FieldBase
 from ..storage.base import StorageBase
-from ..tools.misc import display_progress
 from ..tools.docstrings import fill_in_docstring
+from ..tools.misc import display_progress
 from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
-
 
 _logger = logging.getLogger(__name__)
 ScaleData = Union[str, float, Tuple[float, float]]
-
 
 
 def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
@@ -40,9 +38,9 @@ def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
         ax: The matplotlib axes to which the colorbar is added
         num_loc (int): Number of ticks
     """
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
     from matplotlib.ticker import MaxNLocator
-    
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+
     fig = ax.figure
     divider = make_axes_locatable(ax)
     cax = divider.new_vertical(size="5%", pad=0.1, pack_start=True)
@@ -52,10 +50,11 @@ def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
     cb.update_ticks()
 
 
-
-def extract_field(fields: FieldBase,
-                  source: Union[None, int, Callable] = None,
-                  check_rank: Optional[int] = None) -> DataFieldBase:
+def extract_field(
+    fields: FieldBase,
+    source: Union[None, int, Callable] = None,
+    check_rank: Optional[int] = None,
+) -> DataFieldBase:
     """Extracts a single field from a possible collection.
     
     Args:
@@ -86,33 +85,35 @@ def extract_field(fields: FieldBase,
         if isinstance(fields, FieldCollection):
             field = fields[source]
         else:
-            raise TypeError(f'Cannot extract component {source} from instance '
-                            f'of {fields.__class__.__name__}')
-        
+            raise TypeError(
+                f"Cannot extract component {source} from instance "
+                f"of {fields.__class__.__name__}"
+            )
+
     if isinstance(field, FieldCollection):
-        raise RuntimeError('Extract field is a collection')
-    
+        raise RuntimeError("Extract field is a collection")
+
     # test whether the rank is as expected
     if check_rank is not None and field.rank != check_rank:  # type: ignore
-        raise RuntimeError(f'Rank of extracted field is not {check_rank}')
-        
+        raise RuntimeError(f"Rank of extracted field is not {check_rank}")
+
     return field  # type: ignore
 
 
-
-class ScalarFieldPlot():
+class ScalarFieldPlot:
     """ class managing compound plots of scalar fields """
-    
-    
+
     @fill_in_docstring
-    def __init__(self,                 
-                 fields: FieldBase,
-                 quantities=None,
-                 scale: ScaleData = 'automatic',
-                 fig=None,
-                 title: Optional[str] = None,
-                 tight: bool = False,
-                 show: bool = True):
+    def __init__(
+        self,
+        fields: FieldBase,
+        quantities=None,
+        scale: ScaleData = "automatic",
+        fig=None,
+        title: Optional[str] = None,
+        tight: bool = False,
+        show: bool = True,
+    ):
         """
         Args:
             fields (:class:`~pde.fields.base.FieldBase`):
@@ -135,10 +136,9 @@ class ScalarFieldPlot():
                 be written to a file.
         """
         self.grid = fields.grid
-        self.quantities = self._prepare_quantities(fields, quantities,
-                                                   scale=scale)
+        self.quantities = self._prepare_quantities(fields, quantities, scale=scale)
         self.show = show
-             
+
         # figure out whether plots are shown in jupyter notebook
         try:
             from ipywidgets import Output
@@ -146,31 +146,34 @@ class ScalarFieldPlot():
             ipython_plot = False
         else:
             ipython_plot = self.show
-            
+
         if ipython_plot:
             # plotting is done in an ipython environment using widgets
             from IPython.display import display
+
             self._ipython_out = Output()
             with self._ipython_out:
                 self._initialize(fields, scale, fig, title, tight)
             display(self._ipython_out)
-            
+
         else:
             # plotting is done using a simple matplotlib backend
             self._ipython_out = None
             self._initialize(fields, scale, fig, title, tight)
-            
+
         if self.show:
             self._show()
 
-    
     @classmethod
     @fill_in_docstring
-    def from_storage(cls, storage: StorageBase,
-                     quantities=None,
-                     scale: ScaleData = 'automatic',
-                     tight: bool = False,
-                     show: bool = True) -> "ScalarFieldPlot":
+    def from_storage(
+        cls,
+        storage: StorageBase,
+        quantities=None,
+        scale: ScaleData = "automatic",
+        tight: bool = False,
+        show: bool = True,
+    ) -> "ScalarFieldPlot":
         """ create ScalarFieldPlot from storage
         
         Args:
@@ -192,36 +195,32 @@ class ScalarFieldPlot():
         """
         fields = storage[0]
         assert isinstance(fields, FieldBase)
-        
+
         # prepare the data that needs to be plotted
-        quantities = cls._prepare_quantities(fields,
-                                             quantities=quantities,
-                                             scale=scale)
-        
+        quantities = cls._prepare_quantities(fields, quantities=quantities, scale=scale)
+
         # resolve automatic scaling
         for quantity_row in quantities:
             for quantity in quantity_row:
-                if quantity.get('scale', 'automatic') == 'automatic':
+                if quantity.get("scale", "automatic") == "automatic":
                     vmin, vmax = +np.inf, -np.inf
                     for data in storage:
-                        field = extract_field(data, quantity.get('source'))
+                        field = extract_field(data, quantity.get("source"))
                         img = field.get_image_data()
-                        vmin = np.nanmin([np.nanmin(img['data']), vmin])
-                        vmax = np.nanmax([np.nanmax(img['data']), vmax])
-                    quantity['scale'] = (vmin, vmax)
-            
-        # actually setup 
-        return cls(fields,  # lgtm [py/call-to-non-callable]
-                   quantities,
-                   tight=tight, show=show)
-        
-        
+                        vmin = np.nanmin([np.nanmin(img["data"]), vmin])
+                        vmax = np.nanmax([np.nanmax(img["data"]), vmax])
+                    quantity["scale"] = (vmin, vmax)
+
+        # actually setup
+        return cls(
+            fields, quantities, tight=tight, show=show  # lgtm [py/call-to-non-callable]
+        )
+
     @staticmethod
     @fill_in_docstring
-    def _prepare_quantities(fields: FieldBase,
-                            quantities,
-                            scale: ScaleData = 'automatic') \
-            -> List[List[Dict[str, Any]]]:
+    def _prepare_quantities(
+        fields: FieldBase, quantities, scale: ScaleData = "automatic"
+    ) -> List[List[Dict[str, Any]]]:
         """ internal method to prepare quantities
         
         Args:
@@ -241,41 +240,43 @@ class ScalarFieldPlot():
             if isinstance(fields, FieldCollection):
                 quantities = []
                 for i, field in enumerate(fields):
-                    title = field.label if field.label else f'Field {i + 1}'
-                    quantity = {'title': title, 'source': i, 'scale': scale}
+                    title = field.label if field.label else f"Field {i + 1}"
+                    quantity = {"title": title, "source": i, "scale": scale}
                     quantities.append(quantity)
             else:
-                quantities = [{'title': 'Concentration', 'source': None}]
-                
+                quantities = [{"title": "Concentration", "source": None}]
+
         # make sure panels is a 2d array
         if isinstance(quantities, dict):
             quantities = [[quantities]]
         elif isinstance(quantities[0], dict):
             quantities = [quantities]
-            
+
         # set the scaling for quantities where it is not yet set
         for row in quantities:
             for col in row:
-                col.setdefault('scale', scale)
-            
+                col.setdefault("scale", scale)
+
         return quantities  # type: ignore
-        
-        
+
     def __del__(self):
         try:
-            if hasattr(self, 'fig') and self.fig:
+            if hasattr(self, "fig") and self.fig:
                 import matplotlib.pyplot as plt
+
                 plt.close(self.fig)
         except Exception:
             pass  # can occur when shutting down python interpreter
 
-    
     @fill_in_docstring
-    def _initialize(self, fields: FieldBase,
-                    scale: ScaleData = 'automatic',
-                    fig=None,
-                    title: Optional[str] = None,
-                    tight: bool = False):         
+    def _initialize(
+        self,
+        fields: FieldBase,
+        scale: ScaleData = "automatic",
+        fig=None,
+        title: Optional[str] = None,
+        tight: bool = False,
+    ):
         """ initialize the plot creating the figure and the axes
         
         Args:
@@ -291,52 +292,52 @@ class ScalarFieldPlot():
             tight (bool):
                 Whether to call :func:`matplotlib.pyplot.tight_layout`. This
                 affects the layout of all plot elements.
-        """        
-        import matplotlib.pyplot as plt
+        """
         import matplotlib.cm as cm
-        
+        import matplotlib.pyplot as plt
+
         num_rows = len(self.quantities)
         num_cols = max(len(p) for p in self.quantities)
-             
+
         example_image = fields.get_image_data()
-        
+
         # set up the figure
         if fig is None:
             figsize = (4 * num_cols, 4 * num_rows)
-            self.fig, self.axes = plt.subplots(num_rows, num_cols, sharey=True,
-                                               squeeze=False, figsize=figsize)
+            self.fig, self.axes = plt.subplots(
+                num_rows, num_cols, sharey=True, squeeze=False, figsize=figsize
+            )
         else:
             self.fig = fig
             self.axes = fig.axes
-            
-            
+
         if title is None:
-            title = ""        
+            title = ""
         self.sup_title = plt.suptitle(title)
-        
+
         # set up all images
-        empty = np.zeros_like(example_image['data'])
+        empty = np.zeros_like(example_image["data"])
 
         self.images: List[List[Any]] = []
         for i, panel_row in enumerate(self.quantities):
             img_row = []
             for j, panel in enumerate(panel_row):
                 # determine scale of the panel
-                panel_scale = panel.get('scale', scale)
-                if panel_scale == 'automatic':
+                panel_scale = panel.get("scale", scale)
+                if panel_scale == "automatic":
                     vmin, vmax = None, None
-                elif panel_scale == 'unity':
+                elif panel_scale == "unity":
                     vmin, vmax = 0, 1
-                elif panel_scale == 'symmetric':
+                elif panel_scale == "symmetric":
                     vmin, vmax = -1, 1
                 else:
                     try:
                         vmin, vmax = panel_scale
                     except TypeError:
                         vmin, vmax = 0, panel_scale
-                    
+
                 # determine colormap
-                cmap = panel.get('cmap')
+                cmap = panel.get("cmap")
                 if cmap is None:
                     if vmin is None or vmax is None:
                         cmap = cm.viridis
@@ -347,28 +348,32 @@ class ScalarFieldPlot():
                     else:
                         cmap = cm.viridis
 
-                # initialize image    
+                # initialize image
                 ax = self.axes[i, j]
-                img = ax.imshow(empty, vmin=vmin, vmax=vmax, cmap=cmap,
-                                extent=example_image['extent'], origin='lower',
-                                interpolation='quadric')
+                img = ax.imshow(
+                    empty,
+                    vmin=vmin,
+                    vmax=vmax,
+                    cmap=cmap,
+                    extent=example_image["extent"],
+                    origin="lower",
+                    interpolation="quadric",
+                )
                 _add_horizontal_colorbar(img, ax)
-                ax.set_title(panel.get('title', ''))
-                ax.set_xlabel(example_image['label_x'])
-                ax.set_ylabel(example_image['label_y'])
-                
+                ax.set_title(panel.get("title", ""))
+                ax.set_xlabel(example_image["label_x"])
+                ax.set_ylabel(example_image["label_y"])
+
                 # store the default value alongside
                 img._default_vmin_vmax = vmin, vmax
                 img_row.append(img)
             self.images.append(img_row)
-            
+
         if tight:
             # adjust layout and leave some room for title
             self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
-            
-    def _update_data(self, fields: FieldBase,
-                     title: Optional[str] = None) -> None:
+    def _update_data(self, fields: FieldBase, title: Optional[str] = None) -> None:
         """ update the fields in the current plot
         
         Args:
@@ -380,49 +385,49 @@ class ScalarFieldPlot():
                 changed. 
         """
         assert isinstance(fields, FieldBase)
-        
+
         if title:
             self.sup_title.set_text(title)
-        
+
         # iterate over all panels and update their content
         for i, panel_row in enumerate(self.quantities):
             for j, panel in enumerate(panel_row):
                 # obtain image data
-                field = extract_field(fields, panel.get('source'))
+                field = extract_field(fields, panel.get("source"))
                 img_data = field.get_image_data()
-                
+
                 # set the data in the correct panel
                 img = self.images[i][j]
-                img.set_data(img_data['data'])
+                img.set_data(img_data["data"])
                 vmin, vmax = img._default_vmin_vmax
                 if vmin is None:
-                    vmin = img_data['data'].min()
+                    vmin = img_data["data"].min()
                 if vmax is None:
-                    vmax = img_data['data'].max()
+                    vmax = img_data["data"].max()
                 img.set_clim(vmin, vmax)
-                    
-            
+
     def _show(self):
         """ show the updated plot """
         if self._ipython_out:
             # seems to be in an ipython instance => update widget
-            from IPython.display import display, clear_output
+            from IPython.display import clear_output, display
+
             with self._ipython_out:
                 clear_output(wait=True)
                 display(self.fig)
-                
+
             # add a small pause to allow the GUI to run it's event loop
             time.sleep(0.01)
-            
+
         else:
             # seems to be in a normal matplotlib window => update it
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 # add a small pause to allow the GUI to run it's event loop
                 import matplotlib.pyplot as plt
+
                 plt.pause(0.01)
-        
-        
+
     def update(self, fields: FieldBase, title: Optional[str] = None) -> None:
         """ update the plot with the given fields
         
@@ -438,7 +443,6 @@ class ScalarFieldPlot():
         if self.show:
             self._show()
 
-            
     def savefig(self, path: str, **kwargs):
         """ save plot to file 
         
@@ -451,11 +455,10 @@ class ScalarFieldPlot():
                 :meth:`matplotlib.figure.Figure.savefig`.
         """
         self.fig.savefig(path, **kwargs)
-        
-    
-    def make_movie(self, storage: StorageBase,
-                   filename: str,
-                   progress: bool = True) -> None:
+
+    def make_movie(
+        self, storage: StorageBase, filename: str, progress: bool = True
+    ) -> None:
         """ make a movie from the data stored in storage
         
         Args:
@@ -475,21 +478,19 @@ class ScalarFieldPlot():
             data_iter = display_progress(storage.items(), total=len(storage))
         else:
             data_iter = storage.items()
-            
+
         with Movie(filename=filename) as movie:
             # iterate over all time steps
             for t, data in data_iter:
-                self.update(data, title=f'Time {t:g}')
+                self.update(data, title=f"Time {t:g}")
                 movie.add_figure(self.fig)
-
 
 
 @plot_on_axes()
 @fill_in_docstring
-def plot_magnitudes(storage: StorageBase,
-                    quantities=None,
-                    ax=None,
-                    **kwargs) -> PlotReference:
+def plot_magnitudes(
+    storage: StorageBase, quantities=None, ax=None, **kwargs
+) -> PlotReference:
     r""" plot spatially integrated quantities as a function of time
     
     Args:
@@ -509,63 +510,65 @@ def plot_magnitudes(storage: StorageBase,
         fields = storage[0]
         assert isinstance(fields, FieldBase)
         if fields.label:
-            label_base = fields.label 
+            label_base = fields.label
         else:
-            label_base = kwargs.get('label', 'Field')
-        
+            label_base = kwargs.get("label", "Field")
+
         if isinstance(fields, FieldCollection):
             quantities = []
             for i, field in enumerate(fields):
                 if field.label:
-                    label = field.label 
+                    label = field.label
                 else:
-                    label = label_base + f' {i + 1}'
-                quantities.append({'label': label, 'source': i})
+                    label = label_base + f" {i + 1}"
+                quantities.append({"label": label, "source": i})
         else:
-            quantities = [{'label': label_base, 'source': None}]
-            
-    logging.getLogger(__name__).debug('Quantities: %s', quantities)
-    
+            quantities = [{"label": label_base, "source": None}]
+
+    logging.getLogger(__name__).debug("Quantities: %s", quantities)
+
     # prepare data field
-    data = [{'label': quantity.get('label', ''), 'values': []}
-            for quantity in quantities]
-    
+    data = [
+        {"label": quantity.get("label", ""), "values": []} for quantity in quantities
+    ]
+
     # calculate the data
     for fields in storage:
         for i, quantity in enumerate(quantities):
-            source = quantity['source']
+            source = quantity["source"]
             if callable(source):
                 value = source(fields)
             elif source is None:
                 value = fields.magnitude  # type: ignore
             else:
                 value = fields[source].magnitude  # type: ignore
-            value *= quantity.get('scale', 1)
-            data[i]['values'].append(value)
-    
+            value *= quantity.get("scale", 1)
+            data[i]["values"].append(value)
+
     # plot the data
     lines = []
     for d in data:
-        kwargs['label'] = d['label']
-        l, = ax.plot(storage.times, d['values'], **kwargs)
+        kwargs["label"] = d["label"]
+        (l,) = ax.plot(storage.times, d["values"], **kwargs)
         lines.append(l)
-        
-    ax.set_xlabel('Time')
+
+    ax.set_xlabel("Time")
     if len(data) == 1:
-        ax.set_ylabel(kwargs['label'])
-        
+        ax.set_ylabel(kwargs["label"])
+
     if len(data) > 1:
-        ax.legend(loc='best')
-        
+        ax.legend(loc="best")
+
     return PlotReference(ax, lines)
-            
 
 
-def _plot_kymograph(img_data: Dict[str, Any],
-                    ax,
-                    colorbar: bool = True,
-                    transpose: bool = False,
-                    **kwargs) -> PlotReference:
+def _plot_kymograph(
+    img_data: Dict[str, Any],
+    ax,
+    colorbar: bool = True,
+    transpose: bool = False,
+    **kwargs,
+) -> PlotReference:
     r""" plots a simple kymograph from given data
     
     Args:
@@ -587,39 +590,42 @@ def _plot_kymograph(img_data: Dict[str, Any],
     # transpose data if requested
     if transpose:
         # avoid changing the img_data that was passed into the function
-        extent = np.r_[img_data['extent_y'], img_data['extent_x']]
-        img_data = {'data': img_data['data'].T,
-                    'label_x': img_data['label_y'],
-                    'label_y': img_data['label_x']}
+        extent = np.r_[img_data["extent_y"], img_data["extent_x"]]
+        img_data = {
+            "data": img_data["data"].T,
+            "label_x": img_data["label_y"],
+            "label_y": img_data["label_x"],
+        }
     else:
-        extent = np.r_[img_data['extent_x'], img_data['extent_y']]
-    
+        extent = np.r_[img_data["extent_x"], img_data["extent_y"]]
+
     # create the actual plot
-    axes_image = ax.imshow(img_data['data'], extent=extent, origin='lower',
-                           **kwargs)
-    
+    axes_image = ax.imshow(img_data["data"], extent=extent, origin="lower", **kwargs)
+
     # adjust some settings
-    ax.set_xlabel(img_data['label_x'])
-    ax.set_ylabel(img_data['label_y'])
-    ax.set_aspect('auto') 
+    ax.set_xlabel(img_data["label_x"])
+    ax.set_ylabel(img_data["label_y"])
+    ax.set_aspect("auto")
 
     if colorbar:
         from ..tools.plotting import add_scaled_colorbar
+
         add_scaled_colorbar(axes_image, ax=ax)
-        
+
     return PlotReference(ax, axes_image)
 
 
-
 @plot_on_axes()
-def plot_kymograph(storage: StorageBase,
-                   field_index: int = None,
-                   scalar: str = 'auto',
-                   extract: str = 'auto',
-                   colorbar: bool = True,
-                   transpose: bool = False,
-                   ax=None,
-                   **kwargs) -> PlotReference:
+def plot_kymograph(
+    storage: StorageBase,
+    field_index: int = None,
+    scalar: str = "auto",
+    extract: str = "auto",
+    colorbar: bool = True,
+    transpose: bool = False,
+    ax=None,
+    **kwargs,
+) -> PlotReference:
     r""" plots a single kymograph from stored data
     
     The kymograph shows line data stacked along time. Consequently, the
@@ -652,40 +658,41 @@ def plot_kymograph(storage: StorageBase,
         :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
     """
     if len(storage) == 0:
-        raise RuntimeError('Storage is empty')
-    line_data_args: Dict[str, Any] = {'scalar': scalar, 'extract': extract}
-    
+        raise RuntimeError("Storage is empty")
+    line_data_args: Dict[str, Any] = {"scalar": scalar, "extract": extract}
+
     if field_index is not None:
         if storage.has_collection:
-            line_data_args['index'] = field_index
+            line_data_args["index"] = field_index
         else:
-            _logger.warning('`field_index` should only be set for '
-                            'FieldCollections')
-    
+            _logger.warning("`field_index` should only be set for " "FieldCollections")
+
     # prepare the image data for one kymograph
     image = []
     for _, field in storage.items():
         img_data = field.get_line_data(**line_data_args)
-        image.append(img_data['data_y'])
-        
-    img_data['data'] = np.array(image)
-    img_data['extent_y'] = (storage.times[0], storage.times[-1])
-    img_data['label_y'] = 'Time'
-    
-    return _plot_kymograph(img_data, ax, colorbar=colorbar, transpose=transpose,
-                           **kwargs)
-    
-    
+        image.append(img_data["data_y"])
+
+    img_data["data"] = np.array(image)
+    img_data["extent_y"] = (storage.times[0], storage.times[-1])
+    img_data["label_y"] = "Time"
+
+    return _plot_kymograph(
+        img_data, ax, colorbar=colorbar, transpose=transpose, **kwargs
+    )
+
 
 @plot_on_figure()
-def plot_kymographs(storage: StorageBase,
-                    scalar: str = 'auto',
-                    extract: str = 'auto',
-                    colorbar: bool = True,
-                    transpose: bool = False,
-                    resize_fig: bool = True,
-                    fig=None,
-                    **kwargs) -> List[PlotReference]:
+def plot_kymographs(
+    storage: StorageBase,
+    scalar: str = "auto",
+    extract: str = "auto",
+    colorbar: bool = True,
+    transpose: bool = False,
+    resize_fig: bool = True,
+    fig=None,
+    **kwargs,
+) -> List[PlotReference]:
     r""" plots kymographs for all fields stored in `storage`
     
     The kymograph shows line data stacked along time. Consequently, the
@@ -717,43 +724,45 @@ def plot_kymographs(storage: StorageBase,
         all plots
     """
     if len(storage) == 0:
-        raise RuntimeError('Storage is empty')
-    line_data_args = {'scalar': scalar, 'extract': extract}
+        raise RuntimeError("Storage is empty")
+    line_data_args = {"scalar": scalar, "extract": extract}
     if storage.has_collection:
         num_fields = len(storage[0])  # type: ignore
     else:
         num_fields = 1
-    
+
     # prepare the image data for one kymograph
     images = []
     for _, field in storage.items():
         if storage.has_collection:
             image_lines = []
             for f_id in range(num_fields):
-                img_data = field.get_line_data(index=f_id,  # type: ignore
-                                               **line_data_args)
-                image_lines.append(img_data['data_y'])
+                img_data = field.get_line_data(  # type: ignore
+                    index=f_id, **line_data_args,
+                )
+                image_lines.append(img_data["data_y"])
         else:
             img_data = field.get_line_data(**line_data_args)
-            image_lines = [img_data['data_y']]
+            image_lines = [img_data["data_y"]]
         images.append(image_lines)
-    
+
     img_arr = np.array(images)
-    img_data['extent_y'] = (storage.times[0], storage.times[-1])
-    img_data['label_y'] = 'Time'
-    
+    img_data["extent_y"] = (storage.times[0], storage.times[-1])
+    img_data["label_y"] = "Time"
+
     # disable interactive plotting temporarily
-    # create a plot with all the panels 
+    # create a plot with all the panels
     if resize_fig:
         fig.set_size_inches((4 * num_fields, 3), forward=True)
     axs = fig.subplots(1, num_fields, squeeze=False)
-    
+
     # iterate over all axes and plot the kymograph
     refs = []
     for i, ax in enumerate(axs[0]):
-        img_data['data'] = img_arr[:, i]
-        ref = _plot_kymograph(img_data, ax, colorbar=colorbar,
-                              transpose=transpose, **kwargs)
+        img_data["data"] = img_arr[:, i]
+        ref = _plot_kymograph(
+            img_data, ax, colorbar=colorbar, transpose=transpose, **kwargs
+        )
         if storage.has_collection:
             ax.set_title(storage._field[i].label)  # type: ignore
         refs.append(ref)

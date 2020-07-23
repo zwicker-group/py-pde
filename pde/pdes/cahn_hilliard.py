@@ -8,15 +8,13 @@ from typing import Callable
 
 import numpy as np
 
-
-from .base import PDEBase
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
-from ..tools.numba import nb, jit
 from ..tools.docstrings import fill_in_docstring
+from ..tools.numba import jit, nb
+from .base import PDEBase
 
 
-        
 class CahnHilliardPDE(PDEBase):
     r""" A simple Cahn-Hilliard equation
     
@@ -30,12 +28,14 @@ class CahnHilliardPDE(PDEBase):
     """
 
     explicit_time_dependence = False
-    
 
     @fill_in_docstring
-    def __init__(self, interface_width: float = 1,
-                 bc_c: BoundariesData = 'natural',
-                 bc_mu: BoundariesData = 'natural'):
+    def __init__(
+        self,
+        interface_width: float = 1,
+        bc_c: BoundariesData = "natural",
+        bc_mu: BoundariesData = "natural",
+    ):
         """ 
         Args:
             interface_width (float):
@@ -49,14 +49,14 @@ class CahnHilliardPDE(PDEBase):
                 options as `bc_c`.
         """
         super().__init__()
-        
+
         self.interface_width = interface_width
         self.bc_c = bc_c
         self.bc_mu = bc_mu
-            
-            
-    def evolution_rate(self, state: ScalarField,  # type: ignore
-                       t: float = 0) -> ScalarField:
+
+    def evolution_rate(  # type: ignore
+        self, state: ScalarField, t: float = 0,
+    ) -> ScalarField:
         """ evaluate the right hand side of the PDE
         
         Args:
@@ -69,13 +69,11 @@ class CahnHilliardPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE 
         """
         assert isinstance(state, ScalarField)
-        c_laplace = state.laplace(bc=self.bc_c, label='evolution rate')
-        result = state**3 - state - self.interface_width * c_laplace
+        c_laplace = state.laplace(bc=self.bc_c, label="evolution rate")
+        result = state ** 3 - state - self.interface_width * c_laplace
         return result.laplace(bc=self.bc_mu)  # type: ignore
-    
-    
-    def _make_pde_rhs_numba(self, state: ScalarField  # type: ignore
-                            ) -> Callable:
+
+    def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
         """ create a compiled function evaluating the right hand side of the PDE
         
         Args:
@@ -91,19 +89,15 @@ class CahnHilliardPDE(PDEBase):
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))
         signature = arr_type(arr_type, nb.double)
-        
+
         interface_width = self.interface_width
-        laplace_c = state.grid.get_operator('laplace', bc=self.bc_c)
-        laplace_mu = state.grid.get_operator('laplace', bc=self.bc_mu)
+        laplace_c = state.grid.get_operator("laplace", bc=self.bc_c)
+        laplace_mu = state.grid.get_operator("laplace", bc=self.bc_mu)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """ 
-            mu = (state_data**3 - state_data -
-                  interface_width * laplace_c(state_data))
-            return laplace_mu(mu) 
-            
+            """ compiled helper function evaluating right hand side """
+            mu = state_data ** 3 - state_data - interface_width * laplace_c(state_data)
+            return laplace_mu(mu)
+
         return pde_rhs  # type: ignore
-    
-    
-    

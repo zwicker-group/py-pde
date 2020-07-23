@@ -1,38 +1,33 @@
-'''
+"""
 Spherically-symmetric grids in 2 and 3 dimensions. These are grids that only
 discretize the radial direction, assuming symmetry with respect to all angles.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
  
-'''
+"""
 
 from abc import ABCMeta
-from typing import Tuple, Dict, Any, Union, Generator, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, Union
 
 import numpy as np
 from scipy import interpolate
 
-from .base import GridBase, discretize_interval, _check_shape, DimensionError
-from .cartesian import CartesianGrid
-from ..tools.spherical import volume_from_radius
 from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import plot_on_axes
-
-
+from ..tools.spherical import volume_from_radius
+from .base import DimensionError, GridBase, _check_shape, discretize_interval
+from .cartesian import CartesianGrid
 
 if TYPE_CHECKING:
     from .boundaries import Boundaries  # @UnusedImport
-
 
 
 PI_4 = 4 * np.pi
 PI_43 = 4 / 3 * np.pi
 
 
-
-class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
-                        metaclass=ABCMeta):
+class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals]
     r""" Base class for d-dimensional spherical grids with angular symmetry
     
     The angular symmetry implies that states only depend on the radial
@@ -52,11 +47,11 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
     """
 
     periodic = [False]  # the radial axis is not periodic
-    num_axes = 1        # the number of independent axes
-    
+    num_axes = 1  # the number of independent axes
 
-    def __init__(self, radius: Union[float, Tuple[float, float]],
-                 shape: Union[Tuple[int], int]):
+    def __init__(
+        self, radius: Union[float, Tuple[float, float]], shape: Union[Tuple[int], int]
+    ):
         r""" 
         Args:
             radius (float or tuple of floats): 
@@ -69,41 +64,36 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         super().__init__()
         shape_list = _check_shape(shape)
         if not len(shape_list) == 1:
-            raise ValueError('`shape` must be a single number, not '
-                             f'{shape_list}')
+            raise ValueError("`shape` must be a single number, not " f"{shape_list}")
         self._shape: Tuple[int] = (int(shape_list[0]),)
-        
+
         try:
             r_inner, r_outer = radius  # type: ignore
         except TypeError:
             r_inner, r_outer = 0, float(radius)  # type: ignore
-            
+
         if r_inner < 0:
-            raise ValueError('Inner radius must be positive')
+            raise ValueError("Inner radius must be positive")
         if r_inner >= r_outer:
-            raise ValueError('Outer radius must be larger than inner radius')
-        
+            raise ValueError("Outer radius must be larger than inner radius")
+
         # radial discretization
         rs, dr = discretize_interval(r_inner, r_outer, self.shape[0])
-        
+
         self._axes_coords = (rs,)
         self._axes_bounds = ((r_inner, r_outer),)
         self._discretization = np.array((dr,))
-        
-        
+
     @property
     def state(self) -> Dict[str, Any]:
         """ state: the state of the grid """
-        return {'radius': self.radius,
-                'shape': self.shape}
-        
-        
+        return {"radius": self.radius, "shape": self.shape}
+
     @property
     def has_hole(self) -> bool:
         """ returns whether the inner radius is larger than zero """
         return self.axes_bounds[0][0] > 0
-        
-        
+
     @classmethod
     def from_state(cls, state) -> "SphericalGridBase":
         """ create a field from a stored `state`.
@@ -113,12 +103,10 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
                 The state from which the grid is reconstructed.
         """
         state_copy = state.copy()
-        obj = cls(radius=state_copy.pop('radius'),
-                  shape=state_copy.pop('shape'))
+        obj = cls(radius=state_copy.pop("radius"), shape=state_copy.pop("shape"))
         if state_copy:
-            raise ValueError(f'State items {state_copy.keys()} were not used')
+            raise ValueError(f"State items {state_copy.keys()} were not used")
         return obj
-
 
     @property
     def radius(self) -> Union[float, Tuple[float, float]]:
@@ -128,7 +116,6 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
             return r_outer
         else:
             return r_inner, r_outer
-    
 
     @property
     def volume(self) -> float:
@@ -139,7 +126,6 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
             volume -= volume_from_radius(r_inner, dim=self.dim)
         return volume
 
-
     @cached_property()
     def cell_volume_data(self) -> Tuple[np.ndarray]:
         """ tuple of :class:`numpy.ndarray`: the volumes of all cells """
@@ -148,7 +134,6 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         volumes_h = volume_from_radius(rs + 0.5 * dr, dim=self.dim)
         volumes_l = volume_from_radius(rs - 0.5 * dr, dim=self.dim)
         return ((volumes_h - volumes_l).reshape(self.shape[0]),)  # type: ignore
-    
 
     def contains_point(self, point):
         """ check whether the point is contained in the grid
@@ -158,15 +143,18 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         """
         point = np.atleast_1d(point)
         if point.shape[-1] != self.dim:
-            raise DimensionError('Dimension mismatch')
+            raise DimensionError("Dimension mismatch")
         r = np.linalg.norm(point, axis=-1)
-        
-        r_inner, r_outer = self.axes_bounds[0]
-        return (r_inner <= r <= r_outer)
 
-    
-    def get_random_point(self, boundary_distance: float = 0,
-                         cartesian: bool = True, avoid_center: bool = False):
+        r_inner, r_outer = self.axes_bounds[0]
+        return r_inner <= r <= r_outer
+
+    def get_random_point(
+        self,
+        boundary_distance: float = 0,
+        cartesian: bool = True,
+        avoid_center: bool = False,
+    ):
         """ return a random point within the grid
         
         Note that these points will be uniformly distributed on the radial axis,
@@ -192,7 +180,7 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         r_mag = r_outer - boundary_distance - r_min
 
         if r_mag <= 0:
-            raise RuntimeError('Random points would be too close to boundary')
+            raise RuntimeError("Random points would be too close to boundary")
 
         # create random point
         r = np.array([r_mag * np.random.random() + r_min])
@@ -201,8 +189,7 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         else:
             return r
 
-
-    def get_line_data(self, data, extract: str = 'auto') -> Dict[str, Any]:
+    def get_line_data(self, data, extract: str = "auto") -> Dict[str, Any]:
         """ return a line cut along the radial axis
         
         Args:
@@ -217,18 +204,23 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
             A dictionary with information about the line cut, which is 
             convenient for plotting.
         """
-        if extract not in {'auto', 'r', 'radial'}:
-            raise ValueError(f'Unknown extraction method `{extract}`')
-        
-        return {'data_x': self.axes_coords[0],
-                'data_y': data,
-                'extent_x': self.axes_bounds[0],
-                'label_x': self.axes[0]}
+        if extract not in {"auto", "r", "radial"}:
+            raise ValueError(f"Unknown extraction method `{extract}`")
 
+        return {
+            "data_x": self.axes_coords[0],
+            "data_y": data,
+            "extent_x": self.axes_bounds[0],
+            "label_x": self.axes[0],
+        }
 
-    def get_image_data(self, data, performance_goal: str = 'speed',
-                       fill_value: float = 0,
-                       masked: bool = True) -> Dict[str, Any]:
+    def get_image_data(
+        self,
+        data,
+        performance_goal: str = "speed",
+        fill_value: float = 0,
+        masked: bool = True,
+    ) -> Dict[str, Any]:
         """ return a 2d-image of the data
         
         Args:
@@ -250,45 +242,53 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         """
         _, r_outer = self.axes_bounds[0]
         r_data = self.axes_coords[0]
-        
+
         if self.has_hole:
             num = int(np.ceil(r_outer / self.discretization[0]))
             x_positive, _ = discretize_interval(0, r_outer, num)
         else:
             x_positive = r_data
-            
+
         x = np.r_[-x_positive[::-1], x_positive]
-        xs, ys = np.meshgrid(x, x, indexing='ij')
+        xs, ys = np.meshgrid(x, x, indexing="ij")
         r_img = np.hypot(xs, ys)
-        
-        if performance_goal == 'speed':
+
+        if performance_goal == "speed":
             # interpolate over the new coordinates using linear interpolation
-            f = interpolate.interp1d(r_data, data, copy=False,
-                                     bounds_error=False,
-                                     fill_value=fill_value,
-                                     assume_sorted=True)
+            f = interpolate.interp1d(
+                r_data,
+                data,
+                copy=False,
+                bounds_error=False,
+                fill_value=fill_value,
+                assume_sorted=True,
+            )
             data_int = f(r_img.flat).reshape(r_img.shape)
-            
-        elif performance_goal == 'quality':
+
+        elif performance_goal == "quality":
             # interpolate over the new coordinates using radial base function
-            f = interpolate.Rbf(r_data, data, function='cubic')
+            f = interpolate.Rbf(r_data, data, function="cubic")
             data_int = f(r_img)
-            
+
         else:
-            raise ValueError(f'Performance goal `{performance_goal}` undefined')
-        
+            raise ValueError(f"Performance goal `{performance_goal}` undefined")
+
         if masked:
-            mask = (r_img < r_data[0]) | (r_data[-1] < r_img) 
+            mask = (r_img < r_data[0]) | (r_data[-1] < r_img)
             data_int = np.ma.masked_array(data_int, mask=mask)
-        
-        return {'data': data_int,
-                'x': x, 'y': x,
-                'extent': (-r_outer, r_outer, -r_outer, r_outer),
-                'label_x': 'x', 'label_y': 'y'}       
 
+        return {
+            "data": data_int,
+            "x": x,
+            "y": x,
+            "extent": (-r_outer, r_outer, -r_outer, r_outer),
+            "label_x": "x",
+            "label_y": "y",
+        }
 
-    def iter_mirror_points(self, point, with_self: bool = False,
-                           only_periodic: bool = True) -> Generator:
+    def iter_mirror_points(
+        self, point, with_self: bool = False, only_periodic: bool = True
+    ) -> Generator:
         """ generates all mirror points corresponding to `point`
         
         Args:
@@ -302,7 +302,6 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         point = np.asanyarray(point, dtype=np.double)
         if with_self:
             yield point
-
 
     def normalize_point(self, point, reduced_coords: bool = False):
         """ normalize coordinates, which is a no-op for spherical coordinates.
@@ -320,12 +319,13 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         if point.size == 0:
             return np.zeros((0, size))
         if point.shape[-1] != size:
-            raise DimensionError('Dimension mismatch: Array of shape '
-                                 f'{point.shape} does not describe points of '
-                                 f'dimension {size}.')
+            raise DimensionError(
+                "Dimension mismatch: Array of shape "
+                f"{point.shape} does not describe points of "
+                f"dimension {size}."
+            )
         return point
 
-    
     def point_from_cartesian(self, points):
         """ convert points given in Cartesian coordinates to this grid
         
@@ -338,7 +338,6 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         """
         points = self.normalize_point(points)
         return np.linalg.norm(points, axis=-1, keepdims=True)
-
 
     def cell_to_point(self, cells, cartesian: bool = True):
         """ convert cell coordinates to real coordinates
@@ -360,13 +359,12 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         """
         cells = np.atleast_1d(cells)
         # convert from cells indices to grid coordinates
-        r_inner, _ = self.axes_bounds[0] 
+        r_inner, _ = self.axes_bounds[0]
         points = r_inner + (cells + 0.5) * self.discretization[0]
         if cartesian:
             return self.point_to_cartesian(points)
         else:
             return points
-
 
     def point_to_cell(self, points):
         """ Determine cell(s) corresponding to given point(s)
@@ -387,7 +385,6 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         cells = (r - r_inner) / self.discretization[0]
         return cells.astype(np.int)
 
-        
     def difference_vector_real(self, p1, p2):
         """ return the vector pointing from p1 to p2.
         
@@ -403,7 +400,6 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         """
         return np.atleast_1d(p2) - np.atleast_1d(p1)
 
-    
     def polar_coordinates_real(self, origin=[0, 0, 0], ret_angle: bool = False):
         """ return spherical coordinates associated with the grid
         
@@ -419,8 +415,8 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if not np.array_equal(origin, np.zeros(self.dim)):
-            raise RuntimeError(f'Origin must be {str([0]*self.dim)}')
-             
+            raise RuntimeError(f"Origin must be {str([0]*self.dim)}")
+
         # the distance to the origin is exactly the radial coordinate
         rs = self.axes_coords[0]
         if ret_angle:
@@ -428,10 +424,8 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
         else:
             return rs
 
-
     @fill_in_docstring
-    def get_boundary_conditions(self, bc='natural', rank: int = 0) \
-            -> "Boundaries":
+    def get_boundary_conditions(self, bc="natural", rank: int = 0) -> "Boundaries":
         """ constructs boundary conditions from a flexible data format.
         
         Note that the inner boundary condition for grids without holes need not
@@ -450,48 +444,46 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
             PeriodicityError: If the boundaries are not compatible with the
                 periodic axes of the grid. 
         """
-        from .boundaries.local import BCBase, NeumannBC
-        from .boundaries.axis import BoundaryPair
         from .boundaries import Boundaries  # @Reimport
+        from .boundaries.axis import BoundaryPair
+        from .boundaries.local import BCBase, NeumannBC
 
         if isinstance(bc, Boundaries):
             return bc
 
         if self.has_hole:  # grid has holes => specify two boundary conditions
-            if bc == 'natural':
+            if bc == "natural":
                 low = NeumannBC(self, 0, upper=False, rank=rank)
                 high = NeumannBC(self, 0, upper=True, rank=rank)
                 b_pair = BoundaryPair(low, high)
             else:
                 b_pair = BoundaryPair.from_data(self, 0, bc, rank=rank)
-            
+
         else:  # grid has no hole => need only one boundary condition
             b_inner = NeumannBC(self, 0, upper=False, rank=rank)
-            if bc == 'natural':
+            if bc == "natural":
                 upper = NeumannBC(self, 0, upper=True, rank=rank)
                 b_pair = BoundaryPair(b_inner, upper)
             else:
                 try:
-                    b_outer = BCBase.from_data(self, 0, upper=True, data=bc,
-                                               rank=rank)
+                    b_outer = BCBase.from_data(self, 0, upper=True, data=bc, rank=rank)
                 except ValueError:
                     # this can happen when two boundary conditions have been
                     # supplied
                     b_pair = BoundaryPair.from_data(self, 0, bc, rank=rank)
                     if b_inner != b_pair.low:
                         raise ValueError(
-                            f'Unsupported boundary format: `{bc}`. Note that '
-                            'spherical symmetry implies vanishing derivatives '
-                            'at the origin at r=0 for all fields. This '
-                            'boundary condition need not be specified.')
+                            f"Unsupported boundary format: `{bc}`. Note that "
+                            "spherical symmetry implies vanishing derivatives "
+                            "at the origin at r=0 for all fields. This "
+                            "boundary condition need not be specified."
+                        )
                 else:
                     b_pair = BoundaryPair(b_inner, b_outer)
 
-        return Boundaries([b_pair])       
+        return Boundaries([b_pair])
 
-    
-    def get_cartesian_grid(self, mode: str = 'valid', num: int = None) \
-            -> CartesianGrid:
+    def get_cartesian_grid(self, mode: str = "valid", num: int = None) -> CartesianGrid:
         """ return a Cartesian grid for this Cylindrical one 
         
         Args:
@@ -507,22 +499,22 @@ class SphericalGridBase(GridBase,  # lgtm [py/missing-equals]
             :class:`pde.grids.cartesian.CartesianGrid`: The requested grid
         """
         # Pick the grid instance
-        if mode == 'valid':
+        if mode == "valid":
             if self.has_hole:
-                self._logger.warn('The sphere has holes, so not all points are '
-                                  'valid.')
+                self._logger.warn(
+                    "The sphere has holes, so not all points are " "valid."
+                )
             bounds = self.radius / np.sqrt(self.dim)
-        elif mode == 'full':
+        elif mode == "full":
             bounds = self.radius
         else:
-            raise ValueError(f'Unsupported mode `{mode}`')
-                
+            raise ValueError(f"Unsupported mode `{mode}`")
+
         # determine the grid points
         if num is None:
             num = 2 * round(bounds / self.discretization[0])
         grid_bounds = [(-bounds, bounds)] * self.dim
         return CartesianGrid(grid_bounds, num)
-        
 
 
 class PolarGrid(SphericalGridBase):
@@ -542,13 +534,12 @@ class PolarGrid(SphericalGridBase):
     zero by default. The radial direction is discretized by :math:`N` support
     points.    
     """
-    
+
     dim = 2  # dimension of the described space
-    axes = ['r']
-    axes_symmetric = ['phi']
+    axes = ["r"]
+    axes_symmetric = ["phi"]
     coordinate_constraints = [0, 1]  # axes not described explicitly
 
-        
     def point_to_cartesian(self, points):
         """ convert coordinates of a point to Cartesian coordinates
         
@@ -560,12 +551,11 @@ class PolarGrid(SphericalGridBase):
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != 1:
-            raise DimensionError(f'Dimension mismatch: Points {points} invalid')
-        
+            raise DimensionError(f"Dimension mismatch: Points {points} invalid")
+
         y = points[..., 0]
         x = np.zeros_like(y)
         return np.stack((x, y), axis=-1)
-
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
@@ -577,25 +567,24 @@ class PolarGrid(SphericalGridBase):
                 plotting routines, e.g., to set the color of the lines
         """
         from matplotlib import patches
-        
-        kwargs.setdefault('color', 'k')
-        rb, = self.axes_bounds
+
+        kwargs.setdefault("color", "k")
+        (rb,) = self.axes_bounds
         rmax = rb[1]
 
         for r in np.linspace(*rb, self.shape[0] + 1):
             if r == 0:
-                ax.plot(0, 0, '.', **kwargs)
+                ax.plot(0, 0, ".", **kwargs)
             else:
                 c = patches.Circle((0, 0), r, fill=False, **kwargs)
                 ax.add_artist(c)
         ax.set_xlim(-rmax, rmax)
-        ax.set_xlabel('x')
+        ax.set_xlabel("x")
         ax.set_ylim(-rmax, rmax)
-        ax.set_ylabel('y')
+        ax.set_ylabel("y")
         ax.set_aspect(1)
-            
-            
-    
+
+
 class SphericalGrid(SphericalGridBase):
     r""" 3-dimensional spherical grid assuming spherical symmetry
     
@@ -613,13 +602,12 @@ class SphericalGrid(SphericalGridBase):
     zero by default. The radial direction is discretized by :math:`N` support
     points.    
     """
-    
+
     dim = 3  # dimension of the described space
-    axes = ['r']
-    axes_symmetric = ['theta', 'phi']
+    axes = ["r"]
+    axes_symmetric = ["theta", "phi"]
     coordinate_constraints = [0, 1, 2]  # axes not described explicitly
-      
-      
+
     def point_to_cartesian(self, points):
         """ convert coordinates of a point to Cartesian coordinates
         
@@ -635,7 +623,7 @@ class SphericalGrid(SphericalGridBase):
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != 1:
-            raise DimensionError(f'Dimension mismatch: Points {points} invalid')
+            raise DimensionError(f"Dimension mismatch: Points {points} invalid")
         z = points[..., 0]
         x = np.zeros_like(z)
-        return np.stack((x, x, z), axis=-1)    
+        return np.stack((x, x, z), axis=-1)
