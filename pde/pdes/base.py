@@ -145,15 +145,14 @@ class PDEBase(metaclass=ABCMeta):
         if (self.check_implementation and
                 rhs._backend == 'numba'):  # type: ignore
             # compare the numba implementation to the numpy implementation
-            expected = self.evolution_rate(state.copy()).data
+            expected = self.evolution_rate(state.copy(), 0).data
             test_state = state.copy()
             result = rhs(test_state.data, 0)
-            if not np.allclose(result, expected):
-                raise RuntimeError('The numba compiled implementation of the '
-                                   'right hand side is not compatible with '
-                                   'the numpy implementation. This check can '
-                                   'be disabled by setting the class attribute '
-                                   '`check_implementation` to `False`.')
+            msg = ('The numba compiled implementation of the right hand side '
+                   'is not compatible with the numpy implementation. This '
+                   'check can be disabled by setting the class attribute '
+                   '`check_implementation` to `False`.')
+            np.testing.assert_allclose(result, expected, err_msg=msg)
         
         return rhs
             
