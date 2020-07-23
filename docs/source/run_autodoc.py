@@ -56,6 +56,7 @@ def main():
                    '--output-dir', OUTPUT_PATH,
                    '--module-first',
                    '../../pde',  # path of the package
+                   '../../pde/version.py',  # ignored file
                    '../../pde/tests',  # ignored path
                    '../../pde/**/tests'  # ignored path
                    ])

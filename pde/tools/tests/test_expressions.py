@@ -42,6 +42,7 @@ def test_const():
         
         g = e.derivatives
         assert g.constant
+        assert isinstance(str(g), str)
         np.testing.assert_equal(g.value, [])
             
         for f in [ScalarExpression(e), ScalarExpression(e.expression),

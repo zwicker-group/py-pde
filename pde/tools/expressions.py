@@ -87,7 +87,7 @@ class ExpressionBase(metaclass=ABCMeta):
     """ abstract base class for handling expressions """
 
     @fill_in_docstring
-    def __init__(self, expression,
+    def __init__(self, expression: sympy.core.basic.Basic,
                  signature: Optional[Sequence[Union[str, List[str]]]] = None,
                  user_funcs: Optional[Dict[str, Any]] = None):
         """
@@ -95,9 +95,10 @@ class ExpressionBase(metaclass=ABCMeta):
             {WARNING_EXEC}
     
         Args:
-            expression (str or float):
-                The expression, which is either a number or a string that sympy
-                can parse
+            expression (:class:`sympy.core.basic.Basic`):
+                A sympy expression or array. This could for instance be an
+                instance of :class:`~sympy.core.expr.Expr` or 
+                :class:`~sympy.tensor.array.ndim_array.NDimArray`.
             signature (list of str):
                 The signature defines which variables are expected in the
                 expression. This is typically a list of strings identifying
@@ -111,7 +112,11 @@ class ExpressionBase(metaclass=ABCMeta):
                 A dictionary with user defined functions that can be used in the
                 expression
         """
-        self._sympy_expr = expression
+        try:
+            self._sympy_expr = sympy.simplify(expression)
+        except TypeError:
+            # work-around for sympy bug (github.com/sympy/sympy/issues/19829)
+            self._sympy_expr = expression
         self._logger = logging.getLogger(self.__class__.__name__)
         self.user_funcs = {} if user_funcs is None else user_funcs
         self._check_signature(signature)
@@ -441,7 +446,8 @@ class ScalarExpression(ExpressionBase):
         if self.constant:
             # return empty expression
             dim = len(self.vars)
-            return TensorExpression(expression=sympy.Array(np.zeros(dim), dim),
+            expression = sympy.Array(np.zeros(dim), shape=(dim,))
+            return TensorExpression(expression=expression,
                                     signature=self.vars)
             
         if self.allow_indexed:
@@ -510,12 +516,19 @@ class TensorExpression(ExpressionBase):
 
             # parse the expression using sympy                
             from sympy.parsing import sympy_parser
-            parsed = sympy.Array(sympy_parser.parse_expr(expression))
-            sympy_expr = sympy.simplify(parsed)
+            sympy_expr = sympy.Array(sympy_parser.parse_expr(expression))
 
         super().__init__(expression=sympy_expr, signature=signature,
                          user_funcs=user_funcs)
 
+
+    def __repr__(self):
+        if self.shape == (0,):
+            # work-around for sympy bug (github.com/sympy/sympy/issues/19829)
+            return f'{self.__class__.__name__}("[]", signature={self.vars})'
+        else:
+            return super().__repr__()
+        
 
     @property
     def shape(self) -> Tuple[int, ...]:

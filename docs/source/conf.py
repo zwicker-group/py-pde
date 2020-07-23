@@ -240,8 +240,9 @@ napoleon_custom_sections = None
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {'https://docs.python.org/3/': None,
-                       'https://docs.scipy.org/doc/numpy/': None,
+                       'https://numpy.org/doc/stable': None,
                        'https://docs.scipy.org/doc/scipy/reference': None,
+                       'https://docs.sympy.org/latest/': None,
                        'https://matplotlib.org': None,
                        'http://docs.h5py.org/en/latest/': None}
 
