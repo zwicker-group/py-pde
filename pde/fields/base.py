@@ -461,8 +461,35 @@ class FieldBase(metaclass=ABCMeta):
             raise NotImplementedError('Only scalar exponents are supported')
         self.data **= exponent
         return self
-    
+        
+        
+    def apply(self: TField, func: Callable,
+              out: Optional[TField] = None,
+              label: str = None) -> TField:
+        """ applies a function to the data and returns it as a field
+        
+        Args:
+            func (callable or str):
+                The (vectorized) function being applied to the data or the name
+                of an operator that is defined for the grid of this field.
+            out (FieldBase, optional):
+                Optional field into which the data is written
+            label (str, optional):
+                Name of the returned field
 
+        Returns:
+            Field with new data. This is stored at `out` if given. 
+        """
+        if out is None:
+            return self.copy(data=func(self.data), label=label)
+        else:
+            self.assert_field_compatible(out)
+            out.data[:] = func(self.data)
+            if label:
+                out.label = label
+            return out
+        
+        
     @abstractmethod
     def get_line_data(self, scalar: str = 'auto', extract: str = 'auto'): pass
 
@@ -1237,33 +1264,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 return out
             
         return get_boundary_values
-        
-        
-    def apply(self: TDataField, func: Callable,
-              out: Optional[TDataField] = None,
-              label: str = None) -> TDataField:
-        """ applies a function to the data and returns it as a field
-        
-        Args:
-            func (callable or str):
-                The (vectorized) function being applied to the data or the name
-                of an operator that is defined for the grid of this field.
-            out (FieldBase, optional):
-                Optional field into which the data is written
-            label (str, optional):
-                Name of the returned field
-
-        Returns:
-            Field with new data. This is stored at `out` if given. 
-        """
-        if out is None:
-            return self.copy(data=func(self.data), label=label)
-        else:
-            self.assert_field_compatible(out)
-            out.data[:] = func(self.data)
-            if label:
-                out.label = label
-            return out
         
         
     @abstractproperty

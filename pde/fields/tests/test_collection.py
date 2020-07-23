@@ -151,3 +151,23 @@ def test_scalar_random_uniform():
     assert fc[0].grid is grid
     assert fc[1].grid is grid
     assert not np.allclose(fc[0].data, fc[1].data)
+    
+    
+    
+def test_from_scalar_expressions():
+    """ test creating field collections from scalar expressions """
+    grid = UnitGrid([3])
+    expressions = ['x**2', '1']
+    fc = FieldCollection.from_scalar_expressions(grid,
+                                                 expressions=expressions,
+                                                 label='c',
+                                                 labels=['a', 'b'])
+    assert fc.label == 'c'
+    assert fc[0].label == 'a'
+    assert fc[1].label == 'b'    
+    assert fc[0].grid is grid
+    assert fc[1].grid is grid
+    np.testing.assert_allclose(fc[0].data, (np.arange(3) + 0.5)**2)
+    np.testing.assert_allclose(fc[1].data, 1)
+    
+    

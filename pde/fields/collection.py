@@ -15,6 +15,7 @@ from .base import FieldBase, DataFieldBase, OptionalArrayLike
 from .scalar import ScalarField
 from ..tools.plotting import plot_on_figure, PlotReference
 from ..grids.base import GridBase
+from ..tools.docstrings import fill_in_docstring
 
 
 
@@ -246,6 +247,45 @@ class FieldCollection(FieldBase):
             for f1, f2 in zip(self, other):
                 f1.assert_field_compatible(f2, accept_scalar=accept_scalar)
                 
+
+    @classmethod
+    @fill_in_docstring
+    def from_scalar_expressions(cls, grid: GridBase,
+                                expressions: Sequence[str],
+                                label: str = None,
+                                labels: Optional[Sequence[str]] = None) \
+                                    -> "FieldCollection":
+        """ create a field collection on a grid from given expressions
+
+        Warning:
+            {WARNING_EXEC}
+        
+        Args:
+            grid (:class:`~pde.grids.GridBase`):
+                Grid defining the space on which this field is defined
+            expressions (list of str):
+                A list of mathematical expression, one for each field in the
+                collection. The expressions determine the values as a function
+                of the position on the grid. The expressions may contain
+                standard mathematical functions and they may depend on the axes
+                labels of the grid.
+            label (str, optional):
+                Name of the field
+            labels (list of str, optional):
+                Names of the individual fields
+        """
+        if isinstance(expressions, str):
+            expressions = [expressions]
+        if labels is None:
+            labels = [None] * len(expressions)  # type: ignore
+
+        # evaluate all expressions at all points 
+        fields = [ScalarField.from_expression(grid, expression, labels[i])
+                  for i, expression in enumerate(expressions)]
+
+        # create vector field from the data
+        return cls(fields=fields,  # lgtm [py/call-to-non-callable]
+                   label=label)
 
     @classmethod
     def scalar_random_uniform(cls, num_fields: int, grid: GridBase,
