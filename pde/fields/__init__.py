@@ -1,4 +1,4 @@
-'''
+"""
 Defines fields, which contain the actual data stored on a discrete grid.
 
 .. autosummary::
@@ -20,9 +20,9 @@ Inheritance structure of the classes:
 The details of the classes are explained below:
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
-from .scalar import ScalarField
-from .vectorial import VectorField
-from .tensorial import Tensor2Field
 from .collection import FieldCollection
+from .scalar import ScalarField
+from .tensorial import Tensor2Field
+from .vectorial import VectorField

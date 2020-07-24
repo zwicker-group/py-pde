@@ -1,4 +1,4 @@
-'''
+"""
 Miscallenous python functions 
 
 .. autosummary::
@@ -20,21 +20,20 @@ Miscallenous python functions
    in_jupyter_notebook
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
-import os
 import errno
 import functools
-import json
-import sys
 import importlib
+import json
+import os
+import sys
 import unittest
 import warnings
 from pathlib import Path
-from typing import Callable, Dict, Any, List, Union
+from typing import Any, Callable, Dict, List, Union
 
 import numpy as np
-
 
 
 def module_available(module_name: str) -> bool:
@@ -54,7 +53,6 @@ def module_available(module_name: str) -> bool:
         return True
 
 
-
 def environment(dict_type=dict) -> Dict[str, Any]:
     """ obtain information about the compute environment
     
@@ -66,7 +64,6 @@ def environment(dict_type=dict) -> Dict[str, Any]:
         dict: information about the python installation and packages
     """
     from .. import __version__ as package_version
-
     from .numba import numba_environment
 
     def get_package_versions(packages: List[str]) -> Dict[str, str]:
@@ -76,25 +73,25 @@ def environment(dict_type=dict) -> Dict[str, Any]:
             try:
                 module = importlib.import_module(name)
             except ImportError:
-                versions[name] = 'not available'
+                versions[name] = "not available"
             else:
                 versions[name] = module.__version__  # type: ignore
         return versions
 
     result: Dict[str, Any] = dict_type()
-    result['package version'] = package_version
-    result['python version'] = sys.version
-    result['mandatory packages'] = get_package_versions(
-                            ['matplotlib', 'numba', 'numpy', 'scipy', 'sympy'])
-    result['optional packages'] = get_package_versions(['h5py', 'pandas',
-                                                        'pyfftw', 'tqdm'])
-    if module_available('numba'):
-        result['numba environment'] = numba_environment()
-    
+    result["package version"] = package_version
+    result["python version"] = sys.version
+    result["mandatory packages"] = get_package_versions(
+        ["matplotlib", "numba", "numpy", "scipy", "sympy"]
+    )
+    result["optional packages"] = get_package_versions(
+        ["h5py", "pandas", "pyfftw", "tqdm"]
+    )
+    if module_available("numba"):
+        result["numba environment"] = numba_environment()
+
     return result
-    
-    
-    
+
 
 def ensure_directory_exists(folder: Union[str, Path]):
     """ creates a folder if it not already exists
@@ -103,14 +100,13 @@ def ensure_directory_exists(folder: Union[str, Path]):
         folder (str): path of the new folder
     """
     folder = str(folder)
-    if folder == '':
+    if folder == "":
         return
     try:
         os.makedirs(folder)
     except OSError as err:
         if err.errno != errno.EEXIST:
             raise
-    
 
 
 def preserve_scalars(method: Callable) -> Callable:
@@ -126,17 +122,17 @@ def preserve_scalars(method: Callable) -> Callable:
     Returns:
         The decorated method
     """
+
     @functools.wraps(method)
     def wrapper(self, *args):
-        args = [np.asanyarray(arg, dtype=np.double)
-                for arg in args]
+        args = [np.asanyarray(arg, dtype=np.double) for arg in args]
         if args[0].ndim == 0:
             args = [arg[None] for arg in args]
             return method(self, *args)[0]
         else:
             return method(self, *args)
-    return wrapper
 
+    return wrapper
 
 
 def decorator_arguments(decorator: Callable) -> Callable:
@@ -153,6 +149,7 @@ def decorator_arguments(decorator: Callable) -> Callable:
     Returns:
         the decorated function
     """
+
     @functools.wraps(decorator)
     def new_decorator(*args, **kwargs):
         if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
@@ -163,7 +160,6 @@ def decorator_arguments(decorator: Callable) -> Callable:
             return lambda realf: decorator(realf, *args, **kwargs)
 
     return new_decorator
-
 
 
 def skipUnlessModule(module_name: str) -> Callable:
@@ -179,15 +175,16 @@ def skipUnlessModule(module_name: str) -> Callable:
         # return no-op decorator
         def wrapper(f: Callable) -> Callable:
             return f
+
         return wrapper
     else:
         # return decorator skipping test
         return unittest.skip(f"requires {module_name}")
-        
 
 
-class MockProgress():
+class MockProgress:
     """ indicates progress by printing dots to stderr """
+
     def __init__(self, iterable=None, *args, **kwargs):
         self.iterable = iterable
         self.n = self.total = 0
@@ -196,17 +193,16 @@ class MockProgress():
     def __iter__(self):
         return iter(self.iterable)
 
-    def close(self, *args, **kwargs): pass
-    
-    def refresh(self, *args, **kwargs): 
-        sys.stderr.write('.')
+    def close(self, *args, **kwargs):
+        pass
+
+    def refresh(self, *args, **kwargs):
+        sys.stderr.write(".")
         sys.stderr.flush()
-        
-    def set_description(self, msg: str, refresh: bool = True, *args,
-                        **kwargs):
+
+    def set_description(self, msg: str, refresh: bool = True, *args, **kwargs):
         if refresh:
             self.refresh()
-
 
 
 def get_progress_bar_class():
@@ -218,22 +214,23 @@ def get_progress_bar_class():
     try:
         # try importing the tqdm package
         import tqdm
-        
+
     except ImportError:
-        # create a mock class, since tqdm is not available 
+        # create a mock class, since tqdm is not available
         # progress bar package does not seem to be available
-        warnings.warn('`tqdm` package is not available. Progress will '
-                      'be indicated by dots.')
+        warnings.warn(
+            "`tqdm` package is not available. Progress will be indicated by dots."
+        )
         progress_bar_class = MockProgress
 
     else:
-        # tqdm is available => decide which class to return   
-        tqdm_version = tuple(int(v) for v in tqdm.__version__.split('.')[:2])
+        # tqdm is available => decide which class to return
+        tqdm_version = tuple(int(v) for v in tqdm.__version__.split(".")[:2])
         if tqdm_version >= (4, 40):
             # optionally import notebook progress bar in recent version
             try:
                 # check whether progress bar can use a widget
-                import ipywidgets  # @UnusedImport  
+                import ipywidgets  # @UnusedImport
             except ImportError:
                 # widgets are not available => use standard tqdm
                 progress_bar_class = tqdm.tqdm
@@ -243,12 +240,13 @@ def get_progress_bar_class():
         else:
             # only import text progress bar in older version
             progress_bar_class = tqdm.tqdm
-            warnings.warn('Your version of tqdm is outdated. To get a nicer '
-                          'progress bar update to at least version 4.40.')
+            warnings.warn(
+                "Your version of tqdm is outdated. To get a nicer "
+                "progress bar update to at least version 4.40."
+            )
 
     return progress_bar_class
-        
-        
+
 
 def display_progress(iterator, total=None, enabled=True, **kwargs):
     r"""
@@ -266,9 +264,8 @@ def display_progress(iterator, total=None, enabled=True, **kwargs):
     """
     if not enabled:
         return iterator
-    
-    return get_progress_bar_class()(iterator, total=total, **kwargs)
 
+    return get_progress_bar_class()(iterator, total=total, **kwargs)
 
 
 def import_class(identifier: str):
@@ -281,16 +278,15 @@ def import_class(identifier: str):
             roughly equivalent to running `from numpy.linalg import norm` and
             would return a reference to `norm`.
     """
-    module_path, _, class_name = identifier.rpartition('.')
+    module_path, _, class_name = identifier.rpartition(".")
     if module_path:
         module = importlib.import_module(module_path)
         return getattr(module, class_name)
     else:
         # this happens when identifier does not contain a dot
         return importlib.import_module(class_name)
- 
- 
-    
+
+
 class classproperty(property):
     """ decorator that can be used to define read-only properties for classes.
     
@@ -321,7 +317,6 @@ class classproperty(property):
 
         return super().__new__(cls)
 
-
     def __init__(self, fget, doc=None):
         fget = self._wrap_fget(fget)
 
@@ -330,25 +325,20 @@ class classproperty(property):
         if doc is not None:
             self.__doc__ = doc
 
-
     def __get__(self, obj, objtype):
         # The base property.__get__ will just return self here;
         # instead we pass objtype through to the original wrapped
         # function (which takes the class as its sole argument)
         return self.fget.__wrapped__(objtype)
 
-
     def getter(self, fget):
         return super().getter(self._wrap_fget(fget))
 
-    
     def setter(self, fset):
         raise NotImplementedError("classproperty is read-only")
 
-
     def deleter(self, fdel):
         raise NotImplementedError("classproperty is read-only")
-
 
     @staticmethod
     def _wrap_fget(orig_fget):
@@ -359,8 +349,7 @@ class classproperty(property):
         def fget(obj):
             return orig_fget(obj.__class__)
 
-        return fget    
-    
+        return fget
 
 
 class hybridmethod:
@@ -370,33 +359,27 @@ class hybridmethod:
      
     Adapted from https://stackoverflow.com/a/28238047
     """
-    
+
     def __init__(self, fclass, finstance=None, doc=None):
         self.fclass = fclass
         self.finstance = finstance
         self.__doc__ = doc or fclass.__doc__
         # support use on abstract base classes
-        self.__isabstractmethod__ = bool(
-            getattr(fclass, '__isabstractmethod__', False)
-        )
-        
+        self.__isabstractmethod__ = bool(getattr(fclass, "__isabstractmethod__", False))
 
     def classmethod(self, fclass):
         return type(self)(fclass, self.finstance, None)
 
-
     def instancemethod(self, finstance):
         return type(self)(self.fclass, finstance, self.__doc__)
-
 
     def __get__(self, instance, cls):
         if instance is None or self.finstance is None:
             # either bound to the class, or no instance method available
             return self.fclass.__get__(cls, None)
-        return self.finstance.__get__(instance, cls)    
-    
-    
-    
+        return self.finstance.__get__(instance, cls)
+
+
 def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
     """ estimates the computation speed of a function
     
@@ -408,17 +391,18 @@ def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
         The inverse is thus the runtime in seconds per function call
     """
     import timeit
-    test_duration = kwargs.pop('test_duration', 1)
-    
+
+    test_duration = kwargs.pop("test_duration", 1)
+
     # prepare the function
     if args or kwargs:
         test_func = functools.partial(func, *args, **kwargs)
     else:
         test_func = func  # type: ignore
-    
+
     # call function once to allow caches be filled
     test_func()
-     
+
     # call the function until the total time is achieved
     number, duration = 1, 0
     while duration < 0.1 * test_duration:
@@ -427,10 +411,9 @@ def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
     return number / duration
 
 
-
-def hdf_write_attributes(hdf_path,
-                         attributes: Dict[str, Any] = None,
-                         raise_serialization_error: bool = False) -> None:
+def hdf_write_attributes(
+    hdf_path, attributes: Dict[str, Any] = None, raise_serialization_error: bool = False
+) -> None:
     """ write (JSON-serialized) attributes to a hdf file
     
     Args:
@@ -441,10 +424,10 @@ def hdf_write_attributes(hdf_path,
         raise_serialization_error (bool):
             Flag indicating whether serialization errors are raised or silently
             ignored
-    """ 
+    """
     if attributes is None:
         return
-        
+
     for key, value in attributes.items():
         try:
             value_serialized = json.dumps(value)
@@ -455,17 +438,16 @@ def hdf_write_attributes(hdf_path,
             hdf_path.attrs[key] = value_serialized
 
 
-
 def in_jupyter_notebook() -> bool:
     """ checks whether we are in a jupyter notebook """
     try:
         from IPython import get_ipython
     except ImportError:
         return False
-        
+
     try:
         ipython_config = get_ipython().config
     except AttributeError:
         return False
-        
-    return ('IPKernelApp' in ipython_config)
+
+    return "IPKernelApp" in ipython_config

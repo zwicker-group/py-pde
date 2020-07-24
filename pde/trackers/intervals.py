@@ -16,20 +16,17 @@ The provided interval classes are:
 import copy
 import math
 import time
-from typing import Optional, Union, Dict, Any
+from typing import Any, Dict, Optional, Union
 
 from ..tools.parse_duration import parse_duration
-
-
 
 Real = Union[float, int]
 InfoDict = Optional[Dict[str, Any]]
 
 
-
-class ConstantIntervals():
+class ConstantIntervals:
     """ class representing equidistantly spaced time intervals """
-    
+
     def __init__(self, dt: float = 1, t_start: Optional[float] = None):
         """
         Args:
@@ -43,18 +40,14 @@ class ConstantIntervals():
         self.dt = float(dt)
         self.t_start = t_start
         self._t_next: Optional[float] = None  # next time it should be called
-        
-    
+
     def __repr__(self):
-        return (f'{self.__class__.__name__}(dt={self.dt:g}, '
-                f't_start={self.t_start})')
-        
-        
+        return f"{self.__class__.__name__}(dt={self.dt:g}, t_start={self.t_start})"
+
     def copy(self):
         """ return a copy of this instance """
         return copy.copy(self)
-        
-        
+
     def _initialize(self, t: float) -> float:
         """ initialize the tracker
         
@@ -69,8 +62,7 @@ class ConstantIntervals():
         else:
             self._t_next = max(t, self.t_start)
         return self._t_next
-        
-        
+
     def next(self, t: float) -> float:
         """ computes the next time point based on the current time t
         
@@ -79,21 +71,21 @@ class ConstantIntervals():
         """
         if self._t_next is None:
             self._initialize(t)
-            
+
         self._t_next = self._t_next + self.dt  # type: ignore
 
         # make sure that the new time `_t_next` is larger than t
         while self._t_next <= t:
             self._t_next += self.dt
         return self._t_next
-    
 
 
 class LogarithmicIntervals(ConstantIntervals):
     """ class representing logarithmically spaced time intervals """
-    
-    def __init__(self, dt_initial: float = 1, factor: float = 1,
-                 t_start: Optional[float] = None):
+
+    def __init__(
+        self, dt_initial: float = 1, factor: float = 1, t_start: Optional[float] = None
+    ):
         """
         Args:
             dt_initial (float): The initial duration between subsequent
@@ -109,11 +101,11 @@ class LogarithmicIntervals(ConstantIntervals):
         super().__init__(dt=dt_initial / factor, t_start=t_start)
         self.factor = float(factor)
 
-
     def __repr__(self):
-        return (f'{self.__class__.__name__}(dt={self.dt:g}, '
-                f'factor={self.factor:g}, t_start={self.t_start})')
-
+        return (
+            f"{self.__class__.__name__}(dt={self.dt:g}, "
+            f"factor={self.factor:g}, t_start={self.t_start})"
+        )
 
     def next(self, t: float) -> float:
         """ computes the next time point based on the current time t
@@ -123,7 +115,6 @@ class LogarithmicIntervals(ConstantIntervals):
         """
         self.dt *= self.factor
         return super().next(t)
-
 
 
 class RealtimeIntervals(ConstantIntervals):
@@ -150,13 +141,13 @@ class RealtimeIntervals(ConstantIntervals):
             td = parse_duration(str(duration))
             self.duration = td.total_seconds()
         self._last_time: Optional[float] = None
-        
-        
-    def __repr__(self):
-        return (f'{self.__class__.__name__}(duration={self.duration:g}, '
-                f'dt_initial={self.dt:g})')
 
-        
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(duration={self.duration:g}, "
+            f"dt_initial={self.dt:g})"
+        )
+
     def _initialize(self, t: float) -> float:
         """ initialize the tracker
         
@@ -168,8 +159,7 @@ class RealtimeIntervals(ConstantIntervals):
         """
         self._last_time = time.time()
         return super()._initialize(t)
-        
-        
+
     def next(self, t: float) -> float:
         """ computes the next time point based on the current time t
         
@@ -192,10 +182,8 @@ class RealtimeIntervals(ConstantIntervals):
         return super().next(t)
 
 
-
 IntervalType = ConstantIntervals
 IntervalData = Union[IntervalType, Real, str]
-
 
 
 def get_interval(interval: IntervalData) -> IntervalType:
@@ -210,7 +198,4 @@ def get_interval(interval: IntervalData) -> IntervalType:
     elif isinstance(interval, str):
         return RealtimeIntervals(interval)
     else:
-        raise TypeError(f'Do not understand interval type {interval}')
-
-
-
+        raise TypeError(f"Do not understand interval type {interval}")

@@ -8,15 +8,13 @@ from typing import Callable
 
 import numpy as np
 
-
-from .base import PDEBase
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
-from ..tools.numba import nb, jit
 from ..tools.docstrings import fill_in_docstring
+from ..tools.numba import jit, nb
+from .base import PDEBase
 
 
-        
 class KPZInterfacePDE(PDEBase):
     r""" The Kardar–Parisi–Zhang (KPZ) equation
     
@@ -33,13 +31,15 @@ class KPZInterfacePDE(PDEBase):
     """
 
     explicit_time_dependence = False
-    
 
     @fill_in_docstring
-    def __init__(self, nu: float = 0.5,
-                 lmbda: float = 1,
-                 noise: float = 0,
-                 bc: BoundariesData = 'natural'):
+    def __init__(
+        self,
+        nu: float = 0.5,
+        lmbda: float = 1,
+        noise: float = 0,
+        bc: BoundariesData = "natural",
+    ):
         r""" 
         Args:
             nu (float):
@@ -53,14 +53,14 @@ class KPZInterfacePDE(PDEBase):
                 {ARG_BOUNDARIES} 
         """
         super().__init__(noise=noise)
-        
+
         self.nu = nu
         self.lmbda = lmbda
         self.bc = bc
-            
-            
-    def evolution_rate(self, state: ScalarField,  # type: ignore
-                       t: float = 0) -> ScalarField:
+
+    def evolution_rate(  # type: ignore
+        self, state: ScalarField, t: float = 0,
+    ) -> ScalarField:
         """ evaluate the right hand side of the PDE
         
         Args:
@@ -73,14 +73,12 @@ class KPZInterfacePDE(PDEBase):
             Scalar field describing the evolution rate of the PDE 
         """
         assert isinstance(state, ScalarField)
-        result = self.nu * state.laplace(bc=self.bc) + \
-                self.lmbda * state.gradient(bc=self.bc).to_scalar('squared_sum')
-        result.label = 'evolution rate'
+        result = self.nu * state.laplace(bc=self.bc)
+        result += self.lmbda * state.gradient_squared(bc=self.bc)
+        result.label = "evolution rate"
         return result  # type: ignore
-    
-    
-    def _make_pde_rhs_numba(self, state: ScalarField  # type: ignore
-                            ) -> Callable:
+
+    def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
         """ create a compiled function evaluating the right hand side of the PDE
         
         Args:
@@ -94,24 +92,18 @@ class KPZInterfacePDE(PDEBase):
             the evolution rate.  
         """
         shape = state.grid.shape
-        dim = state.grid.dim
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))
         signature = arr_type(arr_type, nb.double)
-        
+
         nu_value, lambda_value = self.nu, self.lmbda
-        laplace = state.grid.get_operator('laplace', bc=self.bc)
-        gradient = state.grid.get_operator('gradient', bc=self.bc)
+        laplace = state.grid.get_operator("laplace", bc=self.bc)
+        gradient_squared = state.grid.get_operator("gradient_squared", bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """ 
-            grad = gradient(state_data)
+            """ compiled helper function evaluating right hand side """
             result = nu_value * laplace(state_data)
-            for i in range(dim):
-                result += lambda_value * grad[i]**2
+            result += lambda_value * gradient_squared(state_data)
             return result
-            
+
         return pde_rhs  # type: ignore
-    
-    
-    

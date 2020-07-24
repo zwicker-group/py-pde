@@ -16,13 +16,13 @@ Here, :math:`\alpha` denotes the external stimulus and :math:`\epsilon` defines
 the recovery time scale. We implement this as a custom PDE class below.
 """
 
-from pde import UnitGrid, FieldCollection, PDEBase
+from pde import FieldCollection, PDEBase, UnitGrid
 
 
 class FitzhughNagumoPDE(PDEBase):
     """ FitzHugh–Nagumo model with diffusive coupling """
 
-    def __init__(self, stimulus=.5, τ=10, a=0, b=0, bc='natural'):
+    def __init__(self, stimulus=0.5, τ=10, a=0, b=0, bc="natural"):
         self.bc = bc
         self.stimulus = stimulus
         self.τ = τ
@@ -32,7 +32,7 @@ class FitzhughNagumoPDE(PDEBase):
     def evolution_rate(self, state, t=0):
         v, w = state  # membrane potential and recovery variable
 
-        v_t = v.laplace(bc=self.bc) + v - v**3 / 3 - w + self.stimulus
+        v_t = v.laplace(bc=self.bc) + v - v ** 3 / 3 - w + self.stimulus
         w_t = (v + self.a - self.b * w) / self.τ
 
         return FieldCollection([v_t, w_t])

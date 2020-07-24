@@ -36,15 +36,13 @@ Additionally, we offer two solvers for typical elliptical PDEs:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from .base import PDEBase
-from .pde import PDE
 from .allen_cahn import AllenCahnPDE
+from .base import PDEBase
 from .cahn_hilliard import CahnHilliardPDE
 from .diffusion import DiffusionPDE
 from .kpz_interface import KPZInterfacePDE
 from .kuramoto_sivashinsky import KuramotoSivashinskyPDE
+from .laplace import solve_laplace_equation, solve_poisson_equation
+from .pde import PDE
 from .swift_hohenberg import SwiftHohenbergPDE
 from .wave import WavePDE
-
-from .laplace import solve_laplace_equation
-from .laplace import solve_poisson_equation

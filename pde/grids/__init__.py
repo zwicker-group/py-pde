@@ -1,4 +1,4 @@
-'''
+"""
 Grids define the domains on which the pde will be solved. In particular, 
 symmetries, periodicities, and the discretizations are also defined here.
 
@@ -28,13 +28,13 @@ Inheritance structure of the classes:
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
  
-'''
-
-from .base import DomainError, PeriodicityError
-from .cartesian import UnitGrid, CartesianGrid
-from .spherical import PolarGrid, SphericalGrid
-from .cylindrical import CylindricalGrid
+"""
 
 # import all operator modules to register the operators
 from . import operators
+from .base import DomainError, PeriodicityError
+from .cartesian import CartesianGrid, UnitGrid
+from .cylindrical import CylindricalGrid
+from .spherical import PolarGrid, SphericalGrid
+
 del operators

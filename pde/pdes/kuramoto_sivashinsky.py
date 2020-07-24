@@ -8,15 +8,13 @@ from typing import Callable
 
 import numpy as np
 
-
-from .base import PDEBase
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
-from ..tools.numba import nb, jit
 from ..tools.docstrings import fill_in_docstring
+from ..tools.numba import jit, nb
+from .base import PDEBase
 
 
-        
 class KuramotoSivashinskyPDE(PDEBase):
     r""" The Kuramoto-Sivashinsky equation
     
@@ -33,13 +31,15 @@ class KuramotoSivashinskyPDE(PDEBase):
     """
 
     explicit_time_dependence = False
-    
 
     @fill_in_docstring
-    def __init__(self, nu: float = 1,
-                 noise: float = 0,
-                 bc: BoundariesData = 'natural',
-                 bc_lap: BoundariesData = None):
+    def __init__(
+        self,
+        nu: float = 1,
+        noise: float = 0,
+        bc: BoundariesData = "natural",
+        bc_lap: BoundariesData = None,
+    ):
         r""" 
         Args:
             nu (float):
@@ -56,14 +56,14 @@ class KuramotoSivashinskyPDE(PDEBase):
                 `bc`.
         """
         super().__init__(noise=noise)
-        
+
         self.nu = nu
         self.bc = bc
         self.bc_lap = bc if bc_lap is None else bc_lap
-            
-            
-    def evolution_rate(self, state: ScalarField,  # type: ignore
-                       t: float = 0) -> ScalarField:
+
+    def evolution_rate(  # type: ignore
+        self, state: ScalarField, t: float = 0,
+    ) -> ScalarField:
         """ evaluate the right hand side of the PDE
         
         Args:
@@ -77,14 +77,15 @@ class KuramotoSivashinskyPDE(PDEBase):
         """
         assert isinstance(state, ScalarField)
         state_lap = state.laplace(bc=self.bc)
-        result = -self.nu * state_lap.laplace(bc=self.bc_lap) - state_lap \
-                 - 0.5 * state.gradient_squared(bc=self.bc)
-        result.label = 'evolution rate'
+        result = (
+            -self.nu * state_lap.laplace(bc=self.bc_lap)
+            - state_lap
+            - 0.5 * state.gradient_squared(bc=self.bc)
+        )
+        result.label = "evolution rate"
         return result  # type: ignore
-    
-    
-    def _make_pde_rhs_numba(self, state: ScalarField  # type: ignore
-                            ) -> Callable:
+
+    def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
         """ create a compiled function evaluating the right hand side of the PDE
         
         Args:
@@ -100,21 +101,18 @@ class KuramotoSivashinskyPDE(PDEBase):
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))
         signature = arr_type(arr_type, nb.double)
-        
+
         nu_value = self.nu
-        laplace = state.grid.get_operator('laplace', bc=self.bc)
-        laplace2 = state.grid.get_operator('laplace', bc=self.bc_lap)
-        gradient_sq = state.grid.get_operator('gradient_squared', bc=self.bc)
+        laplace = state.grid.get_operator("laplace", bc=self.bc)
+        laplace2 = state.grid.get_operator("laplace", bc=self.bc_lap)
+        gradient_sq = state.grid.get_operator("gradient_squared", bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
             """ compiled helper function evaluating right hand side """
             result = -laplace(state_data)
-            result += nu_value * laplace2(result) 
+            result += nu_value * laplace2(result)
             result -= 0.5 * gradient_sq(state_data)
             return result
-            
+
         return pde_rhs  # type: ignore
-    
-    
-    

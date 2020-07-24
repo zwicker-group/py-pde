@@ -137,5 +137,5 @@ The details of the classes are explained below:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .. import DomainError, PeriodicityError
+from ..base import DomainError, PeriodicityError
 from .axes import Boundaries

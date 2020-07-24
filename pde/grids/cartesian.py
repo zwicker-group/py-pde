@@ -1,35 +1,30 @@
-'''
+"""
 Cartesian grids of arbitrary dimension.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
  
-'''
+"""
 
 import itertools
 from abc import ABCMeta
-from typing import List, Sequence, Dict, Any, Union, Generator, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Sequence, Union
 
 import numpy as np
 
-
-from .base import GridBase, _check_shape, DimensionError
 from ..tools.cuboid import Cuboid
 from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import plot_on_axes
-
+from .base import DimensionError, GridBase, _check_shape
 
 if TYPE_CHECKING:
     from .boundaries import Boundaries  # @UnusedImport
-    
 
 
-class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
-                        metaclass=ABCMeta):
+class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals]
     """Base class for :class:`UnitGrid` and :class:`CartesianGrid`"""
-    
+
     cuboid: Cuboid
-    
-    
+
     def __init__(self, shape, periodic: Union[List[bool], bool] = False):
         """ 
         Args:
@@ -44,27 +39,26 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
         self._shape = _check_shape(shape)
         self.dim = len(self.shape)
         self.num_axes = self.dim
-        
+
         if isinstance(periodic, (bool, np.bool_)):
             self.periodic = [bool(periodic)] * self.dim
         elif len(periodic) != self.dim:
-            raise DimensionError('Number of axes with specified periodicity '
-                                 'does not match grid dimension '
-                                 f'({len(periodic)} != {self.dim})')
+            raise DimensionError(
+                "Number of axes with specified periodicity does not match grid "
+                f"dimension ({len(periodic)} != {self.dim})"
+            )
         else:
             self.periodic = list(periodic)
-        
+
         if self.dim <= 3:
-            self.axes = list('xyz'[:self.dim])
+            self.axes = list("xyz"[: self.dim])
         else:
             self.axes = [chr(97 + i) for i in range(self.dim)]
-        
 
     @property
     def cell_volume_data(self):
         """ size associated with each cell """
         return tuple(self.discretization)
-        
 
     def contains_point(self, point):
         """ check whether the point is contained in the grid
@@ -73,12 +67,12 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
             point (vector): Coordinates of the point
         """
         if len(point) != self.dim:
-            raise DimensionError('Incompatible dimensions')
+            raise DimensionError("Incompatible dimensions")
         return self.cuboid.contains_point(point)
 
-
-    def iter_mirror_points(self, point, with_self: bool = False,
-                           only_periodic: bool = True) -> Generator:
+    def iter_mirror_points(
+        self, point, with_self: bool = False, only_periodic: bool = True
+    ) -> Generator:
         """ generates all mirror points corresponding to `point`
         
         Args:
@@ -90,7 +84,7 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
             A generator yielding the coordinates that correspond to mirrors
         """
         point = np.asanyarray(point, dtype=np.double)
-        
+
         # find all offsets of the individual axes
         offsets = []
         for i in range(self.dim):
@@ -99,15 +93,13 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
             else:
                 s = self.cuboid.size[i]
                 offsets.append([-s, 0, s])
-               
-        # produce the respective mirrored points 
+
+        # produce the respective mirrored points
         for offset in itertools.product(*offsets):
             if with_self or np.linalg.norm(offset) != 0:
                 yield point + offset
-    
-    
-    def get_random_point(self, boundary_distance: float = 0,
-                         cartesian: bool = True):
+
+    def get_random_point(self, boundary_distance: float = 0, cartesian: bool = True):
         """ return a random point within the grid
         
         Args:
@@ -125,16 +117,13 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
         cuboid = self.cuboid
         if boundary_distance != 0:
             if any(cuboid.size <= 2 * boundary_distance):
-                raise RuntimeError('Random points would be too close to '
-                                   'boundary')
+                raise RuntimeError("Random points would be too close to boundary")
             cuboid = cuboid.buffer(-boundary_distance)
-            
+
         # create random point
         return cuboid.pos + np.random.random(self.dim) * cuboid.size
 
-
-    def get_line_data(self, data: np.ndarray, extract: str = 'auto') \
-            -> Dict[str, Any]:
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
         """ return a line cut through the given data
         
         Args:
@@ -155,10 +144,12 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
             A dictionary with information about the line cut, which is 
             convenient for plotting.
         """
-        if data.shape[-self.dim:] != self.shape:
-            raise ValueError(f'Shape {data.shape} of the data array is not '
-                             f'compatible with grid shape {self.shape}')
-            
+        if data.shape[-self.dim :] != self.shape:
+            raise ValueError(
+                f"Shape {data.shape} of the data array is not compatible with grid "
+                f"shape {self.shape}"
+            )
+
         def _get_axis(axis):
             """ determine the axis from a given specifier """
             try:
@@ -167,46 +158,45 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
                 try:
                     axis = self.axes.index(axis)
                 except ValueError:
-                    raise ValueError(f'Axis `{axis}` not defined')
+                    raise ValueError(f"Axis `{axis}` not defined")
             return axis
-            
-        if extract == 'auto':
-            extract = 'cut_0'  # use a cut along first axis
-            
-        if extract.startswith('cut_'):
+
+        if extract == "auto":
+            extract = "cut_0"  # use a cut along first axis
+
+        if extract.startswith("cut_"):
             # consider a cut along a given axis
             axis = _get_axis(extract[4:])
             data_y = data
-            rank = data.ndim - self.dim  # rank of data 
+            rank = data.ndim - self.dim  # rank of data
             for ax in reversed(range(self.dim)):
                 if ax != axis:
                     mid_point = self.shape[ax] // 2
                     data_y = np.take(data_y, mid_point, axis=ax + rank)
-            label_y = f'Cut along {self.axes[axis]}'
-                
-        elif extract.startswith('project_'):
+            label_y = f"Cut along {self.axes[axis]}"
+
+        elif extract.startswith("project_"):
             # consider a projection along a given axis
             axis = _get_axis(extract[8:])
-            avg_axes = [ax - self.dim
-                        for ax in range(self.dim)
-                        if ax != axis]
+            avg_axes = [ax - self.dim for ax in range(self.dim) if ax != axis]
             data_y = data.mean(axis=tuple(avg_axes))
-            label_y = f'Projection onto {self.axes[axis]}'
-                
+            label_y = f"Projection onto {self.axes[axis]}"
+
         else:
-            raise ValueError(f'Unknown extraction method `{extract}`')
+            raise ValueError(f"Unknown extraction method `{extract}`")
 
         if self.dim == 1:
-            label_y = ''
+            label_y = ""
 
-        # return the data with the respective labels                
-        return {'data_x': self.axes_coords[axis],
-                'data_y': data_y,
-                'extent_x': self.axes_bounds[axis],
-                'label_x': self.axes[axis],
-                'label_y': label_y}    
+        # return the data with the respective labels
+        return {
+            "data_x": self.axes_coords[axis],
+            "data_y": data_y,
+            "extent_x": self.axes_bounds[axis],
+            "label_x": self.axes[axis],
+            "label_y": label_y,
+        }
 
-        
     def get_image_data(self, data) -> Dict[str, Any]:
         """ return a 2d-image of the data
         
@@ -217,28 +207,33 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
             A dictionary with information about the image, which is  convenient
             for plotting.
         """
-        if data.shape[-self.dim:] != self.shape:
-            raise ValueError(f'Shape {data.shape} of the data array is not '
-                             f'compatible with grid shape {self.shape}')
+        if data.shape[-self.dim :] != self.shape:
+            raise ValueError(
+                f"Shape {data.shape} of the data array is not compatible with grid "
+                f"shape {self.shape}"
+            )
 
         if self.dim == 2:
             image_data = data.T
-        elif self.dim == 3: 
+        elif self.dim == 3:
             image_data = data[:, :, self.shape[-1] // 2].T
         else:
-            raise NotImplementedError('Creating images is only implemented for '
-                                      '2d and 3d grids')
-            
+            raise NotImplementedError(
+                "Creating images is only implemented for 2d and 3d grids"
+            )
+
         extent: List[float] = []
         for c in self.axes_bounds[:2]:
             extent.extend(c)
-                
-        return {'data': image_data,
-                'x': self.axes_coords[-2],
-                'y': self.axes_coords[-1],
-                'extent': extent,
-                'label_x': 'x', 'label_y': 'y'}    
 
+        return {
+            "data": image_data,
+            "x": self.axes_coords[-2],
+            "y": self.axes_coords[-1],
+            "extent": extent,
+            "label_x": "x",
+            "label_y": "y",
+        }
 
     def point_to_cartesian(self, points):
         """ convert coordinates of a point to Cartesian coordinates
@@ -251,8 +246,7 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
             :class:`numpy.ndarray`: The Cartesian coordinates of the point
         """
         return points
-    
-    
+
     def point_from_cartesian(self, coords):
         """ convert points given in Cartesian coordinates to this grid
         
@@ -264,7 +258,6 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
         """
         return coords
 
-    
     def polar_coordinates_real(self, origin, ret_angle: bool = False):
         """ return polar coordinates associated with the grid
         
@@ -282,32 +275,32 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
-            raise DimensionError('Dimensions are not compatible')
-        
+            raise DimensionError("Dimensions are not compatible")
+
         # calculate the difference vector between all cells and the origin
         diff = self.difference_vector_real(origin, self.cell_coords)
         dist = np.linalg.norm(diff, axis=-1)  # get distance
-        
+
         # determine distance and optionally angles for these vectors
         if ret_angle:
             if self.dim == 1:
                 return dist, np.sign(diff)[..., 0]
-            
+
             elif self.dim == 2:
                 return dist, np.arctan2(diff[:, :, 0], diff[:, :, 1])
-            
+
             elif self.dim == 3:
                 theta = np.arccos(diff[..., 2] / dist)
                 phi = np.arctan2(diff[..., 0], diff[..., 1])
-                return dist, theta, phi 
-            
+                return dist, theta, phi
+
             else:
-                raise NotImplementedError('Cannot calculate angles for '
-                                          f'dimension {self.dim}')
+                raise NotImplementedError(
+                    f"Cannot calculate angles for dimension {self.dim}"
+                )
         else:
             return dist
-        
-        
+
     def from_polar_coordinates(self, distance, angle, origin=None):
         """ convert polar coordinates to Cartesian coordinates
         
@@ -329,22 +322,22 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
             origin = np.zeros(self.dim)
         else:
             origin = np.atleast_1d(origin)
-        
+
         if self.dim == 1:
             diff = distance * angle
             coords = origin + diff[..., None]
-        
+
         elif self.dim == 2:
             unit_vector = np.moveaxis([np.sin(angle), np.cos(angle)], 0, -1)
             diff = distance[..., None] * unit_vector
             coords = origin + diff
-        
-        else:
-            raise NotImplementedError('Cannot calculate coordinates for '
-                                      f'dimension {self.dim}')
-            
-        return self.normalize_point(coords)
 
+        else:
+            raise NotImplementedError(
+                f"Cannot calculate coordinates for dimension {self.dim}"
+            )
+
+        return self.normalize_point(coords)
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
@@ -356,29 +349,28 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
                 plotting routines, e.g., to set the color of the lines
         """
         if self.dim not in {1, 2}:
-            raise NotImplementedError('Plotting is not implemented for grids '
-                                      f'of dimension {self.dim}')
-            
-        kwargs.setdefault('color', 'k')
+            raise NotImplementedError(
+                f"Plotting is not implemented for grids of dimension {self.dim}"
+            )
+
+        kwargs.setdefault("color", "k")
         xb = self.axes_bounds[0]
         for x in np.linspace(*xb, self.shape[0] + 1):
             ax.axvline(x, **kwargs)
         ax.set_xlim(*xb)
         ax.set_xlabel(self.axes[0])
-        
+
         if self.dim == 2:
             yb = self.axes_bounds[1]
             for y in np.linspace(*yb, self.shape[1] + 1):
                 ax.axhline(y, **kwargs)
             ax.set_ylim(*yb)
             ax.set_ylabel(self.axes[1])
-            
+
             ax.set_aspect(1)
-            
 
     @fill_in_docstring
-    def get_boundary_conditions(self, bc='natural', rank: int = 0) \
-            -> "Boundaries":
+    def get_boundary_conditions(self, bc="natural", rank: int = 0) -> "Boundaries":
         """ constructs boundary conditions from a flexible data format
         
         Args:
@@ -393,10 +385,10 @@ class CartesianGridBase(GridBase,  # lgtm [py/missing-equals]
             ValueError: If the data given in `bc` cannot be read
             PeriodicityError: If the boundaries are not compatible with the
                 periodic axes of the grid. 
-        """            
+        """
         from .boundaries import Boundaries  # @Reimport
+
         return Boundaries.from_data(self, bc, rank=rank)
-    
 
 
 class UnitGrid(CartesianGridBase):
@@ -410,8 +402,7 @@ class UnitGrid(CartesianGridBase):
     midpoint is at :math:`i + \frac12`, which is the cell coordinate. Taken
     together, the cells covers the interval :math:`[0, n]` along this dimension.
     """
-    
-    
+
     def __init__(self, shape, periodic: Union[List[bool], bool] = False):
         """ 
         Args:
@@ -425,18 +416,15 @@ class UnitGrid(CartesianGridBase):
         super().__init__(shape, periodic)
         self.cuboid = Cuboid(np.zeros(self.dim), self.shape)
         self._discretization = np.ones(self.dim)
-        
+
         # determine the cell center coordinates
         self._axes_coords = tuple(np.arange(n) + 0.5 for n in self.shape)
         self._axes_bounds = tuple(self.cuboid.bounds)
 
-
     @property
     def state(self) -> Dict[str, Any]:
         """ dict: the state of the grid """
-        return {'shape': self.shape,
-                'periodic': self.periodic}
-
+        return {"shape": self.shape, "periodic": self.periodic}
 
     @classmethod
     def from_state(cls, state: Dict[str, Any]) -> "UnitGrid":  # type: ignore
@@ -447,18 +435,15 @@ class UnitGrid(CartesianGridBase):
                 The state from which the grid is reconstructed.
         """
         state_copy = state.copy()
-        obj = cls(shape=state_copy.pop('shape'),
-                  periodic=state_copy.pop('periodic'))
+        obj = cls(shape=state_copy.pop("shape"), periodic=state_copy.pop("periodic"))
         if state_copy:
-            raise ValueError(f'State items {state_copy.keys()} were not used')
+            raise ValueError(f"State items {state_copy.keys()} were not used")
         return obj
-
 
     @property
     def volume(self) -> float:
         """ float: total volume of the grid """
         return float(np.prod(self.shape))
-
 
     def normalize_point(self, point, reduced_coords: bool = False):
         """ normalize coordinates by applying periodic boundary conditions
@@ -477,13 +462,15 @@ class UnitGrid(CartesianGridBase):
             return np.zeros((0, self.dim))
         if point.ndim == 0:
             if self.dim > 1:
-                raise DimensionError(f'Dimension mismatch: Point {point} is '
-                                     f'not of dimension {self.dim}.')
+                raise DimensionError(
+                    f"Dimension mismatch: Point {point} is not of dimension {self.dim}"
+                )
         elif point.shape[-1] != self.dim:
-            raise DimensionError('Dimension mismatch: Array of shape '
-                                 f'{point.shape} does not describe points of '
-                                 f'dimension {self.dim}.')
-        
+            raise DimensionError(
+                f"Dimension mismatch: Array of shape {point.shape} does not describe "
+                f"points of dimension {self.dim}"
+            )
+
         # normalize the coordinates for the periodic dimensions
         if point.ndim == 0:
             if self.periodic[0]:
@@ -494,7 +481,6 @@ class UnitGrid(CartesianGridBase):
                     point[..., i] %= self.shape[i]
 
         return point
-    
 
     def cell_to_point(self, cells, cartesian: bool = True):
         """ convert cell coordinates to real coordinates
@@ -515,9 +501,8 @@ class UnitGrid(CartesianGridBase):
         if cells.size == 0:
             return np.zeros((0, self.dim))
         if cells.shape[-1] != self.dim:
-            raise DimensionError('Dimension mismatch')
+            raise DimensionError("Dimension mismatch")
         return cells + 0.5
-
 
     def point_to_cell(self, points):
         """ Determine cell(s) corresponding to given point(s)
@@ -533,8 +518,7 @@ class UnitGrid(CartesianGridBase):
             :class:`numpy.ndarray`: The indices of the respective cells
         """
         return self.normalize_point(points).astype(np.int)
-        
-    
+
     def difference_vector_real(self, p1, p2):
         """ return the vector pointing from p1 to p2.
         
@@ -553,16 +537,15 @@ class UnitGrid(CartesianGridBase):
         for i in range(self.num_axes):
             if self.periodic[i]:
                 s = self.shape[i]
-                diff[..., i] = (diff[..., i] + s/2) % s - s/2
+                diff[..., i] = (diff[..., i] + s / 2) % s - s / 2
         return diff
-    
-    
+
     def to_cartesian(self) -> "CartesianGrid":
         """ convert unit grid to CartesianGrid """
-        return CartesianGrid(self.cuboid.bounds, shape=self.shape,
-                             periodic=self.periodic)
-        
-        
+        return CartesianGrid(
+            self.cuboid.bounds, shape=self.shape, periodic=self.periodic
+        )
+
     def get_subgrid(self, indices: Sequence[int]) -> "UnitGrid":
         """ return a subgrid of only the specified axes
         
@@ -573,11 +556,12 @@ class UnitGrid(CartesianGridBase):
         Returns:
             :class:`UnitGrid`: The subgrid
         """
-        subgrid = self.__class__(shape=[self.shape[i] for i in indices],
-                                 periodic=[self.periodic[i] for i in indices])
+        subgrid = self.__class__(
+            shape=[self.shape[i] for i in indices],
+            periodic=[self.periodic[i] for i in indices],
+        )
         subgrid.axes = [self.axes[i] for i in indices]
         return subgrid
-
 
 
 class CartesianGrid(CartesianGridBase):
@@ -605,10 +589,8 @@ class CartesianGrid(CartesianGridBase):
     Consequently, the cells have dimension :math:`\Delta x^{(k)}` and cover the
     interval :math:`[x^{(k)}_\mathrm{min}, x^{(k)}_\mathrm{max}]`.
     """
-    
-    
-    def __init__(self, bounds, shape,
-                 periodic: Union[List[bool], bool] = False):
+
+    def __init__(self, bounds, shape, periodic: Union[List[bool], bool] = False):
         """ 
         Args:
             bounds (tuple): Give the coordinate range for each axis. This should
@@ -623,41 +605,45 @@ class CartesianGrid(CartesianGridBase):
         """
         bounds = np.array(bounds, ndmin=1, dtype=np.double)
         if bounds.shape == (2,):
-            raise ValueError('`bounds with shape (2,) are ambiguous. Either '
-                             'use shape (1, 2) to set up a 1d system with two '
-                             'bounds or shape (2, 1) for a 2d system with only '
-                             'the upper bounds specified') 
-        
+            raise ValueError(
+                "`bounds with shape (2,) are ambiguous. Either use shape (1, 2) to set "
+                "up a 1d system with two bounds or shape (2, 1) for a 2d system with "
+                "only the upper bounds specified"
+            )
+
         if bounds.ndim == 1 or bounds.shape[1] == 1:
             # only set the upper bounds
             bounds = np.atleast_1d(np.squeeze(bounds))
             self.cuboid = Cuboid(np.zeros_like(bounds), bounds, mutable=False)
-            
+
         elif bounds.ndim == 2 and bounds.shape[1] == 2:
             # upper and lower bounds of the grid are given
             self.cuboid = Cuboid.from_bounds(bounds, mutable=False)
-            
+
         else:
-            raise ValueError('Do not know how to interpret shape '
-                             f'{bounds.shape} for bounds')
-            
+            raise ValueError(
+                f"Do not know how to interpret shape {bounds.shape} for bounds"
+            )
+
         # handle the shape array
         shape = _check_shape(shape)
         if len(shape) == 1 and self.cuboid.dim > 1:
             shape = np.full(self.cuboid.dim, shape, dtype=np.uint32)
         if self.cuboid.dim != len(shape):
-            raise DimensionError('Dimension of the bounds and the shape are '
-                                 'not compatible')
-                    
-        # initialize the base class            
+            raise DimensionError(
+                "Dimension of the bounds and the shape are not compatible"
+            )
+
+        # initialize the base class
         super().__init__(shape, periodic)
-            
+
         # determine the coordinates
         p1, p2 = self.cuboid.corners
         axes_coords, discretization = [], []
         for d in range(self.dim):
-            c, dc = np.linspace(p1[d], p2[d], self.shape[d],
-                                endpoint=False, retstep=True)
+            c, dc = np.linspace(
+                p1[d], p2[d], self.shape[d], endpoint=False, retstep=True
+            )
             if self.shape[d] == 1:
                 # correct for singular dimension
                 dc = p2[d] - p1[d]
@@ -668,18 +654,17 @@ class CartesianGrid(CartesianGridBase):
         self._axes_coords = tuple(axes_coords)
         self._axes_bounds = tuple(self.cuboid.bounds)
 
-    
     @property
     def state(self) -> Dict[str, Any]:
         """ dict: the state of the grid """
-        return {'bounds': self.axes_bounds,
-                'shape': self.shape,
-                'periodic': self.periodic}
-
+        return {
+            "bounds": self.axes_bounds,
+            "shape": self.shape,
+            "periodic": self.periodic,
+        }
 
     @classmethod
-    def from_state(cls,  # type: ignore
-                   state: Dict[str, Any]) -> "CartesianGrid":
+    def from_state(cls, state: Dict[str, Any],) -> "CartesianGrid":  # type: ignore
         """ create a field from a stored `state`.
         
         Args:
@@ -687,19 +672,19 @@ class CartesianGrid(CartesianGridBase):
                 The state from which the grid is reconstructed.
         """
         state_copy = state.copy()
-        obj = cls(bounds=state_copy.pop('bounds'),
-                  shape=state_copy.pop('shape'),
-                  periodic=state_copy.pop('periodic'))
+        obj = cls(
+            bounds=state_copy.pop("bounds"),
+            shape=state_copy.pop("shape"),
+            periodic=state_copy.pop("periodic"),
+        )
         if state_copy:
-            raise ValueError(f'State items {state_copy.keys()} were not used')
+            raise ValueError(f"State items {state_copy.keys()} were not used")
         return obj
 
-                    
     @property
     def volume(self) -> float:
         """ float: total volume of the grid """
         return float(self.cuboid.volume)
-
 
     def normalize_point(self, point, reduced_coords: bool = False):
         """ normalize coordinates by applying periodic boundary conditions
@@ -715,16 +700,18 @@ class CartesianGrid(CartesianGridBase):
         """
         point = np.asarray(point, dtype=np.double)
         if point.size == 0:
-            return np.zeros((0, self.dim)) 
+            return np.zeros((0, self.dim))
         if point.ndim == 0:
             if self.dim > 1:
-                raise DimensionError(f'Dimension mismatch: Point {point} is '
-                                     f'not of dimension {self.dim}.')
+                raise DimensionError(
+                    f"Dimension mismatch: Point {point} is not of dimension {self.dim}"
+                )
         elif point.shape[-1] != self.dim:
-            raise DimensionError('Dimension mismatch: Array of shape '
-                                 f'{point.shape} does not describe points of '
-                                 f'dimension {self.dim}.')
-        
+            raise DimensionError(
+                f"Dimension mismatch: Array of shape {point.shape} does not describe "
+                f"points of dimension {self.dim}"
+            )
+
         if any(self.periodic):
             if self.dim == 1:  # single, periodic dimension
                 offset = self.cuboid.pos
@@ -732,10 +719,10 @@ class CartesianGrid(CartesianGridBase):
             else:  # multiple dimensions => extract the periodic ones
                 offset = self.cuboid.pos[self.periodic]
                 size = self.cuboid.size[self.periodic]
-                point[..., self.periodic] = \
-                            (point[..., self.periodic] - offset) % size + offset
+                point[..., self.periodic] = (
+                    point[..., self.periodic] - offset
+                ) % size + offset
         return point
-
 
     def cell_to_point(self, cells, cartesian: bool = True):
         """ convert cell coordinates to real coordinates
@@ -758,7 +745,6 @@ class CartesianGrid(CartesianGridBase):
         else:
             return self.cuboid.pos + (cells + 0.5) * self.discretization
 
-
     def point_to_cell(self, points):
         """ Determine cell(s) corresponding to given point(s)
 
@@ -776,7 +762,6 @@ class CartesianGrid(CartesianGridBase):
         cell_coords = (points - self.cuboid.pos) / self.discretization
         return cell_coords.astype(np.int)
 
-        
     def difference_vector_real(self, p1, p2):
         """ return the vector pointing from p1 to p2.
         
@@ -791,12 +776,11 @@ class CartesianGrid(CartesianGridBase):
             with periodic  boundary conditions applied.
         """
         diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        if any(self.periodic):
-            size = self.cuboid.size[self.periodic]
-            diff[..., self.periodic] = \
-                            (diff[..., self.periodic] + size/2) % size - size/2
+        periodic = self.periodic
+        if any(periodic):
+            size = self.cuboid.size[periodic]
+            diff[..., periodic] = (diff[..., periodic] + size / 2) % size - size / 2
         return diff
-
 
     def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":
         """ return a subgrid of only the specified axes
@@ -808,9 +792,10 @@ class CartesianGrid(CartesianGridBase):
         Returns:
             :class:`CartesianGrid`: The subgrid
         """
-        subgrid = self.__class__(bounds=[self.axes_bounds[i] for i in indices],
-                                 shape=[self.shape[i] for i in indices],
-                                 periodic=[self.periodic[i] for i in indices])
+        subgrid = self.__class__(
+            bounds=[self.axes_bounds[i] for i in indices],
+            shape=[self.shape[i] for i in indices],
+            periodic=[self.periodic[i] for i in indices],
+        )
         subgrid.axes = [self.axes[i] for i in indices]
         return subgrid
-

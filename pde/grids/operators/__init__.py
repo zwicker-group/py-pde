@@ -14,8 +14,4 @@ respective methods defined on fields and grids.
    spherical
 """
 
-from . import cartesian
-from . import cylindrical
-from . import polar
-from . import spherical
-
+from . import cartesian, cylindrical, polar, spherical

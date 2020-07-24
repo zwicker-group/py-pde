@@ -1,21 +1,21 @@
-'''
+"""
 Solvers for Poisson's and Laplace's equation
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
+from ..fields import ScalarField
 from ..grids.base import GridBase
 from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
-from ..fields import ScalarField
 from ..tools.docstrings import fill_in_docstring
 
 
-
 @fill_in_docstring
-def solve_poisson_equation(rhs: ScalarField,
-                           bc: "BoundariesData",
-                           label: str = "Solution to Poisson's equation") \
-                                -> ScalarField:
+def solve_poisson_equation(
+    rhs: ScalarField,
+    bc: "BoundariesData",
+    label: str = "Solution to Poisson's equation",
+) -> ScalarField:
     r""" Solve Laplace's equation on a given grid
          
     Denoting the current field by :math:`u`, we thus solve for :math:`f`,
@@ -54,29 +54,27 @@ def solve_poisson_equation(rhs: ScalarField,
         the equation. This field will be defined on the same grid as `rhs`.
     """
     # solve the poisson problem
-    solve_poisson = rhs.grid.get_operator('poisson_solver', bc=bc)
+    solve_poisson = rhs.grid.get_operator("poisson_solver", bc=bc)
     try:
         result = solve_poisson(rhs.data)
     except RuntimeError:
         average = rhs.average
         if abs(average) > 1e-10:
-            raise RuntimeError('Could not solve the Poisson problem. One '
-                               'possible reason for this is that only '
-                               'periodic or Neumann conditions are '
-                               'applied although the average of the field '
-                               f'is {average} and thus non-zero.')
+            raise RuntimeError(
+                "Could not solve the Poisson problem. One possible reason for this is "
+                "that only periodic or Neumann conditions are applied although the "
+                f"average of the field is {average} and thus non-zero."
+            )
         else:
             raise  # another error occurred
-     
+
     return ScalarField(rhs.grid, result, label=label)
 
 
-
 @fill_in_docstring
-def solve_laplace_equation(grid: GridBase,
-                           bc: "BoundariesData",
-                           label: str = "Solution to Laplace's equation") \
-                                -> ScalarField:
+def solve_laplace_equation(
+    grid: GridBase, bc: "BoundariesData", label: str = "Solution to Laplace's equation"
+) -> ScalarField:
     """ Solve Laplace's equation on a given grid.
     
     This is implemented by calling :func:`solve_poisson_equation` with a 

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+"""
+This script tests the performance of the implementation of the laplace operator as a
+primary example for the differential operators supplied by `py-pde`.
+"""
 
 import sys
 from pathlib import Path

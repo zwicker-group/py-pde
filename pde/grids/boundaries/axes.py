@@ -6,65 +6,57 @@ This module handles the boundaries of all axes of a grid. It only defines
 :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`.
 """
 
-from typing import Union, Sequence
-    
+from typing import Sequence, Union
+
 import numpy as np
 
+from ..base import GridBase, PeriodicityError
 from .axis import BoundaryPair, BoundaryPairData, get_boundary_axis
-from ..base import GridBase
-from .. import PeriodicityError
- 
-BoundariesData = Union[BoundaryPairData,
-                       Sequence[BoundaryPairData]]
 
+BoundariesData = Union[BoundaryPairData, Sequence[BoundaryPairData]]
 
 
 class Boundaries(list):
     """ class that bundles all boundary conditions for all axes """
-    
-    
+
     grid: GridBase
     """ :class:`~pde.grids.base.GridBase`:
     The grid for which the boundaries are defined """
-    
-    
+
     def __init__(self, boundaries):
         """ initialize with a list of boundaries """
         if len(boundaries) == 0:
             raise ValueError("List of boundaries must not be empty")
-        
-        # extract grid 
+
+        # extract grid
         self.grid = boundaries[0].grid
-        
+
         # check dimension
         if len(boundaries) != self.grid.num_axes:
-            raise ValueError('Need boundary conditions for '
-                             f'{self.grid.num_axes} axes.')
-
+            raise ValueError(f"Need boundary conditions for {self.grid.num_axes} axes")
         # check consistency
         for axis, boundary in enumerate(boundaries):
             if boundary.grid != self.grid:
-                raise ValueError('Boundaries are not defined on the same grid')
+                raise ValueError("Boundaries are not defined on the same grid")
             if boundary.axis != axis:
-                raise ValueError('The boundaries need to be ordered according '
-                                 'to the axes they apply to')
+                raise ValueError(
+                    "Boundaries need to be ordered like the respective axes"
+                )
             if boundary.periodic != self.grid.periodic[axis]:
-                raise PeriodicityError('Periodicity specified in the '
-                                       'boundaries conditions is not '
-                                       'compatible with the grid')
-        
+                raise PeriodicityError(
+                    "Periodicity specified in the boundaries conditions is not "
+                    "compatible with the grid"
+                )
+
         # create the list of boundaries
         super().__init__(boundaries)
-        
-    
-    def __str__(self):
-        items = ', '.join(str(item) for item in self)
-        return f'[{items}]'
 
-    
+    def __str__(self):
+        items = ", ".join(str(item) for item in self)
+        return f"[{items}]"
+
     @classmethod
-    def from_data(cls, grid: GridBase, boundaries, rank: int = 0) \
-            -> "Boundaries":
+    def from_data(cls, grid: GridBase, boundaries, rank: int = 0) -> "Boundaries":
         """
         Creates all boundaries from given data
         
@@ -91,55 +83,58 @@ class Boundaries(list):
             assert boundaries.grid == grid
             boundaries.check_value_rank(rank)
             return boundaries
-        
+
         # convert natural boundary conditions if present
-        if boundaries == 'natural':
-            # set the respective natural conditions for all axes 
-            boundaries = ['periodic' if periodic else 'no-flux'
-                          for periodic in grid.periodic]
-            
-        elif hasattr(boundaries, '__iter__'):
+        if boundaries == "natural":
+            # set the respective natural conditions for all axes
+            boundaries = [
+                "periodic" if periodic else "no-flux" for periodic in grid.periodic
+            ]
+
+        elif hasattr(boundaries, "__iter__"):
             # convert natural boundary conditions on individual axes
             for i, boundary in enumerate(boundaries):
-                if boundary == 'natural':
+                if boundary == "natural":
                     if grid.periodic[i]:
-                        boundaries[i] = 'periodic'
+                        boundaries[i] = "periodic"
                     else:
-                        boundaries[i] = 'no-flux'
-        
+                        boundaries[i] = "no-flux"
+
         # create the list of BoundaryAxis objects
         if isinstance(boundaries, (str, dict)):
             # one specification for all axes
-            bcs = [get_boundary_axis(grid, i, boundaries, rank=rank)
-                   for i in range(grid.num_axes)]
-            
+            bcs = [
+                get_boundary_axis(grid, i, boundaries, rank=rank)
+                for i in range(grid.num_axes)
+            ]
+
         elif len(boundaries) == grid.num_axes:
             # assume that data is given for each boundary
-            bcs = [get_boundary_axis(grid, i, boundary, rank=rank)
-                   for i, boundary in enumerate(boundaries)]
-            
+            bcs = [
+                get_boundary_axis(grid, i, boundary, rank=rank)
+                for i, boundary in enumerate(boundaries)
+            ]
+
         elif grid.num_axes == 1 and len(boundaries) == 2:
             # special case where the two sides can be specified directly
             bcs = [get_boundary_axis(grid, 0, boundaries, rank=rank)]
-            
+
         else:
-            raise ValueError(f'Unsupported boundary format: `{boundaries}`. '
-                             f'{cls.get_help()}')
-            
+            raise ValueError(
+                f"Unsupported boundary format: `{boundaries}`." + cls.get_help()
+            )
+
         return cls(bcs)
-    
-    
+
     def __eq__(self, other):
         if not isinstance(other, Boundaries):
             return NotImplemented
         return super().__eq__(other) and self.grid == other.grid
-    
-    
+
     def _cache_hash(self) -> int:
-        """ returns a value to determine when a cache needs to be updated """ 
+        """ returns a value to determine when a cache needs to be updated """
         return hash(tuple(bc_ax._cache_hash() for bc_ax in self))
-    
-    
+
     def check_value_rank(self, rank: int):
         """ check whether the values at the boundaries have the correct rank
         
@@ -153,15 +148,14 @@ class Boundaries(list):
         for b in self:
             b.check_value_rank(rank)
 
-
     @classmethod
     def get_help(cls) -> str:
         """ Return information on how boundary conditions can be set """
-        return ("Boundary conditions for each axis are set using a list: "
-                "[bc_x, bc_y, bc_z]. If the associated axis is periodic, the "
-                "boundary condition needs to be set to 'periodic'. Otherwise, "
-                f"{BoundaryPair.get_help()}")       
-
+        return (
+            "Boundary conditions for each axis are set using a list: [bc_x, bc_y, "
+            "bc_z]. If the associated axis is periodic, the boundary condition needs "
+            f"to be set to 'periodic'. Otherwise, {BoundaryPair.get_help()}"
+        )
 
     def copy(self, value=None) -> "Boundaries":
         """ create a copy of the current boundaries
@@ -178,14 +172,12 @@ class Boundaries(list):
         if value is not None:
             result.set_value(value)
         return result
-    
-    
+
     @property
     def periodic(self) -> np.ndarray:
         """ :class:`numpy.ndarray`: a boolean array indicating which dimensions
         are periodic according to the boundary conditions """
         return self.grid.periodic
-
 
     def set_value(self, value=0):
         """ set the value of all non-periodic boundaries
@@ -200,7 +192,6 @@ class Boundaries(list):
             if not b.periodic:
                 b.set_value(value)
 
-        
     @property
     def _scipy_border_mode(self) -> dict:
         """ dict: return a dictionary that can be used in the scipy ndimage
@@ -210,10 +201,9 @@ class Boundaries(list):
         mode: dict = self[0]._scipy_border_mode
         for b in self[1:]:
             if mode != b._scipy_border_mode:
-                raise RuntimeError('Incompatible dimensions')
+                raise RuntimeError("Incompatible dimensions")
         return mode
-    
-    
+
     @property
     def _uniform_discretization(self) -> float:
         """ float: returns the uniform discretization or raises RuntimeError """
@@ -221,9 +211,8 @@ class Boundaries(list):
         if np.allclose(self.grid.discretization, dx_mean):
             return float(dx_mean)
         else:
-            raise RuntimeError('Grid discretization is not uniform')
-    
-            
+            raise RuntimeError("Grid discretization is not uniform")
+
     def extract_component(self, *indices) -> "Boundaries":
         """ extracts the boundary conditions of the given extract_component.
 
@@ -231,14 +220,10 @@ class Boundaries(list):
             *indices:
                 One or two indices for vector or tensor fields, respectively
         """
-        boundaries = [boundary.extract_component(*indices)
-                      for boundary in self]
+        boundaries = [boundary.extract_component(*indices) for boundary in self]
         return self.__class__(boundaries)
-        
-        
+
     @property
     def differentiated(self) -> "Boundaries":
         """ Domain: with differentiated versions of all boundary conditions """
         return self.__class__([b.differentiated for b in self])
-        
-    

@@ -8,15 +8,13 @@ from typing import Callable  # @UnusedImport
 
 import numpy as np
 
-
-from .base import PDEBase
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
-from ..tools.numba import nb, jit
 from ..tools.docstrings import fill_in_docstring
+from ..tools.numba import jit, nb
+from .base import PDEBase
 
 
-        
 class AllenCahnPDE(PDEBase):
     r""" A simple Allen-Cahn equation
     
@@ -31,10 +29,8 @@ class AllenCahnPDE(PDEBase):
 
     explicit_time_dependence = False
 
-
     @fill_in_docstring
-    def __init__(self, interface_width: float = 1,
-                 bc: BoundariesData = 'natural'):
+    def __init__(self, interface_width: float = 1, bc: BoundariesData = "natural"):
         """ 
         Args:
             interface_width (float):
@@ -44,13 +40,13 @@ class AllenCahnPDE(PDEBase):
                 {ARG_BOUNDARIES}
         """
         super().__init__()
-        
+
         self.interface_width = interface_width
         self.bc = bc
-            
-            
-    def evolution_rate(self, state: ScalarField,  # type: ignore
-                       t: float = 0) -> ScalarField:
+
+    def evolution_rate(  # type: ignore
+        self, state: ScalarField, t: float = 0,
+    ) -> ScalarField:
         """ evaluate the right hand side of the PDE
         
         Args:
@@ -63,12 +59,10 @@ class AllenCahnPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE 
         """
         assert isinstance(state, ScalarField)
-        laplace = state.laplace(bc=self.bc, label='evolution rate')
-        return self.interface_width * laplace - state**3 + state  # type: ignore
-    
-    
-    def _make_pde_rhs_numba(self, state: ScalarField  # type: ignore
-                            ) -> Callable:
+        laplace = state.laplace(bc=self.bc, label="evolution rate")
+        return self.interface_width * laplace - state ** 3 + state  # type: ignore
+
+    def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
         """ create a compiled function evaluating the right hand side of the PDE
         
         Args:
@@ -84,17 +78,13 @@ class AllenCahnPDE(PDEBase):
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))
         signature = arr_type(arr_type, nb.double)
-        
+
         interface_width = self.interface_width
-        laplace = state.grid.get_operator('laplace', bc=self.bc)
+        laplace = state.grid.get_operator("laplace", bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """ 
-            return (interface_width * laplace(state_data) - state_data**3 +
-                    state_data) 
-            
+            """ compiled helper function evaluating right hand side """
+            return interface_width * laplace(state_data) - state_data ** 3 + state_data
+
         return pde_rhs  # type: ignore
-    
-    
-    

@@ -33,47 +33,46 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-import re
 import datetime
+import re
 
 standard_duration_re = re.compile(
-    r'^'
-    r'(?:(?P<days>-?\d+) (days?, )?)?'
-    r'((?:(?P<hours>-?\d+):)(?=\d+:\d+))?'
-    r'(?:(?P<minutes>-?\d+):)?'
-    r'(?P<seconds>-?\d+)'
-    r'(?:\.(?P<microseconds>\d{1,6})\d{0,6})?'
-    r'$'
+    r"^"
+    r"(?:(?P<days>-?\d+) (days?, )?)?"
+    r"((?:(?P<hours>-?\d+):)(?=\d+:\d+))?"
+    r"(?:(?P<minutes>-?\d+):)?"
+    r"(?P<seconds>-?\d+)"
+    r"(?:\.(?P<microseconds>\d{1,6})\d{0,6})?"
+    r"$"
 )
 
 # Support the sections of ISO 8601 date representation that are accepted by
 # timedelta
 iso8601_duration_re = re.compile(
-    r'^(?P<sign>[-+]?)'
-    r'P'
-    r'(?:(?P<days>\d+(.\d+)?)D)?'
-    r'(?:T'
-    r'(?:(?P<hours>\d+(.\d+)?)H)?'
-    r'(?:(?P<minutes>\d+(.\d+)?)M)?'
-    r'(?:(?P<seconds>\d+(.\d+)?)S)?'
-    r')?'
-    r'$'
+    r"^(?P<sign>[-+]?)"
+    r"P"
+    r"(?:(?P<days>\d+(.\d+)?)D)?"
+    r"(?:T"
+    r"(?:(?P<hours>\d+(.\d+)?)H)?"
+    r"(?:(?P<minutes>\d+(.\d+)?)M)?"
+    r"(?:(?P<seconds>\d+(.\d+)?)S)?"
+    r")?"
+    r"$"
 )
 
 # Support PostgreSQL's day-time interval format, e.g. "3 days 04:05:06". The
 # year-month and mixed intervals cannot be converted to a timedelta and thus
 # aren't accepted.
 postgres_interval_re = re.compile(
-    r'^'
-    r'(?:(?P<days>-?\d+) (days? ?))?'
-    r'(?:(?P<sign>[-+])?'
-    r'(?P<hours>\d+):'
-    r'(?P<minutes>\d\d):'
-    r'(?P<seconds>\d\d)'
-    r'(?:\.(?P<microseconds>\d{1,6}))?'
-    r')?$'
+    r"^"
+    r"(?:(?P<days>-?\d+) (days? ?))?"
+    r"(?:(?P<sign>[-+])?"
+    r"(?P<hours>\d+):"
+    r"(?P<minutes>\d\d):"
+    r"(?P<seconds>\d\d)"
+    r"(?:\.(?P<microseconds>\d{1,6}))?"
+    r")?$"
 )
-
 
 
 def parse_duration(value: str) -> datetime.timedelta:
@@ -88,25 +87,30 @@ def parse_duration(value: str) -> datetime.timedelta:
         datetime.timedelta: An instance representing the duration.
     """
     match = (
-        standard_duration_re.match(value) or
-        iso8601_duration_re.match(value) or
-        postgres_interval_re.match(value)
+        standard_duration_re.match(value)
+        or iso8601_duration_re.match(value)
+        or postgres_interval_re.match(value)
     )
     if match:
         kw = match.groupdict()
-        days = datetime.timedelta(float(kw.pop('days', 0) or 0))
-        sign = -1 if kw.pop('sign', '+') == '-' else 1
-        if kw.get('microseconds'):
-            kw['microseconds'] = kw['microseconds'].ljust(6, '0')
-        if (kw.get('seconds') and kw.get('microseconds') and
-                kw['seconds'].startswith('-')):
-            kw['microseconds'] = '-' + kw['microseconds']
-        kw = {k: float(v)  # type: ignore
-              for k, v in kw.items() if v is not None}
+        days = datetime.timedelta(float(kw.pop("days", 0) or 0))
+        sign = -1 if kw.pop("sign", "+") == "-" else 1
+        if kw.get("microseconds"):
+            kw["microseconds"] = kw["microseconds"].ljust(6, "0")
+        if (
+            kw.get("seconds")
+            and kw.get("microseconds")
+            and kw["seconds"].startswith("-")
+        ):
+            kw["microseconds"] = "-" + kw["microseconds"]
+        kw = {
+            k: float(v)  # type: ignore
+            for k, v in kw.items()
+            if v is not None
+        }
         return days + sign * datetime.timedelta(**kw)  # type: ignore
     else:
-        raise ValueError(f'The time duration {value} cannot be parsed.')
-    
-    
-    
+        raise ValueError(f"The time duration {value} cannot be parsed.")
+
+
 __all__ = ["parse_duration"]
