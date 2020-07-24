@@ -58,10 +58,8 @@ class ScalarField(DataFieldBase):
 
         expr = ScalarExpression(expression=expression, signature=grid.axes)
         points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
-        return cls(
-            grid=grid,  # lgtm [py/call-to-non-callable]
-            data=expr(**points),
-            label=label,
+        return cls(  # lgtm [py/call-to-non-callable]
+            grid=grid, data=expr(**points), label=label,
         )
 
     @classmethod
@@ -294,11 +292,9 @@ class ScalarField(DataFieldBase):
             average = self.average
             if abs(average) > 1e-10:
                 raise RuntimeError(
-                    "Could not solve the Poisson problem. One "
-                    "possible reason for this is that only "
-                    "periodic or Neumann conditions are "
-                    "applied although the average of the field "
-                    f"is {average} and thus non-zero."
+                    "Could not solve the Poisson problem. One possible reason for this "
+                    "is that only periodic or Neumann conditions are applied although "
+                    f"the average of the field is {average} and thus non-zero."
                 )
             else:
                 raise  # another error occured
@@ -342,8 +338,8 @@ class ScalarField(DataFieldBase):
         """
         if any(ax not in self.grid.axes for ax in axes):
             raise ValueError(
-                f"The axes {axes} are not all contained in "
-                f"{self.grid} with axes {self.grid.axes}"
+                f"The axes {axes} are not all contained in {self.grid} with axes "
+                f"{self.grid.axes}"
             )
 
         # determine the axes after projection
@@ -357,10 +353,12 @@ class ScalarField(DataFieldBase):
         # calculate the new data
         if method == "integral":
             subdata = self.grid.integrate(self.data, axes=ax_remove)
+
         elif method == "average" or method == "mean":
-            subdata = self.grid.integrate(
-                self.data, axes=ax_remove
-            ) / self.grid.integrate(1, axes=ax_remove)
+            integrals = self.grid.integrate(self.data, axes=ax_remove)
+            volumes = self.grid.integrate(1, axes=ax_remove)
+            subdata = integrals / volumes
+
         else:
             raise ValueError(f"Unknown projection method `{method}`")
 
@@ -433,7 +431,7 @@ class ScalarField(DataFieldBase):
                     axis_bounds = grid.axes_bounds[i]
                     if pos < axis_bounds[0] or pos > axis_bounds[1]:
                         raise DomainError(
-                            f"Position {grid.axes[i]} = {pos} is " "outside the domain"
+                            f"Position {grid.axes[i]} = {pos} is outside the domain"
                         )
                     # add slice that is closest to pos
                     idx.append(np.argmin((grid.axes_coords[i] - pos) ** 2))

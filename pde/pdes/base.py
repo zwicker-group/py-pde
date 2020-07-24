@@ -6,8 +6,8 @@ Base classes
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Dict  # @UnusedImport
-from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Union
+from typing import Optional  # @UnusedImport
+from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, Union
 
 import numpy as np
 
@@ -132,8 +132,8 @@ class PDEBase(metaclass=ABCMeta):
 
         elif backend != "auto":
             raise ValueError(
-                f"Unknown backend `{backend}`. Possible values "
-                "are ['auto', 'numpy', 'numba']"
+                f"Unknown backend `{backend}`. Possible values are ['auto', 'numpy', "
+                "'numba']"
             )
 
         if self.check_implementation and rhs._backend == "numba":  # type: ignore
@@ -142,10 +142,9 @@ class PDEBase(metaclass=ABCMeta):
             test_state = state.copy()
             result = rhs(test_state.data, 0)
             msg = (
-                "The numba compiled implementation of the right hand side "
-                "is not compatible with the numpy implementation. This "
-                "check can be disabled by setting the class attribute "
-                "`check_implementation` to `False`."
+                "The numba compiled implementation of the right hand side is not "
+                "compatible with the numpy implementation. This check can be disabled "
+                "by setting the class attribute `check_implementation` to `False`."
             )
             np.testing.assert_allclose(result, expected, err_msg=msg)
 
@@ -186,8 +185,7 @@ class PDEBase(metaclass=ABCMeta):
             else:
                 # different noise strengths, but a single field
                 raise RuntimeError(
-                    "Multiple noise strengths were given for "
-                    f"the single field {state}"
+                    f"Multiple noise strengths were given for the single field {state}"
                 )
 
         else:
@@ -234,8 +232,7 @@ class PDEBase(metaclass=ABCMeta):
             else:
                 # different noise strengths, but a single field
                 raise RuntimeError(
-                    "Multiple noise strengths were given for "
-                    f"the single field {state}"
+                    f"Multiple noise strengths were given for the single field {state}"
                 )
 
         else:
@@ -376,8 +373,7 @@ class PDEBase(metaclass=ABCMeta):
             solver = method(pde=self, **kwargs)
             if not isinstance(solver, SolverBase):
                 self._logger.warn(
-                    "Solver is not an instance of `SolverBase`. "
-                    "Specified wrong method?"
+                    "Solver is not an instance of `SolverBase`. Specified wrong method?"
                 )
         else:
             solver = SolverBase.from_name(method, pde=self, **kwargs)

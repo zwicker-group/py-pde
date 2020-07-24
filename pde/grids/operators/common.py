@@ -109,7 +109,7 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Callabl
                 use_leastsquares = False
             else:
                 logger.warning(
-                    "Poisson problem was not solved using " "sparse.linalg.spsolve"
+                    "Poisson problem was not solved using sparse.linalg.spsolve"
                 )
                 use_leastsquares = True
 

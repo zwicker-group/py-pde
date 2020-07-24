@@ -76,7 +76,7 @@ class ExplicitSolver(SolverBase):
 
             self.info["stochastic"] = True
             self._logger.info(
-                f"Initialized explicit Euler-Maruyama stepper " "with dt=%g", dt
+                f"Initialized explicit Euler-Maruyama stepper with dt=%g", dt
             )
 
         else:
@@ -135,9 +135,7 @@ class ExplicitSolver(SolverBase):
 
             return t + dt
 
-        self._logger.info(
-            f"Initialized explicit Runge-Kutta-45 stepper with " "dt=%g", dt
-        )
+        self._logger.info(f"Initialized explicit Runge-Kutta-45 stepper with dt=%g", dt)
         return stepper
 
     def make_stepper(self, state: FieldBase, dt=None) -> Callable:
@@ -177,8 +175,7 @@ class ExplicitSolver(SolverBase):
             inner_stepper = jit(inner_stepper)
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """ use Euler stepping to advance `state` from `t_start` to
-            `t_end` """
+            """ use Euler stepping to advance `state` from `t_start` to `t_end` """
             # calculate number of steps (which is at least 1)
             steps = max(1, int(np.ceil((t_end - t_start) / dt)))
             t_last = inner_stepper(state.data, t_start, steps)

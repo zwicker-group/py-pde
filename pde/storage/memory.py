@@ -56,9 +56,8 @@ class MemoryStorage(StorageBase):
         # check consistency
         if len(self.times) != len(self.data):
             raise ValueError(
-                "Length of the supplied `times` and `fields` are "
-                f"inconsistent ({len(self.times)} != "
-                f"{len(self.data)})."
+                "Length of the supplied `times` and `fields` are inconsistent "
+                f"({len(self.times)} != {len(self.data)})"
             )
 
     @classmethod
@@ -188,9 +187,8 @@ class MemoryStorage(StorageBase):
 
         elif self.write_mode != "append":
             raise ValueError(
-                f"Unknown write mode `{self.write_mode}`. "
-                "Possible values are `truncate_once`, "
-                "`truncate`, and `append`"
+                f"Unknown write mode `{self.write_mode}`. Possible values are "
+                "`truncate_once`, `truncate`, and `append`"
             )
 
     def append(self, data: np.ndarray, time: Optional[float] = None) -> None:

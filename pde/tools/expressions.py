@@ -27,7 +27,7 @@ from typing import Set  # @UnusedImport
 from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 
 import numba as nb
-import numpy as np
+import numpy as np  # lgtm [py/import-and-import-from]
 import sympy
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
@@ -430,9 +430,7 @@ class ScalarExpression(ExpressionBase):
         if self.allow_indexed:
             if self._var_indexed(var):
                 # TODO: implement this
-                raise NotImplementedError(
-                    "Cannot differentiate with respect " "to a vector"
-                )
+                raise NotImplementedError("Cannot differentiate with respect to vector")
 
         var = self._prepare_expression(var)
         return ScalarExpression(
@@ -604,7 +602,7 @@ class TensorExpression(ExpressionBase):
             ]
         else:
             lines = [
-                f"    out[{str(idx + (...,))[1:-1]}] = " f"convert_scalar({val})"
+                f"    out[{str(idx + (...,))[1:-1]}] = convert_scalar({val})"
                 for idx, val in np.ndenumerate(self._sympy_expr)
             ]
 

@@ -63,7 +63,7 @@ def _check_shape(shape) -> Tuple[int, ...]:
         if dim == int(dim) and dim >= 1:
             result.append(int(dim))
         else:
-            raise ValueError(f"{repr(dim)} is not a valid number of support " "points")
+            raise ValueError(f"{repr(dim)} is not a valid number of support points")
     return tuple(result)
 
 
@@ -168,7 +168,7 @@ class GridBase(metaclass=ABCMeta):
         # create the instance of the correct class
         class_name = state.pop("class")
         if class_name == cls.__name__:
-            raise RuntimeError("Cannot reconstruct abstract class " f"`{class_name}`")
+            raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
         grid_cls = cls._subclasses[class_name]
         return grid_cls.from_state(state)
 
@@ -327,27 +327,9 @@ class GridBase(metaclass=ABCMeta):
         points = np.meshgrid(*coords, indexing="ij")
 
         # assemble into array
-        shape = tuple(self.shape[i] for i in range(self.num_axes) if i != axis) + (
-            self.num_axes,
-        )
+        shape_bndry = tuple(self.shape[i] for i in range(self.num_axes) if i != axis)
+        shape = shape_bndry + (self.num_axes,)
         return np.stack(points, -1).reshape(shape)
-
-    #     def _boundary_indices(self, axis: int, upper: bool) -> Tuple:
-    #         """ get indices for accessing the points on the boundary
-    #
-    #         Args:
-    #             axis (int):
-    #                 The axis perpendicular to the boundary
-    #             upper (bool):
-    #                 Whether the boundary is at the upper side of the axis
-    #
-    #         Returns:
-    #             tuple: Indices that can be used on the underlying grid data to
-    #             obtain the values of the grid points closest to the boundaries.
-    #         """
-    #         i_bndry = self.shape[axis] - 1 if upper else 0
-    #         return tuple(i_bndry if i == axis else slice(None)
-    #                      for i in range(self.num_axes))
 
     @abstractproperty
     def volume(self) -> float:
@@ -505,21 +487,20 @@ class GridBase(metaclass=ABCMeta):
         # operator was not found
         op_list = ", ".join(sorted(self.operators))
         raise ValueError(
-            f"'{name}' is not one of the defined operators "
-            f"({op_list}). Custom operators can be added using "
-            "the `register_operator` method."
+            f"'{name}' is not one of the defined operators ({op_list}). Custom "
+            "operators can be added using the `register_operator` method."
         )
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":
         """ return a subgrid of only the specified axes """
         raise NotImplementedError(
-            "Subgrids are not implemented for class " f"{self.__class__.__name__}"
+            f"Subgrids are not implemented for class {self.__class__.__name__}"
         )
 
     def plot(self):
         """ visualize the grid """
         raise NotImplementedError(
-            "Plotting is not implemented for class " f"{self.__class__.__name__}"
+            f"Plotting is not implemented for class {self.__class__.__name__}"
         )
 
     @property
@@ -1084,8 +1065,7 @@ class GridBase(metaclass=ABCMeta):
 
         else:
             raise NotImplementedError(
-                "Compiled interpolation not implemented "
-                f"for dimension {self.num_axes}"
+                f"Compiled interpolation not implemented for dimension {self.num_axes}"
             )
 
         return add_interpolated  # type: ignore

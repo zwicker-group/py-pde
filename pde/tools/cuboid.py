@@ -41,9 +41,8 @@ class Cuboid:
         self._size = np.array(value, self.pos.dtype)  # make copy
         if self.pos.shape != self._size.shape:
             raise ValueError(
-                "Size vector (dim=%d) must have the same "
-                "dimension as the position vector (dim=%d)"
-                % (len(self._size), len(self.pos))
+                f"Size vector (dim={len(self._size)}) must have the same "
+                f"dimension as the position vector (dim={len(self.pos)})"
             )
 
         # flip Cuboid with negative size
@@ -129,7 +128,7 @@ class Cuboid:
 
         else:
             raise NotImplementedError(
-                "Cannot add cuboid and " f"{other.__class__.__name__}"
+                f"Cannot add cuboid and {other.__class__.__name__}"
             )
 
     def __eq__(self, other):
@@ -215,7 +214,7 @@ class Cuboid:
         if points.shape[-1] != self.dim:
             raise ValueError(
                 "Last dimension of `points` must agree with "
-                "cuboid dimension %d" % self.dim
+                f"cuboid dimension {self.dim}"
             )
 
         c1, c2 = self.corners

@@ -42,7 +42,7 @@ class ConstantIntervals:
         self._t_next: Optional[float] = None  # next time it should be called
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(dt={self.dt:g}, " f"t_start={self.t_start})"
+        return f"{self.__class__.__name__}(dt={self.dt:g}, t_start={self.t_start})"
 
     def copy(self):
         """ return a copy of this instance """

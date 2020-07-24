@@ -95,15 +95,13 @@ def hash_mutable(obj) -> int:
             if not (isinstance(k, str) and k.startswith("_cache"))
         )
 
-    if isinstance(
-        obj,
-        (
-            dict,
-            collections.abc.MutableMapping,
-            collections.defaultdict,
-            collections.Counter,
-        ),
-    ):
+    unordered_mappings = (
+        dict,
+        collections.abc.MutableMapping,
+        collections.defaultdict,
+        collections.Counter,
+    )
+    if isinstance(obj, unordered_mappings):
         return hash(
             frozenset(
                 (k, hash_mutable(v))
@@ -153,24 +151,18 @@ def hash_readable(obj) -> str:
     if isinstance(obj, (set, frozenset)):
         return "{" + ", ".join(hash_readable(v) for v in sorted(obj)) + "}"
 
-    if isinstance(
-        obj,
-        (
-            dict,
-            collections.abc.MutableMapping,
-            collections.OrderedDict,
-            collections.defaultdict,
-            collections.Counter,
-        ),
-    ):
-        return (
-            "{"
-            + ", ".join(
-                hash_readable(k) + ": " + hash_readable(v)
-                for k, v in sorted(obj.items())
-            )
-            + "}"
+    mappings = (
+        dict,
+        collections.abc.MutableMapping,
+        collections.OrderedDict,
+        collections.defaultdict,
+        collections.Counter,
+    )
+    if isinstance(obj, mappings):
+        hash_str = ", ".join(
+            hash_readable(k) + ": " + hash_readable(v) for k, v in sorted(obj.items())
         )
+        return "{" + hash_str + "}"
 
     if isinstance(obj, np.ndarray):
         return repr(obj)
@@ -484,8 +476,8 @@ class _class_cache:
         if callable(factory):
             class_name = self.__class__.__name__
             raise ValueError(
-                "Missing function call. Call this decorator as "
-                "@{0}() instead of @{0}".format(class_name)
+                f"Missing function call. Call this decorator as {class_name}() instead "
+                f"of {class_name}"
             )
 
         else:
@@ -565,7 +557,7 @@ class _class_cache:
             except KeyError:
                 # if this failed, compute and store the results
                 wrapper._logger.debug(
-                    "Cache missed. Compute result for method " "`%s`", self.name
+                    "Cache missed. Compute result for method `%s`", self.name
                 )
                 result = func(obj, *args, **kwargs)
                 cache[cache_key] = result
@@ -619,9 +611,6 @@ class cached_property(_class_cache):
 
     def __get__(self, obj, owner):
         """ call the method to obtain the result for this property """
-        #         if obj is None:
-        #             return self
-
         return self.func(obj)
 
 

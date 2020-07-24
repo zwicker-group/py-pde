@@ -70,9 +70,8 @@ class FieldCollection(FieldBase):
         for field in self.fields:
             if not isinstance(field, DataFieldBase):
                 raise RuntimeError(
-                    "Individual fields must be of type "
-                    "DataFieldBase. Field collections cannot be "
-                    "nested"
+                    "Individual fields must be of type DataFieldBase. Field "
+                    "collections cannot be nested."
                 )
             start = len(new_data)
             this_data = field._data_flat

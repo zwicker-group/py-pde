@@ -87,7 +87,7 @@ class ScipySolver(SolverBase):
 
         if dt:
             self._logger.info(
-                f"Initialized {self.__class__.__name__} stepper " "with dt=%g", dt
+                f"Initialized {self.__class__.__name__} stepper with dt=%g", dt
             )
         else:
             self._logger.info(f"Initialized {self.__class__.__name__} stepper")

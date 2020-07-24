@@ -117,14 +117,13 @@ class ImplicitSolver(SolverBase):
                 else:
                     with nb.objmode:
                         self._logger.warn(
-                            "Implicit Euler step did not "
-                            "converge after %d iterations at "
-                            "t=%g (error=%g)",
+                            "Implicit Euler step did not converge after %d iterations "
+                            "at t=%g (error=%g)",
                             maxiter,
                             t,
                             err,
                         )
-                    raise ConvergenceError("Implicit Euler step did not " "converge.")
+                    raise ConvergenceError("Implicit Euler step did not converge.")
                 nfev += n + 1
                 state_data += evolution_this
 

@@ -327,9 +327,8 @@ class BCBase(metaclass=ABCMeta):
                 result = value
             else:
                 raise ValueError(
-                    f"Dimensions {value.shape} of the value are "
-                    f"incompatible with rank {self.rank} and "
-                    f"spatial dimensions {self._shape_boundary}."
+                    f"Dimensions {value.shape} of the value are incompatible with rank "
+                    f"{self.rank} and spatial dimensions {self._shape_boundary}."
                 )
 
         # check consistency
@@ -371,9 +370,8 @@ class BCBase(metaclass=ABCMeta):
             self.homogeneous = False
         else:
             raise ValueError(
-                f"Dimensions {self._value.shape} of the value are "
-                f"incompatible with rank {self.rank} and "
-                f"spatial dimensions {self._shape_boundary}."
+                f"Dimensions {self._value.shape} of the value are incompatible with "
+                f"rank {self.rank} and spatial dimensions {self._shape_boundary}"
             )
 
         self.value_is_linked = False
@@ -385,9 +383,8 @@ class BCBase(metaclass=ABCMeta):
         shape = self._shape_tensor + self._shape_boundary
         if value.shape != shape:
             raise ValueError(
-                f"The shape of the value, {value.shape}, is "
-                "incompatible with the expected shape for this "
-                f"boundary condition, {shape}"
+                f"The shape of the value, {value.shape}, is incompatible with the "
+                f"expected shape for this boundary condition, {shape}"
             )
         self._value = value
         self.homogeneous = False
@@ -437,11 +434,11 @@ class BCBase(metaclass=ABCMeta):
         return (
             f"Possible types of boundary conditions are {types}. "
             "Values can be set using {'type': TYPE, 'value': VALUE}. "
-            "Here, VALUE can be a scalar number, a vector for tensorial "
-            "boundary conditions, or a string, which can be interpreted "
-            "as a sympy expression. In the latter case, the names of the "
-            "axes not associated with this boundary can be used as "
-            "variables to describe inhomogeneous boundary conditions."
+            "Here, VALUE can be a scalar number, a vector for tensorial boundary "
+            "conditions, or a string, which can be interpreted as a sympy expression. "
+            "In the latter case, the names of the axes not associated with this "
+            "boundary can be used as variables to describe inhomogeneous boundary "
+            "conditions."
         )
 
     def __repr__(self):
@@ -452,8 +449,8 @@ class BCBase(metaclass=ABCMeta):
         else:
             value_str = f", value={self.value!r}"
         return (
-            f"{self.__class__.__name__}(axis={self.axis}, "
-            f"upper={self.upper}, rank={self.rank}{value_str})"
+            f"{self.__class__.__name__}(axis={self.axis}, upper={self.upper}, "
+            f"rank={self.rank}{value_str})"
         )
 
     def __str__(self):
@@ -466,7 +463,7 @@ class BCBase(metaclass=ABCMeta):
                     f'"value": <linked: {self.value.ctypes.data}>}}'
                 )
             else:
-                return f'{{"type": "{self.names[0]}", ' f'"value": {self.value}}}'
+                return f'{{"type": "{self.names[0]}", "value": {self.value}}}'
         else:
             return self.__repr__()
 
@@ -563,7 +560,7 @@ class BCBase(metaclass=ABCMeta):
             boundary_class = cls._conditions[condition]
         except KeyError:
             raise ValueError(
-                f"Boundary condition `{condition}` not defined. " f"{cls.get_help()}"
+                f"Boundary condition `{condition}` not defined." + cls.get_help()
             )
 
         # create the actual class
@@ -605,8 +602,7 @@ class BCBase(metaclass=ABCMeta):
 
         else:
             raise ValueError(
-                "Boundary condition defined by "
-                f"{str(list(data.keys()))} are not supported."
+                f"Boundary conditions `{str(list(data.keys()))}` are not supported."
             )
 
         # initialize the boundary class with all remaining values forwarded
@@ -661,7 +657,7 @@ class BCBase(metaclass=ABCMeta):
 
         else:
             raise ValueError(
-                f"Unsupported boundary format: `{data}`. " f"{cls.get_help()}"
+                f"Unsupported boundary format: `{data}`. " + cls.get_help()
             )
 
     def check_value_rank(self, rank: int):
@@ -676,8 +672,7 @@ class BCBase(metaclass=ABCMeta):
         """
         if self.rank != rank:
             raise RuntimeError(
-                f"Expected rank {rank}, but boundary condition "
-                f"had rank {self.rank}."
+                f"Expected rank {rank}, but boundary condition had rank {self.rank}."
             )
 
     @abstractmethod
@@ -754,7 +749,7 @@ class BCBase1stOrder(BCBase):
                 idx = (self.grid.shape[0] if self.upper else -1,)
             else:
                 raise ValueError(
-                    "Index `idx` can only be deduced for grids " "with a single axis."
+                    "Index `idx` can only be deduced for grids with a single axis."
                 )
 
         # extract the 1d array
@@ -784,8 +779,7 @@ class BCBase1stOrder(BCBase):
 
         if not isinstance(dx, numbers.Number):
             raise ValueError(
-                f"Discretization along axis {self.axis} must be a "
-                f"number, not `{dx}`"
+                f"Discretization along axis {self.axis} must be a number, not `{dx}`"
             )
 
         # calculate necessary constants
@@ -1243,7 +1237,7 @@ class BCBase2ndOrder(BCBase):
                 idx = (self.grid.shape[0] if self.upper else -1,)
             else:
                 raise ValueError(
-                    "Index `idx` can only be deduced for grids " "with a single axis."
+                    "Index `idx` can only be deduced for grids with a single axis."
                 )
 
         # extract the 1d array
@@ -1285,8 +1279,7 @@ class BCBase2ndOrder(BCBase):
             )
         if not isinstance(dx, numbers.Number):
             raise ValueError(
-                f"Discretization along axis {self.axis} must be a "
-                f"number, not `{dx}`"
+                f"Discretization along axis {self.axis} must be a number, not `{dx}`"
             )
 
         # calculate necessary constants
@@ -1337,8 +1330,8 @@ class BCBase2ndOrder(BCBase):
         size = self.grid.shape[self.axis]
         if size < 2:
             raise ValueError(
-                "Need at least two support points along axis "
-                f"{self.axis} to apply boundary conditions"
+                f"Need at least two support points along axis {self.axis} to apply "
+                "boundary conditions"
             )
 
         # get values distinguishing upper from lower boundary
@@ -1414,8 +1407,7 @@ class ExtrapolateBC(BCBase2ndOrder):
 
         if size < 2:
             raise RuntimeError(
-                "Need at least 2 support points to use the "
-                "extrapolate boundary condition."
+                "Need at least 2 support points to use extrapolate boundary condition"
             )
 
         if self.upper:
@@ -1444,8 +1436,7 @@ class CurvatureBC(BCBase2ndOrder):
 
         if size < 2:
             raise RuntimeError(
-                "Need at least 2 support points to use the "
-                "curvature boundary condition."
+                "Need at least 2 support points to use curvature boundary condition"
             )
 
         value = np.asarray(self.value * dx ** 2)

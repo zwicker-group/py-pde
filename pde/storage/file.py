@@ -74,7 +74,7 @@ class FileStorage(StorageBase):
             except (OSError, KeyError):
                 self.close()
                 self._logger.warning(
-                    f"File `{filename}` could not be opened " "for reading"
+                    f"File `{filename}` could not be opened for reading"
                 )
 
     @property
@@ -87,7 +87,7 @@ class FileStorage(StorageBase):
         elif self._file.mode == "r+":
             return "writing"
         else:
-            raise NotImplementedError("Do not understand mode " f"`{self._file.mode}")
+            raise NotImplementedError(f"Do not understand mode `{self._file.mode}")
 
     def close(self) -> None:
         """ close the currently opened file """
@@ -163,7 +163,7 @@ class FileStorage(StorageBase):
                 return  # we are already in a mode where we can append data
             if self.keep_opened and self._is_writing:
                 raise RuntimeError(
-                    "Currently writing data, so mode cannot be " "switched."
+                    "Currently writing data, so mode cannot be switched."
                 )
             if self._file:
                 self.close()
@@ -195,9 +195,7 @@ class FileStorage(StorageBase):
         elif mode == "writing":
             # open file for writing data; delete potentially present data
             if self._is_writing:
-                raise RuntimeError(
-                    "Currently writing data, so mode cannot be " "switched."
-                )
+                raise RuntimeError("Currently writing data, so mode cannot be switched")
             if self._file:
                 self.close()
             else:
@@ -281,9 +279,7 @@ class FileStorage(StorageBase):
                 Supplies extra information that is stored in the storage
         """
         if self._is_writing:
-            raise RuntimeError(
-                f"{self.__class__.__name__} is already in " "writing mode"
-            )
+            raise RuntimeError(f"{self.__class__.__name__} is already in writing mode")
 
         # delete data if truncation is requested. This is for instance necessary
         # to remove older data with incompatible data_shape
@@ -310,9 +306,8 @@ class FileStorage(StorageBase):
 
         else:
             raise ValueError(
-                f"Unknown write mode `{self.write_mode}`. "
-                "Possible values are `truncate_once`, "
-                "`truncate`, and `append`"
+                f"Unknown write mode `{self.write_mode}`. Possible values are "
+                "`truncate_once`, `truncate`, and `append`"
             )
 
         if not self.keep_opened:

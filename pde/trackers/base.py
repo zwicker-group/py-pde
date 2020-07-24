@@ -131,9 +131,7 @@ class TrackerCollection:
         if trackers is None:
             self.trackers: List[TrackerBase] = []
         elif not hasattr(trackers, "__iter__"):
-            raise ValueError(
-                "`trackers` must be a list of trackers, not " f"{trackers}"
-            )
+            raise ValueError(f"`trackers` must be a list of trackers, not {trackers}")
         else:
             self.trackers = trackers
 

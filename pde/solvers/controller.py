@@ -76,8 +76,7 @@ class Controller:
                 self._t_range = tuple(value)  # type: ignore
             else:
                 raise ValueError(
-                    "t_range must be set to a single number or "
-                    "a tuple of two numbers"
+                    "t_range must be set to a single number or a tuple of two numbers"
                 )
 
     def run(self, state: TState, dt: float = None) -> TState:
@@ -218,9 +217,8 @@ class Controller:
         self._logger.log(msg_level, msg)
         if profiler["tracker"] > max(profiler["solver"], 1):
             self._logger.warning(
-                "Spent more time on handling trackers "
-                f"({profiler['tracker']}) than on the actual "
-                f"simulation ({profiler['solver']})"
+                f"Spent more time on handling trackers ({profiler['tracker']}) than on "
+                f"the actual simulation ({profiler['solver']})"
             )
 
         return state

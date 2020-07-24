@@ -90,9 +90,7 @@ class PDE(PDEBase):
         if not isinstance(rhs, OrderedDict):
             rhs = OrderedDict(rhs)
         if "t" in rhs:
-            raise RuntimeError(
-                "`t` is not allowed as a variable since it " "denotes time"
-            )
+            raise RuntimeError("`t` is not allowed as a variable since it denotes time")
 
         # turn the expression strings into sympy expressions
         signature = tuple(rhs.keys()) + ("t",)
@@ -135,8 +133,7 @@ class PDE(PDEBase):
                     key = f"{self.variables[0]}:{key_str}"
                 else:
                     raise ValueError(
-                        f'Boundary condition "{key_str}" is '
-                        "ambiguous. Use format "
+                        f'Boundary condition "{key_str}" is ambiguous. Use format '
                         '"VARIABLE:OPERATOR" instead.'
                     )
             elif len(parts) == 2:
@@ -185,13 +182,12 @@ class PDE(PDEBase):
         if isinstance(state, FieldCollection):
             if num_fields != len(state):
                 raise ValueError(
-                    f"Expected {num_fields} fields in state, but "
-                    f"got {len(state)} ones"
+                    f"Expected {num_fields} fields in state, but got {len(state)} ones"
                 )
         elif isinstance(state, DataFieldBase):
             if num_fields != 1:
                 raise ValueError(
-                    f"Expected {num_fields} fields in state, but " "got only one"
+                    f"Expected {num_fields} fields in state, but got only one"
                 )
         else:
             raise ValueError(f"Unknown state class {state.__class__.__name__}")
@@ -223,7 +219,8 @@ class PDE(PDEBase):
                         break  # found a matching boundary condition
                 else:
                     raise RuntimeError(
-                        "Could not find suitable boundary " "condition for "
+                        "Could not find suitable boundary condition for function "
+                        f"`{func}` applied in equation for `{var}`"
                     )
 
                 ops[func] = state.grid.get_operator(func, bc=bc)

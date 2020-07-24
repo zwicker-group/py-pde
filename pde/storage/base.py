@@ -74,8 +74,8 @@ class StorageBase(metaclass=ABCMeta):
         """ truncate the storage by removing all stored data.
         
         Args:
-            clear_data_shape (bool): Flag determining whether the data shape is
-                also deleted.
+            clear_data_shape (bool):
+                Flag determining whether the data shape is also deleted.
         """
         if clear_data_shape:
             self._data_shape = None
@@ -139,9 +139,8 @@ class StorageBase(metaclass=ABCMeta):
 
             if self.grid is None:
                 raise RuntimeError(
-                    "Could not load grid from data. Please set "
-                    "the `_grid` attribute to the grid that has "
-                    "been used for the stored data."
+                    "Could not load grid from data. Please set the `_grid` attribute "
+                    "to the grid that has been used for the stored data"
                 )
 
             if "field_attributes" in self.info:
@@ -168,14 +167,12 @@ class StorageBase(metaclass=ABCMeta):
                     self._field = Tensor2Field(self.grid)
                 else:
                     raise RuntimeError(
-                        "`field` attribute was not stored in "
-                        f"file and the data shape {local_shape} "
-                        "could not be interpreted automatically"
+                        "`field` attribute was not stored in file and the data shape "
+                        f"{local_shape} could not be interpreted automatically"
                     )
                 self._logger.warning(
-                    "`field` attribute was not stored. We "
-                    "guessed that the data is of type "
-                    f"{self._field.__class__.__name__}."
+                    "`field` attribute was not stored. We guessed that the data is of "
+                    f"type {self._field.__class__.__name__}."
                 )
 
         # create the field with the data of the given index

@@ -73,9 +73,8 @@ class KPZInterfacePDE(PDEBase):
             Scalar field describing the evolution rate of the PDE 
         """
         assert isinstance(state, ScalarField)
-        result = self.nu * state.laplace(bc=self.bc) + self.lmbda * state.gradient(
-            bc=self.bc
-        ).to_scalar("squared_sum")
+        result = self.nu * state.laplace(bc=self.bc)
+        result += self.lmbda * state.gradient_squared(bc=self.bc)
         result.label = "evolution rate"
         return result  # type: ignore
 
@@ -93,21 +92,18 @@ class KPZInterfacePDE(PDEBase):
             the evolution rate.  
         """
         shape = state.grid.shape
-        dim = state.grid.dim
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))
         signature = arr_type(arr_type, nb.double)
 
         nu_value, lambda_value = self.nu, self.lmbda
         laplace = state.grid.get_operator("laplace", bc=self.bc)
-        gradient = state.grid.get_operator("gradient", bc=self.bc)
+        gradient_squared = state.grid.get_operator("gradient_squared", bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
             """ compiled helper function evaluating right hand side """
-            grad = gradient(state_data)
             result = nu_value * laplace(state_data)
-            for i in range(dim):
-                result += lambda_value * grad[i] ** 2
+            result += lambda_value * gradient_squared(state_data)
             return result
 
         return pde_rhs  # type: ignore

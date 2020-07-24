@@ -56,10 +56,9 @@ class Movie:
 
         if not FFMpegWriter.isAvailable():
             raise RuntimeError(
-                "FFMpegWriter is not available. This is most "
-                "likely because a suitable installation of "
-                "FFMpeg was not found. See ffmpeg.org for how "
-                "to install it properly on your system."
+                "FFMpegWriter is not available. This is most likely because a suitable "
+                "installation of FFMpeg was not found. See ffmpeg.org for how to "
+                "install it properly on your system."
             )
 
         self._writer = None

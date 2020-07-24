@@ -55,8 +55,8 @@ class VectorField(DataFieldBase):
 
         if grid.dim != len(fields):
             raise DimensionError(
-                "Grid dimension and number of scalar fields "
-                f"differ ({grid.dim} != {len(fields)})"
+                f"Grid dimension and number of scalar fields differ ({grid.dim} != "
+                f"{len(fields)})"
             )
 
         data = []
@@ -93,7 +93,7 @@ class VectorField(DataFieldBase):
         if isinstance(expressions, str) or len(expressions) != grid.dim:
             axes_names = grid.axes + grid.axes_symmetric
             raise ValueError(
-                f"Expected {grid.dim} expressions for the " f"coordinates {axes_names}."
+                f"Expected {grid.dim} expressions for the coordinates {axes_names}."
             )
 
         # obtain the coordinates of the grid points

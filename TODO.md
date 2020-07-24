@@ -1,6 +1,6 @@
 TODO
 ====
-* Go through files and manually improve some code style issues 
+* Go through files and manually improve some code style issues (did fields)
 * Implement Gray Scott Model of Reaction Diffusion
 * Add a flag to switch floating precisions to np.single or np.longdouble
 * Accelerate some tests by not compiling

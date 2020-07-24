@@ -243,16 +243,14 @@ def jit_allocate_out(
                 if isinstance(arr, nb.types.Number):
                     # simple scalar call -> do not need to allocate anything
                     raise RuntimeError(
-                        "Functions defined with an `out` "
-                        "keyword should not be called with "
-                        "scalar quantities."
+                        "Functions defined with an `out` keyword should not be called "
+                        "with scalar quantities."
                     )
 
                 if not isinstance(arr, nb.types.Array):
                     raise RuntimeError(
-                        "Compiled functions need to be called "
-                        "with numpy arrays, not type "
-                        f"{arr.__class__.__name__}"
+                        "Compiled functions need to be called with numpy arrays, not "
+                        f"type {arr.__class__.__name__}"
                     )
 
                 if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
@@ -288,9 +286,8 @@ def jit_allocate_out(
                 if isinstance(a, nb.types.Number):
                     # simple scalar call -> do not need to allocate anything
                     raise RuntimeError(
-                        "Functions defined with an `out` "
-                        "keyword should not be called with "
-                        "scalar quantities"
+                        "Functions defined with an `out` keyword should not be called "
+                        "with scalar quantities"
                     )
 
                 elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
@@ -386,5 +383,5 @@ def convert_scalar(arr):
 
 if NUMBA_VERSION < [0, 45]:
     warnings.warn(
-        "Your numba version is outdated. Please install at least " "version 0.45."
+        "Your numba version is outdated. Please install at least version 0.45"
     )

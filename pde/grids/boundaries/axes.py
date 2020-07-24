@@ -33,23 +33,18 @@ class Boundaries(list):
 
         # check dimension
         if len(boundaries) != self.grid.num_axes:
-            raise ValueError(
-                "Need boundary conditions for " f"{self.grid.num_axes} axes."
-            )
-
+            raise ValueError(f"Need boundary conditions for {self.grid.num_axes} axes")
         # check consistency
         for axis, boundary in enumerate(boundaries):
             if boundary.grid != self.grid:
                 raise ValueError("Boundaries are not defined on the same grid")
             if boundary.axis != axis:
                 raise ValueError(
-                    "The boundaries need to be ordered according "
-                    "to the axes they apply to"
+                    "Boundaries need to be ordered like the respective axes"
                 )
             if boundary.periodic != self.grid.periodic[axis]:
                 raise PeriodicityError(
-                    "Periodicity specified in the "
-                    "boundaries conditions is not "
+                    "Periodicity specified in the boundaries conditions is not "
                     "compatible with the grid"
                 )
 
@@ -126,7 +121,7 @@ class Boundaries(list):
 
         else:
             raise ValueError(
-                f"Unsupported boundary format: `{boundaries}`. " f"{cls.get_help()}"
+                f"Unsupported boundary format: `{boundaries}`." + cls.get_help()
             )
 
         return cls(bcs)
@@ -157,10 +152,9 @@ class Boundaries(list):
     def get_help(cls) -> str:
         """ Return information on how boundary conditions can be set """
         return (
-            "Boundary conditions for each axis are set using a list: "
-            "[bc_x, bc_y, bc_z]. If the associated axis is periodic, the "
-            "boundary condition needs to be set to 'periodic'. Otherwise, "
-            f"{BoundaryPair.get_help()}"
+            "Boundary conditions for each axis are set using a list: [bc_x, bc_y, "
+            "bc_z]. If the associated axis is periodic, the boundary condition needs "
+            f"to be set to 'periodic'. Otherwise, {BoundaryPair.get_help()}"
         )
 
     def copy(self, value=None) -> "Boundaries":

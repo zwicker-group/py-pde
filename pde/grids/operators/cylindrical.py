@@ -191,23 +191,23 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
                 # inner radial boundary condition (Neumann condition)
                 i = 0
                 arr_z_l, _, arr_z_h = region_z(arr, (i, j))
-                term_r = (arr[1, j] - arr[0, j]) ** 2 * scale_r
-                term_z = (arr_z_h - arr_z_l) ** 2 * scale_z
-                out[i, j] = term_r + term_z
+                term_r = (arr[1, j] - arr[0, j]) ** 2
+                term_z = (arr_z_h - arr_z_l) ** 2
+                out[i, j] = term_r * scale_r + term_z * scale_z
 
                 for i in range(1, dim_r - 1):  # iterate radial points
                     arr_z_l, _, arr_z_h = region_z(arr, (i, j))
-                    term_r = (arr[i + 1, j] - arr[i - 1, j]) ** 2 * scale_r
-                    term_z = (arr_z_h - arr_z_l) ** 2 * scale_z
-                    out[i, j] = term_r + term_z
+                    term_r = (arr[i + 1, j] - arr[i - 1, j]) ** 2
+                    term_z = (arr_z_h - arr_z_l) ** 2
+                    out[i, j] = term_r * scale_r + term_z * scale_z
 
                 # outer radial boundary condition
                 i = dim_r - 1
                 arr_z_l, _, arr_z_h = region_z(arr, (i, j))
                 arr_r_h = value_outer(arr, (i, j))
-                term_r = (arr_r_h - arr[i - 1, j]) ** 2 * scale_r
-                term_z = (arr_z_h - arr_z_l) ** 2 * scale_z
-                out[i, j] = term_r + term_z
+                term_r = (arr_r_h - arr[i - 1, j]) ** 2
+                term_z = (arr_z_h - arr_z_l) ** 2
+                out[i, j] = term_r * scale_r + term_z * scale_z
 
             return out
 
@@ -222,27 +222,23 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
                 # inner radial boundary condition (Neumann condition)
                 i = 0
                 arr_z_l, arr_c, arr_z_h = region_z(arr, (i, j))
-                term_r = (arr[1, j] - arr[0, j]) ** 2 * scale_r
-                term_z = ((arr_z_h - arr_c) ** 2 + (arr_c - arr_z_l) ** 2) * scale_z
-                out[i, j] = term_r + term_z
+                term_r = (arr[1, j] - arr[0, j]) ** 2
+                term_z = (arr_z_h - arr_c) ** 2 + (arr_c - arr_z_l) ** 2
+                out[i, j] = term_r * scale_r + term_z * scale_z
 
                 for i in range(1, dim_r - 1):  # iterate radial points
                     arr_z_l, arr_c, arr_z_h = region_z(arr, (i, j))
-                    term_r = (
-                        (arr[i + 1, j] - arr_c) ** 2 + (arr_c - arr[i - 1, j]) ** 2
-                    ) * scale_r
-                    term_z = ((arr_z_h - arr_c) ** 2 + (arr_c - arr_z_l) ** 2) * scale_z
-                    out[i, j] = term_r + term_z
+                    term_r = (arr[i + 1, j] - arr_c) ** 2 + (arr_c - arr[i - 1, j]) ** 2
+                    term_z = (arr_z_h - arr_c) ** 2 + (arr_c - arr_z_l) ** 2
+                    out[i, j] = term_r * scale_r + term_z * scale_z
 
                 # outer radial boundary condition
                 i = dim_r - 1
                 arr_z_l, arr_c, arr_z_h = region_z(arr, (i, j))
                 arr_r_h = value_outer(arr, (i, j))
-                term_r = (
-                    (arr_r_h - arr_c) ** 2 + (arr_c - arr[i - 1, j]) ** 2
-                ) * scale_r
-                term_z = ((arr_z_h - arr_c) ** 2 + (arr_c - arr_z_l) ** 2) * scale_z
-                out[i, j] = term_r + term_z
+                term_r = (arr_r_h - arr_c) ** 2 + (arr_c - arr[i - 1, j]) ** 2
+                term_z = (arr_z_h - arr_c) ** 2 + (arr_c - arr_z_l) ** 2
+                out[i, j] = term_r * scale_r + term_z * scale_z
 
             return out
 
@@ -291,9 +287,8 @@ def make_divergence(bcs: Boundaries) -> Callable:
 
             for i in range(1, dim_r - 1):  # iterate radial points
                 arr_z_l, _, arr_z_h = region_z(arr[1], (i, j))
-                d_r = (arr[0, i + 1, j] - arr[0, i - 1, j]) * scale_r + (
-                    arr[0, i, j] / ((i + 0.5) * dr)
-                )
+                d_r = (arr[0, i + 1, j] - arr[0, i - 1, j]) * scale_r
+                d_r += arr[0, i, j] / ((i + 0.5) * dr)
                 d_z = (arr_z_h - arr_z_l) * scale_z
                 out[i, j] = d_r + d_z
 
@@ -301,9 +296,8 @@ def make_divergence(bcs: Boundaries) -> Callable:
             i = dim_r - 1
             arr_z_l, _, arr_z_h = region_z(arr[1], (i, j))
             arr_r_h = value_outer(arr[0], (i, j))
-            d_r = (arr_r_h - arr[0, i - 1, j]) * scale_r + (
-                arr[0, i, j] / ((i + 0.5) * dr)
-            )
+            d_r = (arr_r_h - arr[0, i - 1, j]) * scale_r
+            d_r += arr[0, i, j] / ((i + 0.5) * dr)
             d_z = (arr_z_h - arr_z_l) * scale_z
             out[i, j] = d_z + d_r
 

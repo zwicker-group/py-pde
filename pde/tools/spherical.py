@@ -101,7 +101,7 @@ def radius_from_volume(volume: float, dim: int) -> float:
     elif dim == 3:
         return (3 * volume / (4 * π)) ** (1 / 3)  # type: ignore
     else:
-        raise NotImplementedError(f"Cannot calculate the radius in {dim} " "dimensions")
+        raise NotImplementedError(f"Cannot calculate the radius in {dim} dimensions")
 
 
 def make_radius_from_volume_compiled(dim: int) -> Callable:
@@ -129,7 +129,7 @@ def make_radius_from_volume_compiled(dim: int) -> Callable:
             return (3 * volume / (4 * π)) ** (1 / 3)
 
     else:
-        raise NotImplementedError(f"Cannot calculate the radius in {dim} " "dimensions")
+        raise NotImplementedError(f"Cannot calculate the radius in {dim} dimensions")
     return jit(radius_from_volume)  # type: ignore
 
 
@@ -150,7 +150,7 @@ def volume_from_radius(radius: float, dim: int) -> float:
     elif dim == 3:
         return 4 * π / 3 * radius ** 3  # type: ignore
     else:
-        raise NotImplementedError(f"Cannot calculate the volume in {dim} " "dimensions")
+        raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
 
 def make_volume_from_radius_compiled(dim: int) -> Callable:
@@ -178,7 +178,7 @@ def make_volume_from_radius_compiled(dim: int) -> Callable:
             return 4 * π / 3 * radius ** 3
 
     else:
-        raise NotImplementedError(f"Cannot calculate the volume in {dim} " "dimensions")
+        raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
     return jit(volume_from_radius)  # type: ignore
 
 
@@ -200,7 +200,7 @@ def surface_from_radius(radius: float, dim: int) -> float:
         return 4 * π * radius ** 2  # type: ignore
     else:
         raise NotImplementedError(
-            f"Cannot calculate the surface area in {dim} " "dimensions"
+            f"Cannot calculate the surface area in {dim} dimensions"
         )
 
 
@@ -221,7 +221,7 @@ def radius_from_surface(surface: float, dim: int) -> float:
     elif dim == 3:
         return np.sqrt(surface / (4 * π))  # type: ignore
     else:
-        raise NotImplementedError(f"Cannot calculate the radius in {dim} " "dimensions")
+        raise NotImplementedError(f"Cannot calculate the radius in {dim} dimensions")
 
 
 def make_surface_from_radius_compiled(dim: int) -> Callable:
@@ -250,7 +250,7 @@ def make_surface_from_radius_compiled(dim: int) -> Callable:
 
     else:
         raise NotImplementedError(
-            f"Cannot calculate the surface area in {dim} " "dimensions"
+            f"Cannot calculate the surface area in {dim} dimensions"
         )
     return jit(surface_from_radius)  # type: ignore
 

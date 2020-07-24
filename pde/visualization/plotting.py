@@ -86,8 +86,8 @@ def extract_field(
             field = fields[source]
         else:
             raise TypeError(
-                f"Cannot extract component {source} from instance "
-                f"of {fields.__class__.__name__}"
+                f"Cannot extract component {source} from instance of "
+                f"{fields.__class__.__name__}"
             )
 
     if isinstance(field, FieldCollection):
@@ -212,8 +212,8 @@ class ScalarFieldPlot:
                     quantity["scale"] = (vmin, vmax)
 
         # actually setup
-        return cls(
-            fields, quantities, tight=tight, show=show  # lgtm [py/call-to-non-callable]
+        return cls(  # lgtm [py/call-to-non-callable]
+            fields, quantities, tight=tight, show=show
         )
 
     @staticmethod
@@ -665,7 +665,7 @@ def plot_kymograph(
         if storage.has_collection:
             line_data_args["index"] = field_index
         else:
-            _logger.warning("`field_index` should only be set for " "FieldCollections")
+            _logger.warning("`field_index` should only be set for FieldCollections")
 
     # prepare the image data for one kymograph
     image = []

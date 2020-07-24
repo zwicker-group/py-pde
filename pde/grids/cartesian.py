@@ -44,9 +44,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             self.periodic = [bool(periodic)] * self.dim
         elif len(periodic) != self.dim:
             raise DimensionError(
-                "Number of axes with specified periodicity "
-                "does not match grid dimension "
-                f"({len(periodic)} != {self.dim})"
+                "Number of axes with specified periodicity does not match grid "
+                f"dimension ({len(periodic)} != {self.dim})"
             )
         else:
             self.periodic = list(periodic)
@@ -118,7 +117,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         cuboid = self.cuboid
         if boundary_distance != 0:
             if any(cuboid.size <= 2 * boundary_distance):
-                raise RuntimeError("Random points would be too close to " "boundary")
+                raise RuntimeError("Random points would be too close to boundary")
             cuboid = cuboid.buffer(-boundary_distance)
 
         # create random point
@@ -147,8 +146,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         if data.shape[-self.dim :] != self.shape:
             raise ValueError(
-                f"Shape {data.shape} of the data array is not "
-                f"compatible with grid shape {self.shape}"
+                f"Shape {data.shape} of the data array is not compatible with grid "
+                f"shape {self.shape}"
             )
 
         def _get_axis(axis):
@@ -210,8 +209,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         if data.shape[-self.dim :] != self.shape:
             raise ValueError(
-                f"Shape {data.shape} of the data array is not "
-                f"compatible with grid shape {self.shape}"
+                f"Shape {data.shape} of the data array is not compatible with grid "
+                f"shape {self.shape}"
             )
 
         if self.dim == 2:
@@ -220,7 +219,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             image_data = data[:, :, self.shape[-1] // 2].T
         else:
             raise NotImplementedError(
-                "Creating images is only implemented for " "2d and 3d grids"
+                "Creating images is only implemented for 2d and 3d grids"
             )
 
         extent: List[float] = []
@@ -297,7 +296,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
             else:
                 raise NotImplementedError(
-                    "Cannot calculate angles for " f"dimension {self.dim}"
+                    f"Cannot calculate angles for dimension {self.dim}"
                 )
         else:
             return dist
@@ -335,7 +334,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
         else:
             raise NotImplementedError(
-                "Cannot calculate coordinates for " f"dimension {self.dim}"
+                f"Cannot calculate coordinates for dimension {self.dim}"
             )
 
         return self.normalize_point(coords)
@@ -351,7 +350,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         if self.dim not in {1, 2}:
             raise NotImplementedError(
-                "Plotting is not implemented for grids " f"of dimension {self.dim}"
+                f"Plotting is not implemented for grids of dimension {self.dim}"
             )
 
         kwargs.setdefault("color", "k")
@@ -464,14 +463,12 @@ class UnitGrid(CartesianGridBase):
         if point.ndim == 0:
             if self.dim > 1:
                 raise DimensionError(
-                    f"Dimension mismatch: Point {point} is "
-                    f"not of dimension {self.dim}."
+                    f"Dimension mismatch: Point {point} is not of dimension {self.dim}"
                 )
         elif point.shape[-1] != self.dim:
             raise DimensionError(
-                "Dimension mismatch: Array of shape "
-                f"{point.shape} does not describe points of "
-                f"dimension {self.dim}."
+                f"Dimension mismatch: Array of shape {point.shape} does not describe "
+                f"points of dimension {self.dim}"
             )
 
         # normalize the coordinates for the periodic dimensions
@@ -609,10 +606,9 @@ class CartesianGrid(CartesianGridBase):
         bounds = np.array(bounds, ndmin=1, dtype=np.double)
         if bounds.shape == (2,):
             raise ValueError(
-                "`bounds with shape (2,) are ambiguous. Either "
-                "use shape (1, 2) to set up a 1d system with two "
-                "bounds or shape (2, 1) for a 2d system with only "
-                "the upper bounds specified"
+                "`bounds with shape (2,) are ambiguous. Either use shape (1, 2) to set "
+                "up a 1d system with two bounds or shape (2, 1) for a 2d system with "
+                "only the upper bounds specified"
             )
 
         if bounds.ndim == 1 or bounds.shape[1] == 1:
@@ -626,7 +622,7 @@ class CartesianGrid(CartesianGridBase):
 
         else:
             raise ValueError(
-                "Do not know how to interpret shape " f"{bounds.shape} for bounds"
+                f"Do not know how to interpret shape {bounds.shape} for bounds"
             )
 
         # handle the shape array
@@ -635,7 +631,7 @@ class CartesianGrid(CartesianGridBase):
             shape = np.full(self.cuboid.dim, shape, dtype=np.uint32)
         if self.cuboid.dim != len(shape):
             raise DimensionError(
-                "Dimension of the bounds and the shape are " "not compatible"
+                "Dimension of the bounds and the shape are not compatible"
             )
 
         # initialize the base class
@@ -708,14 +704,12 @@ class CartesianGrid(CartesianGridBase):
         if point.ndim == 0:
             if self.dim > 1:
                 raise DimensionError(
-                    f"Dimension mismatch: Point {point} is "
-                    f"not of dimension {self.dim}."
+                    f"Dimension mismatch: Point {point} is not of dimension {self.dim}"
                 )
         elif point.shape[-1] != self.dim:
             raise DimensionError(
-                "Dimension mismatch: Array of shape "
-                f"{point.shape} does not describe points of "
-                f"dimension {self.dim}."
+                f"Dimension mismatch: Array of shape {point.shape} does not describe "
+                f"points of dimension {self.dim}"
             )
 
         if any(self.periodic):
@@ -782,11 +776,10 @@ class CartesianGrid(CartesianGridBase):
             with periodic  boundary conditions applied.
         """
         diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        if any(self.periodic):
-            size = self.cuboid.size[self.periodic]
-            diff[..., self.periodic] = (
-                diff[..., self.periodic] + size / 2
-            ) % size - size / 2
+        periodic = self.periodic
+        if any(periodic):
+            size = self.cuboid.size[periodic]
+            diff[..., periodic] = (diff[..., periodic] + size / 2) % size - size / 2
         return diff
 
     def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":

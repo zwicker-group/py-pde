@@ -80,7 +80,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             raise DimensionError("`shape` must be two integers")
         if len(bounds_z) != 2:
             raise ValueError(
-                "Lower and upper value of the axial coordinate " "must be specified"
+                "Lower and upper value of the axial coordinate must be specified"
             )
         self._periodic_z: bool = bool(periodic_z)  # might cast from np.bool_
         self.periodic = [False, self._periodic_z]
@@ -175,7 +175,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             z_min += boundary_distance
             z_max -= boundary_distance
             if r_mag <= 0 or z_max <= z_min:
-                raise RuntimeError("Random points would be too close to " "boundary")
+                raise RuntimeError("Random points would be too close to boundary")
 
         # create random point
         r = r_mag * np.random.random() + r_min
@@ -318,9 +318,8 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             return np.zeros((0, size))
         if point.shape[-1] != size:
             raise DimensionError(
-                "Dimension mismatch: Array of shape "
-                f"{point.shape} does not describe points of "
-                f"dimension {size}."
+                f"Dimension mismatch: Array of shape {point.shape} does not describe "
+                f"points of dimension {size}"
             )
 
         if self._periodic_z:
@@ -454,9 +453,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             raise DimensionError("Dimensions are not compatible")
 
         if origin[0] != 0 or origin[1] != 0:
-            raise RuntimeError(
-                "Origin must lie on symmetry axis for " "cylindrical grid"
-            )
+            raise RuntimeError("Origin must lie on symmetry axis for cylindrical grid")
 
         # calculate the difference vector between all cells and the origin
         diff = self.difference_vector_real([0, origin[2]], self.cell_coords)

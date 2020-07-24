@@ -67,7 +67,7 @@ class Parameter:
                 valid_default = converted_value == default_value
             if not valid_default:
                 logging.warning(
-                    "Default value `%s` does not seem to be of " "type `%s`",
+                    "Default value `%s` does not seem to be of type `%s`",
                     name,
                     cls.__name__,
                 )
@@ -121,8 +121,7 @@ class Parameter:
                 return self.cls(value)
             except ValueError:
                 raise ValueError(
-                    f"Could not convert {value!r} to "
-                    f"{self.cls.__name__} for parameter "
+                    f"Could not convert {value!r} to {self.cls.__name__} for parameter "
                     f"'{self.name}'"
                 )
 
@@ -280,9 +279,8 @@ class Parameterized:
         # update parameters with the supplied ones
         if check_validity and parameters:
             raise ValueError(
-                f"Parameters `{sorted(parameters.keys())}` were "
-                "provided in instance specific parameters but are "
-                f"not defined for the class `{cls.__name__}`."
+                f"Parameters `{sorted(parameters.keys())}` were provided for an "
+                f"instance but are not defined for the class `{cls.__name__}`"
             )
         else:
             result.update(parameters)  # add remaining parameters
@@ -388,12 +386,11 @@ class Parameterized:
         if in_notebook:
             # output html with minimal styling
             css = "dl.py-pde_parameters dd {padding-left:2em}"
-            display(
-                HTML(
-                    f'<style type="text/css">{css}</style>'
-                    f'<dl class="py-pde_parameters">{html}</dl>'
-                )
+            html = HTML(
+                f'<style type="text/css">{css}</style>'
+                f'<dl class="py-pde_parameters">{html}</dl>'
             )
+            display(html)
 
     @hybridmethod
     def show_parameters(

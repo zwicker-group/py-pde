@@ -160,7 +160,7 @@ class BoundaryPair(BoundaryAxisBase):
                     grid, axis, upper=True, data=data_copy.pop("high"), rank=rank
                 )
                 if data_copy:
-                    raise ValueError(f"Data items {data_copy.keys()} were not " "used.")
+                    raise ValueError(f"Data items {data_copy.keys()} were not used.")
             else:
                 # one condition for both sides
                 low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
@@ -180,7 +180,7 @@ class BoundaryPair(BoundaryAxisBase):
             except TypeError:
                 # if len is not supported, the format must be wrong
                 raise ValueError(
-                    f"Unsupported boundary format: `{data}`. " f"{cls.get_help()}"
+                    f"Unsupported boundary format: `{data}`. " + cls.get_help()
                 )
             else:
                 if data_len == 2:
@@ -194,9 +194,8 @@ class BoundaryPair(BoundaryAxisBase):
                 else:
                     # if the length is strange, the format must be wrong
                     raise ValueError(
-                        f"List of boundary condition should be of "
-                        f"of length 2, not : `{data}`. "
-                        f"{cls.get_help()}"
+                        "List of boundary condition should be of of length 2, not : "
+                        f"`{data}`. " + cls.get_help()
                     )
 
         return cls(low, high)
@@ -234,9 +233,9 @@ class BoundaryPair(BoundaryAxisBase):
             *indices:
                 One or two indices for vector or tensor fields, respectively
         """
-        return self.__class__(
-            self.low.extract_component(*indices), self.high.extract_component(*indices)
-        )
+        bc_sub_low = self.low.extract_component(*indices)
+        bc_sub_high = self.high.extract_component(*indices)
+        return self.__class__(bc_sub_low, bc_sub_high)
 
     def check_value_rank(self, rank: int):
         """ check whether the values at the boundaries have the correct rank
@@ -285,10 +284,9 @@ class BoundaryPair(BoundaryAxisBase):
             return the associated value at the virtual support point outside the
             lower and upper boundary, respectively.
         """
-        return (
-            self.low.make_virtual_point_evaluator(),
-            self.high.make_virtual_point_evaluator(),
-        )
+        eval_low = self.low.make_virtual_point_evaluator()
+        eval_high = self.high.make_virtual_point_evaluator()
+        return (eval_low, eval_high)
 
     @property
     def differentiated(self) -> "BoundaryPair":
@@ -314,8 +312,8 @@ class BoundaryPair(BoundaryAxisBase):
         size = self.low.grid.shape[self.low.axis]
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
 
-        eval_lo = self.low.make_virtual_point_evaluator()
-        eval_hi = self.high.make_virtual_point_evaluator()
+        eval_low = self.low.make_virtual_point_evaluator()
+        eval_high = self.high.make_virtual_point_evaluator()
 
         @register_jitable
         def evaluate(arr, idx):
@@ -324,11 +322,11 @@ class BoundaryPair(BoundaryAxisBase):
 
             if i == -1:
                 # virtual point on the lower side of the axis
-                return eval_lo(arr, idx)
+                return eval_low(arr, idx)
 
             elif i == size:
                 # virtual point on the upper side of the axis
-                return eval_hi(arr, idx)
+                return eval_high(arr, idx)
 
             elif 0 <= i < size:
                 # inner point of the axis

@@ -219,7 +219,7 @@ def get_progress_bar_class():
         # create a mock class, since tqdm is not available
         # progress bar package does not seem to be available
         warnings.warn(
-            "`tqdm` package is not available. Progress will " "be indicated by dots."
+            "`tqdm` package is not available. Progress will be indicated by dots."
         )
         progress_bar_class = MockProgress
 

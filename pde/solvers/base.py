@@ -40,7 +40,7 @@ class SolverBase(metaclass=ABCMeta):
         cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
             if cls.name in cls._subclasses:
-                logging.warn(f"Solver with name {cls.name} is already " "registered")
+                logging.warn(f"Solver with name {cls.name} is already registered")
             cls._subclasses[cls.name] = cls
 
     @classmethod
@@ -74,8 +74,8 @@ class SolverBase(metaclass=ABCMeta):
                 if not solver.endswith("Solver")
             )
             raise ValueError(
-                f"Unknown solver method '{name}'. Registered "
-                f"solvers are {', '.join(solvers)}"
+                f"Unknown solver method '{name}'. Registered solvers are "
+                + ", ".join(solvers)
             )
 
         return solver_class(pde, **kwargs)  # type: ignore
@@ -115,7 +115,7 @@ class SolverBase(metaclass=ABCMeta):
         """
         if self.pde.is_sde and not allow_stochastic:
             raise RuntimeError(
-                f"The chosen stepper does not support " "stochastic equations"
+                f"The chosen stepper does not support stochastic equations"
             )
 
         if self.pde.is_sde:

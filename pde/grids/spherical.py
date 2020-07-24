@@ -64,7 +64,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         super().__init__()
         shape_list = _check_shape(shape)
         if not len(shape_list) == 1:
-            raise ValueError("`shape` must be a single number, not " f"{shape_list}")
+            raise ValueError(f"`shape` must be a single number, not {shape_list}")
         self._shape: Tuple[int] = (int(shape_list[0]),)
 
         try:
@@ -320,9 +320,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             return np.zeros((0, size))
         if point.shape[-1] != size:
             raise DimensionError(
-                "Dimension mismatch: Array of shape "
-                f"{point.shape} does not describe points of "
-                f"dimension {size}."
+                f"Dimension mismatch: Array of shape {point.shape} does not describe "
+                f"points of dimension {size}"
             )
         return point
 
@@ -473,10 +472,10 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                     b_pair = BoundaryPair.from_data(self, 0, bc, rank=rank)
                     if b_inner != b_pair.low:
                         raise ValueError(
-                            f"Unsupported boundary format: `{bc}`. Note that "
-                            "spherical symmetry implies vanishing derivatives "
-                            "at the origin at r=0 for all fields. This "
-                            "boundary condition need not be specified."
+                            f"Unsupported boundary format: `{bc}`. Note that spherical "
+                            "symmetry implies vanishing derivatives at the origin at "
+                            "r=0 for all fields. This boundary condition need not be "
+                            "specified."
                         )
                 else:
                     b_pair = BoundaryPair(b_inner, b_outer)
@@ -501,9 +500,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         # Pick the grid instance
         if mode == "valid":
             if self.has_hole:
-                self._logger.warn(
-                    "The sphere has holes, so not all points are " "valid."
-                )
+                self._logger.warn("The sphere has holes, so not all points are valid")
             bounds = self.radius / np.sqrt(self.dim)
         elif mode == "full":
             bounds = self.radius

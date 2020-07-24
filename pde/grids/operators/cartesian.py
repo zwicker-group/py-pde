@@ -163,7 +163,7 @@ def _get_laplace_matrix(bcs: Boundaries):
         result = _get_laplace_matrix_2d(bcs)
     else:
         raise NotImplementedError(
-            "Numba laplace operator not implemented " f"for {dim:d} dimensions"
+            f"Numba laplace operator not implemented for {dim:d} dimensions"
         )
 
     return result
@@ -249,7 +249,7 @@ def _make_derivative(
 
     else:
         raise NotImplementedError(
-            "Numba derivative operator not implemented " f"for {dim:d} dimensions"
+            f"Numba derivative operator not implemented for {dim:d} dimensions"
         )
 
     return diff  # type: ignore
@@ -458,7 +458,7 @@ def make_laplace(bcs: Boundaries, method: str = "auto") -> Callable:
             laplace = _make_laplace_numba_3d(bcs)
         else:
             raise NotImplementedError(
-                "Numba laplace operator not implemented " f"for {dim:d} dimensions"
+                f"Numba laplace operator not implemented for {dim:d} dimensions"
             )
 
     elif method == "matrix":
@@ -636,7 +636,7 @@ def make_gradient(bcs: Boundaries, method: str = "auto") -> Callable:
             gradient = _make_gradient_numba_3d(bcs)
         else:
             raise NotImplementedError(
-                "Numba gradient operator not " f"implemented for dimension {dim}"
+                f"Numba gradient operator not implemented for dimension {dim}"
             )
 
     elif method == "scipy":
@@ -819,15 +819,12 @@ def _make_gradient_squared_numba_3d(bcs: Boundaries, central: bool = True) -> Ca
                         arr_y_l, _, arr_y_h = region_y(arr, (i, j, k))
                         arr_z_l, _, arr_z_h = region_z(arr, (i, j, k))
 
-                        term_x = (
-                            (arr_x_h - arr_c) ** 2 + (arr_c - arr_x_l) ** 2
-                        ) * scale_x
-                        term_y = (
-                            (arr_y_h - arr_c) ** 2 + (arr_c - arr_y_l) ** 2
-                        ) * scale_y
-                        term_z = (
-                            (arr_z_h - arr_c) ** 2 + (arr_z_l - arr_c) ** 2
-                        ) * scale_z
+                        term_x = (arr_x_h - arr_c) ** 2 + (arr_c - arr_x_l) ** 2
+                        term_x *= scale_x
+                        term_y = (arr_y_h - arr_c) ** 2 + (arr_c - arr_y_l) ** 2
+                        term_y *= scale_y
+                        term_z = (arr_z_h - arr_c) ** 2 + (arr_z_l - arr_c) ** 2
+                        term_z *= scale_z
                         out[i, j, k] = term_x + term_y + term_z
 
             return out
@@ -863,7 +860,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
         gradient_squared = _make_gradient_squared_numba_3d(bcs, central=central)
     else:
         raise NotImplementedError(
-            "Squared gradient operator is not " f"implemented for dimension {dim}"
+            f"Squared gradient operator is not implemented for dimension {dim}"
         )
 
     return gradient_squared
@@ -1042,7 +1039,7 @@ def make_divergence(bcs: Boundaries, method: str = "auto") -> Callable:
             divergence = _make_divergence_numba_3d(bcs)
         else:
             raise NotImplementedError(
-                "Numba divergence operator not " f"implemented for dimension {dim}"
+                f"Numba divergence operator not implemented for dimension {dim}"
             )
 
     elif method == "scipy":
@@ -1191,7 +1188,7 @@ def make_vector_gradient(bcs: Boundaries, method: str = "auto") -> Callable:
             gradient = _make_vector_gradient_numba_3d(bcs)
         else:
             raise NotImplementedError(
-                "Numba vector gradient operator not " f"implemented for dimension {dim}"
+                f"Numba vector gradient operator not implemented for dimension {dim}"
             )
 
     elif method == "scipy":
@@ -1336,7 +1333,7 @@ def make_vector_laplace(bcs: Boundaries, method: str = "auto") -> Callable:
             gradient = _make_vector_laplace_numba_3d(bcs)
         else:
             raise NotImplementedError(
-                "Numba vector gradient operator not " f"implemented for dimension {dim}"
+                f"Numba vector gradient operator not implemented for dimension {dim}"
             )
 
     elif method == "scipy":
@@ -1487,8 +1484,7 @@ def make_tensor_divergence(bcs: Boundaries, method: str = "auto") -> Callable:
             func = _make_tensor_divergence_numba_3d(bcs)
         else:
             raise NotImplementedError(
-                "Numba tensor divergence operator not "
-                f"implemented for dimension {dim}"
+                f"Numba tensor divergence operator not implemented for dimension {dim}"
             )
 
     elif method == "scipy":

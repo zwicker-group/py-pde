@@ -62,21 +62,18 @@ def make_laplace(bcs: Boundaries) -> Callable:
             out[i] = 2 * (arr[i + 1] - arr[i]) * dr_2
         else:
             arr_r_l = value_lower_bc(arr, (i,))
-            out[i] = (arr[i + 1] - 2 * arr[i] + arr_r_l) * dr_2 + (
-                arr[i + 1] - arr_r_l
-            ) / (2 * rs[i] * dr)
+            out[i] = (arr[i + 1] - 2 * arr[i] + arr_r_l) * dr_2
+            out[i] += (arr[i + 1] - arr_r_l) / (2 * rs[i] * dr)
 
         for i in range(1, dim_r - 1):  # iterate inner radial points
-            out[i] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr_2 + (
-                arr[i + 1] - arr[i - 1]
-            ) / (2 * rs[i] * dr)
+            out[i] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr_2
+            out[i] += (arr[i + 1] - arr[i - 1]) / (2 * rs[i] * dr)
 
         # express boundary condition at outer side
         i = dim_r - 1
         arr_r_h = value_upper_bc(arr, (i,))
-        out[i] = (arr_r_h - 2 * arr[i] + arr[i - 1]) * dr_2 + (arr_r_h - arr[i - 1]) / (
-            2 * rs[i] * dr
-        )
+        out[i] = (arr_r_h - 2 * arr[i] + arr[i - 1]) * dr_2
+        out[i] += (arr_r_h - arr[i - 1]) / (2 * rs[i] * dr)
         return out
 
     return laplace  # type: ignore
@@ -206,9 +203,8 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
                 out[0] = ((arr[1] - arr[0]) ** 2 + (arr[0] - arr_r_l) ** 2) * scale
 
             for i in range(1, dim_r - 1):  # iterate inner radial points
-                out[i] = (
-                    (arr[i + 1] - arr[i]) ** 2 + (arr[i] - arr[i - 1]) ** 2
-                ) * scale
+                term = (arr[i + 1] - arr[i]) ** 2 + (arr[i] - arr[i - 1]) ** 2
+                out[i] = term * scale
 
             i = dim_r - 1
             arr_r_h = value_upper_bc(arr, (i,))
@@ -258,16 +254,14 @@ def make_divergence(bcs: Boundaries) -> Callable:
             out[i] = (arr[0, 1] + 3 * arr[0, 0]) * scale_r
 
             for i in range(1, dim_r - 1):  # iterate radial points
-                out[i] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r + (
-                    arr[0, i] / ((i + 0.5) * dr)
-                )
+                out[i] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r
+                out[i] += arr[0, i] / ((i + 0.5) * dr)
 
             # outer radial boundary condition
             i = dim_r - 1
             arr_r_h = value_upper_bc(arr[0], (i,))
-            out[i] = (arr_r_h - arr[0, i - 1]) * scale_r + (
-                arr[0, i] / ((i + 0.5) * dr)
-            )
+            out[i] = (arr_r_h - arr[0, i - 1]) * scale_r
+            out[i] += arr[0, i] / ((i + 0.5) * dr)
 
             return out
 

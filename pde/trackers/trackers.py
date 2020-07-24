@@ -25,8 +25,8 @@ import sys
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import Dict  # @UnusedImport
-from typing import IO, TYPE_CHECKING, Any, Callable, List, Optional, Union
+from typing import List  # @UnusedImport
+from typing import IO, TYPE_CHECKING, Any, Callable, Dict, Optional, Union
 
 import numpy as np
 
@@ -66,8 +66,8 @@ class CallbackTracker(TrackerBase):
         self._num_args = len(inspect.signature(func).parameters)
         if not 0 < self._num_args < 3:
             raise ValueError(
-                "`func` must be a function accepting one or two "
-                f"arguments, not {self._num_args}"
+                "`func` must be a function accepting one or two arguments, not "
+                f"{self._num_args}"
             )
 
     def handle(self, field: FieldBase, t: float) -> None:
@@ -301,7 +301,7 @@ class PlotTracker(TrackerBase):
             import warnings
 
             warnings.warn(
-                "Argument `movie_file` is deprecated. Use `movie` " "instead.",
+                "Argument `movie_file` is deprecated. Use `movie` instead.",
                 DeprecationWarning,
             )
             if movie is None:
@@ -346,7 +346,7 @@ class PlotTracker(TrackerBase):
 
         else:
             raise TypeError(
-                "Unknown type of argument `movie`: " f"{movie.__class__.__name__}"
+                f"Unknown type of argument `movie`: {movie.__class__.__name__}"
             )
 
         # determine whether to show the images interactively
@@ -388,15 +388,14 @@ class PlotTracker(TrackerBase):
                     else:
                         mpl_class = state.plot.mpl_class  # type: ignore
                         raise RuntimeError(
-                            "Unknown mpl_class on plot method: " f"{mpl_class}"
+                            f"Unknown mpl_class on plot method: {mpl_class}"
                         )
                 else:
                     self._update_method = "update_data"
             else:
                 raise RuntimeError(
-                    "PlotTracker does not  work since the state "
-                    f"of type {state.__class__.__name__} does "
-                    "not use the plot protocol of "
+                    "PlotTracker does not  work since the state of type "
+                    f"{state.__class__.__name__} does not use the plot protocol of "
                     "`pde.tools.plotting`."
                 )
         else:
@@ -442,7 +441,7 @@ class PlotTracker(TrackerBase):
                 state.plot(**self.plot_args)
 
             else:
-                raise RuntimeError("Unknown update method " f"`{self._update_method}`")
+                raise RuntimeError(f"Unknown update method `{self._update_method}`")
 
         if self.output_file and self._context.fig is not None:
             self._context.fig.savefig(self.output_file)
