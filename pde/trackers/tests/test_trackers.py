@@ -37,10 +37,6 @@ def test_plot_tracker(tmp_path):
 
     assert output_file.stat().st_size > 0
 
-    import matplotlib.pyplot as plt
-
-    plt.close("all")
-
 
 @pytest.mark.skipif(not Movie.is_available(), reason="no ffmpeg")
 def test_plot_movie_tracker(tmp_path):
@@ -55,10 +51,6 @@ def test_plot_movie_tracker(tmp_path):
     pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
 
     assert output_file.stat().st_size > 0
-
-    import matplotlib.pyplot as plt
-
-    plt.close("all")
 
 
 def test_simple_progress():
@@ -114,10 +106,6 @@ def test_trackers():
         df = data.dataframe
         np.testing.assert_allclose(df["time"], times)
         np.testing.assert_allclose(df["integral"], state.integral)
-    if module_available("matplotlib"):
-        import matplotlib.pyplot as plt
-
-        plt.close("all")
 
 
 def test_callback_tracker():
@@ -134,10 +122,8 @@ def test_callback_tracker():
     state = ScalarField.random_uniform(grid, 0.2, 0.3)
     pde = DiffusionPDE()
     data_tracker = trackers.DataTracker(get_mean_data, interval=0.1)
-    tracker_list = [
-        trackers.CallbackTracker(store_mean_data, interval=0.1),
-        data_tracker,
-    ]
+    callback_tracker = trackers.CallbackTracker(store_mean_data, interval=0.1)
+    tracker_list = [data_tracker, callback_tracker]
     pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker_list, backend="numpy")
 
     np.testing.assert_array_equal(data, data_tracker.data)

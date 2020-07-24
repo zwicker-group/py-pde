@@ -297,8 +297,6 @@ def test_get_cartesian_grid(grid):
 @pytest.mark.parametrize("grid", iter_grids())
 def test_simple_plotting(grid):
     """ test simple plotting of various fields on various grids """
-    import matplotlib.pyplot as plt
-
     vf = VectorField.random_uniform(grid)
     tf = Tensor2Field.random_uniform(grid)
     sf = tf[0, 0]  # test extraction of fields
@@ -311,7 +309,6 @@ def test_simple_plotting(grid):
         if isinstance(f, VectorField) and grid.dim == 2:
             f.plot(kind="quiver")
             f.plot(kind="streamplot")
-        plt.close("all")
 
 
 def test_random_uniform():
