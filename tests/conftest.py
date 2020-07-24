@@ -13,7 +13,7 @@ def adjust_messages():
     # raise all underflow errors
     np.seterr(all="raise", under="ignore")
 
-    # run the actual test    
+    # run the actual test
     yield
 
     # clean up after the test

@@ -17,10 +17,10 @@ from pde import environment
 env = environment(OrderedDict)
 
 for category, data in env.items():
-    if hasattr(data, 'items'):
-        print(f'\n{category}:')
+    if hasattr(data, "items"):
+        print(f"\n{category}:")
         for key, value in data.items():
-            print(f'    {key}: {value}')
+            print(f"    {key}: {value}")
     else:
         data_formatted = data.replace("\n", "\n    ")
-        print(f'{category}: {data_formatted}')
+        print(f"{category}: {data_formatted}")

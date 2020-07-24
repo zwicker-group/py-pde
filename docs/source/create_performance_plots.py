@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-'''
+"""
 Code for creating performance plots
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-'''
+"""
 
 import os
-os.environ['NUMBA_NUM_THREADS'] = '1'  # check single thread performance
+
+os.environ["NUMBA_NUM_THREADS"] = "1"  # check single thread performance
 
 import functools
 import timeit
@@ -23,9 +24,9 @@ try:
 except ImportError:
     opencv_laplace = None
 else:
-    opencv_laplace = functools.partial(cv2.Laplacian, ddepth=cv2.CV_64F,
-                                       borderType=cv2.BORDER_REFLECT)
-
+    opencv_laplace = functools.partial(
+        cv2.Laplacian, ddepth=cv2.CV_64F, borderType=cv2.BORDER_REFLECT
+    )
 
 
 def time_function(func, arg, repeat=3):
@@ -42,7 +43,6 @@ def time_function(func, arg, repeat=3):
     number = int(estimate_computation_speed(func, arg))
     func = functools.partial(func, arg)
     return min(timeit.repeat(func, number=number, repeat=repeat)) / number
-    
 
 
 def get_performance_data(periodic=False):
@@ -62,18 +62,17 @@ def get_performance_data(periodic=False):
         data = {}
         grid = UnitGrid([size] * 2, periodic=periodic)
         test_data = np.random.randn(*grid.shape)
-        
-        for method in ['numba', 'scipy']:
-            op = grid.get_operator('laplace', bc='natural', method=method)
+
+        for method in ["numba", "scipy"]:
+            op = grid.get_operator("laplace", bc="natural", method=method)
             data[method] = time_function(op, test_data)
-            
+
         if opencv_laplace:
-            data['opencv'] = time_function(opencv_laplace, test_data)
-            
+            data["opencv"] = time_function(opencv_laplace, test_data)
+
         statistics[int(size)] = data
 
     return statistics
-
 
 
 def plot_performance(performance_data, title=None):
@@ -85,50 +84,46 @@ def plot_performance(performance_data, title=None):
         title (str): The title of the plot
     """
     plt.figure(figsize=[4, 3])
-    
-    METHOD_LABELS = {'numba': 'py-pde'}
-    
+
+    METHOD_LABELS = {"numba": "py-pde"}
+
     sizes = np.array(sorted(performance_data.keys()))
     grid_sizes = sizes ** 2
     methods = sorted(performance_data[sizes[0]].keys(), reverse=True)
-    
+
     for method in methods:
         data = np.array([performance_data[size][method] for size in sizes])
-        plt.loglog(grid_sizes, data, '.-',
-                   label=METHOD_LABELS.get(method, method))
-        
+        plt.loglog(grid_sizes, data, ".-", label=METHOD_LABELS.get(method, method))
+
     plt.xlim(grid_sizes[0], grid_sizes[-1])
-    plt.xlabel('Number of grid points')
-    plt.ylabel('Runtime [ms]')
-    plt.legend(loc='best')
-    
+    plt.xlabel("Number of grid points")
+    plt.ylabel("Runtime [ms]")
+    plt.legend(loc="best")
+
     # fix ticks of y-axis
-    locmaj = mpl.ticker.LogLocator(base=10, numticks=12) 
+    locmaj = mpl.ticker.LogLocator(base=10, numticks=12)
     plt.gca().xaxis.set_major_locator(locmaj)
-    
+
     if title:
         plt.title(title)
-        
-    plt.tight_layout()
 
+    plt.tight_layout()
 
 
 def main():
     """ run main scripts """
     data = get_performance_data(periodic=False)
     plot_performance(data, title="2D Laplacian (reflecting BCs)")
-    plt.savefig('performance_noflux.pdf', transparent=True)
-    plt.savefig('performance_noflux.png', transparent=True, dpi=200)
+    plt.savefig("performance_noflux.pdf", transparent=True)
+    plt.savefig("performance_noflux.png", transparent=True, dpi=200)
     plt.close()
-    
+
     data = get_performance_data(periodic=True)
     plot_performance(data, title="2D Laplacian (periodic BCs)")
-    plt.savefig('performance_periodic.pdf', transparent=True)
-    plt.savefig('performance_periodic.png', transparent=True, dpi=200)
+    plt.savefig("performance_periodic.pdf", transparent=True)
+    plt.savefig("performance_periodic.png", transparent=True, dpi=200)
     plt.close()
-    
 
 
 if __name__ == "__main__":
     main()
-    

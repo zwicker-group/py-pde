@@ -5,7 +5,8 @@ should ideally be below 1 second.
 """
 
 import sys
-sys.path.append('..')
+
+sys.path.append("..")
 
 from pyinstrument import Profiler
 
