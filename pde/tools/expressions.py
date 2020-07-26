@@ -26,8 +26,8 @@ from typing import Optional  # @UnusedImport
 from typing import Set  # @UnusedImport
 from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
 
-import numba as nb
-import numpy as np  # lgtm [py/import-and-import-from]
+import numba as nb  # lgtm [py/import-and-import-from]
+import numpy as np
 import sympy
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
