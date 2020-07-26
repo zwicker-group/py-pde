@@ -21,6 +21,7 @@ from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
+from ..tools.misc import hdf_write_attributes
 from ..tools.numba import address_as_void_pointer, jit
 from ..tools.plotting import PlotReference, plot_on_axes
 
@@ -149,24 +150,27 @@ class FieldBase(metaclass=ABCMeta):
         Args:
             filename (str):
                 Path where the data is stored
+            metadata (dict):
+                A dictionary of additional information that is stored with the file.
+                Note that not all formats support metadata.
             \**kwargs:
                 Additional parameters may be supported for some formats 
         """
         extension = Path(filename).suffix.lower()
 
         if extension in {".hdf", ".hdf5", ".he5", ".h5"}:
+            # save data in hdf5 format
             import h5py
 
             with h5py.File(filename, "w") as fp:
                 self._write_hdf_dataset(fp, **kwargs)
 
         elif extension in {".png", ".jpg", ".jpeg", ".tif", ".pdf", ".svg"}:
+            # save data as an image
             self._write_to_image(filename, **kwargs)
 
         else:
-            raise ValueError(
-                f"Do not know how to save data to file with extensions `{extension}`"
-            )
+            raise ValueError(f"Do not know how to save data to `*{extension}`")
 
     def _write_hdf_dataset(self, hdf_path, key: str = "data"):
         """ write data to a given hdf5 path `hdf_path` """

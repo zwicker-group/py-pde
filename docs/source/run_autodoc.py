@@ -59,8 +59,8 @@ def main():
             "--module-first",
             "../../pde",  # path of the package
             "../../pde/version.py",  # ignored file
-            "../../pde/tests",  # ignored path
-            "../../pde/**/tests",  # ignored path
+            "../../**/conftest.py",  # ignored file
+            "../../**/tests",  # ignored path
         ]
     )
 

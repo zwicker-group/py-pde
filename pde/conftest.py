@@ -1,14 +1,16 @@
 """
 This file is used to configure the test environment when running py.test
+
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import pytest
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import pytest
 
 
-@pytest.fixture(scope="function", autouse=True)
-def adjust_messages():
+@pytest.fixture(autouse=True)
+def suppressing():
     """ helper function adjusting message reporting for all tests """
     # raise all underflow errors
     np.seterr(all="raise", under="ignore")
@@ -16,5 +18,5 @@ def adjust_messages():
     # run the actual test
     yield
 
-    # clean up after the test
+    # clean up open matplotlib figures after the test
     plt.close("all")

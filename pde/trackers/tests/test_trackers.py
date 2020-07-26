@@ -172,7 +172,7 @@ def test_steady_state_tracker():
     storage = MemoryStorage()
     c0 = ScalarField.random_uniform(UnitGrid([5]))
     pde = DiffusionPDE()
-    tracker = trackers.SteadyStateTracker(atol=1e-2, rtol=1e-2)
+    tracker = trackers.SteadyStateTracker(atol=1e-2, rtol=1e-2, progress=True)
     pde.solve(c0, 1e3, dt=0.1, tracker=[tracker, storage.tracker(interval=1e2)])
     assert len(storage) < 9  # finished early
 

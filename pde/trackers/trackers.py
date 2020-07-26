@@ -33,7 +33,7 @@ import numpy as np
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import get_progress_bar_class
+from ..tools.misc import get_progress_bar_class, module_available
 from ..tools.parse_duration import parse_duration
 from .base import FinishedSimulation, InfoDict, Real, TrackerBase
 from .intervals import IntervalData, RealtimeIntervals
@@ -624,15 +624,26 @@ class DataTracker(CallbackTracker):
 class SteadyStateTracker(TrackerBase):
     """ Tracker that interrupts the simulation once steady state is reached
     
-    Steady state is obtained when the state does not change anymore. This is the
-    case when the derivative is close to zero.
+    Steady state is obtained when the state does not change anymore. This is the case
+    when the derivative is close to zero. Concretely, the current state `cur` is
+    compared to the state `prev` at the previous time step. Convergence is assumed when
+    :code:`abs(prev - cur) <= dt * (atol + rtol * cur)` for all points in the state.
+    Here, `dt` denotes the time that elapsed between the two states that are compared.
     """
 
     name = "steady_state"
 
+    progress_bar_format = (
+        "{desc}{percentage:3.0f}%|{bar}| [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
+    )
+
     @fill_in_docstring
     def __init__(
-        self, interval: IntervalData = None, atol: float = 1e-8, rtol: float = 1e-5
+        self,
+        interval: IntervalData = None,
+        atol: float = 1e-8,
+        rtol: float = 1e-5,
+        progress: bool = False,
     ):
         """
         Args:
@@ -640,17 +651,24 @@ class SteadyStateTracker(TrackerBase):
                 {ARG_TRACKER_INTERVAL}
                 The default value `None` checks for the steady state
                 approximately every (real) second.
-            atol (float): Absolute tolerance that must be reached to abort the
-                simulation
-            rtol (float): Relative tolerance that must be reached to abort the
-                simulation
+            atol (float):
+                Absolute tolerance that must be reached to abort the simulation
+            rtol (float):
+                Relative tolerance that must be reached to abort the simulation
+            progress (bool):
+                Flag indicating whether the progress towards convergence is shown
+                graphically during the simulation
         """
         if interval is None:
             interval = RealtimeIntervals(duration=1)
         super().__init__(interval=interval)
         self.atol = atol
         self.rtol = rtol
+        self.progress = progress and module_available("tqdm")
+
         self._last_data = None
+        self._best_diff_first = None
+        self._best_diff_max = None
 
     def handle(self, field: FieldBase, t: float) -> None:
         """ handle data supplied to this tracker
@@ -662,13 +680,35 @@ class SteadyStateTracker(TrackerBase):
                 The associated time
         """
         if self._last_data is not None:
-            # scale with dt to make test independent of dt
-            atol = self.atol * self.interval.dt
-            rtol = self.rtol * self.interval.dt
-            if np.allclose(
-                self._last_data, field.data, rtol=rtol, atol=atol, equal_nan=True
-            ):
+            # calculate maximal difference
+            # Here, atol and rtol are scaled with dt to make test independent of dt
+            finite = np.isfinite(field.data)  # ignore infinite and nan data
+            diff = np.abs(self._last_data[finite] - field.data[finite])
+            diff_abs = diff - self.rtol * self.interval.dt * np.abs(field.data[finite])
+            diff_abs_max = np.max(diff_abs) / self.interval.dt
+            if diff_abs_max <= self.atol:
+                if self.progress:
+                    self._progress_bar.close()
                 raise FinishedSimulation("Reached stationary state")
+
+            if self.progress:
+                if self._best_diff_max is None:
+                    # initialize progress bar
+                    pb_cls = get_progress_bar_class()
+                    self._pbar_offset = np.log10(diff_abs_max)
+                    self._progress_bar = pb_cls(
+                        total=self._pbar_offset - np.log10(self.atol),
+                        leave=False,
+                        bar_format=self.progress_bar_format,
+                    )
+                    self._progress_bar.set_description("Convergence")
+                    self._best_diff_max = diff_abs_max
+
+                elif diff_abs_max < self._best_diff_max:
+                    # update progress bar
+                    self._progress_bar.n = self._pbar_offset - np.log10(diff_abs_max)
+                    self._progress_bar.refresh()
+                    self._best_diff_max = diff_abs_max
 
         self._last_data = field.data.copy()  # store data from last timestep
 
