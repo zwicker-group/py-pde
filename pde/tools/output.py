@@ -27,7 +27,9 @@ class MockProgress:
         self.disable = False
 
     def __iter__(self):
-        return iter(self.iterable)
+        for value in self.iterable:
+            self.refresh()
+            yield value
 
     def close(self, *args, **kwargs):
         pass
