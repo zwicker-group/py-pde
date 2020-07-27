@@ -127,9 +127,7 @@ class Cuboid:
             return self.__class__.from_points(np.minimum(a1, b1), np.maximum(a2, b2))
 
         else:
-            raise NotImplementedError(
-                f"Cannot add cuboid and {other.__class__.__name__}"
-            )
+            return NotImplemented
 
     def __eq__(self, other):
         """ override the default equality test """

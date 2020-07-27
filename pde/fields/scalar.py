@@ -278,9 +278,8 @@ class ScalarField(DataFieldBase):
         import warnings
 
         warnings.warn(
-            "solve_poisson() method is deprecated. Use the function "
-            "pde.pdes.solve_poisson_equation or pde.pdes.solve_"
-            "laplace_equation instead.",
+            "solve_poisson() method is deprecated. Use the function `pde.pdes."
+            "solve_poisson_equation` or `pde.pdes.solve_laplace_equation` instead",
             DeprecationWarning,
         )
 

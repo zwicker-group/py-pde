@@ -636,6 +636,7 @@ class SteadyStateTracker(TrackerBase):
     progress_bar_format = (
         "{desc}{percentage:3.0f}%|{bar}| [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
     )
+    """ determines the format of the progress bar shown when `progress = True` """
 
     @fill_in_docstring
     def __init__(
@@ -721,7 +722,11 @@ class SteadyStateTracker(TrackerBase):
                     self._progress_bar.refresh()
                     self._best_diff_max = diff_abs_max
 
-        self._last_data = field.data.copy()  # store data from last timestep
+            self._last_data[:] = field.data  # save current data for next comparison
+
+        else:
+            # create storage for the data
+            self._last_data = field.data.copy()
 
 
 class RuntimeTracker(TrackerBase):

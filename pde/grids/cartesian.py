@@ -641,9 +641,8 @@ class CartesianGrid(CartesianGridBase):
         p1, p2 = self.cuboid.corners
         axes_coords, discretization = [], []
         for d in range(self.dim):
-            c, dc = np.linspace(
-                p1[d], p2[d], self.shape[d], endpoint=False, retstep=True
-            )
+            num = self.shape[d]
+            c, dc = np.linspace(p1[d], p2[d], num, endpoint=False, retstep=True)
             if self.shape[d] == 1:
                 # correct for singular dimension
                 dc = p2[d] - p1[d]
@@ -712,16 +711,15 @@ class CartesianGrid(CartesianGridBase):
                 f"points of dimension {self.dim}"
             )
 
-        if any(self.periodic):
+        periodic = self.periodic
+        if any(periodic):
             if self.dim == 1:  # single, periodic dimension
                 offset = self.cuboid.pos
                 point = (point - offset) % self.cuboid.size + offset
             else:  # multiple dimensions => extract the periodic ones
-                offset = self.cuboid.pos[self.periodic]
-                size = self.cuboid.size[self.periodic]
-                point[..., self.periodic] = (
-                    point[..., self.periodic] - offset
-                ) % size + offset
+                offset = self.cuboid.pos[periodic]
+                size = self.cuboid.size[periodic]
+                point[..., periodic] = (point[..., periodic] - offset) % size + offset
         return point
 
     def cell_to_point(self, cells, cartesian: bool = True):

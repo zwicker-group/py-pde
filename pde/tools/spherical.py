@@ -467,13 +467,11 @@ class PointsOnSphere:
             voronoi = spatial.SphericalVoronoi(points_flat)
             voronoi.sort_vertices_of_regions()
 
-            weights = np.array(
-                [
-                    get_spherical_polygon_area(voronoi.vertices[ix])
-                    for ix in voronoi.regions
-                ],
-                dtype=np.double,
-            )
+            weights = [
+                get_spherical_polygon_area(voronoi.vertices[ix])
+                for ix in voronoi.regions
+            ]
+            weights = np.array(weights, dtype=np.double)
             weights /= surface_from_radius(1, dim=self.dim)
 
         else:

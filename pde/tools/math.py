@@ -16,7 +16,8 @@ class SmoothData1D:
     an underlying relation `y_n = f(x_n)`.
     """
 
-    sigma_auto_scale: float = 10  # scale for setting automatic values for sigma
+    sigma_auto_scale: float = 10
+    """ float: scale for setting automatic values for sigma """
 
     def __init__(self, x, y, sigma: float = None):
         """ initialize with data

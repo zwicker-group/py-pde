@@ -754,9 +754,7 @@ def napari_viewer(grid: "GridBase", **kwargs):
     import napari
 
     if grid.num_axes == 1:
-        raise RuntimeError(
-            "Interactive plotting only works for data with at least 2 dimensions"
-        )
+        raise RuntimeError("Interactive plotting needs at least 2 spatial dimensions")
 
     viewer_args = kwargs
     viewer_args.setdefault("axis_labels", grid.axes)

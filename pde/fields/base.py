@@ -204,9 +204,8 @@ class FieldBase(metaclass=ABCMeta):
         from .scalar import ScalarField  # @Reimport
 
         # check whether they are the same class
-        class_compatible = self.__class__ == other.__class__ or (
-            accept_scalar and isinstance(other, ScalarField)
-        )
+        is_scalar = accept_scalar and isinstance(other, ScalarField)
+        class_compatible = self.__class__ == other.__class__ or is_scalar
         if not class_compatible:
             raise TypeError("Fields are incompatible")
 
@@ -519,14 +518,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 data = np.zeros(shape, dtype=np.double)
             elif isinstance(data, DataFieldBase):
                 # we need to make a copy to make sure the data is writeable
-                data = np.array(
-                    np.broadcast_to(data.data, shape), dtype=np.double, copy=True
-                )
+                data_reshaped = np.broadcast_to(data.data, shape)
+                data = np.array(data_reshaped, dtype=np.double, copy=True)
             else:
                 # we need to make a copy to make sure the data is writeable
-                data = np.array(
-                    np.broadcast_to(data, shape), dtype=np.double, copy=True
-                )
+                data_reshaped = np.broadcast_to(data, shape)
+                data = np.array(data_reshaped, dtype=np.double, copy=True)
 
         elif data is not None:
             # class does not manage its own data

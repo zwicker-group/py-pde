@@ -193,8 +193,7 @@ class ExpressionBase(metaclass=ABCMeta):
         args = set(args) - found
         if len(args) > 0:
             raise RuntimeError(
-                f"Arguments {args} were not defined in "
-                f"expression signature {signature}"
+                f"Arguments {args} were not defined in expression signature {signature}"
             )
 
     @property
@@ -357,8 +356,7 @@ class ScalarExpression(ExpressionBase):
         elif callable(expression):
             # expression is some other callable -> not allowed anymore
             raise TypeError(
-                "Expression must be provided as string and not as "
-                "a callable function"
+                "Expression must be provided as string and not as a callable function"
             )
 
         elif isinstance(expression, Number):
@@ -452,8 +450,7 @@ class ScalarExpression(ExpressionBase):
         if self.allow_indexed:
             if any(self._var_indexed(var) for var in self.vars):
                 raise RuntimeError(
-                    "Cannot calculate gradient for expressions "
-                    "with indexed variables"
+                    "Cannot calculate gradient for expressions with indexed variables"
                 )
 
         grad = sympy.Array([self._sympy_expr.diff(v) for v in self.vars])
@@ -559,13 +556,10 @@ class TensorExpression(ExpressionBase):
     def differentiate(self, var: str) -> "TensorExpression":
         """ return the expression differentiated with respect to var """
         if self.constant:
-            # return empty expression
-            return TensorExpression(
-                expression=np.zeros(self.shape), signature=self.vars
-            )
-        return TensorExpression(
-            self._sympy_expr.diff(var), signature=self.vars, user_funcs=self.user_funcs
-        )
+            derivative = np.zeros(self.shape)
+        else:
+            derivative = self._sympy_expr.diff(var)
+        return TensorExpression(derivative, self.vars, user_funcs=self.user_funcs)
 
     @cached_property()
     def derivatives(self) -> "TensorExpression":
@@ -574,14 +568,13 @@ class TensorExpression(ExpressionBase):
 
         if self.constant:
             # return empty expression
-            return TensorExpression(
-                sympy.Array(np.zeros(shape), shape), signature=self.vars
-            )
+            derivatives = sympy.Array(np.zeros(shape), shape)
+        else:
+            # perform the derivatives with respect to all variables
+            dx = sympy.Array([sympy.Symbol(s) for s in self.vars])
+            derivatives = sympy.derive_by_array(self._sympy_expr, dx)
 
-        # perform the derivatives with respect to all variables
-        dx = sympy.Array([sympy.Symbol(s) for s in self.vars])
-        derivs = sympy.derive_by_array(self._sympy_expr, dx)
-        return TensorExpression(derivs, signature=self.vars, user_funcs=self.user_funcs)
+        return TensorExpression(derivatives, self.vars, user_funcs=self.user_funcs)
 
     def get_compiled_array(self) -> Callable:
         """ compile the tensor expression such that a numpy array is returned
