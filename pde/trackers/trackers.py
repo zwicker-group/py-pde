@@ -634,7 +634,8 @@ class SteadyStateTracker(TrackerBase):
     name = "steady_state"
 
     progress_bar_format = (
-        "{desc}{percentage:3.0f}%|{bar}| [{elapsed}<{remaining}, {rate_fmt}{postfix}]"
+        "Convergence: {percentage:3.0f}%|{bar}| "
+        "[{elapsed}<{remaining}, {rate_fmt}{postfix}]"
     )
     """ determines the format of the progress bar shown when `progress = True` """
 
@@ -710,10 +711,8 @@ class SteadyStateTracker(TrackerBase):
                     self._pbar_offset = np.log10(diff_abs_max)
                     self._progress_bar = pb_cls(
                         total=self._pbar_offset - np.log10(self.atol),
-                        leave=False,
                         bar_format=self.progress_bar_format,
                     )
-                    self._progress_bar.set_description("Convergence")
                     self._best_diff_max = diff_abs_max
 
                 elif diff_abs_max < self._best_diff_max:
