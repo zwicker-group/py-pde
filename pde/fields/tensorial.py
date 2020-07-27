@@ -48,10 +48,9 @@ class Tensor2Field(DataFieldBase):
         dim = self.grid.dim
         self._data = value.reshape(dim, dim, *self.grid.shape)
         # check whether both point to the same memory location
-        assert (
-            value.__array_interface__["data"][0]
-            == self._data.__array_interface__["data"][0]
-        )
+        addr_value = value.__array_interface__["data"][0]
+        addr_self_data = self._data.__array_interface__["data"][0]
+        assert addr_value == addr_self_data
 
     def dot(
         self,
@@ -301,15 +300,13 @@ class Tensor2Field(DataFieldBase):
                 # in principle use the definition of np.linalg.det without the
                 # multiple checks to gain some speed
                 for i in np.ndindex(self.grid.shape):
-                    i2 = (Ellipsis,) + i  # type: ignore
-                    data[i] = np.linalg.det(self.data[i2])
+                    data[i] = np.linalg.det(self.data[(...,) + i])  # type: ignore
 
         else:
             raise ValueError(
-                f"Unknown method `{scalar}` for `to_scalar`. "
-                "Valid methods are `norm`, `min`, `max`, "
-                "squared_sum`, `trace`, `determinant`, and "
-                "`invariant#`, where # is 1, 2, or 3"
+                f"Unknown method `{scalar}` for `to_scalar`. Valid methods are `norm`, "
+                "`min`, `max`, squared_sum`, `trace`, `determinant`, and `invariant#`, "
+                "where # is 1, 2, or 3"
             )
 
         # determine label of the result

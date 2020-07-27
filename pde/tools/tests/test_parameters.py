@@ -15,6 +15,7 @@ from ..parameters import (
     Parameter,
     Parameterized,
     get_all_parameters,
+    sphinx_display_parameters,
 )
 
 
@@ -73,6 +74,17 @@ def test_parameters():
     assert t.get_parameter_default("a") == 3
     assert set(t.parameters.keys()) == {"a", "b", "c"}
 
+    # test get_all_parameters function after having used Parameters
+    p1 = get_all_parameters()
+    for key in ["value", "description"]:
+        p2 = get_all_parameters(key)
+        assert set(p1) == p2.keys()
+
+    # test whether sphinx_display_parameters runs
+    lines = [":param parameters:"]
+    sphinx_display_parameters(None, "class", "Test1", Test1, None, lines)
+    assert len(lines) > 1
+
 
 def test_parameters_simple():
     """ test adding parameters using a simple dictionary """
@@ -84,7 +96,7 @@ def test_parameters_simple():
     assert t.parameters["a"] == 1
 
 
-def test_parameter_help(capsys):
+def test_parameter_help(monkeypatch, capsys):
     """ test how parameters are shown """
 
     class Test1(Parameterized):
@@ -94,13 +106,16 @@ def test_parameter_help(capsys):
         parameters_default = [Parameter("b", 2, int, "another word")]
 
     t = Test2()
-    for flags in itertools.combinations_with_replacement([True, False], 3):
-        Test2.show_parameters(*flags)
-        o1, e1 = capsys.readouterr()
-        t.show_parameters(*flags)
-        o2, e2 = capsys.readouterr()
-        assert o1 == o2
-        assert e1 == e2 == ""
+    for in_jupyter in [False, True]:
+        monkeypatch.setattr("pde.tools.output.in_jupyter_notebook", lambda: in_jupyter)
+
+        for flags in itertools.combinations_with_replacement([True, False], 3):
+            Test2.show_parameters(*flags)
+            o1, e1 = capsys.readouterr()
+            t.show_parameters(*flags)
+            o2, e2 = capsys.readouterr()
+            assert o1 == o2
+            assert e1 == e2 == ""
 
 
 def test_hidden_parameter():
@@ -133,14 +148,6 @@ def test_hidden_parameter():
     t3 = Test3()
     assert t3.parameters == {"a": 1, "b": 3}
     assert t3.get_parameter_default("b") == 3
-
-
-def test_get_all_parameters():
-    """ test the get_all_parameters function """
-    p1 = get_all_parameters()
-    for key in ["value", "description"]:
-        p2 = get_all_parameters(key)
-        assert set(p1) == p2.keys()
 
 
 def test_convert_default_values(caplog):

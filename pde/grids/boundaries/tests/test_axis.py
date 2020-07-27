@@ -43,6 +43,10 @@ def test_boundary_pair():
     b_lo, b_hi = bc1
     assert b_lo == BCBase.from_data(g, 0, False, {"value": 0})
     assert b_hi == BCBase.from_data(g, 0, True, {"derivative": 0})
+    assert b_lo is bc1[0]
+    assert b_lo is bc1[False]
+    assert b_hi is bc1[1]
+    assert b_hi is bc1[True]
 
 
 def test_get_axis_boundaries():

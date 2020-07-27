@@ -33,7 +33,8 @@ import numpy as np
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import get_progress_bar_class, module_available
+from ..tools.misc import module_available
+from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
 from .base import FinishedSimulation, InfoDict, Real, TrackerBase
 from .intervals import IntervalData, RealtimeIntervals

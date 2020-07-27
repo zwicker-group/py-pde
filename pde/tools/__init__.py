@@ -11,6 +11,7 @@ Package containing several tools required in py-pde
    math
    misc
    numba
+   output
    parameters
    parse_duration
    plotting

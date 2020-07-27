@@ -23,7 +23,7 @@ from ..fields import FieldCollection
 from ..fields.base import DataFieldBase, FieldBase
 from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import display_progress
+from ..tools.output import display_progress
 from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
 
 _logger = logging.getLogger(__name__)

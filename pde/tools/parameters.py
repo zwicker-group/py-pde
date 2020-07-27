@@ -19,7 +19,9 @@ from collections import OrderedDict
 from typing import Any, Dict, Sequence, Union
 
 import numpy as np
-from pde.tools.misc import hybridmethod, import_class, in_jupyter_notebook
+
+from . import output
+from .misc import hybridmethod, import_class
 
 
 class Parameter:
@@ -330,25 +332,26 @@ class Parameterized:
         All flags default to `False`.
         """
         # determine whether we are in a jupyter notebook and can return HTML
-        in_notebook = in_jupyter_notebook()
-        try:
-            from IPython.display import HTML, display
-        except ImportError:
-            in_notebook = False
-
+        in_notebook = output.in_jupyter_notebook()
         if description is None:
             description = in_notebook  # show only in notebook by default
 
         # set the templates for displaying the data
         if in_notebook:
+            writer: output.StandardOutput = output.JupyterOutput(
+                '<style type="text/css">dl.py-pde_params dd {padding-left:2em}</style>'
+                '<dl class="py-pde_params">',
+                "</dl>",
+            )
             # templates for HTML output
             template = "<dt>{name} = {value!r}</dt>"
             if description:
                 template += "<dd>{description}</dd>"
-            html = ""
+            template_object = template
 
         else:
             # template for normal output
+            writer = output.BasicOutput()
             template = "{name}: {type} = {value!r}"
             template_object = "{name} = {value!r}"
             if description:
@@ -373,24 +376,13 @@ class Parameterized:
             else:
                 data["value"] = parameter_values[param.name]
 
-            if in_notebook:
-                # collect the data for later printing as HTML
-                html += template.format(**data)
+            # print the data to stdout
+            if param.cls is object:
+                writer(template_object.format(**data))
             else:
-                # print the data to stdout
-                if param.cls is object:
-                    print((template_object.format(**data)))
-                else:
-                    print((template.format(**data)))
+                writer(template.format(**data))
 
-        if in_notebook:
-            # output html with minimal styling
-            css = "dl.py-pde_parameters dd {padding-left:2em}"
-            html = HTML(
-                f'<style type="text/css">{css}</style>'
-                f'<dl class="py-pde_parameters">{html}</dl>'
-            )
-            display(html)
+        writer.show()
 
     @hybridmethod
     def show_parameters(
