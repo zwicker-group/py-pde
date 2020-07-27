@@ -304,13 +304,13 @@ class VectorField(DataFieldBase):
         Returns:
             Tensor2Field: the result of applying the operator 
         """
+        from .tensorial import Tensor2Field  # @Reimport
+
         vector_gradient = self.grid.get_operator("vector_gradient", bc=bc)
         if out is None:
-            from .tensorial import Tensor2Field  # @Reimport
-
             out = Tensor2Field(self.grid, vector_gradient(self.data), label=label)
         else:
-            assert isinstance(out, VectorField)
+            assert isinstance(out, Tensor2Field)
             self.grid.assert_grid_compatible(out.grid)
             vector_gradient(self.data, out=out.data)
         return out

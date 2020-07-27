@@ -634,8 +634,7 @@ class SteadyStateTracker(TrackerBase):
     name = "steady_state"
 
     progress_bar_format = (
-        "Convergence: {percentage:3.0f}%|{bar}| "
-        "[{elapsed}<{remaining}, {rate_fmt}{postfix}]"
+        "Convergence: {percentage:3.0f}%|{bar}| [{elapsed}<{remaining}]"
     )
     """ determines the format of the progress bar shown when `progress = True` """
 

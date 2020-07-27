@@ -451,7 +451,7 @@ class Parameterized:
             sort,
             show_hidden,
             show_deprecated,
-            None if default_value else self.parameters,
+            parameter_values=None if default_value else self.parameters,
         )
 
 

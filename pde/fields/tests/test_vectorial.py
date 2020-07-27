@@ -8,6 +8,7 @@ import pytest
 from ...grids import CartesianGrid, UnitGrid
 from ...tools.misc import module_available
 from ..base import FieldBase
+from ..tensorial import Tensor2Field
 from ..vectorial import VectorField
 
 
@@ -71,10 +72,38 @@ def test_divergence():
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(x) + y, np.sin(y) - x]
     v = VectorField(grid, data)
-    s = v.divergence("natural")
-    assert s.data.shape == (16, 16)
+
+    s1 = v.divergence("natural")
+    assert s1.data.shape == (16, 16)
     div = np.cos(y) - np.sin(x)
-    np.testing.assert_allclose(s.data, div, rtol=0.1, atol=0.1)
+    np.testing.assert_allclose(s1.data, div, rtol=0.1, atol=0.1)
+
+    v.divergence("natural", out=s1)
+    assert s1.data.shape == (16, 16)
+    np.testing.assert_allclose(s1.data, div, rtol=0.1, atol=0.1)
+
+
+def test_vector_gradient():
+    """ test the vector gradient operator """
+    grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
+    x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
+    data = [np.cos(x) + y, np.sin(y) - x]
+    v = VectorField(grid, data)
+
+    t1 = v.gradient("periodic")
+    assert t1.data.shape == (2, 2, 16, 16)
+    d00 = -np.sin(x)
+    d10 = np.ones(grid.shape)
+    d01 = -d10.copy()
+    d10[:, 0] = d10[:, -1] = -7
+    d01[0, :] = d01[-1, :] = 7
+    d11 = np.cos(y)
+    t2 = Tensor2Field(grid, np.array([[d00, d01], [d10, d11]]))
+    np.testing.assert_allclose(t1.data, t2.data, rtol=0.1, atol=0.1)
+
+    v.gradient("natural", out=t1)
+    assert t1.data.shape == (2, 2, 16, 16)
+    np.testing.assert_allclose(t1.data, t2.data, rtol=0.1, atol=0.1)
 
 
 def test_vector_laplace():
@@ -162,3 +191,13 @@ def test_boundary_interpolation_vector():
 
         ev = field.make_get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(ev(), bndry_val)
+
+
+def test_plotting_2d():
+    """ test plotting of 2d vector fields """
+    grid = UnitGrid([3, 3])
+    field = VectorField.random_uniform(grid, 0.1, 0.9)
+
+    for method in ["quiver", "streamplot"]:
+        ref = field.plot(method=method)
+        field._update_plot(ref)

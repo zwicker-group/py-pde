@@ -36,7 +36,7 @@ class Tensor2Field(DataFieldBase):
     def __getitem__(self, key: Tuple[int, int]) -> ScalarField:
         """ extract a component of the VectorField """
         try:
-            if not (isinstance(key[0], int) and isinstance(key[1], int)):
+            if len(key) != 2:
                 raise IndexError("Index must be given as two integers")
         except TypeError:
             raise IndexError("Index must be given as two integers")

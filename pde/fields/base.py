@@ -1633,7 +1633,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             kwargs = reference.parameters.get("kwargs", {})
             data = self.get_vector_data(transpose=transpose)
             # remove old streamplot
-            reference.element.remove()
+            ax.cla()
             # update with new streamplot
             reference.element = ax.streamplot(
                 data["x"], data["y"], data["data_x"], data["data_y"], **kwargs

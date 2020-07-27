@@ -82,6 +82,11 @@ def test_scalars():
     if module_available("matplotlib"):
         s1.plot(transpose=True, colorbar=True)
 
+    s3 = ScalarField(grid, s1)
+    assert s1 is not s3
+    assert s1 == s3
+    assert s1.grid is s3.grid
+
 
 def test_laplacian():
     """ test the gradient operator """
@@ -396,3 +401,21 @@ def test_numpy_ufuncs():
 
     with pytest.raises(TypeError):
         np.sum(f1, 1)
+
+
+def test_plotting_1d():
+    """ test plotting of 1d scalar fields """
+    grid = UnitGrid([3])
+    field = ScalarField.random_uniform(grid, 0.1, 0.9)
+
+    ref = field.plot()
+    field._update_plot(ref)
+
+
+def test_plotting_2d():
+    """ test plotting of 2d scalar fields """
+    grid = UnitGrid([3, 3])
+    field = ScalarField.random_uniform(grid, 0.1, 0.9)
+
+    ref = field.plot()
+    field._update_plot(ref)

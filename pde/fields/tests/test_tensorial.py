@@ -51,6 +51,10 @@ def test_tensors():
         assert p1.data.shape == grid.shape
         np.testing.assert_allclose(p1.data, value)
 
+    for idx in ((1,), (1, 2, 3), (1.5, 2), ("a", "b"), 1.0):
+        with pytest.raises(IndexError):
+            t1[idx]
+
     t2 = FieldBase.from_state(t1.attributes, data=t1.data)
     assert t1 == t2
     assert t1.grid is t2.grid
