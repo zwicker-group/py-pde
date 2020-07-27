@@ -31,15 +31,20 @@ Custom PDEs
 The `py-pde` package provides classes that help with implementing and analyzing
 partial differential equations.
 In particular, using the :class:`~pde.pdes.pde.PDE` class, PDEs can be defined
-by specifying their right-hand side as an expression. For instance, the
-Cahn-Hilliard equation could be implemented as
+by specifying their right-hand side as an expression.
+
+As an example, we consider the `Kuramoto–Sivashinsky equation 
+<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_,     
+:math:`\partial_t u = - \nabla^4 u - \nabla^2 u - \frac{1}{2} |\nabla u|^2`,
+which describes the time evolution of a scalar field :math:`u`.
+A simple implementation of this equation could read 
 
 .. code-block:: python
 
-    eq = PDE({'c': 'laplace(c**3 - c - laplace(c))'})
+    eq = PDE({"u": "-gradient_squared(u) / 2 - laplace(u + laplace(u))"})
     
 Here, the argument defines the evolution rate for all fields (in this case
-only :math:`c`).
+only :math:`u`).
 The expression on the right hand side can contain typical mathematical functions
 and the operators defined by the package.
 
@@ -49,12 +54,7 @@ Custom PDE classes
 To implement a new PDE in a way that all of the machinery of `py-pde` can be
 used, one needs to subclass :class:`~pde.pdes.base.PDEBase` and overwrite at 
 least the :meth:`~pde.pdes.base.PDEBase.evolution_rate` method.
-
-As an example, we consider the `Kuramoto–Sivashinsky equation 
-<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_,     
-:math:`\partial_t u = - \nabla^4 u - \nabla^2 u - \frac{1}{2} |\nabla u|^2`,
-which describes the time evolution of a scalar field :math:`u`.
-A simple implementation of this equation could read 
+A simple implementation for the Kuramoto–Sivashinsky equation could read 
 
 .. code-block:: python
 
@@ -121,7 +121,7 @@ The equivalent call using the low-level interface is
     laplace_data = apply_laplace(field.data)
     
 Here, the first line creates a function :code:`apply_laplace` for the given grid
-:code:`field.grid` and the same boundary conditions `bc`.
+:code:`field.grid` and the boundary conditions `bc`.
 This function can be applied to :class:`numpy.ndarray` instances, e.g.
 :code:`field.data`.
 Note that the result of this call is again a :class:`numpy.ndarray`.
@@ -144,8 +144,8 @@ This operator is then applied to a random field and the resulting
 
 The :code:`get_operator` method of the grids generally supports the following
 differential operators: :code:`'laplacian'`, :code:`'gradient'`,
-:code:`'divergence'`, :code:`'vector_gradient'`, :code:`'vector_laplace'`, 
-and :code:`'tensor_divergence'`.
+:code:`'gradient_squared'`, :code:`'divergence'`, :code:`'vector_gradient'`,
+:code:`'vector_laplace'`, and :code:`'tensor_divergence'`.
 However, a complete list of operators supported by a certain grid class can be
 obtained from the class property :attr:`GridClass.operators`.
 New operators can be added using the class method
@@ -198,7 +198,7 @@ Inner products
 For vector and tensor fields, `py-pde` defines inner products that can be
 accessed conveniently using the `@`-syntax: :code:`field1 @ field2` determines
 the scalar product between the two fields.
-The package also provides an implementation 
+The package also provides an implementation for an dot-operator:
 
 
 .. code-block:: python

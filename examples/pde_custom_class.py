@@ -1,11 +1,11 @@
 r"""
-Simple custom PDE class
-=======================
+Kuramoto-Sivashinsky - Using custom class
+=========================================
 
-This example implements a custom scalar PDE. To display some of the features of
-the package, we here implemented the `Kuramoto–Sivashinsky equation
-<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, which was
-considered for flame front dynamics:
+This example implements a scalar PDE using a custom class. We here consider the
+`Kuramoto–Sivashinsky equation
+<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, which for instance 
+describes the dynamics of flame fronts:
 
 .. math::
     \partial_t u = -\frac12 |\nabla u|^2 - \nabla^2 u - \nabla^4 u
