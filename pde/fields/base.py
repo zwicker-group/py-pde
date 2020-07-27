@@ -21,7 +21,6 @@ from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import hdf_write_attributes
 from ..tools.numba import address_as_void_pointer, jit
 from ..tools.plotting import PlotReference, plot_on_axes
 
