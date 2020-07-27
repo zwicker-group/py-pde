@@ -190,7 +190,7 @@ class ProgressTracker(TrackerBase):
             except TypeError:
                 self.progress_bar.close()
             else:
-                self.disable = True
+                self.progress_bar.disable = True
         else:
             self.progress_bar.close()
 
@@ -680,20 +680,31 @@ class SteadyStateTracker(TrackerBase):
                 The associated time
         """
         if self._last_data is not None:
-            # calculate maximal difference
-            # Here, atol and rtol are scaled with dt to make test independent of dt
+            # Calculate maximal difference of current state to previous one. In
+            # particular we calculate the absolute tolerance `diff_abs_max`, which would
+            # be required for the convergence test to pass. This value should decrease
+            # over time and give us an estimate for when convergence will be reached.
+            # Note that atol and rtol are scaled with dt to make test independent of dt.
             finite = np.isfinite(field.data)  # ignore infinite and nan data
             diff = np.abs(self._last_data[finite] - field.data[finite])
             diff_abs = diff - self.rtol * self.interval.dt * np.abs(field.data[finite])
             diff_abs_max = np.max(diff_abs) / self.interval.dt
+
             if diff_abs_max <= self.atol:
+                # simulation has converged
                 if self.progress:
-                    self._progress_bar.close()
+                    # advance progress bar to 100%
+                    self._progress_bar.n = self._pbar_offset - np.log10(self.atol)
+                    try:
+                        self._progress_bar.sp(bar_style="success")
+                    except TypeError:
+                        self._progress_bar.close()
                 raise FinishedSimulation("Reached stationary state")
 
             if self.progress:
+                # show progress of the convergence
                 if self._best_diff_max is None:
-                    # initialize progress bar
+                    # initialize the progress bar
                     pb_cls = get_progress_bar_class()
                     self._pbar_offset = np.log10(diff_abs_max)
                     self._progress_bar = pb_cls(
@@ -705,7 +716,7 @@ class SteadyStateTracker(TrackerBase):
                     self._best_diff_max = diff_abs_max
 
                 elif diff_abs_max < self._best_diff_max:
-                    # update progress bar
+                    # update progress bar if simulation got closer to convergence
                     self._progress_bar.n = self._pbar_offset - np.log10(diff_abs_max)
                     self._progress_bar.refresh()
                     self._best_diff_max = diff_abs_max
