@@ -338,7 +338,7 @@ class Parameterized:
 
         # set the templates for displaying the data
         if in_notebook:
-            writer: output.BasicOutput = output.JupyterOutput(
+            writer: output.OutputBase = output.JupyterOutput(
                 '<style type="text/css">dl.py-pde_params dd {padding-left:2em}</style>'
                 '<dl class="py-pde_params">',
                 "</dl>",

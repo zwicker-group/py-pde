@@ -15,6 +15,7 @@ Python functions for handling output
 
 import sys
 import warnings
+from abc import ABCMeta, abstractmethod
 from typing import List  # @UnusedImport
 
 
@@ -106,7 +107,19 @@ def display_progress(iterator, total=None, enabled=True, **kwargs):
     return get_progress_bar_class()(iterator, total=total, **kwargs)
 
 
-class BasicOutput:
+class OutputBase(metaclass=ABCMeta):
+    """ base class for output managment """
+
+    @abstractmethod
+    def __call__(self, line: str):
+        pass
+
+    @abstractmethod
+    def show(self):
+        pass
+
+
+class BasicOutput(OutputBase):
     """ class that writes text line to stdout """
 
     def __init__(self, stream=sys.stdout):
@@ -129,7 +142,7 @@ class BasicOutput:
         self.stream.flush()
 
 
-class JupyterOutput(BasicOutput):
+class JupyterOutput(OutputBase):
     """ class that writes text lines as html in a jupyter cell """
 
     def __init__(self, header: str = "", footer: str = ""):
