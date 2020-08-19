@@ -3,6 +3,7 @@
 """
 
 import itertools
+from copy import copy, deepcopy
 
 import numpy as np
 import pytest
@@ -33,7 +34,7 @@ def test_discretize():
 
 
 def test_serialization():
-    """ test whether grid can be serialized """
+    """ test whether grid can be serialized and copied"""
 
     def iter_grids():
         """ helper function iterating over different grids """
@@ -48,6 +49,10 @@ def test_serialization():
         g = GridBase.from_state(grid.state_serialized)
         assert grid == g
         assert grid._cache_hash() == g._cache_hash()
+
+        for g in (grid.copy(), copy(grid), deepcopy(grid)):
+            assert grid == g
+            assert grid is not g
 
 
 def test_iter_mirror_points():

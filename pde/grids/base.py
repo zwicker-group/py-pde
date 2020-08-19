@@ -207,6 +207,17 @@ class GridBase(metaclass=ABCMeta):
         """ return a copy of the grid """
         return self.__class__.from_state(self.state)
 
+    __copy__ = copy
+
+    def __deepcopy__(self, memo: Dict[int, Any]) -> "GridBase":
+        """ create a deep copy of the grid. This function is for instance called when
+        a grid instance appears in another object that is copied using `copy.deepcopy`
+        """
+        # this implementation assumes that a simple call to copy is sufficient
+        result = self.copy()
+        memo[id(self)] = result
+        return result
+
     def __repr__(self):
         """ return instance as string """
         args = ", ".join(str(k) + "=" + str(v) for k, v in self.state.items())
