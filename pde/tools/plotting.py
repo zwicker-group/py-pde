@@ -266,8 +266,8 @@ def plot_on_axes(wrapped=None, update_method=None):
             :meth:`matplotlib.pyplot.setp`. For instance, using
             fig_style={'dpi': 200} increases the resolution of the figure.
         ax (:class:`matplotlib.axes.Axes`):
-            Figure axes to be used for plotting. If `None`, a new figure
-            is created. This has no effect if a `reference` is supplied.
+            Figure axes to be used for plotting. If `None`, a new figure with a single
+            axes is created.
         """
         # Note on docstring: This docstring replaces the token {PLOT_ARGS} in
         # the wrapped function
