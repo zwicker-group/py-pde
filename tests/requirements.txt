@@ -1,5 +1,5 @@
 -r ../requirements.txt
-black>=19
+black>=19.*
 h5py>=2.10
 isort>=5.1
 mypy>=0.770
