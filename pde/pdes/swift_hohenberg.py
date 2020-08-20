@@ -12,7 +12,7 @@ from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit, nb
-from .base import PDEBase
+from .base import PDEBase, expr_prod
 
 
 class SwiftHohenbergPDE(PDEBase):
@@ -64,6 +64,15 @@ class SwiftHohenbergPDE(PDEBase):
         self.delta = delta
         self.bc = bc
         self.bc_lap = bc if bc_lap is None else bc_lap
+
+    @property
+    def expression(self) -> str:
+        """ str: the expression of the right hand side of this PDE """
+        return (
+            f"{expr_prod(self.rate - self.kc2 ** 2, 'c')} - c**3"
+            f" + {expr_prod(self.delta, 'c**2')}"
+            f" - laplace({expr_prod(2 * self.kc2, 'c')} + laplace(c))"
+        )
 
     def evolution_rate(  # type: ignore
         self, state: ScalarField, t: float = 0,

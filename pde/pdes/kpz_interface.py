@@ -12,7 +12,7 @@ from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit, nb
-from .base import PDEBase
+from .base import PDEBase, expr_prod
 
 
 class KPZInterfacePDE(PDEBase):
@@ -57,6 +57,15 @@ class KPZInterfacePDE(PDEBase):
         self.nu = nu
         self.lmbda = lmbda
         self.bc = bc
+
+    @property
+    def expression(self) -> str:
+        """ str: the expression of the right hand side of this PDE """
+        return (
+            expr_prod(self.nu, "laplace(c)")
+            + " + "
+            + expr_prod(self.lmbda, "gradient_squared(c)")
+        )
 
     def evolution_rate(  # type: ignore
         self, state: ScalarField, t: float = 0,

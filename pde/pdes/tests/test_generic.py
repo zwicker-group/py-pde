@@ -14,11 +14,12 @@ from ...grids import UnitGrid
 @pytest.mark.parametrize(
     "pde_class",
     [
-        pdes.KuramotoSivashinskyPDE,
-        pdes.KPZInterfacePDE,
-        pdes.SwiftHohenbergPDE,
-        pdes.DiffusionPDE,
+        pdes.AllenCahnPDE,
         pdes.CahnHilliardPDE,
+        pdes.DiffusionPDE,
+        pdes.KPZInterfacePDE,
+        pdes.KuramotoSivashinskyPDE,
+        pdes.SwiftHohenbergPDE,
     ],
 )
 def test_pde_consistency(pde_class, dim):
@@ -27,12 +28,18 @@ def test_pde_consistency(pde_class, dim):
     assert isinstance(str(eq), str)
     assert isinstance(repr(eq), str)
 
+    # compare numba to numpy implementation
     grid = UnitGrid([4] * dim)
     state = ScalarField.random_uniform(grid)
     field = eq.evolution_rate(state)
     assert field.grid == grid
     rhs = eq._make_pde_rhs_numba(state)
     np.testing.assert_allclose(field.data, rhs(state.data, 0))
+
+    # compare to generic implementation
+    assert isinstance(eq.expression, str)
+    eq2 = pdes.PDE({"c": eq.expression})
+    np.testing.assert_allclose(field.data, eq2.evolution_rate(state).data)
 
 
 def test_pde_consistency_test():

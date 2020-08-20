@@ -4,7 +4,7 @@ A simple diffusion equation
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable
+from typing import Callable, Dict
 
 import numpy as np
 
@@ -12,7 +12,7 @@ from ..fields import FieldCollection, ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit, nb
-from .base import PDEBase
+from .base import PDEBase, expr_prod
 
 
 class WavePDE(PDEBase):
@@ -67,6 +67,11 @@ class WavePDE(PDEBase):
         if v is None:
             v = u.copy(data=0)
         return FieldCollection([u, v])
+
+    @property
+    def expressions(self) -> Dict[str, str]:
+        """ dict: the expressions of the right hand side of this PDE """
+        return {"u": "v", "v": expr_prod(self.speed ** 2, "laplace(u)")}
 
     def evolution_rate(  # type: ignore
         self, state: FieldCollection, t: float = 0,

@@ -393,3 +393,21 @@ class PDEBase(metaclass=ABCMeta):
             return final_state, info
         else:
             return final_state
+
+
+def expr_prod(factor: float, expression: str) -> str:
+    """ helper function for building an expression with an (optional) pre-factor
+    
+    Args:
+        factor (float): The value of the prefactor
+        expression (str): The remaining expression
+    
+    Returns:
+        str: The expression with the factor appended if it is different from 1
+    """
+    if factor == 1:
+        return expression
+    elif factor == -1:
+        return f"-{expression}"
+    else:
+        return f"{factor:g} * {expression}"

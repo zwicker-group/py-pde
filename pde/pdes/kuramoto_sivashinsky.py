@@ -12,7 +12,7 @@ from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit, nb
-from .base import PDEBase
+from .base import PDEBase, expr_prod
 
 
 class KuramotoSivashinskyPDE(PDEBase):
@@ -60,6 +60,12 @@ class KuramotoSivashinskyPDE(PDEBase):
         self.nu = nu
         self.bc = bc
         self.bc_lap = bc if bc_lap is None else bc_lap
+
+    @property
+    def expression(self) -> str:
+        """ str: the expression of the right hand side of this PDE """
+        expr = f"c + {expr_prod(self.nu, 'laplace(c)')}"
+        return f"-laplace({expr}) - 0.5 * gradient_squared(c)"
 
     def evolution_rate(  # type: ignore
         self, state: ScalarField, t: float = 0,

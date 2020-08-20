@@ -12,7 +12,7 @@ from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit, nb
-from .base import PDEBase
+from .base import PDEBase, expr_prod
 
 
 class CahnHilliardPDE(PDEBase):
@@ -53,6 +53,11 @@ class CahnHilliardPDE(PDEBase):
         self.interface_width = interface_width
         self.bc_c = bc_c
         self.bc_mu = bc_mu
+
+    @property
+    def expression(self) -> str:
+        """ str: the expression of the right hand side of this PDE """
+        return f"laplace(c**3 - c - {expr_prod(self.interface_width, 'laplace(c)')})"
 
     def evolution_rate(  # type: ignore
         self, state: ScalarField, t: float = 0,
