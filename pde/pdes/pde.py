@@ -169,10 +169,7 @@ class PDE(PDEBase):
                 The field describing the state of the PDE
         """
         # check whether this function actually needs to be called
-        if (
-            "state_attributes" in self._cache
-            and state.attributes == self._cache["state_attributes"]
-        ):
+        if state.attributes == self._cache.get("state_attributes", None):
             return  # prepare was already called
         self._cache = {}  # clear cache, if there was something
 

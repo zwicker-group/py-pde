@@ -64,7 +64,7 @@ For instance, the
 [Cahn-Hilliard equation](https://en.wikipedia.org/wiki/Cahn–Hilliard_equation)
 can be implemented as
 ```python
-eq = pde.PDE({'c': 'laplace(c**3 - c - laplace(c))')
+eq = pde.PDE({'c': 'laplace(c**3 - c - laplace(c))'})
 ```
 which can be used in place of the `DiffusionPDE` in the example above.
 
