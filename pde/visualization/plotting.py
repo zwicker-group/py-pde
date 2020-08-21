@@ -491,7 +491,10 @@ class ScalarFieldPlot:
 def plot_magnitudes(
     storage: StorageBase, quantities=None, ax=None, **kwargs
 ) -> PlotReference:
-    r""" plot spatially integrated quantities as a function of time
+    r""" plot spatially averaged quantities as a function of time
+    
+    For scalar fields, the default is to plot the average value while the averaged norm
+    is plotted for vector fields.
     
     Args:
         storage:

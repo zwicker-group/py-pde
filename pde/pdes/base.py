@@ -79,9 +79,9 @@ class PDEBase(metaclass=ABCMeta):
             returns a measure for the corrections applied to the state 
         """
 
-        def modify_after_step(state: np.ndarray):
+        def modify_after_step(state: np.ndarray) -> float:
             """ no-op function """
-            pass
+            return 0
 
         return modify_after_step
 

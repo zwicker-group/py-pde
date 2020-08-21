@@ -4,7 +4,7 @@ Defines an explicit solver supporting various methods
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable
+from typing import Callable, Tuple
 
 import numpy as np
 
@@ -61,8 +61,11 @@ class ExplicitSolver(SolverBase):
         if self.pde.is_sde:
             # handle stochastic version of the pde
 
-            def stepper(state_data: np.ndarray, t_start: float, steps: int) -> float:
+            def stepper(
+                state_data: np.ndarray, t_start: float, steps: int
+            ) -> Tuple[float, float]:
                 """ compiled inner loop for speed """
+                modifications = 0.0
                 for i in range(steps):
                     # calculate the right hand side
                     t = t_start + i * dt
@@ -70,9 +73,9 @@ class ExplicitSolver(SolverBase):
                     state_data += dt * evolution_rate
                     if noise_realization is not None:
                         state_data += np.sqrt(dt) * noise_realization
-                    modify_after_step(state_data)
+                    modifications += modify_after_step(state_data)
 
-                return t + dt
+                return t + dt, modifications
 
             self.info["stochastic"] = True
             self._logger.info(
@@ -81,15 +84,18 @@ class ExplicitSolver(SolverBase):
 
         else:
             # handle deterministic  version of the pde
-            def stepper(state_data: np.ndarray, t_start: float, steps: int) -> float:
+            def stepper(
+                state_data: np.ndarray, t_start: float, steps: int
+            ) -> Tuple[float, float]:
                 """ compiled inner loop for speed """
+                modifications = 0
                 for i in range(steps):
                     # calculate the right hand side
                     t = t_start + i * dt
                     state_data += dt * rhs(state_data, t)
-                    modify_after_step(state_data)
+                    modifications += modify_after_step(state_data)
 
-                return t + dt
+                return t + dt, modifications
 
             self.info["stochastic"] = False
             self._logger.info(f"Initialized explicit Euler stepper with dt=%g", dt)
@@ -118,8 +124,11 @@ class ExplicitSolver(SolverBase):
         # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step())
 
-        def stepper(state_data: np.ndarray, t_start: float, steps: int) -> float:
+        def stepper(
+            state_data: np.ndarray, t_start: float, steps: int
+        ) -> Tuple[float, float]:
             """ compiled inner loop for speed """
+            modifications = 0
             for i in range(steps):
                 # calculate the right hand side
                 t = t_start + i * dt
@@ -131,9 +140,9 @@ class ExplicitSolver(SolverBase):
                 k4 = dt * rhs(state_data + k3, t + dt)
 
                 state_data += (k1 + 2 * k2 + 2 * k3 + k4) / 6
-                modify_after_step(state_data)
+                modifications += modify_after_step(state_data)
 
-            return t + dt
+            return t + dt, modifications
 
         self._logger.info(f"Initialized explicit Runge-Kutta-45 stepper with dt=%g", dt)
         return stepper
@@ -162,6 +171,7 @@ class ExplicitSolver(SolverBase):
         self.info["dt"] = dt
         self.info["steps"] = 0
         self.info["scheme"] = self.scheme
+        self.info["state_modifications"] = 0.0
 
         if self.scheme == "euler":
             inner_stepper = self._make_euler_stepper(state, dt)
@@ -178,8 +188,9 @@ class ExplicitSolver(SolverBase):
             """ use Euler stepping to advance `state` from `t_start` to `t_end` """
             # calculate number of steps (which is at least 1)
             steps = max(1, int(np.ceil((t_end - t_start) / dt)))
-            t_last = inner_stepper(state.data, t_start, steps)
+            t_last, modifications = inner_stepper(state.data, t_start, steps)
             self.info["steps"] += steps
+            self.info["state_modifications"] += modifications
             return t_last  # type: ignore
 
         return stepper

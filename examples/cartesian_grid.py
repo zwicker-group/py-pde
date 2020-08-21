@@ -13,4 +13,4 @@ state.add_interpolated([0, 1], 1)
 
 eq = DiffusionPDE(0.1)  # define the pde
 result = eq.solve(state, t_range=1, dt=0.01)
-result.plot(colorbar=True, cmap='magma')
+result.plot(colorbar=True, cmap="magma")
