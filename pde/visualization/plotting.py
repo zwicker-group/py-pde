@@ -608,9 +608,12 @@ def _plot_kymograph(
     ax.set_aspect("auto")
 
     if colorbar:
-        from ..tools.plotting import add_scaled_colorbar
+        import matplotlib.pyplot as plt
 
-        add_scaled_colorbar(axes_image, ax=ax)
+        plt.colorbar(axes_image, ax=ax)
+        # Note that we here do not use the method `add_scaled_colorbar` from the
+        # `pde.tools.plotting` module since this does not play well with axes with an
+        # explicit aspect ratio.
 
     return PlotReference(ax, axes_image)
 

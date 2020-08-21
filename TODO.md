@@ -1,13 +1,8 @@
 TODO
 ====
-* Add `expression` property to PDE class to return the expression:
-    - this expression should be directly useful in `PDE` class
-    - scalar PDEs should return a single string
-    - PDEs with multiple components should return a dictionary
 * Implement Gray Scott Model of Reaction Diffusion
 * Add a flag to switch floating precisions to np.single or np.longdouble
 * Accelerate some tests by not compiling
-* Fix scaling of `add_scaled_colorbar` for kymographs
 * pde.PDE:
     - add test for dot operator and custom boundary conditions
 * Plot tracker:

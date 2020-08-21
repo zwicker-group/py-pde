@@ -403,11 +403,13 @@ def expr_prod(factor: float, expression: str) -> str:
         expression (str): The remaining expression
     
     Returns:
-        str: The expression with the factor appended if it is different from 1
+        str: The expression with the factor appended if necessary
     """
-    if factor == 1:
+    if factor == 0:
+        return "0"
+    elif factor == 1:
         return expression
     elif factor == -1:
-        return f"-{expression}"
+        return "-" + expression
     else:
         return f"{factor:g} * {expression}"

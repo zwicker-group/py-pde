@@ -25,10 +25,34 @@ import logging
 import warnings
 from typing import TYPE_CHECKING, Any, Dict, Tuple, Type  # @UnusedImport
 
+from mpl_toolkits import axes_grid1
+
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
     from ..grids.base import GridBase  # @UnusedImport
+
+
+class _AxesXY(axes_grid1.axes_size._Base):
+    """
+    Scaled size whose relative part corresponds to the maximum of the data width and
+    data height of the *axes* multiplied by the *aspect*.
+    """
+
+    def __init__(self, axes, aspect=1.0):
+        self._axes = axes
+        self._aspect = aspect
+
+    def get_size(self, renderer):
+        l1, l2 = self._axes.get_xlim()
+        rel_size_x = abs(l2 - l1) * self._aspect
+
+        l1, l2 = self._axes.get_ylim()
+        rel_size_y = abs(l2 - l1) * self._aspect
+
+        abs_size = 0.0
+        rel_size = max(rel_size_x, rel_size_y)
+        return rel_size, abs_size
 
 
 def add_scaled_colorbar(
@@ -53,10 +77,8 @@ def add_scaled_colorbar(
     Returns:
         the result of the colorbar call
     """
-    from mpl_toolkits import axes_grid1
-
     divider = axes_grid1.make_axes_locatable(axes_image.axes)
-    width = axes_grid1.axes_size.AxesY(axes_image.axes, aspect=1.0 / aspect)
+    width = _AxesXY(axes_image.axes, aspect=1.0 / aspect)
     pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
     cax = divider.append_axes("right", size=width, pad=pad)
     return axes_image.axes.figure.colorbar(axes_image, cax=cax, **kwargs)
