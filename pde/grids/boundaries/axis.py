@@ -566,18 +566,24 @@ def get_boundary_axis(
     Returns:
         BoundaryAxisBase: The boundary condition for the axis
     """
+    # handle special constructs that describe boundary conditions
+    if data == "natural" or data == "auto_periodic_neumann":
+        # automatic choice between periodic and Neumann condition
+        data = "periodic" if grid.periodic[axis] else "derivative"
+    elif data == "auto_periodic_dirichlet":
+        # automatic choice between periodic and Dirichlet condition
+        data = "periodic" if grid.periodic[axis] else "value"
+
+    # handle different types of data that specify boundary conditions
     if isinstance(data, BoundaryAxisBase):
         # boundary is already in the correct format
         return data
-
     elif data == "periodic" or data == ("periodic", "periodic"):
         # initialize a periodic boundary condition
         return BoundaryPeriodic(grid, axis)
-
     elif isinstance(data, dict) and data.get("type") == "periodic":
         # initialize a periodic boundary condition
         return BoundaryPeriodic(grid, axis)
-
     else:
         # initialize independent boundary conditions for the two sides
         return BoundaryPair.from_data(grid, axis, data, rank=rank)

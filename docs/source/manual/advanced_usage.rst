@@ -18,12 +18,32 @@ and its derivative (in the outward direction) to be `2` on the upper side:
     field.laplace(bc)
     
 
-Here, the laplace operator applied to the field in the last line will respect
+Here, the Laplace operator applied to the field in the last line will respect
 the boundary conditions.
 Note that it suffices to give the condition once if it is the same on both
 sides.
 For instance, to enforce a value of `3` on both side, one could simply specify
 :code:`bc = {'type': 'value', 'value': 3}`.
+
+One important aspect about boundary conditions is that they need to respect the
+periodicity of the underlying grid.
+For instance, in a 2d grid with one periodic axis, the following boundary condition
+can be used:
+
+.. code-block:: python
+
+    grid = pde.UnitGrid([16, 16], periodic=[True, False])
+    field = pde.ScalarField(grid)
+    bc = ['periodic', {'derivative': 0}]
+    field.laplace(bc)
+    
+For convenience, this typical situation can be described with the special boundary
+condition `natural`, e.g., calling the Laplace operator using `field.laplace('natural')`
+is identical to the example above. Alternatively, this condition can be called
+`auto_periodic_neumann` to stress that this chooses between periodic and Neumann
+boundary conditions automatically. Similarly, the special condition
+`auto_periodic_dirichlet` enforces periodic boundary conditions or Dirichlet boundary
+condition (vanishing value), depending on the periodicity of the underlying grid. 
 
 
 Custom PDEs

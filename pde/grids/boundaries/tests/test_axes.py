@@ -5,11 +5,12 @@
 import itertools
 
 import numpy as np
+import pytest
 
 from ....fields import ScalarField
 from ... import UnitGrid
 from ..axes import Boundaries
-from ..axis import get_boundary_axis
+from ..axis import BoundaryPair, BoundaryPeriodic, get_boundary_axis
 
 
 def test_boundaries():
@@ -57,6 +58,28 @@ def test_mixed_boundary_condition():
     g1 = g.get_operator("gradient", bc=[{"mixed": 0}, {"mixed": np.inf}])
     g2 = g.get_operator("gradient", bc=["derivative", "value"])
     np.testing.assert_allclose(g1(d), g2(d))
+
+
+@pytest.mark.parametrize(
+    "cond,is_value",
+    [
+        ("natural", False),
+        ("auto_periodic_neumann", False),
+        ("auto_periodic_dirichlet", True),
+    ],
+)
+def test_natural_boundary_conditions(cond, is_value):
+    """ test special automatic boundary conditions """
+    g = UnitGrid([2, 2], periodic=[True, False])
+    for bc in [
+        Boundaries.from_data(g, cond),
+        Boundaries.from_data(g, ["periodic", cond]),
+    ]:
+        assert isinstance(bc[0], BoundaryPeriodic)
+        if is_value:
+            assert bc[1] == BoundaryPair.from_data(g, 1, "value")
+        else:
+            assert bc[1] == BoundaryPair.from_data(g, 1, "derivative")
 
 
 def test_special_cases():

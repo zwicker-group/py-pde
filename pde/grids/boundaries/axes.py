@@ -85,20 +85,16 @@ class Boundaries(list):
             return boundaries
 
         # convert natural boundary conditions if present
-        if boundaries == "natural":
+        if boundaries == "natural" or boundaries == "auto_periodic_neumann":
             # set the respective natural conditions for all axes
             boundaries = [
                 "periodic" if periodic else "no-flux" for periodic in grid.periodic
             ]
-
-        elif hasattr(boundaries, "__iter__"):
-            # convert natural boundary conditions on individual axes
-            for i, boundary in enumerate(boundaries):
-                if boundary == "natural":
-                    if grid.periodic[i]:
-                        boundaries[i] = "periodic"
-                    else:
-                        boundaries[i] = "no-flux"
+        elif boundaries == "auto_periodic_dirichlet":
+            # set the respective natural conditions (with vanishing values) for all axes
+            boundaries = [
+                "periodic" if periodic else "value" for periodic in grid.periodic
+            ]
 
         # create the list of BoundaryAxis objects
         if isinstance(boundaries, (str, dict)):
@@ -107,18 +103,15 @@ class Boundaries(list):
                 get_boundary_axis(grid, i, boundaries, rank=rank)
                 for i in range(grid.num_axes)
             ]
-
         elif len(boundaries) == grid.num_axes:
             # assume that data is given for each boundary
             bcs = [
                 get_boundary_axis(grid, i, boundary, rank=rank)
                 for i, boundary in enumerate(boundaries)
             ]
-
         elif grid.num_axes == 1 and len(boundaries) == 2:
             # special case where the two sides can be specified directly
             bcs = [get_boundary_axis(grid, 0, boundaries, rank=rank)]
-
         else:
             raise ValueError(
                 f"Unsupported boundary format: `{boundaries}`." + cls.get_help()

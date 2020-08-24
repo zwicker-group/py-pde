@@ -17,17 +17,16 @@ DOCSTRING_REPLACEMENTS = {
        :func:`~pde.grids.boundaries.axes.Boundaries.from_data`.
        """,
     "ARG_BOUNDARIES": """
-        Boundary conditions are generally given as a list with one condition for
-        each axis. For periodic axis, only periodic boundary conditions are
-        allowed (indicated by 'periodic'). For non-periodic axes, different 
-        boundary conditions can be specified for the lower and upper end (by a
-        tuple of two conditions). For instance, Dirichlet conditions enforcing a
-        value NUM (specified by `{'value': NUM}`) and Neumann conditions 
-        enforcing the value DERIV for the derivative in the normal direction
-        (specified by `{'derivative': DERIV}`) are supported.Note that the
-        special value 'natural' imposes periodic boundary conditions for
-        periodic axis and a vanishing derivative otherwise. More information can
-        be found in the
+        Boundary conditions are generally given as a list with one condition for each
+        axis. For periodic axis, only periodic boundary conditions are allowed
+        (indicated by 'periodic'). For non-periodic axes, different boundary conditions
+        can be specified for the lower and upper end (by a tuple of two conditions). For
+        instance, Dirichlet conditions enforcing a value NUM (specified by
+        `{'value': NUM}`) and Neumann conditions enforcing the value DERIV for the
+        derivative in the normal direction (specified by `{'derivative': DERIV}`) are
+        supported. Note that the special value 'natural' imposes periodic boundary
+        conditions for periodic axis and a vanishing derivative otherwise.
+        More information can be found in the
         :ref:`boundaries documentation <documentation-boundaries>`.
         """,
     "ARG_TRACKER_INTERVAL": """

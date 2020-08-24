@@ -643,10 +643,6 @@ class BCBase(metaclass=ABCMeta):
             assert data.grid == grid and data.axis == axis and data.rank == rank
             return data.copy(upper=upper)
 
-        elif data == "natural":
-            # special case of a vanishing derivative
-            return DirichletBC(grid, axis, upper=upper, rank=rank)
-
         elif isinstance(data, dict):
             # create from dictionary
             return cls.from_dict(grid, axis, upper=upper, data=data, rank=rank)

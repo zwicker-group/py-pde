@@ -55,7 +55,6 @@ def test_individual_boundaries():
         "value",
         {"value": 1},
         {"type": "value", "value": 1},
-        "natural",
         "derivative",
         {"derivative": 1},
         {"type": "derivative", "value": 1},
