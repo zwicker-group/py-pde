@@ -116,6 +116,16 @@ class BoundaryPair(BoundaryAxisBase):
         self.low.value = value
         self.high.value = value
 
+    def scale_value(self, factor: float = 1):
+        """ scales the value of the boundary condition with the given factor
+        
+        Args:
+            value (float):
+                Scales the value associated with the boundary condition by the factor
+        """
+        self.low.value = factor * self.low.value  # type: ignore
+        self.high.value = factor * self.high.value  # type: ignore
+
     @classmethod
     def get_help(cls) -> str:
         """ Return information on how boundary conditions can be set """

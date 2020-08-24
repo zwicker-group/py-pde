@@ -88,3 +88,14 @@ def test_special_cases():
     s = ScalarField(g, np.arange(5))
     for bc in ["extrapolate", {"curvature": 0}]:
         np.testing.assert_allclose(s.laplace(bc).data, 0)
+
+
+def test_bc_values():
+    """ test setting the values of boundary conditions """
+    g = UnitGrid([5])
+    bc = g.get_boundary_conditions([{"value": 2}, {"derivative": 3}])
+    assert bc[0].low.value == 2 and bc[0].high.value == 3
+    bc.scale_value(5)
+    assert bc[0].low.value == 10 and bc[0].high.value == 15
+    bc.set_value(7)
+    assert bc[0].low.value == bc[0].high.value == 7

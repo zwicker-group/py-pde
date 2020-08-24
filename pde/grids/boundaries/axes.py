@@ -185,6 +185,17 @@ class Boundaries(list):
             if not b.periodic:
                 b.set_value(value)
 
+    def scale_value(self, factor: float = 1):
+        """ scales the value of the boundary condition with the given factor
+        
+        Args:
+            value (float):
+                Scales the value associated with the boundary condition by the factor
+        """
+        for b in self:
+            if not b.periodic:
+                b.scale_value(factor)
+
     @property
     def _scipy_border_mode(self) -> dict:
         """ dict: return a dictionary that can be used in the scipy ndimage
