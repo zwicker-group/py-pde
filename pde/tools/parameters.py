@@ -171,7 +171,9 @@ class Parameterized:
 
         # set parameters if they have not been initialized, yet
         if not hasattr(self, "parameters"):
-            self.parameters = self._parse_parameters(parameters)
+            self.parameters = self._parse_parameters(
+                parameters, include_deprecated=True
+            )
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """ register all subclasses to reconstruct them later """

@@ -14,7 +14,7 @@ Here, :math:`D_0` and :math:`D_1` are the respective diffusivity and the
 parameters :math:`a` and :math:`b` are related to reaction rates.
 
 Note that the PDE can also be implemented using the :class:`~pde.pdes.pde.PDE`
-class; see :doc:`the example <pde_brusselator>`. However, that implementation
+class; see :doc:`the example <pde_brusselator_expression>`. However, that implementation
 is less flexible and might be more difficult to extend later.
 """
 
