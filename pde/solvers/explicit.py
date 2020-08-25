@@ -56,7 +56,7 @@ class ExplicitSolver(SolverBase):
         rhs = self._make_pde_rhs(state, backend=self.backend, allow_stochastic=True)
 
         # obtain post-step action function
-        modify_after_step = jit(self.pde.make_modify_after_step())
+        modify_after_step = jit(self.pde.make_modify_after_step(state))
 
         if self.pde.is_sde:
             # handle stochastic version of the pde
@@ -122,7 +122,7 @@ class ExplicitSolver(SolverBase):
         self.info["stochastic"] = False
 
         # obtain post-step action function
-        modify_after_step = jit(self.pde.make_modify_after_step())
+        modify_after_step = jit(self.pde.make_modify_after_step(state))
 
         def stepper(
             state_data: np.ndarray, t_start: float, steps: int

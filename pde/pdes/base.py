@@ -67,26 +67,31 @@ class PDEBase(metaclass=ABCMeta):
         # check for self.noise, in case __init__ is not called in a subclass
         return hasattr(self, "noise") and self.noise != 0
 
-    def make_modify_after_step(self) -> Callable:
+    def make_modify_after_step(self, state: FieldBase) -> Callable:
         """ returns a function that can be called to modify a state
         
         This function is applied to the state after each integration step when
         an explicit stepper is used. The default behavior is to not change the
         state.
         
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+        
         Returns:
             Function that can be applied to a state to modify it and which
             returns a measure for the corrections applied to the state 
         """
 
-        def modify_after_step(state: np.ndarray) -> float:
+        def modify_after_step(state_data: np.ndarray) -> float:
             """ no-op function """
             return 0
 
         return modify_after_step
 
     @abstractmethod
-    def evolution_rate(self, field: FieldBase, t: float = 0) -> FieldBase:
+    def evolution_rate(self, state: FieldBase, t: float = 0) -> FieldBase:
         pass
 
     def _make_pde_rhs_numba(self, state: FieldBase) -> Callable:
