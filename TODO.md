@@ -2,6 +2,7 @@ TODO
 ====
 * Support product of ndarray * field (the reverse product already works)
 * Add documentation entry for how to build expressions
+    - Improved documentation on how to set boundary conditions
 * Implement Gray Scott Model of Reaction Diffusion
 * Add a flag to switch floating precisions to np.single or np.longdouble
 * Accelerate some tests by not compiling

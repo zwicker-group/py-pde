@@ -483,6 +483,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         """
         from .boundaries import Boundaries  # @Reimport
 
+        # obtain boundary conditions
         return Boundaries.from_data(self, bc, rank=rank)
 
     def get_cartesian_grid(self, mode: str = "valid") -> CartesianGrid:

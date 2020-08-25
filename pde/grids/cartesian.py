@@ -378,8 +378,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 The boundary conditions applied to the field. 
                 {ARG_BOUNDARIES}  
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                conditions.
+                The tensorial rank of the value associated with the boundary conditions.
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -388,6 +387,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         from .boundaries import Boundaries  # @Reimport
 
+        # get boundary conditions
         return Boundaries.from_data(self, bc, rank=rank)
 
 

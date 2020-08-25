@@ -560,7 +560,7 @@ class BCBase(metaclass=ABCMeta):
             boundary_class = cls._conditions[condition]
         except KeyError:
             raise ValueError(
-                f"Boundary condition `{condition}` not defined." + cls.get_help()
+                f"Boundary condition `{condition}` not defined. " + cls.get_help()
             )
 
         # create the actual class

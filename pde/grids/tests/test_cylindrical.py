@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from .. import CylindricalGrid
+from ..boundaries.local import NeumannBC
 
 
 def test_cylindrical_grid():
@@ -84,3 +85,12 @@ def test_polar_conversion(periodic):
     assert np.any(dists < 0.11)
     assert np.all(dists <= np.sqrt(2))
     assert np.any(dists > 0.8 * np.sqrt(2))
+
+
+def test_setting_boundary_conditions():
+    """ test setting some boundary conditions """
+    grid = CylindricalGrid(1, [0, 1], 3)
+    b_inner = NeumannBC(grid, 0, upper=False)
+
+    assert grid.get_boundary_conditions("natural")[0].low == b_inner
+    assert grid.get_boundary_conditions({"value": 2})[0].low != b_inner

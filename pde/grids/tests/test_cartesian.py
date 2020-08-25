@@ -336,6 +336,14 @@ def test_setting_boundary_conditions():
         with pytest.raises(PeriodicityError):
             grid.get_boundary_conditions(bc)
 
+    grid = UnitGrid([2], periodic=True)
+    with pytest.raises(PeriodicityError):
+        grid.get_boundary_conditions("derivative")
+
+    grid = UnitGrid([2], periodic=False)
+    with pytest.raises(PeriodicityError):
+        grid.get_boundary_conditions("periodic")
+
 
 def test_setting_domain_rect():
     """ test various versions of settings bcs for cartesian grids """

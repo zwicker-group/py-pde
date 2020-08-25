@@ -204,8 +204,8 @@ class BoundaryPair(BoundaryAxisBase):
                 else:
                     # if the length is strange, the format must be wrong
                     raise ValueError(
-                        "List of boundary condition should be of of length 2, not : "
-                        f"`{data}`. " + cls.get_help()
+                        "Expected two conditions for the two sides of the axis, but "
+                        f"got `{data}`. " + cls.get_help()
                     )
 
         return cls(low, high)

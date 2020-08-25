@@ -5,7 +5,8 @@
 import numpy as np
 import pytest
 
-from ...grids import PolarGrid, SphericalGrid
+from .. import PolarGrid, SphericalGrid
+from ..boundaries.local import NeumannBC
 
 
 @pytest.mark.parametrize("grid_class", [PolarGrid, SphericalGrid])
@@ -16,9 +17,6 @@ def test_spherical_base_bcs(grid_class):
     domain1 = grid.get_boundary_conditions(["derivative", {"type": "value"}])
     domain2 = grid.get_boundary_conditions({"type": "value"})
     assert domain1 == domain2
-
-    with pytest.raises(ValueError):
-        grid.get_boundary_conditions(["value", "value"])
 
     # test boundary conditions for simulations with holes
     grid = grid_class((1, 2), 3)
@@ -180,3 +178,19 @@ def test_spherical_to_cartesian():
     pf_cart1 = pf_sph.interpolate_to_grid(grid_cart)
     pf_cart2 = ScalarField.from_expression(grid_cart, expression=expr_cart)
     np.testing.assert_allclose(pf_cart1.data, pf_cart2.data, atol=0.1)
+
+
+@pytest.mark.parametrize("grid_class", [PolarGrid, SphericalGrid])
+def test_setting_boundary_conditions(grid_class):
+    """ test setting some boundary conditions """
+    grid = grid_class([0, 1], 3)
+    b_inner = NeumannBC(grid, 0, upper=False)
+
+    assert grid.get_boundary_conditions("natural")[0].low == b_inner
+    assert grid.get_boundary_conditions({"value": 2})[0].low == b_inner
+    bcs = grid.get_boundary_conditions(["value", "value"])
+    assert bcs[0].low != b_inner
+
+    grid = grid_class([1, 2], 3)
+    bcs = grid.get_boundary_conditions(["value", "value"])
+    assert bcs[0].low != b_inner
