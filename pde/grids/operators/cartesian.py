@@ -875,8 +875,6 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
 def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a divergence operator using the scipy module
     
-    This only supports uniform discretizations.
-    
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
@@ -885,7 +883,7 @@ def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
         A function that can be applied to an array of values
     """
     shape = bcs.grid.shape
-    scaling = 0.5 / bcs._uniform_discretization
+    scaling = 0.5 / bcs.grid.discretization
     args = bcs._scipy_border_mode
 
     def divergence(arr, out=None):
@@ -899,8 +897,8 @@ def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
             out[:] = 0
 
         for i in range(len(shape)):
-            out += ndimage.convolve1d(arr[i], [1, 0, -1], axis=i, **args)
-        return out * scaling
+            out += ndimage.convolve1d(arr[i], [1, 0, -1], axis=i, **args) * scaling[i]
+        return out
 
     return divergence
 
@@ -1061,8 +1059,6 @@ def make_divergence(bcs: Boundaries, method: str = "auto") -> Callable:
 def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a vector gradient operator using the scipy module
     
-    This only supports uniform discretizations.
-    
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
@@ -1070,7 +1066,7 @@ def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     Returns:
         A function that can be applied to an array of values
     """
-    scaling = 0.5 / bcs._uniform_discretization
+    scaling = 0.5 / bcs.grid.discretization
     args = bcs._scipy_border_mode
     dim = bcs.grid.dim
     shape_out = (dim, dim) + bcs.grid.shape
@@ -1085,8 +1081,9 @@ def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
 
         for i in range(dim):
             for j in range(dim):
-                out[i, j] = ndimage.convolve1d(arr[j], [1, 0, -1], axis=i, **args)
-        return out * scaling
+                conv = ndimage.convolve1d(arr[j], [1, 0, -1], axis=i, **args)
+                out[i, j] = conv * scaling[i]
+        return out
 
     return vector_gradient
 
@@ -1361,9 +1358,7 @@ def make_vector_laplace(bcs: Boundaries, method: str = "auto") -> Callable:
 @fill_in_docstring
 def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     """ make a tensor divergence operator using the scipy module
-    
-    This only supports uniform discretizations.
-    
+        
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
@@ -1371,7 +1366,7 @@ def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     Returns:
         A function that can be applied to an array of values
     """
-    scaling = 0.5 / bcs._uniform_discretization
+    scaling = 0.5 / bcs.grid.discretization
     args = bcs._scipy_border_mode
     dim = bcs.grid.dim
     shape_out = (dim,) + bcs.grid.shape
@@ -1388,8 +1383,9 @@ def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
 
         for i in range(dim):
             for j in range(dim):
-                out[i] += ndimage.convolve1d(arr[i, j], [1, 0, -1], axis=j, **args)
-        return out * scaling
+                conv = ndimage.convolve1d(arr[i, j], [1, 0, -1], axis=j, **args)
+                out[i] += conv * scaling[j]
+        return out
 
     return tensor_divergence
 
