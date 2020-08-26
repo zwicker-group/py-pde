@@ -273,6 +273,7 @@ def _make_laplace_scipy_nd(bcs: Boundaries) -> Callable:
 
     def laplace(arr, out=None):
         """ apply laplace operator to array `arr` """
+        assert arr.shape == bcs.grid.shape
         return ndimage.laplace(scaling * arr, output=out, **args)
 
     return laplace
@@ -484,18 +485,22 @@ def _make_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     Returns:
         A function that can be applied to an array of values
     """
-    scaling = 0.5 / bcs._uniform_discretization
+    scaling = 0.5 / bcs.grid.discretization
     dim = bcs.grid.dim
     shape_out = (dim,) + bcs.grid.shape
     args = bcs._scipy_border_mode
 
     def gradient(arr, out=None):
         """ apply gradient operator to array `arr` """
+        assert arr.shape == bcs.grid.shape
         if out is None:
             out = np.empty(shape_out)
+        else:
+            assert out.shape == shape_out
+
         for i in range(dim):
-            out[i] = ndimage.convolve1d(arr, [1, 0, -1], axis=i, **args)
-        return out * scaling
+            out[i] = ndimage.convolve1d(arr, [1, 0, -1], axis=i, **args) * scaling[i]
+        return out
 
     return gradient
 
@@ -885,7 +890,8 @@ def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
 
     def divergence(arr, out=None):
         """ apply divergence operator to array `arr` """
-        assert arr.shape[0] == len(shape) and len(arr.shape) == len(shape) + 1
+        assert arr.shape[0] == len(shape) and arr.shape[1:] == shape
+
         # need to initialize with zeros since data is added later
         if out is None:
             out = np.zeros(arr.shape[1:])
@@ -1071,8 +1077,12 @@ def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
 
     def vector_gradient(arr, out=None):
         """ apply vector gradient operator to array `arr` """
+        assert arr.shape == shape_out[1:]
         if out is None:
             out = np.empty(shape_out)
+        else:
+            assert out.shape == shape_out
+
         for i in range(dim):
             for j in range(dim):
                 out[i, j] = ndimage.convolve1d(arr[j], [1, 0, -1], axis=i, **args)
@@ -1219,8 +1229,12 @@ def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> Callable:
 
     def vector_laplace(arr, out=None):
         """ apply vector Laplacian operator to array `arr` """
+        assert arr.shape == shape_out
         if out is None:
             out = np.empty(shape_out)
+        else:
+            assert out.shape == shape_out
+
         for i in range(dim):
             ndimage.laplace(arr[i], output=out[i], **args)
         return out * scaling
@@ -1365,9 +1379,11 @@ def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     def tensor_divergence(arr, out=None):
         """ apply tensor divergence operator to array `arr` """
         # need to initialize with zeros since data is added later
+        assert arr.shape[0] == dim and arr.shape[1:] == shape_out
         if out is None:
             out = np.zeros(shape_out)
         else:
+            assert out.shape == shape_out
             out[:] = 0
 
         for i in range(dim):
