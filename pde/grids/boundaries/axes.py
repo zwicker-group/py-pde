@@ -103,18 +103,21 @@ class Boundaries(list):
                 get_boundary_axis(grid, i, boundaries, rank=rank)
                 for i in range(grid.num_axes)
             ]
-        elif len(boundaries) == grid.num_axes:
-            # assume that data is given for each boundary
-            bcs = [
-                get_boundary_axis(grid, i, boundary, rank=rank)
-                for i, boundary in enumerate(boundaries)
-            ]
-        elif grid.num_axes == 1 and len(boundaries) == 2:
-            # special case where the two sides can be specified directly
-            bcs = [get_boundary_axis(grid, 0, boundaries, rank=rank)]
+
+        elif hasattr(boundaries, "__len__"):
+            if len(boundaries) == grid.num_axes:
+                # assume that data is given for each boundary
+                bcs = [
+                    get_boundary_axis(grid, i, boundary, rank=rank)
+                    for i, boundary in enumerate(boundaries)
+                ]
+            elif grid.num_axes == 1 and len(boundaries) == 2:
+                # special case where the two sides can be specified directly
+                bcs = [get_boundary_axis(grid, 0, boundaries, rank=rank)]
+
         else:
             raise ValueError(
-                f"Unsupported boundary format: `{boundaries}`." + cls.get_help()
+                f"Unsupported boundary format: `{boundaries}`. " + cls.get_help()
             )
 
         return cls(bcs)
