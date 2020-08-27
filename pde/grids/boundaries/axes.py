@@ -97,6 +97,7 @@ class Boundaries(list):
             ]
 
         # create the list of BoundaryAxis objects
+        bcs = None
         if isinstance(boundaries, (str, dict)):
             # one specification for all axes
             bcs = [
@@ -105,6 +106,7 @@ class Boundaries(list):
             ]
 
         elif hasattr(boundaries, "__len__"):
+            # handle cases that look like sequences
             if len(boundaries) == grid.num_axes:
                 # assume that data is given for each boundary
                 bcs = [
@@ -115,7 +117,8 @@ class Boundaries(list):
                 # special case where the two sides can be specified directly
                 bcs = [get_boundary_axis(grid, 0, boundaries, rank=rank)]
 
-        else:
+        if bcs is None:
+            # none of the logic worked
             raise ValueError(
                 f"Unsupported boundary format: `{boundaries}`. " + cls.get_help()
             )
