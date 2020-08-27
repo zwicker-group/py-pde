@@ -1,6 +1,7 @@
 #!/bin/bash
 
 export NUMBA_WARNINGS=1
+export NUMBA_BOUNDSCHECK=1
 export MPLBACKEND="agg"
 
 if [ ! -z $1 ] 
