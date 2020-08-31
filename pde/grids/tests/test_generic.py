@@ -90,6 +90,13 @@ def test_cell_to_point_conversion():
         assert grid.cell_to_point(p_emtpy).size == 0
 
 
+def test_integration():
+    """ test integration of fields """
+    for grid in iter_grids():
+        arr = np.random.randn(*grid.shape)
+        assert grid.make_integrator()(arr) == pytest.approx(grid.integrate(arr))
+
+
 @skipUnlessModule("matplotlib")
 def test_grid_plotting():
     """ test plotting of grids """

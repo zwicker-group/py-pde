@@ -26,6 +26,7 @@ from typing import (
     Union,
 )
 
+import numba as nb
 import numpy as np
 
 from ..tools.cache import cached_method, cached_property
@@ -287,6 +288,11 @@ class GridBase(metaclass=ABCMeta):
         """ :class:`numpy.ndarray`: volume of each cell """
         vols = functools.reduce(np.outer, self.cell_volume_data)
         return np.broadcast_to(vols, self.shape)
+
+    @cached_property()
+    def uniform_cell_volumes(self) -> bool:
+        """ bool: returns True if all cell volumes are the same """
+        return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
     def distance_real(self, p1, p2) -> float:
         """Calculate the distance between two points given in real coordinates
@@ -1080,3 +1086,39 @@ class GridBase(metaclass=ABCMeta):
             )
 
         return add_interpolated  # type: ignore
+
+    def make_integrator(self) -> Callable:
+        """Return function that can be used to integrates discretized data over the grid
+
+        Note that currently only scalar fields are supported.
+
+        Returns:
+            callable: A function that takes a numpy array and returns the integral with
+            the correct weights given by the cell volumes.
+        """
+        num_axes = self.num_axes
+
+        if self.uniform_cell_volumes:
+            # all cells have the same volume
+            cell_volume = functools.reduce(np.outer, self.cell_volume_data)
+
+            @jit
+            def integrate(arr: np.ndarray) -> Union[float, np.ndarray]:
+                """ function that integrates data over a uniform grid """
+                assert arr.ndim == num_axes
+                return cell_volume * arr.sum()
+
+        else:
+            # cell volume varies with position
+            get_cell_volume = self.make_cell_volume_compiled(flat_index=True)
+
+            @jit
+            def integrate(arr: np.ndarray) -> float:
+                """ function that integrates scalar data over a non-uniform grid """
+                assert arr.ndim == num_axes
+                total = 0
+                for i in nb.prange(arr.size):
+                    total += get_cell_volume(i) * arr.flat[i]
+                return total
+
+        return integrate  # type: ignore

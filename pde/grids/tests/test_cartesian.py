@@ -44,6 +44,7 @@ def test_generic_cartesian_grid():
             assert dim_axes == dim
             vol = np.prod(grid.discretization) * np.prod(shape)
             assert grid.volume == pytest.approx(vol)
+            assert grid.uniform_cell_volumes
 
             # random points
             points = [
@@ -280,34 +281,31 @@ def test_rect_grid_3d():
         assert np.all(grid.polar_coordinates_real(p) < np.sqrt(3))
 
 
-def test_unit_rect_grid():
-    """test whether the rectangular grid behaves like a unit grid in
-    special cases"""
-    for periodic in [True, False]:
-        msg = "periodic=%s" % str(periodic)
+@pytest.mark.parametrize("periodic", [True, False])
+def test_unit_rect_grid(periodic):
+    """test whether the rectangular grid behaves like a unit grid in special cases"""
+    dim = random.randrange(1, 4)
+    shape = np.random.randint(2, 10, size=dim)
+    g1 = UnitGrid(shape, periodic=periodic)
+    g2 = CartesianGrid(np.c_[np.zeros(dim), shape], shape, periodic=periodic)
+    volume = np.prod(shape)
+    for g in [g1, g2]:
+        assert g.volume == pytest.approx(volume)
+        assert g.integrate(1) == pytest.approx(volume)
+        assert g.make_integrator()(np.ones(shape)) == pytest.approx(volume)
 
-        dim = random.randrange(1, 4)
-        shape = np.random.randint(2, 10, size=dim)
-        g1 = UnitGrid(shape, periodic=periodic)
-        g2 = CartesianGrid(np.c_[np.zeros(dim), shape], shape, periodic=periodic)
-        volume = np.prod(shape)
-        assert g1.volume == pytest.approx(volume)
-        assert g2.volume == pytest.approx(volume)
-        assert g1.integrate(1) == pytest.approx(volume)
-        assert g2.integrate(1) == pytest.approx(volume)
+    assert g1.dim == g2.dim == dim
+    np.testing.assert_array_equal(g1.shape, g2.shape)
+    assert g1.typical_discretization == pytest.approx(g2.typical_discretization)
 
-        assert g1.dim == g2.dim == dim
-        np.testing.assert_array_equal(g1.shape, g2.shape)
-        assert g1.typical_discretization == pytest.approx(g2.typical_discretization)
+    for _ in range(10):
+        p1, p2 = np.random.normal(scale=10, size=(2, dim))
+        assert g1.distance_real(p1, p2) == pytest.approx(g2.distance_real(p1, p2))
 
-        for _ in range(10):
-            p1, p2 = np.random.normal(scale=10, size=(2, dim))
-            assert g1.distance_real(p1, p2) == pytest.approx(g2.distance_real(p1, p2))
-
-        p0 = np.random.normal(scale=10, size=dim)
-        np.testing.assert_allclose(
-            g1.polar_coordinates_real(p0), g2.polar_coordinates_real(p0), err_msg=msg
-        )
+    p0 = np.random.normal(scale=10, size=dim)
+    np.testing.assert_allclose(
+        g1.polar_coordinates_real(p0), g2.polar_coordinates_real(p0)
+    )
 
 
 def test_conversion_unit_rect_grid():

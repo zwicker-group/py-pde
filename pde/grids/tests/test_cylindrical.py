@@ -22,6 +22,7 @@ def test_cylindrical_grid():
         assert grid.discretization[0] == pytest.approx(0.5)
         assert grid.discretization[1] == pytest.approx(1 / 3)
         np.testing.assert_array_equal(grid.discretization, np.array([0.5, 1 / 3]))
+        assert not grid.uniform_cell_volumes
         assert grid.volume == pytest.approx(np.pi * 4 ** 2 * 3)
         assert grid.volume == pytest.approx(grid.integrate(1))
 
