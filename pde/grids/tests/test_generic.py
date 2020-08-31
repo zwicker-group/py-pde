@@ -94,7 +94,9 @@ def test_integration():
     """ test integration of fields """
     for grid in iter_grids():
         arr = np.random.randn(*grid.shape)
-        assert grid.make_integrator()(arr) == pytest.approx(grid.integrate(arr))
+        res = grid.make_integrator()(arr)
+        assert np.isscalar(res)
+        assert res == pytest.approx(grid.integrate(arr))
 
 
 @skipUnlessModule("matplotlib")

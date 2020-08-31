@@ -1100,7 +1100,7 @@ class GridBase(metaclass=ABCMeta):
 
         if self.uniform_cell_volumes:
             # all cells have the same volume
-            cell_volume = functools.reduce(np.outer, self.cell_volume_data)
+            cell_volume = np.product(self.cell_volume_data)
 
             @jit
             def integrate(arr: np.ndarray) -> Union[float, np.ndarray]:
