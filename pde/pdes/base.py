@@ -21,11 +21,11 @@ if TYPE_CHECKING:
 
 
 class PDEBase(metaclass=ABCMeta):
-    """ base class for solving partial differential equations
-    
+    """base class for solving partial differential equations
+
     Custom PDEs can be implemented by specifying their evolution rate. In the
     simple case of deterministic PDEs, the methods
-    :meth:`PDEBase.evolution_rate` and :meth:`PDEBase._make_pde_rhs_numba` need 
+    :meth:`PDEBase.evolution_rate` and :meth:`PDEBase._make_pde_rhs_numba` need
     to be overwritten for the `numpy` and `numba` backend, respectively.
     """
 
@@ -46,7 +46,7 @@ class PDEBase(metaclass=ABCMeta):
                 by default. If set to zero, a deterministic partial differential
                 equation will be solved. Different noise magnitudes can be
                 supplied for each field in coupled PDEs.
-                
+
         Note:
             If more complicated noise structures are required, the methods
             :meth:`PDEBase.noise_realization` and
@@ -58,8 +58,8 @@ class PDEBase(metaclass=ABCMeta):
 
     @property
     def is_sde(self) -> bool:
-        """ flag indicating whether this is a stochastic differential equation
-        
+        """flag indicating whether this is a stochastic differential equation
+
         The :class:`BasePDF` class supports additive Gaussian white noise, whose
         magnitude is controlled by the `noise` property. In this case, `is_sde`
         is `True` if `self.noise != 0`.
@@ -68,20 +68,20 @@ class PDEBase(metaclass=ABCMeta):
         return hasattr(self, "noise") and self.noise != 0
 
     def make_modify_after_step(self, state: FieldBase) -> Callable:
-        """ returns a function that can be called to modify a state
-        
+        """returns a function that can be called to modify a state
+
         This function is applied to the state after each integration step when
         an explicit stepper is used. The default behavior is to not change the
         state.
-        
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-        
+
         Returns:
             Function that can be applied to a state to modify it and which
-            returns a measure for the corrections applied to the state 
+            returns a measure for the corrections applied to the state
         """
 
         def modify_after_step(state_data: np.ndarray) -> float:
@@ -99,16 +99,16 @@ class PDEBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     def make_pde_rhs(self, state: FieldBase, backend: str = "auto") -> Callable:
-        """ return a function for evaluating the right hand side of the PDE
-        
+        """return a function for evaluating the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
                 information can be extracted
-            backend (str): Determines how the function is created. Accepted 
+            backend (str): Determines how the function is created. Accepted
                 values are 'python` and 'numba'. Alternatively, 'auto' lets the
                 code decide for the most optimal backend.
-                
+
         Returns:
             Function determining the right hand side of the PDE
         """
@@ -158,8 +158,8 @@ class PDEBase(metaclass=ABCMeta):
     def noise_realization(
         self, state: FieldBase, t: float = 0, label: str = "Noise realization"
     ) -> FieldBase:
-        """ returns a realization for the noise
-        
+        """returns a realization for the noise
+
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 The scalar field describing the concentration distribution
@@ -167,10 +167,10 @@ class PDEBase(metaclass=ABCMeta):
                 The current time point
             label (str):
                 The label for the returned field
-            
+
         Returns:
             :class:`~pde.fields.ScalarField`:
-            Scalar field describing the evolution rate of the PDE 
+            Scalar field describing the evolution rate of the PDE
         """
         if self.noise:
             if np.isscalar(self.noise):
@@ -197,13 +197,13 @@ class PDEBase(metaclass=ABCMeta):
             return state.copy(data=0, label=label)
 
     def _make_noise_realization_numba(self, state: FieldBase) -> Callable:
-        """ return a function for evaluating the noise term of the PDE
-        
+        """return a function for evaluating the noise term of the PDE
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
                 information can be extracted
-                
+
         Returns:
             Function determining the right hand side of the PDE
         """
@@ -250,13 +250,13 @@ class PDEBase(metaclass=ABCMeta):
         return noise_realization  # type: ignore
 
     def _make_sde_rhs_numba(self, state: FieldBase) -> Callable:
-        """ return a function for evaluating the noise term of the PDE
-        
+        """return a function for evaluating the noise term of the PDE
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
                 information can be extracted
-                
+
         Returns:
             Function determining the right hand side of the PDE
         """
@@ -271,16 +271,16 @@ class PDEBase(metaclass=ABCMeta):
         return sde_rhs  # type: ignore
 
     def make_sde_rhs(self, state: FieldBase, backend: str = "auto") -> Callable:
-        """ return a function for evaluating the right hand side of the SDE
-        
+        """return a function for evaluating the right hand side of the SDE
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
                 information can be extracted
-            backend (str): Determines how the function is created. Accepted 
+            backend (str): Determines how the function is created. Accepted
                 values are 'python` and 'numba'. Alternatively, 'auto' lets the
                 code decide for the most optimal backend.
-                
+
         Returns:
             Function determining the deterministic part of the right hand side
             of the PDE together with a noise realization.
@@ -326,20 +326,20 @@ class PDEBase(metaclass=ABCMeta):
         ret_info: bool = False,
         **kwargs,
     ) -> Union[FieldBase, Tuple[FieldBase, Dict[str, Any]]]:
-        """ convenience method for solving the partial differential equation 
-        
+        """convenience method for solving the partial differential equation
+
         The method constructs a suitable solver
         (:class:`~pde.solvers.base.SolverBase`) and controller
         (:class:`~pde.controller.Controller`) to advance the state over the
         temporal range specified by `t_range`. To obtain full flexibility, it is
-        advisable to construct these classes explicitly. 
+        advisable to construct these classes explicitly.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
                 The initial state (which also defines the grid)
             t_range (float or tuple):
                 Sets the time range for which the PDE is solved. If only a
-                single value `t_end` is given, the time range is assumed to be 
+                single value `t_end` is given, the time range is assumed to be
                 `[0, t_end]`.
             dt (float):
                 Time step of the chosen stepping scheme. If `None`, a default
@@ -361,7 +361,7 @@ class PDEBase(metaclass=ABCMeta):
                 process should be returned.
             **kwargs:
                 Additional keyword arguments are forwarded to the solver class
-                
+
         Returns:
             :class:`~pde.fields.base.FieldBase`:
             The state at the final time point. In the case `ret_info == True`, a
@@ -401,12 +401,12 @@ class PDEBase(metaclass=ABCMeta):
 
 
 def expr_prod(factor: float, expression: str) -> str:
-    """ helper function for building an expression with an (optional) pre-factor
-    
+    """helper function for building an expression with an (optional) pre-factor
+
     Args:
         factor (float): The value of the prefactor
         expression (str): The remaining expression
-    
+
     Returns:
         str: The expression with the factor appended if necessary
     """

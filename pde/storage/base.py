@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 
 class StorageBase(metaclass=ABCMeta):
-    """ base class for storing time series of discretized fields
-    
+    """base class for storing time series of discretized fields
+
     These classes store time series of subclasses of
     :class:`~pde.fields.base.FieldBase`, i.e., they store the values of the
     fields at particular time points. Iterating of the storage will return the
@@ -56,8 +56,8 @@ class StorageBase(metaclass=ABCMeta):
 
     @property
     def data_shape(self) -> Tuple[int, ...]:
-        """ the current data shape.
-        
+        """the current data shape.
+
         Raises:
             RuntimeError: if data_shape was not set
         """
@@ -71,8 +71,8 @@ class StorageBase(metaclass=ABCMeta):
         pass
 
     def clear(self, clear_data_shape: bool = False) -> None:
-        """ truncate the storage by removing all stored data.
-        
+        """truncate the storage by removing all stored data.
+
         Args:
             clear_data_shape (bool):
                 Flag determining whether the data shape is also deleted.
@@ -104,8 +104,8 @@ class StorageBase(metaclass=ABCMeta):
 
     @property
     def grid(self) -> Optional[GridBase]:
-        """ GridBase: the grid associated with this storage
-        
+        """GridBase: the grid associated with this storage
+
         This returns `None` if grid was not stored in `self.info`.
         """
         if self._grid is None:
@@ -118,15 +118,15 @@ class StorageBase(metaclass=ABCMeta):
         return self._grid
 
     def _get_field(self, t_index: int) -> FieldBase:
-        """ return the field corresponding to the given time index
-        
-        Load the data associated with a given index, i.e., with time 
+        """return the field corresponding to the given time index
+
+        Load the data associated with a given index, i.e., with time
         `self.times[t_index]`.
-        
+
         Args:
             t_index (int):
                 The index of the data to load
-                
+
         Returns:
             :class:`~pde.fields.FieldBase`:
             The field class containing the grid and data
@@ -201,12 +201,12 @@ class StorageBase(metaclass=ABCMeta):
     def tracker(
         self, interval: Union[int, float, IntervalType] = 1
     ) -> "StorageTracker":
-        """ create object that can be used as a tracker to fill this storage
-        
+        """create object that can be used as a tracker to fill this storage
+
         Args:
             interval:
                 {ARG_TRACKER_INTERVAL}
-            
+
         Returns:
             :class:`~pde.trackers.trackers.StorageTracker`
             The tracker that fills the current storage
@@ -214,8 +214,8 @@ class StorageBase(metaclass=ABCMeta):
         return StorageTracker(storage=self, interval=interval)
 
     def start_writing(self, field: FieldBase, info: InfoDict = None) -> None:
-        """ initialize the storage for writing data
-        
+        """initialize the storage for writing data
+
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 An example of the data that will be written to extract the grid
@@ -241,16 +241,16 @@ class StorageBase(metaclass=ABCMeta):
         pass
 
     def extract_field(self, field_index: int) -> "MemoryStorage":
-        """ extract the time course of a single field in a collection
-         
+        """extract the time course of a single field in a collection
+
         Note:
             This might return a view into the original data, so modifying the
             returned data can also change the underlying original data.
-         
+
         Args:
             field_index (index):
                 The index into the field collection
-                 
+
         Returns:
             :class:`MemoryStorage`: a storage instance that contains the data
             for the single field
@@ -274,18 +274,18 @@ class StorageBase(metaclass=ABCMeta):
     def extract_time_range(
         self, t_range: Union[float, Tuple[float, float]] = None
     ) -> "MemoryStorage":
-        """ extract a particular time interval
-        
+        """extract a particular time interval
+
         Note:
             This might return a view into the original data, so modifying the
             returned data can also change the underlying original data.
-        
+
         Args:
             t_range (float or tuple):
                 Determines the range of time points included in the result. If
                 only a single number is given, all data up to this time point
                 are included.
-                
+
         Returns:
             :class:`MemoryStorage`: a storage instance that contains the
             extracted data.
@@ -316,11 +316,11 @@ class StorageBase(metaclass=ABCMeta):
 
 
 class StorageTracker(TrackerBase):
-    """ Tracker that stores data in special storage classes 
-    
+    """Tracker that stores data in special storage classes
+
     Attributes:
         storage (:class:`~pde.storage.base.StorageBase`):
-            The underlying storage class through which the data can be accessed 
+            The underlying storage class through which the data can be accessed
     """
 
     @fill_in_docstring
@@ -336,13 +336,13 @@ class StorageTracker(TrackerBase):
         self.storage = storage
 
     def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
-        """ 
+        """
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 An example of the data that will be analyzed by the tracker
             info (dict):
-                Extra information from the simulation        
-                
+                Extra information from the simulation
+
         Returns:
             float: The first time the tracker needs to handle data
         """
@@ -351,8 +351,8 @@ class StorageTracker(TrackerBase):
         return result
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """ handle data supplied to this tracker
-        
+        """handle data supplied to this tracker
+
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
@@ -361,11 +361,11 @@ class StorageTracker(TrackerBase):
         self.storage.append(field.data, time=t)
 
     def finalize(self, info: InfoDict = None) -> None:
-        """ finalize the tracker, supplying additional information
+        """finalize the tracker, supplying additional information
 
         Args:
             info (dict):
-                Extra information from the simulation        
+                Extra information from the simulation
         """
         super().finalize(info)
         self.storage.end_writing()

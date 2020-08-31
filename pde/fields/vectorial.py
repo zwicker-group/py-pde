@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 
 
 class VectorField(DataFieldBase):
-    """ Single vector field on a grid
-    
+    """Single vector field on a grid
+
     Attributes:
         grid (:class:`~pde.grids.base.GridBase`):
             The underlying grid defining the discretization
@@ -38,16 +38,16 @@ class VectorField(DataFieldBase):
     def from_scalars(
         cls, fields: List[ScalarField], label: str = None
     ) -> "VectorField":
-        """ create a vector field from a list of ScalarFields
-        
+        """create a vector field from a list of ScalarFields
+
         Note that the data of the scalar fields is copied in the process
-        
+
         Args:
             fields (list):
                 The list of (compatible) scalar fields
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
             :class:`VectorField`: the resulting vector field
         """
@@ -71,11 +71,11 @@ class VectorField(DataFieldBase):
     def from_expression(
         cls, grid: GridBase, expressions: Sequence[str], label: str = None
     ) -> "VectorField":
-        """ create a vector field on a grid from given expressions
+        """create a vector field on a grid from given expressions
 
         Warning:
             {WARNING_EXEC}
-        
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
@@ -121,12 +121,12 @@ class VectorField(DataFieldBase):
         out: Optional[Union[ScalarField, "VectorField"]] = None,
         label: str = "dot product",
     ) -> Union[ScalarField, "VectorField"]:
-        """ calculate the dot product involving a vector field
-        
+        """calculate the dot product involving a vector field
+
         This supports the dot product between two vectors fields as well as the
         product between a vector and a tensor. The resulting fields will be a
         scalar or vector, respectively.
-        
+
         Args:
             other (VectorField or Tensor2Field):
                 the second field
@@ -134,9 +134,9 @@ class VectorField(DataFieldBase):
                 Optional field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
-            ScalarField or VectorField: the result of applying the dot operator             
+            ScalarField or VectorField: the result of applying the dot operator
         """
         from .tensorial import Tensor2Field  # @Reimport
 
@@ -165,14 +165,14 @@ class VectorField(DataFieldBase):
     __matmul__ = dot  # support python @-syntax for matrix multiplication
 
     def get_dot_operator(self) -> Callable:
-        """ return operator calculating the dot product involving vector fields
-        
+        """return operator calculating the dot product involving vector fields
+
         This supports both products between two vectors as well as products
         between a vector and a tensor.
-        
+
         Warning:
             This function does not check types or dimensions.
-        
+
         Returns:
             function that takes two instance of :class:`numpy.ndarray`, which
             contain the discretized data of the two operands. An optional third
@@ -193,8 +193,8 @@ class VectorField(DataFieldBase):
         if nb.config.DISABLE_JIT:
 
             def dot(a: np.ndarray, b: np.ndarray, out: np.ndarray = None) -> np.ndarray:
-                """ wrapper deciding whether the underlying function is called
-                with or without `out`. """
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
                 if out is None:
                     out = np.empty(b.shape[1:])
                 return inner(a, b, out)
@@ -203,8 +203,8 @@ class VectorField(DataFieldBase):
 
             @nb.generated_jit
             def dot(a: np.ndarray, b: np.ndarray, out: np.ndarray = None) -> np.ndarray:
-                """ wrapper deciding whether the underlying function is called
-                with or without `out`. """
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
                 if isinstance(a, nb.types.Number):
                     # simple scalar call -> do not need to allocate anything
                     raise RuntimeError("Dot needs to be called with fields")
@@ -226,8 +226,8 @@ class VectorField(DataFieldBase):
     def outer_product(
         self, other: "VectorField", out: "Tensor2Field" = None, label: str = None
     ) -> "Tensor2Field":
-        """ calculate the outer product of this vector field with another
-        
+        """calculate the outer product of this vector field with another
+
         Args:
             other (:class:`VectorField`):
                 The second vector field
@@ -235,7 +235,7 @@ class VectorField(DataFieldBase):
                 Optional tensorial field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-        
+
         """
         from .tensorial import Tensor2Field  # @Reimport
 
@@ -260,19 +260,19 @@ class VectorField(DataFieldBase):
         out: Optional[ScalarField] = None,
         label: str = "divergence",
     ) -> ScalarField:
-        """ apply divergence operator and return result as a field 
-        
+        """apply divergence operator and return result as a field
+
         Args:
-            bc: 
+            bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
-            ScalarField: the result of applying the operator 
+            ScalarField: the result of applying the operator
         """
         divergence = self.grid.get_operator("divergence", bc=bc)
         if out is None:
@@ -290,8 +290,8 @@ class VectorField(DataFieldBase):
         out: Optional["Tensor2Field"] = None,
         label: str = "gradient",
     ) -> "Tensor2Field":
-        """ apply (vecotr) gradient operator and return result as a field 
-        
+        """apply (vecotr) gradient operator and return result as a field
+
         Args:
             bc:
                 The boundary conditions applied to the field.
@@ -300,9 +300,9 @@ class VectorField(DataFieldBase):
                 Optional tensorial field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
-            Tensor2Field: the result of applying the operator 
+            Tensor2Field: the result of applying the operator
         """
         from .tensorial import Tensor2Field  # @Reimport
 
@@ -322,19 +322,19 @@ class VectorField(DataFieldBase):
         out: Optional["VectorField"] = None,
         label: str = "vector laplacian",
     ) -> "VectorField":
-        """ apply vector Laplace operator and return result as a field 
-        
+        """apply vector Laplace operator and return result as a field
+
         Args:
-            bc: 
+            bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (VectorField, optional):
                 Optional vector field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
-            VectorField: the result of applying the operator 
+            VectorField: the result of applying the operator
         """
         if out is not None:
             assert isinstance(out, VectorField)
@@ -349,17 +349,17 @@ class VectorField(DataFieldBase):
     def to_scalar(
         self, scalar: str = "auto", label: Optional[str] = "scalar `{scalar}`"
     ) -> ScalarField:
-        """ return a scalar field by applying `method`
-        
+        """return a scalar field by applying `method`
+
         The two tensor invariants are given by
-        
+
         Args:
             scalar (str):
                 Choose the method to use. Possible  choices are `norm` (the
                 default), `max`, `min`, or `squared_sum`.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
             :class:`pde.fields.scalar.ScalarField`: the scalar field after
             applying the operation
@@ -390,8 +390,8 @@ class VectorField(DataFieldBase):
     def get_vector_data(
         self, transpose: bool = False, max_points: int = None, **kwargs
     ) -> Dict[str, Any]:
-        r""" return data for a vector plot of the field
-        
+        r"""return data for a vector plot of the field
+
         Args:
             transpose (bool):
                 Determines whether the transpose of the data should be plotted.
@@ -400,9 +400,9 @@ class VectorField(DataFieldBase):
                 option can be used to subsample the data.
             \**kwargs: Additional parameters are forwarded to
                 `grid.get_image_data`
-        
+
         Returns:
-            dict: Information useful for plotting an vector field        
+            dict: Information useful for plotting an vector field
         """
         # TODO: Handle Spherical and Cartesian grids, too. This could be
         # implemented by adding a get_vector_data method to the grids

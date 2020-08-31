@@ -21,8 +21,8 @@ class SolverBase(metaclass=ABCMeta):
     _subclasses: Dict[str, "SolverBase"] = {}  # all inheriting classes
 
     def __init__(self, pde: PDEBase):
-        """ initialize the solver
-        
+        """initialize the solver
+
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved
@@ -45,13 +45,13 @@ class SolverBase(metaclass=ABCMeta):
 
     @classmethod
     def from_name(cls, name: str, pde: PDEBase, **kwargs) -> "SolverBase":
-        r""" create solver class based on its name
-        
+        r"""create solver class based on its name
+
         Solver classes are automatically registered when they inherit from
         :class:`SolverBase`. Note that this also requires that the respective
         python module containing the solver has been loaded before it is
         attempted to be used.
-        
+
         Args:
             name (str):
                 The name of the solver to construct
@@ -59,7 +59,7 @@ class SolverBase(metaclass=ABCMeta):
                 The partial differential equation that should be solved
             \**kwargs:
                 Additional arguments for the constructor of the solver
-            
+
         Returns:
             An instance of a subclass of :class:`SolverBase`
         """
@@ -88,8 +88,8 @@ class SolverBase(metaclass=ABCMeta):
     def _make_pde_rhs(
         self, state: FieldBase, backend: str = "auto", allow_stochastic: bool = False
     ):
-        """ obtain a function for evaluating the right hand side
-        
+        """obtain a function for evaluating the right hand side
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
@@ -102,14 +102,14 @@ class SolverBase(metaclass=ABCMeta):
             allow_stochastic (bool):
                 Flag indicating whether stochastic simulations should be
                 supported.
-                
+
         Raises:
             RuntimeError: when a stochastic partial differential equation is
             encountered but `allow_stochastic == False`.
-        
+
         Returns:
             A function that is called with data given by a
-            :class:`numpy.ndarray` and a time. The function returns the 
+            :class:`numpy.ndarray` and a time. The function returns the
             deterministic evolution rate and (if applicable) a realization of
             the associated noise.
         """

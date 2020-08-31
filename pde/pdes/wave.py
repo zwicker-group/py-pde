@@ -37,7 +37,7 @@ class WavePDE(PDEBase):
 
     @fill_in_docstring
     def __init__(self, speed: float = 1, bc: BoundariesData = "natural"):
-        """ 
+        """
         Args:
             speed (float):
                 The speed :math:`c` of the wave
@@ -51,15 +51,15 @@ class WavePDE(PDEBase):
         self.bc = bc
 
     def get_initial_condition(self, u: ScalarField, v: ScalarField = None):
-        """ create a suitable initial condition
-        
+        """create a suitable initial condition
+
         Args:
             u (:class:`~pde.fields.ScalarField`):
                 The initial density on the grid
             v (:class:`~pde.fields.ScalarField`, optional):
                 The initial rate of change. This is assumed to be zero if the
                 value is omitted.
-                
+
         Returns:
             :class:`~pde.fields.FieldCollection`:
                 The combined fields u and v, suitable for the simulation
@@ -74,19 +74,21 @@ class WavePDE(PDEBase):
         return {"u": "v", "v": expr_prod(self.speed ** 2, "laplace(u)")}
 
     def evolution_rate(  # type: ignore
-        self, state: FieldCollection, t: float = 0,
+        self,
+        state: FieldCollection,
+        t: float = 0,
     ) -> FieldCollection:
-        """ evaluate the right hand side of the PDE
-        
+        """evaluate the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.FieldCollection`):
                 The fields :math:`u` and :math:`v` distribution
             t (float):
                 The current time point
-            
+
         Returns:
             :class:`~pde.fields.FieldCollection`:
-            Scalar field describing the evolution rate of the PDE 
+            Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, FieldCollection)
         u, v = state
@@ -95,17 +97,17 @@ class WavePDE(PDEBase):
         return FieldCollection([u_t, v_t])
 
     def _make_pde_rhs_numba(self, state: FieldCollection) -> Callable:  # type: ignore
-        """ create a compiled function evaluating the right hand side of the PDE
-        
+        """create a compiled function evaluating the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.FieldCollection`):
                 An example for the state defining the grid and data types
-                
+
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`numpy.ndarray` of the state data and
             the time to obtained an instance of :class:`numpy.ndarray` giving
-            the evolution rate.  
+            the evolution rate.
         """
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty((2,) + shape, dtype=np.double))

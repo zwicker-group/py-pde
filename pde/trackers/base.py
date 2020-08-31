@@ -48,11 +48,11 @@ class TrackerBase(metaclass=ABCMeta):
 
     @classmethod
     def from_data(cls, data: TrackerDataType, **kwargs) -> "TrackerBase":
-        """ create tracker class from given data
-        
+        """create tracker class from given data
+
         Args:
             data (str or TrackerBase): Data describing the tracker
-            
+
         Returns:
             :class:`TrackerBase`: An instance representing the tracker
         """
@@ -68,14 +68,14 @@ class TrackerBase(metaclass=ABCMeta):
             raise ValueError(f"Unsupported tracker format: `{data}`.")
 
     def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
-        """ initialize the tracker with information about the simulation
-        
+        """initialize the tracker with information about the simulation
+
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 An example of the data that will be analyzed by the tracker
             info (dict):
-                Extra information from the simulation        
-                
+                Extra information from the simulation
+
         Returns:
             float: The first time the tracker needs to handle data
         """
@@ -87,8 +87,8 @@ class TrackerBase(metaclass=ABCMeta):
 
     @abstractmethod
     def handle(self, field: FieldBase, t: float) -> None:
-        """ handle data supplied to this tracker
-        
+        """handle data supplied to this tracker
+
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
@@ -98,11 +98,11 @@ class TrackerBase(metaclass=ABCMeta):
         pass
 
     def finalize(self, info: InfoDict = None) -> None:
-        """ finalize the tracker, supplying additional information
+        """finalize the tracker, supplying additional information
 
         Args:
             info (dict):
-                Extra information from the simulation        
+                Extra information from the simulation
         """
         pass
 
@@ -111,8 +111,8 @@ TrackerCollectionDataType = Union[List[TrackerDataType], TrackerDataType, None]
 
 
 class TrackerCollection:
-    """ List of trackers providing methods to handle them efficiently
-    
+    """List of trackers providing methods to handle them efficiently
+
     Attributes:
         trackers (list):
             List of the trackers in the collection
@@ -143,11 +143,11 @@ class TrackerCollection:
     def from_data(
         cls, data: TrackerCollectionDataType, **kwargs
     ) -> "TrackerCollection":
-        """ create tracker collection from given data
-        
+        """create tracker collection from given data
+
         Args:
             data: Data describing the tracker collection
-            
+
         Returns:
             :class:`TrackerCollection`:
             An instance representing the tracker collection
@@ -170,14 +170,14 @@ class TrackerCollection:
         return cls(trackers)
 
     def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
-        """ initialize the tracker with information about the simulation
-        
+        """initialize the tracker with information about the simulation
+
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 An example of the data that will be analyzed by the tracker
             info (dict):
-                Extra information from the simulation        
-                
+                Extra information from the simulation
+
         Returns:
             float: The first time the tracker needs to handle data
         """
@@ -195,8 +195,8 @@ class TrackerCollection:
         return self.time_next_action
 
     def handle(self, state: FieldBase, t: float, atol: float = 1.0e-8) -> float:
-        """ handle all trackers
-        
+        """handle all trackers
+
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
@@ -207,7 +207,7 @@ class TrackerCollection:
                 tracker should be called now or whether the simulation should be
                 carried on more timesteps. This is basically used to predict the
                 next time to decided which one is closer.
-                
+
         Returns:
             float: The next time the simulation needs to be interrupted to
             handle a tracker.
@@ -234,11 +234,11 @@ class TrackerCollection:
         return self.time_next_action
 
     def finalize(self, info: InfoDict = None) -> None:
-        """ finalize the tracker, supplying additional information
+        """finalize the tracker, supplying additional information
 
         Args:
             info (dict):
-                Extra information from the simulation        
+                Extra information from the simulation
         """
         for tracker in self.trackers:
             tracker.finalize(info=info)

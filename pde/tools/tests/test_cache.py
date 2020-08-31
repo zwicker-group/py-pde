@@ -16,15 +16,15 @@ from .. import cache
 
 def deep_getsizeof(obj, ids=None):
     """Find the memory footprint of a Python object
- 
+
     This is a recursive function that drills down a Python object graph
     like a dictionary holding nested dictionaries with lists of lists
     and tuples and sets.
- 
+
     The sys.getsizeof function does a shallow size of only. It counts each
     object inside a container as pointer only regardless of how big it
     really is.
- 
+
     Function modified from
     https://code.tutsplus.com/tutorials/understand-how-much-memory-your-python-objects-use--cms-25609
     """
@@ -192,8 +192,8 @@ def test_serializer_hash_mutable():
 
 
 def test_unserializer():
-    """ tests whether the make_serializer and make_unserializer return the 
-    original objects """
+    """tests whether the make_serializer and make_unserializer return the
+    original objects"""
     data_list = [None, 1, [1, 2], {"b": 1, "a": 2}]
     for method in get_serialization_methods():
         encode = cache.make_serializer(method)

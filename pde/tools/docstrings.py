@@ -94,11 +94,11 @@ DOCSTRING_REPLACEMENTS = {k: v[1:-1] for k, v in DOCSTRING_REPLACEMENTS.items()}
 
 
 def get_text_block(identifier: str) -> str:
-    """ return a single text block
-    
+    """return a single text block
+
     Args:
         identifier (str): The name of the text block
-        
+
     Returns:
         str: the text block as one long line.
     """
@@ -112,14 +112,14 @@ TFunc = TypeVar("TFunc")
 def replace_in_docstring(
     f: TFunc, token: str, value: str, docstring: str = None
 ) -> TFunc:
-    """ replace a text in a docstring using the correct indentation
-    
+    """replace a text in a docstring using the correct indentation
+
     Args:
         f (callable): The function with the docstring to handle
         token (str): The token to search for
         value (str): The replacement string
         docstring (str): A docstring that should be used instead of f.__doc__
-        
+
     Returns:
         callable: The function with the modified docstring
     """
@@ -135,7 +135,10 @@ def replace_in_docstring(
 
     # replace the token with the correct indentation
     f.__doc__ = re.sub(  # type: ignore
-        f"^([ \t]*){token}", repl, docstring, flags=re.MULTILINE,
+        f"^([ \t]*){token}",
+        repl,
+        docstring,
+        flags=re.MULTILINE,
     )
 
     return f
@@ -156,6 +159,9 @@ def fill_in_docstring(f: TFunc) -> TFunc:
 
         token = "{" + name + "}"
         f.__doc__ = re.sub(  # type: ignore
-            f"^([ \t]*){token}", repl, f.__doc__, flags=re.MULTILINE,
+            f"^([ \t]*){token}",
+            repl,
+            f.__doc__,
+            flags=re.MULTILINE,
         )
     return f

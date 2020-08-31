@@ -28,14 +28,14 @@ from .common import make_general_poisson_solver
 @PolarGrid.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(bcs: Boundaries) -> Callable:
-    """ make a discretized laplace operator for a polar grid
-    
+    """make a discretized laplace operator for a polar grid
+
     {DESCR_POLAR_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -82,14 +82,14 @@ def make_laplace(bcs: Boundaries) -> Callable:
 @PolarGrid.register_operator("gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(bcs: Boundaries) -> Callable:
-    """ make a discretized gradient operator for a polar grid
-    
+    """make a discretized gradient operator for a polar grid
+
     {DESCR_POLAR_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -136,8 +136,8 @@ def make_gradient(bcs: Boundaries) -> Callable:
 @PolarGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
-    """ make a discretized gradient squared operator for a polar grid
-    
+    """make a discretized gradient squared operator for a polar grid
+
     {DESCR_POLAR_GRID}
 
     Args:
@@ -148,7 +148,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
             operator. If this is False, the squared gradient is calculated as
             the mean of the squared values of the forward and backward
             derivatives.
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -218,14 +218,14 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
 @PolarGrid.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(bcs: Boundaries) -> Callable:
-    """ make a discretized divergence operator for a polar grid
-    
+    """make a discretized divergence operator for a polar grid
+
     {DESCR_POLAR_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -291,14 +291,14 @@ def make_divergence(bcs: Boundaries) -> Callable:
 @PolarGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(bcs: Boundaries) -> Callable:
-    """ make a discretized vector gradient operator for a polar grid
-    
+    """make a discretized vector gradient operator for a polar grid
+
     {DESCR_POLAR_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -321,14 +321,14 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
 @PolarGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(bcs: Boundaries) -> Callable:
-    """ make a discretized tensor divergence operator for a polar grid
-    
+    """make a discretized tensor divergence operator for a polar grid
+
     {DESCR_POLAR_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -350,12 +350,12 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
 
 @fill_in_docstring
 def _get_laplace_matrix(bcs):
-    """ get sparse matrix for laplace operator on a polar grid
-    
+    """get sparse matrix for laplace operator on a polar grid
+
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         tuple: A sparse matrix and a sparse vector that can be used to evaluate
         the discretized laplacian
@@ -407,14 +407,14 @@ def _get_laplace_matrix(bcs):
 @PolarGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(bcs: Boundaries, method: str = "auto") -> Callable:
-    """ make a operator that solves Poisson's equation
-    
+    """make a operator that solves Poisson's equation
+
     {DESCR_POLAR_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """

@@ -31,8 +31,8 @@ ScaleData = Union[str, float, Tuple[float, float]]
 
 
 def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
-    """ adds a horizontal colorbar for image `im` to the axis `ax`
-    
+    """adds a horizontal colorbar for image `im` to the axis `ax`
+
     Args:
         im: The result of calling :func:`matplotlib.pyplot.imshow`
         ax: The matplotlib axes to which the colorbar is added
@@ -56,7 +56,7 @@ def extract_field(
     check_rank: Optional[int] = None,
 ) -> DataFieldBase:
     """Extracts a single field from a possible collection.
-    
+
     Args:
         fields (:class:`~pde.fields.FieldBase`):
             The field from which data is extracted
@@ -72,7 +72,7 @@ def extract_field(
         check_rank (int, optional):
             Can be given to check whether the extracted field has the correct
             rank (0 = ScalarField, 1 = VectorField, ...).
-            
+
     Returns:
         :class:`~pde.fields.DataFieldBase`: The extracted field
     """
@@ -174,8 +174,8 @@ class ScalarFieldPlot:
         tight: bool = False,
         show: bool = True,
     ) -> "ScalarFieldPlot":
-        """ create ScalarFieldPlot from storage
-        
+        """create ScalarFieldPlot from storage
+
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
                 Instance of the storage class that contains the data
@@ -189,7 +189,7 @@ class ScalarFieldPlot:
             show (bool):
                 Flag determining whether to show a plot. If `False`, the plot is
                 kept in the background.
-            
+
         Returns:
             :class:`~pde.visualization.plotting.ScalarFieldPlot`
         """
@@ -221,8 +221,8 @@ class ScalarFieldPlot:
     def _prepare_quantities(
         fields: FieldBase, quantities, scale: ScaleData = "automatic"
     ) -> List[List[Dict[str, Any]]]:
-        """ internal method to prepare quantities
-        
+        """internal method to prepare quantities
+
         Args:
             fields (:class:`~pde.fields.base.FieldBase`):
                 The field containing the data to show
@@ -230,7 +230,7 @@ class ScalarFieldPlot:
                 {ARG_PLOT_QUANTITIES}
             scale (str, float, tuple of float):
                 {ARG_PLOT_SCALE}
-        
+
         Returns:
             list of list of dict: a 2d arrangements of panels that define what
                 quantities are shown.
@@ -277,8 +277,8 @@ class ScalarFieldPlot:
         title: Optional[str] = None,
         tight: bool = False,
     ):
-        """ initialize the plot creating the figure and the axes
-        
+        """initialize the plot creating the figure and the axes
+
         Args:
             fields (:class:`~pde.fields.base.FieldBase`):
                 Collection of fields
@@ -374,15 +374,15 @@ class ScalarFieldPlot:
             self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     def _update_data(self, fields: FieldBase, title: Optional[str] = None) -> None:
-        """ update the fields in the current plot
-        
+        """update the fields in the current plot
+
         Args:
             fields (:class:`~pde.fields.base.FieldBase`):
                 The field or field collection of which the defined quantities
                 are shown.
             title (str, optional):
                 The title of this view. If `None`, the current title is not
-                changed. 
+                changed.
         """
         assert isinstance(fields, FieldBase)
 
@@ -429,29 +429,29 @@ class ScalarFieldPlot:
                 plt.pause(0.01)
 
     def update(self, fields: FieldBase, title: Optional[str] = None) -> None:
-        """ update the plot with the given fields
-        
+        """update the plot with the given fields
+
         Args:
             fields:
                 The field or field collection of which the defined quantities
                 are shown.
             title (str, optional):
                 The title of this view. If `None`, the current title is not
-                changed. 
+                changed.
         """
         self._update_data(fields, title)
         if self.show:
             self._show()
 
     def savefig(self, path: str, **kwargs):
-        """ save plot to file 
-        
+        """save plot to file
+
         Args:
             path (str):
                 The path to the file where the image is written. The file
                 extension determines the image format
             **kwargs:
-                Additional arguments are forwarded to 
+                Additional arguments are forwarded to
                 :meth:`matplotlib.figure.Figure.savefig`.
         """
         self.fig.savefig(path, **kwargs)
@@ -459,8 +459,8 @@ class ScalarFieldPlot:
     def make_movie(
         self, storage: StorageBase, filename: str, progress: bool = True
     ) -> None:
-        """ make a movie from the data stored in storage
-        
+        """make a movie from the data stored in storage
+
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
                 The storage instance that contains all the data for the movie
@@ -491,11 +491,11 @@ class ScalarFieldPlot:
 def plot_magnitudes(
     storage: StorageBase, quantities=None, ax=None, **kwargs
 ) -> PlotReference:
-    r""" plot spatially averaged quantities as a function of time
-    
+    r"""plot spatially averaged quantities as a function of time
+
     For scalar fields, the default is to plot the average value while the averaged norm
     is plotted for vector fields.
-    
+
     Args:
         storage:
             Instance of :class:`~pde.storage.base.StorageBase` that contains
@@ -505,7 +505,7 @@ def plot_magnitudes(
         {PLOT_ARGS}
         \**kwargs:
             All remaining parameters are forwarded to the `ax.plot` method
-            
+
     Returns:
         :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
     """
@@ -572,8 +572,8 @@ def _plot_kymograph(
     transpose: bool = False,
     **kwargs,
 ) -> PlotReference:
-    r""" plots a simple kymograph from given data
-    
+    r"""plots a simple kymograph from given data
+
     Args:
         img_data (dict):
             Contains the kymograph data
@@ -586,7 +586,7 @@ def _plot_kymograph(
         \**kwargs:
             Additional keyword arguments are passed to
             :func:`matplotlib.pyplot.imshow`.
-            
+
     Returns:
         :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
     """
@@ -632,12 +632,12 @@ def plot_kymograph(
     ax=None,
     **kwargs,
 ) -> PlotReference:
-    r""" plots a single kymograph from stored data
-    
+    r"""plots a single kymograph from stored data
+
     The kymograph shows line data stacked along time. Consequently, the
     resulting image shows space along the horizontal axis and time along the
     vertical axis.
-    
+
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
             The storage instance that contains all the data for the movie
@@ -659,7 +659,7 @@ def plot_kymograph(
         \**kwargs:
             Additional keyword arguments are passed to
             :func:`matplotlib.pyplot.imshow`.
-            
+
     Returns:
         :class:`~pde.tools.plotting.PlotReference`: The reference to the plot
     """
@@ -699,12 +699,12 @@ def plot_kymographs(
     fig=None,
     **kwargs,
 ) -> List[PlotReference]:
-    r""" plots kymographs for all fields stored in `storage`
-    
+    r"""plots kymographs for all fields stored in `storage`
+
     The kymograph shows line data stacked along time. Consequently, the
     resulting image shows space along the horizontal axis and time along the
     vertical axis.
-    
+
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
             The storage instance that contains all the data for the movie
@@ -724,7 +724,7 @@ def plot_kymographs(
         \**kwargs:
             Additional keyword arguments are passed to the calls to
             :func:`matplotlib.pyplot.imshow`.
-            
+
     Returns:
         list of :class:`~pde.tools.plotting.PlotReference`: The references to
         all plots
@@ -744,7 +744,8 @@ def plot_kymographs(
             image_lines = []
             for f_id in range(num_fields):
                 img_data = field.get_line_data(  # type: ignore
-                    index=f_id, **line_data_args,
+                    index=f_id,
+                    **line_data_args,
                 )
                 image_lines.append(img_data["data_y"])
         else:

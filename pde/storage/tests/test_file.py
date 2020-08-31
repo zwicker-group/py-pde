@@ -65,8 +65,8 @@ def test_storage_persistence(compression, tmp_path):
 @skipUnlessModule("h5py")
 @pytest.mark.parametrize("compression", [True, False])
 def test_simulation_persistence(compression, tmp_path):
-    """ test whether a tracker can accurately store information about
-    simulation """
+    """test whether a tracker can accurately store information about
+    simulation"""
     path = tmp_path / "test_simulation_persistence.hdf5"
     storage = FileStorage(path, compression=compression)
 

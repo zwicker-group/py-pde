@@ -34,8 +34,8 @@ TField = TypeVar("TField", bound="FieldBase")
 
 
 class FieldBase(metaclass=ABCMeta):
-    """ abstract base class for describing (discretized) fields
-    
+    """abstract base class for describing (discretized) fields
+
     Attributes:
         label (str):
             Name of the field
@@ -50,7 +50,7 @@ class FieldBase(metaclass=ABCMeta):
         data: OptionalArrayLike = None,
         label: Optional[str] = None,
     ):
-        """ 
+        """
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
@@ -73,8 +73,8 @@ class FieldBase(metaclass=ABCMeta):
     def from_state(
         cls, attributes: Dict[str, Any], data: np.ndarray = None
     ) -> "FieldBase":
-        """ create a field from given state.
-        
+        """create a field from given state.
+
         Args:
             attributes (dict):
                 The attributes that describe the current instance
@@ -92,8 +92,8 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def from_file(cls, filename: str) -> "FieldBase":
-        """ create field by reading file
-        
+        """create field by reading file
+
         Args:
             filename (str): Path to the file being read
         """
@@ -139,13 +139,13 @@ class FieldBase(metaclass=ABCMeta):
         return self._grid
 
     def to_file(self, filename: str, **kwargs):
-        r""" store field in a file
-        
+        r"""store field in a file
+
         The extension of the filename determines what format is being used. If
         it ends in `.h5` or `.hdf`, the Hierarchical Data Format is used. The
         other supported format are images, where only the most typical formats
-        are supported. 
-        
+        are supported.
+
         Args:
             filename (str):
                 Path where the data is stored
@@ -153,7 +153,7 @@ class FieldBase(metaclass=ABCMeta):
                 A dictionary of additional information that is stored with the file.
                 Note that not all formats support metadata.
             \**kwargs:
-                Additional parameters may be supported for some formats 
+                Additional parameters may be supported for some formats
         """
         extension = Path(filename).suffix.lower()
 
@@ -181,8 +181,8 @@ class FieldBase(metaclass=ABCMeta):
             dataset.attrs[key] = value
 
     def _write_to_image(self, filename: str, **kwargs):
-        """ write data to image 
-        
+        """write data to image
+
         Args:
             filename (str): The path to the image that will be created
         """
@@ -193,8 +193,8 @@ class FieldBase(metaclass=ABCMeta):
         pass
 
     def assert_field_compatible(self, other: "FieldBase", accept_scalar: bool = False):
-        """ checks whether `other` is compatible with the current field
-        
+        """checks whether `other` is compatible with the current field
+
         Args:
             other (FieldBase): Other field this is compared to
             accept_scalar (bool, optional): Determines whether it is acceptable
@@ -251,12 +251,12 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
-        """ unserializes the given attributes
-        
+        """unserializes the given attributes
+
         Args:
             attributes (dict):
                 The serialized attributes
-                
+
         Returns:
             dict: The unserialized attributes
         """
@@ -296,8 +296,8 @@ class FieldBase(metaclass=ABCMeta):
     def _binary_operation(
         self, other, op: Callable, scalar_second: bool = True
     ) -> "FieldBase":
-        """ perform a binary operation between this field and `other`
-        
+        """perform a binary operation between this field and `other`
+
         Args:
             other (number of FieldBase):
                 The second term of the operator
@@ -305,7 +305,7 @@ class FieldBase(metaclass=ABCMeta):
                 A binary function calculating the result
             scalar_second (bool):
                 Flag determining whether the second operator must be a scalar
-                
+
         Returns:
             FieldBase: An field that contains the result of the operation. If
             `scalar_second == True`, the type of FieldBase is the same as `self`
@@ -339,8 +339,8 @@ class FieldBase(metaclass=ABCMeta):
     def _binary_operation_inplace(
         self, other, op_inplace: Callable, scalar_second: bool = True
     ) -> "FieldBase":
-        """ perform an in-place binary operation between this field and `other`
-        
+        """perform an in-place binary operation between this field and `other`
+
         Args:
             other (number of FieldBase):
                 The second term of the operator
@@ -348,7 +348,7 @@ class FieldBase(metaclass=ABCMeta):
                 A binary function storing its result in the first argument
             scalar_second (bool):
                 Flag determining whether the second operator must be a scalar.
-                
+
         Returns:
             FieldBase: The field `self` with updated data
         """
@@ -437,8 +437,8 @@ class FieldBase(metaclass=ABCMeta):
     def apply(
         self: TField, func: Callable, out: Optional[TField] = None, label: str = None
     ) -> TField:
-        """ applies a function to the data and returns it as a field
-        
+        """applies a function to the data and returns it as a field
+
         Args:
             func (callable or str):
                 The (vectorized) function being applied to the data or the name
@@ -449,7 +449,7 @@ class FieldBase(metaclass=ABCMeta):
                 Name of the returned field
 
         Returns:
-            Field with new data. This is stored at `out` if given. 
+            Field with new data. This is stored at `out` if given.
         """
         if out is None:
             return self.copy(data=func(self.data), label=label)
@@ -477,8 +477,8 @@ TDataField = TypeVar("TDataField", bound="DataFieldBase")
 
 
 class DataFieldBase(FieldBase, metaclass=ABCMeta):
-    """ abstract base class for describing fields of single entities
-    
+    """abstract base class for describing fields of single entities
+
     Attributes:
         grid (:class:`~pde.grids.GridBase`):
             The underlying grid defining the discretization
@@ -499,7 +499,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         data: OptionalArrayLike = None,
         label: Optional[str] = None,
     ):
-        """ 
+        """
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
@@ -560,10 +560,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         seed: Optional[int] = None,
     ):
-        """ create field with uniform distributed random values
-        
+        """create field with uniform distributed random values
+
         These values are uncorrelated in space.
-        
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
@@ -593,10 +593,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         seed: Optional[int] = None,
     ):
-        """ create field with normal distributed random values
-        
+        """create field with normal distributed random values
+
         These values are uncorrelated in space.
-        
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
@@ -610,7 +610,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 given mean and standard deviation) or 'physical' (the variance
                 of the random number is scaled by the inverse volume of the grid
                 cell; this is useful for physical quantities, which vary less in
-                larger volumes).            
+                larger volumes).
             label (str, optional):
                 Name of the field
             seed (int, optional):
@@ -641,27 +641,27 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         seed: Optional[int] = None,
     ):
-        r""" create a random field build from harmonics
-        
+        r"""create a random field build from harmonics
+
         The resulting fields will be highly correlated in space and can thus
-        serve for testing differential operators. 
-        
+        serve for testing differential operators.
+
         With the default settings, the resulting field :math:`c_i(\mathbf{x})`
         is given by
-        
+
         .. math::
             c_i(\mathbf{x}) = \prod_{\alpha=1}^N \sum_{j=1}^M a_{ij\alpha}
                 \cos\left(\frac{2 \pi x_\alpha}{j L_\alpha}\right) \;,
-            
-        where :math:`N` is the number of spatial dimensions, each with length 
+
+        where :math:`N` is the number of spatial dimensions, each with length
         :math:`L_\alpha`, :math:`M` is the number of modes given by `modes`, and
         :math:`a_{ij\alpha}` are random amplitudes, chosen from a uniform
         distribution over the interval [0, 1].
-        
+
         Note that the product could be replaced by a sum when
         `axis_combination = numpy.add` and the :math:`\cos()` could be any other
         function given by the parameter `harmonic`.
-        
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
@@ -672,7 +672,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 :func:`numpy.sin` and :func:`numpy.cos`, which basically relate
                 to different boundary conditions applied at the grid boundaries.
             axis_combination (callable):
-                Determines how values from different axis are combined. Typical 
+                Determines how values from different axis are combined. Typical
                 choices are :func:`numpy.multiply` and :func:`numpy.add`
                 resulting in products and sums of the values along axes,
                 respectively.
@@ -712,19 +712,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         seed: Optional[int] = None,
     ):
-        r""" create a field of random values with colored noise
-                
+        r"""create a field of random values with colored noise
+
         The spatially correlated values obey
-        
+
         .. math::
             \langle c_i(\boldsymbol k) c_j(\boldsymbol k’) \rangle =
                 \Gamma^2 |\boldsymbol k|^\nu \delta_{ij}
                 \delta(\boldsymbol k - \boldsymbol k’)
-                
+
         in spectral space. The special case :math:`\nu = 0` corresponds to white
         noise. Note that the components of vector or tensor fields are
         uncorrelated.
-         
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
@@ -761,8 +761,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def from_state(
         cls, attributes: Dict[str, Any], data: np.ndarray = None
     ) -> "DataFieldBase":
-        """ create a field from given state.
-        
+        """create a field from given state.
+
         Args:
             attributes (dict):
                 The attributes that describe the current instance
@@ -779,8 +779,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def copy(
         self: TDataField, data: OptionalArrayLike = None, label: str = None
     ) -> TDataField:
-        """ return a copy of the data, but not of the grid
-        
+        """return a copy of the data, but not of the grid
+
         Args:
             data (:class:`numpy.ndarray`, optional):
                 Data values at the support points of the grid that define the
@@ -802,12 +802,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
-        """ unserializes the given attributes
-        
+        """unserializes the given attributes
+
         Args:
             attributes (dict):
                 The serialized attributes
-                
+
         Returns:
             dict: The unserialized attributes
         """
@@ -820,8 +820,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return results
 
     def _write_to_image(self, filename: str, **kwargs):
-        r""" write data to image 
-        
+        r"""write data to image
+
         Args:
             filename (str):
                 The path to the image that will be created
@@ -849,16 +849,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def _make_interpolator_scipy(
         self, method: str = "linear", fill: float = None, **kwargs
     ) -> Callable:
-        r""" returns a function that can be used to interpolate values.
-        
+        r"""returns a function that can be used to interpolate values.
+
         This uses scipy.interpolate.RegularGridInterpolator and the
         interpolation method can thus be chosen when calling the returned
         function using the `method` keyword argument. Keyword arguments are
         directly forwarded to the constructor of `RegularGridInterpolator`.
-        
+
         Note that this interpolator does not respect periodic boundary
         conditions, yet.
-        
+
         Args:
             method (str):
                 The method used for interpolation. If 'linear' or 'nearest'
@@ -871,10 +871,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Otherwise, the given value is returned.
             \**kwargs: All keyword arguments are forwarded to
                 :class:`scipy.interpolate.RegularGridInterpolator`
-                
+
         Returns:
             A function which returns interpolated values when called with
-            arbitrary positions within the space of the grid. 
+            arbitrary positions within the space of the grid.
         """
         coords_src = self.grid.axes_coords
         grid_dim = len(self.grid.axes)
@@ -931,12 +931,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def _make_interpolator_compiled(
         self, bc: BoundariesData = "natural", fill: float = None
     ) -> Callable:
-        """ return a compiled interpolator
-        
+        """return a compiled interpolator
+
         This interpolator respects boundary conditions and can thus interpolate
         values in the whole grid volume. However, close to corners, the
         interpolation might not be optimal, in particular for periodic grids.
-        
+
         Args:
             bc:
                 The boundary conditions applied to the field. {ARG_BOUNDARIES}
@@ -944,10 +944,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
-                
+
         Returns:
             A function which returns interpolated values when called with
-            arbitrary positions within the space of the grid. 
+            arbitrary positions within the space of the grid.
         """
         grid = self.grid
         grid_dim = len(grid.axes)
@@ -974,18 +974,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         @jit
         def interpolator(point: np.ndarray, data: np.ndarray = None) -> np.ndarray:
-            """ return the interpolated value at the position `point`
-             
+            """return the interpolated value at the position `point`
+
             Args:
                 point (:class:`numpy.ndarray`):
                     The list of points. This point coordinates should be given
                     along the last axis, i.e., the shape should be `(..., dim)`.
                 data (:class:`numpy.ndarray`, optional):
-                    The discretized field values. If omitted, the data of the 
+                    The discretized field values. If omitted, the data of the
                     current field is used, which should be the default. However,
                     this option can be useful to interpolate other fields
-                    defined on the same grid without recreating the interpolator 
-                     
+                    defined on the same grid without recreating the interpolator
+
             Returns:
                 :class:`numpy.ndarray`: The interpolated values at the points
             """
@@ -1012,13 +1012,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def make_interpolator(
         self, method: str = "numba", fill: float = None, **kwargs
     ) -> Callable:
-        r""" returns a function that can be used to interpolate values.
-        
+        r"""returns a function that can be used to interpolate values.
+
         Args:
             method (str):
                 Determines the method being used for interpolation.
                 Possible values are:
-                
+
                 * `scipy_nearest`: Use scipy to interpolate to nearest neighbors
                 * `scipy_linear`: Linear interpolation using scipy
                 * `numba`: Linear interpolation using numba (default)
@@ -1031,21 +1031,21 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Additional keyword arguments are passed to the individual
                 interpolator methods and can be used to further affect the
                 behavior.
-                  
+
         The scipy implementations use scipy.interpolate.RegularGridInterpolator
         and thus do not respect boundary conditions. Additional keyword
         arguments are directly forwarded to the constructor of
         `RegularGridInterpolator`.
-        
+
         The numba implementation respect boundary conditions, which can be set
         using the `bc` keywords argument. Supported values are the same as for
         the operators, e.g., the Laplacian. If no boundary conditions are
         specified,  natural boundary conditions are assumed, which are periodic
         conditions for periodic axes and Neumann conditions otherwise.
-        
+
         Returns:
             A function which returns interpolated values when called with
-            arbitrary positions within the space of the grid. 
+            arbitrary positions within the space of the grid.
         """
         if method.startswith("scipy"):
             return self._make_interpolator_scipy(method=method[6:], fill=fill, **kwargs)
@@ -1055,8 +1055,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise ValueError(f"Unknown interpolation method `{method}`")
 
     def interpolate(self, point, method: str = "numba", fill: float = None, **kwargs):
-        r""" interpolate the field to points between support points
-        
+        r"""interpolate the field to points between support points
+
         Args:
             point (:class:`numpy.ndarray`):
                 The points at which the values should be obtained. This is given
@@ -1070,7 +1070,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             \**kwargs:
                 Additional keyword arguments are forwarded to the method
                 :meth:`DataFieldBase.make_interpolator`.
-                
+
         Returns:
             :class:`numpy.ndarray`: the values of the field
         """
@@ -1084,8 +1084,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         fill: float = None,
         label: Optional[str] = None,
     ) -> TDataField:
-        """ interpolate the data of this field to another grid.
-        
+        """interpolate the data of this field to another grid.
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 The grid of the new field onto which the current field is
@@ -1099,7 +1099,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Otherwise, the given value is returned.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
             Field of the same rank as the current one.
         """
@@ -1129,8 +1129,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return self.__class__(grid, data, label=label)
 
     def add_interpolated(self, point, amount):
-        """ adds an (integrated) value to the field at an interpolated position
-        
+        """adds an (integrated) value to the field at an interpolated position
+
         Args:
             point (:class:`numpy.ndarray`):
                 The point inside the grid where the value is added. This is
@@ -1180,16 +1180,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_boundary_values(
         self, axis: int, upper: bool, bc: BoundariesData = "natural"
     ) -> np.ndarray:
-        """ get the field values directly on the specified boundary 
-        
+        """get the field values directly on the specified boundary
+
         Args:
             axis (int):
                 The axis perpendicular to the boundary
             upper (bool):
-                Whether the boundary is at the upper side of the axis 
+                Whether the boundary is at the upper side of the axis
             bc:
                 The boundary conditions applied to the field. {ARG_BOUNDARIES}
-            
+
         Returns:
             :class:`~numpy.ndarray`: The discretized values on the boundary
         """
@@ -1201,16 +1201,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def make_get_boundary_values(
         self, axis: int, upper: bool, bc: BoundariesData = "natural"
     ) -> np.ndarray:
-        """ make a function calculating field values on the specified boundary 
-        
+        """make a function calculating field values on the specified boundary
+
         Args:
             axis (int):
                 The axis perpendicular to the boundary
             upper (bool):
-                Whether the boundary is at the upper side of the axis 
+                Whether the boundary is at the upper side of the axis
             bc:
                 The boundary conditions applied to the field. {ARG_BOUNDARIES}
-            
+
         Returns:
             callable: A function returning the values on the boundary. The
             function has the signature `(data=None, out=None)`, which allows
@@ -1226,8 +1226,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         @jit
         def get_boundary_values(data: np.ndarray = None, out: np.ndarray = None):
-            """ interpolate the field at the boundary
-            
+            """interpolate the field at the boundary
+
             Args:
                 data (:class:`~numpy.ndarray`, optional):
                     The data values that are used for interpolation. The data of
@@ -1235,7 +1235,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 out (:class:`~numpy.ndarray`, optional):
                     The array into which the interpolated results are written. A
                     new array is created if `out = None`.
-                    
+
             Returns:
                 :class:`numpy.ndarray`: The interpolated values on the boundary.
             """
@@ -1262,8 +1262,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @property
     def average(self) -> Union[np.ndarray, float]:
-        """ determine the average of data
-        
+        """determine the average of data
+
         This is calculated by integrating each component of the field over space
         and dividing by the grid volume
         """
@@ -1271,13 +1271,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @property
     def fluctuations(self):
-        """ :class:`numpy.ndarray`: fluctuations over the entire space.
-        
+        """:class:`numpy.ndarray`: fluctuations over the entire space.
+
         The fluctuations are defined as the standard deviation of the data
         scaled by the cell volume. This definition makes the fluctuations
         independent of the discretization. It corresponds to the physical
         scaling available in the :func:`~DataFieldBase.random_normal`.
-        
+
         Returns:
             :class:`numpy.ndarray`: A tensor with the same rank of the field,
             specifying the fluctuations of each component of the tensor field
@@ -1290,8 +1290,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @property
     def magnitude(self) -> float:
-        """ float: determine the magnitude of the field.
-        
+        """float: determine the magnitude of the field.
+
         This is calculated by getting a scalar field using the default arguments
         of the :func:`to_scalar` method and averaging the result over the whole
         grid.
@@ -1311,11 +1311,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         out: Optional[TDataField] = None,
         label: str = None,
     ) -> TDataField:
-        """ applies Gaussian smoothing with the given standard deviation
+        """applies Gaussian smoothing with the given standard deviation
 
         This function respects periodic boundary conditions of the underlying
         grid, using reflection when no periodicity is specified.
-        
+
         sigma (float, optional):
             Gives the standard deviation of the smoothing in real length units
             (default: 1)
@@ -1326,7 +1326,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Name of the returned field
 
         Returns:
-            Field with smoothed data. This is stored at `out` if given.             
+            Field with smoothed data. This is stored at `out` if given.
         """
         # allocate memory for storing output
         data_in = self._data
@@ -1353,8 +1353,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_line_data(
         self, scalar: str = "auto", extract: str = "auto"
     ) -> Dict[str, Any]:
-        """ return data for a line plot of the field
-        
+        """return data for a line plot of the field
+
         Args:
             scalar (str or int):
                 The method for extracting scalars as described in
@@ -1362,7 +1362,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             extract (str):
                 The method used for extracting the line data. See the docstring
                 of the grid method `get_line_data` to find supported values.
-        
+
         Returns:
             dict: Information useful for performing a line plot of the field
         """
@@ -1381,8 +1381,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_image_data(
         self, scalar: str = "auto", transpose: bool = False, **kwargs
     ) -> Dict[str, Any]:
-        r""" return data for plotting an image of the field
-        
+        r"""return data for plotting an image of the field
+
         Args:
             scalar (str or int):
                 The method for extracting scalars as described in
@@ -1391,9 +1391,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Determines whether the transpose of the data should is plotted
             \**kwargs:
                 Additional parameters are forwarded to `grid.get_image_data`
-        
+
         Returns:
-            dict: Information useful for plotting an image of the field        
+            dict: Information useful for plotting an image of the field
         """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
@@ -1410,34 +1410,34 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return data  # type: ignore
 
     def get_vector_data(self, **kwargs) -> Dict[str, Any]:
-        r""" return data for a vector plot of the field
-        
+        r"""return data for a vector plot of the field
+
         Args:
             \**kwargs: Additional parameters are forwarded to
                 `grid.get_image_data`
-        
+
         Returns:
-            dict: Information useful for plotting an vector field        
+            dict: Information useful for plotting an vector field
         """
         raise NotImplementedError()
 
     def _plot_line(
         self, ax, extract: str = "auto", ylabel: str = None, **kwargs
     ) -> PlotReference:
-        r""" visualize a field using a 1d line plot
-        
+        r"""visualize a field using a 1d line plot
+
         Args:
             ax (:class:`matplotlib.axes.Axes`):
                 Figure axes to be used for plotting.
             extract (str):
                 The method used for extracting the line data.
             ylabel (str):
-                Label of the y-axis. If omitted, the label is chosen 
+                Label of the y-axis. If omitted, the label is chosen
                 automatically from the data field.
             \**kwargs:
                 Additional keyword arguments are passed to
                 :func:`matplotlib.pyplot.plot`
-                
+
         Returns:
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
@@ -1458,8 +1458,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return PlotReference(ax, line2d, {"extract": extract})
 
     def _update_line_plot(self, reference: PlotReference) -> None:
-        """ update a line plot with the current field values
-        
+        """update a line plot with the current field values
+
         Args:
             reference (:class:`PlotReference`):
                 The reference to the plot that is updated
@@ -1487,7 +1487,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         transpose: bool = False,
         **kwargs,
     ) -> PlotReference:
-        r""" visualize a field using a 2d density plot
+        r"""visualize a field using a 2d density plot
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -1507,7 +1507,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 how an image is created from the raw data. Finally, the
                 remaining arguments are are passed to
                 :func:`matplotlib.pyplot.imshow` to affect the appearance.
-                
+
         Returns:
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
@@ -1539,8 +1539,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return PlotReference(ax, axes_image, parameters)
 
     def _update_image_plot(self, reference: PlotReference) -> None:
-        """ update an image plot with the current field values
-        
+        """update an image plot with the current field values
+
         Args:
             reference (:class:`PlotReference`):
                 The reference to the plot that is updated
@@ -1562,7 +1562,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         max_points: int = 16,
         **kwargs,
     ) -> PlotReference:
-        r""" visualize a field using a 2d vector plot
+        r"""visualize a field using a 2d vector plot
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -1579,7 +1579,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Additional keyword arguments are passed to
                 :func:`matplotlib.pyplot.quiver` or
                 :func:`matplotlib.pyplot.streamplot`.
-                
+
         Returns:
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
@@ -1615,8 +1615,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return PlotReference(ax, element, parameters)
 
     def _update_vector_plot(self, reference: PlotReference) -> None:
-        """ update a vector plot with the current field values
-        
+        """update a vector plot with the current field values
+
         Args:
             reference (:class:`PlotReference`):
                 The reference to the plot that is updated
@@ -1643,8 +1643,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise ValueError(f"Vector plot `{method}` is not supported.")
 
     def _update_plot(self, reference: PlotReference) -> None:
-        """ update a plot with the current field values
-        
+        """update a plot with the current field values
+
         Args:
             reference (:class:`PlotReference`):
                 The reference to the plot to updated
@@ -1664,18 +1664,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @plot_on_axes(update_method="_update_plot")
     def plot(self, kind: str = "auto", **kwargs):
-        r""" visualize the field
-        
+        r"""visualize the field
+
         Args:
             kind (str):
-                Determines the visualizations. Supported values are `image`, 
+                Determines the visualizations. Supported values are `image`,
                 `line`, `vector`, or `interactive`. Alternatively, `auto`
                 determines the best visualization based on the field itself.
             {PLOT_ARGS}
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual
                 plotting function.
-                
+
         Returns:
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
@@ -1718,10 +1718,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return reference
 
     def plot_interactive(self, scalar: str = "auto", **kwargs):
-        """ create an interactive plot of the field using :mod:`napari`
-        
+        """create an interactive plot of the field using :mod:`napari`
+
         Args:
-            scalar (str): The method for obtaining scalar values of fields        
+            scalar (str): The method for obtaining scalar values of fields
             **kwargs: Extra arguments are passed to :class:`napari.Viewer`
         """
         from ..tools.plotting import napari_viewer

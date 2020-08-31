@@ -16,30 +16,30 @@ def solve_poisson_equation(
     bc: "BoundariesData",
     label: str = "Solution to Poisson's equation",
 ) -> ScalarField:
-    r""" Solve Laplace's equation on a given grid
-         
+    r"""Solve Laplace's equation on a given grid
+
     Denoting the current field by :math:`u`, we thus solve for :math:`f`,
-    defined by the equation 
-    
+    defined by the equation
+
     .. math::
         \nabla^2 u(\boldsymbol r) = -f(\boldsymbol r)
-        
+
     with boundary conditions specified by `bc`.
-        
+
     Note:
         In case of periodic or Neumann boundary conditions, the right hand
         side :math:`f(\boldsymbol r)` needs to satisfy the following
         condition
-        
+
         .. math::
             \int f \, \mathrm{d}V = \oint g \, \mathrm{d}S \;,
-            
+
         where :math:`g` denotes the function specifying the outwards
         derivative for Neumann conditions. Note that for periodic boundaries
-        :math:`g` vanishes, so that this condition implies that the integral 
+        :math:`g` vanishes, so that this condition implies that the integral
         over
         :math:`f` must vanish for neutral Neumann or periodic conditions.
-    
+
     Args:
         rhs (:class:`~pde.fields.scalar.ScalarField`):
             The scalar field :math:`f` describing the right hand side
@@ -48,7 +48,7 @@ def solve_poisson_equation(
             {ARG_BOUNDARIES}
         label (str):
             The label of the returned field.
-            
+
     Returns:
         :class:`~pde.fields.scalar.ScalarField`: The field :math:`u` that solves
         the equation. This field will be defined on the same grid as `rhs`.
@@ -75,11 +75,11 @@ def solve_poisson_equation(
 def solve_laplace_equation(
     grid: GridBase, bc: "BoundariesData", label: str = "Solution to Laplace's equation"
 ) -> ScalarField:
-    """ Solve Laplace's equation on a given grid.
-    
-    This is implemented by calling :func:`solve_poisson_equation` with a 
+    """Solve Laplace's equation on a given grid.
+
+    This is implemented by calling :func:`solve_poisson_equation` with a
     vanishing right hand side.
-    
+
     Args:
         grid (:class:`~pde.grids.base.GridBase`):
             The grid on which the equation is solved
@@ -88,7 +88,7 @@ def solve_laplace_equation(
             {ARG_BOUNDARIES}
         label (str):
             The label of the returned field.
-            
+
     Returns:
         :class:`~pde.fields.scalar.ScalarField`: The field that solves the
         equation. This field will be defined on the given `grid`.

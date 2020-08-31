@@ -28,22 +28,22 @@ PI_43 = 4 / 3 * np.pi
 
 
 class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals]
-    r""" Base class for d-dimensional spherical grids with angular symmetry
-    
+    r"""Base class for d-dimensional spherical grids with angular symmetry
+
     The angular symmetry implies that states only depend on the radial
     coordinate :math:`r`, which is discretized uniformly as
-    
-    
+
+
     .. math::
         r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
         \quad \text{for} \quad i = 0, \ldots, N - 1
-        \quad \text{with} \quad 
+        \quad \text{with} \quad
             \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N}
 
     where :math:`R_\mathrm{outer}` is the outer radius of the grid and
     :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is
     zero by default. The radial direction is discretized by :math:`N` support
-    points.    
+    points.
     """
 
     periodic = [False]  # the radial axis is not periodic
@@ -52,9 +52,9 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
     def __init__(
         self, radius: Union[float, Tuple[float, float]], shape: Union[Tuple[int], int]
     ):
-        r""" 
+        r"""
         Args:
-            radius (float or tuple of floats): 
+            radius (float or tuple of floats):
                 radius :math:`R_\mathrm{outer}` in case a simple float is given.
                 If a tuple is supplied it is interpreted as the inner and outer
                 radius, :math:`(R_\mathrm{inner}, R_\mathrm{outer})`.
@@ -96,8 +96,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
     @classmethod
     def from_state(cls, state) -> "SphericalGridBase":
-        """ create a field from a stored `state`.
-        
+        """create a field from a stored `state`.
+
         Args:
             state (dict):
                 The state from which the grid is reconstructed.
@@ -136,8 +136,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         return ((volumes_h - volumes_l).reshape(self.shape[0]),)  # type: ignore
 
     def contains_point(self, point):
-        """ check whether the point is contained in the grid
-        
+        """check whether the point is contained in the grid
+
         Args:
             point (vector): Coordinates of the point
         """
@@ -155,11 +155,11 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         cartesian: bool = True,
         avoid_center: bool = False,
     ):
-        """ return a random point within the grid
-        
+        """return a random point within the grid
+
         Note that these points will be uniformly distributed on the radial axis,
         which implies that they are not uniformly distributed in the volume.
-        
+
         Args:
             boundary_distance (float): The minimal distance this point needs to
                 have from all boundaries.
@@ -168,9 +168,9 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             avoid_center (bool): Determines whether the boundary distance
                 should also be kept from the center, i.e., whether points close
                 to the center are returned.
-                
+
         Returns:
-            :class:`numpy.ndarray`: The coordinates of the point        
+            :class:`numpy.ndarray`: The coordinates of the point
         """
         # handle the boundary distance
         r_inner, r_outer = self.axes_bounds[0]
@@ -190,8 +190,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             return r
 
     def get_line_data(self, data, extract: str = "auto") -> Dict[str, Any]:
-        """ return a line cut along the radial axis
-        
+        """return a line cut along the radial axis
+
         Args:
             data (:class:`numpy.ndarray`):
                 The values at the grid points
@@ -199,9 +199,9 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 Determines which cut is done through the grid. This parameter is
                 mainly supplied for a consistent interface and has no effect for
                 polar grids.
-            
+
         Returns:
-            A dictionary with information about the line cut, which is 
+            A dictionary with information about the line cut, which is
             convenient for plotting.
         """
         if extract not in {"auto", "r", "radial"}:
@@ -221,8 +221,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         fill_value: float = 0,
         masked: bool = True,
     ) -> Dict[str, Any]:
-        """ return a 2d-image of the data
-        
+        """return a 2d-image of the data
+
         Args:
             data (:class:`numpy.ndarray`):
                 The values at the grid points
@@ -235,7 +235,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             masked (bool):
                 Whether a :class:`numpy.ma.MaskedArray` is returned for the data
                 instead of the normal :class:`numpy.ndarray`.
-            
+
         Returns:
             A dictionary with information about the image, which is  convenient
             for plotting.
@@ -289,13 +289,13 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
     def iter_mirror_points(
         self, point, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
-        """ generates all mirror points corresponding to `point`
-        
+        """generates all mirror points corresponding to `point`
+
         Args:
             point (:class:`numpy.ndarray`): the point within the grid
             with_self (bool): whether to include the point itself
             only_periodic (bool): whether to only mirror along periodic axes
-        
+
         Returns:
             A generator yielding the coordinates that correspond to mirrors
         """
@@ -304,13 +304,13 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             yield point
 
     def normalize_point(self, point, reduced_coords: bool = False):
-        """ normalize coordinates, which is a no-op for spherical coordinates.
-        
+        """normalize coordinates, which is a no-op for spherical coordinates.
+
         Args:
             point (:class:`numpy.ndarray`): Coordinates of a single point
             reduced_coords (bool): Flag determining whether only the coordinates
                 corresponding to axes in this grid are given
-                 
+
         Returns:
             :class:`numpy.ndarray`: The input array
         """
@@ -326,12 +326,12 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         return point
 
     def point_from_cartesian(self, points):
-        """ convert points given in Cartesian coordinates to this grid
-        
+        """convert points given in Cartesian coordinates to this grid
+
         Args:
             points (:class:`numpy.ndarray`):
                 Points given in Cartesian coordinates.
-                
+
         Returns:
             :class:`numpy.ndarray`: Points given in the coordinates of the grid
         """
@@ -339,11 +339,11 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         return np.linalg.norm(points, axis=-1, keepdims=True)
 
     def cell_to_point(self, cells, cartesian: bool = True):
-        """ convert cell coordinates to real coordinates
-        
+        """convert cell coordinates to real coordinates
+
         This function returns points restricted to the x-axis, i.e., the
         y-coordinate will be zero.
-        
+
         Args:
             cells (:class:`numpy.ndarray`):
                 Indices of the cells whose center coordinates are requested.
@@ -352,7 +352,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             cartesian (bool):
                 Determines whether the point is returned in Cartesian
                 coordinates or grid coordinates.
-                
+
         Returns:
             :class:`numpy.ndarray`: The center points of the respective cells
         """
@@ -366,15 +366,15 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             return points
 
     def point_to_cell(self, points):
-        """ Determine cell(s) corresponding to given point(s)
+        """Determine cell(s) corresponding to given point(s)
 
         This function respects periodic boundary conditions, but it does not
         throw an error when coordinates lie outside the bcs (for
         non-periodic axes).
-        
+
         Args:
             points (:class:`numpy.ndarray`): Real coordinates
-                
+
         Returns:
             :class:`numpy.ndarray`: The indices of the respective cells
         """
@@ -385,14 +385,14 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         return cells.astype(np.int)
 
     def difference_vector_real(self, p1, p2):
-        """ return the vector pointing from p1 to p2.
-        
+        """return the vector pointing from p1 to p2.
+
         In case of periodic boundary conditions, the shortest vector is returned
-        
+
         Args:
             p1 (:class:`numpy.ndarray`): First point(s)
             p2 (:class:`numpy.ndarray`): Second point(s)
-            
+
         Returns:
             :class:`numpy.ndarray`: The difference vectors between the points
                 with periodic boundary conditions applied.
@@ -400,16 +400,16 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         return np.atleast_1d(p2) - np.atleast_1d(p1)
 
     def polar_coordinates_real(self, origin=[0, 0, 0], ret_angle: bool = False):
-        """ return spherical coordinates associated with the grid
-        
+        """return spherical coordinates associated with the grid
+
         Args:
             origin (vector): Coordinates of the origin at which the polar
-                coordinate system is anchored. Note that this must be of the 
-                form `[0, 0, z_val]`, where only `z_val` can be chosen freely. 
+                coordinate system is anchored. Note that this must be of the
+                form `[0, 0, z_val]`, where only `z_val` can be chosen freely.
             ret_angle (bool): Determines whether angles are returned alongside
-                the distance. If `False` only the distance to the origin is 
+                the distance. If `False` only the distance to the origin is
                 returned for each support point of the grid.
-                If `True`, the distance and angles are returned. Note that in 
+                If `True`, the distance and angles are returned. Note that in
                 the case of spherical grids, this angle is zero by convention.
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
@@ -425,11 +425,11 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
     @fill_in_docstring
     def get_boundary_conditions(self, bc="natural", rank: int = 0) -> "Boundaries":
-        """ constructs boundary conditions from a flexible data format.
-        
+        """constructs boundary conditions from a flexible data format.
+
         If the inner boundary condition for a grid without a hole is not specified, this
         condition is automatically set to a vanishing derivative at :math:`r=0`.
-        
+
         Args:
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
@@ -441,7 +441,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         Raises:
             ValueError: If the data given in `bc` cannot be read
             PeriodicityError: If the boundaries are not compatible with the
-                periodic axes of the grid. 
+                periodic axes of the grid.
         """
         from .boundaries import Boundaries  # @Reimport
         from .boundaries.axis import BoundaryPair
@@ -479,17 +479,17 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             return bcs
 
     def get_cartesian_grid(self, mode: str = "valid", num: int = None) -> CartesianGrid:
-        """ return a Cartesian grid for this Cylindrical one 
-        
+        """return a Cartesian grid for this Cylindrical one
+
         Args:
             mode (str):
                 Determines how the grid is determined. Setting it to 'valid'
                 only returns points that are fully resolved in the spherical
                 grid, e.g., the sphere is circumscribed. Conversely, 'full'
-                returns all data, so the sphere is inscribed. 
+                returns all data, so the sphere is inscribed.
             num (int):
                 Number of support points along each axis of the returned grid.
-                
+
         Returns:
             :class:`pde.grids.cartesian.CartesianGrid`: The requested grid
         """
@@ -511,21 +511,21 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
 
 class PolarGrid(SphericalGridBase):
-    r""" 2-dimensional polar grid assuming angular symmetry
-    
+    r"""2-dimensional polar grid assuming angular symmetry
+
     The angular symmetry implies that states only depend on the radial
     coordinate :math:`r`, which is discretized uniformly as
-    
+
     .. math::
         r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
         \quad \text{for} \quad i = 0, \ldots, N - 1
-        \quad \text{with} \quad 
+        \quad \text{with} \quad
             \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N}
 
     where :math:`R_\mathrm{outer}` is the outer radius of the grid and
     :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is
     zero by default. The radial direction is discretized by :math:`N` support
-    points.    
+    points.
     """
 
     dim = 2  # dimension of the described space
@@ -534,11 +534,11 @@ class PolarGrid(SphericalGridBase):
     coordinate_constraints = [0, 1]  # axes not described explicitly
 
     def point_to_cartesian(self, points):
-        """ convert coordinates of a point to Cartesian coordinates
-        
+        """convert coordinates of a point to Cartesian coordinates
+
         This function returns points along the y-coordinate, i.e, the x
         coordinates will be zero.
-                
+
         Returns:
             :class:`numpy.ndarray`: The Cartesian coordinates of the point
         """
@@ -552,8 +552,8 @@ class PolarGrid(SphericalGridBase):
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
-        r""" visualize the polar grid
-        
+        r"""visualize the polar grid
+
         Args:
             {PLOT_ARGS}
             \**kwargs: Extra arguments are passed on the to the matplotlib
@@ -579,21 +579,21 @@ class PolarGrid(SphericalGridBase):
 
 
 class SphericalGrid(SphericalGridBase):
-    r""" 3-dimensional spherical grid assuming spherical symmetry
-    
-    The symmetry implies that states only depend on the radial coordinate 
+    r"""3-dimensional spherical grid assuming spherical symmetry
+
+    The symmetry implies that states only depend on the radial coordinate
     :math:`r`, which is discretized as follows:
-    
+
     .. math::
         r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
         \quad \text{for} \quad i = 0, \ldots, N - 1
-        \quad \text{with} \quad 
+        \quad \text{with} \quad
             \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N}
 
     where :math:`R_\mathrm{outer}` is the outer radius of the grid and
     :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is
     zero by default. The radial direction is discretized by :math:`N` support
-    points.    
+    points.
     """
 
     dim = 3  # dimension of the described space
@@ -602,15 +602,15 @@ class SphericalGrid(SphericalGridBase):
     coordinate_constraints = [0, 1, 2]  # axes not described explicitly
 
     def point_to_cartesian(self, points):
-        """ convert coordinates of a point to Cartesian coordinates
-        
+        """convert coordinates of a point to Cartesian coordinates
+
         This function returns points along the z-coordinate, i.e, the x and y
         coordinates will be zero.
-        
+
         Args:
             points (:class:`numpy.ndarray`):
                 Points given in the coordinates of the grid
-                
+
         Returns:
             :class:`numpy.ndarray`: The Cartesian coordinates of the point
         """

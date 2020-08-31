@@ -21,12 +21,12 @@ from .plotting import ScalarFieldPlot, ScaleData
 
 
 class Movie:
-    """ Class for creating movies from matplotlib figures using ffmpeg
-    
+    """Class for creating movies from matplotlib figures using ffmpeg
+
     Note:
         Internally, this class uses :class:`matplotlib.animation.FFMpegWriter`.
         Note that the `ffmpeg` program needs to be installed in a system path,
-        so that `matplotlib` can find it. 
+        so that `matplotlib` can find it.
     """
 
     def __init__(
@@ -65,8 +65,8 @@ class Movie:
 
     @classmethod
     def is_available(cls) -> bool:
-        """ check whether the movie infrastructure is available
-        
+        """check whether the movie infrastructure is available
+
         Returns:
             bool: True if movies can be created
         """
@@ -88,8 +88,8 @@ class Movie:
         self._writer = None
 
     def add_figure(self, fig=None):
-        """ adds the figure `fig` as a frame to the current movie
-        
+        """adds the figure `fig` as a frame to the current movie
+
         Args:
             fig (:class:`~matplotlib.figures.Figure`):
                 The plot figure that is added to the movie
@@ -129,8 +129,8 @@ def movie_scalar(
     tight: bool = False,
     show: bool = True,
 ) -> None:
-    """ produce a movie for a simulation of a scalar field
-    
+    """produce a movie for a simulation of a scalar field
+
     Args:
         storage (:class:`~pde.storage.base.StorageBase`):
             The storage instance that contains all the data for the movie
@@ -140,7 +140,7 @@ def movie_scalar(
         scale (str, float, tuple of float):
             {ARG_PLOT_SCALE}
         extras (dict, optional):
-            Additional functions that are evaluated and shown for each time 
+            Additional functions that are evaluated and shown for each time
             step. The key of the dictionary is used as a panel title.
         progress (bool):
             Flag determining whether the progress of making the movie is shown.
@@ -171,7 +171,7 @@ def movie_multiple(
     scale: ScaleData = "automatic",
     progress: bool = True,
 ) -> None:
-    """ produce a movie for a simulation with n components
+    """produce a movie for a simulation with n components
 
     Args:
         storage (:class:`~pse.storage.base.StorageBase`):

@@ -36,8 +36,8 @@ class Parameter:
         hidden: bool = False,
         extra: Dict[str, Any] = None,
     ):
-        """ initialize a parameter 
-        
+        """initialize a parameter
+
         Args:
             name (str):
                 The name of the parameter
@@ -101,15 +101,15 @@ class Parameter:
         self.__dict__.update(state)
 
     def convert(self, value=None):
-        """ converts a `value` into the correct type for this parameter. If
+        """converts a `value` into the correct type for this parameter. If
         `value` is not given, the default value is converted.
-        
+
         Note that this does not make a copy of the values, which could lead to
         unexpected effects where the default value is changed by an instance.
-        
+
         Args:
             value: The value to convert
-        
+
         Returns:
             The converted value, which is of type `self.cls`
         """
@@ -138,7 +138,7 @@ class HideParameter:
     """ a helper class that allows hiding parameters of the parent classes """
 
     def __init__(self, name: str):
-        """ 
+        """
         Args:
             name (str):
                 The name of the parameter
@@ -156,8 +156,8 @@ class Parameterized:
     _subclasses: Dict[str, "Parameterized"] = {}
 
     def __init__(self, parameters: Dict[str, Any] = None):
-        """ initialize the parameters of the object
-        
+        """initialize the parameters of the object
+
         Args:
             parameters (dict):
                 A dictionary of parameters to change the defaults. The allowed
@@ -197,13 +197,13 @@ class Parameterized:
         include_deprecated: bool = False,
         sort: bool = True,
     ) -> Dict[str, Parameter]:
-        """ return a dictionary of parameters that the class supports
-        
+        """return a dictionary of parameters that the class supports
+
         Args:
             include_hidden (bool): Include hidden parameters
             include_deprecated (bool): Include deprecated parameters
             sort (bool): Return ordered dictionary with sorted keys
-            
+
         Returns:
             dict: a dictionary of instance of :class:`Parameter` with their
             names as keys.
@@ -248,11 +248,11 @@ class Parameterized:
         allow_hidden: bool = True,
         include_deprecated: bool = False,
     ) -> Dict[str, Any]:
-        """ parse parameters
+        """parse parameters
 
         Args:
             parameters (dict):
-                A dictionary of parameters that will be parsed. 
+                A dictionary of parameters that will be parsed.
             check_validity (bool):
                 Determines whether a `ValueError` is raised if there are keys in
                 parameters that are not in the defaults. If `False`, additional
@@ -292,8 +292,8 @@ class Parameterized:
         return result
 
     def get_parameter_default(self, name):
-        """ return the default value for the parameter with `name` 
-        
+        """return the default value for the parameter with `name`
+
         Args:
             name (str): The parameter name
         """
@@ -314,8 +314,8 @@ class Parameterized:
         show_deprecated: bool = False,
         parameter_values: Dict[str, Any] = None,
     ):
-        """ private method showing all parameters in human readable format
-        
+        """private method showing all parameters in human readable format
+
         Args:
             description (bool):
                 Flag determining whether the parameter description is shown. The
@@ -330,7 +330,7 @@ class Parameterized:
             parameter_values (dict):
                 A dictionary with values to show. Parameters not in this
                 dictionary are shown with their default value.
-        
+
         All flags default to `False`.
         """
         # determine whether we are in a jupyter notebook and can return HTML
@@ -394,8 +394,8 @@ class Parameterized:
         show_hidden: bool = False,
         show_deprecated: bool = False,
     ):
-        """ show all parameters in human readable format
-        
+        """show all parameters in human readable format
+
         Args:
             description (bool):
                 Flag determining whether the parameter description is shown. The
@@ -407,7 +407,7 @@ class Parameterized:
                 Flag determining whether hidden parameters are shown
             show_deprecated (bool):
                 Flag determining whether deprecated parameters are shown
-        
+
         All flags default to `False`.
         """
         cls._show_parameters(description, sort, show_hidden, show_deprecated)
@@ -421,8 +421,8 @@ class Parameterized:
         show_deprecated: bool = False,
         default_value: bool = False,
     ):
-        """ show all parameters in human readable format
-        
+        """show all parameters in human readable format
+
         Args:
             description (bool):
                 Flag determining whether the parameter description is shown. The
@@ -437,7 +437,7 @@ class Parameterized:
             default_value (bool):
                 Flag determining whether the default values or the current
                 values are shown
-        
+
         All flags default to `False`.
         """
         self._show_parameters(
@@ -450,8 +450,8 @@ class Parameterized:
 
 
 def get_all_parameters(data: str = "name") -> Dict[str, Any]:
-    """ get a dictionary with all parameters of all registered classes
-    
+    """get a dictionary with all parameters of all registered classes
+
     Args:
         data (str):
             Determines what data is returned. Possible values are 'name',
@@ -478,12 +478,12 @@ def get_all_parameters(data: str = "name") -> Dict[str, Any]:
 
 
 def sphinx_display_parameters(app, what, name, obj, options, lines):
-    """ helper function to display parameters in sphinx documentation
-    
-    Example: 
+    """helper function to display parameters in sphinx documentation
+
+    Example:
         This function should be connected to the 'autodoc-process-docstring'
         event like so:
-    
+
             app.connect('autodoc-process-docstring', sphinx_display_parameters)
     """
     if what == "class" and issubclass(obj, Parameterized):

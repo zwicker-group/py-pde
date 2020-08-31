@@ -45,8 +45,8 @@ class MockProgress:
 
 
 def get_progress_bar_class():
-    """ returns a class that behaves as progress bar.
-    
+    """returns a class that behaves as progress bar.
+
     This either uses classes from the optional `tqdm` package or a simple
     version that writes dots to stderr, if the class it not available.
     """
@@ -90,13 +90,13 @@ def get_progress_bar_class():
 def display_progress(iterator, total=None, enabled=True, **kwargs):
     r"""
     displays a progress bar when iterating
-    
+
     Args:
         iterator (iter): The iterator
         total (int): Total number of steps
         enabled (bool): Flag determining whether the progress is display
         **kwargs: All extra arguments are forwarded to the progress bar class
-        
+
     Returns:
         A class that behaves as the original iterator, but shows the progress
         alongside iteration.
@@ -130,8 +130,8 @@ class BasicOutput(OutputBase):
         self.stream = stream
 
     def __call__(self, line: str):
-        """ add a line of text
-        
+        """add a line of text
+
         Args:
             line (str): The text line
         """
@@ -156,8 +156,8 @@ class JupyterOutput(OutputBase):
         self.lines: List[str] = []
 
     def __call__(self, line: str):
-        """ add a line of text
-        
+        """add a line of text
+
         Args:
             line (str): The text line
         """

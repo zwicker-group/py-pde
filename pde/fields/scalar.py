@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class ScalarField(DataFieldBase):
-    """ Single scalar field on a grid
+    """Single scalar field on a grid
 
     Attributes:
         grid (:class:`~pde.grids.GridBase`):
@@ -38,11 +38,11 @@ class ScalarField(DataFieldBase):
     def from_expression(
         cls, grid: GridBase, expression: str, label: str = None
     ) -> "ScalarField":
-        """ create a scalar field on a grid from a given expression
-        
+        """create a scalar field on a grid from a given expression
+
         Warning:
             {WARNING_EXEC}
-        
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
@@ -59,20 +59,22 @@ class ScalarField(DataFieldBase):
         expr = ScalarExpression(expression=expression, signature=grid.axes)
         points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
         return cls(  # lgtm [py/call-to-non-callable]
-            grid=grid, data=expr(**points), label=label,
+            grid=grid,
+            data=expr(**points),
+            label=label,
         )
 
     @classmethod
     def from_image(
         cls, path: Union[Path, str], bounds=None, periodic=False, label: str = None
     ) -> "ScalarField":
-        """ create a scalar field from an image
-    
+        """create a scalar field from an image
+
         Args:
             path (:class:`Path` or str): The path to the image
             bounds (tuple, optional): Gives the coordinate range for each axis.
                 This should be two tuples of two numbers each, which mark the
-                lower and upper bound for each axis. 
+                lower and upper bound for each axis.
             periodic (bool or list): Specifies which axes possess periodic
                 boundary conditions. This is either a list of booleans defining
                 periodicity for each individual axis or a single boolean value
@@ -146,8 +148,8 @@ class ScalarField(DataFieldBase):
         out: Optional["ScalarField"] = None,
         label: str = "laplace",
     ) -> "ScalarField":
-        """ apply Laplace operator and return result as a field 
-        
+        """apply Laplace operator and return result as a field
+
         Args:
             bc:
                 The boundary conditions applied to the field.
@@ -156,9 +158,9 @@ class ScalarField(DataFieldBase):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
-            ScalarField: the result of applying the operator 
+            ScalarField: the result of applying the operator
         """
         if out is not None:
             assert isinstance(out, ScalarField)
@@ -173,10 +175,10 @@ class ScalarField(DataFieldBase):
         out: Optional["ScalarField"] = None,
         label: str = "squared gradient",
     ) -> "ScalarField":
-        r""" apply squared gradient operator and return result as a field
-        
+        r"""apply squared gradient operator and return result as a field
+
         This evaluates :math:`|\nabla \phi|^2` for the scalar field :math:`\phi`
-        
+
         Args:
             bc:
                 The boundary conditions applied to the field.
@@ -191,9 +193,9 @@ class ScalarField(DataFieldBase):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
-            ScalarField: the result of applying the operator 
+            ScalarField: the result of applying the operator
         """
         if out is not None:
             assert isinstance(out, ScalarField)
@@ -209,19 +211,19 @@ class ScalarField(DataFieldBase):
         out: Optional["VectorField"] = None,
         label: str = "gradient",
     ) -> "VectorField":
-        """ apply gradient operator and return result as a field 
-        
+        """apply gradient operator and return result as a field
+
         Args:
-            bc: 
+            bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (VectorField, optional):
                 Optional vector field to which the result is written.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
-            VectorField: the result of applying the operator 
+            VectorField: the result of applying the operator
         """
         from .vectorial import VectorField  # @Reimport
 
@@ -240,39 +242,39 @@ class ScalarField(DataFieldBase):
         out: Optional["ScalarField"] = None,
         label: str = "Solution to Poisson's equation",
     ):
-        r""" solve Poisson's equation with the current field as inhomogeneity.
-         
+        r"""solve Poisson's equation with the current field as inhomogeneity.
+
         Denoting the current field by :math:`x`, we thus solve for :math:`y`,
-        defined by the equation 
- 
+        defined by the equation
+
         .. math::
             \nabla^2 y(\boldsymbol r) = -x(\boldsymbol r)
-            
+
         with boundary conditions specified by `bc`.
-            
+
         Note:
             In case of periodic or Neumann boundary conditions, the right hand
             side :math:`x(\boldsymbol r)` needs to satisfy the following
             condition for consistency:
-            
+
             .. math::
                 \int x \, \mathrm{d}V = \oint g \, \mathrm{d}S
-                
+
             where :math:`g` denotes the function specifying the outwards
             derivative for Neumann conditions. In particular, the integral over
             :math:`x` must vanish for neutral Neumann or periodic conditions.
-             
+
         Args:
-            bc: 
+            bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-             
+
         Returns:
-            ScalarField: the result of applying the operator 
+            ScalarField: the result of applying the operator
         """
         # Deprecated this method on 2020-04-15
         import warnings
@@ -317,8 +319,8 @@ class ScalarField(DataFieldBase):
         method: str = "integral",
         label: str = None,
     ) -> "ScalarField":
-        """ project scalar field along given axes
-        
+        """project scalar field along given axes
+
         Args:
             axes (list of str):
                 The names of the axes that are removed by the projection
@@ -330,7 +332,7 @@ class ScalarField(DataFieldBase):
                 average instead.
             label (str, optional):
                 The label of the returned field
-                
+
         Returns:
             ScalarField: The projected data in a scalar field with a subgrid of
             the original grid.
@@ -367,8 +369,8 @@ class ScalarField(DataFieldBase):
     def slice(
         self, position: Dict[str, float], method: str = "nearest", label: str = None
     ) -> "ScalarField":
-        """ slice data at a given position
-        
+        """slice data at a given position
+
         Args:
             position (dict):
                 Determines the location of the slice using a dictionary
@@ -383,7 +385,7 @@ class ScalarField(DataFieldBase):
                 defined on the grid.
             label (str, optional):
                 The label of the returned field
-                
+
         Returns:
             ScalarField: The sliced data in a scalar field with a subgrid of
             the original grid.
@@ -447,15 +449,15 @@ class ScalarField(DataFieldBase):
     def to_scalar(
         self, scalar: str = "auto", label: Optional[str] = None
     ) -> "ScalarField":
-        """ return a modified scalar field by applying `method`
-        
+        """return a modified scalar field by applying `method`
+
         Args:
             scalar (str or int):
                 How to obtain the scalar. For ScalarField, the default `0`
                 simply returns the actual field. Setting this to 'norm' returns
                 the absolute value at each point.
             label (str, optional): Name of the returned field
-            
+
         Returns:
             :class:`pde.fields.scalar.ScalarField`: the scalar field after
             applying the operation

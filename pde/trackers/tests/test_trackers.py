@@ -178,8 +178,8 @@ def test_steady_state_tracker():
 
 
 def test_small_tracker_dt():
-    """ test the case where the dt of the tracker is smaller than the dt 
-    of the simulation """
+    """test the case where the dt of the tracker is smaller than the dt
+    of the simulation"""
     storage = MemoryStorage()
     pde = DiffusionPDE()
     c0 = ScalarField.random_uniform(UnitGrid([4, 4]), 0.1, 0.2)

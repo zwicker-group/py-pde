@@ -49,11 +49,11 @@ class ConstantIntervals:
         return copy.copy(self)
 
     def _initialize(self, t: float) -> float:
-        """ initialize the tracker
-        
+        """initialize the tracker
+
         Args:
             t (float): The starting time of the simulation
-                
+
         Returns:
             float: The first time the tracker needs to handle data
         """
@@ -64,8 +64,8 @@ class ConstantIntervals:
         return self._t_next
 
     def next(self, t: float) -> float:
-        """ computes the next time point based on the current time t
-        
+        """computes the next time point based on the current time t
+
         Args:
             t (float): The current time point of the simulation
         """
@@ -108,8 +108,8 @@ class LogarithmicIntervals(ConstantIntervals):
         )
 
     def next(self, t: float) -> float:
-        """ computes the next time point based on the current time t
-        
+        """computes the next time point based on the current time t
+
         Args:
             t (float): The current time point of the simulation
         """
@@ -118,8 +118,8 @@ class LogarithmicIntervals(ConstantIntervals):
 
 
 class RealtimeIntervals(ConstantIntervals):
-    """ class representing time intervals spaced equidistantly in real time
-    
+    """class representing time intervals spaced equidistantly in real time
+
     This spacing is only achieved approximately and depends on the initial value
     set by `dt_initial` and the actual variation in computation speed.
     """
@@ -149,11 +149,11 @@ class RealtimeIntervals(ConstantIntervals):
         )
 
     def _initialize(self, t: float) -> float:
-        """ initialize the tracker
-        
+        """initialize the tracker
+
         Args:
             t (float): The starting time of the simulation
-                
+
         Returns:
             float: The first time the tracker needs to handle data
         """
@@ -161,8 +161,8 @@ class RealtimeIntervals(ConstantIntervals):
         return super()._initialize(t)
 
     def next(self, t: float) -> float:
-        """ computes the next time point based on the current time t
-        
+        """computes the next time point based on the current time t
+
         Args:
             t (float): The current time point of the simulation
         """
@@ -187,8 +187,8 @@ IntervalData = Union[IntervalType, Real, str]
 
 
 def get_interval(interval: IntervalData) -> IntervalType:
-    """ create IntervalType from various data formats
-    
+    """create IntervalType from various data formats
+
     If interval is of type :class:`IntervalType` it is simply returned
     """
     if isinstance(interval, IntervalType):

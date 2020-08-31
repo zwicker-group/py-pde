@@ -14,8 +14,8 @@ from .base import SolverBase
 
 
 class ScipySolver(SolverBase):
-    """ class for solving partial differential equations using scipy
-    
+    """class for solving partial differential equations using scipy
+
     This class is a thin wrapper around :func:`scipy.integrate.solve_ivp`. In
     particular, it supports all the methods implemented by this function.
     """
@@ -23,8 +23,8 @@ class ScipySolver(SolverBase):
     name = "scipy"
 
     def __init__(self, pde: PDEBase, backend: str = "auto", **kwargs):
-        r""" initialize the explicit solver
-        
+        r"""initialize the explicit solver
+
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved
@@ -33,7 +33,7 @@ class ScipySolver(SolverBase):
                 'numpy` and 'numba'. Alternatively, 'auto' lets the code decide
                 for the most optimal backend.
             **kwargs:
-                All extra arguments are forwarded to 
+                All extra arguments are forwarded to
                 :func:`scipy.integrate.solve_ivp`.
         """
         super().__init__(pde)
@@ -41,8 +41,8 @@ class ScipySolver(SolverBase):
         self.solver_params = kwargs
 
     def make_stepper(self, state: FieldBase, dt: float = None) -> Callable:
-        """ return a stepper function
-        
+        """return a stepper function
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
@@ -50,11 +50,11 @@ class ScipySolver(SolverBase):
             dt (float):
                 Initial time step for the simulation. If `None`, the solver will
                 choose a suitable initial value
-                
+
         Returns:
             Function that can be called to advance the `state` from time
             `t_start` to time `t_end`. The function call signature is
-            `(state: numpy.ndarray, t_start: float, t_end: float)`        
+            `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
         shape = state.data.shape
         self.info["dt"] = dt
@@ -69,8 +69,8 @@ class ScipySolver(SolverBase):
             return rhs(state_flat.reshape(shape), t).flat
 
         def stepper(state, t_start, t_end):
-            """ use scipy.integrate.odeint to advance `state` from `t_start` to
-            `t_end` """
+            """use scipy.integrate.odeint to advance `state` from `t_start` to
+            `t_end`"""
             if dt is not None:
                 self.solver_params["first_step"] = min(t_end - t_start, dt)
 

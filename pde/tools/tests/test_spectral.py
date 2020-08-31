@@ -11,14 +11,14 @@ from ..spectral import make_colored_noise
 
 
 def spectral_density(data, dx=1.0):
-    """ calculate the power spectral density of a field
-    
+    """calculate the power spectral density of a field
+
     Args:
         data (:class:`numpy.ndarray`):
-            Data of which the power spectral density will be calculated  
+            Data of which the power spectral density will be calculated
         dx (float or list): The discretizations of the grid either as a single
             number or as an array with a value for each dimension
-            
+
     Returns:
         A tuple with two arrays containing the magnitudes of the wave vectors
         and the associated density, respectively.
@@ -50,8 +50,8 @@ def test_colored_noise():
 
 
 def test_noise_scaling():
-    """ compare the noise strength (in terms of the spectral density of
-    two different noise sources that should be equivalent) """
+    """compare the noise strength (in terms of the spectral density of
+    two different noise sources that should be equivalent)"""
     # create a grid
     x, w = 2 + 10 * np.random.random(2)
     size = np.random.randint(128, 256)

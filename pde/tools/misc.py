@@ -37,11 +37,11 @@ from .output import display_progress, get_progress_bar_class  # @UnusedImport
 
 
 def module_available(module_name: str) -> bool:
-    """ check whether a python module is available
-    
+    """check whether a python module is available
+
     Args:
         module_name (str): The name of the module
-        
+
     Returns:
         `True` if the module can be imported and `False` otherwise
     """
@@ -54,12 +54,12 @@ def module_available(module_name: str) -> bool:
 
 
 def environment(dict_type=dict) -> Dict[str, Any]:
-    """ obtain information about the compute environment
-    
+    """obtain information about the compute environment
+
     Args:
         dict_type: The type to create the returned dictionaries. The default is
             `dict`, but :class:`collections.OrderedDict` is an alternative.
-    
+
     Returns:
         dict: information about the python installation and packages
     """
@@ -94,8 +94,8 @@ def environment(dict_type=dict) -> Dict[str, Any]:
 
 
 def ensure_directory_exists(folder: Union[str, Path]):
-    """ creates a folder if it not already exists
-    
+    """creates a folder if it not already exists
+
     Args:
         folder (str): path of the new folder
     """
@@ -110,15 +110,15 @@ def ensure_directory_exists(folder: Union[str, Path]):
 
 
 def preserve_scalars(method: Callable) -> Callable:
-    """ decorator that makes vectorized methods work with scalars
-    
+    """decorator that makes vectorized methods work with scalars
+
     This decorator allows to call functions that are written to work on numpy
     arrays to also accept python scalars, like `int` and `float`. Essentially,
     this wrapper turns them into an array and unboxes the result.
 
     Args:
         method: The method being decorated
-        
+
     Returns:
         The decorated method
     """
@@ -136,16 +136,16 @@ def preserve_scalars(method: Callable) -> Callable:
 
 
 def decorator_arguments(decorator: Callable) -> Callable:
-    r""" make a decorator usable with and without arguments:
-    
+    r"""make a decorator usable with and without arguments:
+
     The resulting decorator can be used like `@decorator`
     or `@decorator(\*args, \**kwargs)`
-    
+
     Inspired by https://stackoverflow.com/a/14412901/932593
-    
+
     Args:
         decorator: the decorator that needs to be modified
-        
+
     Returns:
         the decorated function
     """
@@ -163,11 +163,11 @@ def decorator_arguments(decorator: Callable) -> Callable:
 
 
 def skipUnlessModule(module_name: str) -> Callable:
-    """ decorator that skips a test when a module is not available
-    
+    """decorator that skips a test when a module is not available
+
     Args:
         module_name (str): The name of the required module
-        
+
     Returns:
         A function, so this can be used as a decorator
     """
@@ -183,8 +183,8 @@ def skipUnlessModule(module_name: str) -> Callable:
 
 
 def import_class(identifier: str):
-    """ import a class or module given an identifier 
-    
+    """import a class or module given an identifier
+
     Args:
         identifier (str):
             The identifier can be a module or a class. For instance, calling the
@@ -202,22 +202,22 @@ def import_class(identifier: str):
 
 
 class classproperty(property):
-    """ decorator that can be used to define read-only properties for classes.
-    
+    """decorator that can be used to define read-only properties for classes.
+
     This is inspired by the implementation of :mod:`astropy`, see
     `astropy.org <http://astropy.org/>`_.
-    
+
     Example:
         The decorator can be used much like the `property` decorator::
-            
+
             class Test():
-            
+
                 item: str = 'World'
-            
+
                 @classproperty
                 def message(cls):
                     return 'Hello ' + cls.item
-                    
+
             print(Test.message)
     """
 
@@ -270,7 +270,7 @@ class hybridmethod:
     """
     descriptor that can be used as a decorator to allow calling a method both
     as a classmethod and an instance method
-     
+
     Adapted from https://stackoverflow.com/a/28238047
     """
 
@@ -295,11 +295,11 @@ class hybridmethod:
 
 
 def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
-    """ estimates the computation speed of a function
-    
+    """estimates the computation speed of a function
+
     Args:
         func (callable): The function to call
-    
+
     Returns:
         float: the number of times the function can be calculated in one second.
         The inverse is thus the runtime in seconds per function call
@@ -328,8 +328,8 @@ def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
 def hdf_write_attributes(
     hdf_path, attributes: Dict[str, Any] = None, raise_serialization_error: bool = False
 ) -> None:
-    """ write (JSON-serialized) attributes to a hdf file
-    
+    """write (JSON-serialized) attributes to a hdf file
+
     Args:
         hdf_path:
             Path to a group or dataset in an open HDF file

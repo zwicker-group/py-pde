@@ -98,8 +98,8 @@ class FileStorage(StorageBase):
             self._data_length = None  # type: ignore
 
     def _create_hdf_dataset(self, name: str, shape: Tuple[int, ...] = tuple()):
-        """ create a hdf5 dataset with the given name and data_shape
-        
+        """create a hdf5 dataset with the given name and data_shape
+
         Args:
             name (str): Identifier of the hdf5 dataset
             shape (tuple): Data shape of the dataset
@@ -124,8 +124,8 @@ class FileStorage(StorageBase):
             )
 
     def _open(self, mode: str = "reading", info: InfoDict = None) -> None:
-        """ open the hdf file in a particular mode
-        
+        """open the hdf file in a particular mode
+
         Args:
             mode (str):
                 Determines how the file is opened. Possible values are
@@ -241,8 +241,8 @@ class FileStorage(StorageBase):
         return self._data
 
     def clear(self, clear_data_shape: bool = False):
-        """ truncate the storage by removing all stored data.
-        
+        """truncate the storage by removing all stored data.
+
         Args:
             clear_data_shape (bool): Flag determining whether the data shape is
                 also deleted.
@@ -269,8 +269,8 @@ class FileStorage(StorageBase):
         super().clear(clear_data_shape=clear_data_shape)
 
     def start_writing(self, field: FieldBase, info: InfoDict = None) -> None:
-        """ initialize the storage for writing data
-        
+        """initialize the storage for writing data
+
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 An example of the data that will be written to extract the grid
@@ -317,8 +317,8 @@ class FileStorage(StorageBase):
         self._is_writing = True
 
     def append(self, data: np.ndarray, time: Optional[float] = None) -> None:
-        """ append a new data set
-        
+        """append a new data set
+
         Args:
             data (:class:`numpy.ndarray`): The actual data
             time (float, optional): The time point associated with the data
@@ -356,8 +356,8 @@ class FileStorage(StorageBase):
             self.close()
 
     def end_writing(self) -> None:
-        """ finalize the storage after writing.
-        
+        """finalize the storage after writing.
+
         This makes sure the data is actually written to a file when
         self.keep_opened == False
         """

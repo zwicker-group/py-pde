@@ -30,14 +30,14 @@ import numpy as np
 
 
 def objects_equal(a, b) -> bool:
-    """ compares two objects to see whether they are equal
-    
+    """compares two objects to see whether they are equal
+
     In particular, this uses :func:`numpy.array_equal` to check for numpy arrays
-    
+
     Args:
         a: The first object
         b: The second object
-        
+
     Returns:
         bool: Whether the two objects are considered equal
     """
@@ -68,13 +68,13 @@ def _hash_iter(it: Iterable) -> int:
 
 
 def hash_mutable(obj) -> int:
-    """ return hash also for (nested) mutable objects. This function might be a
+    """return hash also for (nested) mutable objects. This function might be a
     bit slow, since it iterates over all containers and hashes objects
     recursively.
-    
+
     Args:
         obj: A general python object
-    
+
     Returns:
         int: A hash value associated with the data of `obj`
     """
@@ -126,18 +126,18 @@ def hash_mutable(obj) -> int:
 
 
 def hash_readable(obj) -> str:
-    """ return human readable hash also for (nested) mutable objects. This
+    """return human readable hash also for (nested) mutable objects. This
     function returns a json-like representation of the object. The function
     might be a bit slow, since it iterates over all containers and hashes
     objects recursively. Note that this hash function tries to return the same
-    value for equivalent objects, but it does not ensure that the objects can 
+    value for equivalent objects, but it does not ensure that the objects can
     be reconstructed from this data.
-    
+
     Args:
         obj: A general python object
-    
+
     Returns:
-        str: A hash value associated with the data of `obj`    
+        str: A hash value associated with the data of `obj`
     """
     if isinstance(obj, numbers.Number):
         return str(obj)
@@ -190,15 +190,15 @@ def hash_readable(obj) -> str:
 
 
 def make_serializer(method: str) -> Callable:
-    """ returns a function that serialize data with the given method. Note that
+    """returns a function that serialize data with the given method. Note that
     some of the methods destroy information and cannot be reverted.
-    
+
     Args:
         method (str): An identifier determining the serializer that will be
             returned
-    
+
     Returns:
-        callable: A function that serializes objects    
+        callable: A function that serializes objects
     """
     if callable(method):
         return method
@@ -234,17 +234,17 @@ def make_serializer(method: str) -> Callable:
 
 
 def make_unserializer(method: str) -> Callable:
-    """ returns a function that unserialize data with the  given method
-    
+    """returns a function that unserialize data with the  given method
+
     This is the inverse function of :func:`make_serializer`.
-    
+
     Args:
         method (str): An identifier determining the unserializer that will be
             returned
-    
+
     Returns:
-        callable: A function that serializes objects    
-    
+        callable: A function that serializes objects
+
     """
     if callable(method):
         return method
@@ -305,7 +305,7 @@ class DictFiniteCapacity(collections.OrderedDict):
 
 
 class SerializedDict(collections.abc.MutableMapping):
-    """ a key value database which is stored on the disk
+    """a key value database which is stored on the disk
     This class provides hooks for converting arbitrary keys and values to
     strings, which are then stored in the database.
     """
@@ -316,8 +316,8 @@ class SerializedDict(collections.abc.MutableMapping):
         value_serialization: str = "pickle",
         storage_dict: Optional[Dict] = None,
     ):
-        """ provides a dictionary whose keys and values are serialized
-        
+        """provides a dictionary whose keys and values are serialized
+
         Args:
             key_serialization (str):
                 Determines the serialization method for keys
@@ -325,7 +325,7 @@ class SerializedDict(collections.abc.MutableMapping):
                 Determines the serialization method for values
             storage_dict (dict):
                 Can be used to chose a different dictionary for the underlying
-                storage mechanism, e.g., storage_dict = PersistentDict() 
+                storage mechanism, e.g., storage_dict = PersistentDict()
         """
         # initialize the dictionary that actually stores the data
         if storage_dict is None:
@@ -388,29 +388,29 @@ class _class_cache:
         doc=None,
         name=None,
     ):
-        r""" decorator that caches calls in a dictionary attached to the
+        r"""decorator that caches calls in a dictionary attached to the
         instances. This can be used with most classes
-    
+
         Example:
             An example for using the class is::
-    
+
                 class Foo():
-                
+
                     @cached_property()
                     def property(self):
                         return "Cached property"
-                
+
                     @cached_method()
                     def method(self):
                         return "Cached method"
-                        
-                
+
+
                 foo = Foo()
                 foo.property
                 foo.method()
-            
+
         The cache can be cleared by setting `foo.\_cache\_methods = {}` if
-        the cache factory is a simple dict, i.e, if `factory == None`.        
+        the cache factory is a simple dict, i.e, if `factory == None`.
         Alternatively, each cached method has a :func:`clear_cache_of_obj`
         method, which clears the cache of this particular method. In the example
         above we could thus call `foo.bar.clear\_cache\_of\_obj(foo)` to
@@ -421,23 +421,23 @@ class _class_cache:
         cache from within a method, one can thus call
         `self.method_name.clear\_cache\_of\_obj(self)`, where
         `method\_name` is the name of the method whose cache is cleared
-        
-        Example: 
-            An advanced example is::        
-            
+
+        Example:
+            An advanced example is::
+
                 class Foo():
-                        
+
                     def get_cache(self, name):
-                        # `name` is the name of the method to cache 
+                        # `name` is the name of the method to cache
                         return DictFiniteCapacity()
-                
+
                     @cached_method(factory='get_cache')
                     def foo(self):
                         return "Cached"
-            
+
         Args:
             factory (callable):
-                Function/class creating an empty cache. `dict` by default. 
+                Function/class creating an empty cache. `dict` by default.
                 This can be used with user-supplied storage backends by. The
                 cache factory should return a dict-like object that handles the
                 cache for the given method.
@@ -484,8 +484,8 @@ class _class_cache:
             self.factory = factory
 
     def _get_clear_cache_method(self) -> Callable:
-        """ return a method that can be attached to classes to clear the cache
-        of the wrapped method """
+        """return a method that can be attached to classes to clear the cache
+        of the wrapped method"""
 
         def clear_cache(obj):
             """ clears the cache associated with this method """
@@ -570,28 +570,28 @@ class _class_cache:
 
 
 class cached_property(_class_cache):
-    r""" Decorator to use a method as a cached property
+    r"""Decorator to use a method as a cached property
 
     The function is only called the first time and each successive call returns
     the cached result of the first call.
 
     Example:
         Here is an example for how to use the decorator::
-        
+
             class Foo():
-            
+
                 @cached_property
                 def bar(self):
                     return "Cached"
-            
-            
+
+
             foo = Foo()
             result = foo.bar
-                
+
     The data is stored in a dictionary named `_cache_methods` attached to
     the instance of each object. The cache can thus be cleared by setting
     `self.\_cache\_methods = {}`. The cache of specific property can be
-    cleared using `self._cache_methods[property_name] = {}`, where 
+    cleared using `self._cache_methods[property_name] = {}`, where
     `property\_name` is the name of the property
 
     Adapted from <https://wiki.python.org/moin/PythonDecoratorLibrary>.
@@ -615,28 +615,28 @@ class cached_property(_class_cache):
 
 
 class cached_method(_class_cache):
-    r""" Decorator to enable caching of a method
-    
+    r"""Decorator to enable caching of a method
+
     The function is only called the first time and each successive call returns
     the cached result of the first call.
 
     Example:
         The decorator can be used like so::
-    
+
             class Foo:
-            
+
                 @cached_method
                 def bar(self):
                     return "Cached"
-            
-            
+
+
             foo = Foo()
             result = foo.bar()
-                
+
     The data is stored in a dictionary named `\_cache\_methods` attached to
     the instance of each object. The cache can thus be cleared by setting
     `self.\_cache\_methods = {}`. The cache of specific property can be
-    cleared using `self.\_cache\_methods[property\_name] = {}`, where 
+    cleared using `self.\_cache\_methods[property\_name] = {}`, where
     `property\_name` is the name of the property
     """
 

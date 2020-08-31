@@ -281,8 +281,8 @@ def test_rect_grid_3d():
 
 
 def test_unit_rect_grid():
-    """ test whether the rectangular grid behaves like a unit grid in
-    special cases """
+    """test whether the rectangular grid behaves like a unit grid in
+    special cases"""
     for periodic in [True, False]:
         msg = "periodic=%s" % str(periodic)
 

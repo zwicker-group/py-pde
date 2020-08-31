@@ -68,8 +68,8 @@ class MemoryStorage(StorageBase):
         info: InfoDict = None,
         write_mode: str = "truncate_once",
     ) -> "MemoryStorage":
-        """ create MemoryStorage from a list of fields
-        
+        """create MemoryStorage from a list of fields
+
         Args:
             times (:class:`numpy.ndarray`):
                 Sequence of times for which data is known
@@ -104,14 +104,14 @@ class MemoryStorage(StorageBase):
     def from_collection(
         cls, storages: Sequence["StorageBase"], label: str = None
     ) -> "MemoryStorage":
-        """ combine multiple memory storages into one
-        
+        """combine multiple memory storages into one
+
         This method can be used to combine multiple time series of different
         fields into a single representation. This requires that all time series
         contain data at the same time points.
-        
+
         Args:
-            storages (list): 
+            storages (list):
                 A collection of instances of
                 :class:`~pde.storage.base.StorageBase` whose data
                 will be concatenated into a single MemoryStorage
@@ -119,7 +119,7 @@ class MemoryStorage(StorageBase):
                 The label of the instances of
                 :class:`~pde.fields.FieldCollection` that
                 represent the concatenated data
-                
+
         Returns:
             :class:`~pde.storage.memory.MemoryStorage`: Storage
             containing all the data.
@@ -139,16 +139,13 @@ class MemoryStorage(StorageBase):
                 data[i].append(field)
 
         # convert data format to FieldCollections
-        fields = [
-            FieldCollection(d, label=label)  # type: ignore
-            for d in data
-        ]
+        fields = [FieldCollection(d, label=label) for d in data]  # type: ignore
 
         return cls.from_fields(times, fields=fields)
 
     def clear(self, clear_data_shape: bool = False) -> None:
-        """ truncate the storage by removing all stored data.
-        
+        """truncate the storage by removing all stored data.
+
         Args:
             clear_data_shape (bool): Flag determining whether the data shape is
                 also deleted.
@@ -158,8 +155,8 @@ class MemoryStorage(StorageBase):
         super().clear(clear_data_shape=clear_data_shape)
 
     def start_writing(self, field: FieldBase, info: InfoDict = None) -> None:
-        """ initialize the storage for writing data
-        
+        """initialize the storage for writing data
+
         Args:
             field (:class:`~pde.fields.FieldBase`):
                 An example of the data that will be written to extract the grid
@@ -192,8 +189,8 @@ class MemoryStorage(StorageBase):
             )
 
     def append(self, data: np.ndarray, time: Optional[float] = None) -> None:
-        """ append a new data set
-        
+        """append a new data set
+
         Args:
             data (:class:`numpy.ndarray`): The actual data
             time (float, optional): The time point associated with the data
@@ -207,24 +204,24 @@ class MemoryStorage(StorageBase):
 
 @contextmanager
 def get_memory_storage(field: FieldBase, info: InfoDict = None):
-    """ a context manager that can be used to create a MemoryStorage
-    
+    """a context manager that can be used to create a MemoryStorage
+
     Example:
         This can be used to quickly store data::
-        
+
             with get_memory_storage(field_class) as storage:
                 storage.append(numpy_array0, 0)
                 storage.append(numpy_array1, 1)
-                
+
             # use storage thereafter
-    
+
     Args:
         field (:class:`~pde.fields.FieldBase`):
             An example of the data that will be written to extract the grid
             and the data_shape
         info (dict):
             Supplies extra information that is stored in the storage
-            
+
     Yields:
         :class:`MemoryStorage`
     """

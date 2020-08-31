@@ -38,7 +38,7 @@ class BoundaryPair(BoundaryAxisBase):
     periodic = False
 
     def __init__(self, low: BCBase, high: BCBase):
-        """ 
+        """
         Args:
             low (:class:`~pde.grids.boundaries.local.BCBase`):
                 Instance describing the lower boundary
@@ -105,8 +105,8 @@ class BoundaryPair(BoundaryAxisBase):
             raise IndexError("Index can be either 0/False or 1/True")
 
     def set_value(self, value=0):
-        """ set the value of both boundary conditions
-        
+        """set the value of both boundary conditions
+
         Args:
             value (float or array):
                 Sets the value stored with the boundary conditions. The
@@ -117,8 +117,8 @@ class BoundaryPair(BoundaryAxisBase):
         self.high.value = value
 
     def scale_value(self, factor: float = 1):
-        """ scales the value of the boundary condition with the given factor
-        
+        """scales the value of the boundary condition with the given factor
+
         Args:
             value (float):
                 Scales the value associated with the boundary condition by the factor
@@ -138,7 +138,7 @@ class BoundaryPair(BoundaryAxisBase):
     def from_data(
         cls, grid: GridBase, axis: int, data, rank: int = 0
     ) -> "BoundaryPair":
-        """ create boundary pair from some data
+        """create boundary pair from some data
 
         Args:
             grid (:class:`~pde.grids.GridBase`):
@@ -150,11 +150,11 @@ class BoundaryPair(BoundaryAxisBase):
             rank (int):
                 The tensorial rank of the value associated with the boundary
                 conditions.
-        
+
         Returns:
             :class:`~pde.grids.boundaries.axis.BoundaryPair`:
             the instance created from the data
-            
+
         Throws:
             ValueError if `data` cannot be interpreted as a boundary pair
         """
@@ -212,11 +212,11 @@ class BoundaryPair(BoundaryAxisBase):
 
     @property
     def _scipy_border_mode(self) -> dict:
-        """ dict: a dictionary that can be used in scipy functions
-        
+        """dict: a dictionary that can be used in scipy functions
+
         This returns arguments that can be passed to functions of the
         scipy.ndimage module to specify border conditions.
-        
+
         Raise:
             RuntimeError if the boundary cannot be represented
         """
@@ -237,7 +237,7 @@ class BoundaryPair(BoundaryAxisBase):
             raise RuntimeError("Unsupported boundaries")
 
     def extract_component(self, *indices):
-        """ extracts the boundary pair of the given index.
+        """extracts the boundary pair of the given index.
 
         Args:
             *indices:
@@ -248,12 +248,12 @@ class BoundaryPair(BoundaryAxisBase):
         return self.__class__(bc_sub_low, bc_sub_high)
 
     def check_value_rank(self, rank: int):
-        """ check whether the values at the boundaries have the correct rank
-        
+        """check whether the values at the boundaries have the correct rank
+
         Args:
             rank (int): The rank of the value that is stored with this
                 boundary condition
-            
+
         Throws:
             RuntimeError: if the value does not have rank `rank`
         """
@@ -261,12 +261,12 @@ class BoundaryPair(BoundaryAxisBase):
         self.high.check_value_rank(rank)
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
-        """ sets the elements of the sparse representation of this condition
-        
+        """sets the elements of the sparse representation of this condition
+
         Args:
             idx (tuple):
                 The index of the point that must lie on the boundary condition
-                
+
         Returns:
             float, dict: A constant value and a dictionary with indices and
             factors that can be used to calculate this virtual point
@@ -283,12 +283,12 @@ class BoundaryPair(BoundaryAxisBase):
             return 0, {axis_coord: 1}
 
     def make_virtual_point_evaluators(self) -> Tuple[Callable, Callable]:
-        """ returns two functions evaluating the value at virtual support points
+        """returns two functions evaluating the value at virtual support points
 
         Args:
             size (int): Number of support points along the axis
             dx (float): Discretization, i.e., distance between support points
-            
+
         Returns:
             tuple: Two functions that each take a 1d array as an argument and
             return the associated value at the virtual support point outside the
@@ -304,8 +304,8 @@ class BoundaryPair(BoundaryAxisBase):
         return self.__class__(self.low.differentiated, self.high.differentiated)
 
     def get_point_evaluator(self, fill: np.array = None) -> Callable:
-        """ return a function to evaluate values at a given point
-        
+        """return a function to evaluate values at a given point
+
         The point can either be a point inside the domain or a virtual point
         right outside the domain
 
@@ -314,7 +314,7 @@ class BoundaryPair(BoundaryAxisBase):
                 Determines how values out of bounds are handled. If `None`, a
                 `DomainError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
-            
+
         Returns:
             function: A function taking a 1d array and an index as an argument,
                 returning the value of the array at this index.
@@ -354,12 +354,12 @@ class BoundaryPair(BoundaryAxisBase):
         return evaluate  # type: ignore
 
     def make_region_evaluator(self) -> Callable:
-        """ return a function to evaluate values in a neighborhood of a point
-        
+        """return a function to evaluate values in a neighborhood of a point
+
         Returns:
             function: A function that can be called with the data array and a
             tuple indicating around what point the region is evaluated. The
-            function returns the data values left of the point, at the point, 
+            function returns the data values left of the point, at the point,
             and right of the point along the axis associated with this boundary
             condition. The function takes boundary conditions into account if
             the point lies on the boundary.
@@ -435,7 +435,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
         return self.__class__(grid=self.grid, axis=self.axis)
 
     def extract_component(self, *indices):
-        """ extracts the boundary pair of the given extract_component.
+        """extracts the boundary pair of the given extract_component.
 
         Args:
             *indices:
@@ -444,8 +444,8 @@ class BoundaryPeriodic(BoundaryAxisBase):
         return self
 
     def check_value_rank(self, rank: int):
-        """ check whether the values at the boundaries have the correct rank
-        
+        """check whether the values at the boundaries have the correct rank
+
         Args:
             rank (int): The rank of the value that is stored with this
                 boundary condition
@@ -453,8 +453,8 @@ class BoundaryPeriodic(BoundaryAxisBase):
         return True
 
     def make_virtual_point_evaluators(self) -> Tuple[Callable, Callable]:
-        """ returns two functions evaluating the value at virtual support points
-            
+        """returns two functions evaluating the value at virtual support points
+
         Returns:
             tuple: Two functions that each take a 1d array as an argument and
             return the associated value at the virtual support point outside the
@@ -475,12 +475,12 @@ class BoundaryPeriodic(BoundaryAxisBase):
         return (value_low, value_high)
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
-        """ sets the elements of the sparse representation of this condition
-        
+        """sets the elements of the sparse representation of this condition
+
         Args:
             idx (tuple):
                 The index of the point that must lie on the boundary condition
-                
+
         Returns:
             float, dict: A constant value and a dictionary with indices and
             factors that can be used to calculate this virtual point
@@ -503,14 +503,14 @@ class BoundaryPeriodic(BoundaryAxisBase):
         return self
 
     def get_point_evaluator(self, fill: float = None) -> Callable:
-        """ return a function to evaluate values at a given point
-        
+        """return a function to evaluate values at a given point
+
         The point can either be a point inside the domain or a virtual point
         right outside the domain.
-        
+
         Args:
             fill: This argument is ignored.
-        
+
         Returns:
             function: A function taking a 1d array and an index as an argument,
                 returning the value of the array at this index.
@@ -528,12 +528,12 @@ class BoundaryPeriodic(BoundaryAxisBase):
         return evaluate  # type: ignore
 
     def make_region_evaluator(self) -> Callable:
-        """ return a function to evaluate values in a neighborhood of a point
-        
+        """return a function to evaluate values in a neighborhood of a point
+
         Returns:
             function: A function that can be called with the data array and a
             tuple indicating around what point the region is evaluated. The
-            function returns the data values left of the point, at the point, 
+            function returns the data values left of the point, at the point,
             and right of the point along the axis associated with this boundary
             condition. The function takes boundary conditions into account if
             the point lies on the boundary.
@@ -560,8 +560,8 @@ class BoundaryPeriodic(BoundaryAxisBase):
 def get_boundary_axis(
     grid: GridBase, axis: int, data, rank: int = 0
 ) -> BoundaryAxisBase:
-    """ return object representing the boundary condition for a single axis
-    
+    """return object representing the boundary condition for a single axis
+
     Args:
         grid (:class:`~pde.grids.GridBase`):
             The grid for which the boundary conditions are defined
@@ -572,7 +572,7 @@ def get_boundary_axis(
         rank (int):
             The tensorial rank of the value associated with the boundary
             conditions.
-            
+
     Returns:
         BoundaryAxisBase: The boundary condition for the axis
     """

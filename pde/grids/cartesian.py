@@ -26,7 +26,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
     cuboid: Cuboid
 
     def __init__(self, shape, periodic: Union[List[bool], bool] = False):
-        """ 
+        """
         Args:
             shape (tuple): The number of support points for each axis. The
                 dimension of the grid is given by `len(shape)`.
@@ -61,8 +61,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         return tuple(self.discretization)
 
     def contains_point(self, point):
-        """ check whether the point is contained in the grid
-        
+        """check whether the point is contained in the grid
+
         Args:
             point (vector): Coordinates of the point
         """
@@ -73,13 +73,13 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
     def iter_mirror_points(
         self, point, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
-        """ generates all mirror points corresponding to `point`
-        
+        """generates all mirror points corresponding to `point`
+
         Args:
             point (:class:`numpy.ndarray`): the point within the grid
             with_self (bool): whether to include the point itself
             only_periodic (bool): whether to only mirror along periodic axes
-        
+
         Returns:
             A generator yielding the coordinates that correspond to mirrors
         """
@@ -100,8 +100,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 yield point + offset
 
     def get_random_point(self, boundary_distance: float = 0, cartesian: bool = True):
-        """ return a random point within the grid
-        
+        """return a random point within the grid
+
         Args:
             boundary_distance (float): The minimal distance this point needs to
                 have from all boundaries.
@@ -109,9 +109,9 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 Cartesian coordinates or grid coordinates. This does not have
                 any effect for Cartesian coordinate systems, but the argument is
                 retained to have a unified interface for all grids.
-                
+
         Returns:
-            :class:`numpy.ndarray`: The coordinates of the point        
+            :class:`numpy.ndarray`: The coordinates of the point
         """
         # handle the boundary distance
         cuboid = self.cuboid
@@ -124,24 +124,24 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         return cuboid.pos + np.random.random(self.dim) * cuboid.size
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
-        """ return a line cut through the given data
-        
+        """return a line cut through the given data
+
         Args:
             data (:class:`numpy.ndarray`):
                 The values at the grid points
             extract (str):
                 Determines which cut is done through the grid. Possible choices
                 are (default is `cut_0`):
-                
+
                 * `cut_#`: return values along the axis specified by # and use
                   the mid point along all other axes.
                 * `project_#`: average values for all axes, except axis #.
 
                 Here, # can either be a zero-based index (from 0 to dim-1) or
                 a letter denoting the axis.
-            
+
         Returns:
-            A dictionary with information about the line cut, which is 
+            A dictionary with information about the line cut, which is
             convenient for plotting.
         """
         if data.shape[-self.dim :] != self.shape:
@@ -198,11 +198,11 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         }
 
     def get_image_data(self, data) -> Dict[str, Any]:
-        """ return a 2d-image of the data
-        
+        """return a 2d-image of the data
+
         Args:
             data (:class:`numpy.ndarray`): The values at the grid points
-            
+
         Returns:
             A dictionary with information about the image, which is  convenient
             for plotting.
@@ -236,42 +236,42 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         }
 
     def point_to_cartesian(self, points):
-        """ convert coordinates of a point to Cartesian coordinates
-        
+        """convert coordinates of a point to Cartesian coordinates
+
         Args:
             points (:class:`numpy.ndarray`):
                 Points given in the coordinates of \the grid
-                
+
         Returns:
             :class:`numpy.ndarray`: The Cartesian coordinates of the point
         """
         return points
 
     def point_from_cartesian(self, coords):
-        """ convert points given in Cartesian coordinates to this grid
-        
+        """convert points given in Cartesian coordinates to this grid
+
         Args:
             points (:class:`numpy.ndarray`): Points in Cartesian coordinates.
-                
+
         Returns:
             :class:`numpy.ndarray`: Points given in the coordinates of the grid
         """
         return coords
 
     def polar_coordinates_real(self, origin, ret_angle: bool = False):
-        """ return polar coordinates associated with the grid
-        
+        """return polar coordinates associated with the grid
+
         Args:
             origin (vector): Coordinates of the origin at which the polar
                 coordinate system is anchored.
             ret_angle (bool): Determines whether angles are returned alongside
-                the distance. If `False` only the distance to the origin is 
+                the distance. If `False` only the distance to the origin is
                 returned for each support point of the grid.
                 If `True`, the distance and angles are returned. For a 1d system
                 system, the angle is defined as the sign of the difference
                 between the point and the origin, so that angles can either be
                 1 or -1. For 2d systems and 3d systems, polar coordinates and
-                spherical coordinates are used, respectively. 
+                spherical coordinates are used, respectively.
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
@@ -302,19 +302,19 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             return dist
 
     def from_polar_coordinates(self, distance, angle, origin=None):
-        """ convert polar coordinates to Cartesian coordinates
-        
+        """convert polar coordinates to Cartesian coordinates
+
         This function is currently only implemented for 1d and 2d systems.
-        
+
         Args:
             distance: The radial distance
             angle: The angle with respect to the origin
             origin (optional): Sets the origin of the coordinate system. If
                 omitted. The zero point is assumed as the origin.
-                
+
         Returns:
             The Cartesian coordinates corresponding to the given polar
-            coordinates. 
+            coordinates.
         """
         distance = np.asarray(distance)
         angle = np.asarray(angle)
@@ -341,8 +341,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
-        r""" visualize the grid
-        
+        r"""visualize the grid
+
         Args:
             {PLOT_ARGS}
             \**kwargs: Extra arguments are passed on the to the matplotlib
@@ -371,19 +371,19 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
     @fill_in_docstring
     def get_boundary_conditions(self, bc="natural", rank: int = 0) -> "Boundaries":
-        """ constructs boundary conditions from a flexible data format
-        
+        """constructs boundary conditions from a flexible data format
+
         Args:
             bc (str or list or tuple or dict):
-                The boundary conditions applied to the field. 
-                {ARG_BOUNDARIES}  
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES}
             rank (int):
                 The tensorial rank of the value associated with the boundary conditions.
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
             PeriodicityError: If the boundaries are not compatible with the
-                periodic axes of the grid. 
+                periodic axes of the grid.
         """
         from .boundaries import Boundaries  # @Reimport
 
@@ -392,8 +392,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
 
 class UnitGrid(CartesianGridBase):
-    r""" d-dimensional Cartesian grid with unit discretization in all directions 
-    
+    r"""d-dimensional Cartesian grid with unit discretization in all directions
+
     The grids can be thought of as a collection of d-dimensional cells of unit
     length. The `shape` parameter determines how many boxes there are in each
     direction. The cells are enumerated starting with 0, so the last cell has
@@ -404,7 +404,7 @@ class UnitGrid(CartesianGridBase):
     """
 
     def __init__(self, shape, periodic: Union[List[bool], bool] = False):
-        """ 
+        """
         Args:
             shape (tuple): The number of support points for each axis. The
                 dimension of the grid is given by `len(shape)`.
@@ -428,8 +428,8 @@ class UnitGrid(CartesianGridBase):
 
     @classmethod
     def from_state(cls, state: Dict[str, Any]) -> "UnitGrid":  # type: ignore
-        """ create a field from a stored `state`.
-        
+        """create a field from a stored `state`.
+
         Args:
             state (dict):
                 The state from which the grid is reconstructed.
@@ -446,13 +446,13 @@ class UnitGrid(CartesianGridBase):
         return float(np.prod(self.shape))
 
     def normalize_point(self, point, reduced_coords: bool = False):
-        """ normalize coordinates by applying periodic boundary conditions
-        
+        """normalize coordinates by applying periodic boundary conditions
+
         Args:
             points (:class:`numpy.ndarray`): An array of coordinates
             reduced_coords (bool): Flag determining whether only the coordinates
                 corresponding to axes in this grid are given
-                 
+
         Returns:
             :class:`numpy.ndarray`: The respective coordinates with periodic
             boundary conditions applied.
@@ -483,8 +483,8 @@ class UnitGrid(CartesianGridBase):
         return point
 
     def cell_to_point(self, cells, cartesian: bool = True):
-        """ convert cell coordinates to real coordinates
-        
+        """convert cell coordinates to real coordinates
+
         Args:
             cells (:class:`numpy.ndarray`): Indices of the cells whose center
                 coordinates are requested. This can be float values to indicate
@@ -493,7 +493,7 @@ class UnitGrid(CartesianGridBase):
                 Cartesian coordinates or grid coordinates. This does not have
                 any effect for Cartesian coordinate systems, but the argument is
                 retained to have a unified interface for all grids.
-                
+
         Returns:
             :class:`numpy.ndarray`: The center points of the respective cells
         """
@@ -505,29 +505,29 @@ class UnitGrid(CartesianGridBase):
         return cells + 0.5
 
     def point_to_cell(self, points):
-        """ Determine cell(s) corresponding to given point(s)
+        """Determine cell(s) corresponding to given point(s)
 
         This function respects periodic boundary conditions, but it does not
         throw an error when coordinates lie outside the bcs (for
         non-periodic axes).
-        
+
         Args:
             points (:class:`numpy.ndarray`): Real coordinates
-                
+
         Returns:
             :class:`numpy.ndarray`: The indices of the respective cells
         """
         return self.normalize_point(points).astype(np.int)
 
     def difference_vector_real(self, p1, p2):
-        """ return the vector pointing from p1 to p2.
-        
+        """return the vector pointing from p1 to p2.
+
         In case of periodic boundary conditions, the shortest vector is returned
-        
+
         Args:
             p1 (:class:`numpy.ndarray`): First point(s)
             p2 (:class:`numpy.ndarray`): Second point(s)
-            
+
         Returns:
             :class:`numpy.ndarray`: The difference vectors between the points
             with periodic boundary conditions applied.
@@ -547,12 +547,12 @@ class UnitGrid(CartesianGridBase):
         )
 
     def get_subgrid(self, indices: Sequence[int]) -> "UnitGrid":
-        """ return a subgrid of only the specified axes
-        
+        """return a subgrid of only the specified axes
+
         Args:
             indices (list):
                 Indices indicating the axes that are retained in the subgrid
-                
+
         Returns:
             :class:`UnitGrid`: The subgrid
         """
@@ -591,13 +591,13 @@ class CartesianGrid(CartesianGridBase):
     """
 
     def __init__(self, bounds, shape, periodic: Union[List[bool], bool] = False):
-        """ 
+        """
         Args:
             bounds (tuple): Give the coordinate range for each axis. This should
                 be a tuple of two number (lower and upper bound) for each axis.
-                The length of `bounds` thus determines the grid dimension. 
+                The length of `bounds` thus determines the grid dimension.
             shape (tuple): The number of support points for each axis. The
-                length of `shape` needs to match the grid dimension. 
+                length of `shape` needs to match the grid dimension.
             periodic (bool or list): Specifies which axes possess periodic
                 boundary conditions. This is either a list of booleans defining
                 periodicity for each individual axis or a single boolean value
@@ -663,9 +663,9 @@ class CartesianGrid(CartesianGridBase):
         }
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any],) -> "CartesianGrid":  # type: ignore
-        """ create a field from a stored `state`.
-        
+    def from_state(cls, state: Dict[str, Any]) -> "CartesianGrid":  # type: ignore
+        """create a field from a stored `state`.
+
         Args:
             state (dict):
                 The state from which the grid is reconstructed.
@@ -686,13 +686,13 @@ class CartesianGrid(CartesianGridBase):
         return float(self.cuboid.volume)
 
     def normalize_point(self, point, reduced_coords: bool = False):
-        """ normalize coordinates by applying periodic boundary conditions
-        
+        """normalize coordinates by applying periodic boundary conditions
+
         Args:
             points (:class:`numpy.ndarray`): An array of coordinates
             reduced_coords (bool): Flag determining whether only the coordinates
                 corresponding to axes in this grid are given
-                 
+
         Returns:
             :class:`numpy.ndarray`: The respective coordinates with periodic
             boundary conditions applied.
@@ -723,8 +723,8 @@ class CartesianGrid(CartesianGridBase):
         return point
 
     def cell_to_point(self, cells, cartesian: bool = True):
-        """ convert cell coordinates to real coordinates
-        
+        """convert cell coordinates to real coordinates
+
         Args:
             cells (:class:`numpy.ndarray`): Indices of the cells whose center
                 coordinates are requested. This can be float values to indicate
@@ -733,7 +733,7 @@ class CartesianGrid(CartesianGridBase):
                 Cartesian coordinates or grid coordinates. This does not have
                 any effect for Cartesian coordinate systems, but the argument is
                 retained to have a unified interface for all grids.
-                
+
         Returns:
             :class:`numpy.ndarray`: The center points of the respective cells
         """
@@ -744,15 +744,15 @@ class CartesianGrid(CartesianGridBase):
             return self.cuboid.pos + (cells + 0.5) * self.discretization
 
     def point_to_cell(self, points):
-        """ Determine cell(s) corresponding to given point(s)
+        """Determine cell(s) corresponding to given point(s)
 
         This function respects periodic boundary conditions, but it does not
         throw an error when coordinates lie outside the bcs (for
         non-periodic axes).
-        
+
         Args:
             points (:class:`numpy.ndarray`): Real coordinates
-                
+
         Returns:
             :class:`numpy.ndarray`: The indices of the respective cells
         """
@@ -761,14 +761,14 @@ class CartesianGrid(CartesianGridBase):
         return cell_coords.astype(np.int)
 
     def difference_vector_real(self, p1, p2):
-        """ return the vector pointing from p1 to p2.
-        
+        """return the vector pointing from p1 to p2.
+
         In case of periodic boundary conditions, the shortest vector is returned
-        
+
         Args:
             p1 (:class:`numpy.ndarray`): First point(s)
             p2 (:class:`numpy.ndarray`): Second point(s)
-            
+
         Returns:
             :class:`numpy.ndarray`: The difference vectors between the points
             with periodic  boundary conditions applied.
@@ -781,12 +781,12 @@ class CartesianGrid(CartesianGridBase):
         return diff
 
     def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":
-        """ return a subgrid of only the specified axes
-        
+        """return a subgrid of only the specified axes
+
         Args:
             indices (list):
                 Indices indicating the axes that are retained in the subgrid
-                
+
         Returns:
             :class:`CartesianGrid`: The subgrid
         """

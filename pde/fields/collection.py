@@ -27,7 +27,7 @@ class FieldCollection(FieldBase):
         copy_fields: bool = False,
         label: Optional[str] = None,
     ):
-        """ 
+        """
         Args:
             fields:
                 Sequence of the individual fields
@@ -36,10 +36,10 @@ class FieldCollection(FieldBase):
                 the individual fields given by `fields`.
             copy_fields (bool):
                 Flag determining whether the individual fields given in `fields`
-                are copied. 
+                are copied.
             label (str):
                 Label of the field collection
-            
+
         Warning:
             If `data` is given and `copy_fields == False`, the data in the
             individual fields is overwritten by the associated `data`.
@@ -174,8 +174,8 @@ class FieldCollection(FieldBase):
     def from_state(
         cls, attributes: Dict[str, Any], data: np.ndarray = None
     ) -> "FieldCollection":
-        """ create a field collection from given state.
-        
+        """create a field collection from given state.
+
         Args:
             attributes (dict):
                 The attributes that describe the current instance
@@ -226,8 +226,8 @@ class FieldCollection(FieldBase):
             field._write_hdf_dataset(hdf_path, f"field_{i}")
 
     def assert_field_compatible(self, other: FieldBase, accept_scalar: bool = False):
-        """ checks whether `other` is compatible with the current field
-        
+        """checks whether `other` is compatible with the current field
+
         Args:
             other (FieldBase): Other field this is compared to
             accept_scalar (bool, optional): Determines whether it is acceptable
@@ -250,11 +250,11 @@ class FieldCollection(FieldBase):
         label: str = None,
         labels: Optional[Sequence[str]] = None,
     ) -> "FieldCollection":
-        """ create a field collection on a grid from given expressions
+        """create a field collection on a grid from given expressions
 
         Warning:
             {WARNING_EXEC}
-        
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined
@@ -293,8 +293,8 @@ class FieldCollection(FieldBase):
         label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
     ):
-        """ create scalar fields with random values between `vmin` and `vmax`
-        
+        """create scalar fields with random values between `vmin` and `vmax`
+
         Args:
             num_fields (int): The number of fields to create
             grid (:class:`~pde.grids.GridBase`):
@@ -336,12 +336,12 @@ class FieldCollection(FieldBase):
 
     @classmethod
     def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
-        """ unserializes the given attributes
-        
+        """unserializes the given attributes
+
         Args:
             attributes (dict):
                 The serialized attributes
-                
+
         Returns:
             dict: The unserialized attributes
         """
@@ -359,8 +359,8 @@ class FieldCollection(FieldBase):
     def copy(
         self, data: OptionalArrayLike = None, label: str = None
     ) -> "FieldCollection":
-        """ return a copy of the data, but not of the grid
-        
+        """return a copy of the data, but not of the grid
+
         Args:
             data (:class:`numpy.ndarray`, optional):
                 Data values at the support points of the grid that define the
@@ -383,8 +383,8 @@ class FieldCollection(FieldBase):
         fill: float = None,
         label: Optional[str] = None,
     ) -> "FieldCollection":
-        """ interpolate the data of this field collection to another grid.
-        
+        """interpolate the data of this field collection to another grid.
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 The grid of the new field onto which the current field is
@@ -398,7 +398,7 @@ class FieldCollection(FieldBase):
                 Otherwise, the given value is returned.
             label (str, optional):
                 Name of the returned field collection
-            
+
         Returns:
             FieldCollection: Interpolated data
         """
@@ -415,11 +415,11 @@ class FieldCollection(FieldBase):
         out: Optional["FieldCollection"] = None,
         label: str = None,
     ) -> "FieldCollection":
-        """ applies Gaussian smoothing with the given standard deviation
+        """applies Gaussian smoothing with the given standard deviation
 
         This function respects periodic boundary conditions of the underlying
         grid, using reflection when no periodicity is specified.
-        
+
         sigma (float, optional):
             Gives the standard deviation of the smoothing in real length units
             (default: 1)
@@ -429,7 +429,7 @@ class FieldCollection(FieldBase):
             Name of the returned field
 
         Returns:
-            Field collection with smoothed data, stored at `out` if given.             
+            Field collection with smoothed data, stored at `out` if given.
         """
         # allocate memory for storing output
         if out is None:
@@ -451,10 +451,13 @@ class FieldCollection(FieldBase):
         return [field.integral for field in self]
 
     def get_line_data(  # type: ignore
-        self, index: int = 0, scalar: str = "auto", extract: str = "auto",
+        self,
+        index: int = 0,
+        scalar: str = "auto",
+        extract: str = "auto",
     ) -> Dict[str, Any]:
-        r""" return data for a line plot of the field
-        
+        r"""return data for a line plot of the field
+
         Args:
             index (int):
                 Index of the field whose data is returned
@@ -464,27 +467,27 @@ class FieldCollection(FieldBase):
             extract (str):
                 The method used for extracting the line data. See the docstring
                 of the grid method `get_line_data` to find supported values.
-                
+
         Returns:
             dict: Information useful for performing a line plot of the field
         """
         return self[index].get_line_data(scalar=scalar, extract=extract)
 
     def get_image_data(self, index: int = 0, **kwargs) -> Dict[str, Any]:
-        r""" return data for plotting an image of the field
+        r"""return data for plotting an image of the field
 
         Args:
             index (int): Index of the field whose data is returned
             \**kwargs: Arguments forwarded to the `get_image_data` method
-                
+
         Returns:
             dict: Information useful for plotting an image of the field
         """
         return self[index].get_image_data(**kwargs)
 
     def _update_plot(self, reference: List[PlotReference]) -> None:
-        """ update a plot collection with the current field values
-        
+        """update a plot collection with the current field values
+
         Args:
             reference (list of :class:`PlotReference`):
                 All references of the plot to update
@@ -496,11 +499,11 @@ class FieldCollection(FieldBase):
     def plot(
         self, kind: str = "auto", resize_fig: bool = True, fig=None, **kwargs
     ) -> List[PlotReference]:
-        r""" visualize all the fields in the collection
-        
+        r"""visualize all the fields in the collection
+
         Args:
             kind (str):
-                Determines the visualizations. Supported values are `image`, 
+                Determines the visualizations. Supported values are `image`,
                 `line`, `vector`, or `interactive`. Alternatively, `auto`
                 determines the best visualization based on each field itself.
             resize_fig (bool):
@@ -509,7 +512,7 @@ class FieldCollection(FieldBase):
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual
                 plotting function.
-                
+
         Returns:
             list of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
@@ -530,10 +533,10 @@ class FieldCollection(FieldBase):
         return reference
 
     def plot_interactive(self, scalar: str = "auto", **kwargs):
-        """ create an interactive plot of the field using :mod:`napari`
+        """create an interactive plot of the field using :mod:`napari`
 
         Args:
-            scalar (str): The method for obtaining scalar values of fields        
+            scalar (str): The method for obtaining scalar values of fields
             **kwargs: Extra arguments are passed to :class:`napari.Viewer`
         """
         from ..tools.plotting import napari_viewer

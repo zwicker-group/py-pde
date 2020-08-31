@@ -27,15 +27,15 @@ except ImportError:
 def make_colored_noise(
     shape: Tuple[int, ...], dx=1.0, exponent: float = 0, scale: float = 1
 ) -> Callable:
-    r""" Return a function creating an array of random values that obey
-    
+    r"""Return a function creating an array of random values that obey
+
     .. math::
         \langle c(\boldsymbol k) c(\boldsymbol k’) \rangle =
             \Gamma^2 |\boldsymbol k|^\nu \delta(\boldsymbol k-\boldsymbol k’)
-            
+
     in spectral space on a Cartesian grid. The special case :math:`\nu = 0`
     corresponds to white noise.
-    
+
     Args:
         shape (tuple of ints):
             Number of supports points in each spatial dimension. The number of
@@ -47,7 +47,7 @@ def make_colored_noise(
             Exponent :math:`\nu` of the power spectrum
         scale:
             Scaling factor :math:`\Gamma` determining noise strength
-        
+
     Returns:
         callable: a function returning a random realization
     """

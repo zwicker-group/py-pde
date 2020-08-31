@@ -16,13 +16,13 @@ from .base import PDEBase, expr_prod
 
 
 class DiffusionPDE(PDEBase):
-    r""" A simple diffusion equation
-    
+    r"""A simple diffusion equation
+
     The mathematical definition is
 
     .. math::
         \partial_t c = D \nabla^2 c
-        
+
     where :math:`c` is a scalar field that is distributed with diffusivity
     :math:`D`.
     """
@@ -33,7 +33,7 @@ class DiffusionPDE(PDEBase):
     def __init__(
         self, diffusivity: float = 1, noise: float = 0, bc: BoundariesData = "natural"
     ):
-        """ 
+        """
         Args:
             diffusivity (float):
                 The diffusivity of the described species
@@ -41,7 +41,7 @@ class DiffusionPDE(PDEBase):
                 Strength of the (additive) noise term
             bc:
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES} 
+                {ARG_BOUNDARIES}
         """
         super().__init__(noise=noise)
 
@@ -54,35 +54,37 @@ class DiffusionPDE(PDEBase):
         return expr_prod(self.diffusivity, "laplace(c)")
 
     def evolution_rate(  # type: ignore
-        self, state: ScalarField, t: float = 0,
+        self,
+        state: ScalarField,
+        t: float = 0,
     ) -> ScalarField:
-        """ evaluate the right hand side of the PDE
-        
+        """evaluate the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 The scalar field describing the concentration distribution
             t (float): The current time point
-            
+
         Returns:
             :class:`~pde.fields.ScalarField`:
-            Scalar field describing the evolution rate of the PDE 
+            Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField)
         laplace = state.laplace(bc=self.bc, label="evolution rate")
         return self.diffusivity * laplace  # type: ignore
 
     def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
-        """ create a compiled function evaluating the right hand side of the PDE
-        
+        """create a compiled function evaluating the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
-                
+
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`numpy.ndarray` of the state data and
             the time to obtained an instance of :class:`numpy.ndarray` giving
-            the evolution rate.  
+            the evolution rate.
         """
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))

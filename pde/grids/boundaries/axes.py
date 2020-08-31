@@ -59,7 +59,7 @@ class Boundaries(list):
     def from_data(cls, grid: GridBase, boundaries, rank: int = 0) -> "Boundaries":
         """
         Creates all boundaries from given data
-        
+
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid with which the boundary condition is associated
@@ -68,14 +68,14 @@ class Boundaries(list):
                 specifications for each dimension or a single one, which is then
                 applied to all dimensions. The boundary for a dimensions can be
                 specified by one of the following formats:
-                
+
                 * string specifying a single type for all boundaries
                 * dictionary specifying the type and values for all boundaries
                 * tuple pair specifying the low and high boundary individually
             rank (int):
                 The tensorial rank of the value associated with the boundary
                 conditions.
-                
+
         """
         # check whether this is already the correct class
         if isinstance(boundaries, Boundaries):
@@ -135,12 +135,12 @@ class Boundaries(list):
         return hash(tuple(bc_ax._cache_hash() for bc_ax in self))
 
     def check_value_rank(self, rank: int):
-        """ check whether the values at the boundaries have the correct rank
-        
+        """check whether the values at the boundaries have the correct rank
+
         Args:
             rank (tuple): The rank of the value that is stored with this
                 boundary condition
-            
+
         Throws:
             RuntimeError: if any value does not have rank `rank`
         """
@@ -157,8 +157,8 @@ class Boundaries(list):
         )
 
     def copy(self, value=None) -> "Boundaries":
-        """ create a copy of the current boundaries
-        
+        """create a copy of the current boundaries
+
         Args:
             value (float or array, optional):
                 If given, this changes the value stored with the boundary
@@ -174,13 +174,13 @@ class Boundaries(list):
 
     @property
     def periodic(self) -> np.ndarray:
-        """ :class:`numpy.ndarray`: a boolean array indicating which dimensions
-        are periodic according to the boundary conditions """
+        """:class:`numpy.ndarray`: a boolean array indicating which dimensions
+        are periodic according to the boundary conditions"""
         return self.grid.periodic
 
     def set_value(self, value=0):
-        """ set the value of all non-periodic boundaries
-        
+        """set the value of all non-periodic boundaries
+
         Args:
             value (float or array):
                 Sets the value stored with the boundary conditions. The
@@ -192,8 +192,8 @@ class Boundaries(list):
                 b.set_value(value)
 
     def scale_value(self, factor: float = 1):
-        """ scales the value of the boundary condition with the given factor
-        
+        """scales the value of the boundary condition with the given factor
+
         Args:
             value (float):
                 Scales the value associated with the boundary condition by the factor
@@ -204,7 +204,7 @@ class Boundaries(list):
 
     @property
     def _scipy_border_mode(self) -> dict:
-        """ dict: return a dictionary that can be used in the scipy ndimage
+        """dict: return a dictionary that can be used in the scipy ndimage
         functions to specify the border mode. If the current boundary cannot be
         represented by these modes, a RuntimeError is raised
         """
@@ -224,7 +224,7 @@ class Boundaries(list):
             raise RuntimeError("Grid discretization is not uniform")
 
     def extract_component(self, *indices) -> "Boundaries":
-        """ extracts the boundary conditions of the given extract_component.
+        """extracts the boundary conditions of the given extract_component.
 
         Args:
             *indices:

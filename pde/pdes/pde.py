@@ -18,13 +18,13 @@ from pde.tools.numba import jit, nb
 
 
 class PDE(PDEBase):
-    """ PDE defined by a mathematical expression
-    
+    """PDE defined by a mathematical expression
+
     Attributes:
         variables (tuple):
             The name of the variables (i.e., fields) in the order they are
             expected to appear in the `state`.
-        diagnostics (dict): 
+        diagnostics (dict):
             Additional diagnostic information that might help with analyzing
             problems, e.g., when :mod:`sympy` cannot parse or :mod`numba` cannot
             compile a function.
@@ -41,14 +41,14 @@ class PDE(PDEBase):
         """
         Warning:
             {WARNING_EXEC}
-        
+
         Args:
             rhs (OrderedDict):
                 The expressions defining the evolution rate. The dictionary keys
                 define the name of the fields whose evolution is considered,
                 while the values specify their evolution rate as a string that
                 can be parsed by :mod:`sympy`. These expression may contain the
-                fields themselves, standard local mathematical operators defined 
+                fields themselves, standard local mathematical operators defined
                 by sympy, and the operators defined in the :mod:`pde` package.
                 Note that operators need to be specified with their full name,
                 i.e., `laplace` for a scalar Laplacian and `vector_laplace` for
@@ -64,7 +64,7 @@ class PDE(PDEBase):
                 Boundary conditions for the operators used in the expression.
                 The conditions here are applied to all operators that do not
                 have a specialized condition given in `bc_ops`
-                {ARG_BOUNDARIES} 
+                {ARG_BOUNDARIES}
             bc_ops (dict):
                 Special boundary conditions for some operators. The keys in this
                 dictionary specify where the boundary condition will be applied.
@@ -72,7 +72,7 @@ class PDE(PDEBase):
                 name of a field and OPERATOR denotes the name of an operator.
                 For both identifiers, the wildcard symbol "*" denotes that all
                 fields and operators are affected, respectively.
-                
+
         Note:
             The order in which the fields are given in `rhs` defines the order
             in which they need to appear in the `state` variable when the
@@ -159,7 +159,7 @@ class PDE(PDEBase):
         return {k: v.expression for k, v in self._rhs_expr.items()}
 
     def _prepare(self, state: FieldBase) -> None:
-        """ prepare the expression by setting internal variables in the cache
+        """prepare the expression by setting internal variables in the cache
 
         Note that the expensive calculations in this method are only carried
         out if the state attributes change.
@@ -251,17 +251,17 @@ class PDE(PDEBase):
         self._cache["state_attributes"] = state.attributes
 
     def evolution_rate(self, state: FieldBase, t: float = 0) -> FieldBase:
-        """ evaluate the right hand side of the PDE
-        
+        """evaluate the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 The field describing the state of the PDE
             t (float):
                 The current time point
-            
+
         Returns:
             :class:`~pde.fields.FieldBase`:
-            Field describing the evolution rate of the PDE 
+            Field describing the evolution rate of the PDE
         """
         self._prepare(state)
 
@@ -280,12 +280,12 @@ class PDE(PDEBase):
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
 
     def _make_pde_rhs_numba_coll(self, state: FieldCollection) -> Callable:
-        """ create the compiled rhs if `state` is a field collection
-        
+        """create the compiled rhs if `state` is a field collection
+
         Args:
             state (:class:`~pde.fields.FieldCollection`):
                 An example for the state defining the grid and data types
-                
+
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`numpy.ndarray` of the state data and
@@ -346,12 +346,12 @@ class PDE(PDEBase):
         return chain()  # type: ignore
 
     def _make_pde_rhs_numba(self, state: FieldBase) -> Callable:
-        """ create a compiled function evaluating the right hand side of the PDE
-        
+        """create a compiled function evaluating the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state defining the grid and data types
-                
+
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`numpy.ndarray` of the state data and

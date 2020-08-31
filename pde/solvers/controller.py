@@ -37,23 +37,23 @@ class Controller:
         t_range: TRangeType,
         tracker: TrackerCollectionDataType = ["progress", "consistency"],
     ):
-        """ initialize the controller
-        
+        """initialize the controller
+
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
                 Solver instance that is used to advance the simulation in time
             t_range (float or tuple):
                 Sets the time range for which the simulation is run. If only a
-                single value `t_end` is given, the time range is assumed to be 
+                single value `t_end` is given, the time range is assumed to be
                 `[0, t_end]`.
             tracker:
                 Defines trackers that process the state of the simulation at
                 fixed time intervals. Multiple trackers can be specified as a
-                list. The default value 'auto' is converted to 
+                list. The default value 'auto' is converted to
                 `['progress', 'consistency']` for normal simulations. This thus
                 displays a progress bar and checks the state for consistency,
                 aborting the simulation when not-a-number values appear. To
-                disable trackers, set the value to `None`.        
+                disable trackers, set the value to `None`.
         """
         self.solver = solver
         self.t_range = t_range  # type: ignore
@@ -80,8 +80,8 @@ class Controller:
                 )
 
     def run(self, state: TState, dt: float = None) -> TState:
-        """ run the simulation 
-        
+        """run the simulation
+
         Diagnostic information about the solver procedure are available in the
         `diagnostics` property of the instance after this function has been
         called.
@@ -89,13 +89,13 @@ class Controller:
         Args:
             state:
                 The initial state of the simulation. This state will be copied
-                and thus not modified by the simulation. Instead, the final 
+                and thus not modified by the simulation. Instead, the final
                 state will be returned and trackers can be used to record
                 intermediate states.
             dt (float):
                 Time step of the chosen stepping scheme. If `None`, a default
                 value based on the stepper will be chosen.
-                
+
         Returns:
             The state at the final time point.
         """

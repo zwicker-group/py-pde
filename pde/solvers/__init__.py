@@ -22,8 +22,8 @@ from .scipy import ScipySolver
 
 
 def registered_solvers() -> List[str]:
-    """ returns all solvers that are registered in the package
-    
+    """returns all solvers that are registered in the package
+
     Returns:
         list of str: List with the names of the solvers
     """

@@ -58,15 +58,15 @@ class _AxesXY(axes_grid1.axes_size._Base):
 def add_scaled_colorbar(
     axes_image, aspect: float = 20, pad_fraction: float = 0.5, **kwargs
 ):
-    """ add a vertical color bar to an image plot
-    
+    """add a vertical color bar to an image plot
+
     The height of the colorbar is now adjusted to the plot, so that the width
     determined by `aspect` is now given relative to the height. Moreover, the
     gap between the colorbar and the plot is now given in units of the fraction
-    of the width by `pad_fraction`. 
+    of the width by `pad_fraction`.
 
     Inspired by https://stackoverflow.com/a/33505522/932593
-    
+
     Args:
         axes_image: object returned from :meth:`matplotlib.pyplot.imshow`
         ax (:class:`matplotlib.axes.Axes`): the current figure axes
@@ -85,17 +85,17 @@ def add_scaled_colorbar(
 
 
 class nested_plotting_check:
-    """ context manager that checks whether it is the root plotting call
-    
+    """context manager that checks whether it is the root plotting call
+
     Example:
         The context manager can be used in plotting calls to check for nested
         plotting calls::
-        
+
             with nested_plotting_check() as is_outermost_plot_call:
                 make_plot(...)  # could potentially call other plotting methods
                 if is_outermost_plot_call:
                     plt.show()
-    
+
     """
 
     _is_plotting = False  # class variable keeping track of nesting
@@ -120,8 +120,8 @@ def finalize_plot(
     show: bool = False,
     close_figure: bool = False,
 ) -> Tuple[Any, Any]:
-    r""" finalizes a figure by adjusting relevant parameters
-    
+    r"""finalizes a figure by adjusting relevant parameters
+
     Args:
         fig_or_ax:
             The figure or axes that are affected. If `None`, the current figure
@@ -134,7 +134,7 @@ def finalize_plot(
             Flag determining whether :func:`matplotlib.pyplot.show` is called
         close_figure (bool):
             Whether the figure should be closed in the end
-            
+
     Returns:
         tuple: The figure and the axes that were used to finalize the plot
     """
@@ -173,8 +173,8 @@ def finalize_plot(
 
 @contextlib.contextmanager
 def disable_interactive():
-    """ context manager disabling the interactive mode of matplotlib
-    
+    """context manager disabling the interactive mode of matplotlib
+
     This context manager restores the previous state after it is done. Details
     of the interactive mode are described in :func:`matplotlib.interactive`.
     """
@@ -200,7 +200,7 @@ class PlotReference:
         """
         Args:
             ax (:class:`matplotlib.axes.Axes`): The axes of the element
-            element (:class:`matplotlib.artist.Artist`): The actual element 
+            element (:class:`matplotlib.artist.Artist`): The actual element
             parameters (dict): Parameters to recreate the plot element
         """
         self.ax = ax
@@ -209,8 +209,8 @@ class PlotReference:
 
 
 def plot_on_axes(wrapped=None, update_method=None):
-    """ decorator for a plot method or function that uses a single axes
-    
+    """decorator for a plot method or function that uses a single axes
+
     This decorator adds typical options for creating plots that fill a single
     axes. These options are available via keyword arguments. These options can
     be described in the docstring, if the placeholder `{PLOT_ARGS}` is mentioned
@@ -221,24 +221,24 @@ def plot_on_axes(wrapped=None, update_method=None):
         The following example illustrates how this decorator can be used to
         implement plotting for a given class. In particular, supplying the
         `update_method` will allow efficient dynamical plotting::
-    
+
             class State:
                 def __init__(self):
                     self.data = np.arange(8)
-    
+
                 def _update_plot(self, reference):
                     reference.element.set_ydata(self.data)
-    
+
                 @plot_on_axes(update_method='_update_plot')
                 def plot(self, ax):
                     line, = ax.plot(np.arange(8), self.data)
                     return PlotReference(ax, line)
-                    
-                    
+
+
             @plot_on_axes
             def make_plot(ax):
                 ax.plot(...)
-                    
+
         When `update_method` is not supplied, the method can still be used for
         plotting, but dynamic updating, e.g., by
         :class:`pde.trackers.PlotTracker`, is not possible.
@@ -275,7 +275,7 @@ def plot_on_axes(wrapped=None, update_method=None):
             Decides what to do with the figure. If the argument is set to `show`
             :func:`matplotlib.pyplot.show` will be called to show the plot, if
             the value is `create`, the figure will be created, but not shown,
-            and the value `close` closes the figure, after saving it to a file 
+            and the value `close` closes the figure, after saving it to a file
             when `filename` is given. The default value `auto` implies that the
             plot is shown if it is not a nested plot call.
         ax_style (dict):
@@ -375,46 +375,46 @@ def plot_on_axes(wrapped=None, update_method=None):
 
 
 def plot_on_figure(wrapped=None, update_method=None):
-    """ decorator for a plot method or function that fills an entire figure
-    
+    """decorator for a plot method or function that fills an entire figure
+
     This decorator adds typical options for creating plots that fill an
     entire figure. These options are available via keyword arguments. These
     options can be described in the docstring, if the placeholder `{PLOT_ARGS}`
     is mentioned in the docstring of the wrapped function or method. Note that
     the decorator can be used on both functions and methods.
-    
+
     Example:
         The following example illustrates how this decorator can be used to
         implement plotting for a given class. In particular, supplying the
         `update_method` will allow efficient dynamical plotting::
-    
+
             class State:
                 def __init__(self):
                     self.data = np.random.random((2, 8))
-    
+
                 def _update_plot(self, reference):
                     ref1, ref2 = reference
                     ref1.element.set_ydata(self.data[0])
                     ref2.element.set_ydata(self.data[1])
-    
+
                 @plot_on_figure(update_method='_update_plot')
                 def plot(self, fig):
                     ax1, ax2 = fig.subplots(1, 2)
                     l1, = ax1.plot(np.arange(8), self.data[0])
                     l2, = ax2.plot(np.arange(8), self.data[1])
                     return [PlotReference(ax1, l1), PlotReference(ax2, l2)]
-                   
-                    
+
+
             @plot_on_figure
             def make_plot(fig):
                 ...
-                    
-                    
+
+
         When `update_method` is not supplied, the method can still be used for
         plotting, but dynamic updating, e.g., by
-        :class:`pde.trackers.PlotTracker`, is not possible. 
-        
-        
+        :class:`pde.trackers.PlotTracker`, is not possible.
+
+
     Args:
         wrapped (callable):
             Function to be wrapped
@@ -442,8 +442,8 @@ def plot_on_figure(wrapped=None, update_method=None):
             Title of the plot. If omitted, the title might be chosen
             automatically. This is shown above all panels.
         constrained_layout (bool):
-            Whether to use `constrained_layout` in 
-            :func:`matplotlib.pyplot.figure` call to create a figure. 
+            Whether to use `constrained_layout` in
+            :func:`matplotlib.pyplot.figure` call to create a figure.
             This affects the layout of all plot elements.
         filename (str, optional):
             If given, the figure is written to the specified file.
@@ -451,7 +451,7 @@ def plot_on_figure(wrapped=None, update_method=None):
             Decides what to do with the figure. If the argument is set to `show`
             :func:`matplotlib.pyplot.show` will be called to show the plot, if
             the value is `create`, the figure will be created, but not shown,
-            and the value `close` closes the figure, after saving it to a file 
+            and the value `close` closes the figure, after saving it to a file
             when `filename` is given. The default value `auto` implies that the
             plot is shown if it is not a nested plot call.
         fig_style (dict):
@@ -543,11 +543,11 @@ def plot_on_figure(wrapped=None, update_method=None):
 
 
 class PlottingContextBase(object):
-    """ base class of the plotting contexts
-    
+    """base class of the plotting contexts
+
     Example:
         The context wraps calls to the :mod:`matplotlib.pyplot` interface::
-    
+
             context = PlottingContext()
             with context:
                 plt.plot(...)
@@ -559,7 +559,7 @@ class PlottingContextBase(object):
     with out redrawing the entire plot """
 
     def __init__(self, title: str = None, show: bool = True):
-        """ 
+        """
         Args:
             title (str): The shown in the plot
             show (bool): Flag determining whether plots are actually shown
@@ -622,7 +622,7 @@ class BasicPlottingContext(PlottingContextBase):
         """
         Args:
             fig_or_ax:
-                If axes are given, they are used. If a figure is given, it is 
+                If axes are given, they are used. If a figure is given, it is
                 set as active.
             title (str):
                 The shown in the plot
@@ -711,8 +711,8 @@ class JupyterPlottingContext(PlottingContextBase):
 def get_plotting_context(
     context=None, title: str = None, show: bool = True
 ) -> PlottingContextBase:
-    """ returns a suitable plotting context
-    
+    """returns a suitable plotting context
+
     Args:
         context:
             An instance of :class:`PlottingContextBase` or an instance of
@@ -724,7 +724,7 @@ def get_plotting_context(
         show (bool):
             Determines whether the plot is shown while the simulation is
             running. If `False`, the files are created in the background.
-            
+
     Returns:
         :class:`PlottingContextBase`: The plotting context
     """
@@ -767,8 +767,8 @@ def get_plotting_context(
 
 @contextlib.contextmanager
 def napari_viewer(grid: "GridBase", **kwargs):
-    """ creates an napari viewer for interactive plotting
-    
+    """creates an napari viewer for interactive plotting
+
     Args:
         grid (:class:`pde.grids.base.GridBase`): The grid defining the space
         **kwargs: Extra arguments are passed to :class:`napari.Viewer`

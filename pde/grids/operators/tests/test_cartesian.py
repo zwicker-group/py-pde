@@ -96,7 +96,7 @@ def test_laplace_2d():
 
 
 def test_laplace_2d_nonuniform():
-    """ test the implementation of the laplace operator for
+    """test the implementation of the laplace operator for
     non-uniform coordinates"""
     for periodic in [True, False]:
         bcs = _get_random_grid_bcs(ndim=2, dx="random", periodic=periodic)

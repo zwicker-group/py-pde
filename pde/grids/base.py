@@ -153,8 +153,8 @@ class GridBase(metaclass=ABCMeta):
 
     @classmethod
     def from_state(cls, state: Union[str, Dict[str, Any]]) -> "GridBase":
-        """ create a field from a stored `state`.
-        
+        """create a field from a stored `state`.
+
         Args:
             state (`str` or `dict`):
                 The state from which the grid is reconstructed. If `state` is a
@@ -210,7 +210,7 @@ class GridBase(metaclass=ABCMeta):
     __copy__ = copy
 
     def __deepcopy__(self, memo: Dict[int, Any]) -> "GridBase":
-        """ create a deep copy of the grid. This function is for instance called when
+        """create a deep copy of the grid. This function is for instance called when
         a grid instance appears in another object that is copied using `copy.deepcopy`
         """
         # this implementation assumes that a simple call to copy is sufficient
@@ -244,12 +244,12 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def compatible_with(self, other) -> bool:
-        """ tests whether this class is compatible with other grids.
-        
+        """tests whether this class is compatible with other grids.
+
         Grids are compatible when they cover the same area with the same
         discretization. The difference to equality is that compatible grids do
         not need to have the same periodicity in their boundaries.
-        
+
         Args:
             other (GridBase): The other grid to test against
         """
@@ -260,12 +260,12 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def assert_grid_compatible(self, other):
-        """ checks whether `other` is compatible with the current grid
-        
+        """checks whether `other` is compatible with the current grid
+
         Args:
             other (:class:`~pde.grids.GridBase`):
                 The grid compared to this one
-        
+
         Raises:
             ValueError: if grids are not compatible
         """
@@ -290,13 +290,13 @@ class GridBase(metaclass=ABCMeta):
 
     def distance_real(self, p1, p2) -> float:
         """Calculate the distance between two points given in real coordinates
-        
+
         This takes periodic boundary conditions into account if need be
-        
+
         Args:
             p1 (vector): First position
             p2 (vector): Second position
-            
+
         Returns:
             float: Distance between the two positions
         """
@@ -304,24 +304,24 @@ class GridBase(metaclass=ABCMeta):
         return np.linalg.norm(diff, axis=-1)  # type: ignore
 
     def _iter_boundaries(self) -> Iterator[Tuple[int, bool]]:
-        """ iterate over all boundaries of the grid
-        
+        """iterate over all boundaries of the grid
+
         Yields:
             tuple: for each boundary, the generator returns a tuple indicating
-            the axis of the boundary together with a boolean value indicating 
+            the axis of the boundary together with a boolean value indicating
             whether the boundary lies on the upper side of the axis.
         """
         return itertools.product(range(self.num_axes), [True, False])
 
     def _boundary_coordinates(self, axis: int, upper: bool) -> np.ndarray:
-        """ get indices for accessing the points on the boundary
-    
+        """get indices for accessing the points on the boundary
+
         Args:
             axis (int):
                 The axis perpendicular to the boundary
             upper (bool):
-                Whether the boundary is at the upper side of the axis 
-    
+                Whether the boundary is at the upper side of the axis
+
         Returns:
             :class:`~numpy.ndarray`: Coordinates of the boundary points.
         """
@@ -408,19 +408,19 @@ class GridBase(metaclass=ABCMeta):
         rank_in: int = 0,
         rank_out: int = 0,
     ):
-        """ register an operator for this grid
-        
+        """register an operator for this grid
+
         Example:
             The method can either be used directly::
-            
+
                 GridClass.register_operator("operator", make_operator)
-                
+
             or as a decorator for the factory function::
-                
+
                 @GridClass.register_operator("operator")
                 def make_operator(bcs: Boundaries):
                     ...
-                    
+
         Args:
             name (str):
                 The name of the operator to register
@@ -464,8 +464,8 @@ class GridBase(metaclass=ABCMeta):
     @cached_method()
     @fill_in_docstring
     def get_operator(self, name: str, bc: "Boundaries", **kwargs) -> Callable:
-        """ return a discretized operator defined on this grid
-         
+        """return a discretized operator defined on this grid
+
         Args:
             name (str):
                 Identifier for the operator. Some examples are 'laplace',
@@ -474,12 +474,12 @@ class GridBase(metaclass=ABCMeta):
                 :attr:`~pde.grids.base.GridBase.operators` attribute.
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}  
+                {ARG_BOUNDARIES}
             **kwargs:
                 Specifies extra arguments that can influence how the operator
                 is created. Many operators support a `method` argument that can
                 typically be set to 'numba', 'scipy', or `auto`.
-                 
+
         Returns:
             A function that takes the discretized data as an input and returns
             the data to which the operator `name` has been applied. This
@@ -520,8 +520,8 @@ class GridBase(metaclass=ABCMeta):
         return np.mean(self.discretization)  # type: ignore
 
     def integrate(self, data: np.ndarray, axes: Sequence[int] = None) -> np.ndarray:
-        """ Integrates the discretized data over the grid
-        
+        """Integrates the discretized data over the grid
+
         Args:
             data (:class:`numpy.ndarray`):
                 The values at the support points of the grid that need to be
@@ -529,7 +529,7 @@ class GridBase(metaclass=ABCMeta):
             axes (list of int, optional):
                 The axes along which the integral is performed. If omitted, all
                 axes are integrated over.
-        
+
         Returns:
             float: The values integrated over the entire grid
         """
@@ -566,9 +566,9 @@ class GridBase(metaclass=ABCMeta):
 
     @cached_method()
     def make_normalize_point_compiled(self) -> Callable:
-        """ return a compiled function that normalizes the points
+        """return a compiled function that normalizes the points
 
-        Normalizing points is useful to respect periodic boundary conditions. 
+        Normalizing points is useful to respect periodic boundary conditions.
         Here, points are assumed to be specified by the physical values along
         the non-symmetric axes of the grid.
         """
@@ -578,7 +578,7 @@ class GridBase(metaclass=ABCMeta):
         size = bounds[:, 1] - bounds[:, 0]
 
         @jit
-        def normalize_point(point):
+        def normalize_point(point: np.ndarray) -> np.ndarray:
             for i in periodic_axes:
                 point[i] = (point[i] - offset[i]) % size[i] + offset[i]
 
@@ -586,13 +586,13 @@ class GridBase(metaclass=ABCMeta):
 
     @cached_method()
     def make_cell_volume_compiled(self, flat_index: bool = False) -> Callable:
-        """ return a compiled function returning the volume of a grid cell
-        
+        """return a compiled function returning the volume of a grid cell
+
         Args:
             flat_index (bool):
                 When True, cell_volumes are indexed by a single integer into the
                 flattened array.
-                
+
         Returns:
             function: returning the volume of the chosen cell
         """
@@ -626,12 +626,12 @@ class GridBase(metaclass=ABCMeta):
     def make_interpolator_compiled(
         self, bc: "BoundariesData" = "natural", rank: int = 0, fill: float = None
     ) -> Callable:
-        """ return a compiled function for linear interpolation on the grid
-        
+        """return a compiled function for linear interpolation on the grid
+
         This interpolator respects boundary conditions and can thus interpolate
         values in the whole grid volume. However, close to corners, the
         interpolation might not be optimal, in particular for periodic grids.
-        
+
         Args:
             bc:
                 The boundary conditions applied to the field.
@@ -643,7 +643,7 @@ class GridBase(metaclass=ABCMeta):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
-                
+
         Returns:
             A function which returns interpolated values when called with
             arbitrary positions within the space of the grid. The signature of
@@ -663,15 +663,15 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def interpolate_single(data: np.ndarray, point: np.ndarray) -> np.ndarray:
-                """ obtain interpolated value of data at a point
-                
+                """obtain interpolated value of data at a point
+
                 Args:
                     data (:class:`numpy.ndarray`):
                         A 1d array of values at the grid points
                     point (:class:`numpy.ndarray`):
                         Coordinates of a single point in the grid coordinate
                         system
-                
+
                 Returns:
                     :class:`numpy.ndarray`: The interpolated value at the point
                 """
@@ -700,15 +700,15 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def interpolate_single(data: np.ndarray, point: np.ndarray) -> np.ndarray:
-                """ obtain interpolated value of data at a point
-                
+                """obtain interpolated value of data at a point
+
                 Args:
                     data (:class:`numpy.ndarray`):
                         The values at the grid points
                     point (:class:`numpy.ndarray`):
                         Coordinates of a single point in the grid coordinate
                         system
-                
+
                 Returns:
                     :class:`numpy.ndarray`: The interpolated value at the point
                 """
@@ -772,15 +772,15 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def interpolate_single(data: np.ndarray, point: np.ndarray) -> np.ndarray:
-                """ obtain interpolated value of data at a point
-                
+                """obtain interpolated value of data at a point
+
                 Args:
                     data (:class:`numpy.ndarray`):
                         The values at the grid points
                     point (:class:`numpy.ndarray`):
                         Coordinates of a single point in the grid coordinate
                         system
-                
+
                 Returns:
                     :class:`numpy.ndarray`: The interpolated value at the point
                 """
@@ -854,8 +854,8 @@ class GridBase(metaclass=ABCMeta):
         return interpolate_single  # type: ignore
 
     def make_add_interpolated_compiled(self) -> Callable:
-        """ return a compiled function to add amounts at interpolated positions
-                
+        """return a compiled function to add amounts at interpolated positions
+
         Returns:
             A function with signature (data, position, amount), where `data` is
             the numpy array containing the field data, position is denotes the
@@ -873,8 +873,8 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def add_interpolated(data, point, amount):
-                """ add an amount to a field at an interpolated position 
-                
+                """add an amount to a field at an interpolated position
+
                 Args:
                     data (:class:`numpy.ndarray`):
                         The values at the grid points
@@ -925,8 +925,8 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def add_interpolated(data, point, amount):
-                """ add an amount to a field at an interpolated position 
-                
+                """add an amount to a field at an interpolated position
+
                 Args:
                     data (:class:`numpy.ndarray`):
                         The values at the grid points
@@ -993,8 +993,8 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def add_interpolated(data, point, amount):
-                """ add an amount to a field at an interpolated position 
-                
+                """add an amount to a field at an interpolated position
+
                 Args:
                     data (:class:`numpy.ndarray`):
                         The values at the grid points

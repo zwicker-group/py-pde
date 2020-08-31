@@ -16,15 +16,15 @@ from .base import PDEBase, expr_prod
 
 
 class SwiftHohenbergPDE(PDEBase):
-    r""" The Swift-Hohenberg equation 
-    
+    r"""The Swift-Hohenberg equation
+
     The mathematical definition is
-    
+
     .. math::
-        \partial_t c = 
+        \partial_t c =
             \left[\epsilon - \left(k_c^2 + \nabla^2\right)^2\right] c
             + \delta \, c^2 - c^3
-        
+
     where :math:`c` is a scalar field and :math:`\epsilon`, :math:`k_c^2`, and
     :math:`\delta` are parameters of the equation.
     """
@@ -40,7 +40,7 @@ class SwiftHohenbergPDE(PDEBase):
         bc: BoundariesData = "natural",
         bc_lap: BoundariesData = None,
     ):
-        r""" 
+        r"""
         Args:
             rate (float):
                 The bifurcation parameter :math:`\epsilon`
@@ -75,18 +75,20 @@ class SwiftHohenbergPDE(PDEBase):
         )
 
     def evolution_rate(  # type: ignore
-        self, state: ScalarField, t: float = 0,
+        self,
+        state: ScalarField,
+        t: float = 0,
     ) -> ScalarField:
-        """ evaluate the right hand side of the PDE
-        
+        """evaluate the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 The scalar field describing the concentration distribution
             t (float): The current time point
-            
+
         Returns:
             :class:`~pde.fields.ScalarField`:
-            Scalar field describing the evolution rate of the PDE 
+            Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField)
         state_laplace = state.laplace(bc=self.bc)
@@ -103,17 +105,17 @@ class SwiftHohenbergPDE(PDEBase):
         return result  # type: ignore
 
     def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
-        """ create a compiled function evaluating the right hand side of the PDE
-          
+        """create a compiled function evaluating the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
-                  
+
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`numpy.ndarray` of the state data and
             the time to obtained an instance of :class:`numpy.ndarray` giving
-            the evolution rate.  
+            the evolution rate.
         """
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))

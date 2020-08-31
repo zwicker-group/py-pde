@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 def make_laplace_from_matrix(matrix, vector) -> Callable:
-    """ make a Laplace operator using matrix vector products
+    """make a Laplace operator using matrix vector products
 
     Args:
         matrix:
@@ -35,7 +35,7 @@ def make_laplace_from_matrix(matrix, vector) -> Callable:
         vector:
             The constant part representing the boundary conditions of the
             Laplace operator.
-        
+
     Returns:
         A function that can be applied to an array of values to obtain the
         solution to Poisson's equation where the array is used as the right hand
@@ -57,7 +57,7 @@ def make_laplace_from_matrix(matrix, vector) -> Callable:
 
 
 def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Callable:
-    """ make an operator that solves Poisson's problem
+    """make an operator that solves Poisson's problem
 
     Args:
         matrix:
@@ -68,7 +68,7 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Callabl
             Laplace operator.
         method (str):
             The chosen method for implementing the operator
-        
+
     Returns:
         A function that can be applied to an array of values to obtain the
         solution to Poisson's equation where the array is used as the right hand

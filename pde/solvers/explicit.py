@@ -20,8 +20,8 @@ class ExplicitSolver(SolverBase):
     name = "explicit"
 
     def __init__(self, pde: PDEBase, scheme: str = "euler", backend: str = "auto"):
-        """ initialize the explicit solver
-        
+        """initialize the explicit solver
+
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved
@@ -38,8 +38,8 @@ class ExplicitSolver(SolverBase):
         self.backend = backend
 
     def _make_euler_stepper(self, state: FieldBase, dt: float) -> Callable:
-        """ make a simple Euler stepper
-        
+        """make a simple Euler stepper
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
@@ -47,11 +47,11 @@ class ExplicitSolver(SolverBase):
             dt (float):
                 Time step of the explicit stepping. If `None`, this solver
                 specifies 1e-3 as a default value.
-                
+
         Returns:
             Function that can be called to advance the `state` from time
             `t_start` to time `t_end`. The function call signature is
-            `(state: numpy.ndarray, t_start: float, t_end: float)`            
+            `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
         rhs = self._make_pde_rhs(state, backend=self.backend, allow_stochastic=True)
 
@@ -103,8 +103,8 @@ class ExplicitSolver(SolverBase):
         return stepper
 
     def _make_rk45_stepper(self, state: FieldBase, dt: float) -> Callable:
-        """ make a simple Euler stepper
-        
+        """make a simple Euler stepper
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
@@ -112,11 +112,11 @@ class ExplicitSolver(SolverBase):
             dt (float):
                 Time step of the explicit stepping. If `None`, this solver
                 specifies 1e-3 as a default value.
-                
+
         Returns:
             Function that can be called to advance the `state` from time
             `t_start` to time `t_end`. The function call signature is
-            `(state: numpy.ndarray, t_start: float, t_end: float)`            
+            `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
         rhs = self._make_pde_rhs(state, backend=self.backend, allow_stochastic=False)
         self.info["stochastic"] = False
@@ -148,8 +148,8 @@ class ExplicitSolver(SolverBase):
         return stepper
 
     def make_stepper(self, state: FieldBase, dt=None) -> Callable:
-        """ return a stepper function using an explicit scheme
-        
+        """return a stepper function using an explicit scheme
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
@@ -157,11 +157,11 @@ class ExplicitSolver(SolverBase):
             dt (float):
                 Time step of the explicit stepping. If `None`, this solver
                 specifies 1e-3 as a default value.
-                
+
         Returns:
             Function that can be called to advance the `state` from time
             `t_start` to time `t_end`. The function call signature is
-            `(state: numpy.ndarray, t_start: float, t_end: float)`        
+            `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
         # support `None` as a default value, so the controller can signal that
         # the solver should use a default time step

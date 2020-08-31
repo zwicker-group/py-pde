@@ -15,7 +15,7 @@ class Cuboid:
     """ class that represents a cuboid in :math:`n` dimensions """
 
     def __init__(self, pos, size, mutable: bool = True):
-        """ defines a cuboid from a position and a size vector 
+        """defines a cuboid from a position and a size vector
 
         Args:
             pos (list):
@@ -68,12 +68,12 @@ class Cuboid:
 
     @classmethod
     def from_points(cls, p1, p2, **kwargs) -> "Cuboid":
-        """ create cuboid from two points
-        
+        """create cuboid from two points
+
         Args:
             p1 (list): Coordinates of first corner point
             p2 (list): Coordinates of second corner point
-            
+
         Returns:
             Cuboid: cuboid with positive size
         """
@@ -83,11 +83,11 @@ class Cuboid:
 
     @classmethod
     def from_bounds(cls, bounds, **kwargs) -> "Cuboid":
-        """ create cuboid from bounds
-        
+        """create cuboid from bounds
+
         Args:
             bounds (list): Two dimensional array of axes bounds
-            
+
         Returns:
             Cuboid: cuboid with positive size
         """
@@ -96,12 +96,12 @@ class Cuboid:
 
     @classmethod
     def from_centerpoint(cls, centerpoint, size, **kwargs) -> "Cuboid":
-        """ create cuboid from two points
-        
+        """create cuboid from two points
+
         Args:
             centerpoint (list): Coordinates of the center
             size (list): Size of the cuboid
-            
+
         Returns:
             Cuboid: cuboid with positive size
         """
@@ -155,11 +155,11 @@ class Cuboid:
 
     @property
     def surface_area(self) -> float:
-        """ surface area of a cuboid in :math:`n` dimensions.
-        
+        """surface area of a cuboid in :math:`n` dimensions.
+
         The surface area is the volume of the (:math:`n-1`)-dimensional
         hypercubes that bound the current cuboid:
-        
+
             * :math:`n=1`: the number of end points (2)
             * :math:`n=2`: the perimeter of the rectangle
             * :math:`n=3`: the surface area of the cuboid
@@ -197,11 +197,11 @@ class Cuboid:
             return self.__class__(self.pos - amount, self.size + 2 * amount)
 
     def contains_point(self, points):
-        """ returns a True when `points` are within the Cuboid
-        
+        """returns a True when `points` are within the Cuboid
+
         Args:
             points (list): List of point coordinates
-            
+
         Returns:
             np.ndarray: list of booleans indicating which points are inside
         """
@@ -220,15 +220,15 @@ class Cuboid:
 
 
 def asanyarray_flags(data: np.ndarray, dtype=None, writeable: bool = True):
-    """ turns data into an array and sets the respective flags.
-    
+    """turns data into an array and sets the respective flags.
+
     A copy is only made if necessary
-    
+
     Args:
         data (:class:`numpy.ndarray`): numpy array that whose flags are adjusted
         dtype: the resulant dtype
         writeable (bool): Flag determining whether the results is writable
-        
+
     Returns:
         :class:`numpy.ndarray`:
             array with same data as `data` but with flags adjusted.

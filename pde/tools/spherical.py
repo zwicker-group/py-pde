@@ -85,12 +85,12 @@ from ..tools.numba import jit
 
 
 def radius_from_volume(volume: float, dim: int) -> float:
-    """ Return the radius of a sphere with a given volume
-    
+    """Return the radius of a sphere with a given volume
+
     Args:
         volume (float): Volume of the sphere
         dim (int): Dimension of the space
-        
+
     Returns:
         float: Radius of the sphere
     """
@@ -105,11 +105,11 @@ def radius_from_volume(volume: float, dim: int) -> float:
 
 
 def make_radius_from_volume_compiled(dim: int) -> Callable:
-    """ Return a function calculating the radius of a sphere with a given volume
-    
+    """Return a function calculating the radius of a sphere with a given volume
+
     Args:
         dim (int): Dimension of the space
-        
+
     Returns:
         function: A function that takes a volume and returns the radius
     """
@@ -134,12 +134,12 @@ def make_radius_from_volume_compiled(dim: int) -> Callable:
 
 
 def volume_from_radius(radius: float, dim: int) -> float:
-    """ Return the volume of a sphere with a given radius
-    
+    """Return the volume of a sphere with a given radius
+
     Args:
         radius (float): Radius of the sphere
         dim (int): Dimension of the space
-        
+
     Returns:
         float: Volume of the sphere
     """
@@ -154,11 +154,11 @@ def volume_from_radius(radius: float, dim: int) -> float:
 
 
 def make_volume_from_radius_compiled(dim: int) -> Callable:
-    """ Return a function calculating the volume of a sphere with a given radius
-    
+    """Return a function calculating the volume of a sphere with a given radius
+
     Args:
         dim (int): Dimension of the space
-        
+
     Returns:
         function: A function that takes a radius and returns the volume
     """
@@ -183,12 +183,12 @@ def make_volume_from_radius_compiled(dim: int) -> Callable:
 
 
 def surface_from_radius(radius: float, dim: int) -> float:
-    """ Return the surface area of a sphere with a given radius
-    
+    """Return the surface area of a sphere with a given radius
+
     Args:
         radius (float): Radius of the sphere
         dim (int): Dimension of the space
-        
+
     Returns:
         float: Surface area of the sphere
     """
@@ -205,12 +205,12 @@ def surface_from_radius(radius: float, dim: int) -> float:
 
 
 def radius_from_surface(surface: float, dim: int) -> float:
-    """ Return the radius of a sphere with a given surface area 
-    
+    """Return the radius of a sphere with a given surface area
+
     Args:
         surface (float): Surface area of the sphere
         dim (int): Dimension of the space
-        
+
     Returns:
         float: Radius of the sphere
     """
@@ -225,11 +225,11 @@ def radius_from_surface(surface: float, dim: int) -> float:
 
 
 def make_surface_from_radius_compiled(dim: int) -> Callable:
-    """ Return a function calculating the surface area of a sphere
-    
+    """Return a function calculating the surface area of a sphere
+
     Args:
         dim (int): Dimension of the space
-        
+
     Returns:
         function: A function that takes a radius and returns the surface area
     """
@@ -256,11 +256,11 @@ def make_surface_from_radius_compiled(dim: int) -> Callable:
 
 
 def points_cartesian_to_spherical(points):
-    """ Convert points from Cartesian to spherical coordinates 
-    
+    """Convert points from Cartesian to spherical coordinates
+
     Args:
         points (:class:`numpy.ndarray`): Points in Cartesian coordinates
-        
+
     Returns:
         :class:`numpy.ndarray`: Points (r, θ, φ) in spherical coordinates
     """
@@ -278,14 +278,14 @@ def points_cartesian_to_spherical(points):
 
 
 def points_spherical_to_cartesian(points):
-    """ Convert points from spherical to Cartesian coordinates 
-    
+    """Convert points from spherical to Cartesian coordinates
+
     Args:
         points (:class:`numpy.ndarray`):
             Points in spherical coordinates (r, θ, φ)
-        
+
     Returns:
-        :class:`numpy.ndarray`: Points in Cartesian coordinates    
+        :class:`numpy.ndarray`: Points in Cartesian coordinates
     """
     points = np.atleast_1d(points)
     assert points.shape[-1] == 3
@@ -299,10 +299,10 @@ def points_spherical_to_cartesian(points):
 
 
 def haversine_distance(point1, point2) -> float:
-    """ Calculate the haversine-based distance between two points on the surface
+    """Calculate the haversine-based distance between two points on the surface
     of a sphere. Should be more accurate than the arc cosine strategy.
     See, for example: https://en.wikipedia.org/wiki/Haversine_formula
-    
+
     Adapted from https://github.com/tylerjereddy/spherical-SA-docker-demo
     Licensed under MIT License (see copy in root of this project)
 
@@ -327,14 +327,14 @@ def haversine_distance(point1, point2) -> float:
 
 
 def get_spherical_polygon_area(vertices, radius: float = 1) -> float:
-    """ Calculate the surface area of a polygon on the surface of a sphere.
+    """Calculate the surface area of a polygon on the surface of a sphere.
     Based on equation provided here:
     http://mathworld.wolfram.com/LHuiliersTheorem.html
     Decompose into triangles, calculate excess for each
 
     Adapted from https://github.com/tylerjereddy/spherical-SA-docker-demo
     Licensed under MIT License (see copy in root of this project)
-    
+
     Args:
         vertices (:class:`numpy.ndarray`): List of vertices (using Cartesian
             coordinates) that describe the corners of the polygon. The vertices
@@ -388,8 +388,8 @@ class PointsOnSphere:
 
     @classmethod
     def make_uniform(cls, dim: int, num_points: Optional[int] = None):
-        """ create uniformly distributed points on a sphere
-        
+        """create uniformly distributed points on a sphere
+
         Args:
             dim (int): The dimension of space
             num_points (int, optional): The number of points to generate. Note
@@ -439,13 +439,13 @@ class PointsOnSphere:
 
     @cached_method()
     def get_area_weights(self, balance_axes: bool = True):
-        """ return the weight of each point associated with the unit cell size
-        
+        """return the weight of each point associated with the unit cell size
+
         Args:
             balance_axes (bool): Flag determining whether the weights should be
                 chosen such that the weighted average of all points is the
                 zero vector
-                
+
         Returns:
             :class:`numpy.ndarray`: The weight associated with each point
         """
@@ -491,8 +491,8 @@ class PointsOnSphere:
         return weights.reshape(self.points.shape[:-1])
 
     def get_distance_matrix(self):
-        """ calculate the (spherical) distances between each point
-        
+        """calculate the (spherical) distances between each point
+
         Returns:
             :class:`numpy.ndarray`: the distance of each point to each other
         """
@@ -524,8 +524,8 @@ class PointsOnSphere:
         return float(dists_sorted[:, 1].mean())
 
     def write_to_xyz(self, path: str, comment: str = "", symbol: str = "S"):
-        """ write the point coordinates to a xyz file
-        
+        """write the point coordinates to a xyz file
+
         Args:
             filename (str): location of the file where data is written
             comment (str, optional): comment that is written to the second line
@@ -541,15 +541,15 @@ class PointsOnSphere:
 
 
 def spherical_index_k(degree: int, order: int = 0) -> int:
-    """ returns the mode `k` from the degree `degree` and order `order`
-    
+    """returns the mode `k` from the degree `degree` and order `order`
+
     Args:
         degree (int): Degree of the spherical harmonics
         order (int): Order of the spherical harmonics
-        
+
     Raises:
         ValueError: if `order < -degree` or `order > degree`
-        
+
     Returns:
         int: a combined index k
     """
@@ -559,27 +559,27 @@ def spherical_index_k(degree: int, order: int = 0) -> int:
 
 
 def spherical_index_lm(k: int) -> Tuple[int, int]:
-    """ returns the degree `l` and the order `m` from the mode `k`
-    
+    """returns the degree `l` and the order `m` from the mode `k`
+
     Args:
-        k (int): The combined index for the spherical harmonics 
-        
+        k (int): The combined index for the spherical harmonics
+
     Returns:
         tuple: The degree `l` and order `m` of the spherical harmonics
-        assoicated with the combined index      
+        assoicated with the combined index
     """
     degree = int(np.floor(np.sqrt(k)))
     return degree, k - degree * (degree + 1)
 
 
 def spherical_index_count(l: int) -> int:
-    """ return the number of modes for all indices <= l
-    
-    The returned value is one less than the maximal mode `k` required. 
-    
+    """return the number of modes for all indices <= l
+
+    The returned value is one less than the maximal mode `k` required.
+
     Args:
         degree (int): Maximal degree of the spherical harmonics
-    
+
     Returns:
         int: The number of modes
     """
@@ -587,8 +587,8 @@ def spherical_index_count(l: int) -> int:
 
 
 def spherical_index_count_optimal(k_count: int) -> bool:
-    """ checks whether the modes captures all orders for maximal degree
-    
+    """checks whether the modes captures all orders for maximal degree
+
     Args:
         k_count (int): The number of modes considered
     """
@@ -597,13 +597,13 @@ def spherical_index_count_optimal(k_count: int) -> bool:
 
 
 def spherical_harmonic_symmetric(degree: int, θ: float) -> float:
-    r""" axisymmetric spherical harmonics with degree `degree`, so `m=0`.
-    
+    r"""axisymmetric spherical harmonics with degree `degree`, so `m=0`.
+
     Args:
         degree (int): Degree of the spherical harmonics
         θ (float): Azimuthal angle at which the spherical harmonics is
             evaluated (in :math:`[0, \pi]`)
-            
+
     Returns:
         float: The value of the spherical harmonics
     """
@@ -613,8 +613,8 @@ def spherical_harmonic_symmetric(degree: int, θ: float) -> float:
 
 
 def spherical_harmonic_real(degree: int, order: int, θ: float, φ: float) -> float:
-    r""" real spherical harmonics of degree l and order m
-    
+    r"""real spherical harmonics of degree l and order m
+
     Args:
         degree (int): Degree :math:`l` of the spherical harmonics
         order (int): Order :math:`m` of the spherical harmonics
@@ -622,7 +622,7 @@ def spherical_harmonic_real(degree: int, order: int, θ: float, φ: float) -> fl
             spherical harmonics is evaluated.
         φ (float): Polar angle (in :math:`[0, 2\pi]`) at which the spherical
             harmonics is evaluated.
-            
+
     Returns:
         float: The value of the spherical harmonics
     """
@@ -644,8 +644,8 @@ def spherical_harmonic_real(degree: int, order: int, θ: float, φ: float) -> fl
 
 
 def spherical_harmonic_real_k(k: int, θ: float, φ: float) -> float:
-    r""" real spherical harmonics described by mode k
-    
+    r"""real spherical harmonics described by mode k
+
     Args:
         k (int): Combined index determining the degree and order of the
             spherical harmonics
@@ -653,7 +653,7 @@ def spherical_harmonic_real_k(k: int, θ: float, φ: float) -> float:
             spherical harmonics is evaluated.
         φ (float): Polar angle (in :math:`[0, 2\pi]`) at which the spherical
             harmonics is evaluated.
-            
+
     Returns:
         float: The value of the spherical harmonics
     """

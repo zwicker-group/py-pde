@@ -71,8 +71,8 @@ def test_vector_gradient_divergence_field_cyl():
 
 
 def test_findiff_cyl():
-    """ test operator for a simple cylindrical grid. Note that we only
-    really test the polar symmetry """
+    """test operator for a simple cylindrical grid. Note that we only
+    really test the polar symmetry"""
     grid = CylindricalGrid(1.5, [0, 1], (3, 2), periodic_z=True)
     _, r1, r2 = grid.axes_coords[0]
     np.testing.assert_array_equal(grid.discretization, np.full(2, 0.5))

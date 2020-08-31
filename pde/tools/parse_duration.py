@@ -82,7 +82,7 @@ def parse_duration(value: str) -> datetime.timedelta:
         value (str): A time duration given as text. The preferred format for
             durations is '%d %H:%M:%S.%f'. This function also supports ISO 8601
             representation and PostgreSQL's day-time interval format.
-    
+
     Returns:
         datetime.timedelta: An instance representing the duration.
     """
@@ -103,11 +103,7 @@ def parse_duration(value: str) -> datetime.timedelta:
             and kw["seconds"].startswith("-")
         ):
             kw["microseconds"] = "-" + kw["microseconds"]
-        kw = {
-            k: float(v)  # type: ignore
-            for k, v in kw.items()
-            if v is not None
-        }
+        kw = {k: float(v) for k, v in kw.items() if v is not None}  # type: ignore
         return days + sign * datetime.timedelta(**kw)  # type: ignore
     else:
         raise ValueError(f"The time duration {value} cannot be parsed.")

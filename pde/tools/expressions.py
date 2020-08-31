@@ -41,17 +41,17 @@ from .numba import convert_scalar, jit
 def parse_number(
     expression: Union[str, float], variables: Dict[str, float] = None
 ) -> float:
-    r""" return a number compiled from an expression
-    
+    r"""return a number compiled from an expression
+
     Warning:
         {WARNING_EXEC}
-    
+
     Args:
         expression (str or float):
             An expression that can be interpreted as a number
         variables (dict):
             A dictionary of values that replace variables in the expression
-        
+
     Returns:
         float: the calculated value
     """
@@ -95,11 +95,11 @@ class ExpressionBase(metaclass=ABCMeta):
         """
         Warning:
             {WARNING_EXEC}
-    
+
         Args:
             expression (:class:`sympy.core.basic.Basic`):
                 A sympy expression or array. This could for instance be an
-                instance of :class:`~sympy.core.expr.Expr` or 
+                instance of :class:`~sympy.core.expr.Expr` or
                 :class:`~sympy.tensor.array.ndim_array.NDimArray`.
             signature (list of str):
                 The signature defines which variables are expected in the
@@ -213,11 +213,11 @@ class ExpressionBase(metaclass=ABCMeta):
         return len(self.shape)
 
     def depends_on(self, variable: str) -> bool:
-        """ determine whether the expression depends on `variable`
-        
+        """determine whether the expression depends on `variable`
+
         Args:
             variable (str): the name of the variable to check for
-            
+
         Returns:
             bool: whether the variable appears in the expression
         """
@@ -231,16 +231,16 @@ class ExpressionBase(metaclass=ABCMeta):
     def _get_function(
         self, single_arg: bool = False, user_funcs: Dict[str, Callable] = None
     ) -> Callable:
-        """ return function evaluating expression
-        
+        """return function evaluating expression
+
         Args:
             single_arg (bool):
                 Determines whether the returned function accepts all variables
                 in a single argument as an array or whether all variables need
                 to be supplied separately
             user_funcs (dict):
-                Additional functions that can be used in the expression 
-        
+                Additional functions that can be used in the expression
+
         Returns:
             function: the function
         """
@@ -268,14 +268,14 @@ class ExpressionBase(metaclass=ABCMeta):
 
     @cached_method()
     def _get_function_cached(self, single_arg: bool = False) -> Callable:
-        """ return function evaluating expression
-        
+        """return function evaluating expression
+
         Args:
             single_arg (bool):
                 Determines whether the returned function accepts all variables
                 in a single argument as an array or whether all variables need
                 to be supplied separately
-        
+
         Returns:
             function: the function
         """
@@ -287,13 +287,13 @@ class ExpressionBase(metaclass=ABCMeta):
 
     @cached_method()
     def get_compiled(self, single_arg: bool = False) -> Callable:
-        """ return numba function evaluating expression
-        
+        """return numba function evaluating expression
+
         Args:
             single_arg (bool): Determines whether the returned function accepts
                 all variables in a single argument as an array or whether all
                 variables need to be supplied separately
-        
+
         Returns:
             function: the compiled function
         """
@@ -577,8 +577,8 @@ class TensorExpression(ExpressionBase):
         return TensorExpression(derivatives, self.vars, user_funcs=self.user_funcs)
 
     def get_compiled_array(self) -> Callable:
-        """ compile the tensor expression such that a numpy array is returned
-        
+        """compile the tensor expression such that a numpy array is returned
+
         Note that the input to the returned function must be a single 1d array
         with exactly as many entries as there are variables in the expression.
         """

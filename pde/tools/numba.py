@@ -36,8 +36,8 @@ TFunc = TypeVar("TFunc")
 
 
 def numba_environment() -> Dict[str, Any]:
-    """ return information about the numba setup used
-    
+    """return information about the numba setup used
+
     Returns:
         (dict) information about the numba setup
     """
@@ -94,12 +94,12 @@ def numba_environment() -> Dict[str, Any]:
 
 
 def _numba_get_signature(parallel: bool = False, **kwargs) -> Dict[str, Any]:
-    """ return arguments for the :func:`nb.jit` with default values
-    
+    """return arguments for the :func:`nb.jit` with default values
+
     Args:
         parallel (bool): Allow parallel compilation of the function
         **kwargs: Additional arguments to `nb.jit`
-        
+
     Returns:
         dict: Keyword arguments that can directly be used in :func:`nb.jit`
     """
@@ -135,13 +135,13 @@ else:
 
 @decorator_arguments
 def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TFunc:
-    """ apply nb.jit with predefined arguments
-    
+    """apply nb.jit with predefined arguments
+
     Args:
         signature: Signature of the function to compile
         parallel (bool): Allow parallel compilation of the function
         **kwargs: Additional arguments to `nb.jit`
-        
+
     Returns:
         Function that will be compiled using numba
     """
@@ -165,13 +165,13 @@ def jit_allocate_out(
     num_args: int = 1,
     **kwargs,
 ) -> Callable:
-    """ Decorator that compiles a function with allocating an output array. 
-    
+    """Decorator that compiles a function with allocating an output array.
+
     This decorator compiles a function that takes the arguments `arr` and
-    `out`. The point of this function is to make the `out` array optional by 
+    `out`. The point of this function is to make the `out` array optional by
     supplying an empty array of the same shape as `arr` if necessary. This is
-    implemented efficiently by using :func:`nb.generated_jit`. 
-    
+    implemented efficiently by using :func:`nb.generated_jit`.
+
     Args:
         func: The function to be compiled
         parallel (bool): Determines whether the function is jitted with
@@ -181,7 +181,7 @@ def jit_allocate_out(
         num_args (int, optional): Determines the number of input arguments of
             the function.
         **kwargs: Additional arguments to `nb.jit`
-            
+
     Returns:
         The decorated function
     """
@@ -236,7 +236,7 @@ def jit_allocate_out(
             @nb.generated_jit(**jit_kwargs)
             @wraps(func)
             def wrapper(arr, out=None):
-                """ wrapper deciding whether the underlying function is called
+                """wrapper deciding whether the underlying function is called
                 with or without `out`. This uses :func:`nb.generated_jit` to
                 compile different versions of the same function
                 """
@@ -280,9 +280,9 @@ def jit_allocate_out(
             @nb.generated_jit(**jit_kwargs)
             @wraps(func)
             def wrapper(a, b, out=None):
-                """ wrapper deciding whether the underlying function is called
+                """wrapper deciding whether the underlying function is called
                 with or without `out`. This uses nb.generated_jit to compile
-                different versions of the same function. """
+                different versions of the same function."""
                 if isinstance(a, nb.types.Number):
                     # simple scalar call -> do not need to allocate anything
                     raise RuntimeError(
@@ -321,17 +321,17 @@ def jit_allocate_out(
 if nb.config.DISABLE_JIT:
     # dummy function that creates a ctypes pointer
     def address_as_void_pointer(addr):
-        """ returns a void pointer from a given memory address
-        
+        """returns a void pointer from a given memory address
+
         Example:
             This can for instance be used together with `numba.carray`:
-            
+
             >>> addr = arr.ctypes.data
             >>> numba.carray(address_as_void_pointer(addr), arr.shape, arr.dtype
-            
+
         Args:
             addr (int): The memory address
-            
+
         Returns:
             :class:`ctypes.c_void_p`: Pointer to the memory address
         """
@@ -344,17 +344,17 @@ else:
     # actually useful function that creates a numba pointer
     @nb.extending.intrinsic
     def address_as_void_pointer(typingctx, src):
-        """ returns a void pointer from a given memory address
-        
+        """returns a void pointer from a given memory address
+
         Example:
             This can for instance be used together with `numba.carray`:
-            
+
             >>> addr = arr.ctypes.data
             >>> numba.carray(address_as_void_pointer(addr), arr.shape, arr.dtype
-            
+
         Args:
             addr (int): The memory address
-            
+
         Returns:
             :class:`numba.core.types.voidptr`: Pointer to the memory address
         """
@@ -370,8 +370,8 @@ else:
 
 @nb.generated_jit(nopython=True)
 def convert_scalar(arr):
-    """ helper function that turns 0d-arrays into scalars
-    
+    """helper function that turns 0d-arrays into scalars
+
     This helps to avoid the bug discussed in
     https://github.com/numba/numba/issues/6000
     """

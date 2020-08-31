@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 
 
 class Tensor2Field(DataFieldBase):
-    """ Single tensor field of rank 2 on a grid
-    
+    """Single tensor field of rank 2 on a grid
+
     Attributes:
         grid (:class:`~pde.grids.GridBase`):
             The underlying grid defining the discretization
@@ -58,12 +58,12 @@ class Tensor2Field(DataFieldBase):
         out: Optional[Union[VectorField, "Tensor2Field"]] = None,
         label: str = "dot product",
     ) -> Union[VectorField, "Tensor2Field"]:
-        """ calculate the dot product involving a tensor field
-        
+        """calculate the dot product involving a tensor field
+
         This supports the dot product between two tensor fields as well as the
         product between a tensor and a vector. The resulting fields will be a
         tensor or vector, respectively.
-        
+
         Args:
             other (VectorField or Tensor2Field):
                 the second field
@@ -71,9 +71,9 @@ class Tensor2Field(DataFieldBase):
                 Optional field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
-            VectorField or Tensor2Field: the result of applying the dot operator             
+            VectorField or Tensor2Field: the result of applying the dot operator
         """
         # check input
         self.grid.assert_grid_compatible(other.grid)
@@ -97,14 +97,14 @@ class Tensor2Field(DataFieldBase):
     __matmul__ = dot  # support python @-syntax for matrix multiplication
 
     def get_dot_operator(self) -> Callable:
-        """ return operator calculating the dot product involving vector fields
-        
+        """return operator calculating the dot product involving vector fields
+
         This supports both products between two vectors as well as products
         between a vector and a tensor.
-        
+
         Warning:
             This function does not check types or dimensions.
-        
+
         Returns:
             function that takes two instance of :class:`numpy.ndarray`, which
             contain the discretized data of the two operands. An optional third
@@ -126,8 +126,8 @@ class Tensor2Field(DataFieldBase):
         if nb.config.DISABLE_JIT:
 
             def dot(a, b, out=None):
-                """ wrapper deciding whether the underlying function is called
-                with or without `out`. """
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
                 if out is None:
                     out = np.empty_like(b)
                 return inner(a, b, out)
@@ -136,8 +136,8 @@ class Tensor2Field(DataFieldBase):
 
             @nb.generated_jit
             def dot(a, b, out=None):
-                """ wrapper deciding whether the underlying function is called
-                with or without `out`. """
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
                 if isinstance(a, nb.types.Number):
                     # simple scalar call -> do not need to allocate anything
                     raise RuntimeError("Dot needs to be called with fields")
@@ -163,19 +163,19 @@ class Tensor2Field(DataFieldBase):
         out: Optional[VectorField] = None,
         label: str = "divergence",
     ) -> VectorField:
-        """ apply (tensor) divergence and return result as a field 
-        
+        """apply (tensor) divergence and return result as a field
+
         Args:
-            bc: 
+            bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             out (VectorField, optional):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
-            VectorField: the result of applying the operator 
+            VectorField: the result of applying the operator
         """
         tensor_divergence = self.grid.get_operator("tensor_divergence", bc=bc)
         if out is None:
@@ -191,13 +191,13 @@ class Tensor2Field(DataFieldBase):
         return self.grid.integrate(self.data)
 
     def transpose(self, label: str = "transpose") -> "Tensor2Field":
-        """ return the transpose of the tensor field
-        
+        """return the transpose of the tensor field
+
         Args:
             label (str, optional): Name of the returned field
-            
+
         Returns:
-            Tensor2Field: holding the transpose of the tensor field      
+            Tensor2Field: holding the transpose of the tensor field
         """
         axes = (1, 0) + tuple(range(2, 2 + self.grid.dim))
         return Tensor2Field(self.grid, self.data.transpose(axes), label=label)
@@ -205,14 +205,14 @@ class Tensor2Field(DataFieldBase):
     def symmetrize(
         self, make_traceless: bool = False, inplace: bool = False
     ) -> "Tensor2Field":
-        """ symmetrize the tensor field in place
-        
+        """symmetrize the tensor field in place
+
         Args:
             make_traceless (bool):
                 Determines whether the result is also traceless
             inplace (bool):
                 Flag determining whether to symmetrize the current field or
-                return a new one 
+                return a new one
         """
         if inplace:
             out = self
@@ -319,11 +319,11 @@ class Tensor2Field(DataFieldBase):
         return ScalarField(self.grid, data, label=label)
 
     def trace(self, label: Optional[str] = "trace") -> ScalarField:
-        """ return the trace of the tensor field as a scalar field
-        
+        """return the trace of the tensor field as a scalar field
+
         Args:
             label (str, optional): Name of the returned field
-            
+
         Returns:
             ScalarField: holding the trace
         """

@@ -27,14 +27,14 @@ from .common import PARALLELIZATION_THRESHOLD_2D
 @CylindricalGrid.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(bcs: Boundaries) -> Callable:
-    """ make a discretized laplace operator for a cylindrical grid
-    
+    """make a discretized laplace operator for a cylindrical grid
+
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -93,14 +93,14 @@ def make_laplace(bcs: Boundaries) -> Callable:
 @CylindricalGrid.register_operator("gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(bcs: Boundaries) -> Callable:
-    """ make a discretized gradient operator for a cylindrical grid
-    
+    """make a discretized gradient operator for a cylindrical grid
+
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -151,8 +151,8 @@ def make_gradient(bcs: Boundaries) -> Callable:
 @CylindricalGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
-    """ make a discretized gradient squared operator for a cylindrical grid
-    
+    """make a discretized gradient squared operator for a cylindrical grid
+
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
@@ -163,7 +163,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
             operator. If this is False, the squared gradient is calculated as
             the mean of the squared values of the forward and backward
             derivatives.
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -248,14 +248,14 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
 @CylindricalGrid.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(bcs: Boundaries) -> Callable:
-    """ make a discretized divergence operator for a cylindrical grid
-    
+    """make a discretized divergence operator for a cylindrical grid
+
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -309,14 +309,14 @@ def make_divergence(bcs: Boundaries) -> Callable:
 @CylindricalGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(bcs: Boundaries) -> Callable:
-    """ make a discretized vector gradient operator for a cylindrical grid
-    
+    """make a discretized vector gradient operator for a cylindrical grid
+
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -342,14 +342,14 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
 @CylindricalGrid.register_operator("vector_laplace", rank_in=1, rank_out=1)
 @fill_in_docstring
 def make_vector_laplace(bcs: Boundaries) -> Callable:
-    """ make a discretized vector laplace operator for a cylindrical grid
-    
+    """make a discretized vector laplace operator for a cylindrical grid
+
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """
@@ -374,14 +374,14 @@ def make_vector_laplace(bcs: Boundaries) -> Callable:
 @CylindricalGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(bcs: Boundaries) -> Callable:
-    """ make a discretized tensor divergence operator for a cylindrical grid
-    
+    """make a discretized tensor divergence operator for a cylindrical grid
+
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
-        
+
     Returns:
         A function that can be applied to an array of values
     """

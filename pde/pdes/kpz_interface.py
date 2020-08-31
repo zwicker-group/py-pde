@@ -16,14 +16,14 @@ from .base import PDEBase, expr_prod
 
 
 class KPZInterfacePDE(PDEBase):
-    r""" The Kardar–Parisi–Zhang (KPZ) equation
-    
+    r"""The Kardar–Parisi–Zhang (KPZ) equation
+
     The mathematical definition is
-    
+
     .. math::
         \partial_t h = \nu \nabla^2 h +
             \frac{\lambda}{2} \left(\nabla h\right)^2  + \eta(\boldsymbol r, t)
-        
+
     where :math:`h` is the height of the interface in Monge parameterization.
     The dynamics are governed by the two parameters :math:`\nu` and
     :math:`\lambda`, while :math:`\eta` is Gaussian white noise, whose strength
@@ -40,7 +40,7 @@ class KPZInterfacePDE(PDEBase):
         noise: float = 0,
         bc: BoundariesData = "natural",
     ):
-        r""" 
+        r"""
         Args:
             nu (float):
                 Parameter :math:`\nu` for the strength of the diffusive term
@@ -50,7 +50,7 @@ class KPZInterfacePDE(PDEBase):
                 Strength of the (additive) noise term
             bc:
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES} 
+                {ARG_BOUNDARIES}
         """
         super().__init__(noise=noise)
 
@@ -68,18 +68,20 @@ class KPZInterfacePDE(PDEBase):
         )
 
     def evolution_rate(  # type: ignore
-        self, state: ScalarField, t: float = 0,
+        self,
+        state: ScalarField,
+        t: float = 0,
     ) -> ScalarField:
-        """ evaluate the right hand side of the PDE
-        
+        """evaluate the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 The scalar field describing the concentration distribution
             t (float): The current time point
-            
+
         Returns:
             :class:`~pde.fields.ScalarField`:
-            Scalar field describing the evolution rate of the PDE 
+            Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField)
         result = self.nu * state.laplace(bc=self.bc)
@@ -88,17 +90,17 @@ class KPZInterfacePDE(PDEBase):
         return result  # type: ignore
 
     def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
-        """ create a compiled function evaluating the right hand side of the PDE
-        
+        """create a compiled function evaluating the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
-                
+
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`numpy.ndarray` of the state data and
             the time to obtained an instance of :class:`numpy.ndarray` giving
-            the evolution rate.  
+            the evolution rate.
         """
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))

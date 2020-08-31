@@ -31,8 +31,8 @@ class ImplicitSolver(SolverBase):
         maxerror: float = 1e-4,
         backend: str = "auto",
     ):
-        """ initialize the implicit solver
-        
+        """initialize the implicit solver
+
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved
@@ -51,8 +51,8 @@ class ImplicitSolver(SolverBase):
         self.backend = backend
 
     def make_stepper(self, state: FieldBase, dt=None) -> Callable:
-        """ return a stepper function using an implicit scheme
-        
+        """return a stepper function using an implicit scheme
+
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other
@@ -60,11 +60,11 @@ class ImplicitSolver(SolverBase):
             dt (float):
                 Time step of the explicit stepping. If `None`, this solver
                 specifies 1e-3 as a default value.
-                
+
         Returns:
             Function that can be called to advance the `state` from time
             `t_start` to time `t_end`. The function call signature is
-            `(state: numpy.ndarray, t_start: float, t_end: float)`        
+            `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
         # support `None` as a default value, so the controller can signal that
         # the solver should use a default time step
@@ -134,8 +134,8 @@ class ImplicitSolver(SolverBase):
             inner_stepper = jit(inner_stepper)
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """ use Euler stepping to advance `state` from `t_start` to
-            `t_end` """
+            """use Euler stepping to advance `state` from `t_start` to
+            `t_end`"""
             # calculate number of steps (which is at least 1)
             steps = max(1, int(np.ceil((t_end - t_start) / dt)))
             t_last, nfev = inner_stepper(state.data, t_start, steps)

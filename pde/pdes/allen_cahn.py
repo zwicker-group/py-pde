@@ -16,14 +16,14 @@ from .base import PDEBase, expr_prod
 
 
 class AllenCahnPDE(PDEBase):
-    r""" A simple Allen-Cahn equation
-    
+    r"""A simple Allen-Cahn equation
+
     The mathematical definition is
-    
+
     .. math::
         \partial_t c = \gamma \nabla^2 c - c^3 + c
-        
-    where :math:`c` is a scalar field and :math:`\gamma` sets the interfacial 
+
+    where :math:`c` is a scalar field and :math:`\gamma` sets the interfacial
     width.
     """
 
@@ -31,7 +31,7 @@ class AllenCahnPDE(PDEBase):
 
     @fill_in_docstring
     def __init__(self, interface_width: float = 1, bc: BoundariesData = "natural"):
-        """ 
+        """
         Args:
             interface_width (float):
                 The diffusivity of the described species
@@ -50,35 +50,37 @@ class AllenCahnPDE(PDEBase):
         return f"{expr_prod(self.interface_width, 'laplace(c)')} - c**3 + c"
 
     def evolution_rate(  # type: ignore
-        self, state: ScalarField, t: float = 0,
+        self,
+        state: ScalarField,
+        t: float = 0,
     ) -> ScalarField:
-        """ evaluate the right hand side of the PDE
-        
+        """evaluate the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 The scalar field describing the concentration distribution
             t (float): The current time point
-            
+
         Returns:
             :class:`~pde.fields.ScalarField`:
-            Scalar field describing the evolution rate of the PDE 
+            Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField)
         laplace = state.laplace(bc=self.bc, label="evolution rate")
         return self.interface_width * laplace - state ** 3 + state  # type: ignore
 
     def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
-        """ create a compiled function evaluating the right hand side of the PDE
-        
+        """create a compiled function evaluating the right hand side of the PDE
+
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 An example for the state defining the grid and data types
-                
+
         Returns:
             A function with signature `(state_data, t)`, which can be called
             with an instance of :class:`numpy.ndarray` of the state data and
             the time to obtained an instance of :class:`numpy.ndarray` giving
-            the evolution rate.  
+            the evolution rate.
         """
         shape = state.grid.shape
         arr_type = nb.typeof(np.empty(shape, dtype=np.double))

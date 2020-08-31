@@ -46,13 +46,13 @@ BoundaryData = Union[Dict, str, "BCBase"]
 
 
 def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) -> Tuple[np.ndarray, int, Tuple]:
-    """ extract the 1d array along axis at point idx
-    
+    """extract the 1d array along axis at point idx
+
     Args:
         arr (:class:`numpy.ndarray`): The full data array
         idx (tuple): An index into the data array
         axis (int): The axis along which the 1d array will be extracted
-    
+
     Returns:
         tuple: a tuple (arr_1d, i, bc_i), where `arr_1d` is the 1d array, `i` is
         the index `i` into this array marking the current point and `bc_i` are
@@ -98,13 +98,13 @@ def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) -> Tuple[np.ndarray, int, 
 
 
 def _make_get_arr_1d(dim: int, axis: int) -> Callable:
-    """ create function that extracts a 1d array at a given position
-    
+    """create function that extracts a 1d array at a given position
+
     Args:
         dim (int): The dimension of the space, i.e., the number of axes in the
             supplied data array
         axis (int): The axis that is returned as the 1d array
-        
+
     Returns:
         function: A numba compiled function that takes the full array `arr` and
         an index `idx` (a tuple of `dim` integers) specifying the point where
@@ -207,11 +207,11 @@ class BCBase(metaclass=ABCMeta):
         rank: int = 0,
         value: Union[float, np.ndarray, str] = 0,
     ):
-        """ 
+        """
         Warning:
             {WARNING_EXEC} However, the function is safe when `value` cannot be
             an arbitrary string.
-        
+
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
@@ -257,11 +257,11 @@ class BCBase(metaclass=ABCMeta):
 
     @fill_in_docstring
     def _parse_value(self, value: Union[float, np.ndarray, str]) -> np.ndarray:
-        """ parses a boundary value
-        
+        """parses a boundary value
+
         Warning:
             {WARNING_EXEC}
-        
+
         Args:
             value (array-like or str):
                 The value given as a array of tensorial character and optionally
@@ -269,7 +269,7 @@ class BCBase(metaclass=ABCMeta):
                 can specify a mathematical expression that can optionally depend
                 on the coordinates along the boundary. This expression is only
                 supported for scalar boundary conditions.
-                
+
         Returns:
             :class:`numpy.ndarray`: The value at the boundary
         """
@@ -350,11 +350,11 @@ class BCBase(metaclass=ABCMeta):
     @value.setter  # type: ignore
     @fill_in_docstring
     def value(self, value: Union[float, np.ndarray, str] = 0):
-        """ set the value of this boundary condition
-        
+        """set the value of this boundary condition
+
         Warning:
             {WARNING_EXEC}
-        
+
         Args:
             value (float or str or array):
                 a value stored with the boundary condition. The interpretation
@@ -391,14 +391,14 @@ class BCBase(metaclass=ABCMeta):
         self.value_is_linked = True
 
     def _make_value_getter(self) -> Callable:
-        """ return a (compiled) function for obtaining the value.
-        
+        """return a (compiled) function for obtaining the value.
+
         Note:
             This should only be used in numba compiled functions that need to
             support boundary values that can be changed after the function has
             been compiled. In essence, the helper function created here servers
             to get around the compile-time constants that are otherwise created.
-            
+
         Warning:
             The returned function has a hard-coded reference to the memory
             address of the value error, which must thus be maintained in memory.
@@ -513,7 +513,7 @@ class BCBase(metaclass=ABCMeta):
         return obj
 
     def extract_component(self, *indices):
-        """ extracts the boundary conditions for the given component
+        """extracts the boundary conditions for the given component
 
         Args:
             *indices:
@@ -532,8 +532,8 @@ class BCBase(metaclass=ABCMeta):
         value=0,
         **kwargs,
     ) -> "BCBase":
-        r""" creates boundary from a given string identifier
-        
+        r"""creates boundary from a given string identifier
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 The grid for which the boundary conditions are defined
@@ -572,8 +572,8 @@ class BCBase(metaclass=ABCMeta):
     def from_dict(
         cls, grid: GridBase, axis: int, upper: bool, data: Dict[str, Any], rank: int = 0
     ) -> "BCBase":
-        """ create boundary from data given in dictionary
-         
+        """create boundary from data given in dictionary
+
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 The grid for which the boundary conditions are defined
@@ -614,7 +614,7 @@ class BCBase(metaclass=ABCMeta):
     def from_data(
         cls, grid: GridBase, axis: int, upper: bool, data: BoundaryData, rank: int = 0
     ) -> "BCBase":
-        """ create boundary from some data
+        """create boundary from some data
 
         Args:
             grid (:class:`~pde.grids.GridBase`):
@@ -629,11 +629,11 @@ class BCBase(metaclass=ABCMeta):
             rank (int):
                 The tensorial rank of the value associated with the boundary
                 condition.
-        
+
         Returns:
             :class:`~pde.grids.boundaries.local.BCBase`: the instance created
             from the data
-            
+
         Throws:
             ValueError if `data` cannot be interpreted as a boundary condition
         """
@@ -657,12 +657,12 @@ class BCBase(metaclass=ABCMeta):
             )
 
     def check_value_rank(self, rank: int):
-        """ check whether the values at the boundaries have the correct rank
-        
+        """check whether the values at the boundaries have the correct rank
+
         Args:
             rank (tuple): The rank of the value that is stored with this
                 boundary condition
-            
+
         Throws:
             RuntimeError: if the value does not have rank `rank`
         """
@@ -701,12 +701,12 @@ class BCBase1stOrder(BCBase):
         pass
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
-        """ sets the elements of the sparse representation of this condition
-        
+        """sets the elements of the sparse representation of this condition
+
         Args:
             idx (tuple):
                 The index of the point that must lie on the boundary condition
-                
+
         Returns:
             float, dict: A constant value and a dictionary with indices and
             factors that can be used to calculate this virtual point
@@ -726,8 +726,8 @@ class BCBase1stOrder(BCBase):
         return const, {data[2]: factor}
 
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
-        """ calculate the value of the virtual point outside the boundary 
-        
+        """calculate the value of the virtual point outside the boundary
+
         Args:
             arr (array):
                 The data values associated with the grid
@@ -735,8 +735,8 @@ class BCBase1stOrder(BCBase):
                 The index of the point to evaluate. This is a tuple of length
                 `grid.num_axes` with the either -1 or `dim` as the entry for the
                 axis associated with this boundary condition. Here, `dim` is the
-                dimension of the axis. The index is optional if dim == 1.                 
-            
+                dimension of the axis. The index is optional if dim == 1.
+
         Returns:
             float: Value at the virtual support point
         """
@@ -757,12 +757,10 @@ class BCBase1stOrder(BCBase):
         if self.homogeneous:
             return const + factor * arr_1d[..., index]  # type: ignore
         else:
-            return (  # type: ignore
-                const[bc_idx] + factor[bc_idx] * arr_1d[..., index]
-            )
+            return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
 
     def make_virtual_point_evaluator(self) -> Callable:
-        """ returns a function evaluating the value at the virtual support point
+        """returns a function evaluating the value at the virtual support point
 
         Returns:
             function: A function that takes the data array and an index marking
@@ -802,14 +800,14 @@ class BCBase1stOrder(BCBase):
         return virtual_point  # type: ignore
 
     def make_adjacent_evaluator(self) -> Callable:
-        """ returns a function evaluating the value adjacent to a given point 
+        """returns a function evaluating the value adjacent to a given point
 
         Returns:
             function: A function with signature (arr_1d, i_point, bc_idx), where
-            `arr_1d` is the one-dimensional data array (the data points along 
+            `arr_1d` is the one-dimensional data array (the data points along
             the axis perpendicular to the boundary), `i_point` is the index into
             this array for the current point and bc_idx are the remaining
-            indices of the current point, which indicate the location on the 
+            indices of the current point, which indicate the location on the
             boundary plane. The result of the function is the data value at the
             adjacent point along the axis associated with this boundary
             condition in the upper (lower) direction when `upper` is True
@@ -880,14 +878,14 @@ class DirichletBC(BCBase1stOrder):
     names = ["value", "dirichlet"]  # identifiers for this boundary condition
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
-        """ return data suitable for calculating virtual points
-        
+        """return data suitable for calculating virtual points
+
         Args:
             compiled (bool):
                 Flag indicating whether a compiled version is required, which
                 automatically takes updated values into account when it is used
                 in numba-compiled code.
-        
+
         Returns:
             :class:`BC1stOrderData`: the data structure associated with this
             virtual point
@@ -939,20 +937,20 @@ class DirichletBC(BCBase1stOrder):
 
 
 class NeumannBC(BCBase1stOrder):
-    """ represents a boundary condition imposing the derivative in the outward
-    normal direction of the boundary """
+    """represents a boundary condition imposing the derivative in the outward
+    normal direction of the boundary"""
 
     names = ["derivative", "neumann"]  # identifiers for this boundary condition
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
-        """ return data suitable for calculating virtual points
-        
+        """return data suitable for calculating virtual points
+
         Args:
             compiled (bool):
                 Flag indicating whether a compiled version is required, which
                 automatically takes updated values into account when it is used
                 in numba-compiled code.
-                    
+
         Returns:
             :class:`BC1stOrderData`: the data structure associated with this
             virtual point
@@ -1006,27 +1004,27 @@ class NeumannBC(BCBase1stOrder):
 
 
 class MixedBC(BCBase1stOrder):
-    r""" represents a mixed (or Robin) boundary condition imposing a derivative
+    r"""represents a mixed (or Robin) boundary condition imposing a derivative
     in the outward normal direction of the boundary that is given by an affine
     function involving the actual value:
-    
+
     .. math::
         \partial_n c + \gamma c = \beta
-        
-    Here, :math:`c` is the field to which the condition is applied, 
-    :math:`\gamma` quantifies the influence of the field and :math:`\beta` is 
+
+    Here, :math:`c` is the field to which the condition is applied,
+    :math:`\gamma` quantifies the influence of the field and :math:`\beta` is
     the constant term. Note that :math:`\gamma = 0` corresponds
     to Dirichlet conditions imposing :math:`\beta` as the derivative.
     Conversely,  :math:`\gamma \rightarrow \infty` corresponds to imposing a
-    zero value on :math:`c`. 
-    
+    zero value on :math:`c`.
+
     This condition can be enforced by using one of the following variants
-    
+
     .. code-block:: python
-    
+
         bc = {'mixed': VALUE}
         bc = {'type': 'mixed', 'value': VALUE, 'const': CONST}
-        
+
     where `VALUE` corresponds to :math:`\gamma` and `CONST` to :math:`\beta`.
     """
 
@@ -1041,7 +1039,7 @@ class MixedBC(BCBase1stOrder):
         value: Union[float, np.ndarray, str] = 0,
         const: Union[float, np.ndarray, str] = 0,
     ):
-        r""" 
+        r"""
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 The grid for which the boundary conditions are defined
@@ -1063,7 +1061,7 @@ class MixedBC(BCBase1stOrder):
                 conditions are possible by supplying an expression as a string,
                 which then may depend on the axes names of the respective grid.
             const (float or :class:`~numpy.ndarray` or str):
-                The parameter :math:`\beta` determining the constant term for 
+                The parameter :math:`\beta` determining the constant term for
                 the boundary condition. Supports the same input as `value`.
         """
         super().__init__(grid, axis, upper, rank, value)
@@ -1100,14 +1098,14 @@ class MixedBC(BCBase1stOrder):
         return obj
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
-        """ return data suitable for calculating virtual points
-        
+        """return data suitable for calculating virtual points
+
         Args:
             compiled (bool):
                 Flag indicating whether a compiled version is required, which
                 automatically takes updated values into account when it is used
                 in numba-compiled code.
-                    
+
         Returns:
             :class:`BC1stOrderData`: the data structure associated with this
             virtual point
@@ -1179,19 +1177,19 @@ class BCBase2ndOrder(BCBase):
 
     @abstractmethod
     def get_virtual_point_data(self) -> Tuple[Any, Any, int, Any, int]:
-        """ return data suitable for calculating virtual points
-        
+        """return data suitable for calculating virtual points
+
         Returns:
-            tuple: the data associated with this virtual point 
+            tuple: the data associated with this virtual point
         """
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
-        """ sets the elements of the sparse representation of this condition
-        
+        """sets the elements of the sparse representation of this condition
+
         Args:
             idx (tuple):
                 The index of the point that must lie on the boundary condition
-                
+
         Returns:
             float, dict: A constant value and a dictionary with indices and
             factors that can be used to calculate this virtual point
@@ -1214,8 +1212,8 @@ class BCBase2ndOrder(BCBase):
         return const, {data[2]: factor1, data[4]: factor2}
 
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
-        """ calculate the value of the virtual point outside the boundary 
-        
+        """calculate the value of the virtual point outside the boundary
+
         Args:
             arr (array):
                 The data values associated with the grid
@@ -1223,8 +1221,8 @@ class BCBase2ndOrder(BCBase):
                 The index of the point to evaluate. This is a tuple of length
                 `grid.num_axes` with the either -1 or `dim` as the entry for the
                 axis associated with this boundary condition. Here, `dim` is the
-                dimension of the axis. The index is optional if dim == 1.                 
-            
+                dimension of the axis. The index is optional if dim == 1.
+
         Returns:
             float: Value at the virtual support point
         """
@@ -1256,7 +1254,7 @@ class BCBase2ndOrder(BCBase):
             )
 
     def make_virtual_point_evaluator(self) -> Callable:
-        """ returns a function evaluating the value at the virtual support point
+        """returns a function evaluating the value at the virtual support point
 
         Returns:
             function: A function that takes the data array and an index marking
@@ -1310,14 +1308,14 @@ class BCBase2ndOrder(BCBase):
         return virtual_point  # type: ignore
 
     def make_adjacent_evaluator(self) -> Callable:
-        """ returns a function evaluating the value adjacent to a given point 
+        """returns a function evaluating the value adjacent to a given point
 
         Returns:
             function: A function with signature (arr_1d, i_point, bc_idx), where
-            `arr_1d` is the one-dimensional data array (the data points along 
+            `arr_1d` is the one-dimensional data array (the data points along
             the axis perpendicular to the boundary), `i_point` is the index into
             this array for the current point and bc_idx are the remaining
-            indices of the current point, which indicate the location on the 
+            indices of the current point, which indicate the location on the
             boundary plane. The result of the function is the data value at the
             adjacent point along the axis associated with this boundary
             condition in the upper (lower) direction when `upper` is True
@@ -1385,17 +1383,17 @@ class BCBase2ndOrder(BCBase):
 
 
 class ExtrapolateBC(BCBase2ndOrder):
-    """ represents a boundary condition that extrapolates the virtual point
+    """represents a boundary condition that extrapolates the virtual point
     using two points close to the boundary
-    
+
     This imposes a vanishing second derivative.
     """
 
     names = ["extrapolate", "extrapolation"]  # identifiers for this condition
 
     def get_virtual_point_data(self) -> Tuple[float, float, int, float, int]:
-        """ return data suitable for calculating virtual points
-            
+        """return data suitable for calculating virtual points
+
         Returns:
             tuple: the data structure associated with this virtual point
         """
@@ -1416,14 +1414,14 @@ class ExtrapolateBC(BCBase2ndOrder):
 
 
 class CurvatureBC(BCBase2ndOrder):
-    """ represents a boundary condition imposing the 2nd derivative at the
-    boundary """
+    """represents a boundary condition imposing the 2nd derivative at the
+    boundary"""
 
     names = ["curvature", "second_derivative"]  # identifiers for this BC
 
     def get_virtual_point_data(self) -> Tuple[Any, float, int, float, int]:
-        """ return data suitable for calculating virtual points
-            
+        """return data suitable for calculating virtual points
+
         Returns:
             tuple: the data structure associated with this virtual point
         """
