@@ -244,7 +244,7 @@ class GridBase(metaclass=ABCMeta):
             )
         )
 
-    def compatible_with(self, other) -> bool:
+    def compatible_with(self, other: "GridBase") -> bool:
         """tests whether this class is compatible with other grids.
 
         Grids are compatible when they cover the same area with the same
@@ -252,15 +252,19 @@ class GridBase(metaclass=ABCMeta):
         not need to have the same periodicity in their boundaries.
 
         Args:
-            other (GridBase): The other grid to test against
+            other (:class:`~pde.grids.GridBase`):
+                The other grid to test against
+
+        Returns:
+            bool: Whether the grid is compatible
         """
-        return (  # type: ignore
+        return (
             self.__class__ == other.__class__
             and self.shape == other.shape
             and self.axes_bounds == other.axes_bounds
         )
 
-    def assert_grid_compatible(self, other):
+    def assert_grid_compatible(self, other: "GridBase"):
         """checks whether `other` is compatible with the current grid
 
         Args:
@@ -279,12 +283,12 @@ class GridBase(metaclass=ABCMeta):
         return "f8[" + ", ".join([":"] * self.num_axes) + "]"
 
     @cached_property()
-    def cell_coords(self):
+    def cell_coords(self) -> np.ndarray:
         """ :class:`numpy.ndarray`: the coordinates of each cell """
         return np.moveaxis(np.meshgrid(*self.axes_coords, indexing="ij"), 0, -1)
 
     @cached_property()
-    def cell_volumes(self):
+    def cell_volumes(self) -> np.ndarray:
         """ :class:`numpy.ndarray`: volume of each cell """
         vols = functools.reduce(np.outer, self.cell_volume_data)
         return np.broadcast_to(vols, self.shape)
@@ -294,14 +298,14 @@ class GridBase(metaclass=ABCMeta):
         """ bool: returns True if all cell volumes are the same """
         return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
-    def distance_real(self, p1, p2) -> float:
+    def distance_real(self, p1: np.ndarray, p2: np.ndarray) -> float:
         """Calculate the distance between two points given in real coordinates
 
         This takes periodic boundary conditions into account if need be
 
         Args:
-            p1 (vector): First position
-            p2 (vector): Second position
+            p1 (:class:`numpy.ndarray`): First position
+            p2 (:class:`numpy.ndarray`): Second position
 
         Returns:
             float: Distance between the two positions
@@ -329,7 +333,7 @@ class GridBase(metaclass=ABCMeta):
                 Whether the boundary is at the upper side of the axis
 
         Returns:
-            :class:`~numpy.ndarray`: Coordinates of the boundary points.
+            :class:`numpy.ndarray`: Coordinates of the boundary points.
         """
         # get coordinate along the axis determining the boundary
         if upper:
@@ -353,57 +357,61 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def normalize_point(self, point, reduced_coords: bool = False):
+    def normalize_point(self, point: np.ndarray, reduced_coords: bool = False):
         pass
 
     @abstractmethod
-    def cell_to_point(self, cells, cartesian: bool = True):
+    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         pass
 
     @abstractmethod
-    def point_to_cell(self, points):
+    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         pass
 
     @abstractmethod
-    def point_to_cartesian(self, points):
+    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
         pass
 
     @abstractmethod
-    def point_from_cartesian(self, points):
+    def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
         pass
 
     @abstractmethod
-    def difference_vector_real(self, p1, p2):
+    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray):
         pass
 
     @abstractmethod
-    def polar_coordinates_real(self, origin, ret_angle=False):
+    def polar_coordinates_real(self, origin: np.ndarray, ret_angle: bool = False):
         pass
 
     @abstractmethod
-    def contains_point(self, point):
+    def contains_point(self, point: np.ndarray) -> np.ndarray:
         pass
 
     @abstractmethod
     def iter_mirror_points(
-        self, point, with_self: bool = False, only_periodic: bool = True
+        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
         pass
 
     @abstractmethod
-    def get_boundary_conditions(self, bc="natural", rank: int = 0) -> "Boundaries":
+    def get_boundary_conditions(
+        self, bc: "BoundariesData" = "natural", rank: int = 0
+    ) -> "Boundaries":
         pass
 
     @abstractmethod
-    def get_line_data(self, data, extract: str = "auto"):
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def get_image_data(self, data):
+    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def get_random_point(self, boundary_distance: float = 0, cartesian: bool = True):
+    def get_random_point(
+        self, boundary_distance: float = 0, cartesian: bool = True
+    ) -> np.ndarray:
         pass
 
     @classmethod

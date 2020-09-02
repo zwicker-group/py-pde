@@ -7,7 +7,7 @@ Cartesian grids of arbitrary dimension.
 
 import itertools
 from abc import ABCMeta
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Sequence, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -17,7 +17,7 @@ from ..tools.plotting import plot_on_axes
 from .base import DimensionError, GridBase, _check_shape
 
 if TYPE_CHECKING:
-    from .boundaries import Boundaries  # @UnusedImport
+    from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
 
 
 class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals]
@@ -25,7 +25,9 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
     cuboid: Cuboid
 
-    def __init__(self, shape, periodic: Union[List[bool], bool] = False):
+    def __init__(
+        self, shape: Tuple[int, ...], periodic: Union[List[bool], bool] = False
+    ):
         """
         Args:
             shape (tuple): The number of support points for each axis. The
@@ -60,18 +62,18 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """ size associated with each cell """
         return tuple(self.discretization)
 
-    def contains_point(self, point):
+    def contains_point(self, point: np.ndarray) -> np.ndarray:
         """check whether the point is contained in the grid
 
         Args:
-            point (vector): Coordinates of the point
+            point (:class:`numpy.ndarray`): Coordinates of the point
         """
         if len(point) != self.dim:
             raise DimensionError("Incompatible dimensions")
         return self.cuboid.contains_point(point)
 
     def iter_mirror_points(
-        self, point, with_self: bool = False, only_periodic: bool = True
+        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
         """generates all mirror points corresponding to `point`
 
@@ -99,7 +101,9 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             if with_self or np.linalg.norm(offset) != 0:
                 yield point + offset
 
-    def get_random_point(self, boundary_distance: float = 0, cartesian: bool = True):
+    def get_random_point(
+        self, boundary_distance: float = 0, cartesian: bool = True
+    ) -> np.ndarray:
         """return a random point within the grid
 
         Args:
@@ -197,7 +201,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             "label_y": label_y,
         }
 
-    def get_image_data(self, data) -> Dict[str, Any]:
+    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
         """return a 2d-image of the data
 
         Args:
@@ -235,7 +239,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             "label_y": "y",
         }
 
-    def point_to_cartesian(self, points):
+    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         Args:
@@ -247,7 +251,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         return points
 
-    def point_from_cartesian(self, coords):
+    def point_from_cartesian(self, coords: np.ndarray) -> np.ndarray:
         """convert points given in Cartesian coordinates to this grid
 
         Args:
@@ -258,11 +262,11 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         return coords
 
-    def polar_coordinates_real(self, origin, ret_angle: bool = False):
+    def polar_coordinates_real(self, origin: np.ndarray, ret_angle: bool = False):
         """return polar coordinates associated with the grid
 
         Args:
-            origin (vector): Coordinates of the origin at which the polar
+            origin (:class:`numpy.ndarray`): Coordinates of the origin at which the polar
                 coordinate system is anchored.
             ret_angle (bool): Determines whether angles are returned alongside
                 the distance. If `False` only the distance to the origin is
@@ -301,20 +305,25 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         else:
             return dist
 
-    def from_polar_coordinates(self, distance, angle, origin=None):
+    def from_polar_coordinates(
+        self, distance: np.ndarray, angle: np.ndarray, origin: np.ndarray = None
+    ) -> np.ndarray:
         """convert polar coordinates to Cartesian coordinates
 
         This function is currently only implemented for 1d and 2d systems.
 
         Args:
-            distance: The radial distance
-            angle: The angle with respect to the origin
-            origin (optional): Sets the origin of the coordinate system. If
-                omitted. The zero point is assumed as the origin.
+            distance (:class:`numpy.ndarray`):
+                The radial distance
+            angle (:class:`numpy.ndarray`):
+                The angle with respect to the origin
+            origin (:class:`numpy.ndarray`, optional):
+                Sets the origin of the coordinate system. If omitted, the zero point is
+                assumed as the origin.
 
         Returns:
-            The Cartesian coordinates corresponding to the given polar
-            coordinates.
+            :class:`numpy.ndarray`: The Cartesian coordinates corresponding to the given
+            polar coordinates.
         """
         distance = np.asarray(distance)
         angle = np.asarray(angle)
@@ -370,7 +379,9 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             ax.set_aspect(1)
 
     @fill_in_docstring
-    def get_boundary_conditions(self, bc="natural", rank: int = 0) -> "Boundaries":
+    def get_boundary_conditions(
+        self, bc: "BoundariesData" = "natural", rank: int = 0
+    ) -> "Boundaries":
         """constructs boundary conditions from a flexible data format
 
         Args:
@@ -403,7 +414,9 @@ class UnitGrid(CartesianGridBase):
     together, the cells covers the interval :math:`[0, n]` along this dimension.
     """
 
-    def __init__(self, shape, periodic: Union[List[bool], bool] = False):
+    def __init__(
+        self, shape: Tuple[int, ...], periodic: Union[List[bool], bool] = False
+    ):
         """
         Args:
             shape (tuple): The number of support points for each axis. The
@@ -445,7 +458,9 @@ class UnitGrid(CartesianGridBase):
         """ float: total volume of the grid """
         return float(np.prod(self.shape))
 
-    def normalize_point(self, point, reduced_coords: bool = False):
+    def normalize_point(
+        self, point: np.ndarray, reduced_coords: bool = False
+    ) -> np.ndarray:
         """normalize coordinates by applying periodic boundary conditions
 
         Args:
@@ -482,7 +497,7 @@ class UnitGrid(CartesianGridBase):
 
         return point
 
-    def cell_to_point(self, cells, cartesian: bool = True):
+    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         """convert cell coordinates to real coordinates
 
         Args:
@@ -504,7 +519,7 @@ class UnitGrid(CartesianGridBase):
             raise DimensionError("Dimension mismatch")
         return cells + 0.5
 
-    def point_to_cell(self, points):
+    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)
 
         This function respects periodic boundary conditions, but it does not
@@ -519,7 +534,7 @@ class UnitGrid(CartesianGridBase):
         """
         return self.normalize_point(points).astype(np.int)
 
-    def difference_vector_real(self, p1, p2):
+    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
 
         In case of periodic boundary conditions, the shortest vector is returned
@@ -557,7 +572,7 @@ class UnitGrid(CartesianGridBase):
             :class:`UnitGrid`: The subgrid
         """
         subgrid = self.__class__(
-            shape=[self.shape[i] for i in indices],
+            shape=tuple(self.shape[i] for i in indices),
             periodic=[self.periodic[i] for i in indices],
         )
         subgrid.axes = [self.axes[i] for i in indices]
@@ -590,7 +605,12 @@ class CartesianGrid(CartesianGridBase):
     interval :math:`[x^{(k)}_\mathrm{min}, x^{(k)}_\mathrm{max}]`.
     """
 
-    def __init__(self, bounds, shape, periodic: Union[List[bool], bool] = False):
+    def __init__(
+        self,
+        bounds: np.array,
+        shape: Union[int, Tuple[int, ...]],
+        periodic: Union[List[bool], bool] = False,
+    ):
         """
         Args:
             bounds (tuple): Give the coordinate range for each axis. This should
@@ -629,13 +649,13 @@ class CartesianGrid(CartesianGridBase):
         shape = _check_shape(shape)
         if len(shape) == 1 and self.cuboid.dim > 1:
             shape = np.full(self.cuboid.dim, shape, dtype=np.uint32)
-        if self.cuboid.dim != len(shape):
+        if self.cuboid.dim != len(shape):  # type: ignore
             raise DimensionError(
                 "Dimension of the bounds and the shape are not compatible"
             )
 
         # initialize the base class
-        super().__init__(shape, periodic)
+        super().__init__(shape, periodic)  # type: ignore
 
         # determine the coordinates
         p1, p2 = self.cuboid.corners
@@ -685,7 +705,9 @@ class CartesianGrid(CartesianGridBase):
         """ float: total volume of the grid """
         return float(self.cuboid.volume)
 
-    def normalize_point(self, point, reduced_coords: bool = False):
+    def normalize_point(
+        self, point: np.ndarray, reduced_coords: bool = False
+    ) -> np.ndarray:
         """normalize coordinates by applying periodic boundary conditions
 
         Args:
@@ -722,7 +744,7 @@ class CartesianGrid(CartesianGridBase):
                 point[..., periodic] = (point[..., periodic] - offset) % size + offset
         return point
 
-    def cell_to_point(self, cells, cartesian: bool = True):
+    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         """convert cell coordinates to real coordinates
 
         Args:
@@ -743,7 +765,7 @@ class CartesianGrid(CartesianGridBase):
         else:
             return self.cuboid.pos + (cells + 0.5) * self.discretization
 
-    def point_to_cell(self, points):
+    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)
 
         This function respects periodic boundary conditions, but it does not
@@ -760,7 +782,7 @@ class CartesianGrid(CartesianGridBase):
         cell_coords = (points - self.cuboid.pos) / self.discretization
         return cell_coords.astype(np.int)
 
-    def difference_vector_real(self, p1, p2):
+    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
 
         In case of periodic boundary conditions, the shortest vector is returned
@@ -792,7 +814,7 @@ class CartesianGrid(CartesianGridBase):
         """
         subgrid = self.__class__(
             bounds=[self.axes_bounds[i] for i in indices],
-            shape=[self.shape[i] for i in indices],
+            shape=tuple(self.shape[i] for i in indices),
             periodic=[self.periodic[i] for i in indices],
         )
         subgrid.axes = [self.axes[i] for i in indices]

@@ -1376,7 +1376,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 data["label_y"] = f"{self.label} ({data['label_y']})"
         else:
             data["label_y"] = self.label
-        return data  # type: ignore
+        return data
 
     def get_image_data(
         self, scalar: str = "auto", transpose: bool = False, **kwargs
@@ -1407,7 +1407,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data["data"] = data["data"].T
             data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
 
-        return data  # type: ignore
+        return data
 
     def get_vector_data(self, **kwargs) -> Dict[str, Any]:
         r"""return data for a vector plot of the field

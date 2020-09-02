@@ -108,7 +108,7 @@ def display_progress(iterator, total=None, enabled=True, **kwargs):
 
 
 class OutputBase(metaclass=ABCMeta):
-    """ base class for output managment """
+    """ base class for output management """
 
     @abstractmethod
     def __call__(self, line: str):

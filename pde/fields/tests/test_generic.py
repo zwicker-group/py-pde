@@ -255,7 +255,7 @@ def test_interpolation_values(field_cls):
 @pytest.mark.parametrize(
     "grid",
     [
-        UnitGrid([6]),
+        UnitGrid((6,)),
         PolarGrid(6, 4),
         SphericalGrid(7, 4),
         CylindricalGrid(6, (0, 8), (7, 8)),

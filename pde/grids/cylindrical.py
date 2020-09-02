@@ -15,7 +15,7 @@ from .base import DimensionError, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
 
 if TYPE_CHECKING:
-    from .boundaries import Boundaries  # @UnusedImport
+    from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
     from .spherical import PolarGrid  # @UnusedImport
 
 
@@ -148,7 +148,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         boundary_distance: float = 0,
         cartesian: bool = True,
         avoid_center: bool = False,
-    ):
+    ) -> np.ndarray:
         """return a random point within the grid
 
         Note that these points will be uniformly distributed on the radial axis,
@@ -186,7 +186,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         else:
             return point
 
-    def get_line_data(self, data, extract: str = "auto") -> Dict[str, Any]:
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
         """return a line cut along the cylindrical symmetry axis
 
         Args:
@@ -238,7 +238,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             "label_y": label_y,
         }
 
-    def get_image_data(self, data) -> Dict[str, Any]:
+    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
         """return a 2d-image of the data
 
         Args:
@@ -258,11 +258,11 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             "label_y": self.axes[1],
         }
 
-    def contains_point(self, point) -> bool:
+    def contains_point(self, point: np.ndarray) -> bool:
         """check whether the point is contained in the grid
 
         Args:
-            point (vector): Coordinates of the point
+            point (:class:`numpy.ndarray`): Coordinates of the point
         """
         assert len(point) == 3
         r = np.hypot(point[0], point[1])
@@ -270,7 +270,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         return bool(r <= self.radius and bounds_z[0] <= point[2] <= bounds_z[1])
 
     def iter_mirror_points(
-        self, point, with_self: bool = False, only_periodic: bool = True
+        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
         """generates all mirror points corresponding to `point`
 
@@ -300,7 +300,9 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         r_vols = np.diff(areas).reshape(self.shape[0], 1)
         return (r_vols, dz)
 
-    def normalize_point(self, point, reduced_coords: bool = False):
+    def normalize_point(
+        self, point: np.ndarray, reduced_coords: bool = False
+    ) -> np.ndarray:
         """normalize coordinates by applying periodic boundary conditions
 
         Args:
@@ -329,7 +331,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         else:
             return point
 
-    def point_to_cartesian(self, points):
+    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         Args:
@@ -348,7 +350,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         z = points[..., 1]
         return np.stack((x, y, z), axis=-1)
 
-    def point_from_cartesian(self, points):
+    def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
         """convert points given in Cartesian coordinates to this grid
 
         This function returns points restricted to the x-z plane, i.e., the
@@ -366,7 +368,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         zs = points[..., 2]
         return np.stack((rs, zs), axis=-1)
 
-    def cell_to_point(self, cells, cartesian: bool = True):
+    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         """convert cell coordinates to real coordinates
 
         This function returns points restricted to the x-z plane, i.e., the
@@ -398,7 +400,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         else:
             return points
 
-    def point_to_cell(self, points):
+    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)
 
         This function respects periodic boundary conditions, but it does not
@@ -417,7 +419,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         points /= self.discretization
         return points.astype(np.int)
 
-    def difference_vector_real(self, p1, p2):
+    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
 
         In case of periodic boundary conditions, the shortest vector is returned
@@ -436,11 +438,13 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             diff[..., 1] = (diff[..., 1] + size / 2) % size - size / 2
         return diff
 
-    def polar_coordinates_real(self, origin, ret_angle: bool = False):
+    def polar_coordinates_real(
+        self, origin: np.ndarray, ret_angle: bool = False
+    ) -> np.ndarray:
         """return spherical coordinates associated with the grid
 
         Args:
-            origin (vector): Coordinates of the origin at which the polar
+            origin (:class:`numpy.ndarray`): Coordinates of the origin at which the polar
                 coordinate system is anchored. Note that this must be of the
                 form `[0, 0, z_val]`, where only `z_val` can be chosen freely.
             ret_angle (bool): Determines whether the azimuthal angle is returned
@@ -465,7 +469,9 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             return dist
 
     @fill_in_docstring
-    def get_boundary_conditions(self, bc="natural", rank: int = 0) -> "Boundaries":
+    def get_boundary_conditions(
+        self, bc: "BoundariesData" = "natural", rank: int = 0
+    ) -> "Boundaries":
         """constructs boundary conditions from a flexible data format
 
         Args:
