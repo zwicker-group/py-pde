@@ -303,30 +303,6 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         if with_self:
             yield point
 
-    def normalize_point(
-        self, point: np.ndarray, reduced_coords: bool = False
-    ) -> np.ndarray:
-        """normalize coordinates, which is a no-op for spherical coordinates.
-
-        Args:
-            point (:class:`numpy.ndarray`): Coordinates of a single point
-            reduced_coords (bool): Flag determining whether only the coordinates
-                corresponding to axes in this grid are given
-
-        Returns:
-            :class:`numpy.ndarray`: The input array
-        """
-        point = np.asarray(point, dtype=np.double)
-        size = self.num_axes if reduced_coords else self.dim
-        if point.size == 0:
-            return np.zeros((0, size))
-        if point.shape[-1] != size:
-            raise DimensionError(
-                f"Dimension mismatch: Array of shape {point.shape} does not describe "
-                f"points of dimension {size}"
-            )
-        return point
-
     def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
         """convert points given in Cartesian coordinates to this grid
 
@@ -337,7 +313,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         Returns:
             :class:`numpy.ndarray`: Points given in the coordinates of the grid
         """
-        points = self.normalize_point(points)
+        points = np.atleast_1d(points)
+        assert points.shape[-1] == self.dim
         return np.linalg.norm(points, axis=-1, keepdims=True)
 
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
@@ -359,6 +336,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             :class:`numpy.ndarray`: The center points of the respective cells
         """
         cells = np.atleast_1d(cells)
+        assert cells.shape[-1] == self.num_axes
+
         # convert from cells indices to grid coordinates
         r_inner, _ = self.axes_bounds[0]
         points = r_inner + (cells + 0.5) * self.discretization[0]
@@ -370,10 +349,6 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
     def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)
 
-        This function respects periodic boundary conditions, but it does not
-        throw an error when coordinates lie outside the bcs (for
-        non-periodic axes).
-
         Args:
             points (:class:`numpy.ndarray`): Real coordinates
 
@@ -381,8 +356,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             :class:`numpy.ndarray`: The indices of the respective cells
         """
         # convert from grid coordinates to cells indices
-        r_inner, _ = self.axes_bounds[0]
         r = self.point_from_cartesian(points)
+        r_inner, _ = self.axes_bounds[0]
         cells = (r - r_inner) / self.discretization[0]
         return cells.astype(np.int)
 
@@ -473,7 +448,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 bcs = Boundaries.from_data(self, bc, rank=rank)
             else:
                 self._logger.warning(
-                    "The inner boundary condition was not specified. We assume a "
+                    "The inner boundary condition was not specified. Assuming a "
                     "vanishing derivative at r=0."
                 )
                 b_inner = NeumannBC(self, 0, upper=False, rank=rank)
@@ -545,8 +520,8 @@ class PolarGrid(SphericalGridBase):
             :class:`numpy.ndarray`: The Cartesian coordinates of the point
         """
         points = np.atleast_1d(points)
-        if points.shape[-1] != 1:
-            raise DimensionError(f"Dimension mismatch: Points {points} invalid")
+        if points.shape[-1] != self.num_axes:
+            raise DimensionError(f"Shape {points.shape} cannot denote points")
 
         y = points[..., 0]
         x = np.zeros_like(y)
@@ -617,8 +592,8 @@ class SphericalGrid(SphericalGridBase):
             :class:`numpy.ndarray`: The Cartesian coordinates of the point
         """
         points = np.atleast_1d(points)
-        if points.shape[-1] != 1:
-            raise DimensionError(f"Dimension mismatch: Points {points} invalid")
+        if points.shape[-1] != self.num_axes:
+            raise DimensionError(f"Shape {points.shape} cannot denote points")
         z = points[..., 0]
         x = np.zeros_like(z)
         return np.stack((x, x, z), axis=-1)

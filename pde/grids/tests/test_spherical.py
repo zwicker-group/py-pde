@@ -157,6 +157,7 @@ def test_spherical_annulus():
     # random points
     c = np.random.randint(8, size=(6, 1))
     p = grid.cell_to_point(c)
+    assert all(grid.contains_point(r) for r in p)
     np.testing.assert_array_equal(c, grid.point_to_cell(p))
 
     assert grid.contains_point(grid.get_random_point())

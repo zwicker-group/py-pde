@@ -357,10 +357,6 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def normalize_point(self, point: np.ndarray, reduced_coords: bool = False):
-        pass
-
-    @abstractmethod
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         pass
 
@@ -413,6 +409,61 @@ class GridBase(metaclass=ABCMeta):
         self, boundary_distance: float = 0, cartesian: bool = True
     ) -> np.ndarray:
         pass
+
+    def normalize_point(self, point: np.ndarray, reflect: bool = True) -> np.ndarray:
+        """normalize coordinates by applying periodic boundary conditions
+
+        Args:
+            point (:class:`numpy.ndarray`):
+                Coordinates of a single point
+            reflect (bool):
+                Flag determining whether coordinates along non-periodic axes are
+                reflected to lie in the valid range. If `False`, such coordinates are
+                left unchanged and only periodic boundary conditions are enforced.
+
+        Returns:
+            :class:`numpy.ndarray`: The respective coordinates with periodic
+            boundary conditions applied.
+        """
+        point = np.asarray(point, dtype=np.double)
+        if point.size == 0:
+            return np.zeros((0, self.num_axes))
+
+        if point.ndim == 0:
+            if self.num_axes > 1:
+                raise DimensionError(
+                    f"Point {point} is not of dimension {self.num_axes}"
+                )
+        elif point.shape[-1] != self.num_axes:
+            raise DimensionError(
+                f"Array of shape {point.shape} does not describe points of dimension "
+                f"{self.num_axes}"
+            )
+
+        # normalize the coordinates for the periodic dimensions
+        bounds = np.array(self.axes_bounds)
+        xmin = bounds[:, 0]
+        xmax = bounds[:, 1]
+        xdim = xmax - xmin
+
+        if self.num_axes == 1:
+            # single dimension
+            if self.periodic[0]:
+                point = (point - xmin[0]) % xdim[0] + xmin[0]
+            elif reflect:
+                arg = (point - xmax[0]) % (2 * xdim[0]) - xdim[0]
+                point = xmin[0] + np.abs(arg)
+
+        else:
+            # multiple dimensions
+            for i in range(self.num_axes):
+                if self.periodic[i]:
+                    point[..., i] = (point[..., i] - xmin[i]) % xdim[i] + xmin[i]
+                elif reflect:
+                    arg = (point[..., i] - xmax[i]) % (2 * xdim[i]) - xdim[i]
+                    point[..., i] = xmin[i] + np.abs(arg)
+
+        return point
 
     @classmethod
     def register_operator(
@@ -579,22 +630,40 @@ class GridBase(metaclass=ABCMeta):
         return (data * cell_volumes).sum(axis=axes)
 
     @cached_method()
-    def make_normalize_point_compiled(self) -> Callable:
+    def make_normalize_point_compiled(self, reflect: bool = True) -> Callable:
         """return a compiled function that normalizes the points
 
         Normalizing points is useful to respect periodic boundary conditions.
         Here, points are assumed to be specified by the physical values along
         the non-symmetric axes of the grid.
+
+        Args:
+            reflect (bool):
+                Flag determining whether coordinates along non-periodic axes are
+                reflected to lie in the valid range. If `False`, such coordinates are
+                left unchanged and only periodic boundary conditions are enforced.
+
+        Returns:
+            callable: A function that takes a :class:`numpy.ndarray` as an argument,
+            which describes the coordinates of the points. This array is modified
+            in-place!
         """
-        periodic_axes = np.flatnonzero(self.periodic)
+        num_axes = self.num_axes
+        periodic = tuple(self.periodic)
         bounds = np.array(self.axes_bounds)
-        offset = bounds[:, 0]
+        xmin = bounds[:, 0]
+        xmax = bounds[:, 1]
         size = bounds[:, 1] - bounds[:, 0]
 
         @jit
         def normalize_point(point: np.ndarray) -> np.ndarray:
-            for i in periodic_axes:
-                point[i] = (point[i] - offset[i]) % size[i] + offset[i]
+            """ helper function normalizing a single point """
+            for i in range(num_axes):
+                if periodic[i]:
+                    point[i] = (point[i] - xmin[i]) % size[i] + xmin[i]
+                elif reflect:
+                    arg = (point[i] - xmax[i]) % (2 * size[i]) - size[i]
+                    point[i] = xmin[i] + abs(arg)
 
         return normalize_point  # type: ignore
 

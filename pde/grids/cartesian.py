@@ -249,6 +249,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         Returns:
             :class:`numpy.ndarray`: The Cartesian coordinates of the point
         """
+        assert points.shape[-1] == self.dim
         return points
 
     def point_from_cartesian(self, coords: np.ndarray) -> np.ndarray:
@@ -260,6 +261,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         Returns:
             :class:`numpy.ndarray`: Points given in the coordinates of the grid
         """
+        assert coords.shape[-1] == self.dim
         return coords
 
     def polar_coordinates_real(self, origin: np.ndarray, ret_angle: bool = False):
@@ -346,7 +348,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 f"Cannot calculate coordinates for dimension {self.dim}"
             )
 
-        return self.normalize_point(coords)
+        return self.normalize_point(coords, reflect=False)
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
@@ -458,45 +460,6 @@ class UnitGrid(CartesianGridBase):
         """ float: total volume of the grid """
         return float(np.prod(self.shape))
 
-    def normalize_point(
-        self, point: np.ndarray, reduced_coords: bool = False
-    ) -> np.ndarray:
-        """normalize coordinates by applying periodic boundary conditions
-
-        Args:
-            points (:class:`numpy.ndarray`): An array of coordinates
-            reduced_coords (bool): Flag determining whether only the coordinates
-                corresponding to axes in this grid are given
-
-        Returns:
-            :class:`numpy.ndarray`: The respective coordinates with periodic
-            boundary conditions applied.
-        """
-        point = np.asarray(point, dtype=np.double)
-        if point.size == 0:
-            return np.zeros((0, self.dim))
-        if point.ndim == 0:
-            if self.dim > 1:
-                raise DimensionError(
-                    f"Dimension mismatch: Point {point} is not of dimension {self.dim}"
-                )
-        elif point.shape[-1] != self.dim:
-            raise DimensionError(
-                f"Dimension mismatch: Array of shape {point.shape} does not describe "
-                f"points of dimension {self.dim}"
-            )
-
-        # normalize the coordinates for the periodic dimensions
-        if point.ndim == 0:
-            if self.periodic[0]:
-                point %= self.shape[0]
-        else:
-            for i in range(self.num_axes):
-                if self.periodic[i]:
-                    point[..., i] %= self.shape[i]
-
-        return point
-
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         """convert cell coordinates to real coordinates
 
@@ -516,7 +479,7 @@ class UnitGrid(CartesianGridBase):
         if cells.size == 0:
             return np.zeros((0, self.dim))
         if cells.shape[-1] != self.dim:
-            raise DimensionError("Dimension mismatch")
+            raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
         return cells + 0.5
 
     def point_to_cell(self, points: np.ndarray) -> np.ndarray:
@@ -532,7 +495,7 @@ class UnitGrid(CartesianGridBase):
         Returns:
             :class:`numpy.ndarray`: The indices of the respective cells
         """
-        return self.normalize_point(points).astype(np.int)
+        return self.normalize_point(points, reflect=False).astype(np.int)
 
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
@@ -705,45 +668,6 @@ class CartesianGrid(CartesianGridBase):
         """ float: total volume of the grid """
         return float(self.cuboid.volume)
 
-    def normalize_point(
-        self, point: np.ndarray, reduced_coords: bool = False
-    ) -> np.ndarray:
-        """normalize coordinates by applying periodic boundary conditions
-
-        Args:
-            points (:class:`numpy.ndarray`): An array of coordinates
-            reduced_coords (bool): Flag determining whether only the coordinates
-                corresponding to axes in this grid are given
-
-        Returns:
-            :class:`numpy.ndarray`: The respective coordinates with periodic
-            boundary conditions applied.
-        """
-        point = np.asarray(point, dtype=np.double)
-        if point.size == 0:
-            return np.zeros((0, self.dim))
-        if point.ndim == 0:
-            if self.dim > 1:
-                raise DimensionError(
-                    f"Dimension mismatch: Point {point} is not of dimension {self.dim}"
-                )
-        elif point.shape[-1] != self.dim:
-            raise DimensionError(
-                f"Dimension mismatch: Array of shape {point.shape} does not describe "
-                f"points of dimension {self.dim}"
-            )
-
-        periodic = self.periodic
-        if any(periodic):
-            if self.dim == 1:  # single, periodic dimension
-                offset = self.cuboid.pos
-                point = (point - offset) % self.cuboid.size + offset
-            else:  # multiple dimensions => extract the periodic ones
-                offset = self.cuboid.pos[periodic]
-                size = self.cuboid.size[periodic]
-                point[..., periodic] = (point[..., periodic] - offset) % size + offset
-        return point
-
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         """convert cell coordinates to real coordinates
 
@@ -762,6 +686,8 @@ class CartesianGrid(CartesianGridBase):
         cells = np.atleast_1d(cells)
         if cells.size == 0:
             return cells
+        elif cells.shape[-1] != self.dim:
+            raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
         else:
             return self.cuboid.pos + (cells + 0.5) * self.discretization
 
@@ -778,7 +704,7 @@ class CartesianGrid(CartesianGridBase):
         Returns:
             :class:`numpy.ndarray`: The indices of the respective cells
         """
-        points = self.normalize_point(points)
+        points = self.normalize_point(points, reflect=False)
         cell_coords = (points - self.cuboid.pos) / self.discretization
         return cell_coords.astype(np.int)
 

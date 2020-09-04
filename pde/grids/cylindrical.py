@@ -300,37 +300,6 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         r_vols = np.diff(areas).reshape(self.shape[0], 1)
         return (r_vols, dz)
 
-    def normalize_point(
-        self, point: np.ndarray, reduced_coords: bool = False
-    ) -> np.ndarray:
-        """normalize coordinates by applying periodic boundary conditions
-
-        Args:
-            point (:class:`numpy.ndarray`): Coordinates of a single point
-            reduced_coords (bool): Flag determining whether only the coordinates
-                corresponding to axes in this grid are given
-
-        Returns:
-            :class:`numpy.ndarray`: The respective coordinates with periodic
-            boundary conditions applied.
-        """
-        point = np.asarray(point, dtype=np.double)
-        size = self.num_axes if reduced_coords else self.dim
-        if point.size == 0:
-            return np.zeros((0, size))
-        if point.shape[-1] != size:
-            raise DimensionError(
-                f"Dimension mismatch: Array of shape {point.shape} does not describe "
-                f"points of dimension {size}"
-            )
-
-        if self._periodic_z:
-            z_min = self.axes_bounds[1][0]
-            point[..., -1] = (point[..., -1] - z_min) % self.length + z_min
-            return point
-        else:
-            return point
-
     def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
@@ -342,8 +311,8 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             :class:`numpy.ndarray`: The Cartesian coordinates of the point
         """
         points = np.atleast_1d(points)
-        if points.shape[-1] != 2:
-            raise DimensionError(f"Dimension mismatch: Points {points} invalid")
+        if points.shape[-1] != self.num_axes:
+            raise DimensionError(f"Array of shape {points.shape} cannot denote points")
 
         x = points[..., 0]
         y = np.zeros_like(x)
@@ -363,7 +332,9 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         Returns:
             :class:`numpy.ndarray`: Points given in the coordinates of the grid
         """
-        points = self.normalize_point(points)
+        points = np.atleast_1d(points)
+        assert points.shape[-1] == self.dim
+
         rs = np.hypot(points[..., 0], points[..., 1])
         zs = points[..., 2]
         return np.stack((rs, zs), axis=-1)
@@ -387,10 +358,11 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             :class:`numpy.ndarray`: The center points of the respective cells
         """
         cells = np.atleast_1d(cells)
+
         if cells.size == 0:
             return np.zeros((0, self.dim))
-        if cells.shape[-1] != 2:
-            raise DimensionError(f"Dimension mismatch: Cell {cells} invalid")
+        if cells.shape[-1] != self.num_axes:
+            raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
 
         # convert from cells indices to grid coordinates
         points = (cells + 0.5) * self.discretization
@@ -414,6 +386,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             :class:`numpy.ndarray`: The indices of the respective cells
         """
         points = self.point_from_cartesian(points)
+
         # convert from grid coordinates to cells indices
         points[..., 1] -= self.axes_bounds[1][0]
         points /= self.discretization

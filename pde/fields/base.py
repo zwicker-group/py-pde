@@ -914,7 +914,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             """ return the interpolated value at the position `point` """
             point = np.atleast_1d(point)
             # apply periodic boundary conditions to grid point
-            point = self.grid.normalize_point(point, reduced_coords=True)
+            point = self.grid.normalize_point(point, reflect=False)
             out = intp(point, **kwargs)
             if point.ndim == scalar_dim or point.ndim == point.size == 1:
                 out = out[0]
@@ -1150,7 +1150,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if point.size != grid_dim or point.ndim != 1:
             raise DimensionError(f"Dimension mismatch for point {point}")
 
-        point = grid.normalize_point(point, reduced_coords=True)
+        point = grid.normalize_point(point, reflect=False)
 
         low = np.array(grid.axes_bounds)[:, 0]
         c_l, d_l = np.divmod((point - low) / grid.discretization - 0.5, 1.0)

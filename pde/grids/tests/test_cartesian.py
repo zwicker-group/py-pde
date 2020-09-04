@@ -3,6 +3,7 @@
 """
 
 import random
+from functools import partial
 
 import numpy as np
 import pytest
@@ -79,14 +80,14 @@ def test_unit_grid_1d(periodic):
     assert grid.dim == 1
     assert grid.volume == 8
 
-    norm_numba = grid.make_normalize_point_compiled()
+    norm_numba = grid.make_normalize_point_compiled(reflect=False)
 
     def norm_numba_wrap(x):
         y = np.array([x])
         norm_numba(y)
         return y
 
-    for normalize in [grid.normalize_point, norm_numba_wrap]:
+    for normalize in [partial(grid.normalize_point, reflect=False), norm_numba_wrap]:
         if periodic:
             np.testing.assert_allclose(normalize(-1e-10), 8 - 1e-10)
             np.testing.assert_allclose(normalize(1e-10), 1e-10)
