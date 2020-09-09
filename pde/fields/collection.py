@@ -532,20 +532,20 @@ class FieldCollection(FieldBase):
         # return the references for all subplots
         return reference
 
-    def plot_interactive(self, scalar: str = "auto", **kwargs):
+    def plot_interactive(self, viewer_args: Dict[str, Any] = None, **kwargs):
         """create an interactive plot of the field using :mod:`napari`
 
         Args:
-            scalar (str): The method for obtaining scalar values of fields
-            **kwargs: Extra arguments are passed to :class:`napari.Viewer`
+            viewer_args (dict):
+                Arguments passed to :class:`napari.viewer.Viewer` to affect the viewer
+            **kwargs:
+                Extra arguments passed to all plotting function
         """
         from ..tools.plotting import napari_viewer
 
-        with napari_viewer(self.grid, **kwargs) as viewer:
+        if viewer_args is None:
+            viewer_args = {}
+
+        with napari_viewer(self.grid, **viewer_args) as viewer:
             for field in self:
-                viewer.add_image(
-                    field.to_scalar(scalar).data,
-                    name=field.label,
-                    rgb=False,
-                    scale=self.grid.discretization,
-                )
+                field._plot_napari_layer(viewer, **kwargs)

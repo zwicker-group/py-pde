@@ -778,6 +778,7 @@ def napari_viewer(grid: "GridBase", **kwargs):
     if grid.num_axes == 1:
         raise RuntimeError("Interactive plotting needs at least 2 spatial dimensions")
 
+    # set default arguments
     viewer_args = kwargs
     viewer_args.setdefault("axis_labels", grid.axes)
     viewer_args.setdefault("ndisplay", 3 if grid.num_axes >= 3 else 2)

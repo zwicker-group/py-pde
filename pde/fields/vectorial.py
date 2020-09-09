@@ -431,7 +431,7 @@ class VectorField(DataFieldBase):
                     # sub-sample the data
                     idx_f = np.linspace(0, size - 1, max_points)
                     idx_i = np.round(idx_f).astype(int)
-                    #
+
                     data["data_x"] = np.take(data["data_x"], idx_i, axis=axis)
                     data["data_y"] = np.take(data["data_y"], idx_i, axis=axis)
                     if axis == 0:
@@ -439,4 +439,34 @@ class VectorField(DataFieldBase):
                     elif axis == 1:
                         data["x"] = data["x"][idx_i]
 
+        data["shape"] = data["data_x"].shape
+        data["size"] = data["data_x"].size
+
         return data
+
+    def _plot_napari_layer(self, viewer, max_points: int = None, **kwargs):  # type: ignore
+        """plot this field by adding it as a :mod:`napari` layer
+
+        Args:
+            viewer (:class:`napari.viewer.Viewer`):
+                The napari viewer instance
+            max_points (int):
+                The maximal number of points that is used along each axis. This
+                option can be used to subsample the data.
+            **kwargs:
+                Extra arguments are passed to plotting function
+        """
+        # set default parameters
+        kwargs.setdefault("name", self.label)
+
+        # extract the vector components in the format required by napari
+        data = self.get_vector_data(max_points=max_points)
+        vectors = np.empty((data["size"], 2, 2))
+        xs, ys = np.meshgrid(data["x"], data["y"], indexing="ij")
+        vectors[:, 0, 0] = xs.flat
+        vectors[:, 0, 1] = ys.flat
+        vectors[:, 1, 0] = data["data_x"].flat
+        vectors[:, 1, 1] = data["data_y"].flat
+
+        # view the vectors
+        viewer.add_vectors(vectors, **kwargs)
