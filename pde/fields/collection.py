@@ -532,20 +532,17 @@ class FieldCollection(FieldBase):
         # return the references for all subplots
         return reference
 
-    def plot_interactive(self, viewer_args: Dict[str, Any] = None, **kwargs):
-        """create an interactive plot of the field using :mod:`napari`
+    def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
+        r"""returns data for plotting all fields
 
         Args:
-            viewer_args (dict):
-                Arguments passed to :class:`napari.viewer.Viewer` to affect the viewer
-            **kwargs:
-                Extra arguments passed to all plotting function
+            \**kwargs: all arguments are forwarded to `_get_napari_layer_data`
+
+        Returns:
+            dict: all the information necessary to plot all fields
         """
-        from ..tools.plotting import napari_viewer
-
-        if viewer_args is None:
-            viewer_args = {}
-
-        with napari_viewer(self.grid, **viewer_args) as viewer:
-            for field in self:
-                field._plot_napari_layer(viewer, **kwargs)
+        result = {}
+        for i, field in enumerate(self, 1):
+            name = f"Field {i}" if field.label is None else field.label
+            result[name] = field._get_napari_layer_data(**kwargs)
+        return result

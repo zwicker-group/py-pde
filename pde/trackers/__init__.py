@@ -11,10 +11,12 @@ analyze, store, or output it.  The trackers defined in this module are:
    ~trackers.ProgressTracker
    ~trackers.PrintTracker
    ~trackers.PlotTracker
+   ~trackers.LivePlotTracker
    ~trackers.DataTracker
    ~trackers.SteadyStateTracker
    ~trackers.RuntimeTracker
    ~trackers.ConsistencyTracker
+   ~interactive.InteractivePlotTracker
    
 Multiple trackers can be collected in a :class:`~base.TrackerCollection`,
 which provides methods for handling them efficiently.
@@ -33,5 +35,6 @@ of the following classes:
 """
 
 
+from .interactive import InteractivePlotTracker
 from .intervals import ConstantIntervals, LogarithmicIntervals, RealtimeIntervals
 from .trackers import *

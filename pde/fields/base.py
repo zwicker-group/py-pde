@@ -22,7 +22,7 @@ from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import address_as_void_pointer, jit
-from ..tools.plotting import PlotReference, plot_on_axes
+from ..tools.plotting import PlotReference, napari_add_layers, plot_on_axes
 
 if TYPE_CHECKING:
     from .scalar import ScalarField  # @UnusedImport
@@ -471,6 +471,50 @@ class FieldBase(metaclass=ABCMeta):
     @abstractmethod
     def plot(self, *args, **kwargs):
         pass
+
+    @abstractmethod
+    def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
+        pass
+
+    def plot_interactive(self, viewer_args: Dict[str, Any] = None, **kwargs):
+        """create an interactive plot of the field using :mod:`napari`
+
+        For a detailed description of the launched program, see the
+        `napari webpage <http://napari.org/>`_.
+
+        Args:
+            viewer_args (dict):
+                Arguments passed to :class:`napari.viewer.Viewer` to affect the viewer.
+            **kwargs:
+                Extra arguments passed to the plotting function
+        """
+        import napari
+
+        if viewer_args is None:
+            viewer_args = {}
+
+        grid = self.grid
+        if grid.num_axes == 1:
+            raise RuntimeError(
+                "Interactive plotting needs at least 2 spatial dimensions"
+            )
+
+        # parse and set viewer arguments
+        close_viewer = viewer_args.pop("close", False)  # close immediately?
+        viewer_args.setdefault("axis_labels", grid.axes)
+        viewer_args.setdefault("ndisplay", 3 if grid.num_axes >= 3 else 2)
+
+        # create Qt GUI context
+        with napari.gui_qt() as app:
+            viewer = napari.Viewer(**viewer_args)
+            napari_add_layers(viewer, self._get_napari_data(**kwargs))
+
+            if close_viewer:
+                from qtpy.QtCore import QTimer
+
+                viewer.close()
+                app.quit()
+                QTimer().singleShot(100, app.quit)
 
 
 TDataField = TypeVar("TDataField", bound="DataFieldBase")
@@ -1663,7 +1707,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise ValueError(f"Unknown plot element {el.__class__.__name__}")
 
     @plot_on_axes(update_method="_update_plot")
-    def plot(self, kind: str = "auto", **kwargs):
+    def plot(self, kind: str = "auto", **kwargs) -> PlotReference:
         r"""visualize the field
 
         Args:
@@ -1717,38 +1761,36 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         return reference
 
-    def _plot_napari_layer(self, viewer, scalar: str = "auto", **kwargs):
-        """plot this field by adding it as a :mod:`napari` layer
+    def _get_napari_layer_data(
+        self, scalar: str = "auto", args: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """returns data for plotting on a single napari layer
 
         Args:
-            viewer (:class:`napari.viewer.Viewer`): The napari viewer instance
-            scalar (str): The method for obtaining scalar values of fields
-            **kwargs: Extra arguments are passed to plotting function
+            scalar (str):
+                Indicates how the scalar field is generated; see `to_scalar`
+            args (dict):
+                Additional arguments returned in the result, which affect how the layer
+                is shown.
+
+        Returns:
+            dict: all the information necessary to plot this field
         """
-        # set default parameters
-        kwargs.setdefault("name", self.label)
-        kwargs.setdefault("rgb", False)
+        if args is None:
+            args = {}
 
-        # plot the image
-        viewer.add_image(
-            self.to_scalar(scalar).data,
-            scale=self.grid.discretization,
-            **kwargs,
-        )
+        args.setdefault("scale", self.grid.discretization)
+        args.setdefault("rgb", False)
+        return {"type": "image", "data": self.to_scalar(scalar).data, "args": args}
 
-    def plot_interactive(self, viewer_args: Dict[str, Any] = None, **kwargs):
-        """create an interactive plot of the field using :mod:`napari`
+    def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
+        r"""returns data for plotting this field
 
         Args:
-            viewer_args (dict):
-                Arguments passed to :class:`napari.viewer.Viewer` to affect the viewer
-            **kwargs:
-                Extra arguments passed to the plotting function
+            \**kwargs: all arguments are forwarded to `_get_napari_layer_data`
+
+        Returns:
+            dict: all the information necessary to plot this field
         """
-        from ..tools.plotting import napari_viewer
-
-        if viewer_args is None:
-            viewer_args = {}
-
-        with napari_viewer(self.grid, **viewer_args) as viewer:
-            self._plot_napari_layer(viewer, **kwargs)
+        name = "Field" if self.label is None else self.label
+        return {name: self._get_napari_layer_data(**kwargs)}

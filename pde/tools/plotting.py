@@ -13,7 +13,7 @@ Tools for plotting and controlling plot output using context managers
    BasicPlottingContext
    JupyterPlottingContext
    get_plotting_context
-   napari_viewer
+   napari_add_layers
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -25,34 +25,12 @@ import logging
 import warnings
 from typing import TYPE_CHECKING, Any, Dict, Tuple, Type  # @UnusedImport
 
-from mpl_toolkits import axes_grid1
-
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
+    import napari  # @UnusedImport
+
     from ..grids.base import GridBase  # @UnusedImport
-
-
-class _AxesXY(axes_grid1.axes_size._Base):
-    """
-    Scaled size whose relative part corresponds to the maximum of the data width and
-    data height of the *axes* multiplied by the *aspect*.
-    """
-
-    def __init__(self, axes, aspect=1.0):
-        self._axes = axes
-        self._aspect = aspect
-
-    def get_size(self, renderer):
-        l1, l2 = self._axes.get_xlim()
-        rel_size_x = abs(l2 - l1) * self._aspect
-
-        l1, l2 = self._axes.get_ylim()
-        rel_size_y = abs(l2 - l1) * self._aspect
-
-        abs_size = 0.0
-        rel_size = max(rel_size_x, rel_size_y)
-        return rel_size, abs_size
 
 
 def add_scaled_colorbar(
@@ -77,6 +55,30 @@ def add_scaled_colorbar(
     Returns:
         the result of the colorbar call
     """
+
+    from mpl_toolkits import axes_grid1
+
+    class _AxesXY(axes_grid1.axes_size._Base):
+        """
+        Scaled size whose relative part corresponds to the maximum of the data width and
+        data height of the *axes* multiplied by the *aspect*.
+        """
+
+        def __init__(self, axes, aspect=1.0):
+            self._axes = axes
+            self._aspect = aspect
+
+        def get_size(self, renderer):
+            l1, l2 = self._axes.get_xlim()
+            rel_size_x = abs(l2 - l1) * self._aspect
+
+            l1, l2 = self._axes.get_ylim()
+            rel_size_y = abs(l2 - l1) * self._aspect
+
+            abs_size = 0.0
+            rel_size = max(rel_size_x, rel_size_y)
+            return rel_size, abs_size
+
     divider = axes_grid1.make_axes_locatable(axes_image.axes)
     width = _AxesXY(axes_image.axes, aspect=1.0 / aspect)
     pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
@@ -765,23 +767,22 @@ def get_plotting_context(
         raise RuntimeError(f"Unknown plotting context `{context}`")
 
 
-@contextlib.contextmanager
-def napari_viewer(grid: "GridBase", **kwargs):
-    """creates an napari viewer for interactive plotting
+def napari_add_layers(
+    viewer: "napari.viewer.Viewer", layers_data: Dict[str, Dict[str, Any]]
+):
+    """adds layers to a `napari <http://napari.org/>`__ viewer
 
     Args:
-        grid (:class:`pde.grids.base.GridBase`): The grid defining the space
-        **kwargs: Extra arguments are passed to :class:`napari.Viewer`
+        viewer (:class:`napari.viewer.Viewer`):
+            The napari application
+        layers_data (dict):
+            Data for all layers that will be added.
     """
-    import napari
-
-    if grid.num_axes == 1:
-        raise RuntimeError("Interactive plotting needs at least 2 spatial dimensions")
-
-    # set default arguments
-    viewer_args = kwargs
-    viewer_args.setdefault("axis_labels", grid.axes)
-    viewer_args.setdefault("ndisplay", 3 if grid.num_axes >= 3 else 2)
-
-    with napari.gui_qt():  # create Qt GUI context
-        yield napari.Viewer(**viewer_args)
+    for name, layer_data in layers_data.items():
+        layer_type = layer_data["type"]
+        if layer_type == "image":
+            viewer.add_image(layer_data["data"], name=name)
+        elif layer_type == "vectors":
+            viewer.add_vectors(layer_data["data"], name=name)
+        else:
+            raise RuntimeError(f"Unknown layer type: {layer_type}")

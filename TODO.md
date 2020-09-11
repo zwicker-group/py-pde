@@ -1,5 +1,8 @@
 TODO
 ====
+* Improve interactive plotting:
+    - allow displaying time somewhere (statusbar or extra widget)
+    - extend supported layers, so it becomes useful for py-sim
 * Support product of ndarray * field (the reverse product already works)
 * Add documentation entry for how to build expressions
     - Improved documentation on how to set boundary conditions

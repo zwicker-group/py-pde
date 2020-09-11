@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from ...grids import UnitGrid
+from ...tools.misc import skipUnlessModule
 from .. import FieldCollection, ScalarField, Tensor2Field, VectorField
 from ..base import FieldBase
 from .test_generic import iter_grids
@@ -161,3 +162,13 @@ def test_from_scalar_expressions():
     assert fc[1].grid is grid
     np.testing.assert_allclose(fc[0].data, (np.arange(3) + 0.5) ** 2)
     np.testing.assert_allclose(fc[1].data, 1)
+
+
+@skipUnlessModule("napari")
+def test_interactive_collection_plotting():
+    """ test the interactive plotting """
+    grid = UnitGrid([3, 3])
+    sf = ScalarField.random_uniform(grid, 0.1, 0.9)
+    vf = VectorField.random_uniform(grid, 0.1, 0.9)
+    field = FieldCollection([sf, vf])
+    field.plot_interactive(viewer_args={"show": False, "close": True})

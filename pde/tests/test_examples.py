@@ -12,7 +12,7 @@ from typing import List  # @UnusedImport
 import numba as nb
 import pytest
 
-from ..tools.misc import skipUnlessModule
+from ..tools.misc import module_available, skipUnlessModule
 from ..visualization.movies import Movie
 
 PACKAGE_PATH = Path(__file__).resolve().parents[2]
@@ -22,6 +22,8 @@ NOTEBOOKS = glob.glob(str(PACKAGE_PATH / "examples" / "jupyter" / "*.ipynb"))
 SKIP_EXAMPLES: List[str] = []
 if not Movie.is_available():
     SKIP_EXAMPLES.append("make_movie.py")
+if not module_available("napari"):
+    SKIP_EXAMPLES.append("tracker_interactive")
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Assumes unix setup")

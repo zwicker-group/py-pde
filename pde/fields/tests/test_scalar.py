@@ -419,3 +419,15 @@ def test_plotting_2d():
 
     ref = field.plot()
     field._update_plot(ref)
+
+
+@skipUnlessModule("napari")
+def test_interactive_plotting():
+    """ test the interactive plotting """
+    grid = UnitGrid([3, 3])
+    field = ScalarField.random_uniform(grid, 0.1, 0.9)
+    field.plot_interactive(viewer_args={"show": False, "close": True})
+
+    grid = UnitGrid([3, 3, 3])
+    field = ScalarField.random_uniform(grid, 0.1, 0.9)
+    field.plot_interactive(viewer_args={"show": False, "close": True})

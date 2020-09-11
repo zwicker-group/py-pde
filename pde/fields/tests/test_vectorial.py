@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from ...grids import CartesianGrid, UnitGrid
-from ...tools.misc import module_available
+from ...tools.misc import module_available, skipUnlessModule
 from ..base import FieldBase
 from ..tensorial import Tensor2Field
 from ..vectorial import VectorField
@@ -201,3 +201,11 @@ def test_plotting_2d():
     for method in ["quiver", "streamplot"]:
         ref = field.plot(method=method)
         field._update_plot(ref)
+
+
+@skipUnlessModule("napari")
+def test_interactive_vector_plotting():
+    """ test the interactive plotting """
+    grid = UnitGrid([3, 3])
+    field = VectorField.random_uniform(grid, 0.1, 0.9)
+    field.plot_interactive(viewer_args={"show": False, "close": True})

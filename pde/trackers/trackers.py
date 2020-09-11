@@ -10,6 +10,7 @@ The trackers defined in this module are:
    ProgressTracker
    PrintTracker
    PlotTracker
+   LivePlotTracker
    DataTracker
    SteadyStateTracker
    RuntimeTracker
@@ -467,7 +468,7 @@ class PlotTracker(TrackerBase):
             self._context.close()
 
 
-class PlotInteractiveTracker(PlotTracker):
+class LivePlotTracker(PlotTracker):
     """Tracker that plots data on screen, to files, or writes a movie
 
     The only difference to :class:`PlotTracker` are the changed default values,
@@ -881,6 +882,7 @@ __all__ = [
     "ProgressTracker",
     "PrintTracker",
     "PlotTracker",
+    "LivePlotTracker",
     "DataTracker",
     "SteadyStateTracker",
     "RuntimeTracker",

@@ -16,6 +16,8 @@ from .base import DataFieldBase
 from .scalar import ScalarField
 
 if TYPE_CHECKING:
+    import napari  # @UnusedImport
+
     from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
     from .tensorial import Tensor2Field  # @UnusedImport
 
@@ -444,20 +446,24 @@ class VectorField(DataFieldBase):
 
         return data
 
-    def _plot_napari_layer(self, viewer, max_points: int = None, **kwargs):  # type: ignore
-        """plot this field by adding it as a :mod:`napari` layer
+    def _get_napari_layer_data(  # type: ignore
+        self, max_points: int = None, args=None
+    ) -> Dict[str, Any]:
+        """returns data for plotting on a single napari layer
 
         Args:
-            viewer (:class:`napari.viewer.Viewer`):
-                The napari viewer instance
             max_points (int):
                 The maximal number of points that is used along each axis. This
                 option can be used to subsample the data.
-            **kwargs:
-                Extra arguments are passed to plotting function
+            args (dict):
+                Additional arguments returned in the result, which affect how the layer
+                is shown.
+
+        Returns:
+            dict: all the information necessary to plot this field
         """
-        # set default parameters
-        kwargs.setdefault("name", self.label)
+        if args is None:
+            args = {}
 
         # extract the vector components in the format required by napari
         data = self.get_vector_data(max_points=max_points)
@@ -468,5 +474,4 @@ class VectorField(DataFieldBase):
         vectors[:, 1, 0] = data["data_x"].flat
         vectors[:, 1, 1] = data["data_y"].flat
 
-        # view the vectors
-        viewer.add_vectors(vectors, **kwargs)
+        return {"type": "vectors", "data": vectors, "args": args}
