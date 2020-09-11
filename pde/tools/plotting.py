@@ -23,7 +23,8 @@ import contextlib
 import functools
 import logging
 import warnings
-from typing import TYPE_CHECKING, Any, Dict, Tuple, Type  # @UnusedImport
+from typing import Type  # @UnusedImport
+from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple
 
 from ..tools.docstrings import replace_in_docstring
 
@@ -767,6 +768,39 @@ def get_plotting_context(
         raise RuntimeError(f"Unknown plotting context `{context}`")
 
 
+@contextlib.contextmanager
+def napari_viewer(
+    grid: "GridBase", close=False, **kwargs
+) -> Generator["napari.viewer.Viewer", None, None]:
+    """creates an napari viewer for interactive plotting
+
+    Args:
+        grid (:class:`pde.grids.base.GridBase`): The grid defining the space
+        close (bool): Whether to close the viewer immediately (e.g. for testing)
+        **kwargs: Extra arguments are passed to :class:`napari.Viewer`
+    """
+    import napari  # @Reimport
+
+    if grid.num_axes == 1:
+        raise RuntimeError("Interactive plotting needs at least 2 spatial dimensions")
+
+    # parse and set viewer arguments
+    kwargs.setdefault("axis_labels", grid.axes)
+    kwargs.setdefault("ndisplay", 3 if grid.num_axes >= 3 else 2)
+
+    with napari.gui_qt() as app:  # create Qt GUI context
+        viewer = napari.Viewer(**kwargs)
+
+        yield viewer
+
+        if close:
+            from qtpy.QtCore import QTimer
+
+            viewer.close()
+            app.quit()
+            QTimer().singleShot(100, app.quit)
+
+
 def napari_add_layers(
     viewer: "napari.viewer.Viewer", layers_data: Dict[str, Dict[str, Any]]
 ):
@@ -780,9 +814,12 @@ def napari_add_layers(
     """
     for name, layer_data in layers_data.items():
         layer_type = layer_data["type"]
+        args = layer_data.get("args", {})
         if layer_type == "image":
-            viewer.add_image(layer_data["data"], name=name)
+            viewer.add_image(layer_data["data"], name=name, **args)
+        elif layer_type == "points":
+            viewer.add_points(layer_data["data"], name=name, **args)
         elif layer_type == "vectors":
-            viewer.add_vectors(layer_data["data"], name=name)
+            viewer.add_vectors(layer_data["data"], name=name, **args)
         else:
             raise RuntimeError(f"Unknown layer type: {layer_type}")

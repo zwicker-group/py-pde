@@ -22,7 +22,12 @@ from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import address_as_void_pointer, jit
-from ..tools.plotting import PlotReference, napari_add_layers, plot_on_axes
+from ..tools.plotting import (
+    PlotReference,
+    napari_add_layers,
+    napari_viewer,
+    plot_on_axes,
+)
 
 if TYPE_CHECKING:
     from .scalar import ScalarField  # @UnusedImport
@@ -488,33 +493,8 @@ class FieldBase(metaclass=ABCMeta):
             **kwargs:
                 Extra arguments passed to the plotting function
         """
-        import napari
-
-        if viewer_args is None:
-            viewer_args = {}
-
-        grid = self.grid
-        if grid.num_axes == 1:
-            raise RuntimeError(
-                "Interactive plotting needs at least 2 spatial dimensions"
-            )
-
-        # parse and set viewer arguments
-        close_viewer = viewer_args.pop("close", False)  # close immediately?
-        viewer_args.setdefault("axis_labels", grid.axes)
-        viewer_args.setdefault("ndisplay", 3 if grid.num_axes >= 3 else 2)
-
-        # create Qt GUI context
-        with napari.gui_qt() as app:
-            viewer = napari.Viewer(**viewer_args)
+        with napari_viewer(self.grid, viewer_args) as viewer:
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
-
-            if close_viewer:
-                from qtpy.QtCore import QTimer
-
-                viewer.close()
-                app.quit()
-                QTimer().singleShot(100, app.quit)
 
 
 TDataField = TypeVar("TDataField", bound="DataFieldBase")
