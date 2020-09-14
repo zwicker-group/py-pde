@@ -41,7 +41,7 @@ class FieldCollection(FieldBase):
                 Label of the field collection
 
         Warning:
-            If `data` is given and `copy_fields == False`, the data in the
+            If `data` is given and :code:`copy_fields == False`, the data in the
             individual fields is overwritten by the associated `data`.
         """
         if isinstance(fields, FieldCollection):
@@ -166,7 +166,14 @@ class FieldCollection(FieldBase):
 
     @property
     def labels(self) -> "_FieldLabels":
-        """ list: the labels of all fields """
+        """:class:`_FieldLabels`: the labels of all fields
+
+        Note:
+            The attribute returns a special class :class:`_FieldLabels` to allow
+            specific manipulations of the field labels. The returned object behaves
+            much like a list, but assigning values will modify the labels of the fields
+            in the collection.
+        """
         return _FieldLabels(self)
 
     @labels.setter

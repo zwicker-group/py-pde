@@ -182,6 +182,7 @@ def test_field_labels():
     fc = FieldCollection([s1, s2])
 
     assert fc.labels == ["s1", None]
+    assert len(fc.labels) == 2
     assert fc.labels[0] == "s1"
     fc.labels = ["a", "b"]
     assert fc.labels == ["a", "b"]
