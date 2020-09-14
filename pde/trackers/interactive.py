@@ -95,7 +95,7 @@ def napari_process(
                         break
                     elif action == "update":
                         update_data = data
-                        pass  # continue running until the queue is empty
+                        # continue running until the queue is empty
                     else:
                         logger.warning(f"Unexpected action: {action}")
 

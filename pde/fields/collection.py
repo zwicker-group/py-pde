@@ -164,6 +164,19 @@ class FieldCollection(FieldBase):
         """ list: the fields of this collection """
         return self._fields
 
+    @property
+    def labels(self) -> "_FieldLabels":
+        """ list: the labels of all fields """
+        return _FieldLabels(self)
+
+    @labels.setter
+    def labels(self, values: List[Optional[str]]):
+        """ sets the labels of all fields """
+        if len(values) != len(self):
+            raise ValueError("Require a label for each field")
+        for field, value in zip(self.fields, values):
+            field.label = value
+
     def __eq__(self, other):
         """ test fields for equality, ignoring the label """
         if not isinstance(other, self.__class__):
@@ -546,3 +559,58 @@ class FieldCollection(FieldBase):
             name = f"Field {i}" if field.label is None else field.label
             result[name] = field._get_napari_layer_data(**kwargs)
         return result
+
+
+class _FieldLabels:
+    """ helper class that allows manipulating all labels of field collections"""
+
+    def __init__(self, collection: FieldCollection):
+        """
+        Args:
+            collection (:class:`pde.fields.collection.FieldCollection`):
+                The field collection that these labels are associated with
+        """
+        self.collection = collection
+
+    def __repr__(self):
+        return repr([field.label for field in self.collection])
+
+    def __str__(self):
+        return str([field.label for field in self.collection])
+
+    def __len__(self):
+        return len(self.collection)
+
+    def __eq__(self, other):
+        return list(self) == other
+
+    def __iter__(self):
+        for field in self.collection:
+            yield field.label
+
+    def __getitem__(
+        self, index: Union[int, slice]
+    ) -> Union[Optional[str], List[Optional[str]]]:
+        if isinstance(index, int):
+            return self.collection[index].label
+        elif isinstance(index, slice):
+            return list(self)[index]
+        else:
+            raise TypeError("Unsupported index type")
+
+    def __setitem__(
+        self, index: Union[int, slice], value: Union[Optional[str], List[Optional[str]]]
+    ):
+        if isinstance(index, int):
+            assert isinstance(value, str)
+            self.collection.fields[index].label = value
+        elif isinstance(index, slice):
+            fields = self.collection.fields[index]
+            if value is None or isinstance(value, str):
+                value = [value] * len(fields)
+            if len(fields) != len(value):
+                raise ValueError("Require a label for each field")
+            for field, label in zip(fields, value):
+                field.label = label
+        else:
+            raise TypeError("Unsupported index type")

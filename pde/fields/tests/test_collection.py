@@ -172,3 +172,32 @@ def test_interactive_collection_plotting():
     vf = VectorField.random_uniform(grid, 0.1, 0.9)
     field = FieldCollection([sf, vf])
     field.plot_interactive(viewer_args={"show": False, "close": True})
+
+
+def test_field_labels():
+    """ test the FieldCollection.labels property """
+    grid = UnitGrid([5])
+    s1 = ScalarField(grid, label="s1")
+    s2 = ScalarField(grid)
+    fc = FieldCollection([s1, s2])
+
+    assert fc.labels == ["s1", None]
+    assert fc.labels[0] == "s1"
+    fc.labels = ["a", "b"]
+    assert fc.labels == ["a", "b"]
+    fc.labels[0] = "c"
+    assert fc.labels == ["c", "b"]
+    assert str(fc.labels) == str(["c", "b"])
+    assert repr(fc.labels) == repr(["c", "b"])
+
+    assert fc.labels[0:1] == ["c"]
+    assert fc.labels[:] == ["c", "b"]
+    fc.labels[0:1] = "d"
+    assert fc.labels == ["d", "b"]
+
+    fc.labels[:] = "a"
+    assert fc.labels == ["a", "a"]
+
+    labels = fc.labels[:]
+    labels[0] = "e"
+    assert fc.labels == ["a", "a"]
