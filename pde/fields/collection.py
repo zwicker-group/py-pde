@@ -6,7 +6,7 @@ grid.
 """
 
 import json
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Union  # @UnusedImport
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Union
 
 import numpy as np
 

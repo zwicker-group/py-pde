@@ -16,8 +16,6 @@ from .base import DataFieldBase
 from .scalar import ScalarField
 
 if TYPE_CHECKING:
-    import napari  # @UnusedImport
-
     from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
     from .tensorial import Tensor2Field  # @UnusedImport
 

@@ -1506,7 +1506,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def _plot_image(
         self,
         ax,
-        colorbar: bool = False,
+        colorbar: bool = True,
         scalar: str = "auto",
         transpose: bool = False,
         **kwargs,

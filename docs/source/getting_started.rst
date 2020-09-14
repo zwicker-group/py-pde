@@ -42,7 +42,7 @@ The required packages are listed in the table below:
 ===========  ========= =========
 Package      Version   Usage 
 ===========  ========= =========
-matplotlib   >= 3.1.0  Visualizing results
+matplotlib   >=3.1.0   Visualizing results
 numpy        >=1.16    Array library used for storing data
 numba        >=0.43    Just-in-time compilation to accelerate numerics
 scipy        >=1.2     Miscellaneous scientific functions
