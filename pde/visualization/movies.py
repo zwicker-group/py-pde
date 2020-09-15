@@ -8,6 +8,7 @@ Functions for creating movies of simulation results
    Movie
    movie_scalar
    movie_multiple
+   movie
    
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
@@ -17,6 +18,7 @@ from typing import Any, Dict
 
 from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
+from ..tools.output import display_progress
 from .plotting import ScalarFieldPlot, ScaleData
 
 
@@ -174,7 +176,7 @@ def movie_multiple(
     """produce a movie for a simulation with n components
 
     Args:
-        storage (:class:`~pse.storage.base.StorageBase`):
+        storage (:class:`~pde.storage.base.StorageBase`):
             The storage instance that contains all the data for the movie
         filename (str):
             The filename to which the movie is written. The extension determines
@@ -188,3 +190,53 @@ def movie_multiple(
     """
     plot = ScalarFieldPlot.from_storage(storage, quantities=quantities, scale=scale)
     plot.make_movie(storage, filename, progress=progress)
+
+
+def movie(
+    storage: StorageBase,
+    filename: str,
+    progress: bool = True,
+    dpi: float = 150,
+    show_time: bool = True,
+) -> None:
+    """produce a movie by simply plotting each frame
+
+    Args:
+        storage (:class:`~pde.storage.base.StorageBase`):
+            The storage instance that contains all the data for the movie
+        filename (str):
+            The filename to which the movie is written. The extension determines
+            the format used.
+        dpi (float):
+            Resolution of the movie
+        show_time (bool):
+            Whether to show the simulation time in the movie
+        progress (bool):
+            Flag determining whether the progress of making the movie is shown.
+    """
+    # create the iterator over the data
+    field_iter = display_progress(storage.items(), total=len(storage), enabled=progress)
+
+    ref, fig = None, None
+    with Movie(filename=filename, dpi=dpi) as movie:
+        # iterate over all frames
+        for t, field in field_iter:
+            if ref is None:
+                # create the actual figure in the first frame
+                ref = field.plot(action="create")
+                # obtain the matplotlib figure from the returned reference
+                try:
+                    fig = ref.ax.figure
+                except AttributeError:
+                    fig = ref[0].ax.figure
+                if show_time:
+                    title = fig.suptitle("Time %g" % t)
+
+            else:
+                # update the data in the figure
+                field._update_plot(ref)
+                if show_time:
+                    title.set_text("Time %g" % t)
+
+            # add the current matplotlib figure to the movie
+            movie.add_figure(fig)

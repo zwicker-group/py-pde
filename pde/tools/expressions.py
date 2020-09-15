@@ -24,7 +24,7 @@ from abc import ABCMeta, abstractproperty
 from numbers import Number
 from typing import Optional  # @UnusedImport
 from typing import Set  # @UnusedImport
-from typing import Any, Callable, Dict, List, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Sequence, Tuple, Union
 
 import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
@@ -35,6 +35,9 @@ from sympy.utilities.lambdify import _get_namespace
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .numba import convert_scalar, jit
+
+if TYPE_CHECKING:
+    from sympy.core import basic  # @UnusedImport
 
 
 @fill_in_docstring
@@ -88,7 +91,7 @@ class ExpressionBase(metaclass=ABCMeta):
     @fill_in_docstring
     def __init__(
         self,
-        expression: sympy.core.basic.Basic,
+        expression: "basic.Basic",
         signature: Optional[Sequence[Union[str, List[str]]]] = None,
         user_funcs: Optional[Dict[str, Any]] = None,
     ):

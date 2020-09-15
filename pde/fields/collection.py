@@ -580,16 +580,16 @@ class _FieldLabels:
         self.collection = collection
 
     def __repr__(self):
-        return repr([field.label for field in self.collection])
+        return repr(list(self))
 
     def __str__(self):
-        return str([field.label for field in self.collection])
+        return str(list(self))
 
     def __len__(self):
         return len(self.collection)
 
     def __eq__(self, other):
-        return list(self) == other
+        return list(self) == list(other)
 
     def __iter__(self):
         for field in self.collection:

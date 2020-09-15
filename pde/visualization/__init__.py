@@ -11,5 +11,5 @@ Functions and classes for visualizing simulations.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .movies import movie_multiple, movie_scalar
+from .movies import movie, movie_multiple, movie_scalar
 from .plotting import plot_kymograph, plot_kymographs, plot_magnitudes
