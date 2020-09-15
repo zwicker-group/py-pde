@@ -46,7 +46,8 @@ class Movie:
                 The resolution of the resulting movie
             \**kwargs:
                 Additional parameters are used to initialize
-                :class:`matplotlib.animation.FFMpegWriter`.
+                :class:`matplotlib.animation.FFMpegWriter`. Here, we can for instance
+                set the bit rate of the resulting video using the `bitrate` parameter.
         """
         self.filename = str(filename)
         self.framerate = framerate
@@ -114,7 +115,8 @@ class Movie:
             # figures are shown using the `inline` backend.
             self._writer.fig = fig
 
-        self._writer.grab_frame()
+        # we need to impose a white background to get reasonable antialiasing
+        self._writer.grab_frame(facecolor="white")
 
     def save(self):
         """ convert the recorded images to a movie using ffmpeg """
@@ -198,6 +200,7 @@ def movie(
     progress: bool = True,
     dpi: float = 150,
     show_time: bool = True,
+    plot_args: Dict[str, Any] = None,
 ) -> None:
     """produce a movie by simply plotting each frame
 
@@ -213,7 +216,12 @@ def movie(
             Whether to show the simulation time in the movie
         progress (bool):
             Flag determining whether the progress of making the movie is shown.
+        plot_args (dict):
+            Additional arguments for the function plotting the state
     """
+    if plot_args is None:
+        plot_args = {}
+
     # create the iterator over the data
     field_iter = display_progress(storage.items(), total=len(storage), enabled=progress)
 
@@ -223,7 +231,7 @@ def movie(
         for t, field in field_iter:
             if ref is None:
                 # create the actual figure in the first frame
-                ref = field.plot(action="create")
+                ref = field.plot(action="create", **plot_args)
                 # obtain the matplotlib figure from the returned reference
                 try:
                     fig = ref.ax.figure

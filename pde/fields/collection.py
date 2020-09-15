@@ -598,6 +598,7 @@ class _FieldLabels:
     def __getitem__(
         self, index: Union[int, slice]
     ) -> Union[Optional[str], List[Optional[str]]]:
+        """ return one or many labels of a field in the collection """
         if isinstance(index, int):
             return self.collection[index].label
         elif isinstance(index, slice):
@@ -608,6 +609,7 @@ class _FieldLabels:
     def __setitem__(
         self, index: Union[int, slice], value: Union[Optional[str], List[Optional[str]]]
     ):
+        """ change one or many labels of a field in the collection """
         if isinstance(index, int):
             assert isinstance(value, str)
             self.collection.fields[index].label = value

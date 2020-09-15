@@ -815,11 +815,9 @@ def napari_add_layers(
     for name, layer_data in layers_data.items():
         layer_type = layer_data["type"]
         args = layer_data.get("args", {})
-        if layer_type == "image":
-            viewer.add_image(layer_data["data"], name=name, **args)
-        elif layer_type == "points":
-            viewer.add_points(layer_data["data"], name=name, **args)
-        elif layer_type == "vectors":
-            viewer.add_vectors(layer_data["data"], name=name, **args)
-        else:
+        try:
+            add_layer = getattr(viewer, f"add_{layer_type}")
+        except AttributeError:
             raise RuntimeError(f"Unknown layer type: {layer_type}")
+        else:
+            add_layer(layer_data["data"], name=name, **args)
