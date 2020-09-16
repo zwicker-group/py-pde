@@ -29,13 +29,17 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
+    import matplotlib.cm  # @UnusedImport
     import napari  # @UnusedImport
 
     from ..grids.base import GridBase  # @UnusedImport
 
 
 def add_scaled_colorbar(
-    axes_image, aspect: float = 20, pad_fraction: float = 0.5, **kwargs
+    axes_image: "matplotlib.cm.ScalarMappable",
+    aspect: float = 20,
+    pad_fraction: float = 0.5,
+    **kwargs,
 ):
     """add a vertical color bar to an image plot
 
@@ -47,14 +51,19 @@ def add_scaled_colorbar(
     Inspired by https://stackoverflow.com/a/33505522/932593
 
     Args:
-        axes_image: object returned from :meth:`matplotlib.pyplot.imshow`
-        ax (:class:`matplotlib.axes.Axes`): the current figure axes
-        aspect (float): the target aspect ratio of the colorbar
-        pad_fraction (float): Width of the gap between colorbar and image
-        **kwargs: Additional parameters are passed to colorbar call
+        axes_image (:class:`matplotlib.cm.ScalarMappable`):
+            Mappable object, e.g., returned from :meth:`matplotlib.pyplot.imshow`
+        ax (:class:`matplotlib.axes.Axes`):
+            The current figure axes from which space is taken for the colorbar
+        aspect (float):
+            The target aspect ratio of the colorbar
+        pad_fraction (float):
+            Width of the gap between colorbar and image
+        **kwargs:
+            Additional parameters are passed to colorbar call
 
     Returns:
-        the result of the colorbar call
+        :class:`~matplotlib.colorbar.Colorbar`: the resulting Colorbar object
     """
 
     from mpl_toolkits import axes_grid1
@@ -80,11 +89,19 @@ def add_scaled_colorbar(
             rel_size = max(rel_size_x, rel_size_y)
             return rel_size, abs_size
 
+    # make space for the colorbar and generate its axes
     divider = axes_grid1.make_axes_locatable(axes_image.axes)
     width = _AxesXY(axes_image.axes, aspect=1.0 / aspect)
     pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
     cax = divider.append_axes("right", size=width, pad=pad)
-    return axes_image.axes.figure.colorbar(axes_image, cax=cax, **kwargs)
+
+    # create the colorbar
+    cbar = axes_image.axes.figure.colorbar(axes_image, cax=cax, **kwargs)
+
+    # disable the offset that matplotlib sometimes shows
+    cax.get_xaxis().get_major_formatter().set_useOffset(False)
+    cax.get_yaxis().get_major_formatter().set_useOffset(False)
+    return cbar
 
 
 class nested_plotting_check:
@@ -284,7 +301,9 @@ def plot_on_axes(wrapped=None, update_method=None):
         ax_style (dict):
             Dictionary with properties that will be changed on the axis
             after the plot has been drawn by calling
-            :meth:`matplotlib.pyplot.setp`.
+            :meth:`matplotlib.pyplot.setp`. A special item in this dictionary is
+            `use_offset`, which is flag that can be used to control whether offset are
+            shown along the axes of the plot.
         fig_style (dict):
             Dictionary with properties that will be changed on the
             figure after the plot has been drawn by calling
@@ -298,6 +317,9 @@ def plot_on_axes(wrapped=None, update_method=None):
         # the wrapped function
         import matplotlib as mpl
         import matplotlib.pyplot as plt
+
+        if ax_style is None:
+            ax_style = {}
 
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
@@ -320,6 +342,11 @@ def plot_on_axes(wrapped=None, update_method=None):
                 # finishing touches...
                 if title is not None:
                     ax.set_title(title)
+
+                use_offset = ax_style.pop("use_offset", None)
+                if use_offset is not None:
+                    ax.get_xaxis().get_major_formatter().set_useOffset(use_offset)
+                    ax.get_yaxis().get_major_formatter().set_useOffset(use_offset)
                 if ax_style:
                     plt.setp(ax, **ax_style)
                 if fig_style:
