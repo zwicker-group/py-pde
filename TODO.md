@@ -57,6 +57,7 @@ TODO
 
 LOW-PRIORITY (Future ideas)
 ===========================
+* Add adaptive Euler stepping
 * Think about 2nd order BCs for spherical coordinates
 * Think about hyperbolic equations:
     - Introducing "advection" operator that could either implement really simple

@@ -68,10 +68,11 @@ class PDE(PDEBase):
             bc_ops (dict):
                 Special boundary conditions for some operators. The keys in this
                 dictionary specify where the boundary condition will be applied.
-                The keys follow the format "FIELD:OPERATOR", where FIELD is the
-                name of a field and OPERATOR denotes the name of an operator.
-                For both identifiers, the wildcard symbol "*" denotes that all
-                fields and operators are affected, respectively.
+                The keys follow the format "VARIABLE:OPERATOR", where VARIABLE specifies
+                the expression in `rhs` where the boundary condition is applied to the
+                operator specified by OPERATOR/. For both identifiers, the wildcard
+                symbol "*" denotes that all fields and operators are affected,
+                respectively.
 
         Note:
             The order in which the fields are given in `rhs` defines the order

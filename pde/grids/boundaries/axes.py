@@ -45,7 +45,8 @@ class Boundaries(list):
             if boundary.periodic != self.grid.periodic[axis]:
                 raise PeriodicityError(
                     "Periodicity specified in the boundaries conditions is not "
-                    "compatible with the grid"
+                    f"compatible with the grid ({boundary.periodic} != "
+                    f"{self.grid.periodic[axis]} for axis {axis})"
                 )
 
         # create the list of boundaries
