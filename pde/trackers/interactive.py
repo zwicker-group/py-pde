@@ -22,6 +22,7 @@ from .intervals import IntervalData
 def napari_process(
     data_channel: mp.Queue,
     initial_data: Dict[str, Dict[str, Any]],
+    t_initial: float = None,
     viewer_args: Dict[str, Any] = None,
 ):
     """:mod:`multiprocessing.Process` running `napari <https://napari.org>`__
@@ -34,6 +35,8 @@ def napari_process(
             the keys in the dictionary. The associated value needs to be a tuple,
             where the first item is a string indicating the type of the layer and
             the second carries the associated data
+        t_initial (float):
+            Initial time
         viewer_args (dict):
             Additional arguments passed to the napari viewer
     """
@@ -63,6 +66,16 @@ def napari_process(
         # create and initialize the viewer
         viewer = napari.Viewer(**viewer_args)
         napari_add_layers(viewer, initial_data)
+
+        # add time if given
+        if t_initial is not None:
+            from qtpy.QtWidgets import QLabel
+
+            label = QLabel()
+            label.setText(f"Time: {t_initial}")
+            viewer.window.add_dock_widget(label)
+        else:
+            label = None
 
         def check_signal(msg: Optional[str]):
             """helper function that processes messages by the listener thread"""
@@ -102,7 +115,10 @@ def napari_process(
                 # update napari view when there is data
                 if update_data is not None:
                     logger.debug(f"Update napari layer...")
-                    for name, layer_data in update_data.items():
+                    layer_data, t = update_data
+                    if label is not None:
+                        label.setText(f"Time: {t}")
+                    for name, layer_data in layer_data.items():
                         viewer.layers[name].data = layer_data["data"]
 
                 yield
@@ -116,10 +132,11 @@ def napari_process(
 class NapariViewer:
     """allows viewing and updating data in a separate napari process"""
 
-    def __init__(self, state: FieldBase):
+    def __init__(self, state: FieldBase, t_initial: float = None):
         """
         Args:
             state (:class:`pde.fields.base.FieldBase`): The initial state to be shown
+            t_initial (float): The initial time. If `None`, no time will be shown.
         """
         self._logger = logging.getLogger(__name__)
 
@@ -136,7 +153,7 @@ class NapariViewer:
             "axis_labels": state.grid.axes,
             "ndisplay": 3 if state.grid.dim >= 3 else 2,
         }
-        args = (self.data_channel, initial_data, viewer_args)
+        args = (self.data_channel, initial_data, t_initial, viewer_args)
 
         self.proc = context.Process(target=napari_process, args=args)
 
@@ -160,15 +177,17 @@ class NapariViewer:
             print()
             self._logger.exception("Could not launch napari process")
 
-    def update(self, state: FieldBase):
+    def update(self, state: FieldBase, t: float):
         """update the state in the napari viewer
 
         Args:
             state (:class:`pde.fields.base.FieldBase`): The new state
+            t (float): Current time
         """
         if self.proc.is_alive():
             try:
-                self.data_channel.put(("update", state._get_napari_data()), block=False)
+                data = (state._get_napari_data(), t)
+                self.data_channel.put(("update", data), block=False)
             except queue.Full:
                 pass  # could not write data
         else:
@@ -231,6 +250,7 @@ class InteractivePlotTracker(TrackerBase):
         self,
         interval: IntervalData = "0:01",
         close: bool = True,
+        show_time: bool = False,
     ):
         """
         Args:
@@ -240,10 +260,13 @@ class InteractivePlotTracker(TrackerBase):
                 Flag indicating whether the napari window is closed automatically at the
                 end of the simulation. If `False`, the tracker blocks when `finalize` is
                 called until the user closes napari manually.
+            show_time (bool):
+                Whether to indicate the time
         """
         # initialize the tracker
         super().__init__(interval=interval)
         self.close = close
+        self.show_time = show_time
 
     def initialize(self, state: FieldBase, info: InfoDict = None) -> float:
         """initialize the tracker with information about the simulation
@@ -257,7 +280,12 @@ class InteractivePlotTracker(TrackerBase):
         Returns:
             float: The first time the tracker needs to handle data
         """
-        self._viewer = NapariViewer(state)
+        if self.show_time:
+            t_initial = 0 if info is None else info.get("t_start", 0)
+        else:
+            t_initial = None
+
+        self._viewer = NapariViewer(state, t_initial=t_initial)
         return super().initialize(state, info=info)
 
     def handle(self, state: FieldBase, t: float) -> None:
@@ -269,7 +297,7 @@ class InteractivePlotTracker(TrackerBase):
             t (float):
                 The associated time
         """
-        self._viewer.update(state)
+        self._viewer.update(state, t)
 
     def finalize(self, info: InfoDict = None) -> None:
         """finalize the tracker, supplying additional information
