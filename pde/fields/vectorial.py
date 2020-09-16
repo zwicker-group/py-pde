@@ -445,7 +445,7 @@ class VectorField(DataFieldBase):
         return data
 
     def _get_napari_layer_data(  # type: ignore
-        self, max_points: int = None, args=None
+        self, max_points: int = None, args: Dict[str, Any] = None
     ) -> Dict[str, Any]:
         """returns data for plotting on a single napari layer
 
@@ -460,8 +460,7 @@ class VectorField(DataFieldBase):
         Returns:
             dict: all the information necessary to plot this field
         """
-        if args is None:
-            args = {}
+        result = {} if args is None else args.copy()
 
         # extract the vector components in the format required by napari
         data = self.get_vector_data(max_points=max_points)
@@ -472,4 +471,6 @@ class VectorField(DataFieldBase):
         vectors[:, 1, 0] = data["data_x"].flat
         vectors[:, 1, 1] = data["data_y"].flat
 
-        return {"type": "vectors", "data": vectors, "args": args}
+        result["type"] = "vectors"
+        result["data"] = vectors
+        return result

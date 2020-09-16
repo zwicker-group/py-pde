@@ -1758,12 +1758,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             dict: all the information necessary to plot this field
         """
-        if args is None:
-            args = {}
+        result = {} if args is None else args.copy()
 
-        args.setdefault("scale", self.grid.discretization)
-        args.setdefault("rgb", False)
-        return {"type": "image", "data": self.to_scalar(scalar).data, "args": args}
+        result.setdefault("scale", self.grid.discretization)
+        result.setdefault("rgb", False)
+        result["type"] = "image"
+        result["data"] = self.to_scalar(scalar).data
+        return result
 
     def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
         r"""returns data for plotting this field

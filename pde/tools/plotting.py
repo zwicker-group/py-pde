@@ -834,17 +834,17 @@ def napari_add_layers(
     """adds layers to a `napari <http://napari.org/>`__ viewer
 
     Args:
-        viewer (:class:`napari.viewer.Viewer`):
+        viewer (:class:`napar    i.viewer.Viewer`):
             The napari application
         layers_data (dict):
             Data for all layers that will be added.
     """
     for name, layer_data in layers_data.items():
-        layer_type = layer_data["type"]
-        args = layer_data.get("args", {})
+        layer_data.setdefault("name", name)
+        layer_type = layer_data.pop("type")
         try:
             add_layer = getattr(viewer, f"add_{layer_type}")
         except AttributeError:
             raise RuntimeError(f"Unknown layer type: {layer_type}")
         else:
-            add_layer(layer_data["data"], name=name, **args)
+            add_layer(**layer_data)
