@@ -493,7 +493,10 @@ class FieldBase(metaclass=ABCMeta):
             **kwargs:
                 Extra arguments passed to the plotting function
         """
-        with napari_viewer(self.grid, viewer_args) as viewer:
+        if viewer_args is None:
+            viewer_args = {}
+
+        with napari_viewer(self.grid, **viewer_args) as viewer:
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
 

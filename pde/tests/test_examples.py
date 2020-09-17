@@ -23,7 +23,7 @@ SKIP_EXAMPLES: List[str] = []
 if not Movie.is_available():
     SKIP_EXAMPLES.append("make_movie.py")
 if not module_available("napari"):
-    SKIP_EXAMPLES.append("tracker_interactive")
+    SKIP_EXAMPLES.extend(["tracker_interactive", "show_3d_field_interactively"])
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="Assumes unix setup")

@@ -3,6 +3,7 @@ TODO
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
     - Improve this display by adding a progress bar and support displaying extra text
+    - allow displaying data from storage in n-d manner
 * Support product of ndarray * field (the reverse product already works)
 * Add documentation entry for how to build expressions
     - Improved documentation on how to set boundary conditions

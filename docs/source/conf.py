@@ -275,7 +275,7 @@ sphinx_gallery_conf = {
     "examples_dirs": "../../examples",
     "gallery_dirs": "examples_gallery",
     "filename_pattern": "/",
-    "ignore_pattern": r".*movie.*",
+    "ignore_pattern": r".*movie.*|.*interactive.*",
     "capture_repr": (),
 }
 
