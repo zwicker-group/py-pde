@@ -808,9 +808,6 @@ def napari_viewer(
     """
     import napari  # @Reimport
 
-    if grid.num_axes == 1:
-        raise RuntimeError("Interactive plotting needs at least 2 spatial dimensions")
-
     # parse and set viewer arguments
     kwargs.setdefault("axis_labels", grid.axes)
     kwargs.setdefault("ndisplay", 3 if grid.num_axes >= 3 else 2)
@@ -824,7 +821,6 @@ def napari_viewer(
             from qtpy.QtCore import QTimer
 
             viewer.close()
-            app.quit()
             QTimer().singleShot(100, app.quit)
 
 

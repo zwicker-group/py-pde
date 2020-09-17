@@ -103,3 +103,16 @@ def test_kymograph_collection(tmp_path):
     path = tmp_path / "test2.png"
     plotting.plot_kymographs(storage, filename=path)
     assert path.stat().st_size > 0
+
+
+@skipUnlessModule("napari")
+def test_interactive_plotting():
+    """ test plot_interactive """
+
+    # create some data
+    field = ScalarField.random_uniform(UnitGrid([8]))
+    with get_memory_storage(field) as storage:
+        for i in range(8):
+            storage.append(np.full((8,), i), i)
+
+    plotting.plot_interactive(storage, viewer_args={"show": False, "close": True})

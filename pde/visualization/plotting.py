@@ -8,6 +8,7 @@ Functions and classes for plotting simulation data
    plot_magnitudes
    plot_kymograph
    plot_kymographs
+   plot_interactive
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -23,8 +24,15 @@ from ..fields import FieldCollection
 from ..fields.base import DataFieldBase, FieldBase
 from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
+from ..tools.misc import module_available
 from ..tools.output import display_progress
-from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
+from ..tools.plotting import (
+    PlotReference,
+    napari_add_layers,
+    napari_viewer,
+    plot_on_axes,
+    plot_on_figure,
+)
 
 _logger = logging.getLogger(__name__)
 ScaleData = Union[str, float, Tuple[float, float]]
@@ -640,7 +648,7 @@ def plot_kymograph(
 
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
-            The storage instance that contains all the data for the movie
+            The storage instance that contains all the data
         field_index (int):
             An index to choose a single field out of many in a collection
             stored in `storage`. This option should not be used if only a single
@@ -707,7 +715,7 @@ def plot_kymographs(
 
     Args:
         storage (:class:`~droplets.simulation.storage.StorageBase`):
-            The storage instance that contains all the data for the movie
+            The storage instance that contains all the data
         scalar (str):
             The method for extracting scalars as described in
             :meth:`DataFieldBase.to_scalar`.
@@ -775,3 +783,68 @@ def plot_kymographs(
         refs.append(ref)
 
     return refs
+
+
+def plot_interactive(
+    storage: StorageBase,
+    time_scaling: str = "exact",
+    viewer_args: Dict[str, Any] = None,
+    **kwargs,
+):
+    r"""plots stored data interactively using the `napari <https://napari.org>`_ viewer
+
+    Args:
+        storage (:class:`~droplets.simulation.storage.StorageBase`):
+            The storage instance that contains all the data
+        time_scaling (str):
+            Defines how the time axis is scaled. Possible options are "exact" (the
+            actual time points are used), or "scaled" (the axis is scaled so that it has
+            similar dimension to the spatial axes). Note that the spatial axes will
+            never be scaled.
+        viewer_args (dict):
+            Arguments passed to :class:`napari.viewer.Viewer` to affect the viewer.
+        **kwargs:
+            Extra arguments passed to the plotting function
+    """
+    if not module_available("napari"):
+        raise ImportError("Require the `napari` module for interactive plotting")
+
+    if len(storage) < 1:
+        raise ValueError("Storage is empty")
+
+    grid = storage.grid
+    if grid is None:
+        raise RuntimeError("Storage did not contain information about the grid")
+
+    # collect data from all time points
+    timecourse: Dict[str, List[np.ndarray]] = dict()
+    for field in storage:
+        layer_data = field._get_napari_data(**kwargs)
+
+        if timecourse:
+            for key, field_data in layer_data.items():
+                timecourse[key].append(field_data["data"])
+        else:
+            for key, field_data in layer_data.items():
+                timecourse[key] = [field_data["data"]]
+
+    # replace the data in the layer_data
+    for key, field_data in layer_data.items():
+        field_data["data"] = np.array(timecourse[key])
+        if "scale" in field_data:
+            if time_scaling == "exact":
+                dt = np.diff(storage.times)[0] if len(storage) > 1 else 1
+            elif time_scaling == "scaled":
+                length_scale = grid.volume ** (1 / grid.dim)
+                dt = length_scale / len(storage)
+            else:
+                raise ValueError(f"Unknown time scaling `{time_scaling}`")
+            field_data["scale"] = np.r_[dt, field_data["scale"]]
+
+    if viewer_args is None:
+        viewer_args = {}
+    viewer_args.setdefault("axis_labels", ["Time"] + grid.axes)
+
+    # actually display the data using napari
+    with napari_viewer(grid, **viewer_args) as viewer:
+        napari_add_layers(viewer, layer_data)

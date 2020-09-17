@@ -496,6 +496,11 @@ class FieldBase(metaclass=ABCMeta):
         if viewer_args is None:
             viewer_args = {}
 
+        if self.grid.num_axes == 1:
+            raise RuntimeError(
+                "Interactive plotting needs at least 2 spatial dimensions"
+            )
+
         with napari_viewer(self.grid, **viewer_args) as viewer:
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
