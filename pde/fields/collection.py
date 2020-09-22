@@ -541,7 +541,7 @@ class FieldCollection(FieldBase):
         # create a plot with all the panels
         if resize_fig:
             fig.set_size_inches((4 * len(self), 3), forward=True)
-        axs = fig.subplots(1, len(self))
+        (axs,) = fig.subplots(1, len(self), squeeze=False)
 
         # plot all the elements into the respective axes
         reference = [

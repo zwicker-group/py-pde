@@ -142,16 +142,30 @@ class PDEBase(metaclass=ABCMeta):
             )
 
         if self.check_implementation and rhs._backend == "numba":  # type: ignore
-            # compare the numba implementation to the numpy implementation
-            expected = self.evolution_rate(state.copy(), 0).data
+            # obtain and check result from the numpy implementation
+            rhs_numpy = self.evolution_rate(state.copy(), 0).data
+            if not np.all(np.isfinite(rhs_numpy)):
+                self._logger.warning(
+                    "The numpy implementation of the PDE returned non-finite values."
+                )
+
+            # obtain and check result from the numba implementation
             test_state = state.copy()
-            result = rhs(test_state.data, 0)
+            rhs_numba = rhs(test_state.data, 0)
+            if not np.all(np.isfinite(rhs_numba)):
+                self._logger.warning(
+                    "The numba implementation of the PDE returned non-finite values."
+                )
+
+            # compare the two implementations
             msg = (
                 "The numba compiled implementation of the right hand side is not "
                 "compatible with the numpy implementation. This check can be disabled "
                 "by setting the class attribute `check_implementation` to `False`."
             )
-            np.testing.assert_allclose(result, expected, err_msg=msg)
+            np.testing.assert_allclose(
+                rhs_numba, rhs_numpy, err_msg=msg, rtol=1e-7, atol=1e-7, equal_nan=True
+            )
 
         return rhs
 

@@ -74,6 +74,8 @@ def test_collections():
     with pytest.raises(KeyError):
         fields["42"] = 0
 
+    fields.plot()
+
 
 def test_collections_copy():
     """ test copying data of collections """
@@ -202,3 +204,13 @@ def test_field_labels():
     labels = fc.labels[:]
     labels[0] = "e"
     assert fc.labels == ["a", "a"]
+
+
+def test_collection_1_field():
+    """ test field collections with only one field """
+    grid = UnitGrid([3])
+    s1 = ScalarField(grid, label="a")
+    fc = FieldCollection([s1])
+    assert fc.labels == ["a"]
+
+    fc.plot()
