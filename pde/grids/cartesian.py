@@ -7,7 +7,8 @@ Cartesian grids of arbitrary dimension.
 
 import itertools
 from abc import ABCMeta
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Sequence, Tuple, Union
+from typing import List  # @UnusedImport
+from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -26,16 +27,17 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
     cuboid: Cuboid
 
     def __init__(
-        self, shape: Tuple[int, ...], periodic: Union[List[bool], bool] = False
+        self, shape: Sequence[int], periodic: Union[Sequence[bool], bool] = False
     ):
         """
         Args:
-            shape (tuple): The number of support points for each axis. The
-                dimension of the grid is given by `len(shape)`.
-            periodic (bool or list): Specifies which axes possess periodic
-                boundary conditions. This is either a list of booleans defining
-                periodicity for each individual axis or a single boolean value
-                specifying the same periodicity for all axes.
+            shape (list):
+                The number of support points for each axis. The dimension of the grid is
+                given by `len(shape)`.
+            periodic (bool or list):
+                Specifies which axes possess periodic boundary conditions. This is
+                either a list of booleans defining periodicity for each individual axis
+                or a single boolean value specifying the same periodicity for all axes.
         """
         super().__init__()
         self._shape = _check_shape(shape)
@@ -417,16 +419,17 @@ class UnitGrid(CartesianGridBase):
     """
 
     def __init__(
-        self, shape: Tuple[int, ...], periodic: Union[List[bool], bool] = False
+        self, shape: Sequence[int], periodic: Union[Sequence[bool], bool] = False
     ):
         """
         Args:
-            shape (tuple): The number of support points for each axis. The
-                dimension of the grid is given by `len(shape)`.
-            periodic (bool or list): Specifies which axes possess periodic
-                boundary conditions. This is either a list of booleans defining
-                periodicity for each individual axis or a single boolean value
-                specifying the same periodicity for all axes.
+            shape (list):
+                The number of support points for each axis. The dimension of the grid is
+                given by `len(shape)`.
+            periodic (bool or list):
+                Specifies which axes possess periodic boundary conditions. This is
+                either a list of booleans defining periodicity for each individual axis
+                or a single boolean value specifying the same periodicity for all axes.
         """
         super().__init__(shape, periodic)
         self.cuboid = Cuboid(np.zeros(self.dim), self.shape)
@@ -535,7 +538,7 @@ class UnitGrid(CartesianGridBase):
             :class:`UnitGrid`: The subgrid
         """
         subgrid = self.__class__(
-            shape=tuple(self.shape[i] for i in indices),
+            shape=[self.shape[i] for i in indices],
             periodic=[self.periodic[i] for i in indices],
         )
         subgrid.axes = [self.axes[i] for i in indices]
@@ -570,42 +573,44 @@ class CartesianGrid(CartesianGridBase):
 
     def __init__(
         self,
-        bounds: np.array,
-        shape: Union[int, Tuple[int, ...]],
-        periodic: Union[List[bool], bool] = False,
+        bounds: Sequence[Tuple[float, float]],
+        shape: Union[int, Sequence[int]],
+        periodic: Union[Sequence[bool], bool] = False,
     ):
         """
         Args:
-            bounds (tuple): Give the coordinate range for each axis. This should
-                be a tuple of two number (lower and upper bound) for each axis.
-                The length of `bounds` thus determines the grid dimension.
-            shape (tuple): The number of support points for each axis. The
-                length of `shape` needs to match the grid dimension.
-            periodic (bool or list): Specifies which axes possess periodic
-                boundary conditions. This is either a list of booleans defining
-                periodicity for each individual axis or a single boolean value
-                specifying the same periodicity for all axes.
+            bounds (list of tuple):
+                Give the coordinate range for each axis. This should be a tuple of two
+                number (lower and upper bound) for each axis. The length of `bounds`
+                thus determines the grid dimension.
+            shape (list):
+                The number of support points for each axis. The length of `shape` needs
+                to match the grid dimension.
+            periodic (bool or list):
+                Specifies which axes possess periodic boundary conditions. This is
+                either a list of booleans defining periodicity for each individual axis
+                or a single boolean value specifying the same periodicity for all axes.
         """
-        bounds = np.array(bounds, ndmin=1, dtype=np.double)
-        if bounds.shape == (2,):
+        bounds_arr = np.array(bounds, ndmin=1, dtype=np.double)
+        if bounds_arr.shape == (2,):
             raise ValueError(
                 "`bounds with shape (2,) are ambiguous. Either use shape (1, 2) to set "
                 "up a 1d system with two bounds or shape (2, 1) for a 2d system with "
                 "only the upper bounds specified"
             )
 
-        if bounds.ndim == 1 or bounds.shape[1] == 1:
+        if bounds_arr.ndim == 1 or bounds_arr.shape[1] == 1:
             # only set the upper bounds
-            bounds = np.atleast_1d(np.squeeze(bounds))
-            self.cuboid = Cuboid(np.zeros_like(bounds), bounds, mutable=False)
+            bounds_arr = np.atleast_1d(np.squeeze(bounds_arr))
+            self.cuboid = Cuboid(np.zeros_like(bounds_arr), bounds_arr, mutable=False)
 
-        elif bounds.ndim == 2 and bounds.shape[1] == 2:
+        elif bounds_arr.ndim == 2 and bounds_arr.shape[1] == 2:
             # upper and lower bounds of the grid are given
-            self.cuboid = Cuboid.from_bounds(bounds, mutable=False)
+            self.cuboid = Cuboid.from_bounds(bounds_arr, mutable=False)
 
         else:
             raise ValueError(
-                f"Do not know how to interpret shape {bounds.shape} for bounds"
+                f"Do not know how to interpret shape {bounds_arr.shape} for bounds"
             )
 
         # handle the shape array
@@ -613,9 +618,7 @@ class CartesianGrid(CartesianGridBase):
         if len(shape) == 1 and self.cuboid.dim > 1:
             shape = np.full(self.cuboid.dim, shape, dtype=np.uint32)
         if self.cuboid.dim != len(shape):  # type: ignore
-            raise DimensionError(
-                "Dimension of the bounds and the shape are not compatible"
-            )
+            raise DimensionError("Dimension of `bounds` and `shape` are not compatible")
 
         # initialize the base class
         super().__init__(shape, periodic)  # type: ignore
