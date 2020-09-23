@@ -196,7 +196,8 @@ def test_get_line_data():
 def test_from_expression():
     """ test creating scalar field from expression """
     grid = UnitGrid([1, 2])
-    sf = ScalarField.from_expression(grid, "x * y")
+    sf = ScalarField.from_expression(grid, "x * y", label="abc")
+    assert sf.label == "abc"
     np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
 
 
