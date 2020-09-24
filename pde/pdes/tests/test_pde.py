@@ -27,6 +27,10 @@ def test_pde_wrong_input():
     with pytest.raises(ValueError):
         eq.evolution_rate(ScalarField.random_uniform(grid))
 
+    eq = PDE({"u": "a"})
+    with pytest.raises(RuntimeError):
+        eq.evolution_rate(ScalarField.random_uniform(grid))
+
 
 def test_pde_scalar():
     """ test PDE with a single scalar field """
@@ -141,3 +145,19 @@ def test_pde_noise(backend):
     with pytest.raises(RuntimeError):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
         eq.solve(ScalarField(grid), t_range=1, backend=backend, dt=1)
+
+
+def test_pde_spatial_args():
+    """ test ScalarFieldExpression without extra dependence """
+
+    eq = PDE({"a": "x"})
+
+    field = ScalarField(UnitGrid([2]))
+    rhs = eq.evolution_rate(field)
+    assert rhs == field.copy(data=[0.5, 1.5])
+    rhs = eq.make_pde_rhs(field, backend="numba")
+    np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.5, 1.5]))
+
+    eq = PDE({"a": "x + y"})
+    with pytest.raises(RuntimeError):
+        eq.evolution_rate(field)

@@ -774,7 +774,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             np.random.seed(seed)
 
         # create function making colored noise
-        from pde.tools.spectral import make_colored_noise
+        from ..tools.spectral import make_colored_noise
 
         make_noise = make_colored_noise(
             grid.shape, dx=grid.discretization, exponent=exponent, scale=scale

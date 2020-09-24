@@ -9,12 +9,13 @@ from collections import OrderedDict
 from typing import Any, Callable, Dict  # @UnusedImport
 
 import numpy as np
-from pde.fields import FieldCollection, VectorField
-from pde.fields.base import DataFieldBase, FieldBase, OptionalArrayLike
-from pde.grids.boundaries.axes import BoundariesData
-from pde.pdes.base import PDEBase
-from pde.tools.docstrings import fill_in_docstring
-from pde.tools.numba import jit, nb
+
+from ..fields import FieldCollection, VectorField
+from ..fields.base import DataFieldBase, FieldBase, OptionalArrayLike
+from ..grids.boundaries.axes import BoundariesData
+from ..pdes.base import PDEBase
+from ..tools.docstrings import fill_in_docstring
+from ..tools.numba import jit, nb
 
 
 class PDE(PDEBase):
@@ -94,11 +95,10 @@ class PDE(PDEBase):
             raise RuntimeError("`t` is not allowed as a variable since it denotes time")
 
         # turn the expression strings into sympy expressions
-        signature = tuple(rhs.keys()) + ("t",)
         self._rhs_expr, self._operators = {}, {}
         explicit_time_dependence = False
         for var, rhs_str in rhs.items():
-            rhs_expr = ScalarExpression(rhs_str, signature=signature)
+            rhs_expr = ScalarExpression(rhs_str)
             self._rhs_expr[var] = rhs_expr
 
             if rhs_expr.depends_on("t"):
@@ -148,7 +148,6 @@ class PDE(PDEBase):
         # save information for easy inspection
         self.diagnostics = {
             "variables": self.variables,
-            "function_signature": signature,
             "explicit_time_dependence": explicit_time_dependence,
             "operators": operators,
         }
@@ -172,7 +171,7 @@ class PDE(PDEBase):
         # check whether this function actually needs to be called
         if state.attributes == self._cache.get("state_attributes", None):
             return  # prepare was already called
-        self._cache = {}  # clear cache, if there was something
+        self._cache = {}  # clear cache, if there was any
 
         # check whether the state is compatible with the PDE
         num_fields = len(self.variables)
@@ -223,7 +222,41 @@ class PDE(PDEBase):
 
                 ops[func] = state.grid.get_operator(func, bc=bc)
 
-            rhs_funcs.append(self._rhs_expr[var]._get_function(user_funcs=ops))
+            # obtain the function to calculate the right hand side
+            expr = self._rhs_expr[var]
+            signature = self.variables + ("t",)
+
+            def _get_expr_func(signature):
+                """ helper function obtaining expression and checking the signature """
+                extra_vars = set(expr.vars) - set(signature)
+                if extra_vars:
+                    extra_vars_str = ", ".join(sorted(extra_vars))
+                    raise RuntimeError(
+                        f"Undefined variable in expression: {extra_vars_str}"
+                    )
+                expr.vars = signature
+                return expr._get_function(single_arg=False, user_funcs=ops)
+
+            if any(expr.depends_on(c) for c in state.grid.axes):
+                # expression has a spatial dependence, too
+
+                # determine and check the signature
+                inner_func = jit(_get_expr_func(signature + tuple(state.grid.axes)))
+
+                # inject the spatial coordinates into the expression for the rhs
+                coords_tuple = tuple(  # @UnusedVariable
+                    state.grid.cell_coords[..., i] for i in range(state.grid.num_axes)
+                )
+
+                def rhs_func(*args):
+                    """ wrapper that inserts the spatial variables """
+                    return inner_func(*args, *coords_tuple)
+
+            else:
+                # expression only depends on the actual variables
+                rhs_func = _get_expr_func(signature)
+
+            rhs_funcs.append(rhs_func)
 
         self._cache["rhs_funcs"] = rhs_funcs
 
