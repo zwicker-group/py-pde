@@ -17,7 +17,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from pde import UnitGrid
-from pde.tools.misc import display_progress, estimate_computation_speed
+from pde.tools.output import display_progress
+from pde.tools.misc import estimate_computation_speed
 
 try:
     import cv2
