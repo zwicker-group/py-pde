@@ -45,17 +45,17 @@ class PDE(PDEBase):
 
         Args:
             rhs (OrderedDict):
-                The expressions defining the evolution rate. The dictionary keys
-                define the name of the fields whose evolution is considered,
-                while the values specify their evolution rate as a string that
-                can be parsed by :mod:`sympy`. These expression may contain the
-                fields themselves, standard local mathematical operators defined
-                by sympy, and the operators defined in the :mod:`pde` package.
-                Note that operators need to be specified with their full name,
-                i.e., `laplace` for a scalar Laplacian and `vector_laplace` for
-                a Laplacian operating on a vector field. Moreover, the dot
-                product between two vector fields can be denoted by using
-                `dot(field1, field2)` in the expression.
+                The expressions defining the evolution rate. The dictionary keys define
+                the name of the fields whose evolution is considered, while the values
+                specify their evolution rate as a string that can be parsed by
+                :mod:`sympy`. These expression may contain variables (i.e., the fields
+                themselves, spatial coordinates of the grid, and `t` for the time),
+                standard local mathematical operators defined by sympy, and the
+                operators defined in the :mod:`pde` package. Note that operators need to
+                be specified with their full name, i.e., `laplace` for a scalar
+                Laplacian and `vector_laplace` for a Laplacian operating on a vector
+                field. Moreover, the dot product between two vector fields can be
+                denoted by using `dot(field1, field2)` in the expression.
             noise (float or :class:`numpy.ndarray`):
                 Magnitude of additive Gaussian white noise. The default value of
                 zero implies deterministic partial differential equations will
