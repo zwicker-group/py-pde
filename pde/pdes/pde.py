@@ -231,7 +231,9 @@ class PDE(PDEBase):
                 extra_vars = set(expr.vars) - set(signature)
                 if extra_vars:
                     extra_vars_str = ", ".join(sorted(extra_vars))
-                    raise RuntimeError(f"Undefined argument: {extra_vars_str}")
+                    raise RuntimeError(
+                        f"Undefined variable in expression: {extra_vars_str}"
+                    )
                 expr.vars = signature
                 return expr._get_function(single_arg=False, user_funcs=ops)
 

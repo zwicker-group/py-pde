@@ -1,7 +1,5 @@
 TODO
 ====
-* Add support for spatial dependences of parameters in PDE
-    - Add examples (and better tests?)
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
     - Improve this display by adding a progress bar and support displaying extra text
