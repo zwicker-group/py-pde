@@ -8,7 +8,6 @@ TODO
 * Add documentation entry for how to build expressions
     - Improved documentation on how to set boundary conditions
 * Implement Gray Scott Model of Reaction Diffusion
-* Add a flag to switch floating precisions to np.single or np.longdouble
 * Accelerate some tests by not compiling
 * pde.PDE:
     - add test for dot operator and custom boundary conditions
@@ -59,6 +58,7 @@ TODO
 LOW-PRIORITY (Future ideas)
 ===========================
 * Add adaptive Euler stepping
+* Add a flag to switch floating precisions to np.single or np.longdouble
 * Think about 2nd order BCs for spherical coordinates
 * Think about hyperbolic equations:
     - Introducing "advection" operator that could either implement really simple
@@ -72,16 +72,6 @@ LOW-PRIORITY (Future ideas)
 	out=None idiom
 * Ensure that stochastic simulations on a single core can be resumed from any
 	stored state (this requires storing random seeds)
-* Allow passing work array to central functions so memory does not need to be
-    allocated each step.
-    - is this actually a speed bottleneck?
-* Add spectral definitions of key differential operators?
-    - think about using fft/dst/dct from numba via cffi and fftw
-    - alternatively simply use
-    	try:
-		    from pyfftw.interfaces.numpy_fft import rfft, irfft
-		except ImportError:
-		    from numpy.fft import rfft, irfft
 * Implement multiprocessing:
 	- Separate CartesianGrid into different blocks
 	  (we need to slice the whole grid at defined locations)

@@ -343,7 +343,7 @@ def plot_on_axes(wrapped=None, update_method=None):
                 if title is not None:
                     ax.set_title(title)
 
-                use_offset = ax_style.pop("use_offset", None)
+                use_offset = ax_style.pop("use_offset", False)
                 if use_offset is not None:
                     ax.get_xaxis().get_major_formatter().set_useOffset(use_offset)
                     ax.get_yaxis().get_major_formatter().set_useOffset(use_offset)
@@ -572,7 +572,7 @@ def plot_on_figure(wrapped=None, update_method=None):
     return wrapper
 
 
-class PlottingContextBase(object):
+class PlottingContextBase:
     """base class of the plotting contexts
 
     Example:
