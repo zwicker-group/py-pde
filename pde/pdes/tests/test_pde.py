@@ -174,10 +174,12 @@ def test_pde_user_funcs():
     np.testing.assert_allclose(f(field.data, 0), field.gradient("natural").data[0])
 
     from numba import TypingError
-    from scipy.special import j0
+    from scipy.ndimage import gaussian_filter
 
-    eq = PDE({"u": "func(u)"}, user_funcs={"func": lambda arr: j0(arr)})
-    np.testing.assert_allclose(eq.evolution_rate(field).data, j0(field.data))
+    eq = PDE({"u": "func(u)"}, user_funcs={"func": lambda arr: gaussian_filter(arr, 1)})
+    np.testing.assert_allclose(
+        eq.evolution_rate(field).data, gaussian_filter(field.data, 1)
+    )
     f = eq._make_pde_rhs_numba(field)
     with pytest.raises(TypingError):
         f(field.data, 0)
