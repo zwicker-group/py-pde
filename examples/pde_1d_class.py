@@ -1,13 +1,13 @@
 """
-Custom PDE in one dimension
-===========================
+1D problem - Using custom class
+===============================
 
 This example implements a PDE that is only defined in one dimension.
 Here, we chose the `Korteweg-de Vries equation
 <https://en.wikipedia.org/wiki/Korteweg–de_Vries_equation>`_, given by
 
 .. math::
-    \partial_t \phi = 6 \phi \partial_x \phi - \partial_x^2 \phi
+    \partial_t \phi = 6 \phi \partial_x \phi - \partial_x^3 \phi
     
 which we implement using a custom PDE class below.
 """
@@ -23,8 +23,8 @@ class KortewegDeVriesPDE(PDEBase):
     def evolution_rate(self, state, t=0):
         """ implement the python version of the evolution equation """
         assert state.grid.dim == 1  # ensure the state is one-dimensional
-        grad = state.gradient("natural")[0]
-        return 6 * state * grad - grad.laplace("natural")
+        grad_x = state.gradient("natural")[0]
+        return 6 * state * grad_x - grad_x.laplace("natural")
 
 
 # initialize the equation and the space

@@ -1,6 +1,6 @@
 r"""
-Using the `PDE` class: Brusselator
-==================================
+Brusselator - Using the `PDE` class
+===================================
 
 This example uses the :class:`~pde.pdes.pde.PDE` class to implement the
 `Brusselator <https://en.wikipedia.org/wiki/Brusselator>`_ with spatial

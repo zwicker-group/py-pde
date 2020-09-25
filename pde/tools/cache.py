@@ -524,7 +524,7 @@ class _class_cache:
                 cache = obj._cache_methods[self.name]
             except (AttributeError, KeyError) as err:
                 # the cache was not initialized
-                wrapper._logger.debug("Initialize the cache `%s`", self.name)
+                wrapper._logger.debug("Initialize the cache for `%s`", self.name)
                 if isinstance(err, AttributeError):
                     # the cache dictionary is not even present
                     obj._cache_methods = {}
@@ -557,7 +557,9 @@ class _class_cache:
             except KeyError:
                 # if this failed, compute and store the results
                 wrapper._logger.debug(
-                    "Cache missed. Compute result for method `%s`", self.name
+                    "Cache missed. Compute result for method `%s` with args `%s`",
+                    self.name,
+                    func_args,
                 )
                 result = func(obj, *args, **kwargs)
                 cache[cache_key] = result

@@ -6,7 +6,7 @@ Defines a PDE class whose right hand side is given as a string
 
 import re
 from collections import OrderedDict
-from typing import Any, Callable, Dict  # @UnusedImport
+from typing import Any, Callable, Dict
 
 import numpy as np
 
@@ -19,7 +19,7 @@ from ..tools.numba import jit, nb
 
 
 class PDE(PDEBase):
-    """PDE defined by a mathematical expression
+    """PDE defined by mathematical expressions
 
     Attributes:
         variables (tuple):
@@ -38,6 +38,7 @@ class PDE(PDEBase):
         noise: OptionalArrayLike = 0,
         bc: BoundariesData = "natural",
         bc_ops: "OrderedDict[str, BoundariesData]" = None,
+        user_funcs: Dict[str, Any] = None,
     ):
         """
         Warning:
@@ -57,14 +58,14 @@ class PDE(PDEBase):
                 field. Moreover, the dot product between two vector fields can be
                 denoted by using `dot(field1, field2)` in the expression.
             noise (float or :class:`numpy.ndarray`):
-                Magnitude of additive Gaussian white noise. The default value of
-                zero implies deterministic partial differential equations will
-                be solved. Different noise magnitudes can be supplied for each
-                field in coupled PDEs.
+                Magnitude of additive Gaussian white noise. The default value of zero
+                implies deterministic partial differential equations will be solved.
+                Different noise magnitudes can be supplied for each field in coupled
+                PDEs.
             bc:
-                Boundary conditions for the operators used in the expression.
-                The conditions here are applied to all operators that do not
-                have a specialized condition given in `bc_ops`
+                Boundary conditions for the operators used in the expression. The
+                conditions here are applied to all operators that do not have a
+                specialized condition given in `bc_ops`.
                 {ARG_BOUNDARIES}
             bc_ops (dict):
                 Special boundary conditions for some operators. The keys in this
@@ -74,13 +75,15 @@ class PDE(PDEBase):
                 operator specified by OPERATOR/. For both identifiers, the wildcard
                 symbol "*" denotes that all fields and operators are affected,
                 respectively.
+            user_funcs (dict, optional):
+                A dictionary with user defined functions that can be used in the
+                expressions in `rhs`.
 
         Note:
-            The order in which the fields are given in `rhs` defines the order
-            in which they need to appear in the `state` variable when the
-            evolution rate is calculated. Note that the insertion order of
-            `dict` is guaranteed since Python version 3.7, so a normal
-            dictionary can be used to define the equations.
+            The order in which the fields are given in `rhs` defines the order in which
+            they need to appear in the `state` variable when the evolution rate is
+            calculated. Note that `dict` keep the insertion order since Python version
+            3.7, so a normal dictionary can be used to define the equations.
         """
         from sympy.core.function import AppliedUndef
 
@@ -98,7 +101,7 @@ class PDE(PDEBase):
         self._rhs_expr, self._operators = {}, {}
         explicit_time_dependence = False
         for var, rhs_str in rhs.items():
-            rhs_expr = ScalarExpression(rhs_str)
+            rhs_expr = ScalarExpression(rhs_str, user_funcs=user_funcs)
             self._rhs_expr[var] = rhs_expr
 
             if rhs_expr.depends_on("t"):
@@ -108,6 +111,7 @@ class PDE(PDEBase):
             self._operators[var] = {
                 func.__class__.__name__
                 for func in rhs_expr._sympy_expr.atoms(AppliedUndef)
+                if func.__class__.__name__ not in rhs_expr.user_funcs
             }
 
         # set public instance attributes
@@ -151,14 +155,16 @@ class PDE(PDEBase):
             "explicit_time_dependence": explicit_time_dependence,
             "operators": operators,
         }
-        self._cache: Dict[str, Any] = {}
+        self._cache: Dict[str, Dict[str, Any]] = {}
 
     @property
     def expressions(self) -> Dict[str, str]:
         """ show the expressions of the PDE """
         return {k: v.expression for k, v in self._rhs_expr.items()}
 
-    def _prepare(self, state: FieldBase) -> None:
+    def _prepare_cache(
+        self, state: FieldBase, backend: str = "numpy"
+    ) -> Dict[str, Any]:
         """prepare the expression by setting internal variables in the cache
 
         Note that the expensive calculations in this method are only carried
@@ -168,10 +174,11 @@ class PDE(PDEBase):
             state (:class:`~pde.fields.FieldBase`):
                 The field describing the state of the PDE
         """
-        # check whether this function actually needs to be called
-        if state.attributes == self._cache.get("state_attributes", None):
-            return  # prepare was already called
-        self._cache = {}  # clear cache, if there was any
+        # check the cache
+        cache = self._cache.get(backend, {})
+        if state.attributes == cache.get("state.attributes", None):
+            return cache  # this cache was already prepared
+        cache = self._cache[backend] = {}  # clear cache, if there was any
 
         # check whether the state is compatible with the PDE
         num_fields = len(self.variables)
@@ -235,7 +242,15 @@ class PDE(PDEBase):
                         f"Undefined variable in expression: {extra_vars_str}"
                     )
                 expr.vars = signature
-                return expr._get_function(single_arg=False, user_funcs=ops)
+                if backend == "numpy":
+                    result = expr._get_function(single_arg=False, user_funcs=ops)
+                elif backend == "numba":
+                    result = expr._get_function(
+                        single_arg=False, user_funcs=ops, prepare_compilation=True
+                    )
+                else:
+                    raise ValueError(f"Unsupported backend {backend}")
+                return result
 
             if any(expr.depends_on(c) for c in state.grid.axes):
                 # expression has a spatial dependence, too
@@ -258,7 +273,7 @@ class PDE(PDEBase):
 
             rhs_funcs.append(rhs_func)
 
-        self._cache["rhs_funcs"] = rhs_funcs
+        cache["rhs_funcs"] = rhs_funcs
 
         # add extra information for field collection
         if isinstance(state, FieldCollection):
@@ -276,13 +291,14 @@ class PDE(PDEBase):
                     for i in range(num_fields)
                 )
 
-            self._cache["get_data_tuple"] = get_data_tuple
+            cache["get_data_tuple"] = get_data_tuple
 
         # store the attributes in the cache, which allows to later circumvent
         # calculating the quantities above again. Note that this has to be the
         # last expression of the method, so the cache is only valid when the
         # prepare function worked successfully
-        self._cache["state_attributes"] = state.attributes
+        cache["state_attributes"] = state.attributes
+        return cache
 
     def evolution_rate(self, state: FieldBase, t: float = 0) -> FieldBase:
         """evaluate the right hand side of the PDE
@@ -297,28 +313,33 @@ class PDE(PDEBase):
             :class:`~pde.fields.FieldBase`:
             Field describing the evolution rate of the PDE
         """
-        self._prepare(state)
+        cache = self._prepare_cache(state, backend="numpy")
 
         if isinstance(state, DataFieldBase):
-            rhs = self._cache["rhs_funcs"][0]
+            rhs = cache["rhs_funcs"][0]
             return state.copy(data=rhs(state.data, t))
 
         elif isinstance(state, FieldCollection):
             result = state.copy()
             for i in range(len(state)):
-                data_tpl = self._cache["get_data_tuple"](state.data)
-                result[i].data = self._cache["rhs_funcs"][i](*data_tpl, t)
+                data_tpl = cache["get_data_tuple"](state.data)
+                result[i].data = cache["rhs_funcs"][i](*data_tpl, t)
             return result
 
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
 
-    def _make_pde_rhs_numba_coll(self, state: FieldCollection) -> Callable:
+    def _make_pde_rhs_numba_coll(
+        self, state: FieldCollection, cache: Dict[str, Any]
+    ) -> Callable:
         """create the compiled rhs if `state` is a field collection
 
         Args:
             state (:class:`~pde.fields.FieldCollection`):
                 An example for the state defining the grid and data types
+            cache (dict):
+                Cached information that will be used in the function. The cache is
+                populated by :meth:`PDE._prepare_cache`.
 
         Returns:
             A function with signature `(state_data, t)`, which can be called
@@ -328,7 +349,7 @@ class PDE(PDEBase):
         """
         num_fields = len(state)
         data_shape = state.data.shape
-        rhs_list = tuple(jit(self._cache["rhs_funcs"][i]) for i in range(num_fields))
+        rhs_list = tuple(jit(cache["rhs_funcs"][i]) for i in range(num_fields))
 
         starts = tuple(slc.start for slc in state._slices)
         stops = tuple(slc.stop for slc in state._slices)
@@ -341,11 +362,11 @@ class PDE(PDEBase):
         #                 out[i] = rhs_list[i](*state_data, t)
         #         return evolver
 
-        get_data_tuple = self._cache["get_data_tuple"]
+        get_data_tuple = cache["get_data_tuple"]
 
         def chain(i=0, inner=None):
             """ recursive helper function for applying all rhs """
-            # run through all evolvers
+            # run through all functions
             rhs = rhs_list[i]
 
             if inner is None:
@@ -392,11 +413,11 @@ class PDE(PDEBase):
             the time to obtained an instance of :class:`numpy.ndarray` giving
             the evolution rate.
         """
-        self._prepare(state)
+        cache = self._prepare_cache(state, backend="numba")
 
         if isinstance(state, DataFieldBase):
-            return jit(self._cache["rhs_funcs"][0])  # type: ignore
+            return jit(cache["rhs_funcs"][0])  # type: ignore
         elif isinstance(state, FieldCollection):
-            return self._make_pde_rhs_numba_coll(state)
+            return self._make_pde_rhs_numba_coll(state, cache)
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")

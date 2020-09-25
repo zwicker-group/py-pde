@@ -161,3 +161,23 @@ def test_pde_spatial_args():
     eq = PDE({"a": "x + y"})
     with pytest.raises(RuntimeError):
         eq.evolution_rate(field)
+
+
+def test_pde_user_funcs():
+    """ test user supplied functions """
+    # test a simple case
+    eq = PDE({"u": "get_x(gradient(u))"}, user_funcs={"get_x": lambda arr: arr[0]})
+    field = ScalarField.random_colored(UnitGrid([32, 32]))
+    rhs = eq.evolution_rate(field)
+    np.testing.assert_allclose(rhs.data, field.gradient("natural").data[0])
+    f = eq._make_pde_rhs_numba(field)
+    np.testing.assert_allclose(f(field.data, 0), field.gradient("natural").data[0])
+
+    from numba import TypingError
+    from scipy.special import j0
+
+    eq = PDE({"u": "func(u)"}, user_funcs={"func": lambda arr: j0(arr)})
+    np.testing.assert_allclose(eq.evolution_rate(field).data, j0(field.data))
+    f = eq._make_pde_rhs_numba(field)
+    with pytest.raises(TypingError):
+        f(field.data, 0)

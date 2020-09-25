@@ -1,6 +1,6 @@
 r"""
-Kuramoto-Sivashinsky - Using PDE class
-======================================
+Kuramoto-Sivashinsky - Using `PDE` class
+========================================
 
 This example implements a scalar PDE using the :class:`~pde.pdes.pde.PDE`. We here
 consider the `Kuramoto–Sivashinsky equation

@@ -1,6 +1,6 @@
 r"""
-Custom PDE class: Brusselator
-=============================
+Brusselator - Using custom class
+================================
 
 This example implements the `Brusselator 
 <https://en.wikipedia.org/wiki/Brusselator>`_ with spatial coupling,

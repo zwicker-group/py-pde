@@ -22,7 +22,7 @@ arrive at a more stable numerical scheme, it is advisable to expand the divergen
     \partial_t c = D \nabla^2 c + \nabla D . \nabla c
 """
 
-from pde import PDE, CartesianGrid, ScalarField, MemoryStorage, plot_kymograph
+from pde import PDE, CartesianGrid, MemoryStorage, ScalarField, plot_kymograph
 
 # Expanded definition of the PDE
 diffusivity = "1.01 + tanh(x)"

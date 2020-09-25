@@ -252,7 +252,7 @@ intersphinx_mapping = {
     "https://docs.scipy.org/doc/scipy/reference": None,
     "https://docs.sympy.org/latest/": None,
     "https://matplotlib.org": None,
-    "http://docs.h5py.org/en/latest/": None,
+    "https://docs.h5py.org/en/latest/": None,
     "https://napari.org/docs": None,
 }
 

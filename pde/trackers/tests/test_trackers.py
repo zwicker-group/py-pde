@@ -58,9 +58,7 @@ def test_simple_progress():
     pbar = trackers.ProgressTracker(interval=1)
     field = ScalarField(UnitGrid([3]))
     pbar.initialize(field)
-    print(pbar.progress_bar.total)
     pbar.handle(field, 2)
-    print(pbar.progress_bar.total)
     pbar.finalize()
 
 

@@ -232,7 +232,10 @@ class ExpressionBase(metaclass=ABCMeta):
             )
 
     def _get_function(
-        self, single_arg: bool = False, user_funcs: Dict[str, Callable] = None
+        self,
+        single_arg: bool = False,
+        user_funcs: Dict[str, Callable] = None,
+        prepare_compilation: bool = False,
     ) -> Callable:
         """return function evaluating expression
 
@@ -243,6 +246,9 @@ class ExpressionBase(metaclass=ABCMeta):
                 to be supplied separately
             user_funcs (dict):
                 Additional functions that can be used in the expression
+            prepare_compilation (bool):
+                Determines whether all user functions are marked with
+                :func:`numba.extending.register_jitable` to prepare for compilation.
 
         Returns:
             function: the function
@@ -250,6 +256,8 @@ class ExpressionBase(metaclass=ABCMeta):
         user_functions = self.user_funcs.copy()
         if user_funcs is not None:
             user_functions.update(user_funcs)
+        if prepare_compilation:
+            user_functions = {k: jit(v) for k, v in user_functions.items()}
         user_dict = {k: k for k in user_functions}
 
         printer = NumpyArrayPrinter(
@@ -270,7 +278,9 @@ class ExpressionBase(metaclass=ABCMeta):
         )
 
     @cached_method()
-    def _get_function_cached(self, single_arg: bool = False) -> Callable:
+    def _get_function_cached(
+        self, single_arg: bool = False, prepare_compilation: bool = False
+    ) -> Callable:
         """return function evaluating expression
 
         Args:
@@ -278,11 +288,14 @@ class ExpressionBase(metaclass=ABCMeta):
                 Determines whether the returned function accepts all variables
                 in a single argument as an array or whether all variables need
                 to be supplied separately
+            prepare_compilation (bool):
+                Determines whether all user functions are marked with
+                :func:`numba.extending.register_jitable` to prepare for compilation.
 
         Returns:
             function: the function
         """
-        return self._get_function(single_arg)
+        return self._get_function(single_arg, prepare_compilation=prepare_compilation)
 
     def __call__(self, *args, **kwargs):
         """ return the value of the expression for the given values """
@@ -300,7 +313,10 @@ class ExpressionBase(metaclass=ABCMeta):
         Returns:
             function: the compiled function
         """
-        func = self._get_function_cached(single_arg=single_arg)
+        # compile the actual expression
+        func = self._get_function_cached(
+            single_arg=single_arg, prepare_compilation=True
+        )
         return jit(func)  # type: ignore
 
 

@@ -214,3 +214,10 @@ def test_expression_from_expression():
     assert expr != ScalarExpression(expr, "a")
     with pytest.raises(RuntimeError):
         ScalarExpression(expr, "b")
+
+
+def test_expression_user_funcs():
+    """ test the usage of user_funcs """
+    expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
+    assert expr() == 1
+    assert expr.get_compiled()() == 1
