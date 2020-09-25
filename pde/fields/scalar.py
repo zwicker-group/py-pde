@@ -4,6 +4,7 @@ Defines a scalar field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Optional, Sequence, Union
 
@@ -112,14 +113,18 @@ class ScalarField(DataFieldBase):
         self._data = value[0]
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        """ support unary numpy ufuncs, like np.sin """
+        """ support unary numpy ufuncs, like np.sin, but also np.multiply """
         if method == "__call__":
             # only support unary functions in simple calls
 
             # check the input
             arrs = []
             for arg in inputs:
-                if np.isscalar(arg):
+                if isinstance(arg, Number):
+                    arrs.append(arg)
+                elif isinstance(arg, np.ndarray):
+                    if arg.shape != self.data.shape:
+                        raise RuntimeError("Data shapes incompatible")
                     arrs.append(arg)
                 elif isinstance(arg, self.__class__):
                     self.assert_field_compatible(arg)
@@ -137,7 +142,7 @@ class ScalarField(DataFieldBase):
                 return out
             else:
                 # return new field
-                return self.copy(data=ufunc(*arrs, **kwargs))
+                return self.__class__(self.grid, data=ufunc(*arrs, **kwargs))
         else:
             return NotImplemented
 

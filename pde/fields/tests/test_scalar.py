@@ -87,6 +87,10 @@ def test_scalars():
     assert s1 == s3
     assert s1.grid is s3.grid
 
+    # multiplication with numpy arrays
+    arr = np.random.randn(*grid.shape)
+    np.testing.assert_allclose((arr * s1).data, (s1 * arr).data)
+
 
 def test_laplacian():
     """ test the gradient operator """
