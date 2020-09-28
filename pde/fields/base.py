@@ -21,6 +21,7 @@ from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
+from ..tools.misc import float_array
 from ..tools.numba import address_as_void_pointer, jit
 from ..tools.plotting import (
     PlotReference,
@@ -53,6 +54,7 @@ class FieldBase(metaclass=ABCMeta):
         self,
         grid: GridBase,
         data: OptionalArrayLike = None,
+        *,
         label: Optional[str] = None,
     ):
         """
@@ -194,7 +196,9 @@ class FieldBase(metaclass=ABCMeta):
         raise NotImplementedError(f"Cannot save {self.__class__.__name__} as an image")
 
     @abstractmethod
-    def copy(self: TField, data: OptionalArrayLike = None, label: str = None) -> TField:
+    def copy(
+        self: TField, data: OptionalArrayLike = None, *, label: str = None, dtype=None
+    ) -> TField:
         pass
 
     def assert_field_compatible(self, other: "FieldBase", accept_scalar: bool = False):
@@ -529,17 +533,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         self,
         grid: GridBase,
         data: OptionalArrayLike = None,
+        *,
         label: Optional[str] = None,
+        dtype=None,
     ):
         """
         Args:
             grid (:class:`~pde.grids.GridBase`):
-                Grid defining the space on which this field is defined
-            data (array, optional):
-                Field values at the support points of the grid. The data is
-                copied from the supplied array.
+                Grid defining the space on which this field is defined.
+            data (float or :class:`numpy.ndarray`, optional):
+                Field values at the support points of the grid. The data is copied from
+                the supplied array. The resulting field will contain real data unless
+                the `data` argument contains complex values.
             label (str, optional):
                 Name of the field
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically.
         """
         # determine data shape
         shape = (grid.dim,) * self.rank + grid.shape
@@ -547,15 +557,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if self._allocate_memory:
             # class manages its own data, which therefore needs to be allocated
             if data is None:
-                data = np.zeros(shape, dtype=np.double)
+                # allocate memory filled with real zeros by default
+                data = np.zeros(shape, dtype=dtype)
+
             elif isinstance(data, DataFieldBase):
-                # we need to make a copy to make sure the data is writeable
-                data_reshaped = np.broadcast_to(data.data, shape)
-                data = np.array(data_reshaped, dtype=np.double, copy=True)
+                # we need to make a copy to make sure the data is writeable.
+                grid.assert_grid_compatible(data.grid)
+                data = float_array(data.data, dtype=dtype, copy=True)
+
             else:
-                # we need to make a copy to make sure the data is writeable
+                # we need to first reshape the data and then make a copy to ensure the
+                # data array is writeable
                 data_reshaped = np.broadcast_to(data, shape)
-                data = np.array(data_reshaped, dtype=np.double, copy=True)
+                data = float_array(data_reshaped, dtype=dtype, copy=True)
 
         elif data is not None:
             # class does not manage its own data
@@ -809,7 +823,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(attributes.pop("grid"), data=data, **attributes)
 
     def copy(
-        self: TDataField, data: OptionalArrayLike = None, label: str = None
+        self: TDataField,
+        data: OptionalArrayLike = None,
+        *,
+        label: str = None,
+        dtype=None,
     ) -> TDataField:
         """return a copy of the data, but not of the grid
 
@@ -819,13 +837,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 field.
             label (str, optional):
                 Name of the copied field
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically.
         """
         if label is None:
             label = self.label
         if data is None:
             data = self.data
+        if dtype is None:
+            dtype = self.data.dtype
         # the actual data will be copied in our __init__ method
-        return self.__class__(self.grid, data=data, label=label)
+        return self.__class__(self.grid, data=data, label=label, dtype=dtype)
 
     @property
     def data_shape(self) -> Tuple[int, ...]:

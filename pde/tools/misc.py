@@ -125,7 +125,7 @@ def preserve_scalars(method: Callable) -> Callable:
 
     @functools.wraps(method)
     def wrapper(self, *args):
-        args = [np.asanyarray(arg, dtype=np.double) for arg in args]
+        args = [float_array(arg, copy=False) for arg in args]
         if args[0].ndim == 0:
             args = [arg[None] for arg in args]
             return method(self, *args)[0]
@@ -350,3 +350,27 @@ def hdf_write_attributes(
                 raise
         else:
             hdf_path.attrs[key] = value_serialized
+
+
+def float_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
+    """convert array dtype either to np.double or np.complex
+
+    Args:
+        data (:class:`numpy.ndarray`):
+            The data that needs to be converted to a float array. This can also be any
+            iterable of numbers.
+        dtype (numpy dtype):
+            The data type of the field. If omitted, it will be determined from `data`
+            automatically.
+        copy (bool):
+            Whether the data must be copied (in which case the original array is left
+            untouched). Note that data will always be copied when changing the dtype.
+
+    Returns:
+        :class:`numpy.ndarray`: An array with the correct dtype
+    """
+    if dtype is None:
+        dtype = np.complex if np.iscomplexobj(data) else np.double
+    else:
+        dtype = np.dtype(dtype)
+    return np.array(data, dtype=dtype, copy=copy)

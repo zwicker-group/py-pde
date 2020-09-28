@@ -112,7 +112,7 @@ def test_custom_operators():
     field = ScalarField.random_normal(grid)
     eq = PDE({"u": "undefined(u)"})
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NameError):
         eq.evolution_rate(field)
 
     def make_op(state):

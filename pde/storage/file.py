@@ -97,12 +97,15 @@ class FileStorage(StorageBase):
             self._file = None
             self._data_length = None  # type: ignore
 
-    def _create_hdf_dataset(self, name: str, shape: Tuple[int, ...] = tuple()):
+    def _create_hdf_dataset(
+        self, name: str, shape: Tuple[int, ...] = tuple(), dtype=np.double
+    ):
         """create a hdf5 dataset with the given name and data_shape
 
         Args:
             name (str): Identifier of the hdf5 dataset
             shape (tuple): Data shape of the dataset
+            dtype: The data type of the dataset
         """
         if self.compression:
             kwargs = {"chunks": (1,) + shape, "compression": "gzip"}
@@ -111,14 +114,12 @@ class FileStorage(StorageBase):
 
         if self._max_length:
             shape = (self._max_length,) + shape
-            return self._file.create_dataset(
-                name, shape=shape, dtype=np.double, **kwargs
-            )
+            return self._file.create_dataset(name, shape=shape, dtype=dtype, **kwargs)
         else:
             return self._file.create_dataset(
                 name,
                 shape=(0,) + shape,
-                dtype=np.double,
+                dtype=dtype,
                 maxshape=(None,) + shape,
                 **kwargs,
             )

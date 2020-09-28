@@ -110,7 +110,7 @@ class WavePDE(PDEBase):
             the evolution rate.
         """
         shape = state.grid.shape
-        arr_type = nb.typeof(np.empty((2,) + shape, dtype=np.double))
+        arr_type = nb.typeof(np.empty((2,) + shape, dtype=state.data.dtype))
         signature = arr_type(arr_type, nb.double)
 
         speed2 = self.speed ** 2

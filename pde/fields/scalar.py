@@ -458,7 +458,7 @@ class ScalarField(DataFieldBase):
 
         Args:
             scalar (str or int):
-                How to obtain the scalar. For ScalarField, the default `0`
+                How to obtain the scalar. For ScalarField, the default `auto`
                 simply returns the actual field. Setting this to 'norm' returns
                 the absolute value at each point.
             label (str, optional): Name of the returned field
@@ -468,14 +468,14 @@ class ScalarField(DataFieldBase):
             applying the operation
         """
         if scalar == "auto":
-            data = self.data
+            scalar = "norm" if np.iscomplexobj(self.data) else "self"
 
+        if scalar == "self":
+            data = self.data
         elif scalar == "abs" or scalar == "norm":
             data = np.abs(self.data)
-
         elif scalar == "squared_sum":
             data = self.data ** 2
-
         else:
             raise ValueError(f"Unknown method `{scalar}` for `to_scalar`")
 

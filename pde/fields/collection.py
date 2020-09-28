@@ -12,6 +12,7 @@ import numpy as np
 
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
+from ..tools.misc import float_array
 from ..tools.plotting import PlotReference, plot_on_figure
 from .base import DataFieldBase, FieldBase, OptionalArrayLike
 from .scalar import ScalarField
@@ -24,8 +25,10 @@ class FieldCollection(FieldBase):
         self,
         fields: Sequence[DataFieldBase],
         data: OptionalArrayLike = None,
+        *,
         copy_fields: bool = False,
         label: Optional[str] = None,
+        dtype=None,
     ):
         """
         Args:
@@ -39,6 +42,9 @@ class FieldCollection(FieldBase):
                 are copied.
             label (str):
                 Label of the field collection
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically.
 
         Warning:
             If `data` is given and :code:`copy_fields == False`, the data in the
@@ -64,7 +70,7 @@ class FieldCollection(FieldBase):
             self._fields = fields  # type: ignore
 
         # extract data from individual fields
-        new_data: List[np.ndarray] = []
+        fields_data: List[np.ndarray] = []
         self._slices: List[slice] = []
         dof = 0  # count local degrees of freedom
         for field in self.fields:
@@ -73,18 +79,21 @@ class FieldCollection(FieldBase):
                     "Individual fields must be of type DataFieldBase. Field "
                     "collections cannot be nested."
                 )
-            start = len(new_data)
+            start = len(fields_data)
             this_data = field._data_flat
-            new_data.extend(this_data)
-            self._slices.append(slice(start, len(new_data)))
+            fields_data.extend(this_data)
+            self._slices.append(slice(start, len(fields_data)))
             dof += len(this_data)
 
         # combine into one data field
         data_shape = (dof,) + grid.shape
         if data is None:
-            data_arr = np.array(new_data, dtype=np.double)
+            # the data is taken from the individual fields
+            data_arr = float_array(fields_data, dtype=dtype, copy=False)
+
         else:
-            data_arr = np.asarray(data, dtype=np.double)
+            # the data is taken from the supplied data argument
+            data_arr = float_array(data, dtype=dtype, copy=False)
             if data_arr.shape != data_shape:
                 data_arr = np.array(np.broadcast_to(data_arr, data_shape))
         assert data_arr.shape == data_shape
@@ -377,7 +386,7 @@ class FieldCollection(FieldBase):
         return results
 
     def copy(
-        self, data: OptionalArrayLike = None, label: str = None
+        self, data: OptionalArrayLike = None, *, label: str = None, dtype=None
     ) -> "FieldCollection":
         """return a copy of the data, but not of the grid
 
@@ -387,6 +396,9 @@ class FieldCollection(FieldBase):
                 field. Note that the data is not copied but used directly.
             label (str, optional):
                 Name of the copied field
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically.
         """
         if label is None:
             label = self.label
@@ -394,7 +406,9 @@ class FieldCollection(FieldBase):
         # if data is None, the data of the individual fields is copied in their
         # copy() method above. The underlying data is therefore independent from
         # the current field
-        return self.__class__(fields, data=data, label=label, copy_fields=False)
+        return self.__class__(
+            fields, data=data, copy_fields=False, label=label, dtype=dtype
+        )
 
     def interpolate_to_grid(
         self,

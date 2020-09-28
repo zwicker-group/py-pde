@@ -227,7 +227,13 @@ class PDE(PDEBase):
                         f"`{func}` applied in equation for `{var}`"
                     )
 
-                ops[func] = state.grid.get_operator(func, bc=bc)
+                try:
+                    ops[func] = state.grid.get_operator(func, bc=bc)
+                except ValueError:
+                    self._logger.info(
+                        "Operator %s was not defined, so we assume that sympy knows it",
+                        func,
+                    )
 
             # obtain the function to calculate the right hand side
             expr = self._rhs_expr[var]

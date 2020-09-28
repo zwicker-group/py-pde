@@ -64,7 +64,7 @@ class VectorField(DataFieldBase):
             assert field.grid.compatible_with(grid)
             data.append(field.data)
 
-        return cls(grid, data, label)
+        return cls(grid, data, label=label)
 
     @classmethod
     @fill_in_docstring

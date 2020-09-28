@@ -32,6 +32,7 @@ import sympy
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
+from ..tools.misc import float_array
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .numba import convert_scalar, jit
@@ -568,7 +569,7 @@ class TensorExpression(ExpressionBase):
     def value(self):
         """ the value for a constant expression """
         if self.constant:
-            return np.array(self._sympy_expr.tolist(), dtype=np.double)
+            return float_array(self._sympy_expr.tolist())
         else:
             raise TypeError("Only constant expressions have a defined value")
 

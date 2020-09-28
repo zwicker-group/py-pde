@@ -87,7 +87,7 @@ class DiffusionPDE(PDEBase):
             the evolution rate.
         """
         shape = state.grid.shape
-        arr_type = nb.typeof(np.empty(shape, dtype=np.double))
+        arr_type = nb.typeof(np.empty(shape, dtype=state.data.dtype))
         signature = arr_type(arr_type, nb.double)
 
         diffusivity_value = self.diffusivity

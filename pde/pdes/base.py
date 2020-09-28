@@ -38,6 +38,10 @@ class PDEBase(metaclass=ABCMeta):
     """ bool: Flag indicating whether the right hand side of the PDE has an
     explicit time dependence. """
 
+    enforce_complex: bool = False
+    """ bool: Flag indicating whether the right hand side is a complex-valued PDE, which
+    requires all involved variables to be of complex type """
+
     def __init__(self, noise: OptionalArrayLike = 0):
         """
         Args:
