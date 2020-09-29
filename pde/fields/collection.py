@@ -6,14 +6,13 @@ grid.
 """
 
 import json
-from numbers import Number
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Union
 
 import numpy as np
 
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import float_array
+from ..tools.misc import Number, number_array
 from ..tools.plotting import PlotReference, plot_on_figure
 from .base import DataFieldBase, FieldBase, OptionalArrayLike
 from .scalar import ScalarField
@@ -90,11 +89,11 @@ class FieldCollection(FieldBase):
         data_shape = (dof,) + grid.shape
         if data is None:
             # the data is taken from the individual fields
-            data_arr = float_array(fields_data, dtype=dtype, copy=False)
+            data_arr = number_array(fields_data, dtype=dtype, copy=False)
 
         else:
             # the data is taken from the supplied data argument
-            data_arr = float_array(data, dtype=dtype, copy=False)
+            data_arr = number_array(data, dtype=dtype, copy=False)
             if data_arr.shape != data_shape:
                 data_arr = np.array(np.broadcast_to(data_arr, data_shape))
         assert data_arr.shape == data_shape

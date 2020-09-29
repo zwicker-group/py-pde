@@ -35,6 +35,8 @@ import numpy as np
 # using this path for import is deprecated
 from .output import display_progress, get_progress_bar_class  # @UnusedImport
 
+Number = Union[float, complex]
+
 
 def module_available(module_name: str) -> bool:
     """check whether a python module is available
@@ -125,7 +127,7 @@ def preserve_scalars(method: Callable) -> Callable:
 
     @functools.wraps(method)
     def wrapper(self, *args):
-        args = [float_array(arg, copy=False) for arg in args]
+        args = [number_array(arg, copy=False) for arg in args]
         if args[0].ndim == 0:
             args = [arg[None] for arg in args]
             return method(self, *args)[0]
@@ -352,7 +354,21 @@ def hdf_write_attributes(
             hdf_path.attrs[key] = value_serialized
 
 
-def float_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
+def number(value: Union[Number, str]) -> Number:
+    """convert a value into a float or complex number
+
+    Args:
+        value (Number or str):
+            The value which needs to be converted
+
+    Result:
+        Number: A complex number or a float if the imaginary part vanishes
+    """
+    result = complex(value)
+    return result.real if result.imag == 0 else result
+
+
+def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
     """convert array dtype either to np.double or np.complex
 
     Args:
@@ -370,7 +386,19 @@ def float_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
         :class:`numpy.ndarray`: An array with the correct dtype
     """
     if dtype is None:
+        # dtype needs to be determined automatically
         dtype = np.complex if np.iscomplexobj(data) else np.double
+
+        try:
+            # convert the result to a numpy array with the given dtype
+            result = np.array(data, dtype=dtype, copy=copy)
+        except TypeError:
+            # Conversion can fail when `data` contains a complex sympy number, i.e., sympy.I
+            # In this case, we simply try to convert the expression using a complex dtype
+            result = np.array(data, dtype=np.complex, copy=copy)
+
     else:
-        dtype = np.dtype(dtype)
-    return np.array(data, dtype=dtype, copy=copy)
+        # a specific dtype is requested
+        result = np.array(data, dtype=np.dtype(dtype), copy=copy)
+
+    return result

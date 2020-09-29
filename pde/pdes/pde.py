@@ -100,12 +100,15 @@ class PDE(PDEBase):
         # turn the expression strings into sympy expressions
         self._rhs_expr, self._operators = {}, {}
         explicit_time_dependence = False
+        complex_valued = False
         for var, rhs_str in rhs.items():
             rhs_expr = ScalarExpression(rhs_str, user_funcs=user_funcs)
             self._rhs_expr[var] = rhs_expr
 
             if rhs_expr.depends_on("t"):
                 explicit_time_dependence = True
+            if rhs_expr.complex:
+                complex_valued = True
 
             # determine undefined functions in the expression
             self._operators[var] = {
@@ -118,6 +121,7 @@ class PDE(PDEBase):
         self.rhs = rhs
         self.variables = tuple(rhs.keys())
         self.explicit_time_dependence = explicit_time_dependence
+        self.complex_valued = complex_valued
         operators = frozenset().union(*self._operators.values())  # type: ignore
 
         # setup boundary conditions
@@ -153,6 +157,7 @@ class PDE(PDEBase):
         self.diagnostics = {
             "variables": self.variables,
             "explicit_time_dependence": explicit_time_dependence,
+            "complex_valued_rhs": complex_valued,
             "operators": operators,
         }
         self._cache: Dict[str, Dict[str, Any]] = {}

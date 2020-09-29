@@ -11,7 +11,6 @@ import itertools
 import json
 import logging
 from abc import ABCMeta, abstractmethod, abstractproperty
-from numbers import Number
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -33,7 +32,7 @@ import numpy as np
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import classproperty
+from ..tools.misc import Number, classproperty
 from ..tools.numba import jit
 
 if TYPE_CHECKING:

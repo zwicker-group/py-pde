@@ -4,7 +4,7 @@ Defines a scalar field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from numbers import Number
+import numbers
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Optional, Sequence, Union
 
@@ -13,6 +13,7 @@ import numpy as np
 from ..grids import CartesianGrid, UnitGrid
 from ..grids.base import DomainError, GridBase
 from ..tools.docstrings import fill_in_docstring
+from ..tools.misc import Number
 from .base import DataFieldBase
 
 if TYPE_CHECKING:
@@ -120,7 +121,7 @@ class ScalarField(DataFieldBase):
             # check the input
             arrs = []
             for arg in inputs:
-                if isinstance(arg, Number):
+                if isinstance(arg, numbers.Number):
                     arrs.append(arg)
                 elif isinstance(arg, np.ndarray):
                     if arg.shape != self.data.shape:

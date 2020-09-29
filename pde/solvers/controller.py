@@ -100,7 +100,7 @@ class Controller:
             The state at the final time point.
         """
         # copy the initial state to not modify the supplied one
-        if self.solver.pde.enforce_complex:
+        if self.solver.pde.complex_valued:
             state = state.copy(dtype="complex")
         else:
             state = state.copy()

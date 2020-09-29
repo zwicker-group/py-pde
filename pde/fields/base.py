@@ -9,7 +9,6 @@ import json
 import logging
 import operator
 from abc import ABCMeta, abstractmethod, abstractproperty
-from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
@@ -29,7 +28,7 @@ from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import float_array
+from ..tools.misc import Number, number_array
 from ..tools.numba import address_as_void_pointer, jit
 from ..tools.plotting import (
     PlotReference,
@@ -574,13 +573,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             elif isinstance(data, DataFieldBase):
                 # we need to make a copy to make sure the data is writeable.
                 grid.assert_grid_compatible(data.grid)
-                data = float_array(data.data, dtype=dtype, copy=True)
+                data = number_array(data.data, dtype=dtype, copy=True)
 
             else:
                 # we need to first reshape the data and then make a copy to ensure the
                 # data array is writeable
                 data_reshaped = np.broadcast_to(data, shape)
-                data = float_array(data_reshaped, dtype=dtype, copy=True)
+                data = number_array(data_reshaped, dtype=dtype, copy=True)
 
         elif data is not None:
             # class does not manage its own data
@@ -1333,7 +1332,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         This is calculated by integrating each component of the field over space
         and dividing by the grid volume
         """
-        return self.integral / self.grid.volume  # type: ignore
+        return self.integral / self.grid.volume
 
     @property
     def fluctuations(self):
