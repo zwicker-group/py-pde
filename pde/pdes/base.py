@@ -230,7 +230,7 @@ class PDEBase(metaclass=ABCMeta):
 
             if np.isscalar(self.noise):
                 # a single noise value is given for all fields
-                noise_strength = float(self.noise)
+                noise_strength = float(self.noise)  # type: ignore
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float):

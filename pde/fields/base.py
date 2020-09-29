@@ -9,6 +9,7 @@ import json
 import logging
 import operator
 from abc import ABCMeta, abstractmethod, abstractproperty
+from numbers import Number
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
@@ -16,7 +17,14 @@ import numba as nb
 import numpy as np
 from scipy import interpolate, ndimage
 
-from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
+from ..grids.base import (
+    ArrayLike,
+    DimensionError,
+    DomainError,
+    GridBase,
+    OptionalArrayLike,
+    discretize_interval,
+)
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
@@ -34,8 +42,6 @@ if TYPE_CHECKING:
     from .scalar import ScalarField  # @UnusedImport
 
 
-ArrayLike = Union[np.ndarray, float]
-OptionalArrayLike = Optional[ArrayLike]
 TField = TypeVar("TField", bound="FieldBase")
 
 
@@ -237,6 +243,11 @@ class FieldBase(metaclass=ABCMeta):
             self._data[:] = value.data
         else:
             self._data[:] = value
+
+    @property
+    def is_complex(self) -> bool:
+        """ bool: whether the field contains real or complex data """
+        return np.iscomplexobj(self.data)  # type: ignore
 
     @property
     def attributes(self) -> Dict[str, Any]:
@@ -541,7 +552,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined.
-            data (float or :class:`numpy.ndarray`, optional):
+            data (Number or :class:`numpy.ndarray`, optional):
                 Field values at the support points of the grid. The data is copied from
                 the supplied array. The resulting field will contain real data unless
                 the `data` argument contains complex values.
@@ -845,8 +856,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             label = self.label
         if data is None:
             data = self.data
-        if dtype is None:
-            dtype = self.data.dtype
         # the actual data will be copied in our __init__ method
         return self.__class__(self.grid, data=data, label=label, dtype=dtype)
 
@@ -902,7 +911,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         plt.imsave(filename, img["data"], origin="lower", **kwargs)
 
     def _make_interpolator_scipy(
-        self, method: str = "linear", fill: float = None, **kwargs
+        self, method: str = "linear", fill: Number = None, **kwargs
     ) -> Callable:
         r"""returns a function that can be used to interpolate values.
 
@@ -920,7 +929,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 :class:`scipy.interpolate.RegularGridInterpolator` is used with
                 the specified method. If 'rbf', :class:`scipy.interpolate.Rbf`
                 is used for radial basis function interpolation.
-            fill (float, optional):
+            fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
@@ -984,7 +993,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @fill_in_docstring
     def _make_interpolator_compiled(
-        self, bc: BoundariesData = "natural", fill: float = None
+        self, bc: BoundariesData = "natural", fill: Number = None
     ) -> Callable:
         """return a compiled interpolator
 
@@ -995,7 +1004,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Args:
             bc:
                 The boundary conditions applied to the field. {ARG_BOUNDARIES}
-            fill (float, optional):
+            fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
@@ -1013,12 +1022,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             f"grid dimension {grid_dim}"
         )
 
-        # create an interpolator for a single point
+        # convert `fill` to dtype of data
         if fill is not None:
             if self.rank == 0:
-                fill = float(fill)
+                fill = self.data.dtype.type(fill)
             else:
-                fill = np.broadcast_to(fill, self.data_shape).astype(float)
+                fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
+
+        # create an interpolator for a single point
         interpolate_single = grid.make_interpolator_compiled(
             bc=bc, rank=self.rank, fill=fill
         )
@@ -1055,7 +1066,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 data = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
 
             # interpolate at every point
-            out = np.empty(data_shape + point_shape)
+            out = np.empty(data_shape + point_shape, dtype=data.dtype)
             for idx in np.ndindex(point_shape):
                 out[(...,) + idx] = interpolate_single(data, point[idx])
 
@@ -1065,7 +1076,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @cached_method()
     def make_interpolator(
-        self, method: str = "numba", fill: float = None, **kwargs
+        self, method: str = "numba", fill: Number = None, **kwargs
     ) -> Callable:
         r"""returns a function that can be used to interpolate values.
 
@@ -1078,7 +1089,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 * `scipy_linear`: Linear interpolation using scipy
                 * `numba`: Linear interpolation using numba (default)
 
-            fill (float, optional):
+            fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
@@ -1109,7 +1120,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             raise ValueError(f"Unknown interpolation method `{method}`")
 
-    def interpolate(self, point, method: str = "numba", fill: float = None, **kwargs):
+    def interpolate(self, point, method: str = "numba", fill: Number = None, **kwargs):
         r"""interpolate the field to points between support points
 
         Args:
@@ -1118,7 +1129,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 in grid coordinates.
             method (str):
                 Determines the method being used for interpolation.
-            fill (float, optional):
+            fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
@@ -1136,7 +1147,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         self: TDataField,
         grid: GridBase,
         method: str = "numba",
-        fill: float = None,
+        fill: Number = None,
         label: Optional[str] = None,
     ) -> TDataField:
         """interpolate the data of this field to another grid.
@@ -1148,7 +1159,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             method (str):
                 Specifies interpolation method, e.g., 'numba', 'scipy_linear',
                 'scipy_nearest' .
-            fill (float, optional):
+            fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
@@ -1183,14 +1194,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         data = self.interpolate(points, method, fill)
         return self.__class__(grid, data, label=label)
 
-    def add_interpolated(self, point, amount):
+    def add_interpolated(self, point: np.ndarray, amount: ArrayLike):
         """adds an (integrated) value to the field at an interpolated position
 
         Args:
             point (:class:`numpy.ndarray`):
                 The point inside the grid where the value is added. This is
                 given in grid coordinates.
-            amount (float or :class:`numpy.ndarray`):
+            amount (Number or :class:`numpy.ndarray`):
                 The amount that will be added to the field. The value describes
                 an integrated quantity (given by the field value times the
                 discretization volume). This is important for consistency with
@@ -1306,7 +1317,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return get_boundary_values
 
     @abstractproperty
-    def integral(self) -> Union[np.ndarray, float]:
+    def integral(self) -> Union[np.ndarray, Number]:
         pass
 
     @abstractmethod
@@ -1316,13 +1327,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         pass
 
     @property
-    def average(self) -> Union[np.ndarray, float]:
+    def average(self) -> Union[np.ndarray, Number]:
         """determine the average of data
 
         This is calculated by integrating each component of the field over space
         and dividing by the grid volume
         """
-        return self.integral / self.grid.volume
+        return self.integral / self.grid.volume  # type: ignore
 
     @property
     def fluctuations(self):
@@ -1347,14 +1358,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def magnitude(self) -> float:
         """float: determine the magnitude of the field.
 
-        This is calculated by getting a scalar field using the default arguments
-        of the :func:`to_scalar` method and averaging the result over the whole
-        grid.
+        This is calculated by getting a scalar field using the default arguments of the
+        :func:`to_scalar` method, averaging the result over the whole grid, and taking
+        the absolute value.
         """
         if self.rank == 0:
-            return float(self.average)
+            return abs(self.average)  # type: ignore
         elif self.rank > 0:
-            return self.to_scalar().average
+            return abs(self.to_scalar().average)  # type: ignore
         else:
             raise NotImplementedError(
                 "Magnitude cannot be determined for field " + self.__class__.__name__
@@ -1362,7 +1373,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def smooth(
         self: TDataField,
-        sigma: Optional[float] = 1,
+        sigma: float = 1,
         out: Optional[TDataField] = None,
         label: str = None,
     ) -> TDataField:
@@ -1371,7 +1382,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         This function respects periodic boundary conditions of the underlying
         grid, using reflection when no periodicity is specified.
 
-        sigma (float, optional):
+        sigma (float):
             Gives the standard deviation of the smoothing in real length units
             (default: 1)
         out (FieldBase, optional):
@@ -1424,6 +1435,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 
+        # remove imaginary parts
+        if self.is_complex:
+            self._logger.warning("Only the absolute value of complex data is shown")
+            scalar_data = abs(scalar_data)
+
         # extract the line data
         data = self.grid.get_line_data(scalar_data, extract=extract)
         if "label_y" in data and data["label_y"]:
@@ -1452,6 +1468,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
+
+        # remove imaginary parts
+        if self.is_complex:
+            self._logger.warning("Only the absolute value of complex data is shown")
+            scalar_data = abs(scalar_data)
 
         # extract the image data
         data = self.grid.get_image_data(scalar_data, **kwargs)  # type: ignore

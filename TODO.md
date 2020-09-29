@@ -1,11 +1,9 @@
 TODO
 ====
 * Support complex variables
-    - Add tests for complex numbers (algebra, plotting, basically all methods)
     - Add example for schrödinger equation
-    - Add dtype argument to FieldBase
-        - this should also be supported when coping
     - detect complex rhs in PDE
+    - also check whether this works to use np.single and the like
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
     - Improve this display by adding a progress bar and support displaying extra text
@@ -63,7 +61,6 @@ TODO
 LOW-PRIORITY (Future ideas)
 ===========================
 * Add adaptive Euler stepping
-* Add a flag to switch floating precisions to np.single or np.longdouble
 * Think about 2nd order BCs for spherical coordinates
 * Think about hyperbolic equations:
     - Introducing "advection" operator that could either implement really simple

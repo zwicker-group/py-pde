@@ -295,12 +295,12 @@ class ScalarField(DataFieldBase):
         try:
             result = solve_poisson(self.data)
         except RuntimeError:
-            average = self.average
-            if abs(average) > 1e-10:
+            magnitude = self.magnitude
+            if magnitude > 1e-10:
                 raise RuntimeError(
                     "Could not solve the Poisson problem. One possible reason for this "
                     "is that only periodic or Neumann conditions are applied although "
-                    f"the average of the field is {average} and thus non-zero."
+                    f"the average of the field is {magnitude} and thus non-zero."
                 )
             else:
                 raise  # another error occured
@@ -314,9 +314,9 @@ class ScalarField(DataFieldBase):
             return out
 
     @property
-    def integral(self) -> float:
-        """ float: integral of the scalar field over space """
-        return float(self.grid.integrate(self.data))
+    def integral(self) -> Number:
+        """ Number: integral of the scalar field over space """
+        return self.grid.integrate(self.data)  # type: ignore
 
     def project(
         self,
@@ -468,9 +468,6 @@ class ScalarField(DataFieldBase):
             applying the operation
         """
         if scalar == "auto":
-            scalar = "norm" if np.iscomplexobj(self.data) else "self"
-
-        if scalar == "self":
             data = self.data
         elif scalar == "abs" or scalar == "norm":
             data = np.abs(self.data)

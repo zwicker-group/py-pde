@@ -397,7 +397,7 @@ class VectorField(DataFieldBase):
                 Determines whether the transpose of the data should be plotted.
             max_points (int):
                 The maximal number of points that is used along each axis. This
-                option can be used to subsample the data.
+                option can be used to sub-sample the data.
             \**kwargs: Additional parameters are forwarded to
                 `grid.get_image_data`
 

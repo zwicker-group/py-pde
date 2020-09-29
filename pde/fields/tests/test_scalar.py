@@ -436,3 +436,50 @@ def test_interactive_plotting():
     grid = UnitGrid([3, 3, 3])
     field = ScalarField.random_uniform(grid, 0.1, 0.9)
     field.plot_interactive(viewer_args={"show": False, "close": True})
+
+
+def test_complex_dtype():
+    """ test the support of a complex data type """
+    grid = UnitGrid([2])
+    f = ScalarField(grid, 1j)
+    assert f.is_complex
+    np.testing.assert_allclose(f.data, np.array([1j, 1j]))
+
+    f = ScalarField(grid, 1)
+    assert not f.is_complex
+    with pytest.raises(np.core._exceptions.UFuncTypeError):
+        f += 1j
+
+    f = f + 1j
+    assert f.is_complex
+    np.testing.assert_allclose(f.data, np.full((2,), 1 + 1j))
+    assert f.integral == pytest.approx(2 + 2j)
+    assert f.average == pytest.approx(1 + 1j)
+    np.testing.assert_allclose(f.to_scalar("abs").data, np.full((2,), np.sqrt(2)))
+    assert f.magnitude == pytest.approx(np.sqrt(2))
+
+
+def test_complex_plotting():
+    """ test plotting of complex fields """
+    for dim in (1, 2):
+        f = ScalarField(UnitGrid([3] * dim), 1j)
+        f.plot()
+
+
+def test_complex_methods():
+    """ test special methods for complex data type """
+    grid = UnitGrid([2, 2])
+    f = ScalarField(grid, 1j)
+    for method in ["scipy", "numba"]:
+        val = f.interpolate([1, 1], method=method)
+        np.testing.assert_allclose(val, np.array([1j, 1j]))
+
+    f = ScalarField(grid, 1 + 2j)
+    np.testing.assert_allclose(f.project("x").data, np.full((2,), 2 + 4j))
+    np.testing.assert_allclose(f.slice({"x": 1}).data, np.full((2,), 1 + 2j))
+
+
+def test_complex_operators():
+    """ test differential operators for complex data type """
+    f = ScalarField(UnitGrid([2, 2]), 1j)
+    assert f.laplace("natural").magnitude == pytest.approx(0)

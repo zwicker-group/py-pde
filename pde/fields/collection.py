@@ -6,6 +6,7 @@ grid.
 """
 
 import json
+from numbers import Number
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Union
 
 import numpy as np
@@ -414,7 +415,7 @@ class FieldCollection(FieldBase):
         self,
         grid: GridBase,
         method: str = "numba",
-        fill: float = None,
+        fill: Number = None,
         label: Optional[str] = None,
     ) -> "FieldCollection":
         """interpolate the data of this field collection to another grid.
@@ -426,7 +427,7 @@ class FieldCollection(FieldBase):
             method (str):
                 Specifies interpolation method, e.g., 'numba', 'scipy_linear',
                 'scipy_nearest' .
-            fill (float, optional):
+            fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
@@ -445,7 +446,7 @@ class FieldCollection(FieldBase):
 
     def smooth(
         self,
-        sigma: Optional[float] = 1,
+        sigma: float = 1,
         out: Optional["FieldCollection"] = None,
         label: str = None,
     ) -> "FieldCollection":
@@ -454,7 +455,7 @@ class FieldCollection(FieldBase):
         This function respects periodic boundary conditions of the underlying
         grid, using reflection when no periodicity is specified.
 
-        sigma (float, optional):
+        sigma (float):
             Gives the standard deviation of the smoothing in real length units
             (default: 1)
         out (FieldCollection, optional):
