@@ -376,8 +376,8 @@ def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
             The data that needs to be converted to a float array. This can also be any
             iterable of numbers.
         dtype (numpy dtype):
-            The data type of the field. If omitted, it will be determined from `data`
-            automatically.
+            The data type of the field. All the numpy dtypes are supported. If omitted,
+            it will be determined from `data` automatically.
         copy (bool):
             Whether the data must be copied (in which case the original array is left
             untouched). Note that data will always be copied when changing the dtype.
@@ -393,8 +393,9 @@ def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
             # convert the result to a numpy array with the given dtype
             result = np.array(data, dtype=dtype, copy=copy)
         except TypeError:
-            # Conversion can fail when `data` contains a complex sympy number, i.e., sympy.I
-            # In this case, we simply try to convert the expression using a complex dtype
+            # Conversion can fail when `data` contains a complex sympy number, i.e.,
+            # sympy.I. In this case, we simply try to convert the expression using a
+            # complex dtype
             result = np.array(data, dtype=np.complex, copy=copy)
 
     else:

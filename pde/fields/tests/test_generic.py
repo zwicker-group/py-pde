@@ -320,6 +320,9 @@ def test_random_uniform():
         f = field_cls.random_uniform(grid, a, b)
         assert np.mean(f.average) == pytest.approx((a + b) / 2, rel=0.02)
         assert np.std(f.data) == pytest.approx(0.288675 * (b - a), rel=0.1)
+        
+        np.testing.assert_allclose(f.real.data, f.data)
+        np.testing.assert_allclose(f.imag.data, 0)
 
 
 def test_random_normal():

@@ -101,6 +101,7 @@ class Controller:
         """
         # copy the initial state to not modify the supplied one
         if self.solver.pde.complex_valued:
+            self._logger.info("Convert state to complex numbers")
             state = state.copy(dtype="complex")
         else:
             state = state.copy()

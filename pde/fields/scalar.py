@@ -38,7 +38,7 @@ class ScalarField(DataFieldBase):
     @classmethod
     @fill_in_docstring
     def from_expression(
-        cls, grid: GridBase, expression: str, label: str = None
+        cls, grid: GridBase, expression: str, *, label: str = None, dtype=None
     ) -> "ScalarField":
         """create a scalar field on a grid from a given expression
 
@@ -55,20 +55,21 @@ class ScalarField(DataFieldBase):
                 the grid.
             label (str, optional):
                 Name of the field
+            dtype (numpy dtype):
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
         """
         from ..tools.expressions import ScalarExpression
 
         expr = ScalarExpression(expression=expression, signature=grid.axes)
         points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
         return cls(  # lgtm [py/call-to-non-callable]
-            grid=grid,
-            data=expr(**points),
-            label=label,
+            grid=grid, data=expr(**points), label=label, dtype=dtype
         )
 
     @classmethod
     def from_image(
-        cls, path: Union[Path, str], bounds=None, periodic=False, label: str = None
+        cls, path: Union[Path, str], bounds=None, periodic=False, *, label: str = None
     ) -> "ScalarField":
         """create a scalar field from an image
 

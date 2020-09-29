@@ -43,8 +43,8 @@ class FieldCollection(FieldBase):
             label (str):
                 Label of the field collection
             dtype (numpy dtype):
-                The data type of the field. If omitted, it will be determined from
-                `data` automatically.
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
 
         Warning:
             If `data` is given and :code:`copy_fields == False`, the data in the
@@ -276,8 +276,10 @@ class FieldCollection(FieldBase):
         cls,
         grid: GridBase,
         expressions: Sequence[str],
+        *,
         label: str = None,
         labels: Optional[Sequence[str]] = None,
+        dtype=None,
     ) -> "FieldCollection":
         """create a field collection on a grid from given expressions
 
@@ -294,9 +296,12 @@ class FieldCollection(FieldBase):
                 standard mathematical functions and they may depend on the axes
                 labels of the grid.
             label (str, optional):
-                Name of the field
+                Name of the whole collection
             labels (list of str, optional):
                 Names of the individual fields
+            dtype (numpy dtype):
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
         """
         if isinstance(expressions, str):
             expressions = [expressions]
@@ -305,7 +310,7 @@ class FieldCollection(FieldBase):
 
         # evaluate all expressions at all points
         fields = [
-            ScalarField.from_expression(grid, expression, labels[i])
+            ScalarField.from_expression(grid, expression, label=labels[i], dtype=dtype)
             for i, expression in enumerate(expressions)
         ]
 

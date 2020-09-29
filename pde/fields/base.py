@@ -302,6 +302,16 @@ class FieldBase(metaclass=ABCMeta):
         # simply set the data -> this might need to be overwritten
         self._data = value
 
+    @property
+    def real(self: TField) -> TField:
+        """:class:`FieldBase`: Real part of the field """
+        return self.copy(data=self.data.real)
+
+    @property
+    def imag(self: TField) -> TField:
+        """:class:`FieldBase`: Imaginary part of the field """
+        return self.copy(data=self.data.imag)
+
     def __eq__(self, other):
         """ test fields for equality, ignoring the label """
         if not isinstance(other, self.__class__):
@@ -356,8 +366,8 @@ class FieldBase(metaclass=ABCMeta):
         return result
 
     def _binary_operation_inplace(
-        self, other, op_inplace: Callable, scalar_second: bool = True
-    ) -> "FieldBase":
+        self: TField, other, op_inplace: Callable, scalar_second: bool = True
+    ) -> TField:
         """perform an in-place binary operation between this field and `other`
 
         Args:
@@ -401,7 +411,7 @@ class FieldBase(metaclass=ABCMeta):
 
     __radd__ = __add__
 
-    def __iadd__(self, other) -> "FieldBase":
+    def __iadd__(self: TField, other) -> TField:
         """ add `other` to the current field """
         return self._binary_operation_inplace(other, operator.iadd, scalar_second=False)
 
@@ -413,7 +423,7 @@ class FieldBase(metaclass=ABCMeta):
         """ subtract two fields """
         return self._binary_operation(other, lambda x, y: y - x, scalar_second=False)
 
-    def __isub__(self, other) -> "FieldBase":
+    def __isub__(self: TField, other) -> TField:
         """ add `other` to the current field """
         return self._binary_operation_inplace(other, operator.isub, scalar_second=False)
 
@@ -423,7 +433,7 @@ class FieldBase(metaclass=ABCMeta):
 
     __rmul__ = __mul__
 
-    def __imul__(self, other) -> "FieldBase":
+    def __imul__(self: TField, other) -> TField:
         """ multiply field by value """
         return self._binary_operation_inplace(other, operator.imul, scalar_second=False)
 
@@ -431,7 +441,7 @@ class FieldBase(metaclass=ABCMeta):
         """ divide field by value """
         return self._binary_operation(other, operator.truediv, scalar_second=True)
 
-    def __itruediv__(self, other) -> "FieldBase":
+    def __itruediv__(self: TField, other) -> TField:
         """ divide field by value """
         return self._binary_operation_inplace(
             other, operator.itruediv, scalar_second=True
@@ -443,7 +453,7 @@ class FieldBase(metaclass=ABCMeta):
             raise NotImplementedError("Only scalar exponents are supported")
         return self.copy(data=self.data ** exponent)
 
-    def __ipow__(self, exponent: float) -> "FieldBase":
+    def __ipow__(self: TField, exponent: float) -> TField:
         """ raise data of the field to a certain power in-place """
         if self.readonly:
             raise RuntimeError(f"Cannot write to {self.__class__.__name__}")
@@ -558,8 +568,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
-                The data type of the field. If omitted, it will be determined from
-                `data` automatically.
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
         """
         # determine data shape
         shape = (grid.dim,) * self.rank + grid.shape

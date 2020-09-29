@@ -219,8 +219,8 @@ class Tensor2Field(DataFieldBase):
         else:
             out = self.copy()
 
-        out += self.transpose()  # type: ignore
-        out *= 0.5  # type: ignore
+        out += self.transpose()
+        out *= 0.5
 
         if make_traceless:
             dim = self.grid.dim

@@ -36,7 +36,7 @@ class VectorField(DataFieldBase):
 
     @classmethod
     def from_scalars(
-        cls, fields: List[ScalarField], label: str = None
+        cls, fields: List[ScalarField], *, label: str = None, dtype=None
     ) -> "VectorField":
         """create a vector field from a list of ScalarFields
 
@@ -47,6 +47,9 @@ class VectorField(DataFieldBase):
                 The list of (compatible) scalar fields
             label (str, optional):
                 Name of the returned field
+            dtype (numpy dtype):
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
 
         Returns:
             :class:`VectorField`: the resulting vector field
@@ -64,12 +67,17 @@ class VectorField(DataFieldBase):
             assert field.grid.compatible_with(grid)
             data.append(field.data)
 
-        return cls(grid, data, label=label)
+        return cls(grid, data, label=label, dtype=dtype)
 
     @classmethod
     @fill_in_docstring
     def from_expression(
-        cls, grid: GridBase, expressions: Sequence[str], label: str = None
+        cls,
+        grid: GridBase,
+        expressions: Sequence[str],
+        *,
+        label: str = None,
+        dtype=None,
     ) -> "VectorField":
         """create a vector field on a grid from given expressions
 
@@ -87,6 +95,9 @@ class VectorField(DataFieldBase):
                 labels of the grid.
             label (str, optional):
                 Name of the field
+            dtype (numpy dtype):
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
         """
         from ..tools.expressions import ScalarExpression
 
@@ -107,7 +118,9 @@ class VectorField(DataFieldBase):
             data.append(values)
 
         # create vector field from the data
-        return cls(grid=grid, data=data, label=label)  # lgtm [py/call-to-non-callable]
+        return cls(  # lgtm [py/call-to-non-callable]
+            grid=grid, data=data, label=label, dtype=dtype
+        )
 
     def __getitem__(self, key: int) -> ScalarField:
         """ extract a component of the VectorField """
