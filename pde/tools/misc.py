@@ -368,6 +368,20 @@ def number(value: Union[Number, str]) -> Number:
     return result.real if result.imag == 0 else result
 
 
+def get_common_dtype(*args):
+    r"""returns a dtype in which all arguments can be represented
+
+    Args:
+        *args: All items (arrays, scalars, etc) to be checked
+
+    Returns: np.complex if any entry is complex, otherwise np.double
+    """
+    for arg in args:
+        if np.iscomplexobj(arg):
+            return np.complex
+    return np.double
+
+
 def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
     """convert array dtype either to np.double or np.complex
 
@@ -387,11 +401,9 @@ def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
     """
     if dtype is None:
         # dtype needs to be determined automatically
-        dtype = np.complex if np.iscomplexobj(data) else np.double
-
         try:
             # convert the result to a numpy array with the given dtype
-            result = np.array(data, dtype=dtype, copy=copy)
+            result = np.array(data, dtype=get_common_dtype(data), copy=copy)
         except TypeError:
             # Conversion can fail when `data` contains a complex sympy number, i.e.,
             # sympy.I. In this case, we simply try to convert the expression using a

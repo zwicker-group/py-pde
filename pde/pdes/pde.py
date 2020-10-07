@@ -208,7 +208,7 @@ class PDE(PDEBase):
         if "dot" in self.diagnostics["operators"]:  # type: ignore
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
-            ops_general["dot"] = VectorField(state.grid).get_dot_operator()
+            ops_general["dot"] = VectorField(state.grid).make_dot_operator()
 
         # obtain the python functions for the rhs
         rhs_funcs = []

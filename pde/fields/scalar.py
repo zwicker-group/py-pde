@@ -153,6 +153,7 @@ class ScalarField(DataFieldBase):
         self,
         bc: "BoundariesData",
         out: Optional["ScalarField"] = None,
+        *,
         label: str = "laplace",
     ) -> "ScalarField":
         """apply Laplace operator and return result as a field
@@ -178,8 +179,9 @@ class ScalarField(DataFieldBase):
     def gradient_squared(
         self,
         bc: "BoundariesData",
-        central: bool = True,
         out: Optional["ScalarField"] = None,
+        *,
+        central: bool = True,
         label: str = "squared gradient",
     ) -> "ScalarField":
         r"""apply squared gradient operator and return result as a field
@@ -216,6 +218,7 @@ class ScalarField(DataFieldBase):
         self,
         bc: "BoundariesData",
         out: Optional["VectorField"] = None,
+        *,
         label: str = "gradient",
     ) -> "VectorField":
         """apply gradient operator and return result as a field
@@ -247,6 +250,7 @@ class ScalarField(DataFieldBase):
         self,
         bc: "BoundariesData",
         out: Optional["ScalarField"] = None,
+        *,
         label: str = "Solution to Poisson's equation",
     ):
         r"""solve Poisson's equation with the current field as inhomogeneity.
@@ -374,7 +378,7 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=subgrid, data=subdata, label=label)
 
     def slice(
-        self, position: Dict[str, float], method: str = "nearest", label: str = None
+        self, position: Dict[str, float], *, method: str = "nearest", label: str = None
     ) -> "ScalarField":
         """slice data at a given position
 
@@ -454,7 +458,7 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=subgrid, data=subdata, label=label)
 
     def to_scalar(
-        self, scalar: str = "auto", label: Optional[str] = None
+        self, scalar: str = "auto", *, label: Optional[str] = None
     ) -> "ScalarField":
         """return a modified scalar field by applying `method`
 
@@ -474,7 +478,7 @@ class ScalarField(DataFieldBase):
         elif scalar == "abs" or scalar == "norm":
             data = np.abs(self.data)
         elif scalar == "squared_sum":
-            data = self.data ** 2
+            data = self.data * self.data.conjugate()
         else:
             raise ValueError(f"Unknown method `{scalar}` for `to_scalar`")
 

@@ -81,7 +81,7 @@ class ImplicitSolver(SolverBase):
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror ** 2
 
-        # handle deterministic  version of the pde
+        # handle deterministic version of the pde
         def inner_stepper(
             state_data: np.ndarray, t_start: float, steps: int
         ) -> Tuple[float, int]:
@@ -102,11 +102,12 @@ class ImplicitSolver(SolverBase):
                     # calculate mean squared error
                     err = 0
                     for j in range(state_data.size):
-                        err += (
+                        diff = (
                             state_guess.flat[j]
                             - state_data.flat[j]
                             - evolution_this.flat[j]
-                        ) ** 2
+                        )
+                        err += (diff.conjugate() * diff).real
                     err /= state_data.size
 
                     if err < maxerror2:

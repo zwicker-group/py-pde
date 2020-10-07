@@ -320,7 +320,7 @@ def test_random_uniform():
         f = field_cls.random_uniform(grid, a, b)
         assert np.mean(f.average) == pytest.approx((a + b) / 2, rel=0.02)
         assert np.std(f.data) == pytest.approx(0.288675 * (b - a), rel=0.1)
-        
+
         np.testing.assert_allclose(f.real.data, f.data)
         np.testing.assert_allclose(f.imag.data, 0)
 
@@ -416,8 +416,8 @@ def test_dot_product():
     g = UnitGrid([3, 2])
     vf = VectorField.random_normal(g)
     tf = Tensor2Field.random_normal(g)
-    v_dot = vf.get_dot_operator()
-    t_dot = tf.get_dot_operator()
+    v_dot = vf.make_dot_operator()
+    t_dot = tf.make_dot_operator()
 
     expected = np.einsum("i...,i...->...", vf.data, vf.data)
     np.testing.assert_allclose((vf @ vf).data, expected)
@@ -434,3 +434,17 @@ def test_dot_product():
     expected = np.einsum("ij...,jk...->ik...", tf.data, tf.data)
     np.testing.assert_allclose((tf @ tf).data, expected)
     np.testing.assert_allclose(t_dot(tf.data, tf.data), expected)
+
+
+@pytest.mark.parametrize("grid", iter_grids())
+def test_complex_operator(grid):
+    """ test using a complex operator on grid """
+    r = ScalarField.random_normal(grid)
+    i = ScalarField.random_normal(grid)
+    c = r + 1j * i
+    assert c.is_complex
+    assert np.iscomplexobj(c)
+
+    c_lap = c.laplace("natural").data
+    np.testing.assert_allclose(c_lap.real, r.laplace("natural").data)
+    np.testing.assert_allclose(c_lap.imag, i.laplace("natural").data)

@@ -244,6 +244,12 @@ class FieldBase(metaclass=ABCMeta):
             self._data[:] = value
 
     @property
+    def dtype(self):
+        """ returns the numpy dtype of the underlying data """
+        # this property is necessary to support np.iscomplexobj for DataFieldBases
+        return self.data.dtype
+
+    @property
     def is_complex(self) -> bool:
         """ bool: whether the field contains real or complex data """
         return np.iscomplexobj(self.data)  # type: ignore
@@ -311,6 +317,10 @@ class FieldBase(metaclass=ABCMeta):
     def imag(self: TField) -> TField:
         """:class:`FieldBase`: Imaginary part of the field """
         return self.copy(data=self.data.imag)
+
+    def conjugate(self: TField) -> TField:
+        """ returns complex conjugate of the field """
+        return self.copy(data=self.data.conj())
 
     def __eq__(self, other):
         """ test fields for equality, ignoring the label """
@@ -1331,7 +1341,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @abstractmethod
     def to_scalar(
-        self, scalar: str = "auto", label: Optional[str] = None
+        self, scalar: str = "auto", *, label: Optional[str] = None
     ) -> "ScalarField":
         pass
 

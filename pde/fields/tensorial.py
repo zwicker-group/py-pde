@@ -10,7 +10,8 @@ import numba as nb
 import numpy as np
 
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
+from ..tools.misc import get_common_dtype
+from ..tools.numba import get_common_numba_dtype, jit
 from .base import DataFieldBase
 from .scalar import ScalarField
 from .vectorial import VectorField
@@ -56,6 +57,8 @@ class Tensor2Field(DataFieldBase):
         self,
         other: Union[VectorField, "Tensor2Field"],
         out: Optional[Union[VectorField, "Tensor2Field"]] = None,
+        *,
+        conjugate: bool = True,
         label: str = "dot product",
     ) -> Union[VectorField, "Tensor2Field"]:
         """calculate the dot product involving a tensor field
@@ -69,6 +72,8 @@ class Tensor2Field(DataFieldBase):
                 the second field
             out (VectorField or Tensor2Field, optional):
                 Optional field to which the  result is written.
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
             label (str, optional):
                 Name of the returned field
 
@@ -82,13 +87,14 @@ class Tensor2Field(DataFieldBase):
 
         # create and check the output instance
         if out is None:
-            out = other.__class__(self.grid)
+            out = other.__class__(self.grid, dtype=get_common_dtype(self, other))
         else:
             assert isinstance(out, other.__class__)
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result
-        np.einsum("ij...,j...->i...", self.data, other.data, out=out.data)
+        other_data = other.data.conjugate() if conjugate else other.data
+        np.einsum("ij...,j...->i...", self.data, other_data, out=out.data)
         if label is not None:
             out.label = label
 
@@ -96,7 +102,7 @@ class Tensor2Field(DataFieldBase):
 
     __matmul__ = dot  # support python @-syntax for matrix multiplication
 
-    def get_dot_operator(self) -> Callable:
+    def make_dot_operator(self) -> Callable:
         """return operator calculating the dot product involving vector fields
 
         This supports both products between two vectors as well as products
@@ -129,7 +135,7 @@ class Tensor2Field(DataFieldBase):
                 """wrapper deciding whether the underlying function is called
                 with or without `out`."""
                 if out is None:
-                    out = np.empty_like(b)
+                    out = np.empty(b.shape, dtype=get_common_dtype(a, b))
                 return inner(a, b, out)
 
         else:
@@ -144,9 +150,12 @@ class Tensor2Field(DataFieldBase):
 
                 elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # function is called without `out`
+                    dtype = get_common_numba_dtype(a, b)
+
                     def f_with_allocated_out(a, b, out):
                         """ helper function allocating output array """
-                        return inner(a, b, out=np.empty_like(b))
+                        out = np.empty(b.shape, dtype=dtype)
+                        return inner(a, b, out=out)
 
                     return f_with_allocated_out
 
@@ -156,11 +165,38 @@ class Tensor2Field(DataFieldBase):
 
         return dot
 
+    def get_dot_operator(self) -> Callable:
+        """return operator calculating the dot product involving vector fields
+
+        This supports both products between two vectors as well as products
+        between a vector and a tensor.
+
+        Warning:
+            This function does not check types or dimensions.
+
+        Returns:
+            function that takes two instance of :class:`numpy.ndarray`, which
+            contain the discretized data of the two operands. An optional third
+            argument can specify the output array to which the result is
+            written. Note that the returned function is jitted with numba for
+            speed.
+        """
+        # Deprecated this method on 2020-10-07
+        import warnings
+
+        warnings.warn(
+            "get_dot_operator() method is deprecated. Use the `make_dot_operator()` "
+            "method instead",
+            DeprecationWarning,
+        )
+        return self.make_dot_operator()
+
     @fill_in_docstring
     def divergence(
         self,
         bc: "BoundariesData",
         out: Optional[VectorField] = None,
+        *,
         label: str = "divergence",
     ) -> VectorField:
         """apply (tensor) divergence and return result as a field
@@ -230,7 +266,7 @@ class Tensor2Field(DataFieldBase):
         return out
 
     def to_scalar(
-        self, scalar: str = "auto", label: Optional[str] = "scalar `{scalar}`"
+        self, scalar: str = "auto", *, label: Optional[str] = "scalar `{scalar}`"
     ) -> ScalarField:
         r""" return a scalar field by applying `method`
         
@@ -245,16 +281,16 @@ class Tensor2Field(DataFieldBase):
             I_3 &= \det(A)
             
         where `tr` denotes the trace and `det` denotes the determinant.
-        Note that the three invariants can only be distinct and non-zero in 
-        three dimensions. In two dimensional spaces, we have the identity
-        :math:`2 I_2 = I_3` and in one-dimensional spaces, we have
-        :math:`I_1 = I_3` as well as :math:`I_2 = 0`.
+        Note that the three invariants can only be distinct and non-zero in three
+        dimensions. In two dimensional spaces, we have the identity :math:`2 I_2 = I_3`
+        and in one-dimensional spaces, we have :math:`I_1 = I_3` as well as
+        :math:`I_2 = 0`.
             
         Args:
             scalar (str):
-                Choose the method to use. Possible choices include `norm` (the 
-                default), `min`, `max`, `squared_sum`, `trace` (or
-                `invariant1`), `invariant2`, and `determinant` (or `invariant3`)
+                Choose the method to use. Possible choices include `norm` (the default),
+                `min`, `max`, `squared_sum`, `norm_squared`, `trace` (or `invariant1`),
+                `invariant2`, and `determinant` (or `invariant3`)
             label (str, optional):
                 Name of the returned field
             
@@ -276,6 +312,9 @@ class Tensor2Field(DataFieldBase):
 
         elif scalar == "squared_sum":
             data = np.sum(self.data ** 2, axis=(0, 1))
+
+        elif scalar == "norm_squared":
+            data = np.sum(self.data * self.data.conjugate(), axis=(0, 1))
 
         elif scalar == "trace" or scalar == "invariant1":
             data = self.data.trace(axis1=0, axis2=1)
@@ -305,8 +344,8 @@ class Tensor2Field(DataFieldBase):
         else:
             raise ValueError(
                 f"Unknown method `{scalar}` for `to_scalar`. Valid methods are `norm`, "
-                "`min`, `max`, squared_sum`, `trace`, `determinant`, and `invariant#`, "
-                "where # is 1, 2, or 3"
+                "`min`, `max`, squared_sum`, `norm_squared`, `trace`, `determinant`, "
+                "and `invariant#`, where # is 1, 2, or 3"
             )
 
         # determine label of the result

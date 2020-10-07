@@ -43,6 +43,7 @@ def test_tensors():
         ("max", 4),
         ("norm", np.linalg.norm([[1, 2], [3, 4]])),
         ("squared_sum", 30),
+        ("norm_squared", 30),
         ("trace", 5),
         ("invariant1", 5),
         ("invariant2", -1),

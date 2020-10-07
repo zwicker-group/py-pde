@@ -201,7 +201,7 @@ def jit_allocate_out(
                     if out_shape is None:
                         out = np.empty_like(arr)
                     else:
-                        out = np.empty(out_shape)
+                        out = np.empty(out_shape, dtype=arr.dtype)
                 return func(arr, out)
 
             return f_arg1_with_allocated_out
@@ -215,7 +215,7 @@ def jit_allocate_out(
                     if out_shape is None:
                         out = np.empty_like(a)
                     else:
-                        out = np.empty(out_shape)
+                        out = np.empty(out_shape, dtype=a.dtype)
                 return func(a, b, out)
 
             return f_arg2_with_allocated_out
@@ -267,7 +267,7 @@ def jit_allocate_out(
                         # the shape of `out` is given by `out_shape`
                         def f_with_allocated_out(arr, out):
                             """ helper function allocating output array """
-                            return f_jit(arr, out=np.empty(out_shape))
+                            return f_jit(arr, out=np.empty(out_shape, dtype=arr.dtype))
 
                     return f_with_allocated_out
 
@@ -304,7 +304,7 @@ def jit_allocate_out(
                         # the shape of `out` is given by `out_shape`
                         def f_with_allocated_out(a, b, out):
                             """ helper function allocating output array """
-                            return f_jit(a, b, out=np.empty(out_shape))
+                            return f_jit(a, b, out=np.empty(out_shape, dtype=a.dtype))
 
                     return f_with_allocated_out
 
@@ -379,6 +379,27 @@ def convert_scalar(arr):
         return lambda arr: arr[()]
     else:
         return lambda arr: arr
+
+
+def get_common_numba_dtype(*args):
+    r"""returns a numba numerical type in which all arrays can be represented
+
+    Args:
+        *args: All items to be tested
+
+    Returns: numba.complex128 if any entry is complex, otherwise numba.double
+    """
+    from numba.core.types import npytypes, scalars
+
+    for arg in args:
+        if isinstance(arg, scalars.Complex):
+            return nb.complex128
+        elif isinstance(arg, npytypes.Array):
+            if isinstance(arg.dtype, scalars.Complex):
+                return nb.complex128
+        else:
+            raise NotImplementedError(f"Cannot handle type {arg.__class__}")
+    return nb.double
 
 
 if NUMBA_VERSION < [0, 45]:
