@@ -1,8 +1,5 @@
 TODO
 ====
-* Support complex variables
-    - Add SchroedingerPDE as standard PDE to show support for complex variables
-    - Add example for schrödinger equation
 * Add support for dtype=np.single
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
