@@ -20,8 +20,7 @@ from pde import PDE, CartesianGrid, MemoryStorage, ScalarField, plot_kymograph
 grid = CartesianGrid([[0, 20]], 128, periodic=False)  # generate grid
 
 # create a (normalized) wave packet with a certain form as an initial condition
-wave_packet = "exp(I * 5 * x) * exp(-(x - 10)**2)"
-initial_state = ScalarField.from_expression(grid, wave_packet, dtype="complex")
+initial_state = ScalarField.from_expression(grid, "exp(I * 5 * x) * exp(-(x - 10)**2)")
 initial_state /= sqrt(initial_state.to_scalar("squared_sum").integral.real)
 
 eq = PDE({"ψ": f"I * laplace(ψ)"})  # define the pde
