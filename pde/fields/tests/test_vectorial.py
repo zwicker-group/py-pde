@@ -212,7 +212,7 @@ def test_interactive_vector_plotting():
 
 
 def test_complex_vectors():
-    """ test some vector fields """
+    """ test some complex vector fields """
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     shape = (2, 2) + grid.shape
     numbers = np.random.random(shape) + np.random.random(shape) * 1j
@@ -232,3 +232,8 @@ def test_complex_vectors():
         assert isinstance(s, ScalarField)
         assert s.grid is grid
         np.testing.assert_allclose(s.data, res)
+
+    # test without conjugate
+    dot_op = v1.make_dot_operator(conjugate=False)
+    res = v1.dot(v2, conjugate=False)
+    np.testing.assert_allclose(dot_op(v1.data, v2.data), res.data)

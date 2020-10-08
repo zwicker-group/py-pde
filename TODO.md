@@ -3,9 +3,7 @@ TODO
 * Support complex variables
     - Add SchroedingerPDE as standard PDE to show support for complex variables
     - Add example for schrödinger equation
-    - also check whether this works to use np.single and the like
-    - check whether dot products use complex conjugate
-    - add test for implicit complex solver
+* Add support for dtype=np.single
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
     - Improve this display by adding a progress bar and support displaying extra text

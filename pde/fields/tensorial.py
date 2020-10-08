@@ -102,7 +102,7 @@ class Tensor2Field(DataFieldBase):
 
     __matmul__ = dot  # support python @-syntax for matrix multiplication
 
-    def make_dot_operator(self) -> Callable:
+    def make_dot_operator(self, conjugate: bool = True) -> Callable:
         """return operator calculating the dot product involving vector fields
 
         This supports both products between two vectors as well as products
@@ -110,6 +110,10 @@ class Tensor2Field(DataFieldBase):
 
         Warning:
             This function does not check types or dimensions.
+
+        Args:
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
 
         Returns:
             function that takes two instance of :class:`numpy.ndarray`, which
@@ -120,15 +124,30 @@ class Tensor2Field(DataFieldBase):
         """
         dim = self.grid.dim
 
-        @jit
-        def inner(a, b, out):
-            """ calculate dot product between fields `a` and `b` """
-            for i in range(dim):
-                out[i] = a[i, 0] * b[0]  # overwrite potential data in out
-                for j in range(1, dim):
-                    out[i] += a[i, j] * b[j]
-            return out
+        # create the inner function calculating the dot product
+        if conjugate:
 
+            @jit
+            def inner(a, b, out):
+                """ calculate dot product between fields `a` and `b` """
+                for i in range(dim):
+                    out[i] = a[i, 0] * b[0].conjugate()  # overwrite data in out
+                    for j in range(1, dim):
+                        out[i] += a[i, j] * b[j].conjugate()
+                return out
+
+        else:
+
+            @jit
+            def inner(a, b, out):
+                """ calculate dot product between fields `a` and `b` """
+                for i in range(dim):
+                    out[i] = a[i, 0] * b[0]  # overwrite potential data in out
+                    for j in range(1, dim):
+                        out[i] += a[i, j] * b[j]
+                return out
+
+        # build the outer function with the correct signature
         if nb.config.DISABLE_JIT:
 
             def dot(a, b, out=None):
@@ -288,9 +307,9 @@ class Tensor2Field(DataFieldBase):
             
         Args:
             scalar (str):
-                Choose the method to use. Possible choices include `norm` (the default),
-                `min`, `max`, `squared_sum`, `norm_squared`, `trace` (or `invariant1`),
-                `invariant2`, and `determinant` (or `invariant3`)
+                The method to calculate the scalar. Possible choices include `norm` (the
+                default), `min`, `max`, `squared_sum`, `norm_squared`, `trace` (or
+                `invariant1`), `invariant2`, and `determinant` (or `invariant3`)
             label (str, optional):
                 Name of the returned field
             
