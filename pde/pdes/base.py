@@ -38,6 +38,10 @@ class PDEBase(metaclass=ABCMeta):
     """ bool: Flag indicating whether the right hand side of the PDE has an
     explicit time dependence. """
 
+    complex_valued: bool = False
+    """ bool: Flag indicating whether the right hand side is a complex-valued PDE, which
+    requires all involved variables to be of complex type """
+
     def __init__(self, noise: OptionalArrayLike = 0):
         """
         Args:
@@ -226,7 +230,7 @@ class PDEBase(metaclass=ABCMeta):
 
             if np.isscalar(self.noise):
                 # a single noise value is given for all fields
-                noise_strength = float(self.noise)
+                noise_strength = float(self.noise)  # type: ignore
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float):

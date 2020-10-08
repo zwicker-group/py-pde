@@ -4,7 +4,7 @@ Defines a scalar field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from numbers import Number
+import numbers
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, Optional, Sequence, Union
 
@@ -13,6 +13,7 @@ import numpy as np
 from ..grids import CartesianGrid, UnitGrid
 from ..grids.base import DomainError, GridBase
 from ..tools.docstrings import fill_in_docstring
+from ..tools.misc import Number
 from .base import DataFieldBase
 
 if TYPE_CHECKING:
@@ -37,7 +38,7 @@ class ScalarField(DataFieldBase):
     @classmethod
     @fill_in_docstring
     def from_expression(
-        cls, grid: GridBase, expression: str, label: str = None
+        cls, grid: GridBase, expression: str, *, label: str = None, dtype=None
     ) -> "ScalarField":
         """create a scalar field on a grid from a given expression
 
@@ -54,20 +55,21 @@ class ScalarField(DataFieldBase):
                 the grid.
             label (str, optional):
                 Name of the field
+            dtype (numpy dtype):
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
         """
         from ..tools.expressions import ScalarExpression
 
         expr = ScalarExpression(expression=expression, signature=grid.axes)
         points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
         return cls(  # lgtm [py/call-to-non-callable]
-            grid=grid,
-            data=expr(**points),
-            label=label,
+            grid=grid, data=expr(**points), label=label, dtype=dtype
         )
 
     @classmethod
     def from_image(
-        cls, path: Union[Path, str], bounds=None, periodic=False, label: str = None
+        cls, path: Union[Path, str], bounds=None, periodic=False, *, label: str = None
     ) -> "ScalarField":
         """create a scalar field from an image
 
@@ -120,7 +122,7 @@ class ScalarField(DataFieldBase):
             # check the input
             arrs = []
             for arg in inputs:
-                if isinstance(arg, Number):
+                if isinstance(arg, numbers.Number):
                     arrs.append(arg)
                 elif isinstance(arg, np.ndarray):
                     if arg.shape != self.data.shape:
@@ -151,6 +153,7 @@ class ScalarField(DataFieldBase):
         self,
         bc: "BoundariesData",
         out: Optional["ScalarField"] = None,
+        *,
         label: str = "laplace",
     ) -> "ScalarField":
         """apply Laplace operator and return result as a field
@@ -176,8 +179,9 @@ class ScalarField(DataFieldBase):
     def gradient_squared(
         self,
         bc: "BoundariesData",
-        central: bool = True,
         out: Optional["ScalarField"] = None,
+        *,
+        central: bool = True,
         label: str = "squared gradient",
     ) -> "ScalarField":
         r"""apply squared gradient operator and return result as a field
@@ -214,6 +218,7 @@ class ScalarField(DataFieldBase):
         self,
         bc: "BoundariesData",
         out: Optional["VectorField"] = None,
+        *,
         label: str = "gradient",
     ) -> "VectorField":
         """apply gradient operator and return result as a field
@@ -245,6 +250,7 @@ class ScalarField(DataFieldBase):
         self,
         bc: "BoundariesData",
         out: Optional["ScalarField"] = None,
+        *,
         label: str = "Solution to Poisson's equation",
     ):
         r"""solve Poisson's equation with the current field as inhomogeneity.
@@ -295,12 +301,12 @@ class ScalarField(DataFieldBase):
         try:
             result = solve_poisson(self.data)
         except RuntimeError:
-            average = self.average
-            if abs(average) > 1e-10:
+            magnitude = self.magnitude
+            if magnitude > 1e-10:
                 raise RuntimeError(
                     "Could not solve the Poisson problem. One possible reason for this "
                     "is that only periodic or Neumann conditions are applied although "
-                    f"the average of the field is {average} and thus non-zero."
+                    f"the average of the field is {magnitude} and thus non-zero."
                 )
             else:
                 raise  # another error occured
@@ -314,9 +320,9 @@ class ScalarField(DataFieldBase):
             return out
 
     @property
-    def integral(self) -> float:
-        """ float: integral of the scalar field over space """
-        return float(self.grid.integrate(self.data))
+    def integral(self) -> Number:
+        """ Number: integral of the scalar field over space """
+        return self.grid.integrate(self.data)  # type: ignore
 
     def project(
         self,
@@ -372,7 +378,7 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=subgrid, data=subdata, label=label)
 
     def slice(
-        self, position: Dict[str, float], method: str = "nearest", label: str = None
+        self, position: Dict[str, float], *, method: str = "nearest", label: str = None
     ) -> "ScalarField":
         """slice data at a given position
 
@@ -452,13 +458,13 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=subgrid, data=subdata, label=label)
 
     def to_scalar(
-        self, scalar: str = "auto", label: Optional[str] = None
+        self, scalar: str = "auto", *, label: Optional[str] = None
     ) -> "ScalarField":
         """return a modified scalar field by applying `method`
 
         Args:
             scalar (str or int):
-                How to obtain the scalar. For ScalarField, the default `0`
+                How to obtain the scalar. For ScalarField, the default `auto`
                 simply returns the actual field. Setting this to 'norm' returns
                 the absolute value at each point.
             label (str, optional): Name of the returned field
@@ -469,13 +475,10 @@ class ScalarField(DataFieldBase):
         """
         if scalar == "auto":
             data = self.data
-
         elif scalar == "abs" or scalar == "norm":
             data = np.abs(self.data)
-
         elif scalar == "squared_sum":
-            data = self.data ** 2
-
+            data = self.data * self.data.conjugate()
         else:
             raise ValueError(f"Unknown method `{scalar}` for `to_scalar`")
 

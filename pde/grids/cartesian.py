@@ -237,8 +237,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             "x": self.axes_coords[-2],
             "y": self.axes_coords[-1],
             "extent": extent,
-            "label_x": "x",
-            "label_y": "y",
+            "label_x": self.axes[0],
+            "label_y": self.axes[1],
         }
 
     def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:

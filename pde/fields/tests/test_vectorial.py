@@ -7,9 +7,8 @@ import pytest
 
 from ...grids import CartesianGrid, UnitGrid
 from ...tools.misc import module_available, skipUnlessModule
+from .. import ScalarField, Tensor2Field, VectorField
 from ..base import FieldBase
-from ..tensorial import Tensor2Field
-from ..vectorial import VectorField
 
 
 def test_vectors():
@@ -35,6 +34,7 @@ def test_vectors():
         ("max", 4),
         ("norm", 5),
         ("squared_sum", 25),
+        ("norm_squared", 25),
         ("auto", 5),
     ]:
         p1 = v1.to_scalar(method)
@@ -54,9 +54,9 @@ def test_vectors():
     v2._grid = v1.grid  # make sure grids are identical
     v1.data = 1
     v2.data = 2
-    for s in (v1 @ v2, v2 @ v1, v1.dot(v2)):
-        from ..scalar import ScalarField
-
+    dot_op = v1.make_dot_operator()
+    res = ScalarField(grid, dot_op(v1.data, v2.data))
+    for s in (v1 @ v2, v2 @ v1, v1.dot(v2), res):
         assert isinstance(s, ScalarField)
         assert s.grid is grid
         np.testing.assert_allclose(s.data, np.full(grid.shape, 4))
@@ -209,3 +209,31 @@ def test_interactive_vector_plotting():
     grid = UnitGrid([3, 3])
     field = VectorField.random_uniform(grid, 0.1, 0.9)
     field.plot_interactive(viewer_args={"show": False, "close": True})
+
+
+def test_complex_vectors():
+    """ test some complex vector fields """
+    grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
+    shape = (2, 2) + grid.shape
+    numbers = np.random.random(shape) + np.random.random(shape) * 1j
+    v1 = VectorField(grid, numbers[0])
+    v2 = VectorField(grid, numbers[1])
+    assert v1.is_complex and v2.is_complex
+    dot_op = v1.make_dot_operator()
+
+    # test complex conjugate
+    expected = v1.to_scalar("norm_squared").data
+    np.testing.assert_allclose((v1 @ v1).data, expected)
+    np.testing.assert_allclose(dot_op(v1.data, v1.data), expected)
+
+    # test dot product
+    res = dot_op(v1.data, v2.data)
+    for s in (v1 @ v2, (v2 @ v1).conjugate(), v1.dot(v2)):
+        assert isinstance(s, ScalarField)
+        assert s.grid is grid
+        np.testing.assert_allclose(s.data, res)
+
+    # test without conjugate
+    dot_op = v1.make_dot_operator(conjugate=False)
+    res = v1.dot(v2, conjugate=False)
+    np.testing.assert_allclose(dot_op(v1.data, v2.data), res.data)

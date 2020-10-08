@@ -100,12 +100,15 @@ class PDE(PDEBase):
         # turn the expression strings into sympy expressions
         self._rhs_expr, self._operators = {}, {}
         explicit_time_dependence = False
+        complex_valued = False
         for var, rhs_str in rhs.items():
             rhs_expr = ScalarExpression(rhs_str, user_funcs=user_funcs)
             self._rhs_expr[var] = rhs_expr
 
             if rhs_expr.depends_on("t"):
                 explicit_time_dependence = True
+            if rhs_expr.complex:
+                complex_valued = True
 
             # determine undefined functions in the expression
             self._operators[var] = {
@@ -118,6 +121,7 @@ class PDE(PDEBase):
         self.rhs = rhs
         self.variables = tuple(rhs.keys())
         self.explicit_time_dependence = explicit_time_dependence
+        self.complex_valued = complex_valued
         operators = frozenset().union(*self._operators.values())  # type: ignore
 
         # setup boundary conditions
@@ -153,6 +157,7 @@ class PDE(PDEBase):
         self.diagnostics = {
             "variables": self.variables,
             "explicit_time_dependence": explicit_time_dependence,
+            "complex_valued_rhs": complex_valued,
             "operators": operators,
         }
         self._cache: Dict[str, Dict[str, Any]] = {}
@@ -203,7 +208,7 @@ class PDE(PDEBase):
         if "dot" in self.diagnostics["operators"]:  # type: ignore
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
-            ops_general["dot"] = VectorField(state.grid).get_dot_operator()
+            ops_general["dot"] = VectorField(state.grid).make_dot_operator()
 
         # obtain the python functions for the rhs
         rhs_funcs = []
@@ -227,7 +232,13 @@ class PDE(PDEBase):
                         f"`{func}` applied in equation for `{var}`"
                     )
 
-                ops[func] = state.grid.get_operator(func, bc=bc)
+                try:
+                    ops[func] = state.grid.get_operator(func, bc=bc)
+                except ValueError:
+                    self._logger.info(
+                        "Operator %s was not defined, so we assume that sympy knows it",
+                        func,
+                    )
 
             # obtain the function to calculate the right hand side
             expr = self._rhs_expr[var]

@@ -35,6 +35,8 @@ def test_pde_wrong_input():
 def test_pde_scalar():
     """ test PDE with a single scalar field """
     eq = PDE({"u": "laplace(u) + exp(-t) + sin(t)"})
+    assert eq.explicit_time_dependence
+    assert not eq.complex_valued
     grid = UnitGrid([8])
     field = ScalarField.random_normal(grid)
 
@@ -48,6 +50,8 @@ def test_pde_scalar():
 def test_pde_vector():
     """ test PDE with a single vector field """
     eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
+    assert eq.explicit_time_dependence
+    assert not eq.complex_valued
     grid = UnitGrid([8, 8])
     field = VectorField.random_normal(grid)
 
@@ -61,6 +65,8 @@ def test_pde_vector():
 def test_pde_2scalar():
     """ test PDE with two scalar fields """
     eq = PDE({"u": "laplace(u) - u", "v": "- u * v"})
+    assert not eq.explicit_time_dependence
+    assert not eq.complex_valued
     grid = UnitGrid([8])
     field = FieldCollection.scalar_random_uniform(2, grid)
 
@@ -74,6 +80,8 @@ def test_pde_2scalar():
 def test_pde_vector_scalar():
     """ test PDE with a vector and a scalar field """
     eq = PDE({"u": "vector_laplace(u) - u + gradient(v)", "v": "- divergence(u)"})
+    assert not eq.explicit_time_dependence
+    assert not eq.complex_valued
     grid = UnitGrid([8, 8])
     field = FieldCollection(
         [VectorField.random_uniform(grid), ScalarField.random_uniform(grid)]
@@ -97,6 +105,8 @@ def test_compare_swift_hohenberg(grid):
             f"- laplace(laplace(u)) + {delta} * u**2 - u**3"
         }
     )
+    assert eq1.explicit_time_dependence == eq2.explicit_time_dependence
+    assert eq1.complex_valued == eq2.complex_valued
 
     field = ScalarField.random_uniform(grid)
     res1 = eq1.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
@@ -112,7 +122,7 @@ def test_custom_operators():
     field = ScalarField.random_normal(grid)
     eq = PDE({"u": "undefined(u)"})
 
-    with pytest.raises(ValueError):
+    with pytest.raises(NameError):
         eq.evolution_rate(field)
 
     def make_op(state):
@@ -172,3 +182,19 @@ def test_pde_user_funcs():
     np.testing.assert_allclose(rhs.data, field.gradient("natural").data[0])
     f = eq._make_pde_rhs_numba(field)
     np.testing.assert_allclose(f(field.data, 0), field.gradient("natural").data[0])
+
+
+def test_pde_complex():
+    """ test complex valued PDE """
+    eq = PDE({"p": "I * laplace(p)"})
+    assert not eq.explicit_time_dependence
+    assert eq.complex_valued
+
+    field = ScalarField.random_uniform(UnitGrid([4]))
+    assert not field.is_complex
+    res1 = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
+    assert res1.is_complex
+    res2 = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
+    assert res2.is_complex
+
+    np.testing.assert_allclose(res1.data, res2.data)

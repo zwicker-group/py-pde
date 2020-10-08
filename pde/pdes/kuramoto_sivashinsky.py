@@ -107,7 +107,7 @@ class KuramotoSivashinskyPDE(PDEBase):
             the evolution rate.
         """
         shape = state.grid.shape
-        arr_type = nb.typeof(np.empty(shape, dtype=np.double))
+        arr_type = nb.typeof(np.empty(shape, dtype=state.data.dtype))
         signature = arr_type(arr_type, nb.double)
 
         nu_value = self.nu

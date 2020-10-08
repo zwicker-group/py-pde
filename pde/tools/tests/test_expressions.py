@@ -18,6 +18,8 @@ def test_parse_number():
     assert parse_number("sin(3.4)") == pytest.approx(np.sin(3.4))
     assert parse_number("sin(a)", {"a": 3}) == pytest.approx(np.sin(3))
     assert parse_number("a**b", {"a": 3.2, "b": 4.5}) == pytest.approx(3.2 ** 4.5)
+    assert parse_number("1 + 2 * I") == pytest.approx(1 + 2j)
+    assert parse_number("a", {"a": 1 + 2j}) == pytest.approx(1 + 2j)
     with pytest.raises(TypeError):
         parse_number("foo")
 
@@ -37,6 +39,7 @@ def test_const():
         assert e.rank == 0
         assert bool(e) == (val != 0)
         assert e.is_zero == (val == 0)
+        assert not e.complex
 
         g = e.derivatives
         assert g.constant
@@ -221,3 +224,17 @@ def test_expression_user_funcs():
     expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
     assert expr() == 1
     assert expr.get_compiled()() == 1
+
+
+def test_complex_expression():
+    """ test expressions with complex numbers """
+    for s in ["sqrt(-1)", "I"]:
+        expr = ScalarExpression(s)
+        assert expr.complex
+        assert expr.constant
+        assert expr.value == pytest.approx(1j)
+
+    expr = TensorExpression("[1, I]")
+    assert expr.complex
+    assert expr.constant
+    np.testing.assert_allclose(expr.value, np.array([1, 1j]))

@@ -19,9 +19,9 @@ representations using :mod:`sympy`.
 import builtins
 import copy
 import logging
+import numbers
 import re
 from abc import ABCMeta, abstractproperty
-from numbers import Number
 from typing import Optional  # @UnusedImport
 from typing import Set  # @UnusedImport
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Sequence, Tuple, Union
@@ -32,6 +32,7 @@ import sympy
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
+from ..tools.misc import Number, number, number_array
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .numba import convert_scalar, jit
@@ -42,21 +43,21 @@ if TYPE_CHECKING:
 
 @fill_in_docstring
 def parse_number(
-    expression: Union[str, float], variables: Dict[str, float] = None
-) -> float:
+    expression: Union[str, Number], variables: Dict[str, Number] = None
+) -> Number:
     r"""return a number compiled from an expression
 
     Warning:
         {WARNING_EXEC}
 
     Args:
-        expression (str or float):
+        expression (str or Number):
             An expression that can be interpreted as a number
         variables (dict):
             A dictionary of values that replace variables in the expression
 
     Returns:
-        float: the calculated value
+        Number: the calculated value
     """
     from sympy.parsing import sympy_parser
 
@@ -65,12 +66,13 @@ def parse_number(
 
     expr = sympy_parser.parse_expr(str(expression))
     try:
-        value = float(expr.subs(variables))
+        value = number(expr.subs(variables))
     except TypeError as err:
         if not err.args:
             err.args = ("",)
         err.args = err.args + (f"Expression: `{expr}`",)
         raise
+
     return value
 
 
@@ -149,6 +151,11 @@ class ExpressionBase(metaclass=ABCMeta):
     def constant(self) -> bool:
         """ bool: whether the expression is a constant """
         return len(self._sympy_expr.free_symbols) == 0
+
+    @property
+    def complex(self) -> bool:
+        """ bool: whether the expression contains the imaginary unit I """
+        return sympy.I in self._sympy_expr.atoms()
 
     @abstractproperty
     def shape(self) -> Tuple[int, ...]:
@@ -378,7 +385,7 @@ class ScalarExpression(ExpressionBase):
                 "Expression must be provided as string and not as a callable function"
             )
 
-        elif isinstance(expression, Number):
+        elif isinstance(expression, numbers.Number):
             # expression is a simple number
             sympy_expr = sympy.Float(expression)
 
@@ -400,10 +407,10 @@ class ScalarExpression(ExpressionBase):
         )
 
     @property
-    def value(self) -> float:
+    def value(self) -> Number:
         """ float: the value for a constant expression """
         if self.constant:
-            return float(self._sympy_expr)
+            return number(self._sympy_expr)
         else:
             raise TypeError("Only constant expressions have a defined value")
 
@@ -568,7 +575,7 @@ class TensorExpression(ExpressionBase):
     def value(self):
         """ the value for a constant expression """
         if self.constant:
-            return np.array(self._sympy_expr.tolist(), dtype=np.double)
+            return number_array(self._sympy_expr.tolist())
         else:
             raise TypeError("Only constant expressions have a defined value")
 

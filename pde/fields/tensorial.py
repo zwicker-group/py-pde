@@ -10,7 +10,8 @@ import numba as nb
 import numpy as np
 
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit
+from ..tools.misc import get_common_dtype
+from ..tools.numba import get_common_numba_dtype, jit
 from .base import DataFieldBase
 from .scalar import ScalarField
 from .vectorial import VectorField
@@ -56,6 +57,8 @@ class Tensor2Field(DataFieldBase):
         self,
         other: Union[VectorField, "Tensor2Field"],
         out: Optional[Union[VectorField, "Tensor2Field"]] = None,
+        *,
+        conjugate: bool = True,
         label: str = "dot product",
     ) -> Union[VectorField, "Tensor2Field"]:
         """calculate the dot product involving a tensor field
@@ -69,6 +72,8 @@ class Tensor2Field(DataFieldBase):
                 the second field
             out (VectorField or Tensor2Field, optional):
                 Optional field to which the  result is written.
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
             label (str, optional):
                 Name of the returned field
 
@@ -82,19 +87,102 @@ class Tensor2Field(DataFieldBase):
 
         # create and check the output instance
         if out is None:
-            out = other.__class__(self.grid)
+            out = other.__class__(self.grid, dtype=get_common_dtype(self, other))
         else:
             assert isinstance(out, other.__class__)
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result
-        np.einsum("ij...,j...->i...", self.data, other.data, out=out.data)
+        other_data = other.data.conjugate() if conjugate else other.data
+        np.einsum("ij...,j...->i...", self.data, other_data, out=out.data)
         if label is not None:
             out.label = label
 
         return out
 
     __matmul__ = dot  # support python @-syntax for matrix multiplication
+
+    def make_dot_operator(self, conjugate: bool = True) -> Callable:
+        """return operator calculating the dot product involving vector fields
+
+        This supports both products between two vectors as well as products
+        between a vector and a tensor.
+
+        Warning:
+            This function does not check types or dimensions.
+
+        Args:
+            conjugate (bool):
+                Whether to use the complex conjugate for the second operand
+
+        Returns:
+            function that takes two instance of :class:`numpy.ndarray`, which
+            contain the discretized data of the two operands. An optional third
+            argument can specify the output array to which the result is
+            written. Note that the returned function is jitted with numba for
+            speed.
+        """
+        dim = self.grid.dim
+
+        # create the inner function calculating the dot product
+        if conjugate:
+
+            @jit
+            def inner(a, b, out):
+                """ calculate dot product between fields `a` and `b` """
+                for i in range(dim):
+                    out[i] = a[i, 0] * b[0].conjugate()  # overwrite data in out
+                    for j in range(1, dim):
+                        out[i] += a[i, j] * b[j].conjugate()
+                return out
+
+        else:
+
+            @jit
+            def inner(a, b, out):
+                """ calculate dot product between fields `a` and `b` """
+                for i in range(dim):
+                    out[i] = a[i, 0] * b[0]  # overwrite potential data in out
+                    for j in range(1, dim):
+                        out[i] += a[i, j] * b[j]
+                return out
+
+        # build the outer function with the correct signature
+        if nb.config.DISABLE_JIT:
+
+            def dot(a, b, out=None):
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
+                if out is None:
+                    out = np.empty(b.shape, dtype=get_common_dtype(a, b))
+                return inner(a, b, out)
+
+        else:
+
+            @nb.generated_jit
+            def dot(a, b, out=None):
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
+                if isinstance(a, nb.types.Number):
+                    # simple scalar call -> do not need to allocate anything
+                    raise RuntimeError("Dot needs to be called with fields")
+
+                elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                    # function is called without `out`
+                    dtype = get_common_numba_dtype(a, b)
+
+                    def f_with_allocated_out(a, b, out):
+                        """ helper function allocating output array """
+                        out = np.empty(b.shape, dtype=dtype)
+                        return inner(a, b, out=out)
+
+                    return f_with_allocated_out
+
+                else:
+                    # function is called with `out` argument
+                    return inner
+
+        return dot
 
     def get_dot_operator(self) -> Callable:
         """return operator calculating the dot product involving vector fields
@@ -112,55 +200,22 @@ class Tensor2Field(DataFieldBase):
             written. Note that the returned function is jitted with numba for
             speed.
         """
-        dim = self.grid.dim
+        # Deprecated this method on 2020-10-07
+        import warnings
 
-        @jit
-        def inner(a, b, out):
-            """ calculate dot product between fields `a` and `b` """
-            for i in range(dim):
-                out[i] = a[i, 0] * b[0]  # overwrite potential data in out
-                for j in range(1, dim):
-                    out[i] += a[i, j] * b[j]
-            return out
-
-        if nb.config.DISABLE_JIT:
-
-            def dot(a, b, out=None):
-                """wrapper deciding whether the underlying function is called
-                with or without `out`."""
-                if out is None:
-                    out = np.empty_like(b)
-                return inner(a, b, out)
-
-        else:
-
-            @nb.generated_jit
-            def dot(a, b, out=None):
-                """wrapper deciding whether the underlying function is called
-                with or without `out`."""
-                if isinstance(a, nb.types.Number):
-                    # simple scalar call -> do not need to allocate anything
-                    raise RuntimeError("Dot needs to be called with fields")
-
-                elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out`
-                    def f_with_allocated_out(a, b, out):
-                        """ helper function allocating output array """
-                        return inner(a, b, out=np.empty_like(b))
-
-                    return f_with_allocated_out
-
-                else:
-                    # function is called with `out` argument
-                    return inner
-
-        return dot
+        warnings.warn(
+            "get_dot_operator() method is deprecated. Use the `make_dot_operator()` "
+            "method instead",
+            DeprecationWarning,
+        )
+        return self.make_dot_operator()
 
     @fill_in_docstring
     def divergence(
         self,
         bc: "BoundariesData",
         out: Optional[VectorField] = None,
+        *,
         label: str = "divergence",
     ) -> VectorField:
         """apply (tensor) divergence and return result as a field
@@ -219,8 +274,8 @@ class Tensor2Field(DataFieldBase):
         else:
             out = self.copy()
 
-        out += self.transpose()  # type: ignore
-        out *= 0.5  # type: ignore
+        out += self.transpose()
+        out *= 0.5
 
         if make_traceless:
             dim = self.grid.dim
@@ -230,7 +285,7 @@ class Tensor2Field(DataFieldBase):
         return out
 
     def to_scalar(
-        self, scalar: str = "auto", label: Optional[str] = "scalar `{scalar}`"
+        self, scalar: str = "auto", *, label: Optional[str] = "scalar `{scalar}`"
     ) -> ScalarField:
         r""" return a scalar field by applying `method`
         
@@ -245,15 +300,15 @@ class Tensor2Field(DataFieldBase):
             I_3 &= \det(A)
             
         where `tr` denotes the trace and `det` denotes the determinant.
-        Note that the three invariants can only be distinct and non-zero in 
-        three dimensions. In two dimensional spaces, we have the identity
-        :math:`2 I_2 = I_3` and in one-dimensional spaces, we have
-        :math:`I_1 = I_3` as well as :math:`I_2 = 0`.
+        Note that the three invariants can only be distinct and non-zero in three
+        dimensions. In two dimensional spaces, we have the identity :math:`2 I_2 = I_3`
+        and in one-dimensional spaces, we have :math:`I_1 = I_3` as well as
+        :math:`I_2 = 0`.
             
         Args:
             scalar (str):
-                Choose the method to use. Possible choices include `norm` (the 
-                default), `min`, `max`, `squared_sum`, `trace` (or
+                The method to calculate the scalar. Possible choices include `norm` (the
+                default), `min`, `max`, `squared_sum`, `norm_squared`, `trace` (or
                 `invariant1`), `invariant2`, and `determinant` (or `invariant3`)
             label (str, optional):
                 Name of the returned field
@@ -276,6 +331,9 @@ class Tensor2Field(DataFieldBase):
 
         elif scalar == "squared_sum":
             data = np.sum(self.data ** 2, axis=(0, 1))
+
+        elif scalar == "norm_squared":
+            data = np.sum(self.data * self.data.conjugate(), axis=(0, 1))
 
         elif scalar == "trace" or scalar == "invariant1":
             data = self.data.trace(axis1=0, axis2=1)
@@ -305,8 +363,8 @@ class Tensor2Field(DataFieldBase):
         else:
             raise ValueError(
                 f"Unknown method `{scalar}` for `to_scalar`. Valid methods are `norm`, "
-                "`min`, `max`, squared_sum`, `trace`, `determinant`, and `invariant#`, "
-                "where # is 1, 2, or 3"
+                "`min`, `max`, squared_sum`, `norm_squared`, `trace`, `determinant`, "
+                "and `invariant#`, where # is 1, 2, or 3"
             )
 
         # determine label of the result

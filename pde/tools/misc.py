@@ -35,6 +35,8 @@ import numpy as np
 # using this path for import is deprecated
 from .output import display_progress, get_progress_bar_class  # @UnusedImport
 
+Number = Union[float, complex]
+
 
 def module_available(module_name: str) -> bool:
     """check whether a python module is available
@@ -125,7 +127,7 @@ def preserve_scalars(method: Callable) -> Callable:
 
     @functools.wraps(method)
     def wrapper(self, *args):
-        args = [np.asanyarray(arg, dtype=np.double) for arg in args]
+        args = [number_array(arg, copy=False) for arg in args]
         if args[0].ndim == 0:
             args = [arg[None] for arg in args]
             return method(self, *args)[0]
@@ -350,3 +352,66 @@ def hdf_write_attributes(
                 raise
         else:
             hdf_path.attrs[key] = value_serialized
+
+
+def number(value: Union[Number, str]) -> Number:
+    """convert a value into a float or complex number
+
+    Args:
+        value (Number or str):
+            The value which needs to be converted
+
+    Result:
+        Number: A complex number or a float if the imaginary part vanishes
+    """
+    result = complex(value)
+    return result.real if result.imag == 0 else result
+
+
+def get_common_dtype(*args):
+    r"""returns a dtype in which all arguments can be represented
+
+    Args:
+        *args: All items (arrays, scalars, etc) to be checked
+
+    Returns: np.complex if any entry is complex, otherwise np.double
+    """
+    for arg in args:
+        if np.iscomplexobj(arg):
+            return np.complex
+    return np.double
+
+
+def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
+    """convert array dtype either to np.double or np.complex
+
+    Args:
+        data (:class:`numpy.ndarray`):
+            The data that needs to be converted to a float array. This can also be any
+            iterable of numbers.
+        dtype (numpy dtype):
+            The data type of the field. All the numpy dtypes are supported. If omitted,
+            it will be determined from `data` automatically.
+        copy (bool):
+            Whether the data must be copied (in which case the original array is left
+            untouched). Note that data will always be copied when changing the dtype.
+
+    Returns:
+        :class:`numpy.ndarray`: An array with the correct dtype
+    """
+    if dtype is None:
+        # dtype needs to be determined automatically
+        try:
+            # convert the result to a numpy array with the given dtype
+            result = np.array(data, dtype=get_common_dtype(data), copy=copy)
+        except TypeError:
+            # Conversion can fail when `data` contains a complex sympy number, i.e.,
+            # sympy.I. In this case, we simply try to convert the expression using a
+            # complex dtype
+            result = np.array(data, dtype=np.complex, copy=copy)
+
+    else:
+        # a specific dtype is requested
+        result = np.array(data, dtype=np.dtype(dtype), copy=copy)
+
+    return result

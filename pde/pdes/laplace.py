@@ -58,12 +58,12 @@ def solve_poisson_equation(
     try:
         result = solve_poisson(rhs.data)
     except RuntimeError:
-        average = rhs.average
-        if abs(average) > 1e-10:
+        magnitude = rhs.magnitude
+        if magnitude > 1e-10:
             raise RuntimeError(
                 "Could not solve the Poisson problem. One possible reason for this is "
                 "that only periodic or Neumann conditions are applied although the "
-                f"average of the field is {average} and thus non-zero."
+                f"magnitude of the field is {magnitude} and thus non-zero."
             )
         else:
             raise  # another error occurred

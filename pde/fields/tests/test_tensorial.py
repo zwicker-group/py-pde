@@ -43,6 +43,7 @@ def test_tensors():
         ("max", 4),
         ("norm", np.linalg.norm([[1, 2], [3, 4]])),
         ("squared_sum", 30),
+        ("norm_squared", 30),
         ("trace", 5),
         ("invariant1", 5),
         ("invariant2", -1),
@@ -168,3 +169,26 @@ def test_tensor_invariants():
             f_rot.to_scalar(f"invariant{i}").data,
             err_msg=f"Mismatch in invariant {i}",
         )
+
+
+def test_complex_tensors():
+    """ test some complex tensor fields """
+    grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
+    shape = (2, 2, 2) + grid.shape
+    numbers = np.random.random(shape) + np.random.random(shape) * 1j
+    t1 = Tensor2Field(grid, numbers[0])
+    t2 = Tensor2Field(grid, numbers[1])
+    assert t1.is_complex and t2.is_complex
+    dot_op = t1.make_dot_operator()
+
+    # test dot product
+    res = dot_op(t1.data, t2.data)
+    for t in (t1 @ t2, t1.dot(t2)):
+        assert isinstance(t, Tensor2Field)
+        assert t.grid is grid
+        np.testing.assert_allclose(t.data, res)
+
+    # test without conjugate
+    dot_op = t1.make_dot_operator(conjugate=False)
+    res = t1.dot(t2, conjugate=False)
+    np.testing.assert_allclose(dot_op(t1.data, t2.data), res.data)

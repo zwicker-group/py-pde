@@ -5,9 +5,9 @@
 import numpy as np
 import pytest
 
-from ...fields import ScalarField
+from ...fields import FieldCollection, ScalarField
 from ...grids import UnitGrid
-from ...pdes import DiffusionPDE
+from ...pdes import PDE, DiffusionPDE
 from .. import (
     Controller,
     ExplicitSolver,
@@ -46,3 +46,23 @@ def test_compare_solvers(solver_class):
         s2 = c2.run(field, dt=5e-3)
 
     np.testing.assert_allclose(s1.data, s2.data, rtol=1e-2, atol=1e-2)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_solvers_complex(backend):
+    """ test solvers with a complex PDE """
+    r = FieldCollection.scalar_random_uniform(2, UnitGrid([3]), labels=["a", "b"])
+    c = r["a"] + 1j * r["b"]
+    assert c.is_complex
+
+    # assume c = a + i * b
+    eq_c = PDE({"c": "-I * laplace(c)"})
+    eq_r = PDE({"a": "laplace(b)", "b": "-laplace(a)"})
+    res_r = eq_r.solve(r, t_range=1e-2, dt=1e-3, backend="numpy", tracker=None)
+    exp_c = res_r[0].data + 1j * res_r[1].data
+
+    for solver_class in [ExplicitSolver, ImplicitSolver, ScipySolver]:
+        solver = solver_class(eq_c, backend=backend)
+        controller = Controller(solver, t_range=1e-2, tracker=None)
+        res_c = controller.run(c, dt=1e-3)
+        np.testing.assert_allclose(res_c.data, exp_c, rtol=1e-3, atol=1e-3)
