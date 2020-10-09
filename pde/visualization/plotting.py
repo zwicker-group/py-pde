@@ -568,7 +568,7 @@ def plot_magnitudes(
             check_complex = False  # only warn once
 
         # actually plot the data
-        (l,) = ax.plot(storage.times, d["values"].real, **kwargs)
+        (l,) = ax.plot(storage.times, np.real(d["values"]), **kwargs)
         lines.append(l)
 
     ax.set_xlabel("Time")
