@@ -107,7 +107,7 @@ def test_storage_fixed_size(compression, tmp_path):
         assert len(storage) == 1
 
         if fixed:
-            with pytest.raises((TypeError, ValueError)):
+            with pytest.raises((TypeError, ValueError, RuntimeError)):
                 storage.append(c.data, 1)
             assert len(storage) == 1
             np.testing.assert_allclose(storage.times, [0])

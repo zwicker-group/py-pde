@@ -17,7 +17,9 @@ from ..visualization.movies import Movie
 
 PACKAGE_PATH = Path(__file__).resolve().parents[2]
 EXAMPLES = glob.glob(str(PACKAGE_PATH / "examples" / "*.py"))
-NOTEBOOKS = glob.glob(str(PACKAGE_PATH / "examples" / "jupyter" / "*.ipynb"))
+NOTEBOOKS = glob.glob(
+    str(PACKAGE_PATH / "examples" / "jupyter" / "*.ipynb")
+) + glob.glob(str(PACKAGE_PATH / "examples" / "tutorial" / "*.ipynb"))
 
 SKIP_EXAMPLES: List[str] = []
 if not Movie.is_available():
@@ -63,7 +65,7 @@ def test_jupyter_notebooks(path, tmp_path):
 
     # adjust python environment
     my_env = os.environ.copy()
-    my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env["PATH"]
+    my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env["PYTHONPATH"]
 
     outfile = tmp_path / os.path.basename(path)
     sp.check_call(
@@ -72,6 +74,7 @@ def test_jupyter_notebooks(path, tmp_path):
             "-m",
             "jupyter",
             "nbconvert",
+            "--ExecutePreprocessor.timeout=600",
             "--to",
             "notebook",
             "--output",

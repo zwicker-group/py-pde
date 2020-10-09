@@ -27,7 +27,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Sequence, Union
 
 import numpy as np
 
@@ -164,24 +164,28 @@ def decorator_arguments(decorator: Callable) -> Callable:
     return new_decorator
 
 
-def skipUnlessModule(module_name: str) -> Callable:
+def skipUnlessModule(module_names: Union[Sequence[str], str]) -> Callable:
     """decorator that skips a test when a module is not available
 
     Args:
-        module_name (str): The name of the required module
+        module_names (str): The name of the required module(s)
 
     Returns:
         A function, so this can be used as a decorator
     """
-    if module_available(module_name):
-        # return no-op decorator
-        def wrapper(f: Callable) -> Callable:
-            return f
+    if isinstance(module_names, str):
+        module_names = [module_names]
 
-        return wrapper
-    else:
-        # return decorator skipping test
-        return unittest.skip(f"requires {module_name}")
+    for module_name in module_names:
+        if not module_available(module_name):
+            # return decorator skipping test
+            return unittest.skip(f"requires {module_name}")
+
+    # return no-op decorator if all modules are available
+    def wrapper(f: Callable) -> Callable:
+        return f
+
+    return wrapper
 
 
 def import_class(identifier: str):

@@ -238,3 +238,12 @@ def test_complex_expression():
     assert expr.complex
     assert expr.constant
     np.testing.assert_allclose(expr.value, np.array([1, 1j]))
+
+
+def test_expression_special():
+    """ test special cases of expressions """
+    expr = ScalarExpression("Heaviside(x)")
+    assert not expr.constant
+    assert expr(-1) == 0
+    assert expr(0) == 0.5
+    assert expr(1) == 1

@@ -76,6 +76,9 @@ def parse_number(
     return value
 
 
+SPECIAL_FUNCTIONS = {"Heaviside": lambda x: np.heaviside(x, 0.5)}
+
+
 class NumpyArrayPrinter(PythonCodePrinter):
     """ special sympy printer returning numpy arrays """
 
@@ -280,7 +283,7 @@ class ExpressionBase(metaclass=ABCMeta):
         return sympy.lambdify(  # type: ignore
             variables,
             self._sympy_expr,
-            modules=[user_functions, "numpy"],
+            modules=[user_functions, SPECIAL_FUNCTIONS, "numpy"],
             printer=printer,
         )
 
