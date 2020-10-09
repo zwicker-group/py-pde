@@ -231,7 +231,8 @@ def test_to_scalar():
     """ test conversion to scalar field """
     sf = ScalarField.random_uniform(UnitGrid([3, 3]))
     np.testing.assert_allclose(sf.to_scalar().data, sf.data)
-    np.testing.assert_allclose(sf.to_scalar("squared_sum").data, sf.data ** 2)
+    np.testing.assert_allclose(sf.to_scalar("norm_squared").data, sf.data ** 2)
+    np.testing.assert_allclose(sf.to_scalar(lambda x: 2 * x).data, 2 * sf.data)
 
     with pytest.raises(ValueError):
         sf.to_scalar("nonsense")

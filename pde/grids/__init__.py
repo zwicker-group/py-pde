@@ -37,4 +37,4 @@ from .cartesian import CartesianGrid, UnitGrid
 from .cylindrical import CylindricalGrid
 from .spherical import PolarGrid, SphericalGrid
 
-del operators
+del operators  # remove the name from the namespace

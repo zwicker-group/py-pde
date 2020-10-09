@@ -1,5 +1,12 @@
 TODO
 ====
+* Add possibility to transform storage:
+    - this would take one storage and create another one
+    - a (user-supplied) function would map fields from one storage to a new one
+    - this would be applied to all time points
+    - should be a method on StorageBase:
+        StorageBase.apply(func: Callable, out: StorageBase = None, progress=False) -> StorageBase
+    - If `out` is not supplied a MemoryStorage is created    
 * Add support for dtype=np.single
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)

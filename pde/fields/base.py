@@ -1454,11 +1454,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 
-        # remove imaginary parts
-        if self.is_complex:
-            self._logger.warning("Only the absolute value of complex data is shown")
-            scalar_data = abs(scalar_data)
-
         # extract the line data
         data = self.grid.get_line_data(scalar_data, extract=extract)
         if "label_y" in data and data["label_y"]:
@@ -1517,13 +1512,21 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         raise NotImplementedError()
 
     def _plot_line(
-        self, ax, extract: str = "auto", ylabel: str = None, **kwargs
+        self,
+        ax,
+        scalar: str = "auto",
+        extract: str = "auto",
+        ylabel: str = None,
+        **kwargs,
     ) -> PlotReference:
         r"""visualize a field using a 1d line plot
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
                 Figure axes to be used for plotting.
+            scalar (str or int):
+                The method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
             extract (str):
                 The method used for extracting the line data.
             ylabel (str):
@@ -1538,10 +1541,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the plot with new data later.
         """
         # obtain data for the plot
-        line_data = self.get_line_data(extract=extract)
+        line_data = self.get_line_data(scalar=scalar, extract=extract)
+
+        # warn if there is an imaginary part
+        if np.any(np.iscomplex(line_data["data_y"])):
+            self._logger.warning("Only the real part of the complex data is shown")
 
         # do the plot
-        (line2d,) = ax.plot(line_data["data_x"], line_data["data_y"], **kwargs)
+        (line2d,) = ax.plot(line_data["data_x"], line_data["data_y"].real, **kwargs)
 
         # set some default properties
         ax.set_xlabel(line_data["label_x"])
@@ -1550,7 +1557,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if ylabel:
             ax.set_ylabel(ylabel)
 
-        return PlotReference(ax, line2d, {"extract": extract})
+        return PlotReference(ax, line2d, {"scalar": scalar, "extract": extract})
 
     def _update_line_plot(self, reference: PlotReference) -> None:
         """update a line plot with the current field values
@@ -1562,14 +1569,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         import matplotlib as mpl
 
         # obtain data for the plot
+        scalar = reference.parameters.get("scalar", "auto")
         extract = reference.parameters.get("extract", "auto")
-        line_data = self.get_line_data(extract=extract)
+        line_data = self.get_line_data(scalar=scalar, extract=extract)
 
         line2d = reference.element
         if isinstance(line2d, mpl.lines.Line2D):
             # update old plot
             line2d.set_xdata(line_data["data_x"])
-            line2d.set_ydata(line_data["data_y"])
+            line2d.set_ydata(line_data["data_y"].real)
 
         else:
             raise ValueError(f"Unsupported plot reference {reference}")

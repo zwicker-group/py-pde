@@ -536,7 +536,7 @@ def plot_magnitudes(
         else:
             quantities = [{"label": label_base, "source": None}]
 
-    logging.getLogger(__name__).debug("Quantities: %s", quantities)
+    _logger.debug("Quantities: %s", quantities)
 
     # prepare data field
     data = [
@@ -558,9 +558,17 @@ def plot_magnitudes(
 
     # plot the data
     lines = []
+    check_complex = True
     for d in data:
         kwargs["label"] = d["label"]
-        (l,) = ax.plot(storage.times, d["values"], **kwargs)
+
+        # warn if there is an imaginary part
+        if check_complex and np.any(np.iscomplex(d["values"])):
+            _logger.warning("Only the real part of the complex data is shown")
+            check_complex = False  # only warn once
+
+        # actually plot the data
+        (l,) = ax.plot(storage.times, d["values"].real, **kwargs)
         lines.append(l)
 
     ax.set_xlabel("Time")
@@ -610,8 +618,14 @@ def _plot_kymograph(
     else:
         extent = np.r_[img_data["extent_x"], img_data["extent_y"]]
 
+    # warn if there is an imaginary part
+    if np.any(np.iscomplex(img_data["data"])):
+        _logger.warning("Only the real part of the complex data is shown")
+
     # create the actual plot
-    axes_image = ax.imshow(img_data["data"], extent=extent, origin="lower", **kwargs)
+    axes_image = ax.imshow(
+        img_data["data"].real, extent=extent, origin="lower", **kwargs
+    )
 
     # adjust some settings
     ax.set_xlabel(img_data["label_x"])

@@ -6,7 +6,7 @@ Defines a scalar field over a grid
 
 import numbers
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Callable, Dict, Optional, Sequence, Union
 
 import numpy as np
 
@@ -458,26 +458,32 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=subgrid, data=subdata, label=label)
 
     def to_scalar(
-        self, scalar: str = "auto", *, label: Optional[str] = None
+        self, scalar: Union[str, Callable] = "auto", *, label: Optional[str] = None
     ) -> "ScalarField":
         """return a modified scalar field by applying `method`
 
         Args:
-            scalar (str or int):
-                How to obtain the scalar. For ScalarField, the default `auto`
-                simply returns the actual field. Setting this to 'norm' returns
-                the absolute value at each point.
+            scalar (str or callable):
+                Determines the method used for obtaining the scalar. If this is a
+                callable, it is simply applied to self.data and a new scalar field with
+                this data is returned. Other alternatives are `abs`, `norm`, or
+                `norm_squared`. The default `auto` is to return a (unchanged) copy of
+                the field.
             label (str, optional): Name of the returned field
 
         Returns:
             :class:`pde.fields.scalar.ScalarField`: the scalar field after
             applying the operation
         """
-        if scalar == "auto":
+        if callable(scalar):
+            data = scalar(self.data)
+        elif scalar == "auto":
             data = self.data
-        elif scalar == "abs" or scalar == "norm":
+        elif scalar == "abs":
             data = np.abs(self.data)
-        elif scalar == "squared_sum":
+        elif scalar == "norm":
+            data = np.sqrt(self.data * self.data.conjugate())
+        elif scalar == "norm_squared":
             data = self.data * self.data.conjugate()
         else:
             raise ValueError(f"Unknown method `{scalar}` for `to_scalar`")
