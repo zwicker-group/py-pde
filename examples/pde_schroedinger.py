@@ -30,4 +30,4 @@ storage = MemoryStorage()
 eq.solve(initial_state, t_range=2.5, dt=1e-5, tracker=[storage.tracker(0.02)])
 
 # visualize the results as a space-time plot
-plot_kymograph(storage)
+plot_kymograph(storage, scalar="squared_sum")
