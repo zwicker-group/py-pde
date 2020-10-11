@@ -6,7 +6,18 @@ Base classes for storing data
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Iterator,
+    Callable,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
+from inspect import signature
 
 import numpy as np
 
@@ -16,6 +27,7 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..trackers.base import InfoDict, TrackerBase
 from ..trackers.intervals import IntervalData, IntervalType
+from ..tools.misc import display_progress
 
 if TYPE_CHECKING:
     from .memory import MemoryStorage  # @UnusedImport
@@ -313,6 +325,52 @@ class StorageBase(metaclass=ABCMeta):
             field_obj=self._field,
             info=self.info,
         )
+
+    def apply(
+        self, func: Callable, out: "StorageBase" = None, *, progress: bool = False
+    ) -> "StorageBase":
+        """applies function to each field in a storage
+
+        Args:
+            func (callable):
+                The function to apply to each stored field. The function must either
+                take as a single argument the field or as two arguments the field and
+                the associated time point. In both cases, it should return a field.
+            out (:class:`~pde.storage.base.StorageBase`):
+                Storage to which the output is written. If omitted, a new
+                :class:`~pde.storage.memory.MemoryStorage` is used and returned
+            progress (bool):
+                Flag indicating whether the progress is shown during the calculation
+
+        Returns:
+            :class:`~pde.storage.base.StorageBase`: The new storage that contains the
+            data after the function `func` has been applied
+        """
+        if out is None:
+            from .memory import MemoryStorage  # @Reimport
+
+            out = MemoryStorage()
+
+        # get the number of arguments that the user function expects
+        num_args = len(signature(func).parameters)
+
+        for t, field in display_progress(
+            self.items(), total=len(self), enabled=progress
+        ):
+            # apply the user function
+            if num_args == 0:
+                transformed = func()
+            elif num_args == 1:
+                transformed = func(field)
+            else:
+                transformed = func(field, t)
+
+            if not isinstance(transformed, FieldBase):
+                raise TypeError("The user function must return a field")
+
+            out.append(transformed, t)
+
+        return out
 
 
 class StorageTracker(TrackerBase):

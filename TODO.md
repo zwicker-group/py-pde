@@ -64,6 +64,13 @@ TODO
 
 LOW-PRIORITY (Future ideas)
 ===========================
+* Alter interface to storage classes such that they always write and read field classes
+  instead of numpy arrays.
+  - this is particularly true for the append method
+  - this should be done in a separate branch to be safe
+  - this is required to implement the `apply` method 
+  - the field classes can then be specified by the first apply
+  - we might not need the get_memory_storage context manager anymore
 * Add adaptive Euler stepping
 * Think about 2nd order BCs for spherical coordinates
 * Think about hyperbolic equations:

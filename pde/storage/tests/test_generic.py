@@ -19,11 +19,10 @@ def test_storage_write(tmp_path):
     grid = UnitGrid([dim])
     field = ScalarField(grid)
 
-    file = tmp_path / "test_storage_write.hdf5"
-
     storage_classes = {"MemoryStorage": MemoryStorage}
     if module_available("h5py"):
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file)
+        file_path = tmp_path / "test_storage_write.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
 
     for name, storage_cls in storage_classes.items():
         storage = storage_cls(info={"a": 1})
@@ -86,11 +85,10 @@ def test_storing_extract_range(tmp_path):
     """ test methods specific to FieldCollections in memory storage """
     sf = ScalarField(UnitGrid([1]))
 
-    file = tmp_path / "test_storage_write.hdf5"
-
     storage_classes = {"MemoryStorage": MemoryStorage}
     if module_available("h5py"):
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file)
+        file_path = tmp_path / "test_storage_write.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
 
     for storage_cls in storage_classes.values():
         # store some data
@@ -120,11 +118,10 @@ def test_storing_collection(tmp_path):
     f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4)
     fc = FieldCollection([f1, f2, f3])
 
-    file = tmp_path / "test_storage_write.hdf5"
-
     storage_classes = {"MemoryStorage": MemoryStorage}
     if module_available("h5py"):
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file)
+        file_path = tmp_path / "test_storage_write.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
 
     for storage_cls in storage_classes.values():
         # store some data
@@ -138,3 +135,25 @@ def test_storing_collection(tmp_path):
         assert storage.extract_field(0)[0] == f1
         assert storage.extract_field(1)[0] == f2
         assert storage.extract_field(2)[0] == f3
+
+
+def test_storage_apply(tmp_path):
+    """ test the apply function of StorageBase """
+    grid = UnitGrid([2])
+    field = ScalarField(grid)
+
+    storage_classes = {"MemoryStorage": MemoryStorage}
+    if module_available("h5py"):
+        file_path = tmp_path / "test_storage_apply.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
+
+    for name, storage_cls in storage_classes.items():
+        storage = storage_cls(info={"a": 1})
+        storage.start_writing(field, info={"b": 2})
+        storage.append(np.array([0, 1]), 0)
+        storage.append(np.array([1, 2]), 1)
+        storage.end_writing()
+
+        s1 = storage.apply(lambda x: x + 1)
+        assert storage[0] == ScalarField(grid, [1, 2])
+        assert storage[1] == ScalarField(grid, [2, 3])
