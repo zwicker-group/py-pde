@@ -19,7 +19,8 @@ Module containing functions for managing cache structures
 
 from __future__ import division
 
-import collections
+import collections  # @UnusedImport
+import collections.abc
 import functools
 import logging
 import numbers
