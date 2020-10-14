@@ -274,8 +274,6 @@ class StorageBase(metaclass=ABCMeta):
         self._field = field.copy()
         self.info["field_attributes"] = field.attributes_serialized
 
-    #         self.info['grid'] = field.grid.state_serialized
-
     def end_writing(self) -> None:
         """ finalize the storage after writing """
         pass
@@ -376,6 +374,7 @@ class StorageBase(metaclass=ABCMeta):
         """
         # get the number of arguments that the user function expects
         num_args = len(signature(func).parameters)
+        writing = False  # flag indicating whether output storage wass opened
 
         for t, field in display_progress(
             self.items(), total=len(self), enabled=progress
@@ -396,7 +395,14 @@ class StorageBase(metaclass=ABCMeta):
 
                 out = MemoryStorage(field_obj=transformed)
 
+            if not writing:
+                out.start_writing(transformed)
+                writing = True
+
             out.append(transformed, t)
+
+        if writing:
+            out.end_writing()  # type: ignore
 
         # make sure that a storage is returned, even when no fields are present
         if out is None:
