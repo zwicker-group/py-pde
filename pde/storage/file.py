@@ -317,12 +317,12 @@ class FileStorage(StorageBase):
 
         self._is_writing = True
 
-    def append(self, data: np.ndarray, time: Optional[float] = None) -> None:
+    def _append_data(self, data: np.ndarray, time: float) -> None:
         """append a new data set
 
         Args:
             data (:class:`numpy.ndarray`): The actual data
-            time (float, optional): The time point associated with the data
+            time (float): The time point associated with the data
         """
         if self.keep_opened:
             if not self._is_writing or self._data_length is None:

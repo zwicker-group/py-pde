@@ -27,8 +27,8 @@ def test_storage_write(tmp_path):
     for name, storage_cls in storage_classes.items():
         storage = storage_cls(info={"a": 1})
         storage.start_writing(field, info={"b": 2})
-        storage.append(np.arange(dim), 0)
-        storage.append(np.arange(dim), 1)
+        storage.append(field.copy(data=np.arange(dim)), 0)
+        storage.append(field.copy(data=np.arange(dim)), 1)
         storage.end_writing()
 
         assert not storage.has_collection
@@ -44,7 +44,7 @@ def test_storage_write(tmp_path):
         storage.clear()
         for i in range(3):
             storage.start_writing(field)
-            storage.append(np.arange(dim) + i, i)
+            storage.append(field.copy(data=np.arange(dim) + i), i)
             storage.end_writing()
 
         np.testing.assert_allclose(
@@ -94,8 +94,8 @@ def test_storing_extract_range(tmp_path):
         # store some data
         s1 = storage_cls()
         s1.start_writing(sf)
-        s1.append(np.array([0]), 0)
-        s1.append(np.array([2]), 1)
+        s1.append(sf.copy(data=np.array([0])), 0)
+        s1.append(sf.copy(data=np.array([2])), 1)
         s1.end_writing()
 
         # test extraction
@@ -127,8 +127,8 @@ def test_storing_collection(tmp_path):
         # store some data
         storage = storage_cls()
         storage.start_writing(fc)
-        storage.append(fc.data, 0)
-        storage.append(fc.data, 1)
+        storage.append(fc, 0)
+        storage.append(fc, 1)
         storage.end_writing()
 
         assert storage.has_collection
@@ -148,12 +148,17 @@ def test_storage_apply(tmp_path):
         storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
 
     for name, storage_cls in storage_classes.items():
-        storage = storage_cls(info={"a": 1})
+        storage = storage_cls()
         storage.start_writing(field, info={"b": 2})
-        storage.append(np.array([0, 1]), 0)
-        storage.append(np.array([1, 2]), 1)
+        storage.append(field.copy(data=np.array([0, 1])), 0)
+        storage.append(field.copy(data=np.array([1, 2])), 1)
         storage.end_writing()
 
         s1 = storage.apply(lambda x: x + 1)
-        assert storage[0] == ScalarField(grid, [1, 2])
-        assert storage[1] == ScalarField(grid, [2, 3])
+        assert s1[0] == ScalarField(grid, [1, 2]), name
+        assert s1[1] == ScalarField(grid, [2, 3]), name
+
+    # test empty storage
+    s1 = MemoryStorage()
+    s2 = s1.apply(lambda x: x + 1)
+    assert len(s2) == 0

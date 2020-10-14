@@ -270,7 +270,7 @@ def make_unserializer(method: str) -> Callable:
     if method == "yaml_unsafe":
         import yaml  # @Reimport
 
-        return yaml.unsafe_load  # type: ignore
+        return yaml.unsafe_load
 
     raise ValueError("Unknown serialization method `%s`" % method)
 

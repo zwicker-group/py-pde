@@ -1,5 +1,6 @@
 TODO
 ====
+* Indicate periodic boundary by dashed/dotted axes in image plot?
 * Add possibility to transform storage:
     - this would take one storage and create another one
     - a (user-supplied) function would map fields from one storage to a new one
@@ -67,10 +68,12 @@ LOW-PRIORITY (Future ideas)
 * Alter interface to storage classes such that they always write and read field classes
   instead of numpy arrays.
   - this is particularly true for the append method
+    - keep old signature as deprecated fallback 
   - this should be done in a separate branch to be safe
   - this is required to implement the `apply` method 
   - the field classes can then be specified by the first apply
   - we might not need the get_memory_storage context manager anymore
+  - this likely will break py-sim, so test this
 * Add adaptive Euler stepping
 * Think about 2nd order BCs for spherical coordinates
 * Think about hyperbolic equations:
