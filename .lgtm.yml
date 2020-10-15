@@ -1,3 +1,4 @@
 queries:
 - exclude: py/mismatched-multiple-assignment
+- exclude: py/polluting-import
 - exclude: py/similar-function
