@@ -77,6 +77,7 @@ def test_pde_2scalar():
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
+@pytest.mark.slow
 def test_pde_vector_scalar():
     """ test PDE with a vector and a scalar field """
     eq = PDE({"u": "vector_laplace(u) - u + gradient(v)", "v": "- divergence(u)"})

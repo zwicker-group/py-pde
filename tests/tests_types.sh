@@ -19,12 +19,6 @@ if [ "$1" == "-h" ] ; then
 fi
 
 
-if [ "$1" == "-h" ] ; then
-    echo "Usage: `basename $0` [-h] [-r]"
-    exit 0
-fi
-
-
 # run mypy from base directory since otherwise the html report will not be done
 cd ..
 

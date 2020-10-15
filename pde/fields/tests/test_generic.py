@@ -221,6 +221,7 @@ def test_writing_images(tmp_path):
             imread(fp)
 
 
+@pytest.mark.slow
 def test_interpolation_to_grid_fields():
     """ test whether data is interpolated correctly for different fields """
     grid = CartesianGrid([[0, 2 * np.pi]] * 2, 6)
@@ -235,6 +236,7 @@ def test_interpolation_to_grid_fields():
         np.testing.assert_allclose(f.data, f3.data, atol=0.2, rtol=0.2)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
 def test_interpolation_values(field_cls):
     """ test whether data is interpolated correctly for different fields """
@@ -252,6 +254,7 @@ def test_interpolation_values(field_cls):
     np.testing.assert_almost_equal(res, np.full(f.data_shape, 45))
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize(
     "grid",
     [
