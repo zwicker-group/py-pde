@@ -49,8 +49,10 @@ class MemoryStorage(StorageBase):
         if field_obj is not None:
             self._field = field_obj.copy()
             self._grid = field_obj.grid
+            self._data_shape = field_obj.data.shape
+
         self.data: List[np.ndarray] = [] if data is None else data
-        if len(self.data) > 0:
+        if self._data_shape is None and len(self.data) > 0:
             self._data_shape = self.data[0].shape
 
         # check consistency
@@ -188,7 +190,7 @@ class MemoryStorage(StorageBase):
                 "`truncate_once`, `truncate`, and `append`"
             )
 
-    def append(self, data: np.ndarray, time: Optional[float] = None) -> None:
+    def _append_data(self, data: np.ndarray, time: float) -> None:
         """append a new data set
 
         Args:
@@ -197,8 +199,6 @@ class MemoryStorage(StorageBase):
         """
         assert data.shape == self.data_shape
         self.data.append(np.array(data))  # store copy of the data
-        if time is None:
-            time = 0 if len(self.times) == 0 else self.times[-1] + 1
         self.times.append(time)
 
 

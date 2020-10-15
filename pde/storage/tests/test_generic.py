@@ -19,17 +19,16 @@ def test_storage_write(tmp_path):
     grid = UnitGrid([dim])
     field = ScalarField(grid)
 
-    file = tmp_path / "test_storage_write.hdf5"
-
     storage_classes = {"MemoryStorage": MemoryStorage}
     if module_available("h5py"):
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file)
+        file_path = tmp_path / "test_storage_write.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
 
     for name, storage_cls in storage_classes.items():
         storage = storage_cls(info={"a": 1})
         storage.start_writing(field, info={"b": 2})
-        storage.append(np.arange(dim), 0)
-        storage.append(np.arange(dim), 1)
+        storage.append(field.copy(data=np.arange(dim)), 0)
+        storage.append(field.copy(data=np.arange(dim)), 1)
         storage.end_writing()
 
         assert not storage.has_collection
@@ -45,7 +44,7 @@ def test_storage_write(tmp_path):
         storage.clear()
         for i in range(3):
             storage.start_writing(field)
-            storage.append(np.arange(dim) + i, i)
+            storage.append(field.copy(data=np.arange(dim) + i), i)
             storage.end_writing()
 
         np.testing.assert_allclose(
@@ -86,18 +85,17 @@ def test_storing_extract_range(tmp_path):
     """ test methods specific to FieldCollections in memory storage """
     sf = ScalarField(UnitGrid([1]))
 
-    file = tmp_path / "test_storage_write.hdf5"
-
     storage_classes = {"MemoryStorage": MemoryStorage}
     if module_available("h5py"):
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file)
+        file_path = tmp_path / "test_storage_write.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
 
     for storage_cls in storage_classes.values():
         # store some data
         s1 = storage_cls()
         s1.start_writing(sf)
-        s1.append(np.array([0]), 0)
-        s1.append(np.array([2]), 1)
+        s1.append(sf.copy(data=np.array([0])), 0)
+        s1.append(sf.copy(data=np.array([2])), 1)
         s1.end_writing()
 
         # test extraction
@@ -120,21 +118,49 @@ def test_storing_collection(tmp_path):
     f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4)
     fc = FieldCollection([f1, f2, f3])
 
-    file = tmp_path / "test_storage_write.hdf5"
-
     storage_classes = {"MemoryStorage": MemoryStorage}
     if module_available("h5py"):
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file)
+        file_path = tmp_path / "test_storage_write.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
 
     for storage_cls in storage_classes.values():
         # store some data
         storage = storage_cls()
         storage.start_writing(fc)
-        storage.append(fc.data, 0)
-        storage.append(fc.data, 1)
+        storage.append(fc, 0)
+        storage.append(fc, 1)
         storage.end_writing()
 
         assert storage.has_collection
         assert storage.extract_field(0)[0] == f1
         assert storage.extract_field(1)[0] == f2
         assert storage.extract_field(2)[0] == f3
+
+
+def test_storage_apply(tmp_path):
+    """ test the apply function of StorageBase """
+    grid = UnitGrid([2])
+    field = ScalarField(grid)
+
+    storage_classes = {"None": None, "MemoryStorage": MemoryStorage}
+    if module_available("h5py"):
+        file_path = tmp_path / "test_storage_apply.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
+
+    s1 = MemoryStorage()
+    s1.start_writing(field, info={"b": 2})
+    s1.append(field.copy(data=np.array([0, 1])), 0)
+    s1.append(field.copy(data=np.array([1, 2])), 1)
+    s1.end_writing()
+
+    for name, storage_cls in storage_classes.items():
+        out = None if storage_cls is None else storage_cls()
+        s2 = s1.apply(lambda x: x + 1, out=out)
+        assert storage_cls is None or s2 is out
+        assert s2[0] == ScalarField(grid, [1, 2]), name
+        assert s2[1] == ScalarField(grid, [2, 3]), name
+
+    # test empty storage
+    s1 = MemoryStorage()
+    s2 = s1.apply(lambda x: x + 1)
+    assert len(s2) == 0

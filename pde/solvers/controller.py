@@ -100,7 +100,7 @@ class Controller:
             The state at the final time point.
         """
         # copy the initial state to not modify the supplied one
-        if self.solver.pde.complex_valued:
+        if hasattr(self.solver, "pde") and self.solver.pde.complex_valued:
             self._logger.info("Convert state to complex numbers")
             state = state.copy(dtype="complex")
         else:

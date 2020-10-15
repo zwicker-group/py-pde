@@ -6,7 +6,18 @@ Base classes for storing data
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Iterator, List, Optional, Sequence, Tuple, Union
+from inspect import signature
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 
@@ -14,6 +25,7 @@ from ..fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from ..fields.base import FieldBase
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
+from ..tools.misc import display_progress
 from ..trackers.base import InfoDict, TrackerBase
 from ..trackers.intervals import IntervalData, IntervalType
 
@@ -67,8 +79,36 @@ class StorageBase(metaclass=ABCMeta):
             return self._data_shape
 
     @abstractmethod
-    def append(self, data: np.ndarray, time: Optional[float] = None) -> None:
+    def _append_data(self, data: np.ndarray, time: float) -> None:
         pass
+
+    def append(self, field: FieldBase, time: Optional[float] = None) -> None:
+        """add field to the storage
+
+        Args:
+            field (:class:`~pde.fields.base.FieldBase`):
+                The field that is added to the storage
+            time (float, optional):
+                The time point
+        """
+        if time is None:
+            time = 0 if len(self) == 0 else self.times[-1] + 1
+
+        if isinstance(field, np.ndarray):
+            # Deprecated this interface on 2020-10-12
+            import warnings
+
+            warnings.warn(
+                "Expected FieldBase instead of append numpy array", DeprecationWarning
+            )
+
+            return self._append_data(field, time)
+
+        if self._grid is None:
+            self._grid = field.grid
+        elif self._grid != field.grid:
+            raise ValueError(f"Grids incompatible ({self._grid} != {field.grid})")
+        return self._append_data(field.data, time)
 
     def clear(self, clear_data_shape: bool = False) -> None:
         """truncate the storage by removing all stored data.
@@ -234,8 +274,6 @@ class StorageBase(metaclass=ABCMeta):
         self._field = field.copy()
         self.info["field_attributes"] = field.attributes_serialized
 
-    #         self.info['grid'] = field.grid.state_serialized
-
     def end_writing(self) -> None:
         """ finalize the storage after writing """
         pass
@@ -313,6 +351,66 @@ class StorageBase(metaclass=ABCMeta):
             field_obj=self._field,
             info=self.info,
         )
+
+    def apply(
+        self, func: Callable, out: "StorageBase" = None, *, progress: bool = False
+    ) -> "StorageBase":
+        """applies function to each field in a storage
+
+        Args:
+            func (callable):
+                The function to apply to each stored field. The function must either
+                take as a single argument the field or as two arguments the field and
+                the associated time point. In both cases, it should return a field.
+            out (:class:`~pde.storage.base.StorageBase`):
+                Storage to which the output is written. If omitted, a new
+                :class:`~pde.storage.memory.MemoryStorage` is used and returned
+            progress (bool):
+                Flag indicating whether the progress is shown during the calculation
+
+        Returns:
+            :class:`~pde.storage.base.StorageBase`: The new storage that contains the
+            data after the function `func` has been applied
+        """
+        # get the number of arguments that the user function expects
+        num_args = len(signature(func).parameters)
+        writing = False  # flag indicating whether output storage wass opened
+
+        for t, field in display_progress(
+            self.items(), total=len(self), enabled=progress
+        ):
+            # apply the user function
+            if num_args == 0:
+                transformed = func()
+            elif num_args == 1:
+                transformed = func(field)
+            else:
+                transformed = func(field, t)
+
+            if not isinstance(transformed, FieldBase):
+                raise TypeError("The user function must return a field")
+
+            if out is None:
+                from .memory import MemoryStorage  # @Reimport
+
+                out = MemoryStorage(field_obj=transformed)
+
+            if not writing:
+                out.start_writing(transformed)
+                writing = True
+
+            out.append(transformed, t)
+
+        if writing:
+            out.end_writing()  # type: ignore
+
+        # make sure that a storage is returned, even when no fields are present
+        if out is None:
+            from .memory import MemoryStorage  # @Reimport
+
+            out = MemoryStorage()
+
+        return out
 
 
 class StorageTracker(TrackerBase):

@@ -30,8 +30,8 @@ def test_storage_persistence(compression, tmp_path):
 
         # first batch
         storage.start_writing(field, info={"b": 2})
-        storage.append(np.arange(dim), 0)
-        storage.append(np.arange(dim, 2 * dim))
+        storage.append(field.copy(data=np.arange(dim)), 0)
+        storage.append(field.copy(data=np.arange(dim, 2 * dim)))
         storage.end_writing()
 
         # read first batch
@@ -41,7 +41,7 @@ def test_storage_persistence(compression, tmp_path):
 
         # second batch
         storage.start_writing(field, info={"c": 3})
-        storage.append(np.arange(2 * dim, 3 * dim), 2)
+        storage.append(field.copy(data=np.arange(2 * dim, 3 * dim)), 2)
         storage.end_writing()
 
         storage.close()
@@ -103,16 +103,16 @@ def test_storage_fixed_size(compression, tmp_path):
 
         storage.start_writing(c)
         assert len(storage) == 0
-        storage.append(c.data, 0)
+        storage.append(c, 0)
         assert len(storage) == 1
 
         if fixed:
             with pytest.raises((TypeError, ValueError, RuntimeError)):
-                storage.append(c.data, 1)
+                storage.append(c, 1)
             assert len(storage) == 1
             np.testing.assert_allclose(storage.times, [0])
         else:
-            storage.append(c.data, 1)
+            storage.append(c, 1)
             assert len(storage) == 2
             np.testing.assert_allclose(storage.times, [0, 1])
 
@@ -126,14 +126,14 @@ def test_appending(tmp_path):
     storage = FileStorage(path)
     storage.start_writing(c)
     assert len(storage) == 0
-    storage.append(c.data, 0)
+    storage.append(c, 0)
     assert storage._file_state == "writing"
     assert len(storage) == 1
     storage.close()
 
     storage2 = FileStorage(path, write_mode="append")
     storage2.start_writing(c)
-    storage2.append(c.data, 1)
+    storage2.append(c, 1)
     storage2.close()
 
     assert len(storage2) == 2
@@ -148,11 +148,11 @@ def test_keep_opened(tmp_path):
     storage = FileStorage(path, keep_opened=False)
     storage.start_writing(c)
     assert len(storage) == 0
-    storage.append(c.data, 0)
+    storage.append(c, 0)
     assert storage._file_state == "closed"
     assert len(storage) == 1
     assert storage._file_state == "reading"
-    storage.append(c.data, 1)
+    storage.append(c, 1)
     assert len(storage) == 2
 
     storage2 = FileStorage(path, write_mode="append")
@@ -160,7 +160,7 @@ def test_keep_opened(tmp_path):
     assert storage.data == storage2.data
     storage.close()  # close the old storage to enable writing here
     storage2.start_writing(c)
-    storage2.append(c.data, 2)
+    storage2.append(c, 2)
     storage2.close()
 
     assert len(storage2) == 3

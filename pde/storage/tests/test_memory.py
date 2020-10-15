@@ -15,12 +15,12 @@ def test_memory_storage():
     sf = ScalarField(UnitGrid([1]))
     s1 = MemoryStorage()
     s1.start_writing(sf)
-    s1.append(np.array([0]), 0)
-    s1.append(np.array([2]), 1)
+    s1.append(sf.copy(data=0), 0)
+    s1.append(sf.copy(data=2), 1)
     s2 = MemoryStorage()
     s2.start_writing(sf)
-    s2.append(np.array([1]), 0)
-    s2.append(np.array([3]), 1)
+    s2.append(sf.copy(data=1), 0)
+    s2.append(sf.copy(data=3), 1)
 
     # test from_fields
     s3 = MemoryStorage.from_fields(s1.times, [s1[0], s1[1]])
@@ -40,8 +40,8 @@ def test_field_type_guessing():
         field = cls.random_normal(grid)
         s = MemoryStorage()
         s.start_writing(field)
-        s.append(field.data, 0)
-        s.append(field.data, 1)
+        s.append(field, 0)
+        s.append(field, 1)
 
         # delete information
         s._field = None
@@ -54,7 +54,7 @@ def test_field_type_guessing():
     field = FieldCollection([ScalarField(grid), VectorField(grid)])
     s = MemoryStorage()
     s.start_writing(field)
-    s.append(field.data, 0)
+    s.append(field, 0)
 
     assert s.has_collection
 

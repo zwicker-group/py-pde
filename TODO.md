@@ -1,12 +1,11 @@
 TODO
 ====
-* Add possibility to transform storage:
-    - this would take one storage and create another one
-    - a (user-supplied) function would map fields from one storage to a new one
-    - this would be applied to all time points
-    - should be a method on StorageBase:
-        StorageBase.apply(func: Callable, out: StorageBase = None, progress=False) -> StorageBase
-    - If `out` is not supplied a MemoryStorage is created    
+* Indicate periodic boundary by dashed/dotted axes in image plot?
+    - use ax.spines['top'].set_linestyle((0, (5, 10)))
+* Refactor testing script
+    - move to using a python script with all options (serial/parallel, specific tests, slow/fast)
+    - mark some tests as slow (e.g. jupyter notebook testing
+    - accelerate some tests by not compiling
 * Add support for dtype=np.single
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
@@ -15,7 +14,6 @@ TODO
 * Add documentation entry for how to build expressions
     - Improved documentation on how to set boundary conditions
 * Implement Gray Scott Model of Reaction Diffusion
-* Accelerate some tests by not compiling
 * pde.PDE:
     - add test for dot operator and custom boundary conditions
 * Plot tracker:

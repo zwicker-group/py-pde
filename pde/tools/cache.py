@@ -19,7 +19,8 @@ Module containing functions for managing cache structures
 
 from __future__ import division
 
-import collections
+import collections  # @UnusedImport
+import collections.abc
 import functools
 import logging
 import numbers
@@ -270,7 +271,7 @@ def make_unserializer(method: str) -> Callable:
     if method == "yaml_unsafe":
         import yaml  # @Reimport
 
-        return yaml.unsafe_load  # type: ignore
+        return yaml.unsafe_load
 
     raise ValueError("Unknown serialization method `%s`" % method)
 

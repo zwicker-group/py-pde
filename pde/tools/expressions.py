@@ -24,7 +24,17 @@ import re
 from abc import ABCMeta, abstractproperty
 from typing import Optional  # @UnusedImport
 from typing import Set  # @UnusedImport
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
@@ -43,7 +53,7 @@ if TYPE_CHECKING:
 
 @fill_in_docstring
 def parse_number(
-    expression: Union[str, Number], variables: Dict[str, Number] = None
+    expression: Union[str, Number], variables: Mapping[str, Number] = None
 ) -> Number:
     r"""return a number compiled from an expression
 
