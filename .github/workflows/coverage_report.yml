@@ -35,7 +35,7 @@ jobs:
         cd tests
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
-        pytest --cov-report xml:report_coverage.xml --cov=pde ..
+        pytest --cov-report xml:report_coverage.xml --cov=pde --runslow ..
         
     - name: Upload coverage to Codecov  
       uses: codecov/codecov-action@v1
