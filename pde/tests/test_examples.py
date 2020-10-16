@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from typing import List  # @UnusedImport
 
-import numba as nb
 import pytest
 
 from ..tools.misc import module_available, skipUnlessModule
@@ -28,8 +27,9 @@ if not module_available("napari"):
     SKIP_EXAMPLES.extend(["tracker_interactive", "show_3d_field_interactively"])
 
 
+@pytest.mark.slow
+@pytest.mark.no_cover
 @pytest.mark.skipif(sys.platform == "win32", reason="Assumes unix setup")
-@pytest.mark.skipif(nb.config.DISABLE_JIT, reason="pytest seems to check code coverage")
 @pytest.mark.parametrize("path", EXAMPLES)
 def test_example(path):
     """ runs an example script given by path """
@@ -55,8 +55,9 @@ def test_example(path):
     assert proc.returncode <= 0, msg
 
 
+@pytest.mark.slow
+@pytest.mark.no_cover
 @skipUnlessModule("jupyter")
-@pytest.mark.skipif(nb.config.DISABLE_JIT, reason="pytest seems to check code coverage")
 @pytest.mark.parametrize("path", NOTEBOOKS)
 def test_jupyter_notebooks(path, tmp_path):
     """ run the jupyter notebooks """

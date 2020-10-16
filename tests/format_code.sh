@@ -3,7 +3,7 @@
 # This script formats the code of this package
 #
 
-for dir in pde examples ; do
+for dir in pde examples tests; do
     echo "Formating files in ${dir}:"
 
     # format imports

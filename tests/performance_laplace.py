@@ -10,15 +10,14 @@ from pathlib import Path
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 sys.path.append(str(PACKAGE_PATH))
 
-import numpy as np
 import numba
-
-from pde.grids import UnitGrid, CylindricalGrid, SphericalGrid
+import numpy as np
+from pde.grids import CylindricalGrid, SphericalGrid, UnitGrid
+from pde.grids.boundaries import Boundaries
 from pde.grids.operators import cartesian, cylindrical, spherical
 from pde.grids.operators.common import PARALLELIZATION_THRESHOLD_2D
-from pde.grids.boundaries import Boundaries
-from pde.tools.numba import jit, jit_allocate_out
 from pde.tools.misc import estimate_computation_speed
+from pde.tools.numba import jit, jit_allocate_out
 
 
 def custom_laplace_2d_periodic(shape, dx=1):

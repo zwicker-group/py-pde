@@ -2,10 +2,6 @@ TODO
 ====
 * Indicate periodic boundary by dashed/dotted axes in image plot?
     - use ax.spines['top'].set_linestyle((0, (5, 10)))
-* Refactor testing script
-    - move to using a python script with all options (serial/parallel, specific tests, slow/fast)
-    - mark some tests as slow (e.g. jupyter notebook testing
-    - accelerate some tests by not compiling
 * Add support for dtype=np.single
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
