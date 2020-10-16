@@ -32,16 +32,15 @@ jobs:
     - name: Generate coverage report
       run: |
         pip install pytest pytest-cov h5py pandas tqdm
-        cd tests
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
-        pytest --cov-report xml:report_coverage.xml --cov=pde --runslow ..
+        pytest --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov=pde --runslow pde
         
     - name: Upload coverage to Codecov  
       uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./tests/report_coverage.xml
+        file: ./report_coverage.xml
         yml: ./codecov.yml
         flags: unittests
         name: codecov-pydev
