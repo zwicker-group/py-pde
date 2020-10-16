@@ -16,6 +16,7 @@ def test_codestyle():
 
         # format imports
         sp.check_call(["isort", "--profile", "black", "--diff", path])
+        # format rest
         sp.check_call(["black", "-t", "py36", "--check", path])
 
 
