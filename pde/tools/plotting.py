@@ -356,7 +356,9 @@ def plot_on_axes(wrapped=None, update_method=None):
 
             # decide what to do with the final plot
             if action == "auto":
-                if is_outermost_plot_call:
+                if is_outermost_plot_call and "backend_inline" not in mpl.get_backend():
+                    # only call show on the outermost plot call, except for the `inline`
+                    # backend that shows plots automatically
                     action = "show"
                 else:
                     action = "create"
@@ -524,7 +526,9 @@ def plot_on_figure(wrapped=None, update_method=None):
 
             # decide what to do with the final plot
             if action == "auto":
-                if is_outermost_plot_call:
+                if is_outermost_plot_call and "backend_inline" not in mpl.get_backend():
+                    # only call show on the outermost plot call, except for the `inline`
+                    # backend that shows plots automatically
                     action = "show"
                 else:
                     action = "create"
