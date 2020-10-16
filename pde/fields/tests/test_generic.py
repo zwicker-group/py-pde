@@ -24,6 +24,7 @@ def iter_grids():
     yield SphericalGrid(3, 4)
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("grid", iter_grids())
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
 def test_interpolation_natural(grid, field_class):
