@@ -321,6 +321,11 @@ def plot_on_axes(wrapped=None, update_method=None):
         if ax_style is None:
             ax_style = {}
 
+        # show figure if action == 'auto' and backend is not `inline`. This safeguard is
+        # necessary to allow specifying subplot axes explicitly through the `ax`
+        # argument.
+        auto_show_figure = "backend_inline" not in mpl.get_backend()
+
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
 
@@ -332,6 +337,7 @@ def plot_on_axes(wrapped=None, update_method=None):
                     backend = mpl.get_backend()
                     if "backend_inline" in backend or "nbAgg" == backend:
                         plt.close("all")  # close left over figures
+                        auto_show_figure = True  # show this figure if action == 'auto'
                     fig, ax = plt.subplots()
                 else:
                     fig = ax.get_figure()
@@ -356,9 +362,9 @@ def plot_on_axes(wrapped=None, update_method=None):
 
             # decide what to do with the final plot
             if action == "auto":
-                if is_outermost_plot_call and "backend_inline" not in mpl.get_backend():
-                    # only call show on the outermost plot call, except for the `inline`
-                    # backend that shows plots automatically
+                if is_outermost_plot_call and auto_show_figure:
+                    # only call show on the outermost plot call and only in the
+                    # circumstances determined above
                     action = "show"
                 else:
                     action = "create"
@@ -526,9 +532,8 @@ def plot_on_figure(wrapped=None, update_method=None):
 
             # decide what to do with the final plot
             if action == "auto":
-                if is_outermost_plot_call and "backend_inline" not in mpl.get_backend():
-                    # only call show on the outermost plot call, except for the `inline`
-                    # backend that shows plots automatically
+                if is_outermost_plot_call:
+                    # only call show on the outermost plot call
                     action = "show"
                 else:
                     action = "create"
