@@ -93,7 +93,7 @@ class WavePDE(PDEBase):
         assert isinstance(state, FieldCollection)
         u, v = state
         u_t = v.copy()
-        v_t = self.speed ** 2 * u.laplace("natural")  # type: ignore
+        v_t = self.speed ** 2 * u.laplace(self.bc)  # type: ignore
         return FieldCollection([u_t, v_t])
 
     def _make_pde_rhs_numba(self, state: FieldCollection) -> Callable:  # type: ignore
