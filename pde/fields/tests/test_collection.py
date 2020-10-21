@@ -96,6 +96,12 @@ def test_collections_copy():
     np.testing.assert_allclose(fc.data.flat, np.ones(12))
     np.testing.assert_allclose(fc2.data.flat, data)
 
+    # special case
+    fc = FieldCollection([sf, sf])
+    fc[0] = 2
+    np.testing.assert_allclose(fc[0].data, 2)
+    np.testing.assert_allclose(fc[1].data, 1)
+
 
 def test_collections_operators():
     """ test field collections """

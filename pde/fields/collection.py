@@ -6,6 +6,7 @@ grid.
 """
 
 import json
+import logging
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Union
 
 import numpy as np
@@ -39,7 +40,8 @@ class FieldCollection(FieldBase):
                 the individual fields given by `fields`.
             copy_fields (bool):
                 Flag determining whether the individual fields given in `fields`
-                are copied.
+                are copied. Note that fields are always copied if some of the supplied
+                fields are identical.
             label (str):
                 Label of the field collection
             dtype (numpy dtype):
@@ -62,6 +64,12 @@ class FieldCollection(FieldBase):
         if any(grid != f.grid for f in fields[1:]):
             grids = [f.grid for f in fields]
             raise RuntimeError(f"Grids are incompatible: {grids}")
+
+        # check whether some fields are identical
+        if not copy_fields and len(fields) != len(set(id(field) for field in fields)):
+            self._logger = logging.getLogger(self.__class__.__name__)
+            self._logger.warning("Creating a copy of identical fields in collection")
+            copy_fields = True
 
         # create the list of underlying fields
         if copy_fields:
