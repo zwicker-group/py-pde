@@ -171,6 +171,9 @@ class StorageBase(metaclass=ABCMeta):
             :class:`~pde.fields.FieldBase`:
             The field class containing the grid and data
         """
+        if t_index < 0:
+            t_index += len(self)
+
         if not 0 <= t_index < len(self):
             raise IndexError("Time index out of range")
 

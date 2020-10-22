@@ -5,6 +5,7 @@
 import functools
 
 import numpy as np
+import pytest
 
 from ...fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from ...grids import UnitGrid
@@ -97,6 +98,16 @@ def test_storing_extract_range(tmp_path):
         s1.append(sf.copy(data=np.array([0])), 0)
         s1.append(sf.copy(data=np.array([2])), 1)
         s1.end_writing()
+
+        np.testing.assert_equal(s1[0].data, 0)
+        np.testing.assert_equal(s1[1].data, 2)
+        np.testing.assert_equal(s1[-1].data, 2)
+        np.testing.assert_equal(s1[-2].data, 0)
+
+        with pytest.raises(IndexError):
+            s1[2]
+        with pytest.raises(IndexError):
+            s1[-3]
 
         # test extraction
         s2 = s1.extract_time_range()
