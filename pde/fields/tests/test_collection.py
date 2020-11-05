@@ -211,6 +211,11 @@ def test_field_labels():
     labels[0] = "e"
     assert fc.labels == ["a", "a"]
 
+    fc = FieldCollection([s1, s2], labels=[None, "b"])
+    assert fc.labels == [None, "b"]
+    fc = FieldCollection([s1, s2], labels=["a", "b"])
+    assert fc.labels == ["a", "b"]
+
 
 def test_collection_1_field():
     """ test field collections with only one field """

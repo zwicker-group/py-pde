@@ -5,7 +5,6 @@ import os
 import subprocess as sp
 from pathlib import Path
 
-
 PACKAGE = "pde"  # name of the package that needs to be tested
 PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package
 

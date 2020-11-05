@@ -10,10 +10,10 @@ import numpy as np
 
 
 class SmoothData1D:
-    """provide structure for smoothing data in 1d
+    """allows smoothing data in 1d using a Gaussian kernel of defined width
 
     The data is given a pairs of `x` and `y`, the assumption being that there is
-    an underlying relation `y_n = f(x_n)`.
+    an underlying relation `y = f(x)`.
     """
 
     sigma_auto_scale: float = 10

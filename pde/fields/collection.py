@@ -29,6 +29,7 @@ class FieldCollection(FieldBase):
         *,
         copy_fields: bool = False,
         label: Optional[str] = None,
+        labels: List[Optional[str]] = None,
         dtype=None,
     ):
         """
@@ -44,6 +45,9 @@ class FieldCollection(FieldBase):
                 fields are identical.
             label (str):
                 Label of the field collection
+            labels (list of str):
+                Labels of the individual fields. If omitted, the labels from the
+                `fields` argument are used.
             dtype (numpy dtype):
                 The data type of the field. All the numpy dtypes are supported. If
                 omitted, it will be determined from `data` automatically.
@@ -119,6 +123,9 @@ class FieldCollection(FieldBase):
                 # check whether the field data is based on our data field
                 assert field.data.shape == field_shape
                 assert field.data.base is self.data
+
+        if labels is not None:
+            self.labels = labels  # type: ignore
 
     def __repr__(self):
         """ return instance as string """

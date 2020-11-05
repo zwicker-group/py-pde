@@ -1,5 +1,6 @@
 TODO
 ====
+* Allow creating ScalarFields from data points and from a python function 
 * Indicate periodic boundary by dashed/dotted axes in image plot?
     - use ax.spines['top'].set_linestyle((0, (5, 10)))
 * Add support for dtype=np.single
