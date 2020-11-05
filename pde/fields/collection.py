@@ -551,7 +551,12 @@ class FieldCollection(FieldBase):
 
     @plot_on_figure(update_method="_update_plot")
     def plot(
-        self, kind: str = "auto", resize_fig: bool = True, fig=None, **kwargs
+        self,
+        kind: str = "auto",
+        resize_fig: bool = True,
+        fig=None,
+        subplot_args=None,
+        **kwargs,
     ) -> List[PlotReference]:
         r"""visualize all the fields in the collection
 
@@ -563,12 +568,16 @@ class FieldCollection(FieldBase):
             resize_fig (bool):
                 Whether to resize the figure to adjust to the number of panels
             {PLOT_ARGS}
+            subplot_args (list):
+                Additional arguments for the specific subplots. Should be a list with a
+                dictionary of arguments for each subplot. Supplying an empty allows to
+                keep the default setting of specific subplots.
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual
-                plotting function.
+                plotting function of all subplots.
 
         Returns:
-            list of :class:`PlotReference`: Instances that contain information
+            List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
         # disable interactive plotting temporarily
@@ -577,10 +586,13 @@ class FieldCollection(FieldBase):
             fig.set_size_inches((4 * len(self), 3), forward=True)
         (axs,) = fig.subplots(1, len(self), squeeze=False)
 
-        # plot all the elements into the respective axes
+        if subplot_args is None:
+            subplot_args = [{}] * len(self)
+
+        # plot all the elements onto the respective axes
         reference = [
-            field.plot(kind=kind, ax=ax, action="create", **kwargs)
-            for field, ax in zip(self.fields, axs)
+            field.plot(kind=kind, ax=ax, action="create", **kwargs, **sp_args)
+            for field, ax, sp_args in zip(self.fields, axs, subplot_args)
         ]
 
         # return the references for all subplots

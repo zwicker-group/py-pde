@@ -74,7 +74,7 @@ def test_collections():
     with pytest.raises(KeyError):
         fields["42"] = 0
 
-    fields.plot()
+    fields.plot(subplot_args=[{}, {"scale": 1}, {"colorbar": False}])
 
 
 def test_collections_copy():

@@ -34,7 +34,7 @@ def test_types(*, report: bool = False, verbose: bool = True):
         verbose (bool): Whether to do extra output
     """
     if verbose:
-        print(f"Checking types in of the {PACKAGE} package...")
+        print(f"Checking types in the {PACKAGE} package...")
 
     args = [
         "python3",
