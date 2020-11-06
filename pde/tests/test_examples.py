@@ -51,7 +51,7 @@ def test_example(path):
 
     # delete files that might be created by the test
     try:
-        os.remove(PACKAGE_PATH / "examples" / "diffusion.mov")
+        os.remove(PACKAGE_PATH / "diffusion.mov")
     except OSError:
         pass
 
