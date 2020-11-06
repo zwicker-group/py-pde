@@ -377,7 +377,7 @@ class StorageBase(metaclass=ABCMeta):
         """
         # get the number of arguments that the user function expects
         num_args = len(signature(func).parameters)
-        writing = False  # flag indicating whether output storage wass opened
+        writing = False  # flag indicating whether output storage was opened
 
         for t, field in display_progress(
             self.items(), total=len(self), enabled=progress
@@ -414,6 +414,25 @@ class StorageBase(metaclass=ABCMeta):
             out = MemoryStorage()
 
         return out
+
+    def copy(
+        self, out: "StorageBase" = None, *, progress: bool = False
+    ) -> "StorageBase":
+        """copies all fields in a storage to a new one
+
+        Args:
+            out (:class:`~pde.storage.base.StorageBase`):
+                Storage to which the output is written. If omitted, a new
+                :class:`~pde.storage.memory.MemoryStorage` is used and returned
+            progress (bool):
+                Flag indicating whether the progress is shown during the calculation
+
+        Returns:
+            :class:`~pde.storage.base.StorageBase`: The new storage that contains the
+            copied data
+        """
+        # apply the identity function to do the copy
+        return self.apply(lambda x: x, out=out, progress=progress)
 
 
 class StorageTracker(TrackerBase):

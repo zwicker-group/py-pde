@@ -168,10 +168,43 @@ def test_storage_apply(tmp_path):
         out = None if storage_cls is None else storage_cls()
         s2 = s1.apply(lambda x: x + 1, out=out)
         assert storage_cls is None or s2 is out
+        assert len(s2) == 2
+        np.testing.assert_allclose(s2.times, s1.times)
         assert s2[0] == ScalarField(grid, [1, 2]), name
         assert s2[1] == ScalarField(grid, [2, 3]), name
 
     # test empty storage
     s1 = MemoryStorage()
     s2 = s1.apply(lambda x: x + 1)
+    assert len(s2) == 0
+
+
+def test_storage_copy(tmp_path):
+    """ test the copy function of StorageBase """
+    grid = UnitGrid([2])
+    field = ScalarField(grid)
+
+    storage_classes = {"None": None, "MemoryStorage": MemoryStorage}
+    if module_available("h5py"):
+        file_path = tmp_path / "test_storage_apply.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
+
+    s1 = MemoryStorage()
+    s1.start_writing(field, info={"b": 2})
+    s1.append(field.copy(data=np.array([0, 1])), 0)
+    s1.append(field.copy(data=np.array([1, 2])), 1)
+    s1.end_writing()
+
+    for name, storage_cls in storage_classes.items():
+        out = None if storage_cls is None else storage_cls()
+        s2 = s1.copy(out=out)
+        assert storage_cls is None or s2 is out
+        assert len(s2) == 2
+        np.testing.assert_allclose(s2.times, s1.times)
+        assert s2[0] == s1[0], name
+        assert s2[1] == s1[1], name
+
+    # test empty storage
+    s1 = MemoryStorage()
+    s2 = s1.copy()
     assert len(s2) == 0
