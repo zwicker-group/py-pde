@@ -22,7 +22,7 @@ NOTEBOOKS = glob.glob(
 
 SKIP_EXAMPLES: List[str] = []
 if not Movie.is_available():
-    SKIP_EXAMPLES.append("make_movie.py")
+    SKIP_EXAMPLES.extend(["make_movie_live.py", "make_movie_storage.py"])
 if not module_available("napari"):
     SKIP_EXAMPLES.extend(["tracker_interactive", "show_3d_field_interactively"])
 
@@ -33,11 +33,13 @@ if not module_available("napari"):
 @pytest.mark.parametrize("path", EXAMPLES)
 def test_example(path):
     """ runs an example script given by path """
+    # check whether this test needs to be run
     if os.path.basename(path).startswith("_"):
         pytest.skip("skip examples starting with an underscore")
     if any(name in path for name in SKIP_EXAMPLES):
         pytest.skip(f"Skip test {path}")
 
+    # run the actual test in a separate python process
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
     proc = sp.Popen([sys.executable, path], env=env, stdout=sp.PIPE, stderr=sp.PIPE)
@@ -47,6 +49,13 @@ def test_example(path):
         proc.kill()
         outs, errs = proc.communicate()
 
+    # delete files that might be created by the test
+    try:
+        os.remove(PACKAGE_PATH / "examples" / "diffusion.mov")
+    except OSError:
+        pass
+
+    # prepare output
     msg = "Script `%s` failed with following output:" % path
     if outs:
         msg = "%s\nSTDOUT:\n%s" % (msg, outs)
