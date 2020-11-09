@@ -56,7 +56,8 @@ class PDE(PDEBase):
                 be specified with their full name, i.e., `laplace` for a scalar
                 Laplacian and `vector_laplace` for a Laplacian operating on a vector
                 field. Moreover, the dot product between two vector fields can be
-                denoted by using `dot(field1, field2)` in the expression.
+                denoted by using `dot(field1, field2)` in the expression, while an outer
+                product is calculated using `outer(field1, field2)`.
             noise (float or :class:`numpy.ndarray`):
                 Magnitude of additive Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
@@ -72,7 +73,7 @@ class PDE(PDEBase):
                 dictionary specify where the boundary condition will be applied.
                 The keys follow the format "VARIABLE:OPERATOR", where VARIABLE specifies
                 the expression in `rhs` where the boundary condition is applied to the
-                operator specified by OPERATOR/. For both identifiers, the wildcard
+                operator specified by OPERATOR. For both identifiers, the wildcard
                 symbol "*" denotes that all fields and operators are affected,
                 respectively.
             user_funcs (dict, optional):
@@ -204,11 +205,19 @@ class PDE(PDEBase):
         # obtain functions used in the expression
         ops_general = {}
 
-        # create a dot operator if necessary
+        # create special operators if necessary
         if "dot" in self.diagnostics["operators"]:  # type: ignore
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
             ops_general["dot"] = VectorField(state.grid).make_dot_operator()
+
+        if "inner" in self.diagnostics["operators"]:  # type: ignore
+            # synonym for dot product operator
+            ops_general["inner"] = VectorField(state.grid).make_dot_operator()
+
+        if "outer" in self.diagnostics["operators"]:  # type: ignore
+            # synonym for dot product operator
+            ops_general["outer"] = VectorField(state.grid).make_outer_prod_operator()
 
         # obtain the python functions for the rhs
         rhs_funcs = []

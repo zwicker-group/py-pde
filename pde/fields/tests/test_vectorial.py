@@ -143,11 +143,19 @@ def test_vector_boundary_conditions():
 def test_outer_product():
     """ test outer product of vector fields """
     vf = VectorField(UnitGrid([1, 1]), [[[1]], [[2]]])
+    outer = vf.make_outer_prod_operator()
+
     tf = vf.outer_product(vf)
-    np.testing.assert_equal(tf.data, np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1))
+    res = np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1)
+    np.testing.assert_equal(tf.data, res)
+    np.testing.assert_equal(outer(vf.data, vf.data), res)
+
     tf.data = 0
+    res = np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1)
     vf.outer_product(vf, out=tf)
-    np.testing.assert_equal(tf.data, np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1))
+    np.testing.assert_equal(tf.data, res)
+    outer(vf.data, vf.data, out=tf.data)
+    np.testing.assert_equal(tf.data, res)
 
 
 def test_from_expressions():

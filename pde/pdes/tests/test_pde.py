@@ -199,3 +199,15 @@ def test_pde_complex():
     assert res2.is_complex
 
     np.testing.assert_allclose(res1.data, res2.data)
+
+
+def test_pde_product_operators():
+    """ test inner and outer products """
+    eq = PDE(
+        {"p": "gradient(dot(p, p) + inner(p, p)) + tensor_divergence(outer(p, p))"}
+    )
+    assert not eq.explicit_time_dependence
+    assert not eq.complex_valued
+    field = VectorField(UnitGrid([4]), 1)
+    res = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
+    np.testing.assert_allclose(res.data, field.data)
