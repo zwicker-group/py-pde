@@ -336,10 +336,12 @@ class PDE(PDEBase):
         cache = self._prepare_cache(state, backend="numpy")
 
         if isinstance(state, DataFieldBase):
+            # state is a single field
             rhs = cache["rhs_funcs"][0]
             return state.copy(data=rhs(state.data, t))
 
         elif isinstance(state, FieldCollection):
+            # state is a collection of fields
             result = state.copy()
             for i in range(len(state)):
                 data_tpl = cache["get_data_tuple"](state.data)
@@ -436,8 +438,12 @@ class PDE(PDEBase):
         cache = self._prepare_cache(state, backend="numba")
 
         if isinstance(state, DataFieldBase):
+            # state is a single field
             return jit(cache["rhs_funcs"][0])  # type: ignore
+
         elif isinstance(state, FieldCollection):
+            # state is a collection of fields
             return self._make_pde_rhs_numba_coll(state, cache)
+
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")

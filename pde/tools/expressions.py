@@ -109,6 +109,7 @@ class ExpressionBase(metaclass=ABCMeta):
         expression: "basic.Basic",
         signature: Optional[Sequence[Union[str, List[str]]]] = None,
         user_funcs: Optional[Dict[str, Any]] = None,
+        consts: Optional[Dict[str, Any]] = None,
     ):
         """
         Warning:
@@ -131,6 +132,9 @@ class ExpressionBase(metaclass=ABCMeta):
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expression
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression
         """
         try:
             self._sympy_expr = sympy.simplify(expression)
@@ -139,6 +143,7 @@ class ExpressionBase(metaclass=ABCMeta):
             self._sympy_expr = expression
         self._logger = logging.getLogger(self.__class__.__name__)
         self.user_funcs = {} if user_funcs is None else user_funcs
+        self.consts = {} if consts is None else consts
         self._check_signature(signature)
 
     def __repr__(self):
@@ -351,6 +356,7 @@ class ScalarExpression(ExpressionBase):
         expression: ExpressionType = 0,
         signature: Optional[Sequence[Union[str, List[str]]]] = None,
         user_funcs: Optional[Dict[str, Any]] = None,
+        consts: Optional[Dict[str, Any]] = None,
         allow_indexed: bool = False,
     ):
         """
@@ -373,6 +379,9 @@ class ScalarExpression(ExpressionBase):
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expression
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression
             allow_indexed (bool):
                 Whether to allow indexing of variables. If enabled, array
                 variables are allowed to be indexed using square bracket
@@ -387,16 +396,20 @@ class ScalarExpression(ExpressionBase):
             if signature is None:
                 signature = expression.vars
             self.allow_indexed = expression.allow_indexed
+
             if user_funcs is None:
                 user_funcs = expression.user_funcs
             else:
                 user_funcs.update(expression.user_funcs)
 
+            if consts is None:
+                consts = expression.consts
+            else:
+                consts.update(expression.consts)
+
         elif callable(expression):
             # expression is some other callable -> not allowed anymore
-            raise TypeError(
-                "Expression must be provided as string and not as a callable function"
-            )
+            raise TypeError("Expression must be a string and not a function")
 
         elif isinstance(expression, numbers.Number):
             # expression is a simple number
@@ -416,14 +429,32 @@ class ScalarExpression(ExpressionBase):
             sympy_expr = sympy.Float(0)
 
         super().__init__(
-            expression=sympy_expr, signature=signature, user_funcs=user_funcs
+            expression=sympy_expr,
+            signature=signature,
+            user_funcs=user_funcs,
+            consts=consts,
         )
 
     @property
     def value(self) -> Number:
         """ float: the value for a constant expression """
         if self.constant:
-            return number(self._sympy_expr)
+            try:
+                # try simply evaluating the expression as a number
+                value = number(self._sympy_expr.evalf())
+                
+            except TypeError:
+                # This can fail if user_funcs are supplied, which would not be replaced
+                # in the numeric implementation above. We thus also try to call the
+                # expression without any arguments 
+                value = number(self())
+                # Note that this may fail when the expression is actually constant, but
+                # has a signature that forces it to depend on some arguments. However,
+                # we feel this situation should not be very common, so we do not (yet)
+                # deal with it.  
+
+            return value
+
         else:
             raise TypeError("Only constant expressions have a defined value")
 
@@ -588,7 +619,22 @@ class TensorExpression(ExpressionBase):
     def value(self):
         """ the value for a constant expression """
         if self.constant:
-            return number_array(self._sympy_expr.tolist())
+            try:
+                # try simply evaluating the expression as a number
+                value = number_array(self._sympy_expr.tolist())
+                
+            except TypeError:
+                # This can fail if user_funcs are supplied, which would not be replaced
+                # in the numeric implementation above. We thus also try to call the
+                # expression without any arguments 
+                value = number_array(self())
+                # Note that this may fail when the expression is actually constant, but
+                # has a signature that forces it to depend on some arguments. However,
+                # we feel this situation should not be very common, so we do not (yet)
+                # deal with it.  
+
+            return value
+
         else:
             raise TypeError("Only constant expressions have a defined value")
 
