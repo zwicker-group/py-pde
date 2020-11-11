@@ -1,8 +1,9 @@
 TODO
 ====
 * Allow specifying fixed fields in PDE
-    - supplied by extra argument `const` in constructor
-    - they can be used in the expression
+    - supplied by extra argument `consts` in constructor
+    - they should also be used in any expression, not just PDE
+    - implement using functools.partial (is there a better way?)
 * Allow creating ScalarFields from data points and from a python function 
 * Indicate periodic boundary by dashed/dotted axes in image plot?
     - use ax.spines['top'].set_linestyle((0, (5, 10)))

@@ -224,6 +224,19 @@ def test_expression_user_funcs():
     expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
     assert expr() == 1
     assert expr.get_compiled()() == 1
+    assert expr.value == 1
+
+    expr = ScalarExpression("f(pi)", user_funcs={"f": np.sin})
+    assert expr.constant
+    assert expr() == pytest.approx(0)
+    assert expr.get_compiled()() == pytest.approx(0)
+    assert expr.value == pytest.approx(0)
+
+    expr = TensorExpression("[0, f(pi)]", user_funcs={"f": np.sin})
+    assert expr.constant
+    np.testing.assert_allclose(expr(), np.array([0, 0]), atol=1e-14)
+    np.testing.assert_allclose(expr.get_compiled()(), np.array([0, 0]), atol=1e-14)
+    np.testing.assert_allclose(expr.value, np.array([0, 0]), atol=1e-14)
 
 
 def test_complex_expression():
@@ -247,16 +260,3 @@ def test_expression_special():
     assert expr(-1) == 0
     assert expr(0) == 0.5
     assert expr(1) == 1
-
-
-def test_user_funcs():
-    """ test supplying user functions """
-    expr = ScalarExpression("f(pi)", user_funcs={"f": np.sin})
-    assert expr.constant
-    assert expr() == pytest.approx(0)
-    assert expr.value == pytest.approx(0)
-
-    expr = TensorExpression("[0, f(pi)]", user_funcs={"f": np.sin})
-    assert expr.constant
-    np.testing.assert_allclose(expr(), np.array([0, 0]), atol=1e-14)
-    np.testing.assert_allclose(expr.value, np.array([0, 0]), atol=1e-14)

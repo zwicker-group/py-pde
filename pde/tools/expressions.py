@@ -278,22 +278,33 @@ class ExpressionBase(metaclass=ABCMeta):
         Returns:
             function: the function
         """
+        # collect all the user functions
         user_functions = self.user_funcs.copy()
         if user_funcs is not None:
             user_functions.update(user_funcs)
-        if prepare_compilation:
-            user_functions = {k: jit(v) for k, v in user_functions.items()}
-        user_dict = {k: k for k in user_functions}
 
+        if prepare_compilation:
+            # transform the user functions, so they can be compiled using numba
+            def compile_func(func):
+                if isinstance(func, np.ufunc):
+                    # this is a work-around that allows to compile numpy ufuncs
+                    return jit(lambda *args: func(*args))
+                else:
+                    return jit(func)
+
+            user_functions = {k: compile_func(v) for k, v in user_functions.items()}
+
+        # initialize the printer that deals with numpy arrays correctly
         printer = NumpyArrayPrinter(
             {
                 "fully_qualified_modules": False,
                 "inline": True,
                 "allow_unknown_functions": True,
-                "user_functions": user_dict,
+                "user_functions": {k: k for k in user_functions},
             }
         )
 
+        # turn the expression into a callable function
         variables = (self.vars,) if single_arg else self.vars
         return sympy.lambdify(  # type: ignore
             variables,
@@ -442,16 +453,16 @@ class ScalarExpression(ExpressionBase):
             try:
                 # try simply evaluating the expression as a number
                 value = number(self._sympy_expr.evalf())
-                
+
             except TypeError:
                 # This can fail if user_funcs are supplied, which would not be replaced
                 # in the numeric implementation above. We thus also try to call the
-                # expression without any arguments 
+                # expression without any arguments
                 value = number(self())
                 # Note that this may fail when the expression is actually constant, but
                 # has a signature that forces it to depend on some arguments. However,
                 # we feel this situation should not be very common, so we do not (yet)
-                # deal with it.  
+                # deal with it.
 
             return value
 
@@ -622,16 +633,16 @@ class TensorExpression(ExpressionBase):
             try:
                 # try simply evaluating the expression as a number
                 value = number_array(self._sympy_expr.tolist())
-                
+
             except TypeError:
                 # This can fail if user_funcs are supplied, which would not be replaced
                 # in the numeric implementation above. We thus also try to call the
-                # expression without any arguments 
+                # expression without any arguments
                 value = number_array(self())
                 # Note that this may fail when the expression is actually constant, but
                 # has a signature that forces it to depend on some arguments. However,
                 # we feel this situation should not be very common, so we do not (yet)
-                # deal with it.  
+                # deal with it.
 
             return value
 
