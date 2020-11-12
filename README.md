@@ -1,6 +1,7 @@
 # py-pde
 
 [![PyPI version](https://badge.fury.io/py/py-pde.svg)](https://badge.fury.io/py/py-pde)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/py-pde.svg)](https://anaconda.org/conda-forge/py-pde)
 [![Documentation Status](https://readthedocs.org/projects/py-pde/badge/?version=latest)](https://py-pde.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.02158/status.svg)](https://doi.org/10.21105/joss.02158)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
@@ -42,6 +43,14 @@ pip install h5py pandas tqdm
 
 Moreover, `ffmpeg` needs to be installed for creating movies.
 
+As an alternative, you can install `py-pde` through [conda](https://docs.conda.io/en/latest/)
+using [conda-forge](https://conda-forge.org/) channel:
+
+```bash
+conda install -c conda-forge py-pde
+```
+
+Installation with `conda` includes all required dependencies to have all features of `py-pde`.
 
 Usage
 -----
