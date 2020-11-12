@@ -62,7 +62,8 @@ class PDE(PDEBase):
                 Magnitude of additive Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
                 Different noise magnitudes can be supplied for each field in coupled
-                PDEs.
+                PDEs by either specifying a sequence of numbers or a dictionary with
+                values for each field.
             bc:
                 Boundary conditions for the operators used in the expression. The
                 conditions here are applied to all operators that do not have a
@@ -89,6 +90,12 @@ class PDE(PDEBase):
         from sympy.core.function import AppliedUndef
 
         from ..tools.expressions import ScalarExpression
+
+        # parse noise strength
+        if isinstance(noise, dict):
+            noise = [noise.get(var, 0) for var in rhs]
+        if hasattr(noise, "__iter__") and len(noise) != len(rhs):  # type: ignore
+            raise ValueError("Number of noise strengths does not match field count")
 
         super().__init__(noise=noise)
 

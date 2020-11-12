@@ -211,3 +211,14 @@ def test_pde_product_operators():
     field = VectorField(UnitGrid([4]), 1)
     res = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
     np.testing.assert_allclose(res.data, field.data)
+
+
+def test_pde_setting_noise():
+    """ test setting the noise strength """
+    for noise in [[0, 1], {"b": 1}, {"b": 1, "a": 0}, {"b": 1, "c": 1}]:
+        eq = PDE({"a": "0", "b": "0"}, noise=noise)
+        assert eq.is_sde
+        assert eq.noise == [0, 1]
+
+    with pytest.raises(ValueError):
+        PDE({"a": 0}, noise=[1, 2])

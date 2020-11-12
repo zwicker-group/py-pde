@@ -86,6 +86,8 @@ def parse_number(
     return value
 
 
+# special functions that we want to support in expressions but that are not defined by
+# sympy version 1.6
 SPECIAL_FUNCTIONS = {"Heaviside": lambda x: np.heaviside(x, 0.5)}
 
 
@@ -152,10 +154,15 @@ class ExpressionBase(metaclass=ABCMeta):
         )
 
     def __eq__(self, other):
+        """ compare this expression to another one """
         if not isinstance(other, self.__class__):
             return NotImplemented
         # compare what the expressions depend on
         if set(self.vars) != set(other.vars):
+            return False
+
+        # compare the auxiliary data
+        if self.user_funcs != other.user_funcs or self.consts != other.consts:
             return False
 
         # compare the expressions themselves by checking their difference
@@ -166,9 +173,16 @@ class ExpressionBase(metaclass=ABCMeta):
             return diff == 0
 
     @property
+    def _free_symbols(self) -> Set:
+        """ return symbols that appear in the expression and are not in self.consts """
+        return {
+            sym for sym in self._sympy_expr.free_symbols if sym.name not in self.consts
+        }
+
+    @property
     def constant(self) -> bool:
         """ bool: whether the expression is a constant """
-        return len(self._sympy_expr.free_symbols) == 0
+        return len(self._free_symbols) == 0
 
     @property
     def complex(self) -> bool:
@@ -190,7 +204,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
         else:
             # general expressions might have a variable
-            args = set(str(s).split("[")[0] for s in self._sympy_expr.free_symbols)
+            args = set(str(s).split("[")[0] for s in self._free_symbols)
             if signature is None:
                 # create signature from arguments
                 signature = list(sorted(args))
@@ -252,9 +266,7 @@ class ExpressionBase(metaclass=ABCMeta):
         if self.constant:
             return False
         else:
-            return any(
-                variable == str(symbol) for symbol in self._sympy_expr.free_symbols
-            )
+            return any(variable == str(symbol) for symbol in self._free_symbols)
 
     def _get_function(
         self,
@@ -304,14 +316,35 @@ class ExpressionBase(metaclass=ABCMeta):
             }
         )
 
+        # determine the list of variables that the function depends on
+        variables = (self.vars,) if single_arg else tuple(self.vars)
+        constants = tuple(self.consts)
+
         # turn the expression into a callable function
-        variables = (self.vars,) if single_arg else self.vars
-        return sympy.lambdify(  # type: ignore
-            variables,
+        func = sympy.lambdify(
+            variables + constants,
             self._sympy_expr,
             modules=[user_functions, SPECIAL_FUNCTIONS, "numpy"],
             printer=printer,
         )
+
+        # Apply the constants if there are any. Note that we use this pattern of a
+        # partial function instead of replacing the constants in the sympy expression
+        # directly since sympy does not work well with numpy arrays.
+        if constants:
+            const_values = tuple(self.consts[c] for c in constants)
+
+            if prepare_compilation:
+                func = jit(func)
+
+            # TOOD: support keyword arguments
+
+            def result(*args):
+                return func(*args, *const_values)
+
+        else:
+            result = func
+        return result
 
     @cached_method()
     def _get_function_cached(
@@ -495,8 +528,7 @@ class ScalarExpression(ExpressionBase):
         from sympy.tensor.indexed import Indexed
 
         return any(
-            isinstance(s, Indexed) and s.base.name == var
-            for s in self._sympy_expr.free_symbols
+            isinstance(s, Indexed) and s.base.name == var for s in self._free_symbols
         )
 
     def differentiate(self, var: str) -> "ScalarExpression":

@@ -46,10 +46,10 @@ class PDEBase(metaclass=ABCMeta):
         """
         Args:
             noise (float or :class:`numpy.ndarray`):
-                Magnitude of the additive Gaussian white noise that is supported
-                by default. If set to zero, a deterministic partial differential
-                equation will be solved. Different noise magnitudes can be
-                supplied for each field in coupled PDEs.
+                Magnitude of the additive Gaussian white noise that is supported for all
+                PDEs by default. If set to zero, a deterministic partial differential
+                equation will be solved. Different noise magnitudes can be supplied for
+                each field in coupled PDEs.
 
         Note:
             If more complicated noise structures are required, the methods
@@ -69,7 +69,7 @@ class PDEBase(metaclass=ABCMeta):
         is `True` if `self.noise != 0`.
         """
         # check for self.noise, in case __init__ is not called in a subclass
-        return hasattr(self, "noise") and self.noise != 0
+        return hasattr(self, "noise") and np.any(np.asarray(self.noise) != 0)
 
     def make_modify_after_step(self, state: FieldBase) -> Callable:
         """returns a function that can be called to modify a state
@@ -198,11 +198,13 @@ class PDEBase(metaclass=ABCMeta):
 
             elif isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
-                noise = np.broadcast_to(self.noise, len(state))
-                fields = [
-                    f.copy(data=np.random.normal(scale=n, size=f.data.shape))
-                    for f, n in zip(state, noise)
-                ]
+                fields = []
+                for f, n in zip(state, np.broadcast_to(self.noise, len(state))):
+                    if n == 0:
+                        data = 0
+                    else:
+                        data = np.random.normal(scale=n, size=f.data.shape)
+                    fields.append(f.copy(data=data))
                 return FieldCollection(fields, label=label)
 
             else:
@@ -249,6 +251,7 @@ class PDEBase(metaclass=ABCMeta):
                     """ helper function returning a noise realization """
                     out = np.random.randn(*data_shape)
                     for i in range(data_shape[0]):
+                        # TODO: Avoid creating random numbers when noise_strengths == 0
                         out[i] *= noise_strengths[i]
                     return out
 
