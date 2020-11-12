@@ -153,7 +153,7 @@ def test_pde_noise(backend):
     assert res.data[0].std() == pytest.approx(0.01, rel=0.1)
     assert res.data[1].std() == pytest.approx(2.0, rel=0.1)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
         eq.solve(ScalarField(grid), t_range=1, backend=backend, dt=1)
 
@@ -219,6 +219,10 @@ def test_pde_setting_noise():
         eq = PDE({"a": "0", "b": "0"}, noise=noise)
         assert eq.is_sde
         assert eq.noise == [0, 1]
+
+    for noise in [0, [0, 0]]:
+        eq = PDE({"a": "0", "b": "0"}, noise=noise)
+        assert not eq.is_sde
 
     with pytest.raises(ValueError):
         PDE({"a": 0}, noise=[1, 2])
