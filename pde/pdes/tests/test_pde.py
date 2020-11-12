@@ -226,3 +226,17 @@ def test_pde_setting_noise():
 
     with pytest.raises(ValueError):
         PDE({"a": 0}, noise=[1, 2])
+
+
+def test_pde_consts():
+    """ test using the consts argument in PDE """
+    field = ScalarField(UnitGrid([3]), 1)
+
+    eq = PDE({"a": "b"}, consts={"b": 2})
+    np.testing.assert_allclose(eq.evolution_rate(field).data, 2)
+
+    eq = PDE({"a": "b**2"}, consts={"b": field})
+    np.testing.assert_allclose(eq.evolution_rate(field).data, field.data)
+
+    eq = PDE({"a": "laplace(b)"}, consts={"b": field})
+    np.testing.assert_allclose(eq.evolution_rate(field).data, 0)

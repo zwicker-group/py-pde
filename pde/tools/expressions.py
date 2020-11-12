@@ -109,9 +109,9 @@ class ExpressionBase(metaclass=ABCMeta):
     def __init__(
         self,
         expression: "basic.Basic",
-        signature: Optional[Sequence[Union[str, List[str]]]] = None,
-        user_funcs: Optional[Dict[str, Any]] = None,
-        consts: Optional[Dict[str, Any]] = None,
+        signature: Sequence[Union[str, List[str]]] = None,
+        user_funcs: Dict[str, Any] = None,
+        consts: Dict[str, Any] = None,
     ):
         """
         Warning:
@@ -122,7 +122,7 @@ class ExpressionBase(metaclass=ABCMeta):
                 A sympy expression or array. This could for instance be an
                 instance of :class:`~sympy.core.expr.Expr` or
                 :class:`~sympy.tensor.array.ndim_array.NDimArray`.
-            signature (list of str):
+            signature (list of str, optional):
                 The signature defines which variables are expected in the
                 expression. This is typically a list of strings identifying
                 the variable names. Individual names can be specified as list,
@@ -332,7 +332,7 @@ class ExpressionBase(metaclass=ABCMeta):
         # partial function instead of replacing the constants in the sympy expression
         # directly since sympy does not work well with numpy arrays.
         if constants:
-            const_values = tuple(self.consts[c] for c in constants)
+            const_values = tuple(self.consts[c] for c in constants)  # @UnusedVariable
 
             if prepare_compilation:
                 func = jit(func)
