@@ -65,8 +65,11 @@ def environment(dict_type=dict) -> Dict[str, Any]:
     Returns:
         dict: information about the python installation and packages
     """
+    import matplotlib as mpl
+
     from .. import __version__ as package_version
     from .numba import numba_environment
+    from .plotting import get_plotting_context
 
     def get_package_versions(packages: List[str]) -> Dict[str, str]:
         """ tries to load certain python packages and returns their version """
@@ -83,9 +86,18 @@ def environment(dict_type=dict) -> Dict[str, Any]:
     result: Dict[str, Any] = dict_type()
     result["package version"] = package_version
     result["python version"] = sys.version
+    result["platform"] = sys.platform
+
+    # add details for mandatory packages
     result["mandatory packages"] = get_package_versions(
         ["matplotlib", "numba", "numpy", "scipy", "sympy"]
     )
+    result["matplotlib environment"] = {
+        "backend": mpl.get_backend(),
+        "plotting context": get_plotting_context().__class__.__name__,
+    }
+
+    # add details about optional packages
     result["optional packages"] = get_package_versions(
         ["h5py", "pandas", "pyfftw", "tqdm"]
     )
