@@ -240,3 +240,11 @@ def test_pde_consts():
 
     eq = PDE({"a": "laplace(b)"}, consts={"b": field})
     np.testing.assert_allclose(eq.evolution_rate(field).data, 0)
+
+    eq = PDE({"a": "laplace(b)"}, consts={"b": 3})
+    with pytest.raises(Exception):
+        eq.evolution_rate(field)
+
+    eq = PDE({"a": "laplace(b)"}, consts={"b": field.data})
+    with pytest.raises(Exception):
+        eq.evolution_rate(field)
