@@ -39,6 +39,7 @@ class PDE(PDEBase):
         bc: BoundariesData = "natural",
         bc_ops: "OrderedDict[str, BoundariesData]" = None,
         user_funcs: Dict[str, Any] = None,
+        consts: Dict[str, Any] = None,
     ):
         """
         Warning:
@@ -62,7 +63,8 @@ class PDE(PDEBase):
                 Magnitude of additive Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
                 Different noise magnitudes can be supplied for each field in coupled
-                PDEs.
+                PDEs by either specifying a sequence of numbers or a dictionary with
+                values for each field.
             bc:
                 Boundary conditions for the operators used in the expression. The
                 conditions here are applied to all operators that do not have a
@@ -79,6 +81,10 @@ class PDE(PDEBase):
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expressions in `rhs`.
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression. These can be either scalar numbers or fields defined on the
+                same grid as the actual simulation.
 
         Note:
             The order in which the fields are given in `rhs` defines the order in which
@@ -90,6 +96,12 @@ class PDE(PDEBase):
 
         from ..tools.expressions import ScalarExpression
 
+        # parse noise strength
+        if isinstance(noise, dict):
+            noise = [noise.get(var, 0) for var in rhs]
+        if hasattr(noise, "__iter__") and len(noise) != len(rhs):  # type: ignore
+            raise ValueError("Number of noise strengths does not match field count")
+
         super().__init__(noise=noise)
 
         # validate input
@@ -97,14 +109,16 @@ class PDE(PDEBase):
             rhs = OrderedDict(rhs)
         if "t" in rhs:
             raise RuntimeError("`t` is not allowed as a variable since it denotes time")
+        if consts is None:
+            consts = {}
 
         # turn the expression strings into sympy expressions
         self._rhs_expr, self._operators = {}, {}
         explicit_time_dependence = False
         complex_valued = False
         for var, rhs_str in rhs.items():
-            rhs_expr = ScalarExpression(rhs_str, user_funcs=user_funcs)
-            self._rhs_expr[var] = rhs_expr
+            consts_d = {name: None for name in consts}
+            rhs_expr = ScalarExpression(rhs_str, user_funcs=user_funcs, consts=consts_d)
 
             if rhs_expr.depends_on("t"):
                 explicit_time_dependence = True
@@ -118,9 +132,12 @@ class PDE(PDEBase):
                 if func.__class__.__name__ not in rhs_expr.user_funcs
             }
 
+            self._rhs_expr[var] = rhs_expr
+
         # set public instance attributes
         self.rhs = rhs
         self.variables = tuple(rhs.keys())
+        self.consts = consts
         self.explicit_time_dependence = explicit_time_dependence
         self.complex_valued = complex_valued
         operators = frozenset().union(*self._operators.values())  # type: ignore
@@ -157,6 +174,7 @@ class PDE(PDEBase):
         # save information for easy inspection
         self.diagnostics = {
             "variables": self.variables,
+            "constants": tuple(self.consts),
             "explicit_time_dependence": explicit_time_dependence,
             "complex_valued_rhs": complex_valued,
             "operators": operators,
@@ -201,6 +219,20 @@ class PDE(PDEBase):
                 )
         else:
             raise ValueError(f"Unknown state class {state.__class__.__name__}")
+
+        # check compatibility of constants and update the rhs accordingly
+        for name, value in self.consts.items():
+            # check whether the constant has a supported value
+            if np.isscalar(value):
+                pass  # this simple case is fine
+            elif isinstance(value, DataFieldBase):
+                value.grid.assert_grid_compatible(state.grid)
+                value = value.data  # just keep the actual discretized data
+            else:
+                raise TypeError(f"Constant has unsupported type {value.__class__}")
+
+            for rhs in self._rhs_expr.values():
+                rhs.consts[name] = value
 
         # obtain functions used in the expression
         ops_general = {}
@@ -336,10 +368,12 @@ class PDE(PDEBase):
         cache = self._prepare_cache(state, backend="numpy")
 
         if isinstance(state, DataFieldBase):
+            # state is a single field
             rhs = cache["rhs_funcs"][0]
             return state.copy(data=rhs(state.data, t))
 
         elif isinstance(state, FieldCollection):
+            # state is a collection of fields
             result = state.copy()
             for i in range(len(state)):
                 data_tpl = cache["get_data_tuple"](state.data)
@@ -436,8 +470,12 @@ class PDE(PDEBase):
         cache = self._prepare_cache(state, backend="numba")
 
         if isinstance(state, DataFieldBase):
+            # state is a single field
             return jit(cache["rhs_funcs"][0])  # type: ignore
+
         elif isinstance(state, FieldCollection):
+            # state is a collection of fields
             return self._make_pde_rhs_numba_coll(state, cache)
+
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")

@@ -86,6 +86,8 @@ def parse_number(
     return value
 
 
+# special functions that we want to support in expressions but that are not defined by
+# sympy version 1.6
 SPECIAL_FUNCTIONS = {"Heaviside": lambda x: np.heaviside(x, 0.5)}
 
 
@@ -107,8 +109,9 @@ class ExpressionBase(metaclass=ABCMeta):
     def __init__(
         self,
         expression: "basic.Basic",
-        signature: Optional[Sequence[Union[str, List[str]]]] = None,
-        user_funcs: Optional[Dict[str, Any]] = None,
+        signature: Sequence[Union[str, List[str]]] = None,
+        user_funcs: Dict[str, Any] = None,
+        consts: Dict[str, Any] = None,
     ):
         """
         Warning:
@@ -119,7 +122,7 @@ class ExpressionBase(metaclass=ABCMeta):
                 A sympy expression or array. This could for instance be an
                 instance of :class:`~sympy.core.expr.Expr` or
                 :class:`~sympy.tensor.array.ndim_array.NDimArray`.
-            signature (list of str):
+            signature (list of str, optional):
                 The signature defines which variables are expected in the
                 expression. This is typically a list of strings identifying
                 the variable names. Individual names can be specified as list,
@@ -131,6 +134,9 @@ class ExpressionBase(metaclass=ABCMeta):
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expression
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression
         """
         try:
             self._sympy_expr = sympy.simplify(expression)
@@ -139,6 +145,7 @@ class ExpressionBase(metaclass=ABCMeta):
             self._sympy_expr = expression
         self._logger = logging.getLogger(self.__class__.__name__)
         self.user_funcs = {} if user_funcs is None else user_funcs
+        self.consts = {} if consts is None else consts
         self._check_signature(signature)
 
     def __repr__(self):
@@ -147,10 +154,15 @@ class ExpressionBase(metaclass=ABCMeta):
         )
 
     def __eq__(self, other):
+        """ compare this expression to another one """
         if not isinstance(other, self.__class__):
             return NotImplemented
         # compare what the expressions depend on
         if set(self.vars) != set(other.vars):
+            return False
+
+        # compare the auxiliary data
+        if self.user_funcs != other.user_funcs or self.consts != other.consts:
             return False
 
         # compare the expressions themselves by checking their difference
@@ -161,9 +173,16 @@ class ExpressionBase(metaclass=ABCMeta):
             return diff == 0
 
     @property
+    def _free_symbols(self) -> Set:
+        """ return symbols that appear in the expression and are not in self.consts """
+        return {
+            sym for sym in self._sympy_expr.free_symbols if sym.name not in self.consts
+        }
+
+    @property
     def constant(self) -> bool:
         """ bool: whether the expression is a constant """
-        return len(self._sympy_expr.free_symbols) == 0
+        return len(self._free_symbols) == 0
 
     @property
     def complex(self) -> bool:
@@ -185,7 +204,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
         else:
             # general expressions might have a variable
-            args = set(str(s).split("[")[0] for s in self._sympy_expr.free_symbols)
+            args = set(str(s).split("[")[0] for s in self._free_symbols)
             if signature is None:
                 # create signature from arguments
                 signature = list(sorted(args))
@@ -247,9 +266,7 @@ class ExpressionBase(metaclass=ABCMeta):
         if self.constant:
             return False
         else:
-            return any(
-                variable == str(symbol) for symbol in self._sympy_expr.free_symbols
-            )
+            return any(variable == str(symbol) for symbol in self._free_symbols)
 
     def _get_function(
         self,
@@ -273,29 +290,61 @@ class ExpressionBase(metaclass=ABCMeta):
         Returns:
             function: the function
         """
+        # collect all the user functions
         user_functions = self.user_funcs.copy()
         if user_funcs is not None:
             user_functions.update(user_funcs)
-        if prepare_compilation:
-            user_functions = {k: jit(v) for k, v in user_functions.items()}
-        user_dict = {k: k for k in user_functions}
 
+        if prepare_compilation:
+            # transform the user functions, so they can be compiled using numba
+            def compile_func(func):
+                if isinstance(func, np.ufunc):
+                    # this is a work-around that allows to compile numpy ufuncs
+                    return jit(lambda *args: func(*args))
+                else:
+                    return jit(func)
+
+            user_functions = {k: compile_func(v) for k, v in user_functions.items()}
+
+        # initialize the printer that deals with numpy arrays correctly
         printer = NumpyArrayPrinter(
             {
                 "fully_qualified_modules": False,
                 "inline": True,
                 "allow_unknown_functions": True,
-                "user_functions": user_dict,
+                "user_functions": {k: k for k in user_functions},
             }
         )
 
-        variables = (self.vars,) if single_arg else self.vars
-        return sympy.lambdify(  # type: ignore
-            variables,
+        # determine the list of variables that the function depends on
+        variables = (self.vars,) if single_arg else tuple(self.vars)
+        constants = tuple(self.consts)
+
+        # turn the expression into a callable function
+        func = sympy.lambdify(
+            variables + constants,
             self._sympy_expr,
             modules=[user_functions, SPECIAL_FUNCTIONS, "numpy"],
             printer=printer,
         )
+
+        # Apply the constants if there are any. Note that we use this pattern of a
+        # partial function instead of replacing the constants in the sympy expression
+        # directly since sympy does not work well with numpy arrays.
+        if constants:
+            const_values = tuple(self.consts[c] for c in constants)  # @UnusedVariable
+
+            if prepare_compilation:
+                func = jit(func)
+
+            # TOOD: support keyword arguments
+
+            def result(*args):
+                return func(*args, *const_values)
+
+        else:
+            result = func
+        return result
 
     @cached_method()
     def _get_function_cached(
@@ -351,6 +400,7 @@ class ScalarExpression(ExpressionBase):
         expression: ExpressionType = 0,
         signature: Optional[Sequence[Union[str, List[str]]]] = None,
         user_funcs: Optional[Dict[str, Any]] = None,
+        consts: Optional[Dict[str, Any]] = None,
         allow_indexed: bool = False,
     ):
         """
@@ -373,6 +423,9 @@ class ScalarExpression(ExpressionBase):
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expression
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression
             allow_indexed (bool):
                 Whether to allow indexing of variables. If enabled, array
                 variables are allowed to be indexed using square bracket
@@ -387,16 +440,20 @@ class ScalarExpression(ExpressionBase):
             if signature is None:
                 signature = expression.vars
             self.allow_indexed = expression.allow_indexed
+
             if user_funcs is None:
                 user_funcs = expression.user_funcs
             else:
                 user_funcs.update(expression.user_funcs)
 
+            if consts is None:
+                consts = expression.consts
+            else:
+                consts.update(expression.consts)
+
         elif callable(expression):
             # expression is some other callable -> not allowed anymore
-            raise TypeError(
-                "Expression must be provided as string and not as a callable function"
-            )
+            raise TypeError("Expression must be a string and not a function")
 
         elif isinstance(expression, numbers.Number):
             # expression is a simple number
@@ -416,14 +473,32 @@ class ScalarExpression(ExpressionBase):
             sympy_expr = sympy.Float(0)
 
         super().__init__(
-            expression=sympy_expr, signature=signature, user_funcs=user_funcs
+            expression=sympy_expr,
+            signature=signature,
+            user_funcs=user_funcs,
+            consts=consts,
         )
 
     @property
     def value(self) -> Number:
         """ float: the value for a constant expression """
         if self.constant:
-            return number(self._sympy_expr)
+            try:
+                # try simply evaluating the expression as a number
+                value = number(self._sympy_expr.evalf())
+
+            except TypeError:
+                # This can fail if user_funcs are supplied, which would not be replaced
+                # in the numeric implementation above. We thus also try to call the
+                # expression without any arguments
+                value = number(self())
+                # Note that this may fail when the expression is actually constant, but
+                # has a signature that forces it to depend on some arguments. However,
+                # we feel this situation should not be very common, so we do not (yet)
+                # deal with it.
+
+            return value
+
         else:
             raise TypeError("Only constant expressions have a defined value")
 
@@ -453,8 +528,7 @@ class ScalarExpression(ExpressionBase):
         from sympy.tensor.indexed import Indexed
 
         return any(
-            isinstance(s, Indexed) and s.base.name == var
-            for s in self._sympy_expr.free_symbols
+            isinstance(s, Indexed) and s.base.name == var for s in self._free_symbols
         )
 
     def differentiate(self, var: str) -> "ScalarExpression":
@@ -588,7 +662,22 @@ class TensorExpression(ExpressionBase):
     def value(self):
         """ the value for a constant expression """
         if self.constant:
-            return number_array(self._sympy_expr.tolist())
+            try:
+                # try simply evaluating the expression as a number
+                value = number_array(self._sympy_expr.tolist())
+
+            except TypeError:
+                # This can fail if user_funcs are supplied, which would not be replaced
+                # in the numeric implementation above. We thus also try to call the
+                # expression without any arguments
+                value = number_array(self())
+                # Note that this may fail when the expression is actually constant, but
+                # has a signature that forces it to depend on some arguments. However,
+                # we feel this situation should not be very common, so we do not (yet)
+                # deal with it.
+
+            return value
+
         else:
             raise TypeError("Only constant expressions have a defined value")
 

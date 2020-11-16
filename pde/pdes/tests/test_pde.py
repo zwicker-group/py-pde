@@ -153,7 +153,7 @@ def test_pde_noise(backend):
     assert res.data[0].std() == pytest.approx(0.01, rel=0.1)
     assert res.data[1].std() == pytest.approx(2.0, rel=0.1)
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
         eq.solve(ScalarField(grid), t_range=1, backend=backend, dt=1)
 
@@ -211,3 +211,40 @@ def test_pde_product_operators():
     field = VectorField(UnitGrid([4]), 1)
     res = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
     np.testing.assert_allclose(res.data, field.data)
+
+
+def test_pde_setting_noise():
+    """ test setting the noise strength """
+    for noise in [[0, 1], {"b": 1}, {"b": 1, "a": 0}, {"b": 1, "c": 1}]:
+        eq = PDE({"a": "0", "b": "0"}, noise=noise)
+        assert eq.is_sde
+        assert eq.noise == [0, 1]
+
+    for noise in [0, [0, 0]]:
+        eq = PDE({"a": "0", "b": "0"}, noise=noise)
+        assert not eq.is_sde
+
+    with pytest.raises(ValueError):
+        PDE({"a": 0}, noise=[1, 2])
+
+
+def test_pde_consts():
+    """ test using the consts argument in PDE """
+    field = ScalarField(UnitGrid([3]), 1)
+
+    eq = PDE({"a": "b"}, consts={"b": 2})
+    np.testing.assert_allclose(eq.evolution_rate(field).data, 2)
+
+    eq = PDE({"a": "b**2"}, consts={"b": field})
+    np.testing.assert_allclose(eq.evolution_rate(field).data, field.data)
+
+    eq = PDE({"a": "laplace(b)"}, consts={"b": field})
+    np.testing.assert_allclose(eq.evolution_rate(field).data, 0)
+
+    eq = PDE({"a": "laplace(b)"}, consts={"b": 3})
+    with pytest.raises(Exception):
+        eq.evolution_rate(field)
+
+    eq = PDE({"a": "laplace(b)"}, consts={"b": field.data})
+    with pytest.raises(Exception):
+        eq.evolution_rate(field)
