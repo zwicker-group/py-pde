@@ -1,14 +1,16 @@
 Getting started
 ===============
 
-Install from pip
-^^^^^^^^^^^^^^^^
-
 This `py-pde` package is developed for python 3.6+ and should run on all
 common platforms.
 The code is tested under Linux, Windows, and macOS.
-Since the package is available on `pypi <https://pypi.org/project/py-pde/>`_,
-the installation is in principle as simple as running
+
+
+Install using pip
+^^^^^^^^^^^^^^^^^
+
+The package is available on `pypi <https://pypi.org/project/py-pde/>`_, so you should be
+able to install it by running
 
 .. code-block:: bash
 
@@ -25,6 +27,20 @@ install the following optional packages:
 
 Moreover, :command:`ffmpeg` needs to be installed and for creating movies.    
     
+
+Install using conda
+^^^^^^^^^^^^^^^^^^^
+
+The `py-pde` package is also available on `conda <https://conda.io>`_ using the
+`conda-forge` channel.
+You can thus install it using
+
+.. code-block:: bash
+
+    conda install -c conda-forge py-pde
+    
+This installation includes all required dependencies to have all features of `py-pde`.
+
 
 Install from source
 ^^^^^^^^^^^^^^^^^^^
