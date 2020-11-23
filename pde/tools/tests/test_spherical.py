@@ -119,6 +119,10 @@ def test_points_on_sphere_2():
 
 def test_spherical_index():
     """ test the conversion of the spherical index """
+    # check initial state
+    assert spherical.spherical_index_lm(0) == (0, 0)
+    assert spherical.spherical_index_k(0, 0) == 0
+
     # check conversion
     for k in range(20):
         l, m = spherical.spherical_index_lm(k)
@@ -132,14 +136,14 @@ def test_spherical_index():
             k += 1
 
     for l in range(4):
-        assert (
-            spherical.spherical_index_count(l) == spherical.spherical_index_k(l, l) + 1
-        )
+        k_max = spherical.spherical_index_k(l, l)
+        assert spherical.spherical_index_count(l) == k_max + 1
 
     for l in range(4):
         for m in range(-l, l + 1):
+            is_optimal = m == l
             k = spherical.spherical_index_k(l, m)
-            assert spherical.spherical_index_count_optimal(k + 1) == (m == l)
+            assert spherical.spherical_index_count_optimal(k + 1) == is_optimal
 
 
 def test_spherical_harmonics_real():
