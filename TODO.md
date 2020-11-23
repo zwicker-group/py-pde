@@ -4,6 +4,7 @@ TODO
 * Indicate periodic boundary by dashed/dotted axes in image plot?
     - use ax.spines['top'].set_linestyle((0, (5, 10)))
 * Add support for dtype=np.single
+    - Add general support for dtype in classmethods (e.g. to create random fields)
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
     - Improve this display by adding a progress bar and support displaying extra text
@@ -29,11 +30,6 @@ TODO
 * Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable
-* Think about introducing data class that holds integrated, global variables
-	- this might be helpful to implement lagrange multipliers and the like
-	- generally, we should use a state class that contains the state of a pde
-	  (in most cases, this would be a FieldBase)
-	- the state class should also handle serialization and io with hdf
 * Fix progress bar when starting from non-zero t_start?
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`
