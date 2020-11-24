@@ -34,7 +34,8 @@ jobs:
         pip install pytest pytest-cov h5py pandas tqdm
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
-        pytest --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov=pde --runslow pde --import-mode importlib 
+        export PYTHONPATH="${PYTHONPATH}:`pwd`"
+        pytest --import-mode importlib --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov=pde --runslow pde
         
     - name: Upload coverage to Codecov  
       uses: codecov/codecov-action@v1
