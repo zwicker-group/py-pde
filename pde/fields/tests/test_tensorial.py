@@ -4,11 +4,8 @@
 
 import numpy as np
 import pytest
-
-from ...grids import CartesianGrid, UnitGrid
-from ..base import FieldBase
-from ..tensorial import Tensor2Field
-from .test_generic import iter_grids
+from pde import CartesianGrid, Tensor2Field, UnitGrid
+from pde.fields.base import FieldBase
 
 
 def test_tensors():
@@ -99,30 +96,29 @@ def test_tensor_symmetrize():
     np.testing.assert_allclose(t2.data, ts.data)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
-def test_add_interpolated_tensor(grid):
+def test_add_interpolated_tensor(example_grid):
     """ test the `add_interpolated` method """
-    f = Tensor2Field(grid)
+    f = Tensor2Field(example_grid)
     a = np.random.random(f.data_shape)
 
-    c = tuple(grid.point_to_cell(grid.get_random_point()))
+    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
     c_data = (Ellipsis,) + c
-    p = grid.cell_to_point(c, cartesian=False)
+    p = example_grid.cell_to_point(c, cartesian=False)
     f.add_interpolated(p, a)
-    np.testing.assert_almost_equal(f.data[c_data], a / grid.cell_volumes[c])
+    np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
 
-    f.add_interpolated(grid.get_random_point(cartesian=False), a)
+    f.add_interpolated(example_grid.get_random_point(cartesian=False), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
     f.data = 0  # reset
-    add_interpolated = grid.make_add_interpolated_compiled()
-    c = tuple(grid.point_to_cell(grid.get_random_point()))
+    add_interpolated = example_grid.make_add_interpolated_compiled()
+    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
     c_data = (Ellipsis,) + c
-    p = grid.cell_to_point(c, cartesian=False)
+    p = example_grid.cell_to_point(c, cartesian=False)
     add_interpolated(f.data, p, a)
-    np.testing.assert_almost_equal(f.data[c_data], a / grid.cell_volumes[c])
+    np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
 
-    add_interpolated(f.data, grid.get_random_point(cartesian=False), a)
+    add_interpolated(f.data, example_grid.get_random_point(cartesian=False), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
 
