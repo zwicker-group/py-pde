@@ -86,7 +86,11 @@ def run_unit_tests(
         env["NUMBA_BOUNDSCHECK"] = "1"
 
     # build the arguments string
-    args = ["python3", "-m", "pytest", "-c", "tests/pytest.ini", "-rs"]
+    args = ["python3",
+            "-m", "pytest",  # run pytest module
+            "-c", "tests/pytest.ini",  # locate the configuration file
+            "-rs",  # show summary of skipped tests
+            "-rw"]  # show summary of warnings raised during tests
 
     # allow running slow tests?
     if runslow:
@@ -106,10 +110,9 @@ def run_unit_tests(
     if coverage:
         args.extend(
             [
-                "--cov-config=tests/.coveragerc",
-                "--cov-report",
-                "html:tests/coverage",
-                f"--cov={PACKAGE}",
+                "--cov-config=tests/.coveragerc",  # locate the configuration file
+                "--cov-report", "html:tests/coverage",  # create a report in html format
+                f"--cov={PACKAGE}",  # specify in which package the coverage is measured
             ]
         )
 

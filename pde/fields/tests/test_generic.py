@@ -306,13 +306,13 @@ def test_simple_plotting(grid):
     sf = tf[0, 0]  # test extraction of fields
     fc = FieldCollection([sf, vf])
     for f in [sf, vf, tf, fc]:
-        f.plot()
-        f.plot(kind="line")
+        f.plot(action="close")
+        f.plot(kind="line", action="close")
         if grid.dim >= 2:
-            f.plot(kind="image")
+            f.plot(kind="image", action="close")
         if isinstance(f, VectorField) and grid.dim == 2:
-            f.plot(kind="quiver")
-            f.plot(kind="streamplot")
+            f.plot(kind="quiver", action="close")
+            f.plot(kind="streamplot", action="close")
 
 
 def test_random_uniform():
