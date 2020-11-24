@@ -35,4 +35,4 @@ jobs:
       run: |
         pip install pytest
         cd tests
-        ./run_tests.py --unit
+        python run_tests.py --unit
