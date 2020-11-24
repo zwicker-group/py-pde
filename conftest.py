@@ -16,7 +16,7 @@ def enable_raise_errors():
     np.seterr(all="raise", under="ignore")
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="function", autouse=True)
 def suppressing():
     """ helper function adjusting message reporting for all tests """
     # raise all underflow errors

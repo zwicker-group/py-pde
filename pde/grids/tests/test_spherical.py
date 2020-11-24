@@ -4,9 +4,8 @@
 
 import numpy as np
 import pytest
-
-from .. import PolarGrid, SphericalGrid
-from ..boundaries.local import NeumannBC
+from pde import PolarGrid, SphericalGrid
+from pde.grids.boundaries.local import NeumannBC
 
 
 @pytest.mark.parametrize("grid_class", [PolarGrid, SphericalGrid])

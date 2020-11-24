@@ -7,9 +7,8 @@ from functools import partial
 
 import numpy as np
 import pytest
-
-from .. import CartesianGrid, UnitGrid
-from ..boundaries import Boundaries, DomainError, PeriodicityError
+from pde import CartesianGrid, UnitGrid
+from pde.grids.boundaries import Boundaries, DomainError, PeriodicityError
 
 
 def _get_cartesian_grid(dim=2, periodic=True):

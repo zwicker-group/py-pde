@@ -2,7 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .. import output
+from pde.tools import output
 
 
 def test_progress_bars():

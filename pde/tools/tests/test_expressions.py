@@ -4,8 +4,7 @@
 
 import numpy as np
 import pytest
-
-from ..expressions import ScalarExpression, TensorExpression, parse_number
+from pde.tools.expressions import ScalarExpression, TensorExpression, parse_number
 
 
 def test_parse_number():

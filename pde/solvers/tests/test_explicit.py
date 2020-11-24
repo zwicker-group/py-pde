@@ -4,11 +4,8 @@
 
 import numpy as np
 import pytest
-
-from ...fields import ScalarField
-from ...grids import UnitGrid
-from ...pdes import DiffusionPDE
-from .. import Controller, ExplicitSolver
+from pde import DiffusionPDE, ScalarField, UnitGrid
+from pde.solvers import Controller, ExplicitSolver
 
 
 def test_compare_explicit():

@@ -2,13 +2,11 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import numpy as np
-
-from ...fields import FieldCollection, ScalarField
-from ...grids import UnitGrid
-from ...storage import get_memory_storage
-from ...tools.misc import skipUnlessModule
-from .. import plotting
+from pde.fields import FieldCollection, ScalarField
+from pde.grids import UnitGrid
+from pde.storage import get_memory_storage
+from pde.tools.misc import skipUnlessModule
+from pde.visualization import plotting
 
 
 @skipUnlessModule("matplotlib")
@@ -36,8 +34,8 @@ def test_scalar_plot(tmp_path):
     # create some data
     state = ScalarField.random_uniform(UnitGrid([16, 16]), label="test")
     with get_memory_storage(state) as storage:
-        storage.append(state.data, 0)
-        storage.append(state.data, 1)
+        storage.append(state, 0)
+        storage.append(state, 1)
 
     # check creating an overview image
     plotting.plot_magnitudes(storage, filename=path)
@@ -56,7 +54,7 @@ def test_collection_plot(tmp_path):
         [ScalarField(UnitGrid([8, 8]), label="first"), ScalarField(UnitGrid([8, 8]))]
     )
     with get_memory_storage(field) as storage:
-        storage.append(field.data)
+        storage.append(field)
 
     path = tmp_path / "test_collection_plot.png"
     plotting.plot_magnitudes(storage, filename=path)
@@ -69,7 +67,7 @@ def test_kymograph_single(tmp_path):
     field = ScalarField(UnitGrid(8))
     with get_memory_storage(field) as storage:
         for i in range(8):
-            storage.append(np.full(8, i), i)
+            storage.append(field.copy(data=i), i)
 
     # create single kymograph
     path = tmp_path / "test1.png"
@@ -90,7 +88,7 @@ def test_kymograph_collection(tmp_path):
     )
     with get_memory_storage(field) as storage:
         for i in range(8):
-            storage.append(np.full((2, 8), i), i)
+            storage.append(field.copy(data=i), i)
 
     # create single kymograph
     path = tmp_path / "test1.png"
@@ -113,6 +111,6 @@ def test_interactive_plotting():
     field = ScalarField.random_uniform(UnitGrid([8]))
     with get_memory_storage(field) as storage:
         for i in range(8):
-            storage.append(np.full((8,), i), i)
+            storage.append(field.copy(data=i), i)
 
     plotting.plot_interactive(storage, viewer_args={"show": False, "close": True})

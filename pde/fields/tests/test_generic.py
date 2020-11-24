@@ -4,43 +4,30 @@
 
 import numpy as np
 import pytest
+from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
+from pde.fields.base import FieldBase
+from pde.grids import CartesianGrid, CylindricalGrid, PolarGrid, SphericalGrid, UnitGrid
+from pde.grids.cartesian import CartesianGridBase
+from pde.tools.misc import skipUnlessModule
 from scipy import ndimage
-
-from ...grids import CartesianGrid, CylindricalGrid, PolarGrid, SphericalGrid, UnitGrid
-from ...grids.cartesian import CartesianGridBase
-from ...tools.misc import skipUnlessModule
-from .. import FieldCollection, ScalarField, Tensor2Field, VectorField
-from ..base import FieldBase
-
-
-def iter_grids():
-    """ generator providing some test grids """
-    for periodic in [True, False]:
-        yield UnitGrid([3], periodic=periodic)
-        yield UnitGrid([3, 3, 3], periodic=periodic)
-        yield CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic)
-        yield CylindricalGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
-    yield PolarGrid(3, 4)
-    yield SphericalGrid(3, 4)
 
 
 @pytest.mark.slow
-@pytest.mark.parametrize("grid", iter_grids())
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
-def test_interpolation_natural(grid, field_class):
+def test_interpolation_natural(example_grid, field_class):
     """ test some interpolation for natural boundary conditions """
-    msg = f"grid={grid}, field={field_class}"
-    f = field_class.random_uniform(grid)
-    if isinstance(grid, CartesianGridBase):
-        p = grid.get_random_point(boundary_distance=0.5)
+    msg = f"grid={example_grid}, field={field_class}"
+    f = field_class.random_uniform(example_grid)
+    if isinstance(example_grid, CartesianGridBase):
+        p = example_grid.get_random_point(boundary_distance=0.5)
     else:
-        p = grid.get_random_point(boundary_distance=1, avoid_center=True)
-    p = grid.point_from_cartesian(p)
+        p = example_grid.get_random_point(boundary_distance=1, avoid_center=True)
+    p = example_grid.point_from_cartesian(p)
     i1 = f.interpolate(p, method="scipy_linear")
     i2 = f.interpolate(p, method="numba")
     np.testing.assert_almost_equal(i1, i2, err_msg=msg)
 
-    c = (1,) * len(grid.axes)  # specific cell
+    c = (1,) * len(example_grid.axes)  # specific cell
     p = f.grid.cell_coords[c]
     np.testing.assert_allclose(
         f.interpolate(p, method="scipy_linear"), f.data[(Ellipsis,) + c], err_msg=msg
@@ -51,15 +38,14 @@ def test_interpolation_natural(grid, field_class):
 
 
 @pytest.mark.parametrize("num", [1, 3])
-@pytest.mark.parametrize("grid", iter_grids())
-def test_shapes_nfields(num, grid):
+def test_shapes_nfields(num, example_grid):
     """ test single component field """
-    fields = [ScalarField.random_uniform(grid) for _ in range(num)]
+    fields = [ScalarField.random_uniform(example_grid) for _ in range(num)]
     field = FieldCollection(fields)
-    data_shape = (num,) + grid.shape
+    data_shape = (num,) + example_grid.shape
     np.testing.assert_equal(field.data.shape, data_shape)
     for pf_single in field:
-        np.testing.assert_equal(pf_single.data.shape, grid.shape)
+        np.testing.assert_equal(pf_single.data.shape, example_grid.shape)
 
     field_c = field.copy()
     np.testing.assert_allclose(field.data, field_c.data)
@@ -298,19 +284,18 @@ def test_get_cartesian_grid(grid):
 
 
 @skipUnlessModule("matplotlib")
-@pytest.mark.parametrize("grid", iter_grids())
-def test_simple_plotting(grid):
+def test_simple_plotting(example_grid):
     """ test simple plotting of various fields on various grids """
-    vf = VectorField.random_uniform(grid)
-    tf = Tensor2Field.random_uniform(grid)
+    vf = VectorField.random_uniform(example_grid)
+    tf = Tensor2Field.random_uniform(example_grid)
     sf = tf[0, 0]  # test extraction of fields
     fc = FieldCollection([sf, vf])
     for f in [sf, vf, tf, fc]:
         f.plot(action="close")
         f.plot(kind="line", action="close")
-        if grid.dim >= 2:
+        if example_grid.dim >= 2:
             f.plot(kind="image", action="close")
-        if isinstance(f, VectorField) and grid.dim == 2:
+        if isinstance(f, VectorField) and example_grid.dim == 2:
             f.plot(kind="quiver", action="close")
             f.plot(kind="streamplot", action="close")
 
@@ -440,11 +425,10 @@ def test_dot_product():
     np.testing.assert_allclose(t_dot(tf.data, tf.data), expected)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
-def test_complex_operator(grid):
+def test_complex_operator(example_grid):
     """ test using a complex operator on grid """
-    r = ScalarField.random_normal(grid)
-    i = ScalarField.random_normal(grid)
+    r = ScalarField.random_normal(example_grid)
+    i = ScalarField.random_normal(example_grid)
     c = r + 1j * i
     assert c.is_complex
     assert np.iscomplexobj(c)

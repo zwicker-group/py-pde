@@ -3,10 +3,7 @@
 """
 
 import numpy as np
-
-from ...fields import ScalarField
-from ...grids import CartesianGrid, UnitGrid
-from .. import DiffusionPDE
+from pde import CartesianGrid, DiffusionPDE, ScalarField, UnitGrid
 
 
 def test_diffusion_single():

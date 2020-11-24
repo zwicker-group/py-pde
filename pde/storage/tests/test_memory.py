@@ -4,10 +4,8 @@
 
 import numpy as np
 import pytest
-
-from ...fields import FieldCollection, ScalarField, Tensor2Field, VectorField
-from ...grids import UnitGrid
-from .. import MemoryStorage
+from pde import MemoryStorage, UnitGrid
+from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 
 
 def test_memory_storage():

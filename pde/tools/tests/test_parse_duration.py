@@ -2,7 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from ..parse_duration import parse_duration
+from pde.tools.parse_duration import parse_duration
 
 
 def test_parse_duration():

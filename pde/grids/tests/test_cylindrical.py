@@ -4,9 +4,8 @@
 
 import numpy as np
 import pytest
-
-from .. import CylindricalGrid
-from ..boundaries.local import NeumannBC
+from pde import CylindricalGrid
+from pde.grids.boundaries.local import NeumannBC
 
 
 def test_cylindrical_grid():

@@ -4,11 +4,8 @@
 
 import numpy as np
 import pytest
-
-from ...fields import FieldCollection, ScalarField
-from ...grids import UnitGrid
-from ...pdes import PDE, DiffusionPDE
-from .. import (
+from pde import PDE, DiffusionPDE, FieldCollection, ScalarField, UnitGrid
+from pde.solvers import (
     Controller,
     ExplicitSolver,
     ImplicitSolver,

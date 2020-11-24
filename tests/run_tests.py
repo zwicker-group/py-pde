@@ -86,11 +86,17 @@ def run_unit_tests(
         env["NUMBA_BOUNDSCHECK"] = "1"
 
     # build the arguments string
-    args = ["python3",
-            "-m", "pytest",  # run pytest module
-            "-c", "tests/pytest.ini",  # locate the configuration file
-            "-rs",  # show summary of skipped tests
-            "-rw"]  # show summary of warnings raised during tests
+    args = [
+        "python3",
+        "-m",
+        "pytest",  # run pytest module
+        "-c",
+        "tests/pytest.ini",  # locate the configuration file
+        "-rs",  # show summary of skipped tests
+        "-rw",  # show summary of warnings raised during tests
+        "--import-mode",
+        "importlib",
+    ]
 
     # allow running slow tests?
     if runslow:
@@ -111,13 +117,14 @@ def run_unit_tests(
         args.extend(
             [
                 "--cov-config=tests/.coveragerc",  # locate the configuration file
-                "--cov-report", "html:tests/coverage",  # create a report in html format
+                "--cov-report",
+                "html:tests/coverage",  # create a report in html format
                 f"--cov={PACKAGE}",  # specify in which package the coverage is measured
             ]
         )
 
     # specify the package to run
-    args.append(PACKAGE)
+    #args.append(PACKAGE)
 
     # actually run the test
     sp.check_call(args, env=env, cwd=PACKAGE_PATH)

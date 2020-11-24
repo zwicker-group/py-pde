@@ -4,10 +4,8 @@
 
 import numpy as np
 import pytest
-
-from ....fields import ScalarField, Tensor2Field, VectorField
-from ... import CartesianGrid, SphericalGrid
-from .. import spherical as ops
+from pde import CartesianGrid, ScalarField, SphericalGrid, Tensor2Field, VectorField
+from pde.grids.operators import spherical as ops
 
 
 def test_findiff_sph():

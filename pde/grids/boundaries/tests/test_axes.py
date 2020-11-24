@@ -6,11 +6,9 @@ import itertools
 
 import numpy as np
 import pytest
-
-from ....fields import ScalarField
-from ... import UnitGrid
-from ..axes import Boundaries
-from ..axis import BoundaryPair, BoundaryPeriodic, get_boundary_axis
+from pde import ScalarField, UnitGrid
+from pde.grids.boundaries.axes import Boundaries
+from pde.grids.boundaries.axis import BoundaryPair, BoundaryPeriodic, get_boundary_axis
 
 
 def test_boundaries():

@@ -10,8 +10,7 @@ import sys
 
 import numpy as np
 import pytest
-
-from .. import cache
+from pde.tools import cache
 
 
 def deep_getsizeof(obj, ids=None):

@@ -4,10 +4,8 @@
 
 import numpy as np
 
-from ...fields import ScalarField
-from ...grids import UnitGrid
-from ...pdes import DiffusionPDE
-from .. import Controller, ScipySolver
+from pde import ScalarField, UnitGrid, DiffusionPDE
+from pde.solvers import Controller, ScipySolver
 
 
 def test_no_dt():

@@ -3,10 +3,8 @@
 """
 
 import numpy as np
-
-from ....fields import ScalarField, VectorField
-from ... import CartesianGrid, CylindricalGrid
-from .. import cylindrical as ops
+from pde import CartesianGrid, CylindricalGrid, ScalarField, VectorField
+from pde.grids.operators import cylindrical as ops
 
 
 def test_laplace_cyl():

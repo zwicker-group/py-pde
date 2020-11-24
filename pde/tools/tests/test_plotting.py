@@ -2,7 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from ..plotting import plot_on_axes, plot_on_figure
+from pde.tools.plotting import plot_on_axes, plot_on_figure
 
 
 def test_plot_on_axes(tmp_path):

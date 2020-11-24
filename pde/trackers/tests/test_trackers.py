@@ -8,15 +8,11 @@ from unittest import mock
 
 import numpy as np
 import pytest
-
-from ...fields import ScalarField
-from ...grids import UnitGrid
-from ...pdes import AllenCahnPDE, CahnHilliardPDE, DiffusionPDE
-from ...solvers import Controller, ExplicitSolver
-from ...storage import MemoryStorage
-from ...tools.misc import module_available
-from ...visualization.movies import Movie
-from .. import trackers
+from pde import Controller, ExplicitSolver, MemoryStorage, ScalarField, UnitGrid
+from pde.pdes import AllenCahnPDE, CahnHilliardPDE, DiffusionPDE
+from pde.tools.misc import module_available
+from pde.trackers import trackers
+from pde.visualization.movies import Movie
 
 
 def test_plot_tracker(tmp_path):

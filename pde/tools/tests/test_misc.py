@@ -7,8 +7,7 @@ import os
 
 import numpy as np
 import pytest
-
-from .. import misc
+from pde.tools import misc
 
 
 def test_ensure_directory_exists(tmp_path):
