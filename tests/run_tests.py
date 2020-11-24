@@ -94,8 +94,6 @@ def run_unit_tests(
         "tests/pytest.ini",  # locate the configuration file
         "-rs",  # show summary of skipped tests
         "-rw",  # show summary of warnings raised during tests
-        "--import-mode",
-        "importlib",
     ]
 
     # allow running slow tests?
@@ -124,7 +122,7 @@ def run_unit_tests(
         )
 
     # specify the package to run
-    #args.append(PACKAGE)
+    args.append(PACKAGE)
 
     # actually run the test
     sp.check_call(args, env=env, cwd=PACKAGE_PATH)
