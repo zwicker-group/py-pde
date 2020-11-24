@@ -4,9 +4,8 @@
 
 import numpy as np
 import pytest
-
-from ... import UnitGrid
-from ..local import BCBase, _get_arr_1d
+from pde import UnitGrid
+from pde.grids.boundaries.local import BCBase, _get_arr_1d
 
 
 def test_get_arr_1d():

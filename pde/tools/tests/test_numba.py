@@ -3,8 +3,7 @@
 """
 
 import numpy as np
-
-from ..numba import flat_idx, jit_allocate_out, numba_environment
+from pde.tools.numba import flat_idx, jit_allocate_out, numba_environment
 
 
 def test_environment():

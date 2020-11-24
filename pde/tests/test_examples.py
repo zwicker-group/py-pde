@@ -10,9 +10,8 @@ from pathlib import Path
 from typing import List  # @UnusedImport
 
 import pytest
-
-from ..tools.misc import module_available, skipUnlessModule
-from ..visualization.movies import Movie
+from pde.tools.misc import module_available, skipUnlessModule
+from pde.visualization.movies import Movie
 
 PACKAGE_PATH = Path(__file__).resolve().parents[2]
 EXAMPLES = glob.glob(str(PACKAGE_PATH / "examples" / "*.py"))

@@ -4,9 +4,8 @@
 
 import numpy as np
 import pytest
-
-from ... import CartesianGrid, ScalarField, UnitGrid
-from .. import solve_laplace_equation, solve_poisson_equation
+from pde import CartesianGrid, ScalarField, UnitGrid
+from pde.pdes import solve_laplace_equation, solve_poisson_equation
 
 
 def test_pde_poisson_solver_1d():

@@ -3,6 +3,7 @@
 import argparse
 import os
 import subprocess as sp
+import sys
 from pathlib import Path
 
 PACKAGE = "pde"  # name of the package that needs to be tested
@@ -37,7 +38,7 @@ def test_types(*, report: bool = False, verbose: bool = True):
         print(f"Checking types in the {PACKAGE} package...")
 
     args = [
-        "python3",
+        sys.executable,
         "-m",
         "mypy",
         "--config-file",
@@ -86,7 +87,15 @@ def run_unit_tests(
         env["NUMBA_BOUNDSCHECK"] = "1"
 
     # build the arguments string
-    args = ["python3", "-m", "pytest", "-c", "tests/pytest.ini", "-rs"]
+    args = [
+        sys.executable,
+        "-m",
+        "pytest",  # run pytest module
+        "-c",
+        "tests/pytest.ini",  # locate the configuration file
+        "-rs",  # show summary of skipped tests
+        "-rw",  # show summary of warnings raised during tests
+    ]
 
     # allow running slow tests?
     if runslow:
@@ -106,10 +115,10 @@ def run_unit_tests(
     if coverage:
         args.extend(
             [
-                "--cov-config=tests/.coveragerc",
+                "--cov-config=tests/.coveragerc",  # locate the configuration file
                 "--cov-report",
-                "html:tests/coverage",
-                f"--cov={PACKAGE}",
+                "html:tests/coverage",  # create a report in html format
+                f"--cov={PACKAGE}",  # specify in which package the coverage is measured
             ]
         )
 

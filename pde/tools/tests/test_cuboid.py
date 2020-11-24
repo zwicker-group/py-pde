@@ -4,8 +4,7 @@
 
 import numpy as np
 import pytest
-
-from ..cuboid import Cuboid, asanyarray_flags
+from pde.tools.cuboid import Cuboid, asanyarray_flags
 
 
 def test_cuboid_2d():

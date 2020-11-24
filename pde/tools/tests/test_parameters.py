@@ -8,8 +8,7 @@ import pickle
 
 import numpy as np
 import pytest
-
-from ..parameters import (
+from pde.tools.parameters import (
     DeprecatedParameter,
     HideParameter,
     Parameter,

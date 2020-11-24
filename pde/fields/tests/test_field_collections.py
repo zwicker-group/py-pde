@@ -2,27 +2,22 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import itertools
-
 import numpy as np
 import pytest
-
-from ...grids import UnitGrid
-from ...tools.misc import skipUnlessModule
-from .. import FieldCollection, ScalarField, Tensor2Field, VectorField
-from ..base import FieldBase
-from .test_generic import iter_grids
+from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
+from pde.fields.base import FieldBase
+from pde.tools.misc import skipUnlessModule
 
 
-def test_shapes_nfields():
+def test_shapes_nfields(example_grid):
     """ test single component field """
-    for num, grid in itertools.product([1, 3], iter_grids()):
-        fields = [ScalarField.random_uniform(grid) for _ in range(num)]
+    for num in [1, 3]:
+        fields = [ScalarField.random_uniform(example_grid) for _ in range(num)]
         field = FieldCollection(fields)
-        data_shape = (num,) + grid.shape
+        data_shape = (num,) + example_grid.shape
         np.testing.assert_equal(field.data.shape, data_shape)
         for pf_single in field:
-            np.testing.assert_equal(pf_single.data.shape, grid.shape)
+            np.testing.assert_equal(pf_single.data.shape, example_grid.shape)
 
         field_c = field.copy()
         np.testing.assert_allclose(field.data, field_c.data)

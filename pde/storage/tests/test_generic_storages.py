@@ -6,12 +6,9 @@ import functools
 
 import numpy as np
 import pytest
-
-from ...fields import FieldCollection, ScalarField, Tensor2Field, VectorField
-from ...grids import UnitGrid
-from ...pdes import DiffusionPDE
-from ...tools.misc import module_available
-from .. import FileStorage, MemoryStorage
+from pde import DiffusionPDE, FileStorage, MemoryStorage, UnitGrid
+from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
+from pde.tools.misc import module_available
 
 
 def test_storage_write(tmp_path):

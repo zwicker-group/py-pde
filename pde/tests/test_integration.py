@@ -5,9 +5,8 @@ Integration tests that use multiple modules together
 """
 
 import numpy as np
-
-from .. import CartesianGrid, DiffusionPDE, FileStorage, ScalarField, UnitGrid
-from ..tools.misc import skipUnlessModule
+from pde import CartesianGrid, DiffusionPDE, FileStorage, ScalarField, UnitGrid
+from pde.tools.misc import skipUnlessModule
 
 
 @skipUnlessModule("h5py")

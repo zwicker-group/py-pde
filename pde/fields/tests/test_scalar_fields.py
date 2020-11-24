@@ -4,14 +4,11 @@
 
 import numpy as np
 import pytest
-
-from ...grids import CartesianGrid, PolarGrid, UnitGrid
-from ...grids.boundaries import DomainError
-from ...grids.tests.test_cartesian import _get_cartesian_grid
-from ...tools.misc import module_available, skipUnlessModule
-from ..base import FieldBase
-from ..scalar import ScalarField
-from .test_generic import iter_grids
+from pde.fields.base import FieldBase
+from pde.fields.scalar import ScalarField
+from pde.grids import CartesianGrid, PolarGrid, UnitGrid, boundaries
+from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
+from pde.tools.misc import module_available, skipUnlessModule
 
 
 def test_interpolation_singular():
@@ -37,13 +34,12 @@ def test_interpolation_singular():
         assert val == pytest.approx(1)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
-def test_simple_shapes(grid):
+def test_simple_shapes(example_grid):
     """ test simple scalar fields """
-    pf = ScalarField.random_uniform(grid)
-    np.testing.assert_equal(pf.data.shape, grid.shape)
+    pf = ScalarField.random_uniform(example_grid)
+    np.testing.assert_equal(pf.data.shape, example_grid.shape)
     pf_lap = pf.laplace("natural")
-    np.testing.assert_equal(pf_lap.data.shape, grid.shape)
+    np.testing.assert_equal(pf_lap.data.shape, example_grid.shape)
     assert isinstance(pf.integral, float)
 
     pf_c = pf.copy()
@@ -124,36 +120,34 @@ def test_gradient():
     np.testing.assert_allclose(v.data[1], np.cos(y), rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
-def test_interpolation_to_grid(grid):
+def test_interpolation_to_grid(example_grid):
     """ test whether data is interpolated correctly for different grids """
-    sf = ScalarField.random_uniform(grid)
-    sf2 = sf.interpolate_to_grid(grid, method="numba")
+    sf = ScalarField.random_uniform(example_grid)
+    sf2 = sf.interpolate_to_grid(example_grid, method="numba")
     np.testing.assert_allclose(sf.data, sf2.data, rtol=1e-6)
 
 
-@pytest.mark.parametrize("grid", iter_grids())
-def test_add_interpolated_scalar(grid):
+def test_add_interpolated_scalar(example_grid):
     """ test the `add_interpolated` method """
-    f = ScalarField(grid)
+    f = ScalarField(example_grid)
     a = np.random.random()
 
-    c = tuple(grid.point_to_cell(grid.get_random_point()))
-    p = grid.cell_to_point(c, cartesian=False)
+    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
+    p = example_grid.cell_to_point(c, cartesian=False)
     f.add_interpolated(p, a)
-    assert f.data[c] == pytest.approx(a / grid.cell_volumes[c])
+    assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
 
-    f.add_interpolated(grid.get_random_point(cartesian=False), a)
+    f.add_interpolated(example_grid.get_random_point(cartesian=False), a)
     assert f.integral == pytest.approx(2 * a)
 
     f.data = 0  # reset
-    add_interpolated = grid.make_add_interpolated_compiled()
-    c = tuple(grid.point_to_cell(grid.get_random_point()))
-    p = grid.cell_to_point(c, cartesian=False)
+    add_interpolated = example_grid.make_add_interpolated_compiled()
+    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
+    p = example_grid.cell_to_point(c, cartesian=False)
     add_interpolated(f.data, p, a)
-    assert f.data[c] == pytest.approx(a / grid.cell_volumes[c])
+    assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
 
-    add_interpolated(f.data, grid.get_random_point(cartesian=False), a)
+    add_interpolated(f.data, example_grid.get_random_point(cartesian=False), a)
     assert f.integral == pytest.approx(2 * a)
 
 
@@ -238,37 +232,35 @@ def test_to_scalar():
         sf.to_scalar("nonsense")
 
 
-@pytest.mark.parametrize("grid", (g for g in iter_grids() if g.num_axes > 1))
 @pytest.mark.parametrize("method", ["integral", "average"])
-def test_projection(grid, method):
+def test_projection(example_grid_nd, method):
     """ test scalar projection """
-    sf = ScalarField.random_uniform(grid)
-    for ax in grid.axes:
+    sf = ScalarField.random_uniform(example_grid_nd)
+    for ax in example_grid_nd.axes:
         sp = sf.project(ax, method=method)
-        assert sp.grid.dim < grid.dim
-        assert sp.grid.num_axes == grid.num_axes - 1
+        assert sp.grid.dim < example_grid_nd.dim
+        assert sp.grid.num_axes == example_grid_nd.num_axes - 1
         if method == "integral":
             assert sp.integral == pytest.approx(sf.integral)
         elif method == "average":
             assert sp.average == pytest.approx(sf.average)
 
     with pytest.raises(ValueError):
-        sf.project(grid.axes[0], method="nonsense")
+        sf.project(example_grid_nd.axes[0], method="nonsense")
 
 
-@pytest.mark.parametrize("grid", (g for g in iter_grids() if g.num_axes > 1))
-def test_slice(grid):
+def test_slice(example_grid_nd):
     """ test scalar slicing """
-    sf = ScalarField(grid, 0.5)
-    p = grid.get_random_point()
-    for i in range(grid.num_axes):
-        sf_slc = sf.slice({grid.axes[i]: p[i]})
+    sf = ScalarField(example_grid_nd, 0.5)
+    p = example_grid_nd.get_random_point()
+    for i in range(example_grid_nd.num_axes):
+        sf_slc = sf.slice({example_grid_nd.axes[i]: p[i]})
         np.testing.assert_allclose(sf_slc.data, 0.5)
-        assert sf_slc.grid.dim < grid.dim
-        assert sf_slc.grid.num_axes == grid.num_axes - 1
+        assert sf_slc.grid.dim < example_grid_nd.dim
+        assert sf_slc.grid.num_axes == example_grid_nd.num_axes - 1
 
-    with pytest.raises(DomainError):
-        sf.slice({grid.axes[0]: -10})
+    with pytest.raises(boundaries.DomainError):
+        sf.slice({example_grid_nd.axes[0]: -10})
     with pytest.raises(ValueError):
         sf.slice({"q": 0})
 

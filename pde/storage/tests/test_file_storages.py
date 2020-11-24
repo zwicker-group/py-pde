@@ -4,12 +4,8 @@
 
 import numpy as np
 import pytest
-
-from ...fields import ScalarField
-from ...grids import UnitGrid
-from ...pdes import DiffusionPDE
-from ...tools.misc import skipUnlessModule
-from .. import FileStorage
+from pde import DiffusionPDE, FileStorage, ScalarField, UnitGrid
+from pde.tools.misc import skipUnlessModule
 
 
 @skipUnlessModule("h5py")

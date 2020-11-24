@@ -8,19 +8,20 @@ from functools import partial
 
 import numpy as np
 import pytest
-
-from ... import grids
-from ...tools.misc import skipUnlessModule
-from ..base import GridBase, discretize_interval
+from pde import grids
+from pde.grids.base import GridBase, discretize_interval
+from pde.tools.misc import skipUnlessModule
 
 
 def iter_grids():
-    """ generate some test grids """
-    yield grids.UnitGrid([2, 2], periodic=[True, False])
-    yield grids.CartesianGrid([[0, 1]], [2], periodic=[False])
-    yield grids.CylindricalGrid(2, (0, 2), (2, 2), periodic_z=True)
-    yield grids.SphericalGrid(2, 2)
-    yield grids.PolarGrid(2, 2)
+    """ generator providing some test grids """
+    for periodic in [True, False]:
+        yield grids.UnitGrid([3], periodic=periodic)
+        yield grids.UnitGrid([3, 3, 3], periodic=periodic)
+        yield grids.CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic)
+        yield grids.CylindricalGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
+    yield grids.PolarGrid(3, 4)
+    yield grids.SphericalGrid(3, 4)
 
 
 def test_discretize():

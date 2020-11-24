@@ -478,7 +478,7 @@ class StorageTracker(TrackerBase):
                 The current state of the simulation
             t (float): The associated time
         """
-        self.storage.append(field.data, time=t)
+        self.storage.append(field, time=t)
 
     def finalize(self, info: InfoDict = None) -> None:
         """finalize the tracker, supplying additional information

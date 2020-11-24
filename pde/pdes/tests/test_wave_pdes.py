@@ -4,10 +4,7 @@
 
 import numpy as np
 import pytest
-
-from ...fields import ScalarField
-from ...grids import UnitGrid
-from .. import PDE, WavePDE
+from pde import PDE, ScalarField, UnitGrid, WavePDE
 
 
 @pytest.mark.parametrize("dim", [1, 2])

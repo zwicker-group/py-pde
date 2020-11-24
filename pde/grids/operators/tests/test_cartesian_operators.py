@@ -6,11 +6,9 @@ import random
 
 import numpy as np
 import pytest
+from pde import CartesianGrid, ScalarField, UnitGrid
+from pde.grids.operators import cartesian as ops
 from scipy import ndimage
-
-from ....fields import ScalarField
-from ... import CartesianGrid, UnitGrid
-from .. import cartesian as ops
 
 π = np.pi
 

@@ -3,8 +3,7 @@
 """
 
 import pytest
-
-from .. import ConstantIntervals, LogarithmicIntervals
+from pde.trackers import ConstantIntervals, LogarithmicIntervals
 
 
 def test_intervals():

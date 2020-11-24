@@ -4,11 +4,16 @@
 
 import numpy as np
 import pytest
+from pde import PDE, FieldCollection, ScalarField, SwiftHohenbergPDE, VectorField, grids
 
-from ...fields import FieldCollection, ScalarField, VectorField
-from ...grids import UnitGrid
-from ...grids.tests.test_generic import iter_grids
-from .. import PDE, SwiftHohenbergPDE
+
+def iter_grids():
+    """ generate some test grids """
+    yield grids.UnitGrid([2, 2], periodic=[True, False])
+    yield grids.CartesianGrid([[0, 1]], [2], periodic=[False])
+    yield grids.CylindricalGrid(2, (0, 2), (2, 2), periodic_z=True)
+    yield grids.SphericalGrid(2, 2)
+    yield grids.PolarGrid(2, 2)
 
 
 def test_pde_wrong_input():
@@ -16,7 +21,7 @@ def test_pde_wrong_input():
     with pytest.raises(RuntimeError):
         PDE({"t": 1})
 
-    grid = UnitGrid([4])
+    grid = grids.UnitGrid([4])
     eq = PDE({"u": 1})
     assert eq.expressions == {"u": "1.0"}
     with pytest.raises(ValueError):
@@ -37,7 +42,7 @@ def test_pde_scalar():
     eq = PDE({"u": "laplace(u) + exp(-t) + sin(t)"})
     assert eq.explicit_time_dependence
     assert not eq.complex_valued
-    grid = UnitGrid([8])
+    grid = grids.UnitGrid([8])
     field = ScalarField.random_normal(grid)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
@@ -52,7 +57,7 @@ def test_pde_vector():
     eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
     assert eq.explicit_time_dependence
     assert not eq.complex_valued
-    grid = UnitGrid([8, 8])
+    grid = grids.UnitGrid([8, 8])
     field = VectorField.random_normal(grid)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
@@ -67,7 +72,7 @@ def test_pde_2scalar():
     eq = PDE({"u": "laplace(u) - u", "v": "- u * v"})
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
-    grid = UnitGrid([8])
+    grid = grids.UnitGrid([8])
     field = FieldCollection.scalar_random_uniform(2, grid)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
@@ -83,7 +88,7 @@ def test_pde_vector_scalar():
     eq = PDE({"u": "vector_laplace(u) - u + gradient(v)", "v": "- divergence(u)"})
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
-    grid = UnitGrid([8, 8])
+    grid = grids.UnitGrid([8, 8])
     field = FieldCollection(
         [VectorField.random_uniform(grid), ScalarField.random_uniform(grid)]
     )
@@ -119,7 +124,7 @@ def test_compare_swift_hohenberg(grid):
 
 def test_custom_operators():
     """ test using a custom operator """
-    grid = UnitGrid([32])
+    grid = grids.UnitGrid([32])
     field = ScalarField.random_normal(grid)
     eq = PDE({"u": "undefined(u)"})
 
@@ -129,19 +134,19 @@ def test_custom_operators():
     def make_op(state):
         return lambda state: state
 
-    UnitGrid.register_operator("undefined", make_op)
+    grids.UnitGrid.register_operator("undefined", make_op)
 
     eq._cache = {}  # reset cache
     res = eq.evolution_rate(field)
     np.testing.assert_allclose(field.data, res.data)
 
-    del UnitGrid._operators["undefined"]  # reset original state
+    del grids.UnitGrid._operators["undefined"]  # reset original state
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_noise(backend):
     """ test noise operator on PDE class """
-    grid = UnitGrid([64, 64])
+    grid = grids.UnitGrid([64, 64])
     state = FieldCollection([ScalarField(grid), ScalarField(grid)])
 
     eq = PDE({"a": 0, "b": 0}, noise=0.5)
@@ -163,7 +168,7 @@ def test_pde_spatial_args():
 
     eq = PDE({"a": "x"})
 
-    field = ScalarField(UnitGrid([2]))
+    field = ScalarField(grids.UnitGrid([2]))
     rhs = eq.evolution_rate(field)
     assert rhs == field.copy(data=[0.5, 1.5])
     rhs = eq.make_pde_rhs(field, backend="numba")
@@ -178,7 +183,7 @@ def test_pde_user_funcs():
     """ test user supplied functions """
     # test a simple case
     eq = PDE({"u": "get_x(gradient(u))"}, user_funcs={"get_x": lambda arr: arr[0]})
-    field = ScalarField.random_colored(UnitGrid([32, 32]))
+    field = ScalarField.random_colored(grids.UnitGrid([32, 32]))
     rhs = eq.evolution_rate(field)
     np.testing.assert_allclose(rhs.data, field.gradient("natural").data[0])
     f = eq._make_pde_rhs_numba(field)
@@ -191,7 +196,7 @@ def test_pde_complex():
     assert not eq.explicit_time_dependence
     assert eq.complex_valued
 
-    field = ScalarField.random_uniform(UnitGrid([4]))
+    field = ScalarField.random_uniform(grids.UnitGrid([4]))
     assert not field.is_complex
     res1 = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
     assert res1.is_complex
@@ -208,7 +213,7 @@ def test_pde_product_operators():
     )
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
-    field = VectorField(UnitGrid([4]), 1)
+    field = VectorField(grids.UnitGrid([4]), 1)
     res = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
     np.testing.assert_allclose(res.data, field.data)
 
@@ -230,7 +235,7 @@ def test_pde_setting_noise():
 
 def test_pde_consts():
     """ test using the consts argument in PDE """
-    field = ScalarField(UnitGrid([3]), 1)
+    field = ScalarField(grids.UnitGrid([3]), 1)
 
     eq = PDE({"a": "b"}, consts={"b": 2})
     np.testing.assert_allclose(eq.evolution_rate(field).data, 2)

@@ -4,8 +4,7 @@
 
 
 import numpy as np
-
-from ..math import SmoothData1D
+from pde.tools.math import SmoothData1D
 
 
 def test_SmoothData1D():

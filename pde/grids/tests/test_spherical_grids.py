@@ -4,9 +4,8 @@
 
 import numpy as np
 import pytest
-
-from .. import PolarGrid, SphericalGrid
-from ..boundaries.local import NeumannBC
+from pde import CartesianGrid, PolarGrid, ScalarField, SphericalGrid
+from pde.grids.boundaries.local import NeumannBC
 
 
 @pytest.mark.parametrize("grid_class", [PolarGrid, SphericalGrid])
@@ -90,9 +89,6 @@ def test_polar_annulus():
 
 def test_polar_to_cartesian():
     """ test conversion of polar grid to Cartesian """
-    from ...fields import ScalarField
-    from .. import CartesianGrid
-
     expr_pol = "1 / (1 + r**2)"
     expr_cart = expr_pol.replace("r**2", "(x**2 + y**2)")
 
@@ -170,9 +166,6 @@ def test_spherical_annulus():
 
 def test_spherical_to_cartesian():
     """ test conversion of spherical grid to cartesian """
-    from ...fields import ScalarField
-    from .. import CartesianGrid
-
     expr_sph = "1 / (1 + r**2)"
     expr_cart = expr_sph.replace("r**2", "(x**2 + y**2 + z**2)")
 

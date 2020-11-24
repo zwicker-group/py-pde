@@ -3,12 +3,11 @@
 """
 
 import pytest
-
-from ...fields import ScalarField
-from ...grids import UnitGrid
-from ...pdes import DiffusionPDE
-from ...storage import MemoryStorage
-from .. import movies
+from pde.fields import ScalarField
+from pde.grids import UnitGrid
+from pde.pdes import DiffusionPDE
+from pde.storage import MemoryStorage
+from pde.visualization import movies
 
 
 @pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
