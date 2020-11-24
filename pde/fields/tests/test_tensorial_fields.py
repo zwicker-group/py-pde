@@ -4,7 +4,7 @@
 
 import numpy as np
 import pytest
-from pde import CartesianGrid, Tensor2Field, UnitGrid
+from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid
 from pde.fields.base import FieldBase
 
 
@@ -25,7 +25,6 @@ def test_tensors():
 
     field = Tensor2Field.random_uniform(grid)
     trace = field.trace()
-    from ..scalar import ScalarField
 
     assert isinstance(trace, ScalarField)
     np.testing.assert_allclose(trace.data, field.data.trace())

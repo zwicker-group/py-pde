@@ -4,7 +4,7 @@
 
 import numpy as np
 import pytest
-from pde import CylindricalGrid
+from pde import CartesianGrid, CylindricalGrid, ScalarField
 from pde.grids.boundaries.local import NeumannBC
 
 
@@ -41,9 +41,6 @@ def test_cylindrical_grid():
 
 def test_cylindrical_to_cartesian():
     """ test conversion of cylindrical grid to Cartesian """
-    from ...fields import ScalarField
-    from .. import CartesianGrid
-
     expr_cyl = "cos(z / 2) / (1 + r**2)"
     expr_cart = expr_cyl.replace("r**2", "(x**2 + y**2)")
 
