@@ -3,6 +3,7 @@
 import argparse
 import os
 import subprocess as sp
+import sys
 from pathlib import Path
 
 PACKAGE = "pde"  # name of the package that needs to be tested
@@ -37,7 +38,7 @@ def test_types(*, report: bool = False, verbose: bool = True):
         print(f"Checking types in the {PACKAGE} package...")
 
     args = [
-        "python3",
+        sys.executable,
         "-m",
         "mypy",
         "--config-file",
@@ -87,7 +88,7 @@ def run_unit_tests(
 
     # build the arguments string
     args = [
-        "python3",
+        sys.executable,
         "-m",
         "pytest",  # run pytest module
         "-c",
