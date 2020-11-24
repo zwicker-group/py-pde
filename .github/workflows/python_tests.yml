@@ -35,4 +35,4 @@ jobs:
       run: |
         pip install pytest
         cd tests
-        python -m pytest -c pytest.ini -rs . ..
+        python -m pytest -c pytest.ini -rs -rw --import-mode importlib . ..

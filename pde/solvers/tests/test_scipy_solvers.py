@@ -3,8 +3,7 @@
 """
 
 import numpy as np
-
-from pde import ScalarField, UnitGrid, DiffusionPDE
+from pde import DiffusionPDE, ScalarField, UnitGrid
 from pde.solvers import Controller, ScipySolver
 
 
