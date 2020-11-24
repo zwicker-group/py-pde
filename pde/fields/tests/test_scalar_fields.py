@@ -7,7 +7,7 @@ import pytest
 from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
 from pde.grids import CartesianGrid, PolarGrid, UnitGrid, boundaries
-from pde.grids.tests.test_cartesian import _get_cartesian_grid
+from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
 from pde.tools.misc import module_available, skipUnlessModule
 
 
