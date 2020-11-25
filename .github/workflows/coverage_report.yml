@@ -42,7 +42,6 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./report_coverage.xml
-        yml: ./codecov.yml
         flags: unittests
         name: codecov-pydev
         fail_ci_if_error: true
