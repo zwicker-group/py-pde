@@ -91,12 +91,20 @@ def parse_number(
 SPECIAL_FUNCTIONS = {"Heaviside": lambda x: np.heaviside(x, 0.5)}
 
 
+class ListArrayPrinter(PythonCodePrinter):
+    """ special sympy printer returning arrays as lists """
+
+    def _print_ImmutableDenseNDimArray(self, arr):
+        arrays = ", ".join(f"{self._print(expr)}" for expr in arr)
+        return f"[{arrays}]"
+
+
 class NumpyArrayPrinter(PythonCodePrinter):
     """ special sympy printer returning numpy arrays """
 
     def _print_ImmutableDenseNDimArray(self, arr):
-        expr = self._print(arr.tolist())
-        return f"array({expr})"
+        arrays = ", ".join(f"asarray({self._print(expr)})" for expr in arr)
+        return f"array(broadcast_arrays({arrays}))"
 
 
 ExpressionType = Union[float, str, "ExpressionBase"]
@@ -307,7 +315,11 @@ class ExpressionBase(metaclass=ABCMeta):
             user_functions = {k: compile_func(v) for k, v in user_functions.items()}
 
         # initialize the printer that deals with numpy arrays correctly
-        printer = NumpyArrayPrinter(
+        if prepare_compilation:
+            printer_class = ListArrayPrinter
+        else:
+            printer_class = NumpyArrayPrinter
+        printer = printer_class(
             {
                 "fully_qualified_modules": False,
                 "inline": True,
@@ -704,11 +716,13 @@ class TensorExpression(ExpressionBase):
 
         return TensorExpression(derivatives, self.vars, user_funcs=self.user_funcs)
 
-    def get_compiled_array(self) -> Callable:
+    def get_compiled_array(self, single_arg: bool = True) -> Callable:
         """compile the tensor expression such that a numpy array is returned
 
-        Note that the input to the returned function must be a single 1d array
-        with exactly as many entries as there are variables in the expression.
+        Args:
+            single_arg (bool):
+                Whether the compiled function expects all arguments as a single array
+                or whether they are supplied individually.
         """
         assert isinstance(self._sympy_expr, sympy.Array)
         variables = ", ".join(v for v in self.vars)
@@ -729,15 +743,28 @@ class TensorExpression(ExpressionBase):
 
         if variables:
             # the expression takes variables as input
-            first_dim = 0 if len(self.vars) == 1 else 1
-            code = "def _generated_function(arr, out=None):\n"
-            code += f"    arr = asarray(arr)\n"
-            code += f"    {variables} = arr\n"
-            code += f"    if out is None:\n"
-            code += f"        out = empty({shape} + arr.shape[{first_dim}:])\n"
+
+            if single_arg:
+                # the function takes a single input array
+                first_dim = 0 if len(self.vars) == 1 else 1
+                code = "def _generated_function(arr, out=None):\n"
+                code += f"    arr = asarray(arr)\n"
+                code += f"    {variables} = arr\n"
+                code += f"    if out is None:\n"
+                code += f"        out = empty({shape} + arr.shape[{first_dim}:])\n"
+
+            else:
+                # the function takes each variables as an argument
+                code = f"def _generated_function({variables}, out=None):\n"
+                code += f"    if out is None:\n"
+                code += f"        out = empty({shape} + shape({self.vars[0]}))\n"
+
         else:
             # the expression is constant
-            code = "def _generated_function(arr=None, out=None):\n"
+            if single_arg:
+                code = "def _generated_function(arr=None, out=None):\n"
+            else:
+                code = "def _generated_function(out=None):\n"
             code += f"    if out is None:\n"
             code += f"        out = empty({shape})\n"
 

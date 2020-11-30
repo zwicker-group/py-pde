@@ -22,9 +22,9 @@ def test_codestyle(*, verbose: bool = True):
         path = PACKAGE_PATH / folder
 
         # format imports
-        sp.check_call(["isort", "--profile", "black", "--diff", path])
+        sp.run(["isort", "--profile", "black", "--diff", path])
         # format rest
-        sp.check_call(["black", "-t", "py36", "--check", path])
+        sp.run(["black", "-t", "py36", "--check", path])
 
 
 def test_types(*, report: bool = False, verbose: bool = True):
@@ -58,7 +58,7 @@ def test_types(*, report: bool = False, verbose: bool = True):
 
     args.extend(["--package", PACKAGE])
 
-    sp.check_call(args, cwd=PACKAGE_PATH)
+    sp.run(args, cwd=PACKAGE_PATH)
 
 
 def run_unit_tests(
@@ -126,7 +126,7 @@ def run_unit_tests(
     args.append(PACKAGE)
 
     # actually run the test
-    sp.check_call(args, env=env, cwd=PACKAGE_PATH)
+    sp.run(args, env=env, cwd=PACKAGE_PATH)
 
 
 def main():
