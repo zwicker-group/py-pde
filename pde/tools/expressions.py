@@ -39,6 +39,7 @@ from typing import (
 import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
 import sympy
+from numba.core.extending import overload, register_jitable
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
@@ -84,6 +85,22 @@ def parse_number(
         raise
 
     return value
+
+
+@overload(np.heaviside)
+def np_heaviside(x1, x2):
+    """ numba implementation of the heaviside function """
+
+    @register_jitable
+    def heaviside_impl(x1, x2):
+        if x1 < 0:
+            return 0.0
+        elif x1 > 0:
+            return 1.0
+        else:
+            return x2
+
+    return heaviside_impl
 
 
 # special functions that we want to support in expressions but that are not defined by
@@ -302,6 +319,7 @@ class ExpressionBase(metaclass=ABCMeta):
         user_functions = self.user_funcs.copy()
         if user_funcs is not None:
             user_functions.update(user_funcs)
+        user_functions.update(SPECIAL_FUNCTIONS)
 
         if prepare_compilation:
             # transform the user functions, so they can be compiled using numba
@@ -336,7 +354,7 @@ class ExpressionBase(metaclass=ABCMeta):
         func = sympy.lambdify(
             variables + constants,
             self._sympy_expr,
-            modules=[user_functions, SPECIAL_FUNCTIONS, "numpy"],
+            modules=[user_functions, "numpy"],
             printer=printer,
         )
 

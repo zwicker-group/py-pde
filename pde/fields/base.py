@@ -811,8 +811,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             label (str, optional):
                 Name of the field
             seed (int, optional):
-                Seed of the random number generator. If `None`, the curren
-                 state is not changed.
+                Seed of the random number generator. If `None`, the current
+                state is not changed.
         """
         if seed is not None:
             np.random.seed(seed)

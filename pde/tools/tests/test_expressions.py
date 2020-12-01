@@ -260,6 +260,11 @@ def test_expression_special():
     assert expr(0) == 0.5
     assert expr(1) == 1
 
+    f = expr.get_compiled()
+    assert f(-1) == 0
+    assert f(0) == 0.5
+    assert f(1) == 1
+
 
 def test_expression_consts():
     """ test the usage of consts """
