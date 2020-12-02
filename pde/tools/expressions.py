@@ -39,7 +39,6 @@ from typing import (
 import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
 import sympy
-from numba.core.extending import overload, register_jitable
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
@@ -47,6 +46,12 @@ from ..tools.misc import Number, number, number_array
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .numba import convert_scalar, jit
+
+try:
+    from numba.core.extending import overload, register_jitable
+except ImportError:
+    # assume older numba module structure
+    from numba.extending import overload, register_jitable
 
 if TYPE_CHECKING:
     from sympy.core import basic  # @UnusedImport
