@@ -14,7 +14,7 @@ DOWNLOAD_URL = f"https://github.com/zwicker-group/py-pde/archive/v{__version__}.
 
 
 # read the requirements from requirements.txt
-with Path("requirements.txt").open() as requirements_txt:
+with Path(BASE_PATH / "requirements.txt").open() as requirements_txt:
     install_requires = [
         str(requirement)
         for requirement in pkg_resources.parse_requirements(requirements_txt)
