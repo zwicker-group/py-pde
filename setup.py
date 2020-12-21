@@ -1,6 +1,7 @@
 from pathlib import Path
-from setuptools import setup, find_packages
 
+import pkg_resources
+from setuptools import find_packages, setup
 
 BASE_PATH = Path(__file__).resolve().parent
 
@@ -12,7 +13,15 @@ with open(BASE_PATH / "pde" / "version.py", "r") as f:
 DOWNLOAD_URL = f"https://github.com/zwicker-group/py-pde/archive/v{__version__}.tar.gz"
 
 
-# read the version from the particular file
+# read the requirements from requirements.txt
+with Path("requirements.txt").open() as requirements_txt:
+    install_requires = [
+        str(requirement)
+        for requirement in pkg_resources.parse_requirements(requirements_txt)
+    ]
+
+
+# read the description from the README file
 with open(BASE_PATH / "README.md", "r") as fh:
     long_description = fh.read()
 
@@ -33,7 +42,7 @@ setup(
     download_url=DOWNLOAD_URL,
     keywords=["pdes", "partial-differential-equations", "dynamical-systems"],
     python_requires=">=3.6",
-    install_requires=["matplotlib", "numpy", "numba", "scipy", "sympy"],
+    install_requires=install_requires,
     extras_require={
         "hdf": ["h5py>=2"],
         "progress": ["tqdm>=4.40"],
