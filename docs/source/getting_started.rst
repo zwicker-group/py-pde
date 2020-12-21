@@ -59,10 +59,10 @@ The required packages are listed in the table below:
 Package      Version   Usage 
 ===========  ========= =========
 matplotlib   >=3.1.0   Visualizing results
-numpy        >=1.16    Array library used for storing data
-numba        >=0.43    Just-in-time compilation to accelerate numerics
-scipy        >=1.2     Miscellaneous scientific functions
-sympy        >=1.4     Dealing with user-defined mathematical expressions
+numpy        >=1.18    Array library used for storing data
+numba        >=0.50    Just-in-time compilation to accelerate numerics
+scipy        >=1.4     Miscellaneous scientific functions
+sympy        >=1.5     Dealing with user-defined mathematical expressions
 ===========  ========= =========
 
 The simplest way to install these packages is to use the

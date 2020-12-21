@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence,
 
 import numba as nb
 import numpy as np
-from numba.core.extending import register_jitable
+
+try:
+    from numba.core.extending import register_jitable
+except ImportError:
+    # assume older numba module structure
+    from numba.extending import register_jitable
 
 from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
