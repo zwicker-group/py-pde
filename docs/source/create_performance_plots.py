@@ -23,6 +23,7 @@ from pde.tools.misc import estimate_computation_speed
 try:
     import cv2
 except ImportError:
+    print('Warning: OpenCV is not available and will not be used to compare')
     opencv_laplace = None
 else:
     opencv_laplace = functools.partial(

@@ -20,8 +20,7 @@ class ExplicitSolver(SolverBase):
     name = "explicit"
 
     def __init__(self, pde: PDEBase, scheme: str = "euler", backend: str = "auto"):
-        """initialize the explicit solver
-
+        """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved

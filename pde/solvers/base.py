@@ -21,8 +21,7 @@ class SolverBase(metaclass=ABCMeta):
     _subclasses: Dict[str, "SolverBase"] = {}  # all inheriting classes
 
     def __init__(self, pde: PDEBase):
-        """initialize the solver
-
+        """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The partial differential equation that should be solved

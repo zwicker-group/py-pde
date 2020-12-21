@@ -48,10 +48,10 @@ from .docstrings import fill_in_docstring
 from .numba import convert_scalar, jit
 
 try:
-    from numba.core.extending import overload, register_jitable
+    from numba.core.extending import overload
 except ImportError:
     # assume older numba module structure
-    from numba.extending import overload, register_jitable
+    from numba.extending import overload
 
 if TYPE_CHECKING:
     from sympy.core import basic  # @UnusedImport
@@ -96,14 +96,15 @@ def parse_number(
 def np_heaviside(x1, x2):
     """ numba implementation of the heaviside function """
 
-    @register_jitable
     def heaviside_impl(x1, x2):
-        if x1 < 0:
-            return 0.0
-        elif x1 > 0:
-            return 1.0
-        else:
+        if np.isnan(x1):
+            return np.nan
+        elif x1 == 0:
             return x2
+        elif x1 < 0:
+            return 0.0
+        else:
+            return 1.0
 
     return heaviside_impl
 

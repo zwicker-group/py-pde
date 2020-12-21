@@ -23,8 +23,7 @@ class ScipySolver(SolverBase):
     name = "scipy"
 
     def __init__(self, pde: PDEBase, backend: str = "auto", **kwargs):
-        r"""initialize the explicit solver
-
+        r"""
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved

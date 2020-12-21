@@ -37,8 +37,7 @@ class Controller:
         t_range: TRangeType,
         tracker: TrackerCollectionDataType = ["progress", "consistency"],
     ):
-        """initialize the controller
-
+        """
         Args:
             solver (:class:`~pde.solvers.base.SolverBase`):
                 Solver instance that is used to advance the simulation in time

@@ -1,8 +1,8 @@
 Advanced usage
 ^^^^^^^^^^^^^^
 
-Advanced boundary conditions
-""""""""""""""""""""""""""""
+Boundary conditions
+"""""""""""""""""""
 Boundary conditions can be specified for both sides of each axis individually.
 For instance, we can enforce the value of a field to be `4` at the lower side
 and its derivative (in the outward direction) to be `2` on the upper side:
@@ -44,29 +44,6 @@ is identical to the example above. Alternatively, this condition can be called
 boundary conditions automatically. Similarly, the special condition
 `auto_periodic_dirichlet` enforces periodic boundary conditions or Dirichlet boundary
 condition (vanishing value), depending on the periodicity of the underlying grid. 
-
-
-Custom PDEs
-"""""""""""
-The `py-pde` package provides classes that help with implementing and analyzing
-partial differential equations.
-In particular, using the :class:`~pde.pdes.pde.PDE` class, PDEs can be defined
-by specifying their right-hand side as an expression.
-
-As an example, we consider the `Kuramoto–Sivashinsky equation 
-<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_,     
-:math:`\partial_t u = - \nabla^4 u - \nabla^2 u - \frac{1}{2} |\nabla u|^2`,
-which describes the time evolution of a scalar field :math:`u`.
-A simple implementation of this equation could read 
-
-.. code-block:: python
-
-    eq = PDE({"u": "-gradient_squared(u) / 2 - laplace(u + laplace(u))"})
-    
-Here, the argument defines the evolution rate for all fields (in this case
-only :math:`u`).
-The expression on the right hand side can contain typical mathematical functions
-and the operators defined by the package.
 
 
 Custom PDE classes
@@ -118,8 +95,8 @@ While such an implementation is helpful for testing initial ideas, actual
 computations should be performed with compiled PDEs as described below.
 
 
-Operators without field classes
-"""""""""""""""""""""""""""""""
+Low-level operators 
+"""""""""""""""""""
 This section explains how to use the low-level version of the field operators.
 This is necessary for the numba-accelerated implementations described above and
 it might be necessary to use parts of the `py-pde` package in other packages.

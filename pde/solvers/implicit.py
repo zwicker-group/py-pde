@@ -31,8 +31,7 @@ class ImplicitSolver(SolverBase):
         maxerror: float = 1e-4,
         backend: str = "auto",
     ):
-        """initialize the implicit solver
-
+        """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved

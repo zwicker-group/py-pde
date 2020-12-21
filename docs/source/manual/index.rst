@@ -7,6 +7,7 @@ User manual
     
    
    mathematical_basics
+   basic_usage
    advanced_usage
    performance
    contributing
