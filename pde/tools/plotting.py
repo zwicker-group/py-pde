@@ -133,64 +133,6 @@ class nested_plotting_check:
             self.__class__._is_plotting = False
 
 
-def finalize_plot(
-    fig_or_ax=None,
-    title: str = None,
-    filename: str = None,
-    show: bool = False,
-    close_figure: bool = False,
-) -> Tuple[Any, Any]:
-    r"""finalizes a figure by adjusting relevant parameters
-
-    Args:
-        fig_or_ax:
-            The figure or axes that are affected. If `None`, the current figure
-            is used.
-        title (str):
-            Determines the title of the figure
-        filename (str):
-            If given, the resulting image is written to this file.
-        show (bool):
-            Flag determining whether :func:`matplotlib.pyplot.show` is called
-        close_figure (bool):
-            Whether the figure should be closed in the end
-
-    Returns:
-        tuple: The figure and the axes that were used to finalize the plot
-    """
-    import matplotlib.pyplot as plt
-
-    # Deprecated this method on 2020-06-13
-    warnings.warn(
-        "finalize_plot() method is deprecated. Use the decorators "
-        "plot_on_axes or plot_on_figure to control plots instead.",
-        DeprecationWarning,
-    )
-
-    # determine which figure to modify
-    if fig_or_ax is None:
-        fig = plt.gcf()  # current figure
-        ax = fig.gca()
-    elif hasattr(fig_or_ax, "savefig"):
-        fig = fig_or_ax  # figure is given
-        ax = fig.gca()
-    else:
-        ax = fig_or_ax  # assume that axes are given
-        fig = ax.get_figure()
-
-    if title is not None:
-        ax.set_title(title)
-
-    if filename:
-        fig.savefig(filename)
-    if show:
-        plt.show()
-    if close_figure:
-        plt.close(fig)
-
-    return fig, ax
-
-
 @contextlib.contextmanager
 def disable_interactive():
     """context manager disabling the interactive mode of matplotlib

@@ -253,7 +253,6 @@ class PlotTracker(TrackerBase):
         movie: Union[str, Path, "Movie"] = None,
         show: bool = None,
         plot_args: Dict[str, Any] = None,
-        **kwargs,
     ):
         """
         Args:
@@ -296,32 +295,6 @@ class PlotTracker(TrackerBase):
             the `dpi` argument or the `frame_rate`.
         """
         from ..visualization.movies import Movie  # @Reimport
-
-        # handle deprecated parameters
-        if "movie_file" in kwargs:
-            # Deprecated this method on 2020-06-04
-            import warnings
-
-            warnings.warn(
-                "Argument `movie_file` is deprecated. Use `movie` instead.",
-                DeprecationWarning,
-            )
-            if movie is None:
-                movie = kwargs.pop("movie_file")
-        if "output_folder" in kwargs:
-            # Deprecated this method on 2020-06-04
-            import warnings  # @Reimport
-
-            warnings.warn(
-                "Argument `output_folder` is deprecated. Use an "
-                "instance of pde.visualization.movies.Movie with "
-                "`image_folder` and supply it to the `movie` "
-                "argument instead.",
-                DeprecationWarning,
-            )
-            del kwargs["output_folder"]
-        if kwargs:
-            raise ValueError(f"Unused kwargs: {kwargs}")
 
         # initialize the tracker
         super().__init__(interval=interval)

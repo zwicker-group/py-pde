@@ -279,58 +279,6 @@ def test_slice_positions():
         sf.slice({"x": 0}, method="nonsense")
 
 
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
-def test_poisson_solver_1d():
-    """ test the poisson solver on 1d grids """
-    # solve Laplace's equation
-    grid = UnitGrid([4])
-    field = ScalarField(grid)
-    res = field.solve_poisson([{"value": -1}, {"value": 3}])
-    np.testing.assert_allclose(res.data, grid.axes_coords[0] - 1)
-
-    res = field.solve_poisson([{"value": -1}, {"derivative": 1}])
-    np.testing.assert_allclose(res.data, grid.axes_coords[0] - 1)
-
-    # test Poisson equation with 2nd Order BC
-    res = field.solve_poisson([{"value": -1}, "extrapolate"])
-
-    # solve Poisson's equation
-    grid = CartesianGrid([[0, 1]], 4)
-    field = ScalarField(grid, data=1)
-
-    res = field.copy()
-    field.solve_poisson([{"value": 1}, {"derivative": 1}], out=res)
-    xs = grid.axes_coords[0]
-    np.testing.assert_allclose(res.data, 1 + 0.5 * xs ** 2, rtol=1e-2)
-
-    # test inconsistent problem
-    field.data = 1
-    with pytest.raises(RuntimeError, match="Neumann"):
-        field.solve_poisson({"derivative": 0})
-
-
-@pytest.mark.filterwarnings("ignore::DeprecationWarning")
-def test_poisson_solver_2d():
-    """ test the poisson solver on 2d grids """
-    grid = CartesianGrid([[0, 2 * np.pi]] * 2, 16)
-    bcs = [{"value": "sin(y)"}, {"value": "sin(x)"}]
-
-    # solve Laplace's equation
-    field = ScalarField(grid)
-    res = field.solve_poisson(bcs)
-    xs = grid.cell_coords[..., 0]
-    ys = grid.cell_coords[..., 1]
-
-    # analytical solution was obtained with Mathematica
-    expect = (
-        np.cosh(np.pi - ys) * np.sin(xs) + np.cosh(np.pi - xs) * np.sin(ys)
-    ) / np.cosh(np.pi)
-    np.testing.assert_allclose(res.data, expect, atol=1e-2, rtol=1e-2)
-
-    # test more complex case for exceptions
-    res = field.solve_poisson([{"value": "sin(y)"}, {"curvature": "sin(x)"}])
-
-
 def test_interpolation_mutable():
     """ test interpolation on mutable fields """
     grid = UnitGrid([2], periodic=True)
