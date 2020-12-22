@@ -50,6 +50,6 @@ def test_unsupported_stochastic_solvers():
     eq = DiffusionPDE(noise=1)
 
     with pytest.raises(RuntimeError):
-        eq.solve(field, 1, method="explicit", scheme="runge-kutta")
+        eq.solve(field, 1, method="explicit", scheme="runge-kutta", tracker=None)
     with pytest.raises(RuntimeError):
-        eq.solve(field, 1, method="scipy", scheme="runge-kutta")
+        eq.solve(field, 1, method="scipy", scheme="runge-kutta", tracker=None)

@@ -14,10 +14,21 @@ DOWNLOAD_URL = f"https://github.com/zwicker-group/py-pde/archive/v{__version__}.
 
 
 # read the requirements from requirements.txt
-with Path(BASE_PATH / "requirements.txt").open() as requirements_txt:
+try:
+    with open(BASE_PATH / "requirements.txt", "r") as requirements_txt:
+        install_requires = [
+            str(requirement)
+            for requirement in pkg_resources.parse_requirements(requirements_txt)
+        ]
+except FileNotFoundError:
+    # fall-back for conda, where requirements.txt apparently does not work
+    print('Cannot find requirements.txt')
     install_requires = [
-        str(requirement)
-        for requirement in pkg_resources.parse_requirements(requirements_txt)
+        "matplotlib>=3.1.0",
+        "numpy>=1.18.0",
+        "numba>=0.50.0",
+        "scipy>=1.4.0",
+        "sympy>=1.5.0",
     ]
 
 

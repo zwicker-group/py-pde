@@ -55,4 +55,4 @@ def test_pde_consistency_test():
     eq = TestPDE()
     state = ScalarField.random_uniform(UnitGrid([4]))
     with pytest.raises(AssertionError):
-        eq.solve(state, t_range=5)
+        eq.solve(state, t_range=5, tracker=None)

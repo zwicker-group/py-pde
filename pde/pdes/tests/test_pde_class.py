@@ -150,7 +150,7 @@ def test_pde_noise(backend):
     state = FieldCollection([ScalarField(grid), ScalarField(grid)])
 
     eq = PDE({"a": 0, "b": 0}, noise=0.5)
-    res = eq.solve(state, t_range=1, backend=backend, dt=1)
+    res = eq.solve(state, t_range=1, backend=backend, dt=1, tracker=None)
     assert res.data.std() == pytest.approx(0.5, rel=0.1)
 
     eq = PDE({"a": 0, "b": 0}, noise=[0.01, 2.0])
@@ -160,7 +160,7 @@ def test_pde_noise(backend):
 
     with pytest.raises(ValueError):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
-        eq.solve(ScalarField(grid), t_range=1, backend=backend, dt=1)
+        eq.solve(ScalarField(grid), t_range=1, backend=backend, dt=1, tracker=None)
 
 
 def test_pde_spatial_args():
