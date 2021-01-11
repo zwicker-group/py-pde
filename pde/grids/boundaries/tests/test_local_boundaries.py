@@ -87,6 +87,7 @@ def test_individual_boundaries_multidimensional():
     assert isinstance(repr(bc), str)
     assert bc.rank == 1
     assert bc.homogeneous
+    assert bc.axis_coord == 2
     bc.check_value_rank(1)
     with pytest.raises(RuntimeError):
         bc.check_value_rank(0)
@@ -217,6 +218,7 @@ def test_inhomogeneous_bcs():
     bc_x = BCBase.from_data(g, 0, True, {"value": "y"})
     assert isinstance(str(bc_x), str)
     assert bc_x.rank == 0
+    assert bc_x.axis_coord == 2
     assert bc_x.get_virtual_point(data, (1, 0)) == pytest.approx(0)
     assert bc_x.get_virtual_point(data, (1, 1)) == pytest.approx(2)
 
@@ -224,6 +226,7 @@ def test_inhomogeneous_bcs():
     bc_x = BCBase.from_data(g, 0, True, {"curvature": "y"})
     assert isinstance(str(bc_x), str)
     assert bc_x.rank == 0
+    assert bc_x.axis_coord == 2
     assert bc_x.get_virtual_point(data, (1, 0)) == pytest.approx(1.5)
     assert bc_x.get_virtual_point(data, (1, 1)) == pytest.approx(2.5)
 
@@ -236,8 +239,10 @@ def test_inhomogeneous_bcs():
     assert ev(*_get_arr_1d(data, (0, 1), axis=0)) == pytest.approx(1)
     assert ev(*_get_arr_1d(data, (1, 0), axis=0)) == pytest.approx(1.5)
     assert ev(*_get_arr_1d(data, (1, 1), axis=0)) == pytest.approx(2.5)
+
     # test lower bc
     bc_x = BCBase.from_data(g, 0, False, {"curvature": "y"})
+    assert bc_x.axis_coord == 0
     ev = bc_x.make_adjacent_evaluator()
     assert ev(*_get_arr_1d(data, (1, 0), axis=0)) == pytest.approx(1)
     assert ev(*_get_arr_1d(data, (1, 1), axis=0)) == pytest.approx(1)

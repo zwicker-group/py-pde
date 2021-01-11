@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # Configuration file for the Sphinx documentation builder.
 #
 # This file does only contain a selection of the most common options. For a
@@ -31,11 +29,10 @@ module_name = "pde"
 author = "David Zwicker"
 copyright = f"{date.today().year}, {author}"  # @ReservedAssignment
 
-# The short X.Y version
+# Determine the version from the actual package
 import pde
 
 version = pde.__version__.split("-")[0]
-# The full version, including alpha/beta/rc tags
 release = pde.__version__
 
 
@@ -46,13 +43,7 @@ release = pde.__version__
 
 # -- General configuration ---------------------------------------------------
 
-# If your documentation needs a minimal Sphinx version, state it here.
-#
-# needs_sphinx = '1.0'
-
-# Add any Sphinx extension module names here, as strings. They can be
-# extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
-# ones.
+# Sphinx extension modules
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
@@ -67,13 +58,7 @@ extensions = [
     "sphinx_gallery.gen_gallery",
 ]
 
-# Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
-
-# The suffix(es) of source filenames.
-# You can specify multiple suffix as a list of string:
-#
-# source_suffix = ['.rst', '.md']
 source_suffix = ".rst"
 
 # If true, the current module name will be prepended to all description
@@ -105,15 +90,11 @@ modindex_common_prefix = [f"{module_name}."]
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-#
-# html_theme = 'alabaster'
 html_theme = "sphinx_rtd_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#
-# html_theme_options = {}
 html_theme_options = {
     # Toc options
     "collapse_navigation": False,
@@ -137,7 +118,6 @@ html_static_path = ["_static"]
 # 'searchbox.html']``.
 #
 # html_sidebars = {}
-
 
 html_css_files = [
     "custom.css",
@@ -277,6 +257,7 @@ sphinx_gallery_conf = {
     "filename_pattern": "/",
     "ignore_pattern": r".*movie.*|.*interactive.*",
     "capture_repr": (),
+    "show_signature": False,
 }
 
 # run autodoc

@@ -4,8 +4,9 @@ Advanced usage
 Boundary conditions
 """""""""""""""""""
 Boundary conditions can be specified for both sides of each axis individually.
-For instance, we can enforce the value of a field to be `4` at the lower side
-and its derivative (in the outward direction) to be `2` on the upper side:
+For instance, one can enforce the value of a field to be `4` at the lower side and its
+derivative (in the outward direction) to be `2` on the upper side using the following
+code:
 
 .. code-block:: python
 
@@ -17,13 +18,28 @@ and its derivative (in the outward direction) to be `2` on the upper side:
     field = pde.ScalarField(grid)
     field.laplace(bc)
     
-
 Here, the Laplace operator applied to the field in the last line will respect
 the boundary conditions.
-Note that it suffices to give the condition once if it is the same on both
-sides.
-For instance, to enforce a value of `3` on both side, one could simply specify
+Note that it suffices to give one condition if both sides of the axis require the same
+condition.
+For instance, to enforce a value of `3` on both side, one could simply use
 :code:`bc = {'type': 'value', 'value': 3}`.
+
+Boundary values that depend on space can be set by specifying a mathematical expression,
+which may depend on the coordinates of all axes:
+
+.. code-block:: python
+
+    bc_x = [{"derivative": 0.1}, {"value": "sin(y / 2)"}]
+    bc_y = {"value": "sqrt(1 + cos(x))"}
+     
+    grid = UnitGrid([32, 32])
+    field = pde.ScalarField(grid)
+    field.laplace(bc=[bc_x, bc_y])
+    
+Inhomogeneous values can also be specified by directly supplying an array, whose shape
+needs to be compatible with the boundary, i.e., it needs to have the same shape as the
+grid but with the dimension of the axis along which the boundary is specified removed. 
 
 One important aspect about boundary conditions is that they need to respect the
 periodicity of the underlying grid.

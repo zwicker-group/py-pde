@@ -23,6 +23,7 @@ def test_writing_to_storage(tmp_path):
 
 def test_inhomogeneous_bcs():
     """ test simulation with inhomogeneous boundary conditions """
+    # single coordinate
     grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], [32, 2], periodic=[True, False])
     state = ScalarField(grid)
     pde = DiffusionPDE(bc=["natural", {"type": "value", "value": "sin(x)"}])
@@ -31,3 +32,11 @@ def test_inhomogeneous_bcs():
     np.testing.assert_almost_equal(
         data["data_y"], 0.9 * np.sin(data["data_x"]), decimal=2
     )
+
+    # double coordinate
+    grid = CartesianGrid([[0, 1], [0, 1]], [8, 8], periodic=False)
+    state = ScalarField(grid)
+    pde = DiffusionPDE(bc={"type": "value", "value": "x + y"})
+    sol = pde.solve(state, t_range=1e1, dt=1e-3, tracker=None)
+    expect = ScalarField.from_expression(grid, "x + y")
+    np.testing.assert_almost_equal(sol.data, expect.data)

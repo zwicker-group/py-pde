@@ -290,7 +290,7 @@ class BCBase(metaclass=ABCMeta):
 
             # parse the expression with the correct variables
             bc_vars = [self.grid.axes[i] for i in axes_ids]
-            expr = ScalarExpression(value, bc_vars)
+            expr = ScalarExpression(value, self.grid.axes)
 
             # get the coordinates at each point of the boundary
             bc_coords = np.meshgrid(
@@ -302,7 +302,9 @@ class BCBase(metaclass=ABCMeta):
             # not depend on some of the variables, but we still want the array
             # self._value to contain a value at each boundary point
             result = np.empty_like(bc_coords[0])
-            coords = {name: 0 for name in bc_vars}
+            coords: Dict[str, float] = {name: 0 for name in self.grid.axes}
+            # set the coordinate of this BC
+            coords[self.grid.axes[self.axis]] = self.axis_coord
             for idx in np.ndindex(*result.shape):
                 for i, name in enumerate(bc_vars):
                     coords[name] = bc_coords[i][idx]
@@ -342,6 +344,14 @@ class BCBase(metaclass=ABCMeta):
             logger.warning("In valid values in %s", self)
 
         return result
+
+    @property
+    def axis_coord(self) -> float:
+        """float: value of the coordinate that defines this boundary condition """
+        if self.upper:
+            return self.grid.axes_bounds[self.axis][1]
+        else:
+            return self.grid.axes_bounds[self.axis][0]
 
     @property
     def value(self) -> np.ndarray:

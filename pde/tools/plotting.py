@@ -5,7 +5,6 @@ Tools for plotting and controlling plot output using context managers
    :nosignatures:
 
    add_scaled_colorbar
-   finalize_plot
    disable_interactive
    plot_on_axes
    plot_on_figure
@@ -24,7 +23,7 @@ import functools
 import logging
 import warnings
 from typing import Type  # @UnusedImport
-from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Generator
 
 from ..tools.docstrings import replace_in_docstring
 
