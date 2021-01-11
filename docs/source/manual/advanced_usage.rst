@@ -37,6 +37,10 @@ which may depend on the coordinates of all axes:
     field = pde.ScalarField(grid)
     field.laplace(bc=[bc_x, bc_y])
     
+Warning:
+    To interpret arbitrary expressions, the package uses :func:`exec`. It
+    should therefore not be used in a context where malicious input could occur.
+        
 Inhomogeneous values can also be specified by directly supplying an array, whose shape
 needs to be compatible with the boundary, i.e., it needs to have the same shape as the
 grid but with the dimension of the axis along which the boundary is specified removed. 

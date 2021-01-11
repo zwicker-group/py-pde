@@ -32,11 +32,10 @@ the value DERIV for the derivative in the normal direction (specified by
 
 which enforces a value of `2` at the lower side of the y-axis and a derivative
 (in outward normal direction) of `-1` on the upper side. Instead of plain
-numbers, enforcing the same condition along the whole boundary, expressions are
-also supported. These are given as mathematical equations that can be parsed by
-sympy. These expressions can depend on all coordinates of the grid, except the
-coordinate associated with the particular boundary. An alternative boundary
-condition to the example above could thus read
+numbers, which enforce the same condition along the whole boundary, expressions can be
+used to support inhomogeneous boundary conditions. These mathematical expressions are
+given as a string that can be parsed by `sympy`. They can depend on all coordinates of
+the grid. An alternative boundary condition to the example above could thus read
 
 .. code-block:: python
     
@@ -47,6 +46,9 @@ Warning:
     To interpret arbitrary expressions, the package uses :func:`exec`. It
     should therefore not be used in a context where malicious input could occur.
     
+Inhomogeneous values can also be specified by directly supplying an array, whose shape
+needs to be compatible with the boundary, i.e., it needs to have the same shape as the
+grid but with the dimension of the axis along which the boundary is specified removed. 
 
 The package also supports mixed boundary conditions (depending on both the value
 and the derivative of the field) and imposing a second derivative. An example is
