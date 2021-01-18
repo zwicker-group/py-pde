@@ -45,7 +45,6 @@ def test_boundary_specifications():
     )
     assert bc1 == Boundaries.from_data(g, [{"type": "derivative"}, {"type": "value"}])
     assert bc1 == Boundaries.from_data(g, [{"derivative": 0}, {"value": 0}])
-    assert bc1 == Boundaries.from_data(g, ["no-flux", "value"])
     assert bc1 == Boundaries.from_data(g, ["neumann", "dirichlet"])
 
 

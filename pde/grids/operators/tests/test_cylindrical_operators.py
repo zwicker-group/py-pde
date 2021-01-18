@@ -9,13 +9,13 @@ from pde.grids.operators import cylindrical as ops
 
 def test_laplace_cyl():
     """ test the implementation of the laplace operator """
-    for boundary_z in ["periodic", "no-flux"]:
+    for boundary_z in ["periodic", "derivative"]:
         grid = CylindricalGrid(
             4, (0, 5), (8, 16), periodic_z=(boundary_z == "periodic")
         )
         a_2d = np.random.uniform(0, 1, grid.shape)
 
-        bcs = grid.get_boundary_conditions(["no-flux", boundary_z])
+        bcs = grid.get_boundary_conditions(["derivative", boundary_z])
         lap_2d = ops.make_laplace(bcs)
         b_2d = lap_2d(a_2d)
         assert b_2d.shape == grid.shape

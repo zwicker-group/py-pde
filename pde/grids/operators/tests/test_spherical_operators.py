@@ -106,8 +106,8 @@ def test_grid_div_grad():
     r = grid.axes_coords[0]
     arr = np.cos(r)
 
-    laplace = grid.get_operator("laplace", "no-flux")
-    grad = grid.get_operator("gradient", "no-flux")
+    laplace = grid.get_operator("laplace", "derivative")
+    grad = grid.get_operator("gradient", "derivative")
     div = grid.get_operator("divergence", "value")
     a = laplace(arr)
     b = div(grad(arr))

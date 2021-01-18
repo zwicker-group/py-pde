@@ -55,8 +55,8 @@ def custom_laplace_2d_periodic(shape, dx=1):
     return laplace
 
 
-def custom_laplace_2d_no_flux(shape, dx=1):
-    """ make laplace operator with no-flux boundary conditions """
+def custom_laplace_2d_neumann(shape, dx=1):
+    """ make laplace operator with Neumann boundary conditions """
     dx_2 = 1 / dx ** 2
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D ** 2
@@ -80,11 +80,11 @@ def custom_laplace_2d_no_flux(shape, dx=1):
 
 
 def custom_laplace_2d(shape, periodic, dx=1):
-    """ make laplace operator with no-flux or periodic boundary conditions """
+    """ make laplace operator with Neumann or periodic boundary conditions """
     if periodic:
         return custom_laplace_2d_periodic(shape, dx=dx)
     else:
-        return custom_laplace_2d_no_flux(shape, dx=dx)
+        return custom_laplace_2d_neumann(shape, dx=dx)
 
 
 def flexible_laplace_2d(bcs):
@@ -111,8 +111,8 @@ def flexible_laplace_2d(bcs):
     return laplace
 
 
-def custom_laplace_cyl_no_flux(shape, dr=1, dz=1):
-    """ make laplace operator with no-flux boundary conditions """
+def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
+    """ make laplace operator with Neumann boundary conditions """
     dim_r, dim_z = shape
     dr_2 = 1 / dr ** 2
     dz_2 = 1 / dz ** 2
@@ -192,13 +192,13 @@ def main():
         data = np.random.random(shape)
         grid = CylindricalGrid(shape[0], [0, shape[1]], shape)
         print(f"Cylindrical grid, shape={shape}")
-        bcs = Boundaries.from_data(grid, "no-flux")
+        bcs = Boundaries.from_data(grid, "derivative")
         laplace_cyl = cylindrical.make_laplace(bcs)
         result = laplace_cyl(data)
 
         for method in ["CUSTOM", "numba"]:
             if method == "CUSTOM":
-                laplace = custom_laplace_cyl_no_flux(shape)
+                laplace = custom_laplace_cyl_neumann(shape)
             elif method == "numba":
                 laplace = laplace_cyl
             else:
@@ -214,7 +214,7 @@ def main():
         data = np.random.random(shape)
         grid = SphericalGrid(shape, shape)
         print(grid)
-        bcs = Boundaries.from_data(grid, "no-flux")
+        bcs = Boundaries.from_data(grid, "derivative")
         make_laplace = spherical.make_laplace
 
         for conservative in [True, False]:

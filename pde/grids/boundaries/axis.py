@@ -223,12 +223,12 @@ class BoundaryPair(BoundaryAxisBase):
         if self.low != self.high:
             raise RuntimeError("Incompatible boundaries")
 
-        # check whether both sides have no-flux conditions
-        no_flux = all(
+        # check whether both sides have vanishing derivative conditions
+        zero_neumann_bcs = all(
             isinstance(b, NeumannBC) and np.all(b.value == 0)
             for b in [self.low, self.high]
         )
-        if no_flux:
+        if zero_neumann_bcs:
             return {"mode": "reflect"}
         else:
             # BoundaryCondition.value cannot be supported since the scipy value

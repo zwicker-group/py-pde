@@ -58,19 +58,19 @@ def test_setting_domain_cylindrical():
     """ test various versions of settings bcs for cylindrical grids """
     grid = CylindricalGrid(1, [0, 1], [2, 2], periodic_z=False)
     grid.get_boundary_conditions("natural")
-    grid.get_boundary_conditions(["no-flux", "no-flux"])
+    grid.get_boundary_conditions(["derivative", "derivative"])
     with pytest.raises(ValueError):
-        grid.get_boundary_conditions(["no-flux"])
+        grid.get_boundary_conditions(["derivative"])
     with pytest.raises(ValueError):
-        grid.get_boundary_conditions(["no-flux"] * 3)
+        grid.get_boundary_conditions(["derivative"] * 3)
     with pytest.raises(RuntimeError):
-        grid.get_boundary_conditions(["no-flux", "periodic"])
+        grid.get_boundary_conditions(["derivative", "periodic"])
 
     grid = CylindricalGrid(1, [0, 1], [2, 2], periodic_z=True)
     grid.get_boundary_conditions("natural")
-    grid.get_boundary_conditions(["no-flux", "periodic"])
+    grid.get_boundary_conditions(["derivative", "periodic"])
     with pytest.raises(RuntimeError):
-        grid.get_boundary_conditions(["no-flux", "no-flux"])
+        grid.get_boundary_conditions(["derivative", "derivative"])
 
 
 @pytest.mark.parametrize("periodic", [True, False])

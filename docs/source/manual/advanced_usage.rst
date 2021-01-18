@@ -37,7 +37,7 @@ which may depend on the coordinates of all axes:
     field = pde.ScalarField(grid)
     field.laplace(bc=[bc_x, bc_y])
     
-Warning:
+.. warning::
     To interpret arbitrary expressions, the package uses :func:`exec`. It
     should therefore not be used in a context where malicious input could occur.
         

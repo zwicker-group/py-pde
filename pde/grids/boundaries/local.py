@@ -562,8 +562,15 @@ class BCBase(metaclass=ABCMeta):
             \**kwargs:
                 Additional arguments passed to the constructor
         """
-        if condition == "no-flux" and np.all(value == 0):
-            condition = "derivative"
+        # raise warning to mention problem with legacy code (bug fixed 2021-01-18)
+        if condition == "no-flux":
+            raise ValueError(
+                "Specifying the boundary condition 'no-flux' is no longer supported "
+                "since it introduced a bug when specifying flux conditions. To impose "
+                "no flux conditions, please decide whether you need to impose a "
+                "vanishing derivative or a value of zero and specify this condition "
+                "explicitly."
+            )
 
         # extract the class
         try:

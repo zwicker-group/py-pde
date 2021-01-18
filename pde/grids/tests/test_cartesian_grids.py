@@ -326,7 +326,7 @@ def test_setting_boundary_conditions():
     grid = UnitGrid([3, 3], periodic=[True, False])
     for bc in [
         grid.get_boundary_conditions("natural"),
-        grid.get_boundary_conditions(["natural", "no-flux"]),
+        grid.get_boundary_conditions(["natural", "derivative"]),
     ]:
         assert isinstance(bc, Boundaries)
 
@@ -346,25 +346,25 @@ def test_setting_boundary_conditions():
 def test_setting_domain_rect():
     """ test various versions of settings bcs for cartesian grids """
     grid = UnitGrid([2, 2])
-    grid.get_boundary_conditions(["no-flux", "no-flux"])
+    grid.get_boundary_conditions(["derivative", "derivative"])
 
     # wrong number of conditions
     with pytest.raises(ValueError):
-        grid.get_boundary_conditions(["no-flux"])
+        grid.get_boundary_conditions(["derivative"])
     with pytest.raises(ValueError):
-        grid.get_boundary_conditions(["no-flux"] * 3)
+        grid.get_boundary_conditions(["derivative"] * 3)
 
     grid = UnitGrid([2, 2], periodic=[True, False])
     grid.get_boundary_conditions("natural")
-    grid.get_boundary_conditions(["periodic", "no-flux"])
+    grid.get_boundary_conditions(["periodic", "derivative"])
 
     # incompatible conditions
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions("periodic")
     with pytest.raises(RuntimeError):
-        grid.get_boundary_conditions("no-flux")
+        grid.get_boundary_conditions("derivative")
     with pytest.raises(RuntimeError):
-        grid.get_boundary_conditions(["no-flux", "periodic"])
+        grid.get_boundary_conditions(["derivative", "periodic"])
 
 
 def test_interpolate_1d():

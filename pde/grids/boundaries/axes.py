@@ -89,12 +89,12 @@ class Boundaries(list):
         if boundaries == "natural" or boundaries == "auto_periodic_neumann":
             # set the respective natural conditions for all axes
             boundaries = [
-                "periodic" if periodic else "no-flux" for periodic in grid.periodic
+                "periodic" if periodic else "neumann" for periodic in grid.periodic
             ]
         elif boundaries == "auto_periodic_dirichlet":
             # set the respective natural conditions (with vanishing values) for all axes
             boundaries = [
-                "periodic" if periodic else "value" for periodic in grid.periodic
+                "periodic" if periodic else "dirichlet" for periodic in grid.periodic
             ]
 
         # create the list of BoundaryAxis objects
