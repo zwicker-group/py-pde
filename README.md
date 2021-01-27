@@ -83,6 +83,7 @@ More information
 * Tutorial notebooks in the [tutorials folder](https://github.com/zwicker-group/py-pde/tree/master/examples/tutorial)
 * [Examples gallery](https://py-pde.readthedocs.io/en/latest/examples_gallery/)
   with an overview of the capabilities of the package
+* The [Discussions on GitHub](https://github.com/zwicker-group/py-pde/discussions)
 * [Full documentation on readthedocs](https://py-pde.readthedocs.io/)
   or as [a single PDF file](https://py-pde.readthedocs.io/_/downloads/en/latest/pdf/).
 * The [paper published in the Journal of Open Source Software](https://doi.org/10.21105/joss.02158)
