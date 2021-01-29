@@ -53,13 +53,14 @@ class CallbackTracker(TrackerBase):
     def __init__(self, func: Callable, interval: IntervalData = 1):
         """
         Args:
-            func: The function to call periodically. The function signature
-                should be `(state)` or `(state, time)`, where `state` contains
-                the current state as an instance of
-                :class:`~pde.fields.FieldBase` and `time` is a
-                float value indicating the current time. Note that only a view
-                of the state is supplied, implying that a copy needs to be made
-                if the data should be stored.
+            func: The function to call periodically. The function signature should be
+                `(state)` or `(state, time)`, where `state` contains the current state
+                as an instance of :class:`~pde.fields.base.FieldBase` and `time` is a
+                float value indicating the current time. Note that only a view of the
+                state is supplied, implying that a copy needs to be made if the data
+                should be stored. The function can thus adjust the state by modifying it
+                in-place and it can even interrupt the simulation by raising the special
+                exception :class:`StopIteration`.
             interval:
                 {ARG_TRACKER_INTERVAL}
         """

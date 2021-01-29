@@ -1,8 +1,8 @@
 """
 Classes for tracking simulation results in controlled intervals
 
-Trackers are classes that periodically receive the state of the simulation to
-analyze, store, or output it.  The trackers defined in this module are:
+Trackers are classes that periodically receive the state of the simulation to analyze,
+store, or output it. The trackers defined in this module are:
 
 .. autosummary::
    :nosignatures:
@@ -18,8 +18,13 @@ analyze, store, or output it.  The trackers defined in this module are:
    ~trackers.ConsistencyTracker
    ~interactive.InteractivePlotTracker
    
-Multiple trackers can be collected in a :class:`~base.TrackerCollection`,
-which provides methods for handling them efficiently.
+Multiple trackers can be collected in a :class:`~base.TrackerCollection`, which provides
+methods for handling them efficiently. Moreover, custom trackers can be implemented by
+deriving from :class:`~.trackers.base.TrackerBase`. Note that trackers generally receive
+a view into the current state, implying that they can adjust the state by modifying it
+in-place. Moreover, trackers can interrupt the simulation by raising the special
+exception :class:`StopIteration`.
+
 
 For each tracker, the interval at which it is called can be decided using one
 of the following classes:
