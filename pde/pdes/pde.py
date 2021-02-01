@@ -23,12 +23,12 @@ class PDE(PDEBase):
 
     Attributes:
         variables (tuple):
-            The name of the variables (i.e., fields) in the order they are
-            expected to appear in the `state`.
+            The name of the variables (i.e., fields) in the order they are expected to
+            appear in the `state`.
         diagnostics (dict):
-            Additional diagnostic information that might help with analyzing
-            problems, e.g., when :mod:`sympy` cannot parse or :mod`numba` cannot
-            compile a function.
+            Additional diagnostic information that might help with analyzing problems,
+            e.g., when :mod:`sympy` cannot parse or :mod`numba` cannot compile a
+            function.
     """
 
     @fill_in_docstring
@@ -77,7 +77,8 @@ class PDE(PDEBase):
                 the expression in `rhs` where the boundary condition is applied to the
                 operator specified by OPERATOR. For both identifiers, the wildcard
                 symbol "*" denotes that all fields and operators are affected,
-                respectively.
+                respectively. For instance, the identifier "c:*" allows specifying a
+                condition for all operators of the field named `c`. 
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expressions in `rhs`.
@@ -191,8 +192,8 @@ class PDE(PDEBase):
     ) -> Dict[str, Any]:
         """prepare the expression by setting internal variables in the cache
 
-        Note that the expensive calculations in this method are only carried
-        out if the state attributes change.
+        Note that the expensive calculations in this method are only carried out if the
+        state attributes change.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -462,10 +463,9 @@ class PDE(PDEBase):
                 An example for the state defining the grid and data types
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`numpy.ndarray` giving
-            the evolution rate.
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of :class:`numpy.ndarray` of the state data and the time to
+            obtained an instance of :class:`numpy.ndarray` giving the evolution rate.
         """
         cache = self._prepare_cache(state, backend="numba")
 
