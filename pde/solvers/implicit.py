@@ -99,7 +99,7 @@ class ImplicitSolver(SolverBase):
                     evolution_this = dt * rhs(state_guess, tn)
 
                     # calculate mean squared error
-                    err = 0
+                    err = 0.
                     for j in range(state_data.size):
                         diff = (
                             state_guess.flat[j]

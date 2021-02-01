@@ -552,7 +552,7 @@ class FieldCollection(FieldBase):
     @plot_on_figure(update_method="_update_plot")
     def plot(
         self,
-        kind: str = "auto",
+        kind: Union[str, Sequence[str]] = "auto",
         resize_fig=None,
         figsize="auto",
         arrangement="horizontal",
@@ -563,10 +563,11 @@ class FieldCollection(FieldBase):
         r"""visualize all the fields in the collection
 
         Args:
-            kind (str):
-                Determines the visualizations. Supported values are `image`,
-                `line`, `vector`, or `interactive`. Alternatively, `auto`
-                determines the best visualization based on each field itself.
+            kind (str or list of str):
+                Determines the kind of the visualizations. Supported values are `image`,
+                `line`, `vector`, or `interactive`. Alternatively, `auto` determines the
+                best visualization based on each field itself. Instead of a single value
+                for all fields, a list with individual values can be given.
             resize_fig (bool):
                 Whether to resize the figure to adjust to the number of panels
             figsize (str or tuple of numbers):
@@ -584,8 +585,8 @@ class FieldCollection(FieldBase):
                 dictionary of arguments for each subplot. Supplying an empty allows to
                 keep the default setting of specific subplots.
             \**kwargs:
-                All additional keyword arguments are forwarded to the actual
-                plotting function of all subplots.
+                All additional keyword arguments are forwarded to the actual plotting
+                function of all subplots.
 
         Returns:
             List of :class:`PlotReference`: Instances that contain information
@@ -634,10 +635,13 @@ class FieldCollection(FieldBase):
         if subplot_args is None:
             subplot_args = [{}] * len(self)
 
+        if isinstance(kind, str):
+            kind = [kind] * len(self.fields)
+
         # plot all the elements onto the respective axes
         reference = [
-            field.plot(kind=kind, ax=ax, action="create", **kwargs, **sp_args)
-            for field, ax, sp_args in zip(self.fields, axs, subplot_args)
+            field.plot(kind=knd, ax=ax, action="create", **kwargs, **sp_args)
+            for field, knd, ax, sp_args in zip(self.fields, kind, axs, subplot_args)
         ]
 
         # return the references for all subplots
