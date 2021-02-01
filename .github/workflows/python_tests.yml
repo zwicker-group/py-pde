@@ -24,6 +24,7 @@ jobs:
         pip install -r requirements.txt
         
     - name: Test types with mypy
+      continue-on-error: true
       run: |
         pip install mypy
         python -m mypy --config-file tests/mypy.ini --pretty --package pde
