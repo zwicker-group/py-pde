@@ -418,12 +418,14 @@ def plot_on_figure(wrapped=None, update_method=None):
     ):
         """
         title (str):
-            Title of the plot. If omitted, the title might be chosen
-            automatically. This is shown above all panels.
+            Title of the plot. If omitted, the title might be chosen automatically. This
+            is shown above all panels.
         constrained_layout (bool):
-            Whether to use `constrained_layout` in
-            :func:`matplotlib.pyplot.figure` call to create a figure.
-            This affects the layout of all plot elements.
+            Whether to use `constrained_layout` in :func:`matplotlib.pyplot.figure` call
+            to create a figure. This affects the layout of all plot elements. Generally,
+            spacing might be better with this flag enabled, but it can also lead to
+            problems when plotting multiple plots successively, e.g., when creating a
+            movie.
         filename (str, optional):
             If given, the figure is written to the specified file.
         action (str):
@@ -439,8 +441,7 @@ def plot_on_figure(wrapped=None, update_method=None):
             :meth:`matplotlib.pyplot.setp`. For instance, using
             fig_style={'dpi': 200} increases the resolution of the figure.
         fig (:class:`matplotlib.figures.Figure`):
-            Figure that is used for plotting. If omitted, a new figure is
-            created.
+            Figure that is used for plotting. If omitted, a new figure is created.
         """
         # Note on docstring: This docstring replaces the token {PLOT_ARGS} in
         # the wrapped function

@@ -220,3 +220,20 @@ def test_collection_1_field():
     assert fc.labels == ["a"]
 
     fc.plot()
+
+
+def test_collection_plotting():
+    """ test simple plotting of various fields on various grids """
+    grid = UnitGrid([5])
+    s1 = ScalarField(grid, label="s1")
+    s2 = ScalarField(grid)
+    fc = FieldCollection([s1, s2])
+
+    # test setting different figure sizes
+    fc.plot(figsize="default")
+    fc.plot(figsize="auto")
+    fc.plot(figsize=(3, 3))
+
+    # test different arrangements
+    fc.plot(arrangement="horizontal")
+    fc.plot(arrangement="vertical")

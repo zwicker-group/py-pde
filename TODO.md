@@ -1,5 +1,11 @@
 TODO
 ====
+* Automatically register derivative with respect to a single axis
+    - pattern: d_*(field), e.g., d_x(field)
+    - second derivatives, too? d2_*(field)
+    - can we support this for all grids or just for Cartesian grids?
+    - should also apply to vectors and tensors
+    - would need a new method that generates the respective operators
 * Allow creating ScalarFields from data points and from a python function 
 * Indicate periodic boundary by dashed/dotted axes in image plot?
     - use ax.spines['top'].set_linestyle((0, (5, 10)))

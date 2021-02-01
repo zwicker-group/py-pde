@@ -190,7 +190,6 @@ def test_hdf_input_output(tmp_path):
         assert isinstance(repr(f), str)
 
 
-@skipUnlessModule("matplotlib")
 def test_writing_images(tmp_path):
     """ test writing and reading files """
     from matplotlib.pyplot import imread
@@ -283,7 +282,6 @@ def test_get_cartesian_grid(grid):
     assert cart.volume > grid.volume
 
 
-@skipUnlessModule("matplotlib")
 def test_simple_plotting(example_grid):
     """ test simple plotting of various fields on various grids """
     vf = VectorField.random_uniform(example_grid)

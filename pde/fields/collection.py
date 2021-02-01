@@ -553,7 +553,9 @@ class FieldCollection(FieldBase):
     def plot(
         self,
         kind: str = "auto",
-        resize_fig: bool = True,
+        resize_fig=None,
+        figsize="auto",
+        arrangement="horizontal",
         fig=None,
         subplot_args=None,
         **kwargs,
@@ -567,6 +569,15 @@ class FieldCollection(FieldBase):
                 determines the best visualization based on each field itself.
             resize_fig (bool):
                 Whether to resize the figure to adjust to the number of panels
+            figsize (str or tuple of numbers):
+                Determines the figure size. The figure size is unchanged if the string
+                `default` is passed. Conversely, the size is adjusted automatically when
+                `auto` is passed. Finally, a specific figure size can be specified using
+                two values, using :func:`matplotlib.figure.Figure.set_size_inches`.
+            arrangement (str):
+                Determines how the subpanels will be arranged. The default value
+                `horizontal` places all subplots next to each other. The alternative
+                value `vertical` puts them below each other.
             {PLOT_ARGS}
             subplot_args (list):
                 Additional arguments for the specific subplots. Should be a list with a
@@ -580,11 +591,45 @@ class FieldCollection(FieldBase):
             List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
-        # disable interactive plotting temporarily
-        # create a plot with all the panels
-        if resize_fig:
-            fig.set_size_inches((4 * len(self), 3), forward=True)
-        (axs,) = fig.subplots(1, len(self), squeeze=False)
+        if resize_fig is not None:
+            # Deprecated this argument on 2021-02-01
+            import warnings
+
+            warnings.warn(
+                "`resize_fig` is a deprecated argument. Use `figsize` directly",
+                DeprecationWarning,
+            )
+
+            if resize_fig is True:
+                figsize = "auto"
+            elif resize_fig is False:
+                figsize = "default"
+            else:
+                raise ValueError
+
+        # set the size of the figure
+        if figsize == "default":
+            pass  # just leave the figure size at its default value
+
+        elif figsize == "auto":
+            # adjust the size of the figure
+            if arrangement == "horizontal":
+                fig.set_size_inches((4 * len(self), 3), forward=True)
+            elif arrangement == "vertical":
+                fig.set_size_inches((4, 3 * len(self)), forward=True)
+
+        else:
+            # assume that an actual tuple is given
+            fig.set_size_inches(figsize, forward=True)
+
+        # create all the subpanels
+        if arrangement == "horizontal":
+            (axs,) = fig.subplots(1, len(self), squeeze=False)
+        elif arrangement == "vertical":
+            axs = fig.subplots(len(self), 1, squeeze=False)
+            axs = [a[0] for a in axs]  # transpose
+        else:
+            raise ValueError(f"Unknown arrangement `{arrangement}`")
 
         if subplot_args is None:
             subplot_args = [{}] * len(self)
