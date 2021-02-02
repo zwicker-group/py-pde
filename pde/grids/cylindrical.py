@@ -187,7 +187,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             return point
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
-        """return a line cut along the cylindrical symmetry axis
+        """return a line cut for the cylindrical grid
 
         Args:
             data (:class:`numpy.ndarray`):
