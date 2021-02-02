@@ -927,7 +927,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         img = self.get_image_data(**get_image_args)
 
         kwargs.setdefault("cmap", "gray")
-        plt.imsave(filename, img["data"], origin="lower", **kwargs)
+        plt.imsave(filename, img["data"].T, origin="lower", **kwargs)
 
     def _make_interpolator_scipy(
         self, method: str = "linear", fill: Number = None, **kwargs
@@ -1603,20 +1603,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             transpose (bool):
                 Determines whether the transpose of the data should is plotted
             \**kwargs:
-                Additional keyword arguments that affect the image. For
-                instance, some fields support a `scalar` argument that
-                determines how they are converted to a scalar. Non-Cartesian
-                grids might support a `performance_goal` argument to influence
-                how an image is created from the raw data. Finally, the
-                remaining arguments are are passed to
+                Additional keyword arguments that affect the image. For instance, some
+                fields support a `scalar` argument that determines how they are
+                converted to a scalar. Non-Cartesian grids might support a
+                `performance_goal` argument to influence how an image is created from
+                the raw data. Finally, the remaining arguments are are passed to
                 :func:`matplotlib.pyplot.imshow` to affect the appearance.
 
         Returns:
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
         """
-        # obtain image data
-        data = self.get_image_data(scalar, transpose)
+        # obtain image data with appropriate parameters
+        data_kws = {}
+        for arg in ["performance_goal", "scalar", "transpose"]:
+            if arg in kwargs:
+                data_kws[arg] = kwargs.pop(arg)
+        data = self.get_image_data(scalar, transpose, **data_kws)
 
         if ax is None:
             import matplotlib.pyplot as plt
@@ -1624,9 +1627,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # create new figure
             ax = plt.subplots()[1]
 
+        # plot the image
         kwargs.setdefault("origin", "lower")
         kwargs.setdefault("interpolation", "none")
-        axes_image = ax.imshow(data["data"], extent=data["extent"], **kwargs)
+        axes_image = ax.imshow(data["data"].T, extent=data["extent"], **kwargs)
 
         # set some default properties
         ax.set_xlabel(data["label_x"])
@@ -1693,13 +1697,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if method == "quiver":
             data = self.get_vector_data(transpose=transpose, max_points=max_points)
             element = ax.quiver(
-                data["x"], data["y"], data["data_x"], data["data_y"], **kwargs
+                data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
 
         elif method == "streamplot":
             data = self.get_vector_data(transpose=transpose)
             element = ax.streamplot(
-                data["x"], data["y"], data["data_x"], data["data_y"], **kwargs
+                data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
 
         else:

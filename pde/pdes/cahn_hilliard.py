@@ -23,8 +23,8 @@ class CahnHilliardPDE(PDEBase):
     .. math::
         \partial_t c = \nabla^2 \left(c^3 - c - \gamma \nabla^2 c\right)
 
-    where :math:`c` is a scalar field and :math:`\gamma` sets the interfacial
-    width.
+    where :math:`c` is a scalar field taking values on the interval :math:`[-1, 1]` and
+    :math:`\gamma` sets the interfacial width.
     """
 
     explicit_time_dependence = False
@@ -44,9 +44,8 @@ class CahnHilliardPDE(PDEBase):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             bc_mu:
-                The boundary conditions applied to the chemical potential
-                associated with the scalar field :math:`c`. Supports the same
-                options as `bc_c`.
+                The boundary conditions applied to the chemical potential associated
+                with the scalar field :math:`c`. Supports the same options as `bc_c`.
         """
         super().__init__()
 

@@ -78,7 +78,7 @@ class PDE(PDEBase):
                 operator specified by OPERATOR. For both identifiers, the wildcard
                 symbol "*" denotes that all fields and operators are affected,
                 respectively. For instance, the identifier "c:*" allows specifying a
-                condition for all operators of the field named `c`. 
+                condition for all operators of the field named `c`.
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expressions in `rhs`.

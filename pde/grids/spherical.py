@@ -299,9 +299,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         Returns:
             A generator yielding the coordinates that correspond to mirrors
         """
-        point = np.asanyarray(point, dtype=np.double)
         if with_self:
-            yield point
+            yield np.asanyarray(point, dtype=np.double)
 
     def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
         """convert points given in Cartesian coordinates to this grid
@@ -376,27 +375,26 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         return np.atleast_1d(p2) - np.atleast_1d(p1)
 
-    def polar_coordinates_real(self, origin=[0, 0, 0], ret_angle: bool = False):
+    def polar_coordinates_real(self, ret_angle: bool = False, **kwargs):  # type: ignore
         """return spherical coordinates associated with the grid
 
         Args:
-            origin (:class:`numpy.ndarray`): Coordinates of the origin at which the polar
-                coordinate system is anchored. Note that this must be of the
-                form `[0, 0, z_val]`, where only `z_val` can be chosen freely.
-            ret_angle (bool): Determines whether angles are returned alongside
-                the distance. If `False` only the distance to the origin is
-                returned for each support point of the grid.
-                If `True`, the distance and angles are returned. Note that in
-                the case of spherical grids, this angle is zero by convention.
+            ret_angle (bool):
+                Determines whether angles are returned alongside the distance. If
+                `False` only the distance to the origin is returned for each support
+                point of the grid. If `True`, the distance and angles are returned. Note
+                that in the case of spherical grids, this angle is zero by convention.
         """
-        origin = np.array(origin, dtype=np.double, ndmin=1)
-        if not np.array_equal(origin, np.zeros(self.dim)):
-            raise RuntimeError(f"Origin must be {str([0]*self.dim)}")
+        # check the consistency of the origin argument, which can be set for other grids
+        if "origin" in kwargs:
+            origin = np.array(kwargs["origin"], dtype=np.double, ndmin=1)
+            if not np.array_equal(origin, np.zeros(self.dim)):
+                raise RuntimeError(f"Origin must be {str([0]*self.dim)}")
 
         # the distance to the origin is exactly the radial coordinate
         rs = self.axes_coords[0]
         if ret_angle:
-            return rs, np.zeros_like(rs)
+            return rs, (np.zeros_like(rs),) * (self.dim - 1)
         else:
             return rs
 
@@ -456,26 +454,29 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             return bcs
 
     def get_cartesian_grid(self, mode: str = "valid", num: int = None) -> CartesianGrid:
-        """return a Cartesian grid for this Cylindrical one
+        """return a Cartesian grid for this spherical one
 
         Args:
             mode (str):
-                Determines how the grid is determined. Setting it to 'valid'
-                only returns points that are fully resolved in the spherical
-                grid, e.g., the sphere is circumscribed. Conversely, 'full'
-                returns all data, so the sphere is inscribed.
+                Determines how the grid is determined. Setting it to 'valid' (or
+                'inscribed') only returns points that are fully resolved in the
+                spherical grid, e.g., the Cartesian grid is inscribed in the sphere.
+                Conversely, 'full' (or 'circumscribed') returns all data, so the
+                Cartesian grid is circumscribed.
             num (int):
                 Number of support points along each axis of the returned grid.
 
         Returns:
             :class:`pde.grids.cartesian.CartesianGrid`: The requested grid
         """
-        # Pick the grid instance
+        # pick how the grid is determined
         if mode == "valid":
             if self.has_hole:
                 self._logger.warn("The sphere has holes, so not all points are valid")
             bounds = self.radius / np.sqrt(self.dim)
-        elif mode == "full":
+        elif mode == "inscribed":
+            bounds = self.radius / np.sqrt(self.dim)
+        elif mode == "full" or mode == "circumscribed":
             bounds = self.radius
         else:
             raise ValueError(f"Unsupported mode `{mode}`")
@@ -536,18 +537,23 @@ class PolarGrid(SphericalGridBase):
             \**kwargs: Extra arguments are passed on the to the matplotlib
                 plotting routines, e.g., to set the color of the lines
         """
-        from matplotlib import patches
+        from matplotlib import collections, patches
 
-        kwargs.setdefault("color", "k")
+        kwargs.setdefault("edgecolor", kwargs.get("color", "k"))
+        kwargs.setdefault("facecolor", "none")
         (rb,) = self.axes_bounds
         rmax = rb[1]
 
+        # draw circular parts
+        circles = []
         for r in np.linspace(*rb, self.shape[0] + 1):
             if r == 0:
-                ax.plot(0, 0, ".", **kwargs)
+                c = patches.Circle((0, 0), 0.01 * rmax)
             else:
-                c = patches.Circle((0, 0), r, fill=False, **kwargs)
-                ax.add_artist(c)
+                c = patches.Circle((0, 0), r)
+            circles.append(c)
+        ax.add_collection(collections.PatchCollection(circles, **kwargs))
+
         ax.set_xlim(-rmax, rmax)
         ax.set_xlabel("x")
         ax.set_ylim(-rmax, rmax)

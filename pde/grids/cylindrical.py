@@ -250,7 +250,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         """
         bounds_r, bounds_z = self.axes_bounds
         return {
-            "data": np.vstack((data[::-1, :], data)).T,
+            "data": np.vstack((data[::-1, :], data)),
             "x": self.axes_coords[0],
             "y": self.axes_coords[1],
             "extent": (-bounds_r[1], bounds_r[1], bounds_z[0], bounds_z[1]),

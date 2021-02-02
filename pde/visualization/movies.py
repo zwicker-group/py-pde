@@ -210,12 +210,12 @@ def movie(
         filename (str):
             The filename to which the movie is written. The extension determines
             the format used.
+        progress (bool):
+            Flag determining whether the progress of making the movie is shown.
         dpi (float):
             Resolution of the movie
         show_time (bool):
             Whether to show the simulation time in the movie
-        progress (bool):
-            Flag determining whether the progress of making the movie is shown.
         plot_args (dict):
             Additional arguments for the function plotting the state
     """
