@@ -61,97 +61,53 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
         rh = rl + dr  # outer radii
         assert np.isclose(rh[-1], r_max)
         volumes = (rh ** 3 - rl ** 3) / 3  # volume of the spherical shells
+        factor_l = (rs - 0.5 * dr) ** 2 / (dr * volumes)
+        factor_h = (rs + 0.5 * dr) ** 2 / (dr * volumes)
 
-        if r_min == 0:
-            factors = dr / volumes
-
-            @jit_allocate_out(out_shape=(dim_r,))
-            def laplace(arr, out=None):
-                """ apply laplace operator to array `arr` """
-                i = 0
-                fp = (i + 1) ** 2 * (arr[i + 1] - arr[i])
-                fm = 0
-                out[i] = (fp - fm) * factors[i]
-
-                for i in range(1, dim_r - 1):  # iterate inner radial points
-                    fp = (i + 1) ** 2 * (arr[i + 1] - arr[i])
-                    fm = i ** 2 * (arr[i] - arr[i - 1])
-                    out[i] = (fp - fm) * factors[i]
-
-                # express boundary condition at outer side
-                i = dim_r - 1
-                arr_r_h = value_upper_bc(arr, (i,))
-                fp = (i + 1) ** 2 * (arr_r_h - arr[i])
-                fm = i ** 2 * (arr[i] - arr[i - 1])
-                out[i] = (fp - fm) * factors[i]
-                return out
-
-        else:  # r_min > 0
-            factor_l = (rs - 0.5 * dr) ** 2 / (dr * volumes)
-            factor_h = (rs + 0.5 * dr) ** 2 / (dr * volumes)
-
-            @jit_allocate_out(out_shape=(dim_r,))
-            def laplace(arr, out=None):
-                """ apply laplace operator to array `arr` """
-                i = 0
+        @jit_allocate_out(out_shape=(dim_r,))
+        def laplace(arr, out=None):
+            """ apply laplace operator to array `arr` """
+            i = 0
+            out[i] = factor_h[i] * (arr[i + 1] - arr[i])
+            if r_min > 0:
                 arr_r_l = value_lower_bc(arr, (i,))
-                out[i] = factor_h[i] * (arr[i + 1] - arr[i])
                 out[i] -= factor_l[i] * (arr[i] - arr_r_l)
 
-                for i in range(1, dim_r - 1):  # iterate inner radial points
-                    out[i] = factor_h[i] * (arr[i + 1] - arr[i])
-                    out[i] -= factor_l[i] * (arr[i] - arr[i - 1])
-
-                # express boundary condition at outer side
-                i = dim_r - 1
-                arr_r_h = value_upper_bc(arr, (i,))
-                out[i] = factor_h[i] * (arr_r_h - arr[i])
+            for i in range(1, dim_r - 1):  # iterate inner radial points
+                out[i] = factor_h[i] * (arr[i + 1] - arr[i])
                 out[i] -= factor_l[i] * (arr[i] - arr[i - 1])
-                return out
 
-    else:  # not conservative
+            # express boundary condition at outer side
+            i = dim_r - 1
+            arr_r_h = value_upper_bc(arr, (i,))
+            out[i] = factor_h[i] * (arr_r_h - arr[i])
+            out[i] -= factor_l[i] * (arr[i] - arr[i - 1])
+            return out
+
+    else:  # create an operator that is not conservative
         dr2 = 1 / dr ** 2
 
-        if r_min == 0:
-            # create an operator that is not conservative
-
-            @jit_allocate_out(out_shape=(dim_r,))
-            def laplace(arr, out=None):
-                """ apply laplace operator to array `arr` """
-                i = 0
+        @jit_allocate_out(out_shape=(dim_r,))
+        def laplace(arr, out=None):
+            """ apply laplace operator to array `arr` """
+            i = 0
+            if r_min == 0:
                 out[i] = 3 * (arr[i + 1] - arr[i]) * dr2
-
-                for i in range(1, dim_r - 1):  # iterate inner radial points
-                    out[i] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr2
-                    out[i] += (arr[i + 1] - arr[i - 1]) / (i + 0.5) * dr2
-
-                # express boundary condition at outer side
-                i = dim_r - 1
-                arr_r_h = value_upper_bc(arr, (i,))
-                out[i] = (arr_r_h - 2 * arr[i] + arr[i - 1]) * dr2
-                out[i] += (arr_r_h - arr[i - 1]) / (i + 0.5) * dr2
-                return out
-
-        else:  # r_min > 0
-
-            @jit_allocate_out(out_shape=(dim_r,))
-            def laplace(arr, out=None):
-                """ apply laplace operator to array `arr` """
-                i = 0
+            else:
                 arr_r_l = value_lower_bc(arr, (i,))
                 out[i] = (arr[i + 1] - 2 * arr[i] + arr_r_l) * dr2
                 out[i] += (arr[i + 1] - arr_r_l) / (rs[i] * dr)
 
-                for i in range(1, dim_r - 1):  # iterate inner radial points
-                    out[i] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr2
-                    out[i] += (arr[i + 1] - arr[i - 1]) / (rs[i] * dr)
+            for i in range(1, dim_r - 1):  # iterate inner radial points
+                out[i] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr2
+                out[i] += (arr[i + 1] - arr[i - 1]) / (rs[i] * dr)
 
-                # express boundary condition at outer side
-                i = dim_r - 1
-                arr_r_h = value_upper_bc(arr, (i,))
-                out[i] = (arr_r_h - 2 * arr[i] + arr[i - 1]) * dr2
-                out[i] += (arr_r_h - arr[i - 1]) / (rs[i] * dr)
-                return out
+            # express boundary condition at outer side
+            i = dim_r - 1
+            arr_r_h = value_upper_bc(arr, (i,))
+            out[i] = (arr_r_h - 2 * arr[i] + arr[i - 1]) * dr2
+            out[i] += (arr_r_h - arr[i - 1]) / (rs[i] * dr)
+            return out
 
     return laplace  # type: ignore
 

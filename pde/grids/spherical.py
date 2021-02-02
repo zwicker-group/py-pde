@@ -487,6 +487,38 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         grid_bounds = [(-bounds, bounds)] * self.dim
         return CartesianGrid(grid_bounds, num)
 
+    @plot_on_axes()
+    def plot(self, ax, **kwargs):
+        r"""visualize the spherically symmetric grid in two dimensions
+
+        Args:
+            {PLOT_ARGS}
+            \**kwargs: Extra arguments are passed on the to the matplotlib
+                plotting routines, e.g., to set the color of the lines
+        """
+        from matplotlib import collections, patches
+
+        kwargs.setdefault("edgecolor", kwargs.get("color", "k"))
+        kwargs.setdefault("facecolor", "none")
+        (rb,) = self.axes_bounds
+        rmax = rb[1]
+
+        # draw circular parts
+        circles = []
+        for r in np.linspace(*rb, self.shape[0] + 1):
+            if r == 0:
+                c = patches.Circle((0, 0), 0.01 * rmax)
+            else:
+                c = patches.Circle((0, 0), r)
+            circles.append(c)
+        ax.add_collection(collections.PatchCollection(circles, **kwargs))
+
+        ax.set_xlim(-rmax, rmax)
+        ax.set_xlabel("x")
+        ax.set_ylim(-rmax, rmax)
+        ax.set_ylabel("y")
+        ax.set_aspect(1)
+
 
 class PolarGrid(SphericalGridBase):
     r"""2-dimensional polar grid assuming angular symmetry
@@ -527,38 +559,6 @@ class PolarGrid(SphericalGridBase):
         y = points[..., 0]
         x = np.zeros_like(y)
         return np.stack((x, y), axis=-1)
-
-    @plot_on_axes()
-    def plot(self, ax, **kwargs):
-        r"""visualize the polar grid
-
-        Args:
-            {PLOT_ARGS}
-            \**kwargs: Extra arguments are passed on the to the matplotlib
-                plotting routines, e.g., to set the color of the lines
-        """
-        from matplotlib import collections, patches
-
-        kwargs.setdefault("edgecolor", kwargs.get("color", "k"))
-        kwargs.setdefault("facecolor", "none")
-        (rb,) = self.axes_bounds
-        rmax = rb[1]
-
-        # draw circular parts
-        circles = []
-        for r in np.linspace(*rb, self.shape[0] + 1):
-            if r == 0:
-                c = patches.Circle((0, 0), 0.01 * rmax)
-            else:
-                c = patches.Circle((0, 0), r)
-            circles.append(c)
-        ax.add_collection(collections.PatchCollection(circles, **kwargs))
-
-        ax.set_xlim(-rmax, rmax)
-        ax.set_xlabel("x")
-        ax.set_ylim(-rmax, rmax)
-        ax.set_ylabel("y")
-        ax.set_aspect(1)
 
 
 class SphericalGrid(SphericalGridBase):
