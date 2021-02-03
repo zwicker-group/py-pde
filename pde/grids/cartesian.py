@@ -266,7 +266,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         assert coords.shape[-1] == self.dim
         return coords
 
-    def polar_coordinates_real(self, origin: np.ndarray, ret_angle: bool = False):
+    def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
         """return polar coordinates associated with the grid
 
         Args:

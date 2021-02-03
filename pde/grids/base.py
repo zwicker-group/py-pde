@@ -381,7 +381,7 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def polar_coordinates_real(self, origin: np.ndarray, ret_angle: bool = False):
+    def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
         pass
 
     @abstractmethod

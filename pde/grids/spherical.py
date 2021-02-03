@@ -375,7 +375,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         return np.atleast_1d(p2) - np.atleast_1d(p1)
 
-    def polar_coordinates_real(self, ret_angle: bool = False, **kwargs):  # type: ignore
+    def polar_coordinates_real(self, *, ret_angle: bool = False, **kwargs):  # type: ignore
         """return spherical coordinates associated with the grid
 
         Args:

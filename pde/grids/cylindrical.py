@@ -411,9 +411,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             diff[..., 1] = (diff[..., 1] + size / 2) % size - size / 2
         return diff
 
-    def polar_coordinates_real(
-        self, origin: np.ndarray, ret_angle: bool = False
-    ) -> np.ndarray:
+    def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
         """return spherical coordinates associated with the grid
 
         Args:
