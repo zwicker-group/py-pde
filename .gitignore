@@ -18,6 +18,7 @@ docs/source/examples
 # LaTeX
 *.aux
 *.bbl
+*.blg
 *.bgl
 *.out
 *.synctex.gz
