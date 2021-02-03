@@ -274,6 +274,8 @@ class ScalarField(DataFieldBase):
             ScalarField: The projected data in a scalar field with a subgrid of
             the original grid.
         """
+        if isinstance(axes, str):
+            axes = [axes]
         if any(ax not in self.grid.axes for ax in axes):
             raise ValueError(
                 f"The axes {axes} are not all contained in {self.grid} with axes "

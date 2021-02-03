@@ -607,6 +607,10 @@ class GridBase(metaclass=ABCMeta):
             volume_list = self.cell_volume_data
         else:
             # use stored value for the default case of integrating over all axes
+            if isinstance(axes, int):
+                axes = (axes,)
+            else:
+                axes = tuple(axes)  # required for numpy.sum
             volume_list = [
                 cell_vol if ax in axes else 1
                 for ax, cell_vol in enumerate(self.cell_volume_data)
