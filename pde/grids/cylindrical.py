@@ -187,7 +187,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             return point
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
-        """return a line cut along the cylindrical symmetry axis
+        """return a line cut for the cylindrical grid
 
         Args:
             data (:class:`numpy.ndarray`):
@@ -250,7 +250,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         """
         bounds_r, bounds_z = self.axes_bounds
         return {
-            "data": np.vstack((data[::-1, :], data)).T,
+            "data": np.vstack((data[::-1, :], data)),
             "x": self.axes_coords[0],
             "y": self.axes_coords[1],
             "extent": (-bounds_r[1], bounds_r[1], bounds_z[0], bounds_z[1]),
@@ -411,9 +411,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             diff[..., 1] = (diff[..., 1] + size / 2) % size - size / 2
         return diff
 
-    def polar_coordinates_real(
-        self, origin: np.ndarray, ret_angle: bool = False
-    ) -> np.ndarray:
+    def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
         """return spherical coordinates associated with the grid
 
         Args:

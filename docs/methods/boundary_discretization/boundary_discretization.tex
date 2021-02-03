@@ -25,6 +25,7 @@
 
 \begin{abstract}
 We here document the differential operators and the associated boundary conditions that are used in the finite difference approximation.
+We also derive special versions of the Laplace operator that conserves the total mass.
 \end{abstract}
 
 
@@ -302,49 +303,6 @@ Moreover, the naive implementation of Laplace operator in spherical coordinates 
 \end{align}
 Note that this form of the Laplace operator is not conservative, \ie, the discretized version of the integral $\int \partial_\alpha^2 f \diff r$  does not vanish.
 
-A conservative operator can be derived by integrating the definition of the Laplace operator over one spherical shell from $r=r_n - \dr/2$ to $r=r_n  + \dr/2$,
-\begin{subequations}
-\begin{align}
-%	r^2 \partial_\alpha^2 f &= \partial_r\bigl(r^2 \partial_r f(r)\bigr)
-%\\
-	\int_{r_n - \dr/2}^{r_n + \dr/2} r^2 \partial_\alpha^2 f \diff r
-		&= \int_{r_n - \dr/2}^{r_n + \dr/2} \partial_r\bigl(r^2 \partial_r f(r)\bigr) \diff r
-\\
-	\partial_\alpha^2 f \left[ \frac{r^3}{3} \right]_{r_n - \dr/2}^{r_n + \dr/2}
-		&\sim \Bigl[r^2 \partial_r f(r)\Bigr]_{r_n - \dr/2}^{r_n + \dr/2}
-\end{align}
-\end{subequations}
-where we skipped the factors $4\pi$ stemming from the angle integration.
-Using $r_n = r_0 + (n + \frac12)\dr$ and introduced the (normalized) shell volumes
-\begin{align}
-%	V_n &= \frac{\dr^3}{3}\bigl[(n + 1)^3 - n^3\bigr]
-	V_n &= \frac{1}{3}\left[
-		\left(r_n + \frac{\dr}{2}\right)^3 - 
-		\left(r_n - \frac{\dr}{2}\right)^3
-	\right]
-\notag\\&= \dr \left(	r_n^2 + \frac{\dr^2}{12} \right)
-\end{align}
-we then arrive at
-\begin{align}
-	\partial_\alpha^2 f
-%		&\sim \dr^2 \frac{(n + 1)^2 f'\left(r_n + \frac{\dr}{2}\right) - n^2 f'\left(r_n - \frac{\dr}{2}\right)}{V_n}
-		&\sim \frac{r_{n+\frac12}^2 f'\left(r_{n+\frac12}\right) - r_{n-\frac12}^2 f'\left(r_{n-\frac12}\right)}{V_n}
-\end{align}
-where the derivatives $f'(r)$ are evaluated at the midpoints can can thus be evaluated using
-\begin{subequations}
-\begin{align}
-	f'\left(r_n + \frac{\dr}{2}\right) \sim \frac{y_{n+1} - y_n}{\dr}
-\\
-	f'\left(r_n - \frac{\dr}{2}\right) \sim \frac{y_n - y_{n-1}}{\dr}
-\end{align}
-\end{subequations}
-In the special case $r_0=0$, we then arrive at
-\begin{align}
-	\partial_\alpha^2 f
-		&\sim \frac{3}{\dr^2} \, \frac{(n + 1)^2 (y_{n+1} - y_n) - n^2 (y_n - y_{n-1})}{(n + 1)^3 - n^3}
-	\;,
-\end{align}
-which is a conservative discretization of the spherical laplacian by construction.
 
 \subsection{Boundary condition at the origin}
 Due to the symmetry, only vanishing derivatives are allowed at the inner boundary at the origin, implying the virtual support point $y_{-1} = y_0$.
@@ -373,8 +331,105 @@ Assuming the boundary condition $f(R) = a$, we obtain $y_N = 2a - y_{N-1}$.
 Here, we consider the boundary condition $f'(L) = b$, which specifies the outward derivative to equal the value $b$.
 We obtain $y_n = y_{n-1} + b \dx$.
 
+\subsection{Conservative operator}
 
+We call a discrete Laplace operator conservative when it preserves the desirable conservation equation
+\begin{align}
+	\int_\Omega \partial_\alpha^2 f \diff V
+		= \oint_{\partial\Omega} \partial_\alpha f n_\alpha \diff S= 0
+\end{align}
+when Neumann boundary conditions are imposed on the function $f$.
+A conservative operator can be derived by integrating the definition of the Laplace operator in spherical cooridnates over one spherical shell from $r=r_n - \dr/2$ to $r=r_n  + \dr/2$,
+\begin{align}
+%	r^2 \partial_\alpha^2 f &= \partial_r\bigl(r^2 \partial_r f(r)\bigr)
+%\\
+	\int_{r_{n - \frac12}}^{r_{n + \frac12}} r^2 \partial_\alpha^2 f \diff r
+		&= \int_{r_{n - \frac12}}^{r_{n + \frac12}} \partial_r\bigl(r^2 \partial_r f(r)\bigr) \diff r
+	\;,
+\end{align}
+where we skipped the factor $4\pi$ stemming from the angle integration.
+Assuming that the quantity $\partial_\alpha^2 f$ is constant across the discretization cell, we thus find
+\begin{align}
+	V_n \partial_\alpha^2 f %\left[ \frac{r^3}{3} \right]_{r_n - \dr/2}^{r_n + \dr/2}
+		&\sim \Bigl[r^2 \partial_r f(r)\Bigr]_{r_n - \dr/2}^{r_n + \dr/2}
+\end{align}
+where we introduced the (scaled) shell volumes
+\begin{align}
+%	V_n &= \frac{\dr^3}{3}\bigl[(n + 1)^3 - n^3\bigr]
+	V_n &= \frac{r_{n + \frac12}^3 - r_{n - \frac12}^3}{3}
+	= \dr \left(	r_n^2 + \frac{\dr^2}{12} \right)
+\;.
+\end{align}
+Consequently,
+\begin{align}
+	\partial_\alpha^2 f
+%		&\sim \dr^2 \frac{(n + 1)^2 f'\left(r_n + \frac{\dr}{2}\right) - n^2 f'\left(r_n - \frac{\dr}{2}\right)}{V_n}
+		&\sim \frac{r_{n+\frac12}^2 f'\left(r_{n+\frac12}\right) - r_{n-\frac12}^2 f'\left(r_{n-\frac12}\right)}{V_n}
+\end{align}
+where the derivatives $f'(r)$ are evaluated at the midpoints and can thus be represented as
+\begin{subequations}
+\begin{align}
+	f'\left(r_{n + \frac12}\right) \sim \frac{y_{n+1} - y_n}{\dr}
+\\
+	f'\left(r_{n - \frac12}\right) \sim \frac{y_n - y_{n-1}}{\dr}
+\end{align}
+\end{subequations}
+In the special case where the spherical grid does not have a hole ($r_0=0$), we then arrive at
+\begin{align}
+	\partial_\alpha^2 f
+		&\sim \frac{3}{\dr^2} \, \frac{(n + 1)^2 (y_{n+1} - y_n) - n^2 (y_n - y_{n-1})}{(n + 1)^3 - n^3}
+	\;,
+\end{align}
+which is a conservative discretization of the spherical Laplacian by construction.
 
+Similarly, we can consider a spherical grid where fields depend on the polar angle~$\theta$ while still keeping azimuthal symmetry, i.e., assuming no dependence on $\phi$.
+The condition for a conservative Laplace operator then reads
+\begin{widetext}
+\begin{multline}
+	\iint_{\text{cell}(n, m)} r^2 \sin\theta \, \partial_\alpha^2 f  \diff r \diff \theta
+=
+	\iint_{\text{cell}(n, m)} \biggl(
+		\sin\theta  \partial_r\bigl[r^2 \partial_r f(r, \theta)\bigr]
+		+ \partial_\theta \bigl[ \sin\theta \partial_\theta  f(r, \theta)\bigr]
+	\biggr)\diff r \diff \theta
+\\=
+	\Bigl(\cos\theta_{m-\frac12} - \cos\theta_{m + \frac12}\Bigr)
+		\int_{r_{n - \frac12}}^{r_{n + \frac12}}\left(
+			 \partial_r\bigl[r^2 \partial_r f(r, \theta)\bigr]
+		\right)  \diff r
+%\notag\\&\quad
+	+ \Delta r
+		\int_{\theta_{m - \frac12}}^{\theta_{m + \frac12}}
+			 \partial_\theta \bigl[ \sin\theta \partial_\theta  f(r, \theta)\bigr]	 \diff\theta
+\\=
+	\Bigl(\cos\theta_{m-\frac12} - \cos\theta_{m + \frac12}\Bigr)
+			\bigl[r^2 \partial_r f(r, \theta)\bigr]_{r_{n - \frac12}}^{r_{n + \frac12}}
+	+  \Delta r
+		\bigl[ \sin\theta \partial_\theta  f(r, \theta)\bigr]_{\theta_{m - \frac12}}^{\theta_{m + \frac12}}
+%\\
+%	\partial_\alpha^2 f \left[ \frac{r^3}{3} \right]_{r_n - \dr/2}^{r_n + \dr/2}
+%		&\sim \Bigl[r^2 \partial_r f(r)\Bigr]_{r_n - \dr/2}^{r_n + \dr/2}
+\end{multline}
+\end{widetext}
+Here we assumed that we can neglect angular dependencies in the radial integral and vice versa.
+Using the (scaled) volume of a grid cell,
+\begin{align}
+	V_{n,m} =
+		\left(\cos\theta_{m-\frac12} - \cos\theta_{m + \frac12}\right)
+		\frac{r_{n + \frac12}^3 - r_{n - \frac12}^3}{3}
+%\notag\\=
+%	\left(\cos\theta_{m-\frac12} - \cos\theta_{m + \frac12}\right)
+	\;,
+\end{align}
+we can write this as
+\begin{multline}
+	V_{n,m} \partial_\alpha^2 f
+=\Bigl(\cos\theta_{m-\frac12} - \cos\theta_{m + \frac12}\Bigr)
+			\bigl[r^2 \partial_r f(r, \theta)\bigr]_{r_{n - \frac12}}^{r_{n + \frac12}}
+\\
+	+  \Delta r
+		\bigl[ \sin\theta \partial_\theta  f(r, \theta)\bigr]_{\theta_{m - \frac12}}^{\theta_{m + \frac12}}
+\end{multline}
 
 %\bibliographystyle{apsrev4-1}
 %\bibliography{bibdesk.bib}

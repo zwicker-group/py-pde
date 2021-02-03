@@ -100,6 +100,10 @@ def test_integration():
         res = grid.make_integrator()(arr)
         assert np.isscalar(res)
         assert res == pytest.approx(grid.integrate(arr))
+        if grid.num_axes == 1:
+            assert res == pytest.approx(grid.integrate(arr, axes=0))
+        else:
+            assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
 
 
 @skipUnlessModule("matplotlib")

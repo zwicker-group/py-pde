@@ -381,7 +381,7 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def polar_coordinates_real(self, origin: np.ndarray, ret_angle: bool = False):
+    def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
         pass
 
     @abstractmethod
@@ -588,7 +588,9 @@ class GridBase(metaclass=ABCMeta):
         """ float: the average side length of the cells """
         return np.mean(self.discretization)  # type: ignore
 
-    def integrate(self, data: np.ndarray, axes: Sequence[int] = None) -> np.ndarray:
+    def integrate(
+        self, data: np.ndarray, axes: Union[int, Sequence[int]] = None
+    ) -> np.ndarray:
         """Integrates the discretized data over the grid
 
         Args:
@@ -607,6 +609,10 @@ class GridBase(metaclass=ABCMeta):
             volume_list = self.cell_volume_data
         else:
             # use stored value for the default case of integrating over all axes
+            if isinstance(axes, int):
+                axes = (axes,)
+            else:
+                axes = tuple(axes)  # required for numpy.sum
             volume_list = [
                 cell_vol if ax in axes else 1
                 for ax, cell_vol in enumerate(self.cell_volume_data)

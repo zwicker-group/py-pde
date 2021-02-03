@@ -220,9 +220,9 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             )
 
         if self.dim == 2:
-            image_data = data.T
+            image_data = data
         elif self.dim == 3:
-            image_data = data[:, :, self.shape[-1] // 2].T
+            image_data = data[:, :, self.shape[-1] // 2]
         else:
             raise NotImplementedError(
                 "Creating images is only implemented for 2d and 3d grids"
@@ -234,8 +234,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
         return {
             "data": image_data,
-            "x": self.axes_coords[-2],
-            "y": self.axes_coords[-1],
+            "x": self.axes_coords[0],
+            "y": self.axes_coords[1],
             "extent": extent,
             "label_x": self.axes[0],
             "label_y": self.axes[1],
@@ -266,7 +266,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         assert coords.shape[-1] == self.dim
         return coords
 
-    def polar_coordinates_real(self, origin: np.ndarray, ret_angle: bool = False):
+    def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
         """return polar coordinates associated with the grid
 
         Args:

@@ -1,14 +1,13 @@
 """
-Grids define the domains on which the pde will be solved. In particular, 
-symmetries, periodicities, and the discretizations are also defined here.
+Grids define the domains on which PDEs will be solved. In particular, symmetries,
+periodicities, and the discretizations are defined by the underlying grid.
 
-We only consider regular, orthogonal grids, which are constructed from
-orthogonal coordinate systems with equidistant discretizations along each axis.
-The dimension of the space that the grid describes is given by the attribute
-:attr:`dim`. Points given in these coordinates can be mapped to coordinates in
-Cartesian space using the methods :meth:`point_to_cartesian` and its inverse.
-Moreover, points can be mapped to cell indices using the methods
-:meth:`point_to_cell`.
+We only consider regular, orthogonal grids, which are constructed from orthogonal
+coordinate systems with equidistant discretizations along each axis. The dimension of
+the space that the grid describes is given by the attribute :attr:`dim`. Points given in
+these coordinates can be mapped to coordinates in Cartesian space using the methods
+:meth:`point_to_cartesian` and its inverse. Moreover, points can be mapped to cell
+indices using the methods :meth:`point_to_cell`.
 
 .. autosummary::
    :nosignatures:
@@ -27,7 +26,6 @@ Inheritance structure of the classes:
    :parts: 1
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
- 
 """
 
 # import all operator modules to register the operators
