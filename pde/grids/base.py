@@ -588,7 +588,9 @@ class GridBase(metaclass=ABCMeta):
         """ float: the average side length of the cells """
         return np.mean(self.discretization)  # type: ignore
 
-    def integrate(self, data: np.ndarray, axes: Sequence[int] = None) -> np.ndarray:
+    def integrate(
+        self, data: np.ndarray, axes: Union[int, Sequence[int]] = None
+    ) -> np.ndarray:
         """Integrates the discretized data over the grid
 
         Args:
