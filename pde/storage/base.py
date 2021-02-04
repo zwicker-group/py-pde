@@ -60,7 +60,7 @@ class StorageBase(metaclass=ABCMeta):
                 writing completely.
         """
         self.info = {} if info is None else info
-        self.write_mode = write_mode
+        self.write_mode: str = write_mode
         self._data_shape: Optional[Tuple[int, ...]] = None
         self._grid: Optional[GridBase] = None
         self._field: Optional[FieldBase] = None

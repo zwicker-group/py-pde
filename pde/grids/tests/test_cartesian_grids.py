@@ -7,6 +7,7 @@ from functools import partial
 
 import numpy as np
 import pytest
+
 from pde import CartesianGrid, UnitGrid
 from pde.grids.boundaries import Boundaries, DomainError, PeriodicityError
 

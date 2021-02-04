@@ -6,6 +6,7 @@ import functools
 
 import numpy as np
 import pytest
+
 from pde import DiffusionPDE, FileStorage, MemoryStorage, UnitGrid
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.tools.misc import module_available

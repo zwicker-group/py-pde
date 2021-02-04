@@ -7,6 +7,7 @@ boundary conditions.
 """
 
 import numpy as np
+
 from pde import CartesianGrid, solve_laplace_equation
 
 grid = CartesianGrid([[0, 2 * np.pi]] * 2, 64)

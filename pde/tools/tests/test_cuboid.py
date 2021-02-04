@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde.tools.cuboid import Cuboid, asanyarray_flags
 
 

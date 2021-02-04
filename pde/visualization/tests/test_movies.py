@@ -3,6 +3,7 @@
 """
 
 import pytest
+
 from pde.fields import ScalarField
 from pde.grids import UnitGrid
 from pde.pdes import DiffusionPDE

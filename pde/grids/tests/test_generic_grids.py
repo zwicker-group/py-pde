@@ -8,6 +8,7 @@ from functools import partial
 
 import numpy as np
 import pytest
+
 from pde import grids
 from pde.grids.base import GridBase, discretize_interval
 from pde.tools.misc import skipUnlessModule

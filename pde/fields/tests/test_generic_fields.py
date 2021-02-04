@@ -4,12 +4,13 @@
 
 import numpy as np
 import pytest
+from scipy import ndimage
+
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.fields.base import FieldBase
 from pde.grids import CartesianGrid, CylindricalGrid, PolarGrid, SphericalGrid, UnitGrid
 from pde.grids.cartesian import CartesianGridBase
 from pde.tools.misc import skipUnlessModule
-from scipy import ndimage
 
 
 @pytest.mark.slow

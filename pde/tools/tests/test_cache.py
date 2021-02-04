@@ -2,14 +2,13 @@
 .. codeauthor:: David Zwicker <dzwicker@seas.harvard.edu>
 """
 
-from __future__ import division
-
 import collections
 import copy
 import sys
 
 import numpy as np
 import pytest
+
 from pde.tools import cache
 
 

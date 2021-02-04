@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde import CartesianGrid, PolarGrid, ScalarField, Tensor2Field, VectorField
 from pde.grids.operators import polar as ops
 

@@ -20,6 +20,7 @@ is less flexible and might be more difficult to extend later.
 
 import numba as nb
 import numpy as np
+
 from pde import FieldCollection, PDEBase, PlotTracker, ScalarField, UnitGrid
 
 

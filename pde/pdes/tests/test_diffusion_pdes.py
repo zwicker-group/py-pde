@@ -3,6 +3,7 @@
 """
 
 import numpy as np
+
 from pde import CartesianGrid, DiffusionPDE, ScalarField, UnitGrid
 
 

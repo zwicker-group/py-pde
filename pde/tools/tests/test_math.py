@@ -4,6 +4,7 @@
 
 
 import numpy as np
+
 from pde.tools.math import SmoothData1D
 
 

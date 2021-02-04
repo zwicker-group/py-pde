@@ -7,6 +7,7 @@ This example demonstrates how to display 3d data interactively using the
 """
 
 import numpy as np
+
 from pde import CartesianGrid, ScalarField
 
 # create a scalar field with some noise

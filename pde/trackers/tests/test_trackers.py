@@ -8,6 +8,7 @@ from unittest import mock
 
 import numpy as np
 import pytest
+
 from pde import Controller, ExplicitSolver, MemoryStorage, ScalarField, UnitGrid
 from pde.pdes import AllenCahnPDE, CahnHilliardPDE, DiffusionPDE
 from pde.tools.misc import module_available

@@ -5,7 +5,6 @@ Simple sphinx plug-in that simplifies  type information in function signatures
 import collections
 import re
 
-
 # simple (literal) replacement rules
 REPLACEMENTS = collections.OrderedDict(
     [

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import os
 import glob
-import subprocess as sp
 import logging
+import os
+import subprocess as sp
 
 logging.basicConfig(level=logging.INFO)
 
