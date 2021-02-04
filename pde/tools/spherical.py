@@ -1,5 +1,5 @@
 r"""
-Module collecting functions for handling spherical geometry.
+Module collecting functions for handling spherical geometry
 
 The coordinate systems use the following convention for polar coordinates
 :math:`(r, \phi)`, where :math:`r` is the radial coordinate and :math:`\phi` is

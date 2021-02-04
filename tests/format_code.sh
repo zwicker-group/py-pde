@@ -3,11 +3,11 @@
 # This script formats the code of this package
 #
 
-for dir in pde examples tests; do
-    echo "Formating files in ${dir}:"
+echo "Formatting imports"
+isort ..
 
-    # format imports
-    isort --profile black ../${dir}
+for dir in pde examples tests; do
+    echo "Formatting files in ${dir}:"
 
     # black format all code
     black -t py36 ../${dir}

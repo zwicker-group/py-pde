@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde import PDE, ScalarField, UnitGrid, WavePDE
 
 

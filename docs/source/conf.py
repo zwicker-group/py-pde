@@ -21,7 +21,6 @@ from datetime import date
 
 import sphinx_simplify_typehints  # @UnresolvedImport @UnusedImport
 
-
 # -- Project information -----------------------------------------------------
 
 project = "py-pde"

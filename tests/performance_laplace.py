@@ -12,6 +12,7 @@ sys.path.append(str(PACKAGE_PATH))
 
 import numba
 import numpy as np
+
 from pde.grids import CylindricalGrid, SphericalGrid, UnitGrid
 from pde.grids.boundaries import Boundaries
 from pde.grids.operators import cartesian, cylindrical, spherical

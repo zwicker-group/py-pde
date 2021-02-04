@@ -5,6 +5,7 @@ Package containing several tools required in py-pde
    :nosignatures:
 
    cache
+   config
    cuboid
    docstrings
    expressions

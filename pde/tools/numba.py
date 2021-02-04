@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
 
+from .. import config
 from ..tools.misc import decorator_arguments
 
 try:
@@ -22,7 +23,10 @@ except ImportError:
     from numba.dispatcher import Dispatcher
 
 
-# global settings for numba
+# global settings for numba. These are currently global constants of this module, but
+# they will be replaced by the pde.config system. Until at least 2021-09-01, setting
+# these global variables will still affect the internal configuration, but after that
+# date the support will be removed in favor of the actual configuration system.
 NUMBA_PARALLEL = True  # enable parallel numba
 NUMBA_FASTMATH = True  # enable fastmath switch (ignores NaNs!)
 NUMBA_DEBUG = False  # enable additional debug information
@@ -79,9 +83,9 @@ def numba_environment() -> Dict[str, Any]:
 
     return {
         "version": nb.__version__,
-        "parallel": NUMBA_PARALLEL,
-        "fastmath": NUMBA_FASTMATH,
-        "debug": NUMBA_DEBUG,
+        "parallel": config["numba.parallel"],
+        "fastmath": config["numba.fastmath"],
+        "debug": config["numba.debug"],
         "using_svml": nb.config.USING_SVML,
         "threading_layer": threading_layer,
         "omp_num_threads": os.environ.get("OMP_NUM_THREADS"),
@@ -103,11 +107,11 @@ def _numba_get_signature(parallel: bool = False, **kwargs) -> Dict[str, Any]:
     Returns:
         dict: Keyword arguments that can directly be used in :func:`nb.jit`
     """
-    kwargs.setdefault("fastmath", NUMBA_FASTMATH)
-    kwargs.setdefault("debug", NUMBA_DEBUG)
+    kwargs.setdefault("fastmath", config["numba.fastmath"])
+    kwargs.setdefault("debug", config["numba.debug"])
 
     # make sure parallel numba is only enabled in restricted cases
-    kwargs["parallel"] = parallel and NUMBA_PARALLEL
+    kwargs["parallel"] = parallel and config["numba.parallel"]
     return kwargs
 
 

@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde import PDE, DiffusionPDE, FieldCollection, ScalarField, UnitGrid
 from pde.solvers import (
     Controller,

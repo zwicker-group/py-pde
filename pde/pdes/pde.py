@@ -41,7 +41,7 @@ class PDE(PDEBase):
         user_funcs: Dict[str, Any] = None,
         consts: Dict[str, Any] = None,
     ):
-        """
+        r"""
         Warning:
             {WARNING_EXEC}
 
@@ -76,8 +76,8 @@ class PDE(PDEBase):
                 The keys follow the format "VARIABLE:OPERATOR", where VARIABLE specifies
                 the expression in `rhs` where the boundary condition is applied to the
                 operator specified by OPERATOR. For both identifiers, the wildcard
-                symbol "*" denotes that all fields and operators are affected,
-                respectively. For instance, the identifier "c:*" allows specifying a
+                symbol "\*" denotes that all fields and operators are affected,
+                respectively. For instance, the identifier "c:\*" allows specifying a
                 condition for all operators of the field named `c`.
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the

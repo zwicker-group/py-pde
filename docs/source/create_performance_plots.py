@@ -12,13 +12,13 @@ os.environ["NUMBA_NUM_THREADS"] = "1"  # check single thread performance
 import functools
 import timeit
 
-import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 
 from pde import UnitGrid
-from pde.tools.output import display_progress
 from pde.tools.misc import estimate_computation_speed
+from pde.tools.output import display_progress
 
 try:
     import cv2

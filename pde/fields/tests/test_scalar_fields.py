@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
 from pde.grids import CartesianGrid, PolarGrid, UnitGrid, boundaries

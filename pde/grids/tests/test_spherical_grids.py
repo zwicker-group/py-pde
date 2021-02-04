@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde import CartesianGrid, PolarGrid, ScalarField, SphericalGrid
 from pde.grids.boundaries.local import NeumannBC
 

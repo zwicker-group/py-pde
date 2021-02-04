@@ -3,6 +3,7 @@
 """
 
 import numpy as np
+
 from pde import CartesianGrid, CylindricalGrid, ScalarField, VectorField
 from pde.grids.operators import cylindrical as ops
 

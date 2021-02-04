@@ -7,6 +7,7 @@ This example displays methods for visualizing scalar fields.
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 from pde import CylindricalGrid, ScalarField
 
 # create a scalar field with some noise

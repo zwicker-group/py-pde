@@ -7,8 +7,9 @@ import random
 
 import numpy as np
 import pytest
-from pde.tools import spherical
 from scipy import integrate, spatial
+
+from pde.tools import spherical
 
 
 def test_volume_conversion():

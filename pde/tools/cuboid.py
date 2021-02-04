@@ -1,4 +1,6 @@
 """
+An n-dimensional, axes-aligned cuboid
+
 This module defines the :class:`Cuboid` class, which represents an n-dimensional
 cuboid that is aligned with the axes of a Cartesian coordinate system.
 

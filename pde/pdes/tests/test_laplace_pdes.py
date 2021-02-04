@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde import CartesianGrid, ScalarField, UnitGrid
 from pde.pdes import solve_laplace_equation, solve_poisson_equation
 

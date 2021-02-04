@@ -5,6 +5,7 @@
 import itertools
 
 import pytest
+
 from pde import UnitGrid
 from pde.grids.boundaries.axis import BoundaryPair, get_boundary_axis
 from pde.grids.boundaries.local import BCBase

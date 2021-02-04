@@ -12,6 +12,7 @@ describes the dynamics of flame fronts:
 """
 
 import numba as nb
+
 from pde import PDEBase, ScalarField, UnitGrid
 
 

@@ -5,6 +5,7 @@ Integration tests that use multiple modules together
 """
 
 import numpy as np
+
 from pde import CartesianGrid, DiffusionPDE, FileStorage, ScalarField, UnitGrid
 from pde.tools.misc import skipUnlessModule
 

@@ -4,9 +4,10 @@
 
 import numpy as np
 import pytest
+from scipy import fftpack, stats
+
 from pde import CartesianGrid, UnitGrid
 from pde.tools.spectral import make_colored_noise
-from scipy import fftpack, stats
 
 
 def spectral_density(data, dx=1.0):

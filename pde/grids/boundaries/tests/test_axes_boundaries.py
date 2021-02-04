@@ -6,6 +6,7 @@ import itertools
 
 import numpy as np
 import pytest
+
 from pde import ScalarField, UnitGrid
 from pde.grids.boundaries.axes import Boundaries
 from pde.grids.boundaries.axis import BoundaryPair, BoundaryPeriodic, get_boundary_axis

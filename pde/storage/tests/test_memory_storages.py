@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde import MemoryStorage, UnitGrid
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 

@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.fields.base import FieldBase
 from pde.tools.misc import skipUnlessModule

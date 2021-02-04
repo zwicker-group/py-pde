@@ -10,6 +10,7 @@ PACKAGE_PATH = Path(__file__).resolve().parents[1]
 sys.path.append(str(PACKAGE_PATH))
 
 import numpy as np
+
 from pde import ScalarField, UnitGrid
 from pde.grids.boundaries.axes import Boundaries
 from pde.tools.misc import estimate_computation_speed

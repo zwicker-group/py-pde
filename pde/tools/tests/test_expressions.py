@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde.tools.expressions import ScalarExpression, TensorExpression, parse_number
 
 

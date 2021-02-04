@@ -3,6 +3,14 @@ The py-pde package provides classes and methods for solving partial differential
 equations.
 """
 
+# initialize the configuration
+from .tools.config import Config
+
+config = Config()  # initialize the default configuration
+del Config  # clean the name space
+
+
+# import all other modules that should occupy the main name space
 from .fields import *  # @UnusedWildImport
 from .grids import *  # @UnusedWildImport
 from .pdes import *  # @UnusedWildImport

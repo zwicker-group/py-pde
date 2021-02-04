@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+
 from pde import DiffusionPDE, FileStorage, ScalarField, UnitGrid
 from pde.tools.misc import skipUnlessModule
 

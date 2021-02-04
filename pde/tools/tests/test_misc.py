@@ -7,6 +7,7 @@ import os
 
 import numpy as np
 import pytest
+
 from pde.tools import misc
 
 
