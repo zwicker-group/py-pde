@@ -1,5 +1,5 @@
 """
-Created on Mar 21, 2020
+Methods for automatic transformation of docstrings  
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

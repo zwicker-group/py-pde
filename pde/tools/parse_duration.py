@@ -1,5 +1,5 @@
 """
-Parsing time durations from strings.
+Parsing time durations from strings
 
 This module provides a function that parses time durations from strings. It has
 been copied from the django software, which comes with the following notes:

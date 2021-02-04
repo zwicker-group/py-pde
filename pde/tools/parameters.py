@@ -1,6 +1,7 @@
 """
-This module provides infrastructure for managing classes with parameters. One
-aim is to allow easy management of inheritance of parameters.
+Infrastructure for managing classes with parameters
+
+One aim is to allow easy management of inheritance of parameters.
 
 .. autosummary::
    :nosignatures:

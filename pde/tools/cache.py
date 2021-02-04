@@ -1,5 +1,5 @@
 """
-Module containing functions for managing cache structures
+Functions, classes, and decorators for managing caches
 
 .. autosummary::
    :nosignatures:

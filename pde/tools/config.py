@@ -1,5 +1,5 @@
 """
-Module defining a class for handling the package configuration.
+Handles configuration variables of the package
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
