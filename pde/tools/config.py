@@ -1,4 +1,6 @@
 """
+Module defining a class for handling the package configuration.
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
