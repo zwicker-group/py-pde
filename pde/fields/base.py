@@ -1659,7 +1659,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         )
 
         # update the axes image
-        reference.element.set_data(data["data"])
+        reference.element.set_data(data["data"].T)
         # adjust the colorbar limits
         reference.element.set_clim(data["data"].min(), data["data"].max())
 
