@@ -103,7 +103,6 @@ def _numba_get_signature(parallel: bool = False, **kwargs) -> Dict[str, Any]:
     Returns:
         dict: Keyword arguments that can directly be used in :func:`nb.jit`
     """
-    kwargs.setdefault("nopython", True)
     kwargs.setdefault("fastmath", NUMBA_FASTMATH)
     kwargs.setdefault("debug", NUMBA_DEBUG)
 
@@ -149,7 +148,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
         # function is already jited
         return function  # type: ignore
 
-    jit_kwargs = _numba_get_signature(parallel, **kwargs)
+    jit_kwargs = _numba_get_signature(nopython=True, parallel=parallel, **kwargs)
     name = function.__name__  # type: ignore
     logging.getLogger(__name__).info(
         "Compile `%s` with parallel=%s", name, jit_kwargs["parallel"]
@@ -187,9 +186,6 @@ def jit_allocate_out(
     """
     # TODO: Remove `num_args` and use inspection on `func` instead
 
-    # we need to cast `parallel` to bool since np.bool is not supported by jit
-    parallel = bool(parallel)
-
     if nb.config.DISABLE_JIT:
         # jitting is disabled => return generic python function
 
@@ -225,15 +221,17 @@ def jit_allocate_out(
 
     else:
         # jitting is enabled => return specific compiled functions
-        jit_kwargs = _numba_get_signature(parallel=False, **kwargs)
+        jit_kwargs_outer = _numba_get_signature(nopython=True, parallel=False, **kwargs)
+        # we need to cast `parallel` to bool since np.bool is not supported by jit
+        jit_kwargs_inner = _numba_get_signature(parallel=bool(parallel), **kwargs)
         register_jitable = nb.extending.register_jitable
         logging.getLogger(__name__).info(
-            "Compile `%s` with parallel=%s", func.__name__, jit_kwargs["parallel"]
+            "Compile `%s` with parallel=%s", func.__name__, jit_kwargs_inner["parallel"]
         )
 
         if num_args == 1:
 
-            @nb.generated_jit(**jit_kwargs)
+            @nb.generated_jit(**jit_kwargs_outer)
             @wraps(func)
             def wrapper(arr, out=None):
                 """wrapper deciding whether the underlying function is called
@@ -255,7 +253,7 @@ def jit_allocate_out(
 
                 if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # function is called without `out`
-                    f_jit = register_jitable(parallel=parallel)(func)
+                    f_jit = register_jitable(**jit_kwargs_inner)(func)
 
                     if out_shape is None:
                         # we have to obtain the shape of `out` from `arr`
@@ -277,7 +275,7 @@ def jit_allocate_out(
 
         elif num_args == 2:
 
-            @nb.generated_jit(**jit_kwargs)
+            @nb.generated_jit(**jit_kwargs_outer)
             @wraps(func)
             def wrapper(a, b, out=None):
                 """wrapper deciding whether the underlying function is called
@@ -292,7 +290,7 @@ def jit_allocate_out(
 
                 elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # function is called without `out`
-                    f_jit = register_jitable(parallel=parallel)(func)
+                    f_jit = register_jitable(**jit_kwargs_inner)(func)
 
                     if out_shape is None:
                         # we have to obtain the shape of `out` from `a`
