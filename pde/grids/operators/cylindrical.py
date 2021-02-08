@@ -17,11 +17,11 @@ This module implements differential operators on cylindrical grids
 
 from typing import Callable
 
+from ... import config
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit_allocate_out, nb
 from ..boundaries import Boundaries
 from ..cylindrical import CylindricalGrid
-from .common import PARALLELIZATION_THRESHOLD_2D
 
 
 @CylindricalGrid.register_operator("laplace", rank_in=0, rank_out=0)
@@ -50,7 +50,7 @@ def make_laplace(bcs: Boundaries) -> Callable:
     region_z = boundary_z.make_region_evaluator()
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel, out_shape=(dim_r, dim_z))
     def laplace(arr, out=None):
@@ -116,7 +116,7 @@ def make_gradient(bcs: Boundaries) -> Callable:
     region_z = boundary_z.make_region_evaluator()
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel, out_shape=(3, dim_r, dim_z))
     def gradient(arr, out=None):
@@ -178,7 +178,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
     region_z = boundary_z.make_region_evaluator()
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     if central:
         # use central differences
@@ -272,7 +272,7 @@ def make_divergence(bcs: Boundaries) -> Callable:
     region_z = boundary_z.make_region_evaluator()
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel, out_shape=(dim_r, dim_z))
     def divergence(arr, out=None):

@@ -11,17 +11,6 @@ from typing import Callable
 import numpy as np
 from scipy import sparse
 
-# Package-wide constant defining when to use parallel numba
-PARALLELIZATION_THRESHOLD_2D = 256
-""" int: threshold for determining when parallel code is created for
-differential operators. The value gives the minimal number of support points in
-each direction for a 2-dimensional grid """
-PARALLELIZATION_THRESHOLD_3D = 64
-""" int: threshold for determining when parallel code is created for
-differential operators. The value gives the minimal number of support points in
-each direction for a 3-dimensional grid """
-
-
 logger = logging.getLogger(__name__)
 
 
