@@ -356,3 +356,23 @@ Note that we access numpy arrays using their :attr:`flat` attribute to provide
 an implementation that works for all dimensions.     
         
         
+Configuration parameters
+""""""""""""""""""""""""
+
+Configuration parameters affect how the package behaves.
+They can be set using a dictionary-like interface of the configuration
+:data:`~pde.config`, which can be imported from the base package.
+Here is a list of all configuration options that can be adjusted in the package:
+
+.. package_configuration ::
+
+For example, to disable parallel computing in the package, the following code could be
+added to the start of the script:
+
+
+.. code-block:: python
+
+    from pde import config
+    config['numba.parallel'] = False
+    
+    # actual code using py-pde
