@@ -4,7 +4,7 @@ equations.
 """
 
 # initialize the configuration
-from .tools.config import Config
+from .tools.config import Config, environment
 
 config = Config()  # initialize the default configuration
 del Config  # clean the name space
@@ -16,7 +16,6 @@ from .grids import *  # @UnusedWildImport
 from .pdes import *  # @UnusedWildImport
 from .solvers import *  # @UnusedWildImport
 from .storage import *  # @UnusedWildImport
-from .tools.misc import environment
 from .tools.parameters import Parameter
 from .trackers import *  # @UnusedWildImport
 from .version import __version__

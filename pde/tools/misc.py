@@ -24,18 +24,36 @@ import functools
 import importlib
 import json
 import os
-import sys
 import unittest
+import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Sequence, Union
+from typing import Any, Callable, Dict, Sequence, Union
 
 import numpy as np
 
-# import functions moved on 2020-07-27
-# using this path for import is deprecated
-from .output import display_progress, get_progress_bar_class  # @UnusedImport
-
 Number = Union[float, complex]
+
+
+def environment(dict_type=dict) -> Dict[str, Any]:
+    """obtain information about the compute environment
+
+    Args:
+        dict_type: The type to create the returned dictionaries. The default is
+            `dict`, but :class:`collections.OrderedDict` is an alternative.
+
+    Returns:
+        dict: information about the python installation and packages
+    """
+    # import functions moved on 2020-02-08
+    # using this path for import is deprecated
+    from .config import environment  # @UnusedImport
+
+    warnings.warn(
+        "Importing `environment` from `pde.tools.misc` is deprecated. Import it from "
+        "`pde` directly instead.",
+        DeprecationWarning,
+    )
+    return environment(dict_type)
 
 
 def module_available(module_name: str) -> bool:
@@ -53,58 +71,6 @@ def module_available(module_name: str) -> bool:
         return False
     else:
         return True
-
-
-def environment(dict_type=dict) -> Dict[str, Any]:
-    """obtain information about the compute environment
-
-    Args:
-        dict_type: The type to create the returned dictionaries. The default is
-            `dict`, but :class:`collections.OrderedDict` is an alternative.
-
-    Returns:
-        dict: information about the python installation and packages
-    """
-    import matplotlib as mpl
-
-    from .. import __version__ as package_version
-    from .numba import numba_environment
-    from .plotting import get_plotting_context
-
-    def get_package_versions(packages: List[str]) -> Dict[str, str]:
-        """ tries to load certain python packages and returns their version """
-        versions: Dict[str, str] = dict_type()
-        for name in sorted(packages):
-            try:
-                module = importlib.import_module(name)
-            except ImportError:
-                versions[name] = "not available"
-            else:
-                versions[name] = module.__version__  # type: ignore
-        return versions
-
-    result: Dict[str, Any] = dict_type()
-    result["package version"] = package_version
-    result["python version"] = sys.version
-    result["platform"] = sys.platform
-
-    # add details for mandatory packages
-    result["mandatory packages"] = get_package_versions(
-        ["matplotlib", "numba", "numpy", "scipy", "sympy"]
-    )
-    result["matplotlib environment"] = {
-        "backend": mpl.get_backend(),
-        "plotting context": get_plotting_context().__class__.__name__,
-    }
-
-    # add details about optional packages
-    result["optional packages"] = get_package_versions(
-        ["h5py", "pandas", "pyfftw", "tqdm"]
-    )
-    if module_available("numba"):
-        result["numba environment"] = numba_environment()
-
-    return result
 
 
 def ensure_directory_exists(folder: Union[str, Path]):

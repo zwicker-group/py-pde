@@ -21,16 +21,12 @@ import numba as nb
 import numpy as np
 from scipy import ndimage, sparse
 
+from ... import config
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit_allocate_out
 from ..boundaries import Boundaries
 from ..cartesian import CartesianGridBase
-from .common import (
-    PARALLELIZATION_THRESHOLD_2D,
-    PARALLELIZATION_THRESHOLD_3D,
-    make_general_poisson_solver,
-    make_laplace_from_matrix,
-)
+from .common import make_general_poisson_solver, make_laplace_from_matrix
 
 
 @fill_in_docstring
@@ -343,7 +339,7 @@ def _make_laplace_numba_2d(bcs: Boundaries) -> Callable:
     region_y = bcs[1].make_region_evaluator()
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
@@ -403,7 +399,7 @@ def _make_laplace_numba_3d(bcs: Boundaries) -> Callable:
     region_z = bcs[2].make_region_evaluator()
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= PARALLELIZATION_THRESHOLD_3D ** 3
+    parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
@@ -550,7 +546,7 @@ def _make_gradient_numba_2d(bcs: Boundaries) -> Callable:
     region_y = bcs[1].make_region_evaluator()
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel, out_shape=(2, dim_x, dim_y))
     def gradient(arr, out=None):
@@ -587,7 +583,7 @@ def _make_gradient_numba_3d(bcs: Boundaries) -> Callable:
     region_z = bcs[2].make_region_evaluator()
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= PARALLELIZATION_THRESHOLD_3D ** 3
+    parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel, out_shape=(3, dim_x, dim_y, dim_z))
     def gradient(arr, out=None):
@@ -723,7 +719,7 @@ def _make_gradient_squared_numba_2d(bcs: Boundaries, central: bool = True) -> Ca
     region_y = bcs[1].make_region_evaluator()
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     if central:
         # use central differences
@@ -787,7 +783,7 @@ def _make_gradient_squared_numba_3d(bcs: Boundaries, central: bool = True) -> Ca
     region_z = bcs[2].make_region_evaluator()
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= PARALLELIZATION_THRESHOLD_3D ** 3
+    parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
 
     if central:
         # use central differences
@@ -950,7 +946,7 @@ def _make_divergence_numba_2d(bcs: Boundaries) -> Callable:
     region_y = bcs[1].make_region_evaluator()
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y))
     def divergence(arr, out=None):
@@ -988,7 +984,7 @@ def _make_divergence_numba_3d(bcs: Boundaries) -> Callable:
     region_z = bcs[2].make_region_evaluator()
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= PARALLELIZATION_THRESHOLD_3D ** 3
+    parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y, dim_z))
     def divergence(arr, out=None):
