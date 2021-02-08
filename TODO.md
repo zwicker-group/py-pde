@@ -1,7 +1,5 @@
 TODO
 ====
-* Allow showing complete config (with and without description)
-    - add it to the environment() function
 * Automatically register derivative with respect to a single axis
     - pattern: d_*(field), e.g., d_x(field)
     - second derivatives, too? d2_*(field)

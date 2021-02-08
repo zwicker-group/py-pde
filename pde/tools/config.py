@@ -15,7 +15,9 @@ from .parameters import Parameter
 class ParameterModuleConstant:
     """ special parameter class to access module constants as configuration values """
 
-    def __init__(self, name: str, module_path: str, variable: str):
+    def __init__(
+        self, name: str, module_path: str, variable: str, description: str = ""
+    ):
         """
         Args:
             name (str): The name of the parameter
@@ -25,6 +27,7 @@ class ParameterModuleConstant:
         self.name = name
         self.module_path = module_path
         self.variable = variable
+        self.description = description
 
     def get(self):
         """ obtain the value of the constant """
@@ -44,9 +47,26 @@ DEFAULT_CONFIG: List[Union[Parameter, ParameterModuleConstant]] = [
     # The next items are for backward compatibility with previous mechanisms for
     # setting parameters using global constants. This fix was introduced on 2021-02-04
     # and will likely be removed around 2021-09-01.
-    ParameterModuleConstant("numba.parallel", "pde.tools.numba", "NUMBA_PARALLEL"),
-    ParameterModuleConstant("numba.fastmath", "pde.tools.numba", "NUMBA_FASTMATH"),
-    ParameterModuleConstant("numba.debug", "pde.tools.numba", "NUMBA_DEBUG"),
+    ParameterModuleConstant(
+        "numba.parallel",
+        "pde.tools.numba",
+        "NUMBA_PARALLEL",
+        "Determines whether multiple cores are used in numba-compiled code.",
+    ),
+    ParameterModuleConstant(
+        "numba.fastmath",
+        "pde.tools.numba",
+        "NUMBA_FASTMATH",
+        "Determines whether the fastmath flag is set during compilation. This affects "
+        "the precision of the mathematical calculations.",
+    ),
+    ParameterModuleConstant(
+        "numba.debug",
+        "pde.tools.numba",
+        "NUMBA_DEBUG",
+        "Determines whether numba used the debug mode for compilation. If enabled, "
+        "this emits extra information that might be useful for debugging.",
+    ),
 ]
 
 
@@ -99,6 +119,33 @@ class Config:
     def to_dict(self) -> Dict[str, Any]:
         """ convert the configuration to a simple dictionary """
         return {k: v for k, v in self.items()}
+
+
+def sphinx_display_config(app, what, name, obj, options, lines):
+    """helper function to display default configuration in sphinx documentation
+
+    Example:
+        This function should be connected to the 'autodoc-process-docstring'
+        event like so:
+
+            app.connect('autodoc-process-docstring', sphinx_display_parameters)
+    """
+    if what == "class" and issubclass(obj, Parameterized):
+        if any(":param parameters:" in line for line in lines):
+            # parse parameters
+            parameters = obj.get_parameters(sort=False)
+            if parameters:
+                lines.append(".. admonition::")
+                lines.append(f"   Parameters of {obj.__name__}:")
+                lines.append("   ")
+                for p in parameters.values():
+                    lines.append(f"   {p.name}")
+                    text = p.description.splitlines()
+                    text.append(f"(Default value: :code:`{p.default_value!r}`)")
+                    text = ["     " + t for t in text]
+                    lines.extend(text)
+                    lines.append("")
+                lines.append("")
 
 
 def environment(dict_type=dict) -> Dict[str, Any]:
