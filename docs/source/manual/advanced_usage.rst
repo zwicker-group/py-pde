@@ -366,13 +366,16 @@ Here is a list of all configuration options that can be adjusted in the package:
 
 .. package_configuration ::
 
-For example, to disable parallel computing in the package, the following code could be
-added to the start of the script:
 
-
-.. code-block:: python
-
-    from pde import config
-    config['numba.parallel'] = False
+.. tip::
     
-    # actual code using py-pde
+    For example, to disable parallel computing in the package, the following code could be
+    added to the start of the script:
+    
+    
+    .. code-block:: python
+    
+        from pde import config
+        config['numba.parallel'] = False
+        
+        # actual code using py-pde
