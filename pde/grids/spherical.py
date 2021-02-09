@@ -375,10 +375,12 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         return np.atleast_1d(p2) - np.atleast_1d(p1)
 
-    def polar_coordinates_real(self, *, ret_angle: bool = False, **kwargs):  # type: ignore
+    def polar_coordinates_real(self, origin=None, *, ret_angle: bool = False, **kwargs):
         """return spherical coordinates associated with the grid
 
         Args:
+            origin:
+                Place holder variable to comply with the interface
             ret_angle (bool):
                 Determines whether angles are returned alongside the distance. If
                 `False` only the distance to the origin is returned for each support
@@ -386,8 +388,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 that in the case of spherical grids, this angle is zero by convention.
         """
         # check the consistency of the origin argument, which can be set for other grids
-        if "origin" in kwargs:
-            origin = np.array(kwargs["origin"], dtype=np.double, ndmin=1)
+        if origin is not None:
+            origin = np.array(origin, dtype=np.double, ndmin=1)
             if not np.array_equal(origin, np.zeros(self.dim)):
                 raise RuntimeError(f"Origin must be {str([0]*self.dim)}")
 
