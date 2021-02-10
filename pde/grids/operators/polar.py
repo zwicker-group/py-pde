@@ -16,8 +16,6 @@ This module implements differential operators on polar grids
 
 from typing import Callable
 
-from scipy import sparse
-
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit_allocate_out
 from ..boundaries import Boundaries
@@ -360,6 +358,8 @@ def _get_laplace_matrix(bcs):
         tuple: A sparse matrix and a sparse vector that can be used to evaluate
         the discretized laplacian
     """
+    from scipy import sparse
+
     assert isinstance(bcs.grid, PolarGrid)
     bcs.check_value_rank(0)
 

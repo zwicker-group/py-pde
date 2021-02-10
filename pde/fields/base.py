@@ -14,7 +14,6 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar,
 
 import numba as nb
 import numpy as np
-from scipy import interpolate, ndimage
 
 from ..grids.base import (
     ArrayLike,
@@ -959,6 +958,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             A function which returns interpolated values when called with
             arbitrary positions within the space of the grid.
         """
+        from scipy import interpolate
+
         coords_src = self.grid.axes_coords
         grid_dim = len(self.grid.axes)
 
@@ -1413,6 +1414,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Field with smoothed data. This is stored at `out` if given.
         """
+        from scipy import ndimage
+
         # allocate memory for storing output
         data_in = self._data
         if out is None:

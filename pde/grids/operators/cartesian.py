@@ -19,7 +19,6 @@ from typing import Any, Callable, Tuple
 
 import numba as nb
 import numpy as np
-from scipy import ndimage, sparse
 
 from ... import config
 from ...tools.docstrings import fill_in_docstring
@@ -41,6 +40,8 @@ def _get_laplace_matrix_1d(bcs) -> Tuple[Any, Any]:
         tuple: A sparse matrix and a sparse vector that can be used to evaluate
         the discretized laplacian
     """
+    from scipy import sparse
+
     dim_x = bcs.grid.shape[0]
     matrix = sparse.dok_matrix((dim_x, dim_x))
     vector = sparse.dok_matrix((dim_x, 1))
@@ -82,6 +83,8 @@ def _get_laplace_matrix_2d(bcs) -> Tuple[Any, Any]:
         tuple: A sparse matrix and a sparse vector that can be used to evaluate
         the discretized laplacian
     """
+    from scipy import sparse
+
     dim_x, dim_y = bcs.grid.shape
     matrix = sparse.dok_matrix((dim_x * dim_y, dim_x * dim_y))
     vector = sparse.dok_matrix((dim_x * dim_y, 1))
@@ -264,6 +267,8 @@ def _make_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     Returns:
         A function that can be applied to an array of values
     """
+    from scipy import ndimage
+
     scaling = bcs._uniform_discretization ** -2
     args = bcs._scipy_border_mode
 
@@ -481,6 +486,8 @@ def _make_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     Returns:
         A function that can be applied to an array of values
     """
+    from scipy import ndimage
+
     scaling = 0.5 / bcs.grid.discretization
     dim = bcs.grid.dim
     shape_out = (dim,) + bcs.grid.shape
@@ -878,6 +885,8 @@ def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     Returns:
         A function that can be applied to an array of values
     """
+    from scipy import ndimage
+
     shape = bcs.grid.shape
     scaling = 0.5 / bcs.grid.discretization
     args = bcs._scipy_border_mode
@@ -1062,6 +1071,8 @@ def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
     Returns:
         A function that can be applied to an array of values
     """
+    from scipy import ndimage
+
     scaling = 0.5 / bcs.grid.discretization
     args = bcs._scipy_border_mode
     dim = bcs.grid.dim
@@ -1215,6 +1226,8 @@ def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     Returns:
         A function that can be applied to an array of values
     """
+    from scipy import ndimage
+
     scaling = bcs._uniform_discretization ** -2
     args = bcs._scipy_border_mode
     dim = bcs.grid.dim
@@ -1362,6 +1375,8 @@ def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
     Returns:
         A function that can be applied to an array of values
     """
+    from scipy import ndimage
+
     scaling = 0.5 / bcs.grid.discretization
     args = bcs._scipy_border_mode
     dim = bcs.grid.dim

@@ -6,8 +6,6 @@ Defines a solver using :mod:`scipy.integrate`
 
 from typing import Callable
 
-from scipy import integrate
-
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from .base import SolverBase
@@ -55,6 +53,8 @@ class ScipySolver(SolverBase):
             `t_start` to time `t_end`. The function call signature is
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
+        from scipy import integrate
+
         shape = state.data.shape
         self.info["dt"] = dt
         self.info["steps"] = 0
