@@ -7,7 +7,7 @@ Handles configuration variables of the package
 import collections
 import importlib
 import sys
-from typing import Any, Dict, Iterator, List, Tuple, Union  # @UnusedImport
+from typing import Any, Dict, List, Union  # @UnusedImport
 
 from .misc import module_available
 from .parameters import Parameter
