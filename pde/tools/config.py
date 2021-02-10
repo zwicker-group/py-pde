@@ -4,6 +4,7 @@ Handles configuration variables of the package
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import collections
 import importlib
 import sys
 from typing import Any, Dict, Iterator, List, Tuple, Union  # @UnusedImport
@@ -70,25 +71,34 @@ DEFAULT_CONFIG: List[Union[Parameter, ParameterModuleConstant]] = [
 ]
 
 
-class Config:
+class Config(collections.UserDict):
     """ class handling the package configuration """
 
-    def __init__(self, mode: str = "update"):
+    def __init__(self, items: Dict[str, Any] = None, mode: str = "update"):
         """
         Args:
+            items (dict, optional):
+                Configuration values that should be added or overwritten to initialize
+                the configuration.
             mode (str):
                 Defines the mode in which the configuration is used. Possible values are
 
                 * `insert`: any new configuration key can be inserted
                 * `update`: only the values of pre-existing items can be updated
                 * `locked`: no values can be changed
+
+                Note that the items specified by `items` will always be inserted,
+                independent of the `mode`.
         """
-        self._data: Dict[str, Any] = {p.name: p for p in DEFAULT_CONFIG}
+        self.mode = "insert"  # temporarily allow inserting items
+        super().__init__({p.name: p for p in DEFAULT_CONFIG})
+        if items:
+            self.update(items)
         self.mode = mode
 
     def __getitem__(self, key: str):
         """ retrieve item `key` """
-        parameter = self._data[key]
+        parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
         elif isinstance(parameter, ParameterModuleConstant):
@@ -99,53 +109,41 @@ class Config:
     def __setitem__(self, key: str, value):
         """ update item `key` with `value` """
         if self.mode == "insert":
-            self._data[key] = value
+            self.data[key] = value
+
         elif self.mode == "update":
-            self[key]  # test whether the key already exist (including magic keys)
-            self._data[key] = value
+            try:
+                self[key]  # test whether the key already exist (including magic keys)
+            except KeyError:
+                raise KeyError(
+                    f"{key} is not present and config is not in `insert` mode"
+                )
+            self.data[key] = value
+
         elif self.mode == "locked":
             raise RuntimeError("Configuration is locked")
+
         else:
             raise ValueError(f"Unsupported configuration mode `{self.mode}`")
 
-    def __iter__(self):
-        return iter(self._data)
-
-    def items(self) -> Iterator[Tuple[str, Any]]:
-        """ iterate over the items of this configuration """
-        for key in self._data:
-            yield key, self[key]
+    def __delitem__(self, key: str):
+        """ removes item `key` """
+        if self.mode == "insert":
+            del self.data[key]
+        else:
+            raise RuntimeError("Configuration is not in `insert` mode")
 
     def to_dict(self) -> Dict[str, Any]:
-        """ convert the configuration to a simple dictionary """
+        """convert the configuration to a simple dictionary
+
+        Returns:
+            dict: A representation of the configuration in a normal :class:`dict`.
+        """
         return {k: v for k, v in self.items()}
 
-
-def sphinx_display_config(app, what, name, obj, options, lines):
-    """helper function to display default configuration in sphinx documentation
-
-    Example:
-        This function should be connected to the 'autodoc-process-docstring'
-        event like so:
-
-            app.connect('autodoc-process-docstring', sphinx_display_parameters)
-    """
-    if what == "class" and issubclass(obj, Parameterized):
-        if any(":param parameters:" in line for line in lines):
-            # parse parameters
-            parameters = obj.get_parameters(sort=False)
-            if parameters:
-                lines.append(".. admonition::")
-                lines.append(f"   Parameters of {obj.__name__}:")
-                lines.append("   ")
-                for p in parameters.values():
-                    lines.append(f"   {p.name}")
-                    text = p.description.splitlines()
-                    text.append(f"(Default value: :code:`{p.default_value!r}`)")
-                    text = ["     " + t for t in text]
-                    lines.extend(text)
-                    lines.append("")
-                lines.append("")
+    def __repr__(self) -> str:
+        """ represent the configuration as a string """
+        return f"{self.__class__.__name__}({repr(self.to_dict())})"
 
 
 def environment(dict_type=dict) -> Dict[str, Any]:

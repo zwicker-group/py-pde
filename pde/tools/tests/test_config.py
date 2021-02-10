@@ -17,6 +17,7 @@ def test_config():
     assert any("numba.parallel_threshold" == k for k in c)
     assert any("numba.parallel_threshold" == k and v > 0 for k, v in c.items())
     assert "numba.parallel_threshold" in c.to_dict()
+    assert isinstance(repr(c), str)
 
 
 def test_config_modes():
@@ -25,21 +26,22 @@ def test_config_modes():
     assert c["numba.parallel_threshold"] > 0
     c["numba.parallel_threshold"] = 0
     assert c["numba.parallel_threshold"] == 0
-
     c["new_value"] = "value"
     assert c["new_value"] == "value"
-
+    del c["new_value"]
+    with pytest.raises(KeyError):
+        c["new_value"]
     with pytest.raises(KeyError):
         c["undefined"]
 
     c = Config(mode="update")
     assert c["numba.parallel_threshold"] > 0
     c["numba.parallel_threshold"] = 0
-    assert c["numba.parallel_threshold"] == 0
 
     with pytest.raises(KeyError):
         c["new_value"] = "value"
-
+    with pytest.raises(RuntimeError):
+        del c["numba.parallel_threshold"]
     with pytest.raises(KeyError):
         c["undefined"]
 
@@ -47,10 +49,10 @@ def test_config_modes():
     assert c["numba.parallel_threshold"] > 0
     with pytest.raises(RuntimeError):
         c["numba.parallel_threshold"] = 0
-
     with pytest.raises(RuntimeError):
         c["new_value"] = "value"
-
+    with pytest.raises(RuntimeError):
+        del c["numba.parallel_threshold"]
     with pytest.raises(KeyError):
         c["undefined"]
 
@@ -58,6 +60,11 @@ def test_config_modes():
     assert c["numba.parallel_threshold"] > 0
     with pytest.raises(ValueError):
         c["numba.parallel_threshold"] = 0
+    with pytest.raises(RuntimeError):
+        del c["numba.parallel_threshold"]
+
+    c = Config({"new_value": "value"}, mode="locked")
+    assert c["new_value"] == "value"
 
 
 def test_config_special_values():
