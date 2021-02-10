@@ -144,19 +144,22 @@ These classes provide methods for applying differential operators to the fields,
 e.g., the result of applying the Laplacian to a scalar field is returned by
 calling the method :meth:`~pde.fields.scalar.ScalarField.laplace`, which
 returns another instance of :class:`~pde.fields.scalar.ScalarField`, whereas
-:meth:`~pde.fields.scalar.ScalarField.gradient` returns a `VectorField`.
+:meth:`~pde.fields.scalar.ScalarField.gradient` returns a
+:class:`~pde.fields.vectorial.VectorField`.
 Combining these functions with ordinary arithmetics on fields allows to
 represent the right hand side of many partial differential equations that appear
 in physics.
 Importantly, the differential operators work with flexible boundary conditions. 
 
-The pde to solve are represented as a separate class inheriting from 
+The PDEs to solve are represented as a separate class inheriting from 
 :class:`~pde.pdes.base.PDEBase`.
 One example defined in this package is the diffusion equation implemented as
 :class:`~pde.pdes.diffusion.DiffusionPDE`, but more specific situations need to
 be implemented by the user.
+Most notably, PDEs can be specified by their expression using the convenient
+:class:`~pde.pdes.pde.PDE` class.
 
-The pdes are solved using solver classes, where a simple explicit solver is
+The PDEs are solved using solver classes, where a simple explicit solver is
 implemented by :class:`~pde.solvers.explicit.ExplicitSolver`, but more advanced
 implementations can be done. 
 To obtain more details during the simulation, trackers can be attached to the

@@ -4,6 +4,7 @@ from sphinx.util.docutils import SphinxDirective
 
 class PackageConfigDirective(SphinxDirective):
     """ directive that displays all package configuration items """
+
     has_content = True
     required_arguments = 0
     optional_arguments = 0
@@ -16,14 +17,16 @@ class PackageConfigDirective(SphinxDirective):
         items = []
 
         for p in c.data.values():
-            value = c[p.name]
-            item = nodes.paragraph()
-            item += nodes.strong(p.name, p.name)
-            descr = f"{p.description} (Default value: {value!r})"
-            item += nodes.paragraph(descr, descr)
-            items += item
+            description = nodes.paragraph(text=p.description + " ")
+            description += nodes.strong(text=f"(Default value: {c[p.name]!r})")
 
-        return items
+            items += nodes.definition_list_item(
+                "",
+                nodes.term(text=p.name),
+                nodes.definition("", description),
+            )
+
+        return [nodes.definition_list("", *items)]
 
 
 def setup(app):

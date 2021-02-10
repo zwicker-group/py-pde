@@ -207,7 +207,7 @@ Note that the coordinates of the point need to be supplied as a
 :class:`numpy.ndarray` and that only the interpolation at single points is
 supported.
 However, iteration over multiple points can be fast when the loop is compiled
-with `numba`.
+with :mod:`numba`.
 
 
 Inner products
@@ -369,8 +369,8 @@ Here is a list of all configuration options that can be adjusted in the package:
 
 .. tip::
     
-    For example, to disable parallel computing in the package, the following code could be
-    added to the start of the script:
+    To disable parallel computing in the package, the following code could be added to
+    the start of the script:
     
     
     .. code-block:: python

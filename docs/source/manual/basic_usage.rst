@@ -58,7 +58,8 @@ Moreover, they have methods for applying differential operators,
 e.g., the result of applying the Laplacian to a scalar field is returned by
 calling the method :meth:`~pde.fields.scalar.ScalarField.laplace`, which
 returns another instance of :class:`~pde.fields.scalar.ScalarField`, whereas
-:meth:`~pde.fields.scalar.ScalarField.gradient` returns a `~pde.fields.vector.VectorField`.
+:meth:`~pde.fields.scalar.ScalarField.gradient` returns a
+:class:`~pde.fields.vector.VectorField`.
 Combining these functions with ordinary arithmetics on fields allows to
 represent the right hand side of many partial differential equations that appear
 in physics.
@@ -106,7 +107,7 @@ Note that all intermediate states are discarded in the simulation above and no
 information about the dynamical evolution is retained.
 To study the dynamics, one can either analyze the evolution on the fly or store its
 state for subsequent analysis.
-Both these tasks are achieved using `trackers`, which analyze the simulation
+Both these tasks are achieved using :mod:`~pde.trackers`, which analyze the simulation
 periodically.
 For instance, to store the state for some time points in memory, one uses  
  
@@ -115,9 +116,9 @@ For instance, to store the state for some time points in memory, one uses
     storage = pde.MemoryStorage()
     result = eq.solve(field, t_range=10, dt=1e-3, tracker=["progress", storage.tracker(1)])
 
-Note that we also included the special identifier `"progress"` in the list of trackers,
-which shows a progress bar during the simulation.
-Another useful tracker is `"plot"` which displays the state on the fly.
+Note that we also included the special identifier :code:`"progress"` in the list of
+trackers, which shows a progress bar during the simulation.
+Another useful tracker is :code:`"plot"` which displays the state on the fly.
 
 
 Analyzing the results
@@ -125,7 +126,7 @@ Analyzing the results
 Sometimes is suffices to plot the final result, which can be done using
 :code:`result.plot()`.
 The final result can of course also be analyzed quantitatively, e.g., using
-`result.average` to obtain its mean value.
+:attr:`result.average` to obtain its mean value.
 If the intermediate states have been saved as indicated above, they can be analyzed
 subsequently:
 
