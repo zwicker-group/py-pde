@@ -3,6 +3,7 @@ from sphinx.util.docutils import SphinxDirective
 
 
 class PackageConfigDirective(SphinxDirective):
+    """ directive that displays all package configuration items """
     has_content = True
     required_arguments = 0
     optional_arguments = 0
@@ -14,7 +15,7 @@ class PackageConfigDirective(SphinxDirective):
         c = Config()
         items = []
 
-        for p in c._data.values():
+        for p in c.data.values():
             value = c[p.name]
             item = nodes.paragraph()
             item += nodes.strong(p.name, p.name)
