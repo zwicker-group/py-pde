@@ -75,7 +75,6 @@ import itertools
 from typing import Callable, Optional, Tuple
 
 import numpy as np
-from scipy import spatial
 from scipy.special import sph_harm
 
 from ..tools.cache import cached_method
@@ -449,6 +448,8 @@ class PointsOnSphere:
         Returns:
             :class:`numpy.ndarray`: The weight associated with each point
         """
+        from scipy import spatial
+
         points_flat = self.points.reshape(-1, self.dim)
         if self.dim == 1:
             weights = np.array([0.5, 0.5])
@@ -496,6 +497,8 @@ class PointsOnSphere:
         Returns:
             :class:`numpy.ndarray`: the distance of each point to each other
         """
+        from scipy import spatial
+
         if self.dim == 1:
             raise ValueError("Distances can only be calculated for dim >= 2")
 

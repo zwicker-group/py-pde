@@ -10,7 +10,6 @@ from abc import ABCMeta
 from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, Union
 
 import numpy as np
-from scipy import interpolate
 
 from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
@@ -240,6 +239,8 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             A dictionary with information about the image, which is  convenient
             for plotting.
         """
+        from scipy import interpolate
+
         _, r_outer = self.axes_bounds[0]
         r_data = self.axes_coords[0]
 

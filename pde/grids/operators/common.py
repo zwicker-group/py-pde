@@ -9,7 +9,6 @@ import warnings
 from typing import Callable
 
 import numpy as np
-from scipy import sparse
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +62,8 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Callabl
         solution to Poisson's equation where the array is used as the right hand
         side
     """
+    from scipy import sparse
+
     if method not in {"auto", "scipy"}:
         raise ValueError(f"Method {method} is not available")
 
