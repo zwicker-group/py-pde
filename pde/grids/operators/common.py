@@ -63,6 +63,7 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Callabl
         side
     """
     from scipy import sparse
+    from scipy.sparse.linalg.dsolve.linsolve import MatrixRankWarning
 
     if method not in {"auto", "scipy"}:
         raise ValueError(f"Method {method} is not available")
@@ -82,7 +83,7 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Callabl
                 warnings.simplefilter("error")  # enable warning catching
                 result = sparse.linalg.spsolve(mat, rhs)
 
-        except sparse.linalg.dsolve.linsolve.MatrixRankWarning:
+        except MatrixRankWarning:
             # this can happen for singular laplace matrix, e.g. when pure
             # Neumann conditions are considered. In this case, a solution is
             # obtained using least squares
