@@ -122,7 +122,7 @@ def test_storing_extract_range(tmp_path):
 def test_storing_collection(tmp_path):
     """ test methods specific to FieldCollections in memory storage """
     grid = UnitGrid([2, 2])
-    f1 = ScalarField.random_uniform(grid, 0.1, 0.4)
+    f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label='scalar')
     f2 = VectorField.random_uniform(grid, 0.1, 0.4)
     f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4)
     fc = FieldCollection([f1, f2, f3])
@@ -144,6 +144,8 @@ def test_storing_collection(tmp_path):
         assert storage.extract_field(0)[0] == f1
         assert storage.extract_field(1)[0] == f2
         assert storage.extract_field(2)[0] == f3
+        assert storage.extract_field(0)[0].label == "scalar"
+        assert storage.extract_field(0, label="new label")[0].label == "new label"
 
 
 def test_storage_apply(tmp_path):

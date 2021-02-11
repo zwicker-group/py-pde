@@ -281,29 +281,34 @@ class StorageBase(metaclass=ABCMeta):
         """ finalize the storage after writing """
         pass
 
-    def extract_field(self, field_index: int) -> "MemoryStorage":
-        """extract the time course of a single field in a collection
+    def extract_field(self, field_index: int, label: str = None) -> "MemoryStorage":
+        """extract the time course of a single field from a collection
 
         Note:
-            This might return a view into the original data, so modifying the
-            returned data can also change the underlying original data.
+            This might return a view into the original data, so modifying the returned
+            data can also change the underlying original data.
 
         Args:
             field_index (index):
-                The index into the field collection
+                The index into the field collection. This determines which field of the
+                collection is returned.
+            label (str):
+                The label of the returned field. If omitted, the stored label is used.
 
         Returns:
-            :class:`MemoryStorage`: a storage instance that contains the data
-            for the single field
+            :class:`MemoryStorage`: a storage instance that contains the data for the
+            single field
         """
         from .memory import MemoryStorage  # @Reimport
 
         # get the field to check its type
         if not isinstance(self._field, FieldCollection):
-            raise TypeError("Can only extract fields from FieldCollections")
+            raise TypeError("Can only extract fields from `FieldCollection`")
 
         # extract the field and the associated time series
         field_obj = self._field[field_index]
+        if label:
+            field_obj.label = label
         field_slice = self._field._slices[field_index]
         data = [d[field_slice].reshape(field_obj.data.shape) for d in self.data]
 
@@ -318,18 +323,16 @@ class StorageBase(metaclass=ABCMeta):
         """extract a particular time interval
 
         Note:
-            This might return a view into the original data, so modifying the
-            returned data can also change the underlying original data.
+            This might return a view into the original data, so modifying the returned
+            data can also change the underlying original data.
 
         Args:
             t_range (float or tuple):
-                Determines the range of time points included in the result. If
-                only a single number is given, all data up to this time point
-                are included.
+                Determines the range of time points included in the result. If only a
+                single number is given, all data up to this time point are included.
 
         Returns:
-            :class:`MemoryStorage`: a storage instance that contains the
-            extracted data.
+            :class:`MemoryStorage`: a storage instance that contains the extracted data.
         """
         from .memory import MemoryStorage  # @Reimport
 
