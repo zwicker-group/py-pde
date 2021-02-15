@@ -1,4 +1,4 @@
-name: Test python package
+name: Test all requirements
 
 on: [push]
 
@@ -6,19 +6,16 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}
     
-    env:
-      python-version: 3.8
-    
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python
       uses: actions/setup-python@v1
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: 3.8
 
     - name: Install dependencies
       # install all requirements
