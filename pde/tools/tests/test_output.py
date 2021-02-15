@@ -7,7 +7,7 @@ from pde.tools import output
 
 def test_progress_bars():
     """ test progress bars """
-    for pb_cls in [output.MockProgress, output.get_progress_bar_class()]:
+    for pb_cls in [output.SimpleProgress, output.get_progress_bar_class()]:
         tot = 0
         for i in pb_cls(range(4)):
             tot += i

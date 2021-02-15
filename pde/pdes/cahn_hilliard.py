@@ -88,8 +88,8 @@ class CahnHilliardPDE(PDEBase):
 
         Returns:
             A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`numpy.ndarray` giving
+            with an instance of :class:`~numpy.ndarray` of the state data and
+            the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
         shape = state.grid.shape

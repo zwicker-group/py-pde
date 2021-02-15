@@ -356,19 +356,19 @@ def get_common_dtype(*args):
     Args:
         *args: All items (arrays, scalars, etc) to be checked
 
-    Returns: np.complex if any entry is complex, otherwise np.double
+    Returns: numpy.cdouble if any entry is complex, otherwise np.double
     """
     for arg in args:
         if np.iscomplexobj(arg):
-            return np.complex
+            return np.cdouble
     return np.double
 
 
 def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
-    """convert array dtype either to np.double or np.complex
+    """convert array dtype either to np.double or np.cdouble
 
     Args:
-        data (:class:`numpy.ndarray`):
+        data (:class:`~numpy.ndarray`):
             The data that needs to be converted to a float array. This can also be any
             iterable of numbers.
         dtype (numpy dtype):
@@ -379,7 +379,7 @@ def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
             untouched). Note that data will always be copied when changing the dtype.
 
     Returns:
-        :class:`numpy.ndarray`: An array with the correct dtype
+        :class:`~numpy.ndarray`: An array with the correct dtype
     """
     if dtype is None:
         # dtype needs to be determined automatically
@@ -390,7 +390,7 @@ def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
             # Conversion can fail when `data` contains a complex sympy number, i.e.,
             # sympy.I. In this case, we simply try to convert the expression using a
             # complex dtype
-            result = np.array(data, dtype=np.complex, copy=copy)
+            result = np.array(data, dtype=np.cdouble, copy=copy)
 
     else:
         # a specific dtype is requested

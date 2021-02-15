@@ -66,7 +66,7 @@ def make_colored_noise(
     # deal with colored noise in the following
 
     # prepare wave vectors
-    k2s = 0
+    k2s = np.array(0)
     for i in range(dim):
         if i == dim - 1:
             k = np.fft.rfftfreq(shape[i], dx[i])

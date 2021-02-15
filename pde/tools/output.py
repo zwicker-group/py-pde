@@ -16,10 +16,10 @@ Python functions for handling output
 import sys
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import List  # @UnusedImport
+from typing import List, Type  # @UnusedImport
 
 
-class MockProgress:
+class SimpleProgress:
     """ indicates progress by printing dots to stderr """
 
     def __init__(self, iterable=None, *args, **kwargs):
@@ -44,7 +44,7 @@ class MockProgress:
             self.refresh()
 
 
-def get_progress_bar_class():
+def get_progress_bar_class() -> Type[SimpleProgress]:
     """returns a class that behaves as progress bar.
 
     This either uses classes from the optional `tqdm` package or a simple
@@ -60,7 +60,7 @@ def get_progress_bar_class():
         warnings.warn(
             "`tqdm` package is not available. Progress will be indicated by dots."
         )
-        progress_bar_class = MockProgress
+        progress_bar_class = SimpleProgress
 
     else:
         # tqdm is available => decide which class to return
@@ -75,7 +75,7 @@ def get_progress_bar_class():
                 progress_bar_class = tqdm.tqdm
             else:
                 # use the fancier version of the progress bar in jupyter
-                from tqdm.auto import tqdm as progress_bar_class
+                from tqdm.auto import tqdm as progress_bar_class  # type: ignore
         else:
             # only import text progress bar in older version
             progress_bar_class = tqdm.tqdm

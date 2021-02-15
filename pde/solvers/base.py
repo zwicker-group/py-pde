@@ -108,7 +108,7 @@ class SolverBase(metaclass=ABCMeta):
 
         Returns:
             A function that is called with data given by a
-            :class:`numpy.ndarray` and a time. The function returns the
+            :class:`~numpy.ndarray` and a time. The function returns the
             deterministic evolution rate and (if applicable) a realization of
             the associated noise.
         """

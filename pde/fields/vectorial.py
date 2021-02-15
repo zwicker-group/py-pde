@@ -33,7 +33,7 @@ class VectorField(DataFieldBase):
     Attributes:
         grid (:class:`~pde.grids.base.GridBase`):
             The underlying grid defining the discretization
-        data (:class:`numpy.ndarray`):
+        data (:class:`~numpy.ndarray`):
             Vector components at the support points of the grid
         label (str):
             Name of the field
@@ -189,7 +189,9 @@ class VectorField(DataFieldBase):
 
     __matmul__ = dot  # support python @-syntax for matrix multiplication
 
-    def make_dot_operator(self, conjugate: bool = True) -> Callable:
+    def make_dot_operator(
+        self, conjugate: bool = True
+    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return operator calculating the dot product involving vector fields
 
         This supports both products between two vectors as well as products between a
@@ -203,7 +205,7 @@ class VectorField(DataFieldBase):
                 Whether to use the complex conjugate for the second operand
 
         Returns:
-            function that takes two instance of :class:`numpy.ndarray`, which contain
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written. Note that the
             returned function is jitted with numba for speed.
@@ -214,7 +216,7 @@ class VectorField(DataFieldBase):
         if conjugate:
 
             @register_jitable
-            def inner(a, b, out):
+            def inner(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
                 """ calculate dot product between fields `a` and `b` """
                 out[:] = a[0] * b[0].conjugate()  # overwrite potential data in out
                 for i in range(1, dim):
@@ -224,7 +226,7 @@ class VectorField(DataFieldBase):
         else:
 
             @register_jitable
-            def inner(a, b, out):
+            def inner(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
                 """ calculate dot product between fields `a` and `b` """
                 out[:] = a[0] * b[0]  # overwrite potential data in out
                 for i in range(1, dim):
@@ -278,7 +280,7 @@ class VectorField(DataFieldBase):
             This function does not check types or dimensions.
 
         Returns:
-            function that takes two instance of :class:`numpy.ndarray`, which
+            function that takes two instance of :class:`~numpy.ndarray`, which
             contain the discretized data of the two operands. An optional third
             argument can specify the output array to which the result is
             written. Note that the returned function is jitted with numba for
@@ -331,7 +333,7 @@ class VectorField(DataFieldBase):
             This function does not check types or dimensions.
 
         Returns:
-            function that takes two instance of :class:`numpy.ndarray`, which contain
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written. Note that the
             returned function is jitted with numba for speed.
@@ -477,7 +479,7 @@ class VectorField(DataFieldBase):
 
     @property
     def integral(self) -> np.ndarray:
-        """ :class:`numpy.ndarray`: integral of each component over space """
+        """ :class:`~numpy.ndarray`: integral of each component over space """
         return self.grid.integrate(self.data)
 
     def to_scalar(

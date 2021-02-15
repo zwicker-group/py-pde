@@ -164,7 +164,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
                 to the center are returned.
 
         Returns:
-            :class:`numpy.ndarray`: The coordinates of the point
+            :class:`~numpy.ndarray`: The coordinates of the point
         """
         # handle the boundary distance
         r_min = boundary_distance if avoid_center else 0
@@ -190,7 +190,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         """return a line cut for the cylindrical grid
 
         Args:
-            data (:class:`numpy.ndarray`):
+            data (:class:`~numpy.ndarray`):
                 The values at the grid points
             extract (str):
                 Determines which cut is done through the grid. Possible choices
@@ -242,7 +242,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         """return a 2d-image of the data
 
         Args:
-            data (:class:`numpy.ndarray`): The values at the grid points
+            data (:class:`~numpy.ndarray`): The values at the grid points
 
         Returns:
             A dictionary with information about the image, which is  convenient
@@ -262,7 +262,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         """check whether the point is contained in the grid
 
         Args:
-            point (:class:`numpy.ndarray`): Coordinates of the point
+            point (:class:`~numpy.ndarray`): Coordinates of the point
         """
         assert len(point) == 3
         r = np.hypot(point[0], point[1])
@@ -275,7 +275,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         """generates all mirror points corresponding to `point`
 
         Args:
-            point (:class:`numpy.ndarray`): the point within the grid
+            point (:class:`~numpy.ndarray`): the point within the grid
             with_self (bool): whether to include the point itself
             only_periodic (bool): whether to only mirror along periodic axes
 
@@ -293,7 +293,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
     @cached_property()
     def cell_volume_data(self) -> Tuple[np.ndarray, float]:
-        """ :class:`numpy.ndarray`: the volumes of all cells """
+        """ :class:`~numpy.ndarray`: the volumes of all cells """
         dr, dz = self.discretization
         rs = np.arange(self.shape[0] + 1) * dr
         areas = np.pi * rs ** 2
@@ -304,11 +304,11 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         """convert coordinates of a point to Cartesian coordinates
 
         Args:
-            points (:class:`numpy.ndarray`):
+            points (:class:`~numpy.ndarray`):
                 Points given in the coordinates of the grid
 
         Returns:
-            :class:`numpy.ndarray`: The Cartesian coordinates of the point
+            :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.num_axes:
@@ -326,11 +326,11 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         y-coordinate will be zero.
 
         Args:
-            points (:class:`numpy.ndarray`):
+            points (:class:`~numpy.ndarray`):
                 Points given in Cartesian coordinates.
 
         Returns:
-            :class:`numpy.ndarray`: Points given in the coordinates of the grid
+            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
         """
         points = np.atleast_1d(points)
         assert points.shape[-1] == self.dim
@@ -346,7 +346,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         y-coordinate will be zero.
 
         Args:
-            cells (:class:`numpy.ndarray`):
+            cells (:class:`~numpy.ndarray`):
                 Indices of the cells whose center coordinates are requested.
                 This can be float values to indicate positions relative to the
                 cell center.
@@ -355,7 +355,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
                 coordinates or grid coordinates.
 
         Returns:
-            :class:`numpy.ndarray`: The center points of the respective cells
+            :class:`~numpy.ndarray`: The center points of the respective cells
         """
         cells = np.atleast_1d(cells)
 
@@ -380,17 +380,17 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         non-periodic axes).
 
         Args:
-            points (:class:`numpy.ndarray`): Real coordinates
+            points (:class:`~numpy.ndarray`): Real coordinates
 
         Returns:
-            :class:`numpy.ndarray`: The indices of the respective cells
+            :class:`~numpy.ndarray`: The indices of the respective cells
         """
         points = self.point_from_cartesian(points)
 
         # convert from grid coordinates to cells indices
         points[..., 1] -= self.axes_bounds[1][0]
         points /= self.discretization
-        return points.astype(np.int)
+        return points.astype(np.intc)
 
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
@@ -398,11 +398,11 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         In case of periodic boundary conditions, the shortest vector is returned
 
         Args:
-            p1 (:class:`numpy.ndarray`): First point(s)
-            p2 (:class:`numpy.ndarray`): Second point(s)
+            p1 (:class:`~numpy.ndarray`): First point(s)
+            p2 (:class:`~numpy.ndarray`): Second point(s)
 
         Returns:
-            :class:`numpy.ndarray`: The difference vectors between the points
+            :class:`~numpy.ndarray`: The difference vectors between the points
             with periodic  boundary conditions applied.
         """
         diff = np.atleast_1d(p2) - np.atleast_1d(p1)
@@ -415,7 +415,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         """return spherical coordinates associated with the grid
 
         Args:
-            origin (:class:`numpy.ndarray`): Coordinates of the origin at which the polar
+            origin (:class:`~numpy.ndarray`): Coordinates of the origin at which the polar
                 coordinate system is anchored. Note that this must be of the
                 form `[0, 0, z_val]`, where only `z_val` can be chosen freely.
             ret_angle (bool): Determines whether the azimuthal angle is returned

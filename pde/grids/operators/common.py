@@ -6,14 +6,16 @@ Common functions that are used by many operators
 
 import logging
 import warnings
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
 
-def make_laplace_from_matrix(matrix, vector) -> Callable:
+def make_laplace_from_matrix(
+    matrix, vector
+) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
     """make a Laplace operator using matrix vector products
 
     Args:
@@ -36,15 +38,17 @@ def make_laplace_from_matrix(matrix, vector) -> Callable:
         """ apply the laplace operator to `arr` """
         result = mat.dot(arr.flat) + vec
         if out is None:
-            return result.reshape(arr.shape)
+            return result.reshape(arr.shape)  # type: ignore
         else:
-            out.flat[:] = result
+            out[:] = result.reshape(arr.shape)
             return out
 
     return laplace
 
 
-def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Callable:
+def make_general_poisson_solver(
+    matrix, vector, method: str = "auto"
+) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
     """make an operator that solves Poisson's problem
 
     Args:
@@ -112,10 +116,10 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Callabl
             logger.info("Solved Poisson problem with sparse.linalg.lsmr")
 
         # convert the result to the correct format
-        if out is not None:
-            out.flat[:] = result
-        else:
+        if out is None:
             out = result.reshape(arr.shape)
+        else:
+            out[:] = result.reshape(arr.shape)
         return out
 
     return solve_poisson

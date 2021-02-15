@@ -310,7 +310,7 @@ class BoundaryPair(BoundaryAxisBase):
         right outside the domain
 
         Args:
-            fill (:class:`numpy.ndarray`, optional):
+            fill (:class:`~numpy.ndarray`, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `DomainError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.

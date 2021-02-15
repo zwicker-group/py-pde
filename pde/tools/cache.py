@@ -44,9 +44,9 @@ def objects_equal(a, b) -> bool:
     """
     # compare numpy arrays
     if isinstance(a, np.ndarray):
-        return np.array_equal(a, b)  # type: ignore
+        return np.array_equal(a, b)
     if isinstance(b, np.ndarray):
-        return np.array_equal(b, a)  # type: ignore
+        return np.array_equal(b, a)
 
     # compare dictionaries
     if isinstance(a, dict):

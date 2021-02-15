@@ -81,7 +81,7 @@ class ScipySolver(SolverBase):
                 **self.solver_params,
             )
             self.info["steps"] += sol.nfev
-            state.data.flat = sol.y
+            state.data[:] = sol.y.reshape(shape)
             return sol.t[0]
 
         if dt:

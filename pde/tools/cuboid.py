@@ -227,12 +227,12 @@ def asanyarray_flags(data: np.ndarray, dtype=None, writeable: bool = True):
     A copy is only made if necessary
 
     Args:
-        data (:class:`numpy.ndarray`): numpy array that whose flags are adjusted
+        data (:class:`~numpy.ndarray`): numpy array that whose flags are adjusted
         dtype: the resulant dtype
         writeable (bool): Flag determining whether the results is writable
 
     Returns:
-        :class:`numpy.ndarray`:
+        :class:`~numpy.ndarray`:
             array with same data as `data` but with flags adjusted.
     """
     try:

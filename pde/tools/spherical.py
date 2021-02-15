@@ -98,7 +98,7 @@ def radius_from_volume(volume: float, dim: int) -> float:
     elif dim == 2:
         return np.sqrt(volume / π)  # type: ignore
     elif dim == 3:
-        return (3 * volume / (4 * π)) ** (1 / 3)  # type: ignore
+        return (3 * volume / (4 * π)) ** (1 / 3)
     else:
         raise NotImplementedError(f"Cannot calculate the radius in {dim} dimensions")
 
@@ -145,9 +145,9 @@ def volume_from_radius(radius: float, dim: int) -> float:
     if dim == 1:
         return 2 * radius
     elif dim == 2:
-        return π * radius ** 2  # type: ignore
+        return π * radius ** 2
     elif dim == 3:
-        return 4 * π / 3 * radius ** 3  # type: ignore
+        return 4 * π / 3 * radius ** 3
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
@@ -194,9 +194,9 @@ def surface_from_radius(radius: float, dim: int) -> float:
     if dim == 1:
         return 2
     elif dim == 2:
-        return 2 * π * radius  # type: ignore
+        return 2 * π * radius
     elif dim == 3:
-        return 4 * π * radius ** 2  # type: ignore
+        return 4 * π * radius ** 2
     else:
         raise NotImplementedError(
             f"Cannot calculate the surface area in {dim} dimensions"
@@ -216,9 +216,9 @@ def radius_from_surface(surface: float, dim: int) -> float:
     if dim == 1:
         raise RuntimeError("Cannot calculate radius of 1-d sphere from surface")
     elif dim == 2:
-        return surface / (2 * π)  # type: ignore
+        return surface / (2 * π)
     elif dim == 3:
-        return np.sqrt(surface / (4 * π))  # type: ignore
+        return float(np.sqrt(surface / (4 * π)))
     else:
         raise NotImplementedError(f"Cannot calculate the radius in {dim} dimensions")
 
@@ -258,10 +258,10 @@ def points_cartesian_to_spherical(points):
     """Convert points from Cartesian to spherical coordinates
 
     Args:
-        points (:class:`numpy.ndarray`): Points in Cartesian coordinates
+        points (:class:`~numpy.ndarray`): Points in Cartesian coordinates
 
     Returns:
-        :class:`numpy.ndarray`: Points (r, θ, φ) in spherical coordinates
+        :class:`~numpy.ndarray`: Points (r, θ, φ) in spherical coordinates
     """
     points = np.atleast_1d(points)
     assert points.shape[-1] == 3
@@ -276,15 +276,15 @@ def points_cartesian_to_spherical(points):
     return ps_spherical
 
 
-def points_spherical_to_cartesian(points):
+def points_spherical_to_cartesian(points: np.ndarray) -> np.ndarray:
     """Convert points from spherical to Cartesian coordinates
 
     Args:
-        points (:class:`numpy.ndarray`):
+        points (:class:`~numpy.ndarray`):
             Points in spherical coordinates (r, θ, φ)
 
     Returns:
-        :class:`numpy.ndarray`: Points in Cartesian coordinates
+        :class:`~numpy.ndarray`: Points in Cartesian coordinates
     """
     points = np.atleast_1d(points)
     assert points.shape[-1] == 3
@@ -306,9 +306,9 @@ def haversine_distance(point1, point2) -> float:
     Licensed under MIT License (see copy in root of this project)
 
     Args:
-        point1 (:class:`numpy.ndarray`): First point on the sphere (given in
+        point1 (:class:`~numpy.ndarray`): First point on the sphere (given in
             Cartesian coordinates)
-        point2 (:class:`numpy.ndarray`): Second point on the sphere
+        point2 (:class:`~numpy.ndarray`): Second point on the sphere
         radius (float): Radius of the sphere
     """
     # note that latitude φ is θ and longitude λ is φ in our notation
@@ -325,7 +325,7 @@ def haversine_distance(point1, point2) -> float:
     return 2 * r1 * np.arcsin(np.sqrt(arg))  # type: ignore
 
 
-def get_spherical_polygon_area(vertices, radius: float = 1) -> float:
+def get_spherical_polygon_area(vertices: np.ndarray, radius: float = 1) -> float:
     """Calculate the surface area of a polygon on the surface of a sphere.
     Based on equation provided here:
     http://mathworld.wolfram.com/LHuiliersTheorem.html
@@ -335,7 +335,7 @@ def get_spherical_polygon_area(vertices, radius: float = 1) -> float:
     Licensed under MIT License (see copy in root of this project)
 
     Args:
-        vertices (:class:`numpy.ndarray`): List of vertices (using Cartesian
+        vertices (:class:`~numpy.ndarray`): List of vertices (using Cartesian
             coordinates) that describe the corners of the polygon. The vertices
             need to be oriented.
         radius (float): Radius of the sphere
@@ -377,7 +377,7 @@ class PointsOnSphere:
     def __init__(self, points):
         """
         Args:
-            points (:class:`numpy.ndarray`):
+            points (:class:`~numpy.ndarray`):
                 The list of points on the unit sphere
         """
         self.points = np.asarray(points, dtype=np.double)
@@ -446,7 +446,7 @@ class PointsOnSphere:
                 zero vector
 
         Returns:
-            :class:`numpy.ndarray`: The weight associated with each point
+            :class:`~numpy.ndarray`: The weight associated with each point
         """
         from scipy import spatial
 
@@ -495,7 +495,7 @@ class PointsOnSphere:
         """calculate the (spherical) distances between each point
 
         Returns:
-            :class:`numpy.ndarray`: the distance of each point to each other
+            :class:`~numpy.ndarray`: the distance of each point to each other
         """
         from scipy import spatial
 

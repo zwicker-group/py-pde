@@ -45,7 +45,7 @@ class PDEBase(metaclass=ABCMeta):
     def __init__(self, noise: OptionalArrayLike = 0):
         """
         Args:
-            noise (float or :class:`numpy.ndarray`):
+            noise (float or :class:`~numpy.ndarray`):
                 Magnitude of the additive Gaussian white noise that is supported for all
                 PDEs by default. If set to zero, a deterministic partial differential
                 equation will be solved. Different noise magnitudes can be supplied for

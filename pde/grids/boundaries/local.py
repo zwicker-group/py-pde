@@ -49,7 +49,7 @@ def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) -> Tuple[np.ndarray, int, 
     """extract the 1d array along axis at point idx
 
     Args:
-        arr (:class:`numpy.ndarray`): The full data array
+        arr (:class:`~numpy.ndarray`): The full data array
         idx (tuple): An index into the data array
         axis (int): The axis along which the 1d array will be extracted
 
@@ -271,7 +271,7 @@ class BCBase(metaclass=ABCMeta):
                 supported for scalar boundary conditions.
 
         Returns:
-            :class:`numpy.ndarray`: The value at the boundary
+            :class:`~numpy.ndarray`: The value at the boundary
         """
         if isinstance(value, str):
             # inhomogeneous value given by an expression

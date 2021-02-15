@@ -36,7 +36,7 @@ class FieldCollection(FieldBase):
         Args:
             fields:
                 Sequence of the individual fields
-            data (:class:`numpy.ndarray`):
+            data (:class:`~numpy.ndarray`):
                 Data of the fields. If `None`, the data is instead taken from
                 the individual fields given by `fields`.
             copy_fields (bool):
@@ -223,7 +223,7 @@ class FieldCollection(FieldBase):
         Args:
             attributes (dict):
                 The attributes that describe the current instance
-            data (:class:`numpy.ndarray`, optional):
+            data (:class:`~numpy.ndarray`, optional):
                 Data values at support points of the grid defining all fields
         """
         if "class" in attributes:
@@ -411,7 +411,7 @@ class FieldCollection(FieldBase):
         """return a copy of the data, but not of the grid
 
         Args:
-            data (:class:`numpy.ndarray`, optional):
+            data (:class:`~numpy.ndarray`, optional):
                 Data values at the support points of the grid that define the
                 field. Note that the data is not copied but used directly.
             label (str, optional):

@@ -109,10 +109,10 @@ def test_asanyarray_flags():
     assert a is asanyarray_flags(a)
     assert a is asanyarray_flags(a, np.double)
     assert a is asanyarray_flags(a, writeable=True)
-    assert a is not asanyarray_flags(a, np.int)
+    assert a is not asanyarray_flags(a, np.intc)
     assert a is not asanyarray_flags(a, writeable=False)
 
-    for dtype in (np.int, np.double):
+    for dtype in (np.intc, np.double):
         b = asanyarray_flags(a, dtype)
         assert b.dtype == dtype
 

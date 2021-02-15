@@ -139,7 +139,7 @@ class GridBase(metaclass=ABCMeta):
     # mandatory, immutable, private attributes
     _axes_bounds: Tuple[Tuple[float, float], ...]
     _axes_coords: Tuple[np.ndarray, ...]
-    _discretization: np.array
+    _discretization: np.ndarray
     _shape: Tuple[int, ...]
 
     # to help sphinx, we here list docstrings for classproperties
@@ -188,7 +188,7 @@ class GridBase(metaclass=ABCMeta):
         return self._axes_coords
 
     @property
-    def discretization(self) -> np.array:
+    def discretization(self) -> np.ndarray:
         """ :class:`numpy.array`: the linear size of a cell along each axis """
         return self._discretization
 
@@ -288,12 +288,12 @@ class GridBase(metaclass=ABCMeta):
 
     @cached_property()
     def cell_coords(self) -> np.ndarray:
-        """ :class:`numpy.ndarray`: the coordinates of each cell """
+        """ :class:`~numpy.ndarray`: the coordinates of each cell """
         return np.moveaxis(np.meshgrid(*self.axes_coords, indexing="ij"), 0, -1)
 
     @cached_property()
     def cell_volumes(self) -> np.ndarray:
-        """ :class:`numpy.ndarray`: volume of each cell """
+        """ :class:`~numpy.ndarray`: volume of each cell """
         vols = functools.reduce(np.outer, self.cell_volume_data)
         return np.broadcast_to(vols, self.shape)
 
@@ -308,8 +308,8 @@ class GridBase(metaclass=ABCMeta):
         This takes periodic boundary conditions into account if need be
 
         Args:
-            p1 (:class:`numpy.ndarray`): First position
-            p2 (:class:`numpy.ndarray`): Second position
+            p1 (:class:`~numpy.ndarray`): First position
+            p2 (:class:`~numpy.ndarray`): Second position
 
         Returns:
             float: Distance between the two positions
@@ -337,7 +337,7 @@ class GridBase(metaclass=ABCMeta):
                 Whether the boundary is at the upper side of the axis
 
         Returns:
-            :class:`numpy.ndarray`: Coordinates of the boundary points.
+            :class:`~numpy.ndarray`: Coordinates of the boundary points.
         """
         # get coordinate along the axis determining the boundary
         if upper:
@@ -418,7 +418,7 @@ class GridBase(metaclass=ABCMeta):
         """normalize coordinates by applying periodic boundary conditions
 
         Args:
-            point (:class:`numpy.ndarray`):
+            point (:class:`~numpy.ndarray`):
                 Coordinates of a single point
             reflect (bool):
                 Flag determining whether coordinates along non-periodic axes are
@@ -426,7 +426,7 @@ class GridBase(metaclass=ABCMeta):
                 left unchanged and only periodic boundary conditions are enforced.
 
         Returns:
-            :class:`numpy.ndarray`: The respective coordinates with periodic
+            :class:`~numpy.ndarray`: The respective coordinates with periodic
             boundary conditions applied.
         """
         point = np.asarray(point, dtype=np.double)
@@ -594,7 +594,7 @@ class GridBase(metaclass=ABCMeta):
         """Integrates the discretized data over the grid
 
         Args:
-            data (:class:`numpy.ndarray`):
+            data (:class:`~numpy.ndarray`):
                 The values at the support points of the grid that need to be
                 integrated.
             axes (list of int, optional):
@@ -602,7 +602,7 @@ class GridBase(metaclass=ABCMeta):
                 axes are integrated over.
 
         Returns:
-            :class:`numpy.ndarray`: The values integrated over the entire grid
+            :class:`~numpy.ndarray`: The values integrated over the entire grid
         """
         # determine the volumes of the individual cells
         if axes is None:
@@ -654,7 +654,7 @@ class GridBase(metaclass=ABCMeta):
                 left unchanged and only periodic boundary conditions are enforced.
 
         Returns:
-            callable: A function that takes a :class:`numpy.ndarray` as an argument,
+            callable: A function that takes a :class:`~numpy.ndarray` as an argument,
             which describes the coordinates of the points. This array is modified
             in-place!
         """
@@ -718,7 +718,7 @@ class GridBase(metaclass=ABCMeta):
     @fill_in_docstring
     def make_interpolator_compiled(
         self, bc: "BoundariesData" = "natural", rank: int = 0, fill: Number = None
-    ) -> Callable:
+    ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
         """return a compiled function for linear interpolation on the grid
 
         This interpolator respects boundary conditions and can thus interpolate
@@ -759,14 +759,14 @@ class GridBase(metaclass=ABCMeta):
                 """obtain interpolated value of data at a point
 
                 Args:
-                    data (:class:`numpy.ndarray`):
+                    data (:class:`~numpy.ndarray`):
                         A 1d array of values at the grid points
-                    point (:class:`numpy.ndarray`):
+                    point (:class:`~numpy.ndarray`):
                         Coordinates of a single point in the grid coordinate
                         system
 
                 Returns:
-                    :class:`numpy.ndarray`: The interpolated value at the point
+                    :class:`~numpy.ndarray`: The interpolated value at the point
                 """
                 c_l, d_l = divmod((point[0] - lo) / dx - 0.5, 1.0)
                 if periodic:
@@ -796,14 +796,14 @@ class GridBase(metaclass=ABCMeta):
                 """obtain interpolated value of data at a point
 
                 Args:
-                    data (:class:`numpy.ndarray`):
+                    data (:class:`~numpy.ndarray`):
                         The values at the grid points
-                    point (:class:`numpy.ndarray`):
+                    point (:class:`~numpy.ndarray`):
                         Coordinates of a single point in the grid coordinate
                         system
 
                 Returns:
-                    :class:`numpy.ndarray`: The interpolated value at the point
+                    :class:`~numpy.ndarray`: The interpolated value at the point
                 """
                 # determine surrounding points and their weights
                 c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
@@ -868,14 +868,14 @@ class GridBase(metaclass=ABCMeta):
                 """obtain interpolated value of data at a point
 
                 Args:
-                    data (:class:`numpy.ndarray`):
+                    data (:class:`~numpy.ndarray`):
                         The values at the grid points
-                    point (:class:`numpy.ndarray`):
+                    point (:class:`~numpy.ndarray`):
                         Coordinates of a single point in the grid coordinate
                         system
 
                 Returns:
-                    :class:`numpy.ndarray`: The interpolated value at the point
+                    :class:`~numpy.ndarray`: The interpolated value at the point
                 """
                 # determine surrounding points and their weights
                 c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
@@ -945,7 +945,9 @@ class GridBase(metaclass=ABCMeta):
 
         return interpolate_single  # type: ignore
 
-    def make_add_interpolated_compiled(self) -> Callable:
+    def make_add_interpolated_compiled(
+        self,
+    ) -> Callable[[np.ndarray, np.ndarray, Any], None]:
         """return a compiled function to add amounts at interpolated positions
 
         Returns:
@@ -968,17 +970,16 @@ class GridBase(metaclass=ABCMeta):
                 """add an amount to a field at an interpolated position
 
                 Args:
-                    data (:class:`numpy.ndarray`):
+                    data (:class:`~numpy.ndarray`):
                         The values at the grid points
-                    point (:class:`numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
-                    amount (float or :class:`numpy.ndarray`):
-                        The amount that will be added to the data. This value
-                        describes an integrated quantity (given by the field
-                        value times the discretization volume). This is
-                        important for consistency with different discretizations
-                        and in particular grids with non-uniform discretizations
+                    point (:class:`~numpy.ndarray`):
+                        Coordinates of a single point in the grid coordinate system
+                    amount (Number or :class:`~numpy.ndarray`):
+                        The amount that will be added to the data. This value describes
+                        an integrated quantity (given by the field value times the
+                        discretization volume). This is important for consistency with
+                        different discretizations and in particular grids with
+                        non-uniform discretizations
                 """
                 c_l, d_l = divmod((point[0] - lo) / dx - 0.5, 1.0)
                 if c_l < -1 or c_l > size - 1:
@@ -1020,17 +1021,16 @@ class GridBase(metaclass=ABCMeta):
                 """add an amount to a field at an interpolated position
 
                 Args:
-                    data (:class:`numpy.ndarray`):
+                    data (:class:`~numpy.ndarray`):
                         The values at the grid points
-                    point (:class:`numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
-                    amount (Number or :class:`numpy.ndarray`):
-                        The amount that will be added to the data. This value
-                        describes an integrated quantity (given by the field
-                        value times the discretization volume). This is
-                        important for consistency with different discretizations
-                        and in particular grids with non-uniform discretizations
+                    point (:class:`~numpy.ndarray`):
+                        Coordinates of a single point in the grid coordinate system
+                    amount (Number or :class:`~numpy.ndarray`):
+                        The amount that will be added to the data. This value describes
+                        an integrated quantity (given by the field value times the
+                        discretization volume). This is important for consistency with
+                        different discretizations and in particular grids with
+                        non-uniform discretizations
                 """
                 # determine surrounding points and their weights
                 c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
@@ -1088,17 +1088,16 @@ class GridBase(metaclass=ABCMeta):
                 """add an amount to a field at an interpolated position
 
                 Args:
-                    data (:class:`numpy.ndarray`):
+                    data (:class:`~numpy.ndarray`):
                         The values at the grid points
-                    point (:class:`numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
-                    amount (Number or :class:`numpy.ndarray`):
-                        The amount that will be added to the data. This value
-                        describes an integrated quantity (given by the field
-                        value times the discretization volume). This is
-                        important for consistency with different discretizations
-                        and in particular grids with non-uniform discretizations
+                    point (:class:`~numpy.ndarray`):
+                        Coordinates of a single point in the grid coordinate system
+                    amount (Number or :class:`~numpy.ndarray`):
+                        The amount that will be added to the data. This value describes
+                        an integrated quantity (given by the field value times the
+                        discretization volume). This is important for consistency with
+                        different discretizations and in particular grids with
+                        non-uniform discretizations
                 """
                 # determine surrounding points and their weights
                 c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)

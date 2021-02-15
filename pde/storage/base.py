@@ -42,7 +42,7 @@ class StorageBase(metaclass=ABCMeta):
     fields in order and indivdual time points can also be accessed.
     """
 
-    times: Sequence[float]  # :class:`numpy.ndarray`): stored time points
+    times: Sequence[float]  # :class:`~numpy.ndarray`): stored time points
     data: Any  # The actual data for all the stored times
 
     def __init__(self, info: InfoDict = None, write_mode: str = "truncate_once"):
@@ -352,8 +352,8 @@ class StorageBase(metaclass=ABCMeta):
 
         # extract the actual memory
         return MemoryStorage(
-            times=self.times[i_start:i_end],
-            data=self.data[i_start:i_end],
+            times=self.times[i_start:i_end],  # type: ignore
+            data=self.data[i_start:i_end],  # type: ignore
             field_obj=self._field,
             info=self.info,
         )

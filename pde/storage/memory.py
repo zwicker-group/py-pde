@@ -27,7 +27,7 @@ class MemoryStorage(StorageBase):
     ):
         """
         Args:
-            times (:class:`numpy.ndarray`):
+            times (:class:`~numpy.ndarray`):
                 Sequence of times for which data is known
             data (list of :class:`~numpy.ndarray`):
                 The field data at the given times
@@ -73,7 +73,7 @@ class MemoryStorage(StorageBase):
         """create MemoryStorage from a list of fields
 
         Args:
-            times (:class:`numpy.ndarray`):
+            times (:class:`~numpy.ndarray`):
                 Sequence of times for which data is known
             fields (list of :class:`~pde.fields.FieldBase`):
                 The fields at all given time points
@@ -194,7 +194,7 @@ class MemoryStorage(StorageBase):
         """append a new data set
 
         Args:
-            data (:class:`numpy.ndarray`): The actual data
+            data (:class:`~numpy.ndarray`): The actual data
             time (float, optional): The time point associated with the data
         """
         assert data.shape == self.data_shape

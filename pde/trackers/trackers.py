@@ -189,7 +189,7 @@ class ProgressTracker(TrackerBase):
             # progress bar) since reaching steady state means the simulation
             # was successful even though it did not reach t_final
             try:
-                self.progress_bar.sp(bar_style="success")
+                self.progress_bar.sp(bar_style="success")  # type: ignore
             except TypeError:
                 self.progress_bar.close()
             else:
@@ -643,9 +643,10 @@ class SteadyStateTracker(TrackerBase):
         self.rtol = rtol
         self.progress = progress and module_available("tqdm")
 
-        self._last_data = None
-        self._best_diff_first = None
-        self._best_diff_max = None
+        self._progress_bar: Any = None
+        self._pbar_offset: float = 0  # required for calculating progress
+        self._last_data: Optional[np.ndarray] = None
+        self._best_diff_max: Optional[np.ndarray] = None
 
     def handle(self, field: FieldBase, t: float) -> None:
         """handle data supplied to this tracker

@@ -59,7 +59,7 @@ class PDE(PDEBase):
                 field. Moreover, the dot product between two vector fields can be
                 denoted by using `dot(field1, field2)` in the expression, while an outer
                 product is calculated using `outer(field1, field2)`.
-            noise (float or :class:`numpy.ndarray`):
+            noise (float or :class:`~numpy.ndarray`):
                 Magnitude of additive Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
                 Different noise magnitudes can be supplied for each field in coupled
@@ -398,8 +398,8 @@ class PDE(PDEBase):
 
         Returns:
             A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`numpy.ndarray` giving
+            with an instance of :class:`~numpy.ndarray` of the state data and
+            the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
         num_fields = len(state)
@@ -464,8 +464,8 @@ class PDE(PDEBase):
 
         Returns:
             A function with signature `(state_data, t)`, which can be called with an
-            instance of :class:`numpy.ndarray` of the state data and the time to
-            obtained an instance of :class:`numpy.ndarray` giving the evolution rate.
+            instance of :class:`~numpy.ndarray` of the state data and the time to
+            obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
         """
         cache = self._prepare_cache(state, backend="numba")
 

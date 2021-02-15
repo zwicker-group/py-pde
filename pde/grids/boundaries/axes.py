@@ -175,7 +175,7 @@ class Boundaries(list):
 
     @property
     def periodic(self) -> np.ndarray:
-        """:class:`numpy.ndarray`: a boolean array indicating which dimensions
+        """:class:`~numpy.ndarray`: a boolean array indicating which dimensions
         are periodic according to the boundary conditions"""
         return self.grid.periodic
 
