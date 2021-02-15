@@ -55,8 +55,9 @@ setup(
     python_requires=">=3.6",
     install_requires=install_requires,
     extras_require={
-        "hdf": ["h5py>=2"],
-        "progress": ["tqdm>=4.40"],
+        "hdf": ["h5py>=2.10"],
+        "io": ["h5py>=2.10", "pandas>=1.2"],
+        "progress": ["tqdm>=4.45"],
         "interactive": ["napari>=0.3"],
     },
     classifiers=[
