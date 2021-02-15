@@ -21,7 +21,7 @@ jobs:
       # install packages in the exact version given in requirements.txt
       run: |
         python -m pip install --upgrade pip
-        pip install `sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/ /g; s/>=/~=/g' requirements.txt`
+        pip install -r tests/requirements_min.txt
         
     - name: Test types with mypy
       continue-on-error: true

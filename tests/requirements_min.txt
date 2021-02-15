@@ -1,0 +1,6 @@
+# These are the minimal requirements used to test compatibility
+matplotlib~=3.1.0
+numpy~=1.18.0
+numba~=0.50.0
+scipy~=1.4.0
+sympy~=1.5.0
