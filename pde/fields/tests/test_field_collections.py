@@ -50,7 +50,9 @@ def test_collections():
     vf.data = 1
     tf.data = 1
     np.testing.assert_allclose(fields.data, 1)
-    assert [np.allclose(i, 1) for i in fields.integrals]
+    assert all(np.allclose(i, 12) for i in fields.integrals)
+    assert all(np.allclose(i, 1) for i in fields.averages)
+    assert np.allclose(fields.magnitudes, np.sqrt([1, 2, 4]))
 
     assert sf.data.shape == (3, 4)
     assert vf.data.shape == (2, 3, 4)

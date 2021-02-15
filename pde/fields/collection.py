@@ -500,9 +500,19 @@ class FieldCollection(FieldBase):
         return out
 
     @property
-    def integrals(self):
-        """ return the integrals of all fields """
+    def integrals(self) -> List:
+        """integrals of all fields """
         return [field.integral for field in self]
+
+    @property
+    def averages(self) -> List:
+        """ averages of all fields """
+        return [field.average for field in self]
+
+    @property
+    def magnitudes(self) -> np.ndarray:
+        """ :class:`~numpy.ndarray`: scalar magnitudes of all fields """
+        return np.array([field.magnitude for field in self])
 
     def get_line_data(  # type: ignore
         self,
