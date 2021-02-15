@@ -306,7 +306,7 @@ class StorageBase(metaclass=ABCMeta):
             raise TypeError("Can only extract fields from `FieldCollection`")
 
         # extract the field and the associated time series
-        field_obj = self._field[field_index]
+        field_obj = self._field[field_index].copy()
         if label:
             field_obj.label = label
         field_slice = self._field._slices[field_index]
