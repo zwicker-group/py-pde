@@ -13,10 +13,10 @@ sys.path.append(str(PACKAGE_PATH))
 import numba
 import numpy as np
 
+from pde import config
 from pde.grids import CylindricalGrid, SphericalGrid, UnitGrid
 from pde.grids.boundaries import Boundaries
 from pde.grids.operators import cartesian, cylindrical, spherical
-from pde.grids.operators.common import PARALLELIZATION_THRESHOLD_2D
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit, jit_allocate_out
 
@@ -25,7 +25,7 @@ def custom_laplace_2d_periodic(shape, dx=1):
     """ make laplace operator with periodic boundary conditions """
     dx_2 = 1 / dx ** 2
     dim_x, dim_y = shape
-    parallel = dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
@@ -60,7 +60,7 @@ def custom_laplace_2d_neumann(shape, dx=1):
     """ make laplace operator with Neumann boundary conditions """
     dx_2 = 1 / dx ** 2
     dim_x, dim_y = shape
-    parallel = dim_x * dim_y >= PARALLELIZATION_THRESHOLD_2D ** 2
+    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
