@@ -27,11 +27,6 @@ def test_ensure_directory_exists(tmp_path):
     assert not path.exists()
 
 
-def test_environment():
-    """ test the environment function """
-    assert isinstance(misc.environment(), dict)
-
-
 def test_preserve_scalars():
     """ test the preserve_scalars decorator """
 
