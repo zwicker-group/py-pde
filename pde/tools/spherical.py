@@ -155,7 +155,7 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
 
-def make_volume_from_radius_compiled(dim: int) -> Callable:
+def make_volume_from_radius_compiled(dim: int) -> Callable[[TNumArr], TNumArr]:
     """Return a function calculating the volume of a sphere with a given radius
 
     Args:
@@ -166,18 +166,18 @@ def make_volume_from_radius_compiled(dim: int) -> Callable:
     """
     if dim == 1:
 
-        def volume_from_radius(radius):
-            return 2 * radius
+        def volume_from_radius(radius: TNumArr) -> TNumArr:
+            return 2 * radius  # type: ignore
 
     elif dim == 2:
 
-        def volume_from_radius(radius):
-            return π * radius ** 2
+        def volume_from_radius(radius: TNumArr) -> TNumArr:
+            return π * radius ** 2  # type: ignore
 
     elif dim == 3:
 
-        def volume_from_radius(radius):
-            return 4 * π / 3 * radius ** 3
+        def volume_from_radius(radius: TNumArr) -> TNumArr:
+            return 4 * π / 3 * radius ** 3  # type: ignore
 
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
@@ -240,30 +240,40 @@ def make_surface_from_radius_compiled(dim: int) -> Callable[[TNumArr], TNumArr]:
     """
     if dim == 1:
 
-        @nb.generated_jit(nopython=True)
-        def surface_from_radius(radius):
-            if isinstance(radius, nb.types.Float):
-                return lambda radius: 2
-            else:
-                return lambda radius: np.full(radius.shape, 2)
+        if nb.config.DISABLE_JIT:
+            # jitting is disabled => return generic python function
+            def surface_from_radius(radius: TNumArr) -> TNumArr:
+                if isinstance(radius, np.ndarray):
+                    return np.full(radius.shape, 2)
+                else:
+                    return 2
+
+        else:
+            # jitting is enabled => return specific compiled functions
+            @nb.generated_jit(nopython=True)
+            def surface_from_radius(radius: TNumArr) -> TNumArr:
+                if isinstance(radius, nb.types.Float):
+                    return lambda radius: 2  # type: ignore
+                else:
+                    return lambda radius: np.full(radius.shape, 2)  # type: ignore
 
     elif dim == 2:
 
         @jit
-        def surface_from_radius(radius):
-            return 2 * π * radius
+        def surface_from_radius(radius: TNumArr) -> TNumArr:
+            return 2 * π * radius  # type: ignore
 
     elif dim == 3:
 
         @jit
-        def surface_from_radius(radius):
-            return 4 * π * radius ** 2
+        def surface_from_radius(radius: TNumArr) -> TNumArr:
+            return 4 * π * radius ** 2  # type: ignore
 
     else:
         raise NotImplementedError(
             f"Cannot calculate the surface area in {dim} dimensions"
         )
-    return surface_from_radius  # type: ignore
+    return surface_from_radius
 
 
 def points_cartesian_to_spherical(points):
