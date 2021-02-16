@@ -666,7 +666,7 @@ def spherical_harmonic_real(degree: int, order: int, θ: float, φ: float) -> fl
     else:  # order < 0
         term1 = sph_harm(-order, degree, φ, θ)
         term2 = (-1) ** order * sph_harm(order, degree, φ, θ)
-        return np.real((term1 - term2) / (np.complex(0, np.sqrt(2))))  # type: ignore
+        return np.real((term1 - term2) / (complex(0, np.sqrt(2))))  # type: ignore
 
 
 def spherical_harmonic_real_k(k: int, θ: float, φ: float) -> float:

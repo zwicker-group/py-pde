@@ -16,7 +16,15 @@ REPLACEMENTS = collections.OrderedDict(
         ("Optional[int]", "int"),
         ("Optional[dict]", "dict"),
         ("Optional[Dict[str, Any]]", "dict"),
-        # Complex types that can be represented by some descriptive name
+        # numbers and numerical arrays
+        (
+            "Union[int, float, complex, numpy.generic, numpy.ndarray, "
+            "Sequence[Union[int, float, complex, numpy.generic, numpy.ndarray]], "
+            "Sequence[Sequence[Any]]]",
+            "ArrayLike",
+        ),
+        ("Union[int, float, complex, numpy.generic, numpy.ndarray]", "NumberOrArray"),
+        # Complex types describing the boundary conditions
         ("Union[dict, str, BCBase]", "BoundaryData"),
         (
             "Union[Dict[str, BoundaryData], "
@@ -68,6 +76,7 @@ REPLACEMENTS = collections.OrderedDict(
             "Sequence[BoundaryConditionData]]",
             "BoundariesDataList",
         ),
+        # Other compound data types
         ("Union[List[Union[TrackerBase, str]], TrackerBase, str, None]", "TrackerData"),
         (
             "Optional[Union[List[Union[TrackerBase, str]], TrackerBase, str]]",

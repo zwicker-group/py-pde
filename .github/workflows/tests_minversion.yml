@@ -23,12 +23,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r tests/requirements_min.txt
         
-    - name: Test types with mypy
-      continue-on-error: true
-      run: |
-        pip install mypy
-        python -m mypy --config-file tests/mypy.ini --pretty --package pde
-        
     - name: Test with pytest
       env:
         NUMBA_WARNINGS: 1
@@ -37,3 +31,9 @@ jobs:
         pip install pytest
         cd tests
         python run_tests.py --unit
+        
+    - name: Test types with mypy
+      continue-on-error: true
+      run: |
+        pip install mypy
+        python -m mypy --config-file tests/mypy.ini --pretty --package pde
