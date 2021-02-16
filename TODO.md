@@ -1,6 +1,5 @@
 TODO
 ====
-* Introduce sub-folder `scripts` moving some scripts like `format_code` and `show_environment`
 * Centrally manage requirements and write all files in a requirements.py
     requirements.txt, requirements_min.txt, setup.py, sphinx
 * Automatically register derivative with respect to a single axis
