@@ -74,7 +74,6 @@ harmonics, where the order is always zero and the degree :math:`l` and the mode
 import itertools
 from typing import Callable, Optional, Tuple, TypeVar
 
-import numba as nb
 import numpy as np
 from scipy.special import sph_harm
 
@@ -238,6 +237,8 @@ def make_surface_from_radius_compiled(dim: int) -> Callable[[TNumArr], TNumArr]:
     Returns:
         function: A function that takes a radius and returns the surface area
     """
+    import numba as nb
+
     if dim == 1:
 
         if nb.config.DISABLE_JIT:

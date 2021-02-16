@@ -4,8 +4,8 @@ Miscallenous python functions
 .. autosummary::
    :nosignatures:
 
-   module_available
    environment
+   module_available
    ensure_directory_exists
    preserve_scalars
    decorator_arguments
@@ -15,6 +15,9 @@ Miscallenous python functions
    hybridmethod
    estimate_computation_speed
    hdf_write_attributes
+   number
+   get_common_dtype
+   number_array
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
