@@ -6,7 +6,7 @@ Package that contains base classes for solvers
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, List, Tuple, Union  # @UnusedImport
+from typing import Any, Callable, Dict, List, Tuple  # @UnusedImport
 
 import numba as nb
 import numpy as np
