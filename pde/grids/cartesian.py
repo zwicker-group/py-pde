@@ -127,7 +127,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             cuboid = cuboid.buffer(-boundary_distance)
 
         # create random point
-        return cuboid.pos + np.random.random(self.dim) * cuboid.size
+        return cuboid.pos + np.random.random(self.dim) * cuboid.size  # type: ignore
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
         """return a line cut through the given data
@@ -178,14 +178,14 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             for ax in reversed(range(self.dim)):
                 if ax != axis:
                     mid_point = self.shape[ax] // 2
-                    data_y = np.take(data_y, mid_point, axis=ax + rank)
+                    data_y = np.take(data_y, mid_point, axis=ax + rank)  # type: ignore
             label_y = f"Cut along {self.axes[axis]}"
 
         elif extract.startswith("project_"):
             # consider a projection along a given axis
             axis = _get_axis(extract[8:])
             avg_axes = [ax - self.dim for ax in range(self.dim) if ax != axis]
-            data_y = data.mean(axis=tuple(avg_axes))
+            data_y = data.mean(axis=tuple(avg_axes))  # type: ignore
             label_y = f"Projection onto {self.axes[axis]}"
 
         else:
@@ -341,7 +341,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             coords = origin + diff[..., None]
 
         elif self.dim == 2:
-            unit_vector = np.moveaxis([np.sin(angle), np.cos(angle)], 0, -1)
+            unit_vector = np.moveaxis(np.array([np.sin(angle), np.cos(angle)]), 0, -1)
             diff = distance[..., None] * unit_vector
             coords = origin + diff
 
@@ -483,7 +483,7 @@ class UnitGrid(CartesianGridBase):
             return np.zeros((0, self.dim))
         if cells.shape[-1] != self.dim:
             raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
-        return cells + 0.5
+        return cells + 0.5  # type: ignore
 
     def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)
@@ -519,7 +519,7 @@ class UnitGrid(CartesianGridBase):
             if self.periodic[i]:
                 s = self.shape[i]
                 diff[..., i] = (diff[..., i] + s / 2) % s - s / 2
-        return diff
+        return diff  # type: ignore
 
     def to_cartesian(self) -> "CartesianGrid":
         """ convert unit grid to CartesianGrid """
@@ -616,7 +616,7 @@ class CartesianGrid(CartesianGridBase):
         # handle the shape array
         shape = _check_shape(shape)
         if len(shape) == 1 and self.cuboid.dim > 1:
-            shape = np.full(self.cuboid.dim, shape, dtype=np.uint32)
+            shape = (int(shape[0]),) * self.cuboid.dim
         if self.cuboid.dim != len(shape):
             raise DimensionError("Dimension of `bounds` and `shape` are not compatible")
 
@@ -692,7 +692,7 @@ class CartesianGrid(CartesianGridBase):
         elif cells.shape[-1] != self.dim:
             raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
         else:
-            return self.cuboid.pos + (cells + 0.5) * self.discretization
+            return self.cuboid.pos + (cells + 0.5) * self.discretization  # type: ignore
 
     def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)
@@ -709,7 +709,7 @@ class CartesianGrid(CartesianGridBase):
         """
         points = self.normalize_point(points, reflect=False)
         cell_coords = (points - self.cuboid.pos) / self.discretization
-        return cell_coords.astype(np.intc)
+        return cell_coords.astype(np.intc)  # type: ignore
 
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
@@ -729,7 +729,7 @@ class CartesianGrid(CartesianGridBase):
         if any(periodic):
             size = self.cuboid.size[periodic]
             diff[..., periodic] = (diff[..., periodic] + size / 2) % size - size / 2
-        return diff
+        return diff  # type: ignore
 
     def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":
         """return a subgrid of only the specified axes

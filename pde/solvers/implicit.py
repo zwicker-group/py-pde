@@ -65,6 +65,9 @@ class ImplicitSolver(SolverBase):
             `t_start` to time `t_end`. The function call signature is
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
+        if self.pde.is_sde:
+            raise RuntimeError("Cannot use implicit stepper with stochastic equation")
+
         # support `None` as a default value, so the controller can signal that
         # the solver should use a default time step
         if dt is None:
@@ -76,7 +79,7 @@ class ImplicitSolver(SolverBase):
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
 
-        rhs = self._make_pde_rhs(state, backend=self.backend, allow_stochastic=False)
+        rhs = self._make_pde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror ** 2
 

@@ -241,7 +241,7 @@ class VectorField(DataFieldBase):
                 with or without `out`."""
                 if out is None:
                     out = np.empty(b.shape[1:], dtype=get_common_dtype(a, b))
-                return inner(a, b, out)
+                return inner(a, b, out)  # type: ignore
 
         else:
 
@@ -257,16 +257,18 @@ class VectorField(DataFieldBase):
                     # function is called without `out`
                     dtype = get_common_numba_dtype(a, b)
 
-                    def f_with_allocated_out(a, b, out):
+                    def f_with_allocated_out(
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray
+                    ) -> np.ndarray:
                         """ helper function allocating output array """
                         out = np.empty(b.shape[1:], dtype=dtype)
-                        return inner(a, b, out=out)
+                        return inner(a, b, out=out)  # type: ignore
 
-                    return f_with_allocated_out
+                    return f_with_allocated_out  # type: ignore
 
                 else:
                     # function is called with `out` argument
-                    return inner
+                    return inner  # type: ignore
 
         return dot
 
@@ -326,7 +328,9 @@ class VectorField(DataFieldBase):
 
         return out
 
-    def make_outer_prod_operator(self) -> Callable:
+    def make_outer_prod_operator(
+        self,
+    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return operator calculating the outer product of two vector fields
 
         Warning:
@@ -342,7 +346,7 @@ class VectorField(DataFieldBase):
 
         # create the inner function calculating the dot product
         @register_jitable
-        def outer(a, b, out):
+        def outer(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
             """ calculate dot product between fields `a` and `b` """
             for i in range(0, dim):
                 for j in range(0, dim):
@@ -357,7 +361,7 @@ class VectorField(DataFieldBase):
                 with or without `out`."""
                 if out is None:
                     out = np.empty((len(a),) + b.shape, dtype=get_common_dtype(a, b))
-                return outer(a, b, out)
+                return outer(a, b, out)  # type: ignore
 
         else:
 
@@ -373,16 +377,18 @@ class VectorField(DataFieldBase):
                     # function is called without `out`
                     dtype = get_common_numba_dtype(a, b)
 
-                    def f_with_allocated_out(a, b, out):
+                    def f_with_allocated_out(
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray
+                    ) -> np.ndarray:
                         """ helper function allocating output array """
                         out = np.empty((len(a),) + b.shape, dtype=dtype)
-                        return outer(a, b, out=out)
+                        return outer(a, b, out=out)  # type: ignore
 
-                    return f_with_allocated_out
+                    return f_with_allocated_out  # type: ignore
 
                 else:
                     # function is called with `out` argument
-                    return outer
+                    return outer  # type: ignore
 
         return dot
 

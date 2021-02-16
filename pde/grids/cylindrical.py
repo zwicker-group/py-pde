@@ -258,16 +258,19 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             "label_y": self.axes[1],
         }
 
-    def contains_point(self, point: np.ndarray) -> bool:
+    def contains_point(self, point: np.ndarray) -> np.ndarray:
         """check whether the point is contained in the grid
 
         Args:
             point (:class:`~numpy.ndarray`): Coordinates of the point
         """
-        assert len(point) == 3
-        r = np.hypot(point[0], point[1])
+        point = np.atleast_1d(point)
+        assert point.shape[-1] == 3
+
+        in_radius = np.hypot(point[..., 0], point[..., 1]) <= self.radius
         bounds_z = self.axes_bounds[1]
-        return bool(r <= self.radius and bounds_z[0] <= point[2] <= bounds_z[1])
+        in_z = (bounds_z[0] <= point[..., 2]) & (point[..., 2] <= bounds_z[1])
+        return in_radius & in_z  # type: ignore
 
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
@@ -370,7 +373,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         if cartesian:
             return self.point_to_cartesian(points)
         else:
-            return points
+            return points  # type: ignore
 
     def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)
@@ -409,7 +412,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         if self._periodic_z:
             size = self.length
             diff[..., 1] = (diff[..., 1] + size / 2) % size - size / 2
-        return diff
+        return diff  # type: ignore
 
     def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
         """return spherical coordinates associated with the grid
@@ -431,7 +434,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             raise RuntimeError("Origin must lie on symmetry axis for cylindrical grid")
 
         # calculate the difference vector between all cells and the origin
-        diff = self.difference_vector_real([0, origin[2]], self.cell_coords)
+        diff = self.difference_vector_real(np.array([0, origin[2]]), self.cell_coords)
         dist = np.linalg.norm(diff, axis=-1)  # get distance
 
         if ret_angle:

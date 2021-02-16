@@ -31,7 +31,7 @@ from typing import Any, Callable, Dict, Sequence, Union
 
 import numpy as np
 
-Number = Union[float, complex]
+from .typing import ArrayLike, Number
 
 
 def environment(dict_type=dict) -> Dict[str, Any]:
@@ -346,7 +346,7 @@ def number(value: Union[Number, str]) -> Number:
     Result:
         Number: A complex number or a float if the imaginary part vanishes
     """
-    result = complex(value)
+    result = complex(value)  # type: ignore
     return result.real if result.imag == 0 else result
 
 
@@ -364,8 +364,8 @@ def get_common_dtype(*args):
     return np.double
 
 
-def number_array(data: np.ndarray, dtype=None, copy: bool = True) -> np.ndarray:
-    """convert array dtype either to np.double or np.cdouble
+def number_array(data: ArrayLike, dtype=None, copy: bool = True) -> np.ndarray:
+    """convert an array with arbitrary dtype either to np.double or np.cdouble
 
     Args:
         data (:class:`~numpy.ndarray`):

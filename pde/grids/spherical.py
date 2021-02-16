@@ -132,7 +132,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         rs = self.axes_coords[0]
         volumes_h = volume_from_radius(rs + 0.5 * dr, dim=self.dim)
         volumes_l = volume_from_radius(rs - 0.5 * dr, dim=self.dim)
-        return ((volumes_h - volumes_l).reshape(self.shape[0]),)  # type: ignore
+        return ((volumes_h - volumes_l).reshape(self.shape[0]),)
 
     def contains_point(self, point: np.ndarray) -> np.ndarray:
         """check whether the point is contained in the grid
@@ -146,7 +146,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         r = np.linalg.norm(point, axis=-1)
 
         r_inner, r_outer = self.axes_bounds[0]
-        return r_inner <= r <= r_outer
+        return r_inner <= r <= r_outer  # type: ignore
 
     def get_random_point(
         self,
@@ -315,7 +315,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         points = np.atleast_1d(points)
         assert points.shape[-1] == self.dim
-        return np.linalg.norm(points, axis=-1, keepdims=True)
+        return np.linalg.norm(points, axis=-1, keepdims=True)  # type: ignore
 
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         """convert cell coordinates to real coordinates
@@ -344,7 +344,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         if cartesian:
             return self.point_to_cartesian(points)
         else:
-            return points
+            return points  # type: ignore
 
     def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)
@@ -359,7 +359,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         r = self.point_from_cartesian(points)
         r_inner, _ = self.axes_bounds[0]
         cells = (r - r_inner) / self.discretization[0]
-        return cells.astype(np.intc)
+        return cells.astype(np.intc)  # type: ignore
 
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
@@ -374,7 +374,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             :class:`~numpy.ndarray`: The difference vectors between the points
                 with periodic boundary conditions applied.
         """
-        return np.atleast_1d(p2) - np.atleast_1d(p1)
+        return np.atleast_1d(p2) - np.atleast_1d(p1)  # type: ignore
 
     def polar_coordinates_real(self, origin=None, *, ret_angle: bool = False, **kwargs):
         """return spherical coordinates associated with the grid

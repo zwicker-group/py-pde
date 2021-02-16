@@ -36,6 +36,8 @@ def test_cylindrical_grid():
         np.testing.assert_almost_equal(c, c1, err_msg=msg)
 
         assert grid.contains_point(grid.get_random_point())
+        ps = [grid.get_random_point() for _ in range(2)]
+        assert all(grid.contains_point(ps))
         assert grid.contains_point(grid.get_random_point(1.49))
         assert "laplace" in grid.operators
 

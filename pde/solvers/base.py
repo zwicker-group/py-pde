@@ -6,9 +6,10 @@ Package that contains base classes for solvers
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, List  # @UnusedImport
+from typing import Any, Callable, Dict, List, Tuple, Union  # @UnusedImport
 
 import numba as nb
+import numpy as np
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
@@ -85,8 +86,8 @@ class SolverBase(metaclass=ABCMeta):
         return list(sorted(cls._subclasses.keys()))
 
     def _make_pde_rhs(
-        self, state: FieldBase, backend: str = "auto", allow_stochastic: bool = False
-    ):
+        self, state: FieldBase, backend: str = "auto"
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
         """obtain a function for evaluating the right hand side
 
         Args:
@@ -98,9 +99,6 @@ class SolverBase(metaclass=ABCMeta):
                 Determines how the function is created. Accepted  values are
                 'numpy` and 'numba'. Alternatively, 'auto' lets the code decide
                 for the most optimal backend.
-            allow_stochastic (bool):
-                Flag indicating whether stochastic simulations should be
-                supported.
 
         Raises:
             RuntimeError: when a stochastic partial differential equation is
@@ -112,15 +110,48 @@ class SolverBase(metaclass=ABCMeta):
             deterministic evolution rate and (if applicable) a realization of
             the associated noise.
         """
-        if self.pde.is_sde and not allow_stochastic:
+        if self.pde.is_sde:
             raise RuntimeError(
-                f"The chosen stepper does not support stochastic equations"
+                f"Cannot create a deterministic stepper for a stochastic equation"
             )
 
-        if self.pde.is_sde:
-            rhs = self.pde.make_sde_rhs(state, backend=backend)
+        rhs = self.pde.make_pde_rhs(state, backend=backend)
+
+        if hasattr(rhs, "_backend"):
+            self.info["backend"] = rhs._backend  # type: ignore
+        elif isinstance(rhs, nb.dispatcher.Dispatcher):
+            self.info["backend"] = "numba"
         else:
-            rhs = self.pde.make_pde_rhs(state, backend=backend)
+            self.info["backend"] = "undetermined"
+
+        return rhs
+
+    def _make_sde_rhs(
+        self, state: FieldBase, backend: str = "auto"
+    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
+        """obtain a function for evaluating the right hand side
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other
+                information can be extracted
+                The instance describing the pde that needs to be solved
+            backend (str):
+                Determines how the function is created. Accepted  values are
+                'numpy` and 'numba'. Alternatively, 'auto' lets the code decide
+                for the most optimal backend.
+
+        Raises:
+            RuntimeError: when a stochastic partial differential equation is
+            encountered but `allow_stochastic == False`.
+
+        Returns:
+            A function that is called with data given by a
+            :class:`~numpy.ndarray` and a time. The function returns the
+            deterministic evolution rate and (if applicable) a realization of
+            the associated noise.
+        """
+        rhs = self.pde.make_sde_rhs(state, backend=backend)
 
         if hasattr(rhs, "_backend"):
             self.info["backend"] = rhs._backend  # type: ignore

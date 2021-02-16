@@ -37,7 +37,8 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
-from .base import FinishedSimulation, InfoDict, Real, TrackerBase
+from ..tools.typing import Real
+from .base import FinishedSimulation, InfoDict, TrackerBase
 from .intervals import IntervalData, RealtimeIntervals
 
 if TYPE_CHECKING:

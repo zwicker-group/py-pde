@@ -11,11 +11,12 @@ from typing import Any, Callable, Dict
 import numpy as np
 
 from ..fields import FieldCollection, VectorField
-from ..fields.base import DataFieldBase, FieldBase, OptionalArrayLike
+from ..fields.base import DataFieldBase, FieldBase
 from ..grids.boundaries.axes import BoundariesData
 from ..pdes.base import PDEBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit, nb
+from ..tools.typing import ArrayLike
 
 
 class PDE(PDEBase):
@@ -35,7 +36,7 @@ class PDE(PDEBase):
     def __init__(
         self,
         rhs: "OrderedDict[str, str]",
-        noise: OptionalArrayLike = 0,
+        noise: ArrayLike = 0,
         bc: BoundariesData = "natural",
         bc_ops: "OrderedDict[str, BoundariesData]" = None,
         user_funcs: Dict[str, Any] = None,

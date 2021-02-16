@@ -72,38 +72,41 @@ harmonics, where the order is always zero and the degree :math:`l` and the mode
 """
 
 import itertools
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple, TypeVar
 
+import numba as nb
 import numpy as np
 from scipy.special import sph_harm
 
-from ..tools.cache import cached_method
-from ..tools.numba import jit
+from .cache import cached_method
+from .numba import jit
 
-π = np.pi
+π = float(np.pi)
+
+TNumArr = TypeVar("TNumArr", float, np.ndarray)
 
 
-def radius_from_volume(volume: float, dim: int) -> float:
+def radius_from_volume(volume: TNumArr, dim: int) -> TNumArr:
     """Return the radius of a sphere with a given volume
 
     Args:
-        volume (float): Volume of the sphere
+        volume (float or :class:`~numpy.ndarray`): Volume of the sphere
         dim (int): Dimension of the space
 
     Returns:
-        float: Radius of the sphere
+        float or :class:`~numpy.ndarray`: Radius of the sphere
     """
     if dim == 1:
-        return volume / 2
+        return volume / 2  # type: ignore
     elif dim == 2:
         return np.sqrt(volume / π)  # type: ignore
     elif dim == 3:
-        return (3 * volume / (4 * π)) ** (1 / 3)
+        return (3 * volume / (4 * π)) ** (1 / 3)  # type: ignore
     else:
         raise NotImplementedError(f"Cannot calculate the radius in {dim} dimensions")
 
 
-def make_radius_from_volume_compiled(dim: int) -> Callable:
+def make_radius_from_volume_compiled(dim: int) -> Callable[[TNumArr], TNumArr]:
     """Return a function calculating the radius of a sphere with a given volume
 
     Args:
@@ -132,22 +135,22 @@ def make_radius_from_volume_compiled(dim: int) -> Callable:
     return jit(radius_from_volume)  # type: ignore
 
 
-def volume_from_radius(radius: float, dim: int) -> float:
+def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     """Return the volume of a sphere with a given radius
 
     Args:
-        radius (float): Radius of the sphere
+        radius (float or :class:`~numpy.ndarray`): Radius of the sphere
         dim (int): Dimension of the space
 
     Returns:
-        float: Volume of the sphere
+        float or :class:`~numpy.ndarray`: Volume of the sphere
     """
     if dim == 1:
-        return 2 * radius
+        return 2 * radius  # type: ignore
     elif dim == 2:
-        return π * radius ** 2
+        return π * radius ** 2  # type: ignore
     elif dim == 3:
-        return 4 * π / 3 * radius ** 3
+        return 4 * π / 3 * radius ** 3  # type: ignore
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
@@ -181,49 +184,52 @@ def make_volume_from_radius_compiled(dim: int) -> Callable:
     return jit(volume_from_radius)  # type: ignore
 
 
-def surface_from_radius(radius: float, dim: int) -> float:
+def surface_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     """Return the surface area of a sphere with a given radius
 
     Args:
-        radius (float): Radius of the sphere
+        radius (float or :class:`~numpy.ndarray`): Radius of the sphere
         dim (int): Dimension of the space
 
     Returns:
-        float: Surface area of the sphere
+        float or :class:`~numpy.ndarray`: Surface area of the sphere
     """
     if dim == 1:
-        return 2
+        if isinstance(radius, np.ndarray):
+            return np.broadcast_to(2, radius.shape)  # type: ignore
+        else:
+            return 2
     elif dim == 2:
-        return 2 * π * radius
+        return 2 * π * radius  # type: ignore
     elif dim == 3:
-        return 4 * π * radius ** 2
+        return 4 * π * radius ** 2  # type: ignore
     else:
         raise NotImplementedError(
             f"Cannot calculate the surface area in {dim} dimensions"
         )
 
 
-def radius_from_surface(surface: float, dim: int) -> float:
+def radius_from_surface(surface: TNumArr, dim: int) -> TNumArr:
     """Return the radius of a sphere with a given surface area
 
     Args:
-        surface (float): Surface area of the sphere
+        surface (float or :class:`~numpy.ndarray`): Surface area of the sphere
         dim (int): Dimension of the space
 
     Returns:
-        float: Radius of the sphere
+        float or :class:`~numpy.ndarray`: Radius of the sphere
     """
     if dim == 1:
         raise RuntimeError("Cannot calculate radius of 1-d sphere from surface")
     elif dim == 2:
-        return surface / (2 * π)
+        return surface / (2 * π)  # type: ignore
     elif dim == 3:
-        return float(np.sqrt(surface / (4 * π)))
+        return float(np.sqrt(surface / (4 * π)))  # type: ignore
     else:
         raise NotImplementedError(f"Cannot calculate the radius in {dim} dimensions")
 
 
-def make_surface_from_radius_compiled(dim: int) -> Callable:
+def make_surface_from_radius_compiled(dim: int) -> Callable[[TNumArr], TNumArr]:
     """Return a function calculating the surface area of a sphere
 
     Args:
@@ -234,16 +240,22 @@ def make_surface_from_radius_compiled(dim: int) -> Callable:
     """
     if dim == 1:
 
+        @nb.generated_jit(nopython=True)
         def surface_from_radius(radius):
-            return 2
+            if isinstance(radius, nb.types.Float):
+                return lambda radius: 2
+            else:
+                return lambda radius: np.full(radius.shape, 2)
 
     elif dim == 2:
 
+        @jit
         def surface_from_radius(radius):
             return 2 * π * radius
 
     elif dim == 3:
 
+        @jit
         def surface_from_radius(radius):
             return 4 * π * radius ** 2
 
@@ -251,7 +263,7 @@ def make_surface_from_radius_compiled(dim: int) -> Callable:
         raise NotImplementedError(
             f"Cannot calculate the surface area in {dim} dimensions"
         )
-    return jit(surface_from_radius)  # type: ignore
+    return surface_from_radius  # type: ignore
 
 
 def points_cartesian_to_spherical(points):
@@ -468,11 +480,11 @@ class PointsOnSphere:
             voronoi = spatial.SphericalVoronoi(points_flat)
             voronoi.sort_vertices_of_regions()
 
-            weights = [
+            weight_vals = [
                 get_spherical_polygon_area(voronoi.vertices[ix])
                 for ix in voronoi.regions
             ]
-            weights = np.array(weights, dtype=np.double)
+            weights = np.array(weight_vals, dtype=np.double)
             weights /= surface_from_radius(1, dim=self.dim)
 
         else:

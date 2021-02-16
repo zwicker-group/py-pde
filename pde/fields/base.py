@@ -10,19 +10,12 @@ import logging
 import operator
 from abc import ABCMeta, abstractmethod, abstractproperty
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar
 
 import numba as nb
 import numpy as np
 
-from ..grids.base import (
-    ArrayLike,
-    DimensionError,
-    DomainError,
-    GridBase,
-    OptionalArrayLike,
-    discretize_interval,
-)
+from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
@@ -35,6 +28,7 @@ from ..tools.plotting import (
     napari_viewer,
     plot_on_axes,
 )
+from ..tools.typing import ArrayLike, NumberOrArray
 
 if TYPE_CHECKING:
     from .scalar import ScalarField  # @UnusedImport
@@ -57,7 +51,7 @@ class FieldBase(metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: OptionalArrayLike = None,
+        data: ArrayLike = None,
         *,
         label: Optional[str] = None,
     ):
@@ -71,7 +65,7 @@ class FieldBase(metaclass=ABCMeta):
                 Name of the field
         """
         self._grid = grid
-        self._data: np.ndarray = data
+        self._data: np.ndarray = np.asarray(data)
         self.label = label
         self._logger = logging.getLogger(self.__class__.__name__)
 
@@ -201,7 +195,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @abstractmethod
     def copy(
-        self: TField, data: OptionalArrayLike = None, *, label: str = None, dtype=None
+        self: TField, data: ArrayLike = None, *, label: str = None, dtype=None
     ) -> TField:
         pass
 
@@ -499,11 +493,13 @@ class FieldBase(metaclass=ABCMeta):
             return out
 
     @abstractmethod
-    def get_line_data(self, scalar: str = "auto", extract: str = "auto"):
+    def get_line_data(
+        self, scalar: str = "auto", extract: str = "auto"
+    ) -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def get_image_data(self):
+    def get_image_data(self) -> Dict[str, Any]:
         pass
 
     @abstractmethod
@@ -561,9 +557,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: OptionalArrayLike = None,
+        data: ArrayLike = None,
         *,
-        label: Optional[str] = None,
+        label: str = None,
         dtype=None,
     ):
         """
@@ -853,7 +849,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def copy(
         self: TDataField,
-        data: OptionalArrayLike = None,
+        data: ArrayLike = None,
         *,
         label: str = None,
         dtype=None,
@@ -930,7 +926,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def _make_interpolator_scipy(
         self, method: str = "linear", fill: Number = None, **kwargs
-    ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+    ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
 
         This uses scipy.interpolate.RegularGridInterpolator and the
@@ -994,7 +990,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             scalar_dim = 1
 
         # introduce wrapper function to process arrays
-        def interpolator(point, **kwargs):
+        def interpolator(point: np.ndarray, **kwargs) -> NumberOrArray:
             """ return the interpolated value at the position `point` """
             point = np.atleast_1d(point)
             # apply periodic boundary conditions to grid point
@@ -1007,9 +1003,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 out = np.moveaxis(out, point.ndim - 1, 0)
                 out = out.reshape(self.data_shape + point.shape[:-1])
 
-            return out
+            return out  # type: ignore
 
-        return interpolator
+        return interpolator  # type: ignore
 
     @fill_in_docstring
     def _make_interpolator_compiled(
@@ -1097,7 +1093,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @cached_method()
     def make_interpolator(
         self, method: str = "numba", fill: Number = None, **kwargs
-    ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
+    ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
 
         Args:
@@ -1140,7 +1136,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             raise ValueError(f"Unknown interpolation method `{method}`")
 
-    def interpolate(self, point, method: str = "numba", fill: Number = None, **kwargs):
+    def interpolate(
+        self, point, method: str = "numba", fill: Number = None, **kwargs
+    ) -> NumberOrArray:
         r"""interpolate the field to points between support points
 
         Args:
@@ -1161,7 +1159,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :class:`~numpy.ndarray`: the values of the field
         """
         point = np.asarray(point)
-        return self.make_interpolator(method=method, fill=fill, **kwargs)(point)
+        return self.make_interpolator(method=method, fill=fill, **kwargs)(point)  # type: ignore
 
     def interpolate_to_grid(
         self: TDataField,
@@ -1265,7 +1263,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @fill_in_docstring
     def get_boundary_values(
         self, axis: int, upper: bool, bc: BoundariesData = "natural"
-    ) -> np.ndarray:
+    ) -> NumberOrArray:
         """get the field values directly on the specified boundary
 
         Args:
@@ -1281,12 +1279,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         interpolator = self.make_interpolator(bc=bc)
         points = self.grid._boundary_coordinates(axis, upper)
-        return interpolator(points)
+        return interpolator(points)  # type: ignore
 
     @fill_in_docstring
     def make_get_boundary_values(
         self, axis: int, upper: bool, bc: BoundariesData = "natural"
-    ) -> np.ndarray:
+    ) -> Callable[[Optional[np.ndarray], Optional[np.ndarray]], NumberOrArray]:
         """make a function calculating field values on the specified boundary
 
         Args:
@@ -1334,10 +1332,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 out[...] = res[()]
                 return out
 
-        return get_boundary_values
+        return get_boundary_values  # type: ignore
 
     @abstractproperty
-    def integral(self) -> Union[np.ndarray, Number]:
+    def integral(self) -> NumberOrArray:
         pass
 
     @abstractmethod
@@ -1347,13 +1345,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         pass
 
     @property
-    def average(self) -> Union[np.ndarray, Number]:
+    def average(self) -> NumberOrArray:
         """determine the average of data
 
         This is calculated by integrating each component of the field over space
         and dividing by the grid volume
         """
-        return self.integral / self.grid.volume
+        return self.integral / self.grid.volume  # type: ignore
 
     @property
     def fluctuations(self):

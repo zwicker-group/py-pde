@@ -12,8 +12,9 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, Union
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase, OptionalArrayLike
+from ..fields.base import FieldBase
 from ..tools.numba import jit
+from ..tools.typing import ArrayLike
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
@@ -42,7 +43,7 @@ class PDEBase(metaclass=ABCMeta):
     """ bool: Flag indicating whether the right hand side is a complex-valued PDE, which
     requires all involved variables to be of complex type """
 
-    def __init__(self, noise: OptionalArrayLike = 0):
+    def __init__(self, noise: ArrayLike = 0):
         """
         Args:
             noise (float or :class:`~numpy.ndarray`):
@@ -69,9 +70,9 @@ class PDEBase(metaclass=ABCMeta):
         is `True` if `self.noise != 0`.
         """
         # check for self.noise, in case __init__ is not called in a subclass
-        return hasattr(self, "noise") and np.any(np.asarray(self.noise) != 0)
+        return hasattr(self, "noise") and np.any(np.asarray(self.noise) != 0)  # type: ignore
 
-    def make_modify_after_step(self, state: FieldBase) -> Callable:
+    def make_modify_after_step(self, state: FieldBase) -> Callable[[np.ndarray], float]:
         """returns a function that can be called to modify a state
 
         This function is applied to the state after each integration step when
@@ -98,11 +99,15 @@ class PDEBase(metaclass=ABCMeta):
     def evolution_rate(self, state: FieldBase, t: float = 0) -> FieldBase:
         pass
 
-    def _make_pde_rhs_numba(self, state: FieldBase) -> Callable:
+    def _make_pde_rhs_numba(
+        self, state: FieldBase
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
         """ create a compiled function for evaluating the right hand side """
         raise NotImplementedError
 
-    def make_pde_rhs(self, state: FieldBase, backend: str = "auto") -> Callable:
+    def make_pde_rhs(
+        self, state: FieldBase, backend: str = "auto"
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
         """return a function for evaluating the right hand side of the PDE
 
         Args:
@@ -131,7 +136,7 @@ class PDEBase(metaclass=ABCMeta):
         elif backend == "numpy":
             state = state.copy()
 
-            def evolution_rate_numpy(state_data, t: float):
+            def evolution_rate_numpy(state_data: np.ndarray, t: float) -> np.ndarray:
                 """ evaluate the rhs given only a state without the grid """
                 state.data = state_data
                 return self.evolution_rate(state, t).data
@@ -216,7 +221,9 @@ class PDEBase(metaclass=ABCMeta):
         else:
             return state.copy(data=0, label=label)
 
-    def _make_noise_realization_numba(self, state: FieldBase) -> Callable:
+    def _make_noise_realization_numba(
+        self, state: FieldBase
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
         """return a function for evaluating the noise term of the PDE
 
         Args:
@@ -235,9 +242,9 @@ class PDEBase(metaclass=ABCMeta):
                 noise_strength = float(self.noise)  # type: ignore
 
                 @jit
-                def noise_realization(state_data: np.ndarray, t: float):
+                def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
                     """ helper function returning a noise realization """
-                    return noise_strength * np.random.randn(*data_shape)
+                    return noise_strength * np.random.randn(*data_shape)  # type: ignore
 
             elif isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
@@ -247,13 +254,13 @@ class PDEBase(metaclass=ABCMeta):
                     noise_strengths[state._slices[i]] = noise
 
                 @jit
-                def noise_realization(state_data: np.ndarray, t: float):
+                def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
                     """ helper function returning a noise realization """
                     out = np.random.randn(*data_shape)
                     for i in range(data_shape[0]):
                         # TODO: Avoid creating random numbers when noise_strengths == 0
                         out[i] *= noise_strengths[i]
-                    return out
+                    return out  # type: ignore
 
             else:
                 # different noise strengths, but a single field
@@ -264,13 +271,15 @@ class PDEBase(metaclass=ABCMeta):
         else:
 
             @jit
-            def noise_realization(state_data: np.ndarray, t: float):
+            def noise_realization(state_data: np.ndarray, t: float) -> None:
                 """ helper function returning a noise realization """
                 return None
 
         return noise_realization  # type: ignore
 
-    def _make_sde_rhs_numba(self, state: FieldBase) -> Callable:
+    def _make_sde_rhs_numba(
+        self, state: FieldBase
+    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the noise term of the PDE
 
         Args:
@@ -285,13 +294,15 @@ class PDEBase(metaclass=ABCMeta):
         noise_realization = self._make_noise_realization_numba(state)
 
         @jit
-        def sde_rhs(state_data: np.ndarray, t: float):
+        def sde_rhs(state_data: np.ndarray, t: float) -> Tuple[np.ndarray, np.ndarray]:
             """ compiled helper function returning a noise realization """
             return (evolution_rate(state_data, t), noise_realization(state_data, t))
 
         return sde_rhs  # type: ignore
 
-    def make_sde_rhs(self, state: FieldBase, backend: str = "auto") -> Callable:
+    def make_sde_rhs(
+        self, state: FieldBase, backend: str = "auto"
+    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the right hand side of the SDE
 
         Args:
@@ -322,7 +333,9 @@ class PDEBase(metaclass=ABCMeta):
         elif backend == "numpy":
             state = state.copy()
 
-            def sde_rhs(state_data, t: float):
+            def sde_rhs(
+                state_data: np.ndarray, t: float
+            ) -> Tuple[np.ndarray, np.ndarray]:
                 """ evaluate the rhs given only a state without the grid """
                 state.data = state_data
                 return (
