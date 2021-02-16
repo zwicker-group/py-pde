@@ -1,5 +1,5 @@
 """
-.. codeauthor:: David Zwicker <dzwicker@seas.harvard.edu>
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 import collections

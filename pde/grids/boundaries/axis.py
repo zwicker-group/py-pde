@@ -14,6 +14,7 @@ from typing import Callable, Dict, Tuple, Union
 import numpy as np
 from numba.extending import register_jitable
 
+from ...tools.typing import NumberOrArray
 from ..base import DomainError, GridBase
 from .local import BCBase, BoundaryData, NeumannBC, _make_get_arr_1d
 
@@ -303,14 +304,16 @@ class BoundaryPair(BoundaryAxisBase):
         """ BoundaryPair: differentiated version of this boundary condition """
         return self.__class__(self.low.differentiated, self.high.differentiated)
 
-    def get_point_evaluator(self, fill: np.array = None) -> Callable:
+    def get_point_evaluator(
+        self, fill: np.ndarray = None
+    ) -> Callable[[np.ndarray, Tuple[int, ...]], NumberOrArray]:
         """return a function to evaluate values at a given point
 
         The point can either be a point inside the domain or a virtual point
         right outside the domain
 
         Args:
-            fill (:class:`numpy.ndarray`, optional):
+            fill (:class:`~numpy.ndarray`, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `DomainError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
@@ -326,7 +329,7 @@ class BoundaryPair(BoundaryAxisBase):
         eval_high = self.high.make_virtual_point_evaluator()
 
         @register_jitable
-        def evaluate(arr, idx):
+        def evaluate(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
             """ evaluate values of the 1d array `arr_1d` at an index `i` """
             arr_1d, i, _ = get_arr_1d(arr, idx)
 
@@ -340,7 +343,7 @@ class BoundaryPair(BoundaryAxisBase):
 
             elif 0 <= i < size:
                 # inner point of the axis
-                return arr_1d[..., i]
+                return arr_1d[..., i]  # type: ignore
 
             elif fill is None:
                 # point is outside the domain and no fill value is specified
@@ -353,7 +356,12 @@ class BoundaryPair(BoundaryAxisBase):
 
         return evaluate  # type: ignore
 
-    def make_region_evaluator(self) -> Callable:
+    def make_region_evaluator(
+        self,
+    ) -> Callable[
+        [np.ndarray, Tuple[int, ...]],
+        Tuple[NumberOrArray, NumberOrArray, NumberOrArray],
+    ]:
         """return a function to evaluate values in a neighborhood of a point
 
         Returns:
@@ -369,7 +377,9 @@ class BoundaryPair(BoundaryAxisBase):
         ap_high = self.high.make_adjacent_evaluator()
 
         @register_jitable
-        def region_evaluator(arr, idx: Tuple[int, ...]) -> Tuple[float, float, float]:
+        def region_evaluator(
+            arr: np.ndarray, idx: Tuple[int, ...]
+        ) -> Tuple[NumberOrArray, NumberOrArray, NumberOrArray]:
             """ compiled function return the values in the region """
             # extract the 1d array along axis
             arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
@@ -502,7 +512,9 @@ class BoundaryPeriodic(BoundaryAxisBase):
         """ BoundaryPeriodic: differentiated boundary condition """
         return self
 
-    def get_point_evaluator(self, fill: float = None) -> Callable:
+    def get_point_evaluator(
+        self, fill: float = None
+    ) -> Callable[[np.ndarray, Tuple[int, ...]], NumberOrArray]:
         """return a function to evaluate values at a given point
 
         The point can either be a point inside the domain or a virtual point
@@ -520,14 +532,20 @@ class BoundaryPeriodic(BoundaryAxisBase):
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
 
         @register_jitable
-        def evaluate(arr, idx):
+        def evaluate(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
             """ evaluate values of the array `arr` at an index `idx` """
             arr_1d, i, _ = get_arr_1d(arr, idx)
-            return arr_1d[..., i % size]  # wrap around for periodic boundaries
+            # wrap around for periodic boundaries
+            return arr_1d[..., i % size]  # type: ignore
 
         return evaluate  # type: ignore
 
-    def make_region_evaluator(self) -> Callable:
+    def make_region_evaluator(
+        self,
+    ) -> Callable[
+        [np.ndarray, Tuple[int, ...]],
+        Tuple[NumberOrArray, NumberOrArray, NumberOrArray],
+    ]:
         """return a function to evaluate values in a neighborhood of a point
 
         Returns:

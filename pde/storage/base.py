@@ -42,8 +42,9 @@ class StorageBase(metaclass=ABCMeta):
     fields in order and indivdual time points can also be accessed.
     """
 
-    times: Sequence[float]  # :class:`numpy.ndarray`): stored time points
-    data: Any  # The actual data for all the stored times
+    times: Sequence[float]  # :class:`~numpy.ndarray`): stored time points
+    data: Any  # actual data for all the stored times
+    write_mode: str  # mode determining how the storage behaves
 
     def __init__(self, info: InfoDict = None, write_mode: str = "truncate_once"):
         """
@@ -51,16 +52,15 @@ class StorageBase(metaclass=ABCMeta):
             info (dict):
                 Supplies extra information that is stored in the storage
             write_mode (str):
-                Determines how new data is added to already existing one.
-                Possible values are: 'append' (data is always appended),
-                'truncate' (data is cleared every time this storage is used
-                for writing), or 'truncate_once' (data is cleared for the first
-                writing, but subsequent data using the same instances are
-                appended). Alternatively, specifying 'readonly' will disable
-                writing completely.
+                Determines how new data is added to already existing one. Possible
+                values are: 'append' (data is always appended), 'truncate' (data is
+                cleared every time this storage is used for writing), or 'truncate_once'
+                (data is cleared for the first writing, but subsequent data using the
+                same instances are appended). Alternatively, specifying 'readonly' will
+                disable writing completely.
         """
         self.info = {} if info is None else info
-        self.write_mode: str = write_mode
+        self.write_mode = write_mode
         self._data_shape: Optional[Tuple[int, ...]] = None
         self._grid: Optional[GridBase] = None
         self._field: Optional[FieldBase] = None
@@ -352,8 +352,8 @@ class StorageBase(metaclass=ABCMeta):
 
         # extract the actual memory
         return MemoryStorage(
-            times=self.times[i_start:i_end],
-            data=self.data[i_start:i_end],
+            times=self.times[i_start:i_end],  # type: ignore
+            data=self.data[i_start:i_end],  # type: ignore
             field_obj=self._field,
             info=self.info,
         )

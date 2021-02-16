@@ -33,7 +33,7 @@ class VectorField(DataFieldBase):
     Attributes:
         grid (:class:`~pde.grids.base.GridBase`):
             The underlying grid defining the discretization
-        data (:class:`numpy.ndarray`):
+        data (:class:`~numpy.ndarray`):
             Vector components at the support points of the grid
         label (str):
             Name of the field
@@ -189,7 +189,9 @@ class VectorField(DataFieldBase):
 
     __matmul__ = dot  # support python @-syntax for matrix multiplication
 
-    def make_dot_operator(self, conjugate: bool = True) -> Callable:
+    def make_dot_operator(
+        self, conjugate: bool = True
+    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return operator calculating the dot product involving vector fields
 
         This supports both products between two vectors as well as products between a
@@ -203,7 +205,7 @@ class VectorField(DataFieldBase):
                 Whether to use the complex conjugate for the second operand
 
         Returns:
-            function that takes two instance of :class:`numpy.ndarray`, which contain
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written. Note that the
             returned function is jitted with numba for speed.
@@ -214,7 +216,7 @@ class VectorField(DataFieldBase):
         if conjugate:
 
             @register_jitable
-            def inner(a, b, out):
+            def inner(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
                 """ calculate dot product between fields `a` and `b` """
                 out[:] = a[0] * b[0].conjugate()  # overwrite potential data in out
                 for i in range(1, dim):
@@ -224,7 +226,7 @@ class VectorField(DataFieldBase):
         else:
 
             @register_jitable
-            def inner(a, b, out):
+            def inner(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
                 """ calculate dot product between fields `a` and `b` """
                 out[:] = a[0] * b[0]  # overwrite potential data in out
                 for i in range(1, dim):
@@ -239,7 +241,7 @@ class VectorField(DataFieldBase):
                 with or without `out`."""
                 if out is None:
                     out = np.empty(b.shape[1:], dtype=get_common_dtype(a, b))
-                return inner(a, b, out)
+                return inner(a, b, out)  # type: ignore
 
         else:
 
@@ -255,16 +257,18 @@ class VectorField(DataFieldBase):
                     # function is called without `out`
                     dtype = get_common_numba_dtype(a, b)
 
-                    def f_with_allocated_out(a, b, out):
+                    def f_with_allocated_out(
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray
+                    ) -> np.ndarray:
                         """ helper function allocating output array """
                         out = np.empty(b.shape[1:], dtype=dtype)
-                        return inner(a, b, out=out)
+                        return inner(a, b, out=out)  # type: ignore
 
-                    return f_with_allocated_out
+                    return f_with_allocated_out  # type: ignore
 
                 else:
                     # function is called with `out` argument
-                    return inner
+                    return inner  # type: ignore
 
         return dot
 
@@ -278,7 +282,7 @@ class VectorField(DataFieldBase):
             This function does not check types or dimensions.
 
         Returns:
-            function that takes two instance of :class:`numpy.ndarray`, which
+            function that takes two instance of :class:`~numpy.ndarray`, which
             contain the discretized data of the two operands. An optional third
             argument can specify the output array to which the result is
             written. Note that the returned function is jitted with numba for
@@ -324,14 +328,16 @@ class VectorField(DataFieldBase):
 
         return out
 
-    def make_outer_prod_operator(self) -> Callable:
+    def make_outer_prod_operator(
+        self,
+    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return operator calculating the outer product of two vector fields
 
         Warning:
             This function does not check types or dimensions.
 
         Returns:
-            function that takes two instance of :class:`numpy.ndarray`, which contain
+            function that takes two instance of :class:`~numpy.ndarray`, which contain
             the discretized data of the two operands. An optional third argument can
             specify the output array to which the result is written. Note that the
             returned function is jitted with numba for speed.
@@ -340,7 +346,7 @@ class VectorField(DataFieldBase):
 
         # create the inner function calculating the dot product
         @register_jitable
-        def outer(a, b, out):
+        def outer(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
             """ calculate dot product between fields `a` and `b` """
             for i in range(0, dim):
                 for j in range(0, dim):
@@ -355,7 +361,7 @@ class VectorField(DataFieldBase):
                 with or without `out`."""
                 if out is None:
                     out = np.empty((len(a),) + b.shape, dtype=get_common_dtype(a, b))
-                return outer(a, b, out)
+                return outer(a, b, out)  # type: ignore
 
         else:
 
@@ -371,16 +377,18 @@ class VectorField(DataFieldBase):
                     # function is called without `out`
                     dtype = get_common_numba_dtype(a, b)
 
-                    def f_with_allocated_out(a, b, out):
+                    def f_with_allocated_out(
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray
+                    ) -> np.ndarray:
                         """ helper function allocating output array """
                         out = np.empty((len(a),) + b.shape, dtype=dtype)
-                        return outer(a, b, out=out)
+                        return outer(a, b, out=out)  # type: ignore
 
-                    return f_with_allocated_out
+                    return f_with_allocated_out  # type: ignore
 
                 else:
                     # function is called with `out` argument
-                    return outer
+                    return outer  # type: ignore
 
         return dot
 
@@ -477,7 +485,7 @@ class VectorField(DataFieldBase):
 
     @property
     def integral(self) -> np.ndarray:
-        """ :class:`numpy.ndarray`: integral of each component over space """
+        """ :class:`~numpy.ndarray`: integral of each component over space """
         return self.grid.integrate(self.data)
 
     def to_scalar(

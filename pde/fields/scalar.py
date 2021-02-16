@@ -6,6 +6,7 @@ Defines a scalar field over a grid
 
 import numbers
 from pathlib import Path
+from typing import List  # @UnusedImport
 from typing import TYPE_CHECKING, Callable, Dict, Optional, Sequence, Union
 
 import numpy as np
@@ -364,7 +365,7 @@ class ScalarField(DataFieldBase):
 
         # obtain the sliced data
         if method == "nearest":
-            idx = []
+            idx: List[Union[int, slice]] = []
             for i in range(grid.num_axes):
                 if i in ax_remove:
                     pos = pos_values[i]
@@ -374,7 +375,7 @@ class ScalarField(DataFieldBase):
                             f"Position {grid.axes[i]} = {pos} is outside the domain"
                         )
                     # add slice that is closest to pos
-                    idx.append(np.argmin((grid.axes_coords[i] - pos) ** 2))
+                    idx.append(int(np.argmin((grid.axes_coords[i] - pos) ** 2)))
                 else:
                     idx.append(slice(None))
             subdata = self.data[tuple(idx)]

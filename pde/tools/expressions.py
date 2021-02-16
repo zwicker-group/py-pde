@@ -130,7 +130,7 @@ class NumpyArrayPrinter(PythonCodePrinter):
         return f"array(broadcast_arrays({arrays}))"
 
 
-ExpressionType = Union[float, str, "ExpressionBase"]
+ExpressionType = Union[float, str, np.ndarray, "ExpressionBase"]
 
 
 class ExpressionBase(metaclass=ABCMeta):

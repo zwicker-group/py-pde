@@ -20,7 +20,6 @@ from typing import Any, Dict, Optional, Union
 
 from ..tools.parse_duration import parse_duration
 
-Real = Union[float, int]
 InfoDict = Optional[Dict[str, Any]]
 
 
@@ -183,7 +182,7 @@ class RealtimeIntervals(ConstantIntervals):
 
 
 IntervalType = ConstantIntervals
-IntervalData = Union[IntervalType, Real, str]
+IntervalData = Union[IntervalType, float, int, str]
 
 
 def get_interval(interval: IntervalData) -> IntervalType:

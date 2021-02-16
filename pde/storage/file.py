@@ -231,13 +231,13 @@ class FileStorage(StorageBase):
 
     @property
     def times(self):
-        """ :class:`numpy.ndarray`: The times at which data is available """
+        """ :class:`~numpy.ndarray`: The times at which data is available """
         self._open("reading")
         return self._times
 
     @property
     def data(self):
-        """  :class:`numpy.ndarray`: The actual data for all time """
+        """  :class:`~numpy.ndarray`: The actual data for all time """
         self._open("reading")
         return self._data
 
@@ -321,7 +321,7 @@ class FileStorage(StorageBase):
         """append a new data set
 
         Args:
-            data (:class:`numpy.ndarray`): The actual data
+            data (:class:`~numpy.ndarray`): The actual data
             time (float): The time point associated with the data
         """
         if self.keep_opened:

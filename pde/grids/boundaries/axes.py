@@ -6,7 +6,7 @@ This module handles the boundaries of all axes of a grid. It only defines
 :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`.
 """
 
-from typing import Sequence, Union
+from typing import List, Sequence, Union
 
 import numpy as np
 
@@ -174,8 +174,8 @@ class Boundaries(list):
         return result
 
     @property
-    def periodic(self) -> np.ndarray:
-        """:class:`numpy.ndarray`: a boolean array indicating which dimensions
+    def periodic(self) -> List[bool]:
+        """:class:`~numpy.ndarray`: a boolean array indicating which dimensions
         are periodic according to the boundary conditions"""
         return self.grid.periodic
 

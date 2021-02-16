@@ -14,7 +14,6 @@ from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from .intervals import IntervalData, get_interval
 
-Real = Union[float, int]
 InfoDict = Optional[Dict[str, Any]]
 TrackerDataType = Union["TrackerBase", str]
 

@@ -15,7 +15,8 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
 from ..tools.plotting import PlotReference, plot_on_figure
-from .base import DataFieldBase, FieldBase, OptionalArrayLike
+from ..tools.typing import ArrayLike
+from .base import DataFieldBase, FieldBase
 from .scalar import ScalarField
 
 
@@ -25,7 +26,7 @@ class FieldCollection(FieldBase):
     def __init__(
         self,
         fields: Sequence[DataFieldBase],
-        data: OptionalArrayLike = None,
+        data: ArrayLike = None,
         *,
         copy_fields: bool = False,
         label: Optional[str] = None,
@@ -36,7 +37,7 @@ class FieldCollection(FieldBase):
         Args:
             fields:
                 Sequence of the individual fields
-            data (:class:`numpy.ndarray`):
+            data (:class:`~numpy.ndarray`):
                 Data of the fields. If `None`, the data is instead taken from
                 the individual fields given by `fields`.
             copy_fields (bool):
@@ -223,7 +224,7 @@ class FieldCollection(FieldBase):
         Args:
             attributes (dict):
                 The attributes that describe the current instance
-            data (:class:`numpy.ndarray`, optional):
+            data (:class:`~numpy.ndarray`, optional):
                 Data values at support points of the grid defining all fields
         """
         if "class" in attributes:
@@ -406,12 +407,12 @@ class FieldCollection(FieldBase):
         return results
 
     def copy(
-        self, data: OptionalArrayLike = None, *, label: str = None, dtype=None
+        self, data: ArrayLike = None, *, label: str = None, dtype=None
     ) -> "FieldCollection":
         """return a copy of the data, but not of the grid
 
         Args:
-            data (:class:`numpy.ndarray`, optional):
+            data (:class:`~numpy.ndarray`, optional):
                 Data values at the support points of the grid that define the
                 field. Note that the data is not copied but used directly.
             label (str, optional):

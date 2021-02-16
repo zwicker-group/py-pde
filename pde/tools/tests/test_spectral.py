@@ -14,7 +14,7 @@ def spectral_density(data, dx=1.0):
     """calculate the power spectral density of a field
 
     Args:
-        data (:class:`numpy.ndarray`):
+        data (:class:`~numpy.ndarray`):
             Data of which the power spectral density will be calculated
         dx (float or list): The discretizations of the grid either as a single
             number or as an array with a value for each dimension

@@ -1,10 +1,15 @@
 """
-.. codeauthor:: David Zwicker <dzwicker@seas.harvard.edu>
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 import pytest
 
-from pde.tools.config import Config
+from pde.tools.config import Config, environment
+
+
+def test_environment():
+    """ test the environment function """
+    assert isinstance(environment(), dict)
 
 
 def test_config():

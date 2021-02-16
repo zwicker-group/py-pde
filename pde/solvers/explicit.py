@@ -52,13 +52,14 @@ class ExplicitSolver(SolverBase):
             `t_start` to time `t_end`. The function call signature is
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
-        rhs = self._make_pde_rhs(state, backend=self.backend, allow_stochastic=True)
 
         # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step(state))
 
         if self.pde.is_sde:
             # handle stochastic version of the pde
+
+            rhs_sde = self._make_sde_rhs(state, backend=self.backend)
 
             def stepper(
                 state_data: np.ndarray, t_start: float, steps: int
@@ -68,7 +69,7 @@ class ExplicitSolver(SolverBase):
                 for i in range(steps):
                     # calculate the right hand side
                     t = t_start + i * dt
-                    evolution_rate, noise_realization = rhs(state_data, t)
+                    evolution_rate, noise_realization = rhs_sde(state_data, t)
                     state_data += dt * evolution_rate
                     if noise_realization is not None:
                         state_data += np.sqrt(dt) * noise_realization
@@ -83,6 +84,8 @@ class ExplicitSolver(SolverBase):
 
         else:
             # handle deterministic  version of the pde
+            rhs_pde = self._make_pde_rhs(state, backend=self.backend)
+
             def stepper(
                 state_data: np.ndarray, t_start: float, steps: int
             ) -> Tuple[float, float]:
@@ -91,7 +94,7 @@ class ExplicitSolver(SolverBase):
                 for i in range(steps):
                     # calculate the right hand side
                     t = t_start + i * dt
-                    state_data += dt * rhs(state_data, t)
+                    state_data += dt * rhs_pde(state_data, t)
                     modifications += modify_after_step(state_data)
 
                 return t + dt, modifications
@@ -102,7 +105,7 @@ class ExplicitSolver(SolverBase):
         return stepper
 
     def _make_rk45_stepper(self, state: FieldBase, dt: float) -> Callable:
-        """make a simple Euler stepper
+        """make a simple stepper for the explicit Runge-Kutta method of order 5(4)
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -117,7 +120,12 @@ class ExplicitSolver(SolverBase):
             `t_start` to time `t_end`. The function call signature is
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
-        rhs = self._make_pde_rhs(state, backend=self.backend, allow_stochastic=False)
+        if self.pde.is_sde:
+            raise RuntimeError(
+                "Cannot use Runge-Kutta stepper with stochastic equation"
+            )
+
+        rhs = self._make_pde_rhs(state, backend=self.backend)
         self.info["stochastic"] = False
 
         # obtain post-step action function

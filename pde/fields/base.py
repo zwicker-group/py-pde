@@ -10,19 +10,12 @@ import logging
 import operator
 from abc import ABCMeta, abstractmethod, abstractproperty
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar
 
 import numba as nb
 import numpy as np
 
-from ..grids.base import (
-    ArrayLike,
-    DimensionError,
-    DomainError,
-    GridBase,
-    OptionalArrayLike,
-    discretize_interval,
-)
+from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
@@ -35,6 +28,7 @@ from ..tools.plotting import (
     napari_viewer,
     plot_on_axes,
 )
+from ..tools.typing import ArrayLike, NumberOrArray
 
 if TYPE_CHECKING:
     from .scalar import ScalarField  # @UnusedImport
@@ -57,7 +51,7 @@ class FieldBase(metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: OptionalArrayLike = None,
+        data: ArrayLike = None,
         *,
         label: Optional[str] = None,
     ):
@@ -71,7 +65,7 @@ class FieldBase(metaclass=ABCMeta):
                 Name of the field
         """
         self._grid = grid
-        self._data: np.ndarray = data
+        self._data: np.ndarray = np.asarray(data)
         self.label = label
         self._logger = logging.getLogger(self.__class__.__name__)
 
@@ -89,7 +83,7 @@ class FieldBase(metaclass=ABCMeta):
         Args:
             attributes (dict):
                 The attributes that describe the current instance
-            data (:class:`numpy.ndarray`, optional):
+            data (:class:`~numpy.ndarray`, optional):
                 Data values at the support points of the grid defining the field
         """
         # base class was chosen => select correct class from attributes
@@ -201,7 +195,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @abstractmethod
     def copy(
-        self: TField, data: OptionalArrayLike = None, *, label: str = None, dtype=None
+        self: TField, data: ArrayLike = None, *, label: str = None, dtype=None
     ) -> TField:
         pass
 
@@ -228,7 +222,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def data(self) -> np.ndarray:
-        """ :class:`numpy.ndarray`: discretized data at the support points """
+        """ :class:`~numpy.ndarray`: discretized data at the support points """
         return self._data
 
     @data.setter
@@ -295,7 +289,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def _data_flat(self):
-        """ :class:`numpy.ndarray`: flat version of discretized data """
+        """ :class:`~numpy.ndarray`: flat version of discretized data """
         # flatten the first dimension of the internal data
         return self._data.reshape(-1, *self.grid.shape)
 
@@ -499,11 +493,13 @@ class FieldBase(metaclass=ABCMeta):
             return out
 
     @abstractmethod
-    def get_line_data(self, scalar: str = "auto", extract: str = "auto"):
+    def get_line_data(
+        self, scalar: str = "auto", extract: str = "auto"
+    ) -> Dict[str, Any]:
         pass
 
     @abstractmethod
-    def get_image_data(self):
+    def get_image_data(self) -> Dict[str, Any]:
         pass
 
     @abstractmethod
@@ -547,7 +543,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     Attributes:
         grid (:class:`~pde.grids.GridBase`):
             The underlying grid defining the discretization
-        data (:class:`numpy.ndarray`):
+        data (:class:`~numpy.ndarray`):
             Data values at the support points of the grid
         shape (tuple):
             Shape of the `data` field
@@ -561,16 +557,16 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: OptionalArrayLike = None,
+        data: ArrayLike = None,
         *,
-        label: Optional[str] = None,
+        label: str = None,
         dtype=None,
     ):
         """
         Args:
             grid (:class:`~pde.grids.GridBase`):
                 Grid defining the space on which this field is defined.
-            data (Number or :class:`numpy.ndarray`, optional):
+            data (Number or :class:`~numpy.ndarray`, optional):
                 Field values at the support points of the grid. The data is copied from
                 the supplied array. The resulting field will contain real data unless
                 the `data` argument contains complex values.
@@ -841,7 +837,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Args:
             attributes (dict):
                 The attributes that describe the current instance
-            data (:class:`numpy.ndarray`, optional):
+            data (:class:`~numpy.ndarray`, optional):
                 Data values at the support points of the grid defining the field
         """
         if "class" in attributes:
@@ -853,7 +849,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def copy(
         self: TDataField,
-        data: OptionalArrayLike = None,
+        data: ArrayLike = None,
         *,
         label: str = None,
         dtype=None,
@@ -861,7 +857,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """return a copy of the data, but not of the grid
 
         Args:
-            data (:class:`numpy.ndarray`, optional):
+            data (:class:`~numpy.ndarray`, optional):
                 Data values at the support points of the grid that define the
                 field.
             label (str, optional):
@@ -930,7 +926,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def _make_interpolator_scipy(
         self, method: str = "linear", fill: Number = None, **kwargs
-    ) -> Callable:
+    ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
 
         This uses scipy.interpolate.RegularGridInterpolator and the
@@ -994,7 +990,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             scalar_dim = 1
 
         # introduce wrapper function to process arrays
-        def interpolator(point, **kwargs):
+        def interpolator(point: np.ndarray, **kwargs) -> NumberOrArray:
             """ return the interpolated value at the position `point` """
             point = np.atleast_1d(point)
             # apply periodic boundary conditions to grid point
@@ -1007,14 +1003,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 out = np.moveaxis(out, point.ndim - 1, 0)
                 out = out.reshape(self.data_shape + point.shape[:-1])
 
-            return out
+            return out  # type: ignore
 
-        return interpolator
+        return interpolator  # type: ignore
 
     @fill_in_docstring
     def _make_interpolator_compiled(
         self, bc: BoundariesData = "natural", fill: Number = None
-    ) -> Callable:
+    ) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return a compiled interpolator
 
         This interpolator respects boundary conditions and can thus interpolate
@@ -1063,17 +1059,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             """return the interpolated value at the position `point`
 
             Args:
-                point (:class:`numpy.ndarray`):
+                point (:class:`~numpy.ndarray`):
                     The list of points. This point coordinates should be given
                     along the last axis, i.e., the shape should be `(..., dim)`.
-                data (:class:`numpy.ndarray`, optional):
+                data (:class:`~numpy.ndarray`, optional):
                     The discretized field values. If omitted, the data of the
                     current field is used, which should be the default. However,
                     this option can be useful to interpolate other fields
                     defined on the same grid without recreating the interpolator
 
             Returns:
-                :class:`numpy.ndarray`: The interpolated values at the points
+                :class:`~numpy.ndarray`: The interpolated values at the points
             """
             # check input
             point = np.atleast_1d(point)
@@ -1097,7 +1093,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @cached_method()
     def make_interpolator(
         self, method: str = "numba", fill: Number = None, **kwargs
-    ) -> Callable:
+    ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
 
         Args:
@@ -1140,11 +1136,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             raise ValueError(f"Unknown interpolation method `{method}`")
 
-    def interpolate(self, point, method: str = "numba", fill: Number = None, **kwargs):
+    def interpolate(
+        self, point, method: str = "numba", fill: Number = None, **kwargs
+    ) -> NumberOrArray:
         r"""interpolate the field to points between support points
 
         Args:
-            point (:class:`numpy.ndarray`):
+            point (:class:`~numpy.ndarray`):
                 The points at which the values should be obtained. This is given
                 in grid coordinates.
             method (str):
@@ -1158,10 +1156,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 :meth:`DataFieldBase.make_interpolator`.
 
         Returns:
-            :class:`numpy.ndarray`: the values of the field
+            :class:`~numpy.ndarray`: the values of the field
         """
         point = np.asarray(point)
-        return self.make_interpolator(method=method, fill=fill, **kwargs)(point)
+        return self.make_interpolator(method=method, fill=fill, **kwargs)(point)  # type: ignore
 
     def interpolate_to_grid(
         self: TDataField,
@@ -1218,10 +1216,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """adds an (integrated) value to the field at an interpolated position
 
         Args:
-            point (:class:`numpy.ndarray`):
+            point (:class:`~numpy.ndarray`):
                 The point inside the grid where the value is added. This is
                 given in grid coordinates.
-            amount (Number or :class:`numpy.ndarray`):
+            amount (Number or :class:`~numpy.ndarray`):
                 The amount that will be added to the field. The value describes
                 an integrated quantity (given by the field value times the
                 discretization volume). This is important for consistency with
@@ -1240,7 +1238,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         low = np.array(grid.axes_bounds)[:, 0]
         c_l, d_l = np.divmod((point - low) / grid.discretization - 0.5, 1.0)
-        c_l = c_l.astype(np.int)
+        c_l = c_l.astype(np.intc)
         w_l = 1 - d_l  # weights of the low point
         w_h = d_l  # weights of the high point
 
@@ -1265,7 +1263,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @fill_in_docstring
     def get_boundary_values(
         self, axis: int, upper: bool, bc: BoundariesData = "natural"
-    ) -> np.ndarray:
+    ) -> NumberOrArray:
         """get the field values directly on the specified boundary
 
         Args:
@@ -1281,12 +1279,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         interpolator = self.make_interpolator(bc=bc)
         points = self.grid._boundary_coordinates(axis, upper)
-        return interpolator(points)
+        return interpolator(points)  # type: ignore
 
     @fill_in_docstring
     def make_get_boundary_values(
         self, axis: int, upper: bool, bc: BoundariesData = "natural"
-    ) -> np.ndarray:
+    ) -> Callable[[Optional[np.ndarray], Optional[np.ndarray]], NumberOrArray]:
         """make a function calculating field values on the specified boundary
 
         Args:
@@ -1323,7 +1321,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     new array is created if `out = None`.
 
             Returns:
-                :class:`numpy.ndarray`: The interpolated values on the boundary.
+                :class:`~numpy.ndarray`: The interpolated values on the boundary.
             """
             res = interpolator(points, data)
             if out is None:
@@ -1334,10 +1332,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 out[...] = res[()]
                 return out
 
-        return get_boundary_values
+        return get_boundary_values  # type: ignore
 
     @abstractproperty
-    def integral(self) -> Union[np.ndarray, Number]:
+    def integral(self) -> NumberOrArray:
         pass
 
     @abstractmethod
@@ -1347,17 +1345,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         pass
 
     @property
-    def average(self) -> Union[np.ndarray, Number]:
+    def average(self) -> NumberOrArray:
         """determine the average of data
 
         This is calculated by integrating each component of the field over space
         and dividing by the grid volume
         """
-        return self.integral / self.grid.volume
+        return self.integral / self.grid.volume  # type: ignore
 
     @property
     def fluctuations(self):
-        """:class:`numpy.ndarray`: fluctuations over the entire space.
+        """:class:`~numpy.ndarray`: fluctuations over the entire space.
 
         The fluctuations are defined as the standard deviation of the data
         scaled by the cell volume. This definition makes the fluctuations
@@ -1365,7 +1363,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         scaling available in the :func:`~DataFieldBase.random_normal`.
 
         Returns:
-            :class:`numpy.ndarray`: A tensor with the same rank of the field,
+            :class:`~numpy.ndarray`: A tensor with the same rank of the field,
             specifying the fluctuations of each component of the tensor field
             individually. Consequently, a simple scalar is returned for a
             :class:`~pde.fields.scalar.ScalarField`.

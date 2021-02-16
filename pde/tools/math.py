@@ -35,14 +35,14 @@ class SmoothData1D:
             raise ValueError("`x` and `y` must have equal number of elements")
 
         if sigma is None:
-            self.sigma = self.sigma_auto_scale * self.x.ptp() / len(self.x)
+            self.sigma = float(self.sigma_auto_scale * self.x.ptp() / len(self.x))
         else:
             self.sigma = sigma
 
     @property
     def bounds(self) -> Tuple[float, float]:
         """ return minimal and maximal `x` values """
-        return self.x.min(), self.x.max()
+        return float(self.x.min()), float(self.x.max())
 
     def __call__(self, xs):
         """return smoothed y values for the positions given in `xs`
@@ -51,7 +51,7 @@ class SmoothData1D:
             xs: a list of x-values
 
         Returns:
-            :class:`numpy.ndarray`: The associated y-values
+            :class:`~numpy.ndarray`: The associated y-values
         """
         xs = np.asanyarray(xs)
         shape = xs.shape

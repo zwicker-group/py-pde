@@ -69,6 +69,10 @@ REPLACEMENTS = collections.OrderedDict(
             "BoundariesDataList",
         ),
         ("Union[List[Union[TrackerBase, str]], TrackerBase, str, None]", "TrackerData"),
+        (
+            "Optional[Union[List[Union[TrackerBase, str]], TrackerBase, str]]",
+            "TrackerData",
+        ),
     ]
 )
 

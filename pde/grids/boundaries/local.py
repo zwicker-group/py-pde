@@ -30,7 +30,7 @@ derivatives are associated with effluxes.
 import logging
 import numbers
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numba as nb
 import numpy as np
@@ -38,10 +38,9 @@ from numba.extending import register_jitable
 
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import address_as_void_pointer
+from ...tools.typing import FloatNumerical
 from ..base import GridBase
 
-VectorType = Optional[Sequence[float]]
-TensorType = Optional[Sequence[Sequence[float]]]
 BoundaryData = Union[Dict, str, "BCBase"]
 
 
@@ -49,7 +48,7 @@ def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) -> Tuple[np.ndarray, int, 
     """extract the 1d array along axis at point idx
 
     Args:
-        arr (:class:`numpy.ndarray`): The full data array
+        arr (:class:`~numpy.ndarray`): The full data array
         idx (tuple): An index into the data array
         axis (int): The axis along which the 1d array will be extracted
 
@@ -271,7 +270,7 @@ class BCBase(metaclass=ABCMeta):
                 supported for scalar boundary conditions.
 
         Returns:
-            :class:`numpy.ndarray`: The value at the boundary
+            :class:`~numpy.ndarray`: The value at the boundary
         """
         if isinstance(value, str):
             # inhomogeneous value given by an expression
@@ -343,7 +342,7 @@ class BCBase(metaclass=ABCMeta):
                 logger = logging.getLogger(self.__class__.__name__)
             logger.warning("In valid values in %s", self)
 
-        return result
+        return result  # type: ignore
 
     @property
     def axis_coord(self) -> float:
@@ -496,7 +495,7 @@ class BCBase(metaclass=ABCMeta):
     def _cache_hash(self) -> int:
         """ returns a value to determine when a cache needs to be updated """
         if self.value_is_linked:
-            value = self.value.ctypes.data
+            value: Union[int, bytes] = self.value.ctypes.data
         else:
             value = self.value.tobytes()
 
@@ -697,11 +696,15 @@ class BCBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def make_virtual_point_evaluator(self) -> Callable:
+    def make_virtual_point_evaluator(
+        self,
+    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
         pass
 
     @abstractmethod
-    def make_adjacent_evaluator(self) -> Callable:
+    def make_adjacent_evaluator(
+        self,
+    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
         pass
 
     @property
@@ -776,7 +779,9 @@ class BCBase1stOrder(BCBase):
         else:
             return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
 
-    def make_virtual_point_evaluator(self) -> Callable:
+    def make_virtual_point_evaluator(
+        self,
+    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
         """returns a function evaluating the value at the virtual support point
 
         Returns:
@@ -816,7 +821,9 @@ class BCBase1stOrder(BCBase):
 
         return virtual_point  # type: ignore
 
-    def make_adjacent_evaluator(self) -> Callable:
+    def make_adjacent_evaluator(
+        self,
+    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
         """returns a function evaluating the value adjacent to a given point
 
         Returns:
@@ -847,7 +854,9 @@ class BCBase1stOrder(BCBase):
             ones = np.ones(self._shape_tensor)
 
             @register_jitable(inline="always")
-            def adjacent_point(arr_1d, i_point, bc_idx) -> float:
+            def adjacent_point(
+                arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
+            ) -> FloatNumerical:
                 """ evaluate the value adjacent to the current point """
                 # determine the parameters for evaluating adjacent point. Note
                 # that defining the variables c and f for the interior points
@@ -1098,8 +1107,8 @@ class MixedBC(BCBase1stOrder):
         self,
         upper: Optional[bool] = None,
         rank: int = None,
-        value: Union[float, np.ndarray] = None,
-        const: Union[float, np.ndarray] = None,
+        value: Union[float, np.ndarray, str] = None,
+        const: Union[float, np.ndarray, str] = None,
     ) -> "MixedBC":
         """ return a copy of itself, but with a reference to the same grid """
         obj = self.__class__(
@@ -1270,7 +1279,9 @@ class BCBase2ndOrder(BCBase):
                 + data[3][bc_idx] * arr_1d[..., data[4]]
             )
 
-    def make_virtual_point_evaluator(self) -> Callable:
+    def make_virtual_point_evaluator(
+        self,
+    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
         """returns a function evaluating the value at the virtual support point
 
         Returns:
@@ -1324,7 +1335,9 @@ class BCBase2ndOrder(BCBase):
 
         return virtual_point  # type: ignore
 
-    def make_adjacent_evaluator(self) -> Callable:
+    def make_adjacent_evaluator(
+        self,
+    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
         """returns a function evaluating the value adjacent to a given point
 
         Returns:
@@ -1363,7 +1376,9 @@ class BCBase2ndOrder(BCBase):
             # the boundary condition does not depend on space
 
             @register_jitable
-            def adjacent_point(arr_1d, i_point, bc_idx):
+            def adjacent_point(
+                arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
+            ):
                 """ evaluate the value adjacent to the current point """
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
@@ -1382,7 +1397,9 @@ class BCBase2ndOrder(BCBase):
             # the boundary condition is a function of space
 
             @register_jitable
-            def adjacent_point(arr_1d, i_point, bc_idx):
+            def adjacent_point(
+                arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
+            ):
                 """ evaluate the value adjacent to the current point """
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
@@ -1408,7 +1425,9 @@ class ExtrapolateBC(BCBase2ndOrder):
 
     names = ["extrapolate", "extrapolation"]  # identifiers for this condition
 
-    def get_virtual_point_data(self) -> Tuple[float, float, int, float, int]:
+    def get_virtual_point_data(
+        self,
+    ) -> Tuple[np.ndarray, np.ndarray, int, np.ndarray, int]:
         """return data suitable for calculating virtual points
 
         Returns:
@@ -1436,7 +1455,9 @@ class CurvatureBC(BCBase2ndOrder):
 
     names = ["curvature", "second_derivative"]  # identifiers for this BC
 
-    def get_virtual_point_data(self) -> Tuple[Any, float, int, float, int]:
+    def get_virtual_point_data(
+        self,
+    ) -> Tuple[np.ndarray, np.ndarray, int, np.ndarray, int]:
         """return data suitable for calculating virtual points
 
         Returns:

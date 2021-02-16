@@ -53,6 +53,9 @@ class ScipySolver(SolverBase):
             `t_start` to time `t_end`. The function call signature is
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
+        if self.pde.is_sde:
+            raise RuntimeError("Cannot use scipy stepper with stochastic equation")
+
         from scipy import integrate
 
         shape = state.data.shape
@@ -61,7 +64,7 @@ class ScipySolver(SolverBase):
         self.info["stochastic"] = False
 
         # obtain function for evaluating the right hand side
-        rhs = self._make_pde_rhs(state, backend=self.backend, allow_stochastic=False)
+        rhs = self._make_pde_rhs(state, backend=self.backend)
 
         def rhs_helper(t, state_flat):
             """ helper function to provide the correct call convention """
@@ -81,7 +84,7 @@ class ScipySolver(SolverBase):
                 **self.solver_params,
             )
             self.info["steps"] += sol.nfev
-            state.data.flat = sol.y
+            state.data[:] = sol.y.reshape(shape)
             return sol.t[0]
 
         if dt:

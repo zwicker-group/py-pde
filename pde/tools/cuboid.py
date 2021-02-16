@@ -8,9 +8,11 @@ cuboid that is aligned with the axes of a Cartesian coordinate system.
 """
 
 import itertools
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
+
+from .typing import FloatNumerical
 
 
 class Cuboid:
@@ -35,11 +37,11 @@ class Cuboid:
         self.pos.flags.writeable = self.mutable
 
     @property
-    def size(self):
+    def size(self) -> np.ndarray:
         return self._size
 
     @size.setter
-    def size(self, value):
+    def size(self, value: FloatNumerical):
         self._size = np.array(value, self.pos.dtype)  # make copy
         if self.pos.shape != self._size.shape:
             raise ValueError(
@@ -54,7 +56,7 @@ class Cuboid:
         self._size.flags.writeable = self.mutable
 
     @property
-    def corners(self):
+    def corners(self) -> Tuple[np.ndarray, np.ndarray]:
         """ return coordinates of two extreme corners defining the cuboid """
         return np.copy(self.pos), self.pos + self.size
 
@@ -69,7 +71,7 @@ class Cuboid:
         self._size.flags.writeable = self._mutable
 
     @classmethod
-    def from_points(cls, p1, p2, **kwargs) -> "Cuboid":
+    def from_points(cls, p1: np.ndarray, p2: np.ndarray, **kwargs) -> "Cuboid":
         """create cuboid from two points
 
         Args:
@@ -84,7 +86,7 @@ class Cuboid:
         return cls(p1, p2 - p1, **kwargs)
 
     @classmethod
-    def from_bounds(cls, bounds, **kwargs) -> "Cuboid":
+    def from_bounds(cls, bounds: np.ndarray, **kwargs) -> "Cuboid":
         """create cuboid from bounds
 
         Args:
@@ -97,7 +99,9 @@ class Cuboid:
         return cls(bounds[:, 0], bounds[:, 1] - bounds[:, 0], **kwargs)
 
     @classmethod
-    def from_centerpoint(cls, centerpoint, size, **kwargs) -> "Cuboid":
+    def from_centerpoint(
+        cls, centerpoint: np.ndarray, size: np.ndarray, **kwargs
+    ) -> "Cuboid":
         """create cuboid from two points
 
         Args:
@@ -119,7 +123,7 @@ class Cuboid:
             cls=self.__class__.__name__, pos=self.pos, size=self.size
         )
 
-    def __add__(self, other: "Cuboid"):
+    def __add__(self, other: "Cuboid") -> "Cuboid":
         """ The sum of two cuboids is the minimal cuboid enclosing both """
         if isinstance(other, Cuboid):
             if self.dim != other.dim:
@@ -131,11 +135,11 @@ class Cuboid:
         else:
             return NotImplemented
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """ override the default equality test """
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return np.all(self.pos == other.pos) and np.all(self.size == other.size)
+        return np.all(self.pos == other.pos) and np.all(self.size == other.size)  # type: ignore
 
     @property
     def dim(self) -> int:
@@ -146,9 +150,9 @@ class Cuboid:
         return tuple((p, p + s) for p, s in zip(self.pos, self.size))
 
     @property
-    def vertices(self):
+    def vertices(self) -> List[List[float]]:
         """ return the coordinates of all the corners """
-        return list(itertools.product(*self.bounds))
+        return list(itertools.product(*self.bounds))  # type: ignore
 
     @property
     def diagonal(self) -> float:
@@ -188,7 +192,7 @@ class Cuboid:
     def volume(self) -> float:
         return np.prod(self.size)  # type: ignore
 
-    def buffer(self, amount=0, inplace=False):
+    def buffer(self, amount: FloatNumerical = 0, inplace=False) -> "Cuboid":
         """ dilate the cuboid by a certain amount in all directions """
         amount = np.asarray(amount)
         if inplace:
@@ -198,14 +202,14 @@ class Cuboid:
         else:
             return self.__class__(self.pos - amount, self.size + 2 * amount)
 
-    def contains_point(self, points):
+    def contains_point(self, points: np.ndarray) -> np.ndarray:
         """returns a True when `points` are within the Cuboid
 
         Args:
-            points (list): List of point coordinates
+            points (:class:`~numpy.ndarray`): List of point coordinates
 
         Returns:
-            np.ndarray: list of booleans indicating which points are inside
+            :class:`~numpy.ndarray`: list of booleans indicating which points are inside
         """
         points = np.asarray(points)
         if len(points) == 0:
@@ -218,7 +222,7 @@ class Cuboid:
             )
 
         c1, c2 = self.corners
-        return np.all(c1 <= points, axis=-1) & np.all(points <= c2, axis=-1)
+        return np.all(c1 <= points, axis=-1) & np.all(points <= c2, axis=-1)  # type: ignore
 
 
 def asanyarray_flags(data: np.ndarray, dtype=None, writeable: bool = True):
@@ -227,12 +231,12 @@ def asanyarray_flags(data: np.ndarray, dtype=None, writeable: bool = True):
     A copy is only made if necessary
 
     Args:
-        data (:class:`numpy.ndarray`): numpy array that whose flags are adjusted
+        data (:class:`~numpy.ndarray`): numpy array that whose flags are adjusted
         dtype: the resulant dtype
         writeable (bool): Flag determining whether the results is writable
 
     Returns:
-        :class:`numpy.ndarray`:
+        :class:`~numpy.ndarray`:
             array with same data as `data` but with flags adjusted.
     """
     try:

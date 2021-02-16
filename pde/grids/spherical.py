@@ -127,18 +127,18 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
     @cached_property()
     def cell_volume_data(self) -> Tuple[np.ndarray]:
-        """ tuple of :class:`numpy.ndarray`: the volumes of all cells """
+        """ tuple of :class:`~numpy.ndarray`: the volumes of all cells """
         dr = self.discretization[0]
         rs = self.axes_coords[0]
         volumes_h = volume_from_radius(rs + 0.5 * dr, dim=self.dim)
         volumes_l = volume_from_radius(rs - 0.5 * dr, dim=self.dim)
-        return ((volumes_h - volumes_l).reshape(self.shape[0]),)  # type: ignore
+        return ((volumes_h - volumes_l).reshape(self.shape[0]),)
 
     def contains_point(self, point: np.ndarray) -> np.ndarray:
         """check whether the point is contained in the grid
 
         Args:
-            point (:class:`numpy.ndarray`): Coordinates of the point
+            point (:class:`~numpy.ndarray`): Coordinates of the point
         """
         point = np.atleast_1d(point)
         if point.shape[-1] != self.dim:
@@ -146,7 +146,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         r = np.linalg.norm(point, axis=-1)
 
         r_inner, r_outer = self.axes_bounds[0]
-        return r_inner <= r <= r_outer
+        return r_inner <= r <= r_outer  # type: ignore
 
     def get_random_point(
         self,
@@ -169,7 +169,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 to the center are returned.
 
         Returns:
-            :class:`numpy.ndarray`: The coordinates of the point
+            :class:`~numpy.ndarray`: The coordinates of the point
         """
         # handle the boundary distance
         r_inner, r_outer = self.axes_bounds[0]
@@ -192,7 +192,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """return a line cut along the radial axis
 
         Args:
-            data (:class:`numpy.ndarray`):
+            data (:class:`~numpy.ndarray`):
                 The values at the grid points
             extract (str):
                 Determines which cut is done through the grid. This parameter is
@@ -223,7 +223,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """return a 2d-image of the data
 
         Args:
-            data (:class:`numpy.ndarray`):
+            data (:class:`~numpy.ndarray`):
                 The values at the grid points
             performance_goal (str):
                 Determines the method chosen for interpolation. Possible options
@@ -233,7 +233,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 or outside the region).
             masked (bool):
                 Whether a :class:`numpy.ma.MaskedArray` is returned for the data
-                instead of the normal :class:`numpy.ndarray`.
+                instead of the normal :class:`~numpy.ndarray`.
 
         Returns:
             A dictionary with information about the image, which is  convenient
@@ -293,7 +293,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """generates all mirror points corresponding to `point`
 
         Args:
-            point (:class:`numpy.ndarray`): the point within the grid
+            point (:class:`~numpy.ndarray`): the point within the grid
             with_self (bool): whether to include the point itself
             only_periodic (bool): whether to only mirror along periodic axes
 
@@ -307,15 +307,15 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """convert points given in Cartesian coordinates to this grid
 
         Args:
-            points (:class:`numpy.ndarray`):
+            points (:class:`~numpy.ndarray`):
                 Points given in Cartesian coordinates.
 
         Returns:
-            :class:`numpy.ndarray`: Points given in the coordinates of the grid
+            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
         """
         points = np.atleast_1d(points)
         assert points.shape[-1] == self.dim
-        return np.linalg.norm(points, axis=-1, keepdims=True)
+        return np.linalg.norm(points, axis=-1, keepdims=True)  # type: ignore
 
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         """convert cell coordinates to real coordinates
@@ -324,7 +324,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         y-coordinate will be zero.
 
         Args:
-            cells (:class:`numpy.ndarray`):
+            cells (:class:`~numpy.ndarray`):
                 Indices of the cells whose center coordinates are requested.
                 This can be float values to indicate positions relative to the
                 cell center.
@@ -333,7 +333,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 coordinates or grid coordinates.
 
         Returns:
-            :class:`numpy.ndarray`: The center points of the respective cells
+            :class:`~numpy.ndarray`: The center points of the respective cells
         """
         cells = np.atleast_1d(cells)
         assert cells.shape[-1] == self.num_axes
@@ -344,22 +344,22 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         if cartesian:
             return self.point_to_cartesian(points)
         else:
-            return points
+            return points  # type: ignore
 
     def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)
 
         Args:
-            points (:class:`numpy.ndarray`): Real coordinates
+            points (:class:`~numpy.ndarray`): Real coordinates
 
         Returns:
-            :class:`numpy.ndarray`: The indices of the respective cells
+            :class:`~numpy.ndarray`: The indices of the respective cells
         """
         # convert from grid coordinates to cells indices
         r = self.point_from_cartesian(points)
         r_inner, _ = self.axes_bounds[0]
         cells = (r - r_inner) / self.discretization[0]
-        return cells.astype(np.int)
+        return cells.astype(np.intc)  # type: ignore
 
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
@@ -367,14 +367,14 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         In case of periodic boundary conditions, the shortest vector is returned
 
         Args:
-            p1 (:class:`numpy.ndarray`): First point(s)
-            p2 (:class:`numpy.ndarray`): Second point(s)
+            p1 (:class:`~numpy.ndarray`): First point(s)
+            p2 (:class:`~numpy.ndarray`): Second point(s)
 
         Returns:
-            :class:`numpy.ndarray`: The difference vectors between the points
+            :class:`~numpy.ndarray`: The difference vectors between the points
                 with periodic boundary conditions applied.
         """
-        return np.atleast_1d(p2) - np.atleast_1d(p1)
+        return np.atleast_1d(p2) - np.atleast_1d(p1)  # type: ignore
 
     def polar_coordinates_real(self, origin=None, *, ret_angle: bool = False, **kwargs):
         """return spherical coordinates associated with the grid
@@ -553,7 +553,7 @@ class PolarGrid(SphericalGridBase):
         coordinates will be zero.
 
         Returns:
-            :class:`numpy.ndarray`: The Cartesian coordinates of the point
+            :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.num_axes:
@@ -594,11 +594,11 @@ class SphericalGrid(SphericalGridBase):
         coordinates will be zero.
 
         Args:
-            points (:class:`numpy.ndarray`):
+            points (:class:`~numpy.ndarray`):
                 Points given in the coordinates of the grid
 
         Returns:
-            :class:`numpy.ndarray`: The Cartesian coordinates of the point
+            :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.num_axes:

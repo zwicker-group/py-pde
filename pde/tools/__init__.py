@@ -18,6 +18,7 @@ Package containing several tools required in py-pde
    plotting
    spectral
    spherical
+   typing
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """

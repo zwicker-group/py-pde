@@ -26,7 +26,7 @@ class Tensor2Field(DataFieldBase):
     Attributes:
         grid (:class:`~pde.grids.GridBase`):
             The underlying grid defining the discretization
-        data (:class:`numpy.ndarray`):
+        data (:class:`~numpy.ndarray`):
             Tensor components at the support points of the grid
         label (str):
             Name of the field
@@ -116,7 +116,7 @@ class Tensor2Field(DataFieldBase):
                 Whether to use the complex conjugate for the second operand
 
         Returns:
-            function that takes two instance of :class:`numpy.ndarray`, which
+            function that takes two instance of :class:`~numpy.ndarray`, which
             contain the discretized data of the two operands. An optional third
             argument can specify the output array to which the result is
             written. Note that the returned function is jitted with numba for
@@ -194,7 +194,7 @@ class Tensor2Field(DataFieldBase):
             This function does not check types or dimensions.
 
         Returns:
-            function that takes two instance of :class:`numpy.ndarray`, which
+            function that takes two instance of :class:`~numpy.ndarray`, which
             contain the discretized data of the two operands. An optional third
             argument can specify the output array to which the result is
             written. Note that the returned function is jitted with numba for
@@ -242,7 +242,7 @@ class Tensor2Field(DataFieldBase):
 
     @property
     def integral(self):
-        """ :class:`numpy.ndarray`: integral of each component over space """
+        """ :class:`~numpy.ndarray`: integral of each component over space """
         return self.grid.integrate(self.data)
 
     def transpose(self, label: str = "transpose") -> "Tensor2Field":
