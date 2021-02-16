@@ -14,7 +14,7 @@ Functions, classes, and decorators for managing caches
    SerializedDict
 
 
-.. codeauthor:: David Zwicker <dzwicker@seas.harvard.edu>
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import division
