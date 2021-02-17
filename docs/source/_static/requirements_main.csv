@@ -1,0 +1,6 @@
+Package,Minimal version,Usage
+matplotlib,3.1,Visualizing results
+numba,0.50,Just-in-time compilation to accelerate numerics
+numpy,1.18,Handling numerical data
+scipy,1.4,Miscellaneous scientific functions
+sympy,1.5,Dealing with user-defined mathematical expressions
