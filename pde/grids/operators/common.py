@@ -6,16 +6,15 @@ Common functions that are used by many operators
 
 import logging
 import warnings
-from typing import Callable, Optional
 
 import numpy as np
+
+from ...tools.typing import OperatorType
 
 logger = logging.getLogger(__name__)
 
 
-def make_laplace_from_matrix(
-    matrix, vector
-) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
+def make_laplace_from_matrix(matrix, vector) -> OperatorType:
     """make a Laplace operator using matrix vector products
 
     Args:
@@ -46,9 +45,7 @@ def make_laplace_from_matrix(
     return laplace
 
 
-def make_general_poisson_solver(
-    matrix, vector, method: str = "auto"
-) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
+def make_general_poisson_solver(matrix, vector, method: str = "auto") -> OperatorType:
     """make an operator that solves Poisson's problem
 
     Args:

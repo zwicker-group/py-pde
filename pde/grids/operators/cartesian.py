@@ -15,7 +15,7 @@ This module implements differential operators on Cartesian grids
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>   
 """
 
-from typing import Any, Callable, Tuple
+from typing import Tuple
 
 import numba as nb
 import numpy as np
@@ -23,13 +23,14 @@ import numpy as np
 from ... import config
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit_allocate_out
+from ...tools.typing import OperatorType
 from ..boundaries import Boundaries
 from ..cartesian import CartesianGridBase
 from .common import make_general_poisson_solver, make_laplace_from_matrix
 
 
 @fill_in_docstring
-def _get_laplace_matrix_1d(bcs) -> Tuple[Any, Any]:
+def _get_laplace_matrix_1d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for laplace operator on a 1d Cartesian grid
 
     Args:
@@ -72,7 +73,7 @@ def _get_laplace_matrix_1d(bcs) -> Tuple[Any, Any]:
 
 
 @fill_in_docstring
-def _get_laplace_matrix_2d(bcs) -> Tuple[Any, Any]:
+def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for laplace operator on a 2d Cartesian grid
 
     Args:
@@ -142,7 +143,7 @@ def _get_laplace_matrix_2d(bcs) -> Tuple[Any, Any]:
 
 
 @fill_in_docstring
-def _get_laplace_matrix(bcs: Boundaries):
+def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for laplace operator on a 1d Cartesian grid
 
     Args:
@@ -170,7 +171,7 @@ def _get_laplace_matrix(bcs: Boundaries):
 
 def _make_derivative(
     bcs: Boundaries, axis: int = 0, method: str = "central"
-) -> Callable:
+) -> OperatorType:
     """make a derivative operator along a single axis using numba compilation
 
     Args:
@@ -255,7 +256,7 @@ def _make_derivative(
 
 
 @fill_in_docstring
-def _make_laplace_scipy_nd(bcs: Boundaries) -> Callable:
+def _make_laplace_scipy_nd(bcs: Boundaries) -> OperatorType:
     """make a laplace operator using the scipy module
 
     This only supports uniform discretizations.
@@ -280,27 +281,8 @@ def _make_laplace_scipy_nd(bcs: Boundaries) -> Callable:
     return laplace
 
 
-# def _make_laplace_fft_nd(shape, boundaries, dx=1):
-#     """ make a laplace operator using the fft module """
-#
-#     if not boundaries.periodic:
-#         raise ValueError('Boundary needs to be periodic')
-#
-#     dim = len(shape)
-#     dx = np.broadcast_to(dx, (dim,))
-#     ks = [np.fft.fftfreq(n, d) for n, d in zip(shape, dx)]
-#     k2s = np.meshgrid(*ks, indexing='ij')**2
-#
-#     def laplace(arr, out=None):
-#         """ apply laplace operator to array `arr` """
-#         arr_k = np.fft.rfftn(arr, s=shape)
-#         return np.fft.irfftn(arr_k * k2s, s=shape)
-#
-#     return laplace
-
-
 @fill_in_docstring
-def _make_laplace_numba_1d(bcs: Boundaries) -> Callable:
+def _make_laplace_numba_1d(bcs: Boundaries) -> OperatorType:
     """make a 1d laplace operator using numba compilation
 
     Args:
@@ -327,7 +309,7 @@ def _make_laplace_numba_1d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_laplace_numba_2d(bcs: Boundaries) -> Callable:
+def _make_laplace_numba_2d(bcs: Boundaries) -> OperatorType:
     """make a 2d laplace operator using numba compilation
 
     Args:
@@ -386,7 +368,7 @@ def _make_laplace_numba_2d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_laplace_numba_3d(bcs: Boundaries) -> Callable:
+def _make_laplace_numba_3d(bcs: Boundaries) -> OperatorType:
     """make a 3d laplace operator using numba compilation
 
     Args:
@@ -429,7 +411,7 @@ def _make_laplace_numba_3d(bcs: Boundaries) -> Callable:
 
 @CartesianGridBase.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_laplace(bcs: Boundaries, method: str = "auto") -> Callable:
+def make_laplace(bcs: Boundaries, method: str = "auto") -> OperatorType:
     """make a laplace operator on a Cartesian grid
 
     Args:
@@ -476,7 +458,7 @@ def make_laplace(bcs: Boundaries, method: str = "auto") -> Callable:
 
 
 @fill_in_docstring
-def _make_gradient_scipy_nd(bcs: Boundaries) -> Callable:
+def _make_gradient_scipy_nd(bcs: Boundaries) -> OperatorType:
     """make a gradient operator using the scipy module
 
     Args:
@@ -509,7 +491,7 @@ def _make_gradient_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_gradient_numba_1d(bcs: Boundaries) -> Callable:
+def _make_gradient_numba_1d(bcs: Boundaries) -> OperatorType:
     """make a 1d gradient operator using numba compilation
 
     Args:
@@ -536,7 +518,7 @@ def _make_gradient_numba_1d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_gradient_numba_2d(bcs: Boundaries) -> Callable:
+def _make_gradient_numba_2d(bcs: Boundaries) -> OperatorType:
     """make a 2d gradient operator using numba compilation
 
     Args:
@@ -572,7 +554,7 @@ def _make_gradient_numba_2d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_gradient_numba_3d(bcs: Boundaries) -> Callable:
+def _make_gradient_numba_3d(bcs: Boundaries) -> OperatorType:
     """make a 3d gradient operator using numba compilation
 
     Args:
@@ -613,7 +595,7 @@ def _make_gradient_numba_3d(bcs: Boundaries) -> Callable:
 
 @CartesianGridBase.register_operator("gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
-def make_gradient(bcs: Boundaries, method: str = "auto") -> Callable:
+def make_gradient(bcs: Boundaries, method: str = "auto") -> OperatorType:
     """make a gradient operator on a Cartesian grid
 
     Args:
@@ -657,7 +639,9 @@ def make_gradient(bcs: Boundaries, method: str = "auto") -> Callable:
 
 
 @fill_in_docstring
-def _make_gradient_squared_numba_1d(bcs: Boundaries, central: bool = True) -> Callable:
+def _make_gradient_squared_numba_1d(
+    bcs: Boundaries, central: bool = True
+) -> OperatorType:
     """make a 1d squared gradient operator using numba compilation
 
     Args:
@@ -705,7 +689,9 @@ def _make_gradient_squared_numba_1d(bcs: Boundaries, central: bool = True) -> Ca
 
 
 @fill_in_docstring
-def _make_gradient_squared_numba_2d(bcs: Boundaries, central: bool = True) -> Callable:
+def _make_gradient_squared_numba_2d(
+    bcs: Boundaries, central: bool = True
+) -> OperatorType:
     """make a 2d squared gradient operator using numba compilation
 
     Args:
@@ -768,7 +754,9 @@ def _make_gradient_squared_numba_2d(bcs: Boundaries, central: bool = True) -> Ca
 
 
 @fill_in_docstring
-def _make_gradient_squared_numba_3d(bcs: Boundaries, central: bool = True) -> Callable:
+def _make_gradient_squared_numba_3d(
+    bcs: Boundaries, central: bool = True
+) -> OperatorType:
     """make a 3d squared gradient operator using numba compilation
 
     Args:
@@ -842,7 +830,7 @@ def _make_gradient_squared_numba_3d(bcs: Boundaries, central: bool = True) -> Ca
 
 @CartesianGridBase.register_operator("gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
+def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType:
     """make a gradient operator on a Cartesian grid
 
     Args:
@@ -875,7 +863,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
 
 
 @fill_in_docstring
-def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
+def _make_divergence_scipy_nd(bcs: Boundaries) -> OperatorType:
     """make a divergence operator using the scipy module
 
     Args:
@@ -909,7 +897,7 @@ def _make_divergence_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_divergence_numba_1d(bcs: Boundaries) -> Callable:
+def _make_divergence_numba_1d(bcs: Boundaries) -> OperatorType:
     """make a 1d divergence operator using numba compilation
 
     Args:
@@ -938,7 +926,7 @@ def _make_divergence_numba_1d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_divergence_numba_2d(bcs: Boundaries) -> Callable:
+def _make_divergence_numba_2d(bcs: Boundaries) -> OperatorType:
     """make a 2d divergence operator using numba compilation
 
     Args:
@@ -975,7 +963,7 @@ def _make_divergence_numba_2d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_divergence_numba_3d(bcs: Boundaries) -> Callable:
+def _make_divergence_numba_3d(bcs: Boundaries) -> OperatorType:
     """make a 3d divergence operator using numba compilation
 
     Args:
@@ -1017,7 +1005,7 @@ def _make_divergence_numba_3d(bcs: Boundaries) -> Callable:
 
 @CartesianGridBase.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
-def make_divergence(bcs: Boundaries, method: str = "auto") -> Callable:
+def make_divergence(bcs: Boundaries, method: str = "auto") -> OperatorType:
     """make a divergence operator on a Cartesian grid
 
     Args:
@@ -1061,7 +1049,7 @@ def make_divergence(bcs: Boundaries, method: str = "auto") -> Callable:
 
 
 @fill_in_docstring
-def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
+def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> OperatorType:
     """make a vector gradient operator using the scipy module
 
     Args:
@@ -1096,7 +1084,7 @@ def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_vector_gradient_numba_1d(bcs: Boundaries) -> Callable:
+def _make_vector_gradient_numba_1d(bcs: Boundaries) -> OperatorType:
     """make a 1d vector gradient operator using numba compilation
 
     Args:
@@ -1118,7 +1106,7 @@ def _make_vector_gradient_numba_1d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_vector_gradient_numba_2d(bcs: Boundaries) -> Callable:
+def _make_vector_gradient_numba_2d(bcs: Boundaries) -> OperatorType:
     """make a 2d vector gradient operator using numba compilation
 
     Args:
@@ -1142,7 +1130,7 @@ def _make_vector_gradient_numba_2d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_vector_gradient_numba_3d(bcs: Boundaries) -> Callable:
+def _make_vector_gradient_numba_3d(bcs: Boundaries) -> OperatorType:
     """make a 3d vector gradient operator using numba compilation
 
     Args:
@@ -1171,7 +1159,7 @@ def _make_vector_gradient_numba_3d(bcs: Boundaries) -> Callable:
 
 @CartesianGridBase.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
-def make_vector_gradient(bcs: Boundaries, method: str = "auto") -> Callable:
+def make_vector_gradient(bcs: Boundaries, method: str = "auto") -> OperatorType:
     """make a vector gradient operator on a Cartesian grid
 
     Args:
@@ -1214,7 +1202,7 @@ def make_vector_gradient(bcs: Boundaries, method: str = "auto") -> Callable:
 
 
 @fill_in_docstring
-def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> Callable:
+def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> OperatorType:
     """make a vector Laplacian using the scipy module
 
     This only supports uniform discretizations.
@@ -1249,7 +1237,7 @@ def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_vector_laplace_numba_1d(bcs: Boundaries) -> Callable:
+def _make_vector_laplace_numba_1d(bcs: Boundaries) -> OperatorType:
     """make a 1d vector Laplacian using numba compilation
 
     Args:
@@ -1271,7 +1259,7 @@ def _make_vector_laplace_numba_1d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_vector_laplace_numba_2d(bcs: Boundaries) -> Callable:
+def _make_vector_laplace_numba_2d(bcs: Boundaries) -> OperatorType:
     """make a 2d vector Laplacian using numba compilation
 
     Args:
@@ -1295,7 +1283,7 @@ def _make_vector_laplace_numba_2d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_vector_laplace_numba_3d(bcs: Boundaries) -> Callable:
+def _make_vector_laplace_numba_3d(bcs: Boundaries) -> OperatorType:
     """make a 3d vector Laplacian using numba compilation
 
     Args:
@@ -1322,7 +1310,7 @@ def _make_vector_laplace_numba_3d(bcs: Boundaries) -> Callable:
 
 @CartesianGridBase.register_operator("vector_laplace", rank_in=1, rank_out=1)
 @fill_in_docstring
-def make_vector_laplace(bcs: Boundaries, method: str = "auto") -> Callable:
+def make_vector_laplace(bcs: Boundaries, method: str = "auto") -> OperatorType:
     """make a vector Laplacian on a Cartesian grid
 
     Args:
@@ -1365,7 +1353,7 @@ def make_vector_laplace(bcs: Boundaries, method: str = "auto") -> Callable:
 
 
 @fill_in_docstring
-def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
+def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> OperatorType:
     """make a tensor divergence operator using the scipy module
 
     Args:
@@ -1402,7 +1390,7 @@ def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_tensor_divergence_numba_1d(bcs: Boundaries) -> Callable:
+def _make_tensor_divergence_numba_1d(bcs: Boundaries) -> OperatorType:
     """make a 1d tensor divergence  operator using numba compilation
 
     Args:
@@ -1424,7 +1412,7 @@ def _make_tensor_divergence_numba_1d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_tensor_divergence_numba_2d(bcs: Boundaries) -> Callable:
+def _make_tensor_divergence_numba_2d(bcs: Boundaries) -> OperatorType:
     """make a 2d tensor divergence  operator using numba compilation
 
     Args:
@@ -1448,7 +1436,7 @@ def _make_tensor_divergence_numba_2d(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _make_tensor_divergence_numba_3d(bcs: Boundaries) -> Callable:
+def _make_tensor_divergence_numba_3d(bcs: Boundaries) -> OperatorType:
     """make a 3d tensor divergence  operator using numba compilation
 
     Args:
@@ -1475,7 +1463,7 @@ def _make_tensor_divergence_numba_3d(bcs: Boundaries) -> Callable:
 
 @CartesianGridBase.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
-def make_tensor_divergence(bcs: Boundaries, method: str = "auto") -> Callable:
+def make_tensor_divergence(bcs: Boundaries, method: str = "auto") -> OperatorType:
     """make a tensor divergence operator on a Cartesian grid
 
     Args:
@@ -1520,7 +1508,7 @@ def make_tensor_divergence(bcs: Boundaries, method: str = "auto") -> Callable:
 
 @CartesianGridBase.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_poisson_solver(bcs: Boundaries, method: str = "auto") -> Callable:
+def make_poisson_solver(bcs: Boundaries, method: str = "auto") -> OperatorType:
     """make a operator that solves Poisson's equation
 
     Args:

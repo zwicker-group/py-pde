@@ -15,18 +15,17 @@ This module implements differential operators on cylindrical grids
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Callable
-
 from ... import config
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit_allocate_out, nb
+from ...tools.typing import OperatorType
 from ..boundaries import Boundaries
 from ..cylindrical import CylindricalGrid
 
 
 @CylindricalGrid.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_laplace(bcs: Boundaries) -> Callable:
+def make_laplace(bcs: Boundaries) -> OperatorType:
     """make a discretized laplace operator for a cylindrical grid
 
     {DESCR_CYLINDRICAL_GRID}
@@ -92,7 +91,7 @@ def make_laplace(bcs: Boundaries) -> Callable:
 
 @CylindricalGrid.register_operator("gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
-def make_gradient(bcs: Boundaries) -> Callable:
+def make_gradient(bcs: Boundaries) -> OperatorType:
     """make a discretized gradient operator for a cylindrical grid
 
     {DESCR_CYLINDRICAL_GRID}
@@ -150,7 +149,7 @@ def make_gradient(bcs: Boundaries) -> Callable:
 
 @CylindricalGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
+def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType:
     """make a discretized gradient squared operator for a cylindrical grid
 
     {DESCR_CYLINDRICAL_GRID}
@@ -247,7 +246,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
 
 @CylindricalGrid.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
-def make_divergence(bcs: Boundaries) -> Callable:
+def make_divergence(bcs: Boundaries) -> OperatorType:
     """make a discretized divergence operator for a cylindrical grid
 
     {DESCR_CYLINDRICAL_GRID}
@@ -308,7 +307,7 @@ def make_divergence(bcs: Boundaries) -> Callable:
 
 @CylindricalGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
-def make_vector_gradient(bcs: Boundaries) -> Callable:
+def make_vector_gradient(bcs: Boundaries) -> OperatorType:
     """make a discretized vector gradient operator for a cylindrical grid
 
     {DESCR_CYLINDRICAL_GRID}
@@ -341,7 +340,7 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
 
 @CylindricalGrid.register_operator("vector_laplace", rank_in=1, rank_out=1)
 @fill_in_docstring
-def make_vector_laplace(bcs: Boundaries) -> Callable:
+def make_vector_laplace(bcs: Boundaries) -> OperatorType:
     """make a discretized vector laplace operator for a cylindrical grid
 
     {DESCR_CYLINDRICAL_GRID}
@@ -373,7 +372,7 @@ def make_vector_laplace(bcs: Boundaries) -> Callable:
 
 @CylindricalGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
-def make_tensor_divergence(bcs: Boundaries) -> Callable:
+def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
     """make a discretized tensor divergence operator for a cylindrical grid
 
     {DESCR_CYLINDRICAL_GRID}

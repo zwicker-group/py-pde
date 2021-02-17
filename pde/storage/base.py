@@ -281,7 +281,9 @@ class StorageBase(metaclass=ABCMeta):
         """ finalize the storage after writing """
         pass
 
-    def extract_field(self, field_index: int, label: str = None) -> "MemoryStorage":
+    def extract_field(
+        self, field_id: Union[int, str], label: str = None
+    ) -> "MemoryStorage":
         """extract the time course of a single field from a collection
 
         Note:
@@ -289,9 +291,11 @@ class StorageBase(metaclass=ABCMeta):
             data can also change the underlying original data.
 
         Args:
-            field_index (index):
+            field_id (int or str):
                 The index into the field collection. This determines which field of the
-                collection is returned.
+                collection is returned. Instead of a numerical index, the field label
+                can also be supplied. If there are multiple fields with the same label,
+                only the first field is returned.
             label (str):
                 The label of the returned field. If omitted, the stored label is used.
 
@@ -304,6 +308,12 @@ class StorageBase(metaclass=ABCMeta):
         # get the field to check its type
         if not isinstance(self._field, FieldCollection):
             raise TypeError("Can only extract fields from `FieldCollection`")
+
+        # determine the field index
+        if isinstance(field_id, str):
+            field_index = self._field.labels.index(field_id)
+        else:
+            field_index = field_id
 
         # extract the field and the associated time series
         field_obj = self._field[field_index].copy()

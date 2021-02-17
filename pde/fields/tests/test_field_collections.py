@@ -190,6 +190,11 @@ def test_field_labels():
     assert fc.labels == ["s1", None]
     assert len(fc.labels) == 2
     assert fc.labels[0] == "s1"
+    assert fc.labels.index("s1") == 0
+    assert fc.labels.index(None) == 1
+    with pytest.raises(ValueError):
+        fc.labels.index("a")
+
     fc.labels = ["a", "b"]
     assert fc.labels == ["a", "b"]
     fc.labels[0] = "c"
@@ -213,6 +218,11 @@ def test_field_labels():
     assert fc.labels == [None, "b"]
     fc = FieldCollection([s1, s2], labels=["a", "b"])
     assert fc.labels == ["a", "b"]
+
+    with pytest.raises(TypeError):
+        fc.labels = [1, "b"]
+    with pytest.raises(TypeError):
+        fc.labels[0] = 1
 
 
 def test_collection_1_field():
