@@ -38,15 +38,14 @@ TField = TypeVar("TField", bound="FieldBase")
 
 
 class FieldBase(metaclass=ABCMeta):
-    """abstract base class for describing (discretized) fields
+    """abstract base class for describing (discretized) fields"""
 
-    Attributes:
-        label (str):
-            Name of the field
-    """
+    readonly = False
 
     _subclasses: Dict[str, "FieldBase"] = {}  # all classes inheriting from this
-    readonly = False
+    _grid: GridBase
+    _data: np.ndarray
+    _label: Optional[str]
 
     def __init__(
         self,
@@ -73,6 +72,19 @@ class FieldBase(metaclass=ABCMeta):
         """ register all subclassess to reconstruct them later """
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
+
+    @property
+    def label(self) -> Optional[str]:
+        """str: the name of the field """
+        return self._label
+
+    @label.setter
+    def label(self, value: str = None):
+        """ set the new label of the field """
+        if value is None or isinstance(value, str):
+            self._label = value
+        else:
+            raise TypeError("Label must be a string or None")
 
     @classmethod
     def from_state(
@@ -1041,7 +1053,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # convert `fill` to dtype of data
         if fill is not None:
             if self.rank == 0:
-                fill = self.data.dtype.type(fill)
+                fill = self.data.dtype.type(fill)  # type: ignore
             else:
                 fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
 
@@ -1351,7 +1363,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         This is calculated by integrating each component of the field over space
         and dividing by the grid volume
         """
-        return self.integral / self.grid.volume  # type: ignore
+        return self.integral / self.grid.volume
 
     @property
     def fluctuations(self):

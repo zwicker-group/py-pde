@@ -122,9 +122,9 @@ def test_storing_extract_range(tmp_path):
 def test_storing_collection(tmp_path):
     """ test methods specific to FieldCollections in memory storage """
     grid = UnitGrid([2, 2])
-    f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="scalar")
-    f2 = VectorField.random_uniform(grid, 0.1, 0.4)
-    f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4)
+    f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="a")
+    f2 = VectorField.random_uniform(grid, 0.1, 0.4, label="b")
+    f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4, label="c")
     fc = FieldCollection([f1, f2, f3])
 
     storage_classes = {"MemoryStorage": MemoryStorage}
@@ -144,9 +144,14 @@ def test_storing_collection(tmp_path):
         assert storage.extract_field(0)[0] == f1
         assert storage.extract_field(1)[0] == f2
         assert storage.extract_field(2)[0] == f3
-        assert storage.extract_field(0)[0].label == "scalar"
+        assert storage.extract_field(0)[0].label == "a"
         assert storage.extract_field(0, label="new label")[0].label == "new label"
-        assert storage.extract_field(0)[0].label == "scalar"  # do not alter label
+        assert storage.extract_field(0)[0].label == "a"  # do not alter label
+        assert storage.extract_field("a")[0] == f1
+        assert storage.extract_field("b")[0] == f2
+        assert storage.extract_field("c")[0] == f3
+        with pytest.raises(ValueError):
+            storage.extract_field("nonsense")
 
 
 def test_storage_apply(tmp_path):

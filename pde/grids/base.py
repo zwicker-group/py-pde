@@ -33,7 +33,7 @@ from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, classproperty
 from ..tools.numba import jit
-from ..tools.typing import FloatNumerical, NumberOrArray
+from ..tools.typing import FloatNumerical, NumberOrArray, OperatorType
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
@@ -46,7 +46,7 @@ PI_43 = 4 / 3 * np.pi
 class Operator(NamedTuple):
     """ stores information about an operator """
 
-    factory: Callable
+    factory: Callable[..., OperatorType]
     rank_in: int
     rank_out: int
 
@@ -529,7 +529,7 @@ class GridBase(metaclass=ABCMeta):
 
     @cached_method()
     @fill_in_docstring
-    def get_operator(self, name: str, bc: "Boundaries", **kwargs) -> Callable:
+    def get_operator(self, name: str, bc: "Boundaries", **kwargs) -> OperatorType:
         """return a discretized operator defined on this grid
 
         Args:

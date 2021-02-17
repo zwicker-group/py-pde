@@ -388,7 +388,7 @@ class Parameterized:
         writer.show()
 
     @hybridmethod
-    def show_parameters(
+    def show_parameters(  # @NoSelf
         cls,
         description: bool = None,  # @NoSelf
         sort: bool = False,

@@ -43,6 +43,7 @@ from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
 from ..tools.misc import Number, number, number_array
+from ..tools.typing import NumberOrArray
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .numba import convert_scalar, jit
@@ -304,7 +305,7 @@ class ExpressionBase(metaclass=ABCMeta):
         single_arg: bool = False,
         user_funcs: Dict[str, Callable] = None,
         prepare_compilation: bool = False,
-    ) -> Callable:
+    ) -> Callable[..., NumberOrArray]:
         """return function evaluating expression
 
         Args:
@@ -385,7 +386,7 @@ class ExpressionBase(metaclass=ABCMeta):
     @cached_method()
     def _get_function_cached(
         self, single_arg: bool = False, prepare_compilation: bool = False
-    ) -> Callable:
+    ) -> Callable[..., NumberOrArray]:
         """return function evaluating expression
 
         Args:
@@ -402,12 +403,12 @@ class ExpressionBase(metaclass=ABCMeta):
         """
         return self._get_function(single_arg, prepare_compilation=prepare_compilation)
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, **kwargs) -> NumberOrArray:
         """ return the value of the expression for the given values """
-        return self._get_function_cached(single_arg=False)(*args, **kwargs)
+        return self._get_function_cached(single_arg=False)(*args, **kwargs)  # type: ignore
 
     @cached_method()
-    def get_compiled(self, single_arg: bool = False) -> Callable:
+    def get_compiled(self, single_arg: bool = False) -> Callable[..., NumberOrArray]:
         """return numba function evaluating expression
 
         Args:
@@ -527,7 +528,7 @@ class ScalarExpression(ExpressionBase):
                 # This can fail if user_funcs are supplied, which would not be replaced
                 # in the numeric implementation above. We thus also try to call the
                 # expression without any arguments
-                value = number(self())
+                value = number(self())  # type: ignore
                 # Note that this may fail when the expression is actually constant, but
                 # has a signature that forces it to depend on some arguments. However,
                 # we feel this situation should not be very common, so we do not (yet)
@@ -543,7 +544,7 @@ class ScalarExpression(ExpressionBase):
         """ bool: returns whether the expression is zero """
         return self.constant and self.value == 0
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         """ tests whether the expression is nonzero """
         return not self.constant or self.value != 0
 
@@ -740,7 +741,9 @@ class TensorExpression(ExpressionBase):
 
         return TensorExpression(derivatives, self.vars, user_funcs=self.user_funcs)
 
-    def get_compiled_array(self, single_arg: bool = True) -> Callable:
+    def get_compiled_array(
+        self, single_arg: bool = True
+    ) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """compile the tensor expression such that a numpy array is returned
 
         Args:

@@ -484,11 +484,11 @@ class _class_cache:
         else:
             self.factory = factory
 
-    def _get_clear_cache_method(self) -> Callable:
+    def _get_clear_cache_method(self):
         """return a method that can be attached to classes to clear the cache
         of the wrapped method"""
 
-        def clear_cache(obj):
+        def clear_cache(obj) -> None:
             """ clears the cache associated with this method """
             try:
                 # try getting an initialized cache
@@ -600,7 +600,7 @@ class cached_property(_class_cache):
     Adapted from <https://wiki.python.org/moin/PythonDecoratorLibrary>.
     """
 
-    def __call__(self, method: Callable):
+    def __call__(self, method):
         """ apply the cache decorator to the property """
         # save name, e.g., to be able to delete cache later
         self._cache_name = self.name
@@ -643,13 +643,13 @@ class cached_method(_class_cache):
     `property\_name` is the name of the property
     """
 
-    def __call__(self, method):
+    def __call__(self, method: Callable) -> Callable:
         """ apply the cache decorator to the method """
 
         wrapper = self._get_wrapped_function(method)
 
         # save name, e.g., to be able to delete cache later
-        wrapper._cache_name = self.name
-        wrapper.clear_cache_of_obj = self._get_clear_cache_method()
+        wrapper._cache_name = self.name  # type: ignore
+        wrapper.clear_cache_of_obj = self._get_clear_cache_method()  # type: ignore
 
         return wrapper

@@ -652,7 +652,9 @@ class FieldCollection(FieldBase):
         # plot all the elements onto the respective axes
         reference = [
             field.plot(kind=knd, ax=ax, action="create", **kwargs, **sp_args)
-            for field, knd, ax, sp_args in zip(self.fields, kind, axs, subplot_args)
+            for field, knd, ax, sp_args in zip(
+                self.fields, kind, axs, subplot_args
+            )  # @UnusedVariable
         ]
 
         # return the references for all subplots
@@ -717,8 +719,7 @@ class _FieldLabels:
     ):
         """ change one or many labels of a field in the collection """
         if isinstance(index, int):
-            assert isinstance(value, str)
-            self.collection.fields[index].label = value
+            self.collection.fields[index].label = value  # type: ignore
         elif isinstance(index, slice):
             fields = self.collection.fields[index]
             if value is None or isinstance(value, str):
@@ -729,3 +730,18 @@ class _FieldLabels:
                 field.label = label
         else:
             raise TypeError("Unsupported index type")
+
+    def index(self, label: str) -> int:
+        """return the index in the field labels where a certain label is stored
+
+        Args:
+            label (str):
+                The label that is sought
+
+        Returns:
+            int: The index in the list (or `ValueError` if it cannot be found)
+        """
+        for i, field in enumerate(self.collection):
+            if field.label == label:
+                return i
+        raise ValueError(f"Label `{label}` is not present in the collection")

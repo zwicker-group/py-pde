@@ -13,6 +13,24 @@ from pde.grids.cartesian import CartesianGridBase
 from pde.tools.misc import skipUnlessModule
 
 
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+def test_set_label(field_class):
+    """ test some interpolation for natural boundary conditions """
+    grid = UnitGrid([2])
+    assert field_class(grid).label is None
+    f = field_class(grid, label="a")
+    assert f.label == "a"
+    f.label = "b"
+    assert f.label == "b"
+    f.label = None
+    assert f.label is None
+
+    with pytest.raises(TypeError):
+        f.label = 3
+    with pytest.raises(TypeError):
+        field_class(grid, label=1)
+
+
 @pytest.mark.slow
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
 def test_interpolation_natural(example_grid, field_class):

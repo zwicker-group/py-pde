@@ -14,12 +14,13 @@ This module implements differential operators on spherical grids
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Callable
+from typing import Tuple
 
 import numpy as np
 
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit_allocate_out
+from ...tools.typing import OperatorType
 from ..boundaries import Boundaries
 from ..spherical import SphericalGrid
 from .common import make_general_poisson_solver
@@ -27,7 +28,7 @@ from .common import make_general_poisson_solver
 
 @SphericalGrid.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
+def make_laplace(bcs: Boundaries, conservative: bool = True) -> OperatorType:
     """make a discretized laplace operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -113,7 +114,7 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> Callable:
 
 @SphericalGrid.register_operator("gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
-def make_gradient(bcs: Boundaries) -> Callable:
+def make_gradient(bcs: Boundaries) -> OperatorType:
     """make a discretized gradient operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -168,7 +169,7 @@ def make_gradient(bcs: Boundaries) -> Callable:
 
 @SphericalGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
+def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType:
     """make a discretized gradient squared operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -250,7 +251,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> Callable:
 
 @SphericalGrid.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
-def make_divergence(bcs: Boundaries) -> Callable:
+def make_divergence(bcs: Boundaries) -> OperatorType:
     """make a discretized divergence operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -323,7 +324,7 @@ def make_divergence(bcs: Boundaries) -> Callable:
 
 @SphericalGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
-def make_vector_gradient(bcs: Boundaries) -> Callable:
+def make_vector_gradient(bcs: Boundaries) -> OperatorType:
     """make a discretized vector gradient operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -355,7 +356,7 @@ def make_vector_gradient(bcs: Boundaries) -> Callable:
 
 @SphericalGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
-def make_tensor_divergence(bcs: Boundaries) -> Callable:
+def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
     """make a discretized tensor divergence operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -386,7 +387,7 @@ def make_tensor_divergence(bcs: Boundaries) -> Callable:
 
 
 @fill_in_docstring
-def _get_laplace_matrix(bcs):
+def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for laplace operator on a polar grid
 
     Args:
@@ -449,7 +450,7 @@ def _get_laplace_matrix(bcs):
 
 @SphericalGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_poisson_solver(bcs: Boundaries, method: str = "auto") -> Callable:
+def make_poisson_solver(bcs: Boundaries, method: str = "auto") -> OperatorType:
     """make a operator that solves Poisson's equation
 
     {DESCR_POLAR_GRID}
