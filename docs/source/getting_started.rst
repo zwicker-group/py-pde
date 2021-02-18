@@ -55,15 +55,11 @@ The code builds on other python packages, which need to be installed for
 `py-pde` to function properly.
 The required packages are listed in the table below:
 
-===========  ========= =========
-Package      Version   Usage 
-===========  ========= =========
-matplotlib   >=3.1.0   Visualizing results
-numpy        >=1.18    Array library used for storing data
-numba        >=0.50    Just-in-time compilation to accelerate numerics
-scipy        >=1.4     Miscellaneous scientific functions
-sympy        >=1.5     Dealing with user-defined mathematical expressions
-===========  ========= =========
+
+.. csv-table:: 
+   :file: _static/requirements_main.csv
+   :header-rows: 1
+
 
 The simplest way to install these packages is to use the
 :file:`requirements.txt` in the base folder:
@@ -86,15 +82,9 @@ Optional packages
 
 The following packages should be installed to use some miscellaneous features:
 
-===========  =========
-Package      Usage                                      
-===========  =========
-h5py         Storing data in the hierarchical file format
-napari       Displaying images interactively
-pandas       Handling tabular data
-pyfftw       Faster Fourier transforms
-tqdm         Display progress bars during calculations
-===========  =========
+.. csv-table:: 
+   :file: _static/requirements_optional.csv
+   :header-rows: 1
 
 For making movies, the :command:`ffmpeg` should be available.
 Additional packages might be required for running the tests in the folder

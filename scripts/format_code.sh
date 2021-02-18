@@ -6,7 +6,7 @@
 echo "Formatting imports"
 isort ..
 
-for dir in pde examples tests; do
+for dir in pde examples scripts tests; do
     echo "Formatting files in ${dir}:"
 
     # black format all code
