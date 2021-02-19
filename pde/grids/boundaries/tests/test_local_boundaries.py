@@ -210,8 +210,31 @@ def test_mixed_condition():
     assert bc.get_virtual_point(data, (0, 1)) == pytest.approx(2)
 
 
-def test_inhomogeneous_bcs():
-    """ test inhomogeneous boundary conditions """
+def test_inhomogeneous_bcs_1d():
+    """ test inhomogeneous boundary conditions in 1d grids """
+    g = UnitGrid([2])
+    data = np.ones((2,))  # field is 1 everywhere
+
+    # first order bc
+    bc_x = BCBase.from_data(g, 0, True, {"value": "x**2"})
+    assert isinstance(str(bc_x), str)
+    assert bc_x.rank == 0
+    assert bc_x.axis_coord == 2
+    assert bc_x.get_virtual_point(data, (1,)) == pytest.approx(7.0)
+    ev = bc_x.make_virtual_point_evaluator()
+    assert ev(data, (1,)) == pytest.approx(7.0)
+
+    # test lower bc
+    bc_x = BCBase.from_data(g, 0, False, {"value": "x**2"})
+    assert bc_x.rank == 0
+    assert bc_x.axis_coord == 0
+    assert bc_x.get_virtual_point(data, (0,)) == pytest.approx(-1.0)
+    ev = bc_x.make_virtual_point_evaluator()
+    assert ev(data, (0,)) == pytest.approx(-1.0)
+
+
+def test_inhomogeneous_bcs_2d():
+    """ test inhomogeneous boundary conditions in 2d grids """
     g = UnitGrid([2, 2])
     data = np.ones((2, 2))
 
