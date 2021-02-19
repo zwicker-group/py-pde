@@ -251,7 +251,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
-        assert points.shape[-1] == self.dim
+        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
         return points
 
     def point_from_cartesian(self, coords: np.ndarray) -> np.ndarray:
@@ -263,7 +263,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         Returns:
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid
         """
-        assert coords.shape[-1] == self.dim
+        assert coords.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
         return coords
 
     def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):

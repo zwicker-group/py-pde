@@ -65,7 +65,7 @@ class AllenCahnPDE(PDEBase):
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE
         """
-        assert isinstance(state, ScalarField)
+        assert isinstance(state, ScalarField), "`state` must be ScalarField"
         laplace = state.laplace(bc=self.bc, label="evolution rate")
         return self.interface_width * laplace - state ** 3 + state  # type: ignore
 

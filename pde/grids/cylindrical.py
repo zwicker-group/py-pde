@@ -265,7 +265,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             point (:class:`~numpy.ndarray`): Coordinates of the point
         """
         point = np.atleast_1d(point)
-        assert point.shape[-1] == 3
+        assert point.shape[-1] == 3, f"Point must have 3 coordinates"
 
         in_radius = np.hypot(point[..., 0], point[..., 1]) <= self.radius
         bounds_z = self.axes_bounds[1]
@@ -336,7 +336,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid
         """
         points = np.atleast_1d(points)
-        assert points.shape[-1] == self.dim
+        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
 
         rs = np.hypot(points[..., 0], points[..., 1])
         zs = points[..., 2]
@@ -512,20 +512,18 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
         if indices[0] == 0:
             # return a radial grid
-            assert self.axes[0] == "r"
             from .spherical import PolarGrid  # @Reimport
 
             return PolarGrid(self.radius, self.shape[0])
 
         elif indices[0] == 1:
             # return a Cartesian grid along the z-axis
-            assert self.axes[1] == "z"
             subgrid = CartesianGrid(
                 bounds=[self.axes_bounds[1]],
                 shape=self.shape[1],
                 periodic=self.periodic[1],
             )
-            subgrid.axes = ["z"]
+            subgrid.axes = [self.axes[1]]
             return subgrid
 
         else:

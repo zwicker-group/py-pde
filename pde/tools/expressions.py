@@ -751,7 +751,7 @@ class TensorExpression(ExpressionBase):
                 Whether the compiled function expects all arguments as a single array
                 or whether they are supplied individually.
         """
-        assert isinstance(self._sympy_expr, sympy.Array)
+        assert isinstance(self._sympy_expr, sympy.Array), "Expression must be an array"
         variables = ", ".join(v for v in self.vars)
         shape = self._sympy_expr.shape
 

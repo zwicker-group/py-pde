@@ -172,7 +172,7 @@ class ScalarField(DataFieldBase):
             ScalarField: the result of applying the operator
         """
         if out is not None:
-            assert isinstance(out, ScalarField)
+            assert isinstance(out, ScalarField), f"`out` must be ScalarField"
         laplace = self.grid.get_operator("laplace", bc=bc)
         return self.apply(laplace, out=out, label=label)
 
@@ -208,7 +208,7 @@ class ScalarField(DataFieldBase):
             ScalarField: the result of applying the operator
         """
         if out is not None:
-            assert isinstance(out, ScalarField)
+            assert isinstance(out, ScalarField), f"`out` must be ScalarField"
         gradient_squared = self.grid.get_operator(
             "gradient_squared", bc=bc, central=central
         )
@@ -242,7 +242,7 @@ class ScalarField(DataFieldBase):
         if out is None:
             out = VectorField(self.grid, gradient(self.data), label=label)
         else:
-            assert isinstance(out, VectorField)
+            assert isinstance(out, VectorField), f"`out` must be VectorField"
             gradient(self.data, out=out.data)
         return out
 

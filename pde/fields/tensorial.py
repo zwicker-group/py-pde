@@ -89,7 +89,7 @@ class Tensor2Field(DataFieldBase):
         if out is None:
             out = other.__class__(self.grid, dtype=get_common_dtype(self, other))
         else:
-            assert isinstance(out, other.__class__)
+            assert isinstance(out, other.__class__), f"`out` must be {other.__class__}"
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result
@@ -236,7 +236,7 @@ class Tensor2Field(DataFieldBase):
         if out is None:
             out = VectorField(self.grid, tensor_divergence(self.data), label=label)
         else:
-            assert isinstance(out, VectorField)
+            assert isinstance(out, VectorField), "Output must be a vector field"
             tensor_divergence(self.data, out=out.data)
         return out
 

@@ -314,7 +314,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid
         """
         points = np.atleast_1d(points)
-        assert points.shape[-1] == self.dim
+        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
         return np.linalg.norm(points, axis=-1, keepdims=True)  # type: ignore
 
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
@@ -336,7 +336,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             :class:`~numpy.ndarray`: The center points of the respective cells
         """
         cells = np.atleast_1d(cells)
-        assert cells.shape[-1] == self.num_axes
+        assert cells.shape[-1] == self.num_axes, f"Require {self.num_axes} coordinates"
 
         # convert from cells indices to grid coordinates
         r_inner, _ = self.axes_bounds[0]

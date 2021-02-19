@@ -277,7 +277,7 @@ def make_surface_from_radius_compiled(dim: int) -> Callable[[TNumArr], TNumArr]:
     return surface_from_radius
 
 
-def points_cartesian_to_spherical(points):
+def points_cartesian_to_spherical(points: np.ndarray) -> np.ndarray:
     """Convert points from Cartesian to spherical coordinates
 
     Args:
@@ -287,7 +287,7 @@ def points_cartesian_to_spherical(points):
         :class:`~numpy.ndarray`: Points (r, θ, φ) in spherical coordinates
     """
     points = np.atleast_1d(points)
-    assert points.shape[-1] == 3
+    assert points.shape[-1] == 3, "Points must have 3 coordinates"
 
     ps_spherical = np.empty(points.shape)
     # calculate radius in [0, infinty]
@@ -310,7 +310,7 @@ def points_spherical_to_cartesian(points: np.ndarray) -> np.ndarray:
         :class:`~numpy.ndarray`: Points in Cartesian coordinates
     """
     points = np.atleast_1d(points)
-    assert points.shape[-1] == 3
+    assert points.shape[-1] == 3, "Points must have 3 coordinates"
 
     sin_θ = np.sin(points[..., 1])
     ps_cartesian = np.empty(points.shape)

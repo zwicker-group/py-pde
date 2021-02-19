@@ -176,7 +176,7 @@ class VectorField(DataFieldBase):
         if out is None:
             out = result_type(self.grid, dtype=get_common_dtype(self, other))
         else:
-            assert isinstance(out, result_type)
+            assert isinstance(out, result_type), f"`out` must be {result_type}"
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result
@@ -418,7 +418,7 @@ class VectorField(DataFieldBase):
         if out is None:
             out = ScalarField(self.grid, divergence(self.data), label=label)
         else:
-            assert isinstance(out, ScalarField)
+            assert isinstance(out, ScalarField), f"`out` must be ScalarField"
             self.grid.assert_grid_compatible(out.grid)
             divergence(self.data, out=out.data)
         return out
@@ -451,7 +451,7 @@ class VectorField(DataFieldBase):
         if out is None:
             out = Tensor2Field(self.grid, vector_gradient(self.data), label=label)
         else:
-            assert isinstance(out, Tensor2Field)
+            assert isinstance(out, Tensor2Field), f"`out` must be Tensor2Field"
             self.grid.assert_grid_compatible(out.grid)
             vector_gradient(self.data, out=out.data)
         return out
@@ -479,7 +479,7 @@ class VectorField(DataFieldBase):
             VectorField: the result of applying the operator
         """
         if out is not None:
-            assert isinstance(out, VectorField)
+            assert isinstance(out, VectorField), f"`out` must be VectorField"
         laplace = self.grid.get_operator("vector_laplace", bc=bc)
         return self.apply(laplace, out=out, label=label)
 

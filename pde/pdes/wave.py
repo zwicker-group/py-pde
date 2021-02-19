@@ -90,7 +90,8 @@ class WavePDE(PDEBase):
             :class:`~pde.fields.FieldCollection`:
             Scalar field describing the evolution rate of the PDE
         """
-        assert isinstance(state, FieldCollection)
+        assert isinstance(state, FieldCollection), "`state` must be FieldCollection"
+        assert len(state) == 2, "`state` must contain two fields"
         u, v = state
         u_t = v.copy()
         v_t = self.speed ** 2 * u.laplace(self.bc)  # type: ignore

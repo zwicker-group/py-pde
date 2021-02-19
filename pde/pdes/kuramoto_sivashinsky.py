@@ -83,7 +83,7 @@ class KuramotoSivashinskyPDE(PDEBase):
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE
         """
-        assert isinstance(state, ScalarField)
+        assert isinstance(state, ScalarField), "`state` must be ScalarField"
         state_lap = state.laplace(bc=self.bc)
         result = (
             -self.nu * state_lap.laplace(bc=self.bc_lap)

@@ -90,7 +90,7 @@ class SwiftHohenbergPDE(PDEBase):
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE
         """
-        assert isinstance(state, ScalarField)
+        assert isinstance(state, ScalarField), "`state` must be ScalarField"
         state_laplace = state.laplace(bc=self.bc)
         state_laplace2 = state_laplace.laplace(bc=self.bc_lap)
 

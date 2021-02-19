@@ -74,7 +74,7 @@ class CahnHilliardPDE(PDEBase):
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE
         """
-        assert isinstance(state, ScalarField)
+        assert isinstance(state, ScalarField), "`state` must be ScalarField"
         c_laplace = state.laplace(bc=self.bc_c, label="evolution rate")
         result = state ** 3 - state - self.interface_width * c_laplace
         return result.laplace(bc=self.bc_mu)  # type: ignore
