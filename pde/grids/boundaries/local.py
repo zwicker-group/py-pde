@@ -291,23 +291,30 @@ class BCBase(metaclass=ABCMeta):
             bc_vars = [self.grid.axes[i] for i in axes_ids]
             expr = ScalarExpression(value, self.grid.axes)
 
-            # get the coordinates at each point of the boundary
-            bc_coords = np.meshgrid(
-                *[self.grid.axes_coords[i] for i in axes_ids], indexing="ij"
-            )
+            if axes_ids:
+                # extended boundary
 
-            # determine the value at each of these points. Note that we here
-            # iterate explicitly over all points because the expression might
-            # not depend on some of the variables, but we still want the array
-            # self._value to contain a value at each boundary point
-            result = np.empty_like(bc_coords[0])
-            coords: Dict[str, float] = {name: 0 for name in self.grid.axes}
-            # set the coordinate of this BC
-            coords[self.grid.axes[self.axis]] = self.axis_coord
-            for idx in np.ndindex(*result.shape):
-                for i, name in enumerate(bc_vars):
-                    coords[name] = bc_coords[i][idx]
-                result[idx] = expr(**coords)
+                # get the coordinates at each point of the boundary
+                bc_coords = np.meshgrid(
+                    *[self.grid.axes_coords[i] for i in axes_ids], indexing="ij"
+                )
+
+                # determine the value at each of these points. Note that we here
+                # iterate explicitly over all points because the expression might
+                # not depend on some of the variables, but we still want the array
+                # to contain a value at each boundary point
+                result = np.empty_like(bc_coords[0])
+                coords: Dict[str, float] = {name: 0 for name in self.grid.axes}
+                # set the coordinate of this BC
+                coords[self.grid.axes[self.axis]] = self.axis_coord
+                for idx in np.ndindex(*result.shape):
+                    for i, name in enumerate(bc_vars):
+                        coords[name] = bc_coords[i][idx]
+                    result[idx] = expr(**coords)
+
+            else:
+                # point boundary
+                result = np.array(expr(self.axis_coord))
 
         elif np.isscalar(value):
             # scalar value applied to all positions

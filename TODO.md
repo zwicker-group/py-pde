@@ -1,7 +1,8 @@
 TODO
 ====
-* Centrally manage requirements and write all files in a requirements.py
-    requirements.txt, requirements_min.txt, setup.py, sphinx
+* Think about a way to save information about how the right hand side of the PDE
+    - this should be forwarded to solver to store with the diagnostics
+    - this could for instance store whether a staggered grid was used
 * Automatically register derivative with respect to a single axis
     - pattern: d_*(field), e.g., d_x(field)
     - second derivatives, too? d2_*(field)
