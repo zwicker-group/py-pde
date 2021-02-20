@@ -387,7 +387,7 @@ class PDE(PDEBase):
 
     def _make_pde_rhs_numba_coll(
         self, state: FieldCollection, cache: Dict[str, Any]
-    ) -> Callable:
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create the compiled rhs if `state` is a field collection
 
         Args:
@@ -420,7 +420,9 @@ class PDE(PDEBase):
 
         get_data_tuple = cache["get_data_tuple"]
 
-        def chain(i=0, inner=None):
+        def chain(
+            i: int = 0, inner: Callable[[np.ndarray, float, np.ndarray], None] = None
+        ) -> Callable[[np.ndarray, float], np.ndarray]:
             """ recursive helper function for applying all rhs """
             # run through all functions
             rhs = rhs_list[i]
@@ -428,14 +430,14 @@ class PDE(PDEBase):
             if inner is None:
                 # the innermost function does not need to call a child
                 @jit
-                def wrap(data_tpl, t, out):
+                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray):
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             else:
                 # all other functions need to call one deeper in the chain
                 @jit
-                def wrap(data_tpl, t, out):
-                    inner(data_tpl, t, out)
+                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray):
+                    inner(data_tpl, t, out)  # type: ignore
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             if i < num_fields - 1:
@@ -444,19 +446,21 @@ class PDE(PDEBase):
             else:
                 # this is the outermost function
                 @jit
-                def evolution_rate(state_data: np.ndarray, t: float = 0):
+                def evolution_rate(state_data: np.ndarray, t: float = 0) -> np.ndarray:
                     out = np.empty(data_shape)
                     with nb.objmode():
                         data_tpl = get_data_tuple(state_data)
                         wrap(data_tpl, t, out)
                     return out
 
-                return evolution_rate
+                return evolution_rate  # type: ignore
 
         # compile the recursive chain
-        return chain()  # type: ignore
+        return chain()
 
-    def _make_pde_rhs_numba(self, state: FieldBase) -> Callable:
+    def _make_pde_rhs_numba(
+        self, state: FieldBase
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function evaluating the right hand side of the PDE
 
         Args:

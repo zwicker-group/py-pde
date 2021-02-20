@@ -97,7 +97,9 @@ class WavePDE(PDEBase):
         v_t = self.speed ** 2 * u.laplace(self.bc)  # type: ignore
         return FieldCollection([u_t, v_t])
 
-    def _make_pde_rhs_numba(self, state: FieldCollection) -> Callable:  # type: ignore
+    def _make_pde_rhs_numba(  # type: ignore
+        self, state: FieldCollection
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function evaluating the right hand side of the PDE
 
         Args:

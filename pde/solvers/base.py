@@ -163,5 +163,7 @@ class SolverBase(metaclass=ABCMeta):
         return rhs
 
     @abstractmethod
-    def make_stepper(self, state, dt: float = None):
+    def make_stepper(
+        self, state, dt: float = None
+    ) -> Callable[[FieldBase, float, float], float]:
         pass

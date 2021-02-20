@@ -6,6 +6,8 @@ Defines a solver using :mod:`scipy.integrate`
 
 from typing import Callable
 
+import numpy as np
+
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from .base import SolverBase
@@ -37,7 +39,9 @@ class ScipySolver(SolverBase):
         self.backend = backend
         self.solver_params = kwargs
 
-    def make_stepper(self, state: FieldBase, dt: float = None) -> Callable:
+    def make_stepper(
+        self, state: FieldBase, dt: float = None
+    ) -> Callable[[FieldBase, float, float], float]:
         """return a stepper function
 
         Args:
@@ -66,11 +70,11 @@ class ScipySolver(SolverBase):
         # obtain function for evaluating the right hand side
         rhs = self._make_pde_rhs(state, backend=self.backend)
 
-        def rhs_helper(t, state_flat):
+        def rhs_helper(t: float, state_flat: np.ndarray) -> np.ndarray:
             """ helper function to provide the correct call convention """
-            return rhs(state_flat.reshape(shape), t).flat
+            return rhs(state_flat.reshape(shape), t).flat  # type: ignore
 
-        def stepper(state, t_start, t_end):
+        def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
             """use scipy.integrate.odeint to advance `state` from `t_start` to
             `t_end`"""
             if dt is not None:
@@ -85,7 +89,7 @@ class ScipySolver(SolverBase):
             )
             self.info["steps"] += sol.nfev
             state.data[:] = sol.y.reshape(shape)
-            return sol.t[0]
+            return sol.t[0]  # type: ignore
 
         if dt:
             self._logger.info(

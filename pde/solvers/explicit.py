@@ -36,7 +36,9 @@ class ExplicitSolver(SolverBase):
         self.scheme = scheme
         self.backend = backend
 
-    def _make_euler_stepper(self, state: FieldBase, dt: float) -> Callable:
+    def _make_euler_stepper(
+        self, state: FieldBase, dt: float
+    ) -> Callable[[np.ndarray, float, int], Tuple[float, float]]:
         """make a simple Euler stepper
 
         Args:
@@ -104,7 +106,9 @@ class ExplicitSolver(SolverBase):
 
         return stepper
 
-    def _make_rk45_stepper(self, state: FieldBase, dt: float) -> Callable:
+    def _make_rk45_stepper(
+        self, state: FieldBase, dt: float
+    ) -> Callable[[np.ndarray, float, int], Tuple[float, float]]:
         """make a simple stepper for the explicit Runge-Kutta method of order 5(4)
 
         Args:
@@ -154,7 +158,9 @@ class ExplicitSolver(SolverBase):
         self._logger.info(f"Initialized explicit Runge-Kutta-45 stepper with dt=%g", dt)
         return stepper
 
-    def make_stepper(self, state: FieldBase, dt=None) -> Callable:
+    def make_stepper(
+        self, state: FieldBase, dt=None
+    ) -> Callable[[FieldBase, float, float], float]:
         """return a stepper function using an explicit scheme
 
         Args:
@@ -198,6 +204,6 @@ class ExplicitSolver(SolverBase):
             t_last, modifications = inner_stepper(state.data, t_start, steps)
             self.info["steps"] += steps
             self.info["state_modifications"] += modifications
-            return t_last  # type: ignore
+            return t_last
 
         return stepper
