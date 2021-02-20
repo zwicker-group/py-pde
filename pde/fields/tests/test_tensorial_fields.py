@@ -175,16 +175,18 @@ def test_complex_tensors():
     t1 = Tensor2Field(grid, numbers[0])
     t2 = Tensor2Field(grid, numbers[1])
     assert t1.is_complex and t2.is_complex
-    dot_op = t1.make_dot_operator()
 
-    # test dot product
-    res = dot_op(t1.data, t2.data)
-    for t in (t1 @ t2, t1.dot(t2)):
-        assert isinstance(t, Tensor2Field)
-        assert t.grid is grid
-        np.testing.assert_allclose(t.data, res)
+    for backend in ["numba", "numpy"]:
+        dot_op = t1.make_dot_operator(backend)
 
-    # test without conjugate
-    dot_op = t1.make_dot_operator(conjugate=False)
-    res = t1.dot(t2, conjugate=False)
-    np.testing.assert_allclose(dot_op(t1.data, t2.data), res.data)
+        # test dot product
+        res = dot_op(t1.data, t2.data)
+        for t in (t1 @ t2, t1.dot(t2)):
+            assert isinstance(t, Tensor2Field)
+            assert t.grid is grid
+            np.testing.assert_allclose(t.data, res)
+
+        # test without conjugate
+        dot_op = t1.make_dot_operator(backend, conjugate=False)
+        res = t1.dot(t2, conjugate=False)
+        np.testing.assert_allclose(dot_op(t1.data, t2.data), res.data)

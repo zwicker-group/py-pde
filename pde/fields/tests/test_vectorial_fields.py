@@ -53,12 +53,14 @@ def test_vectors():
     v2._grid = v1.grid  # make sure grids are identical
     v1.data = 1
     v2.data = 2
-    dot_op = v1.make_dot_operator()
-    res = ScalarField(grid, dot_op(v1.data, v2.data))
-    for s in (v1 @ v2, v2 @ v1, v1.dot(v2), res):
-        assert isinstance(s, ScalarField)
-        assert s.grid is grid
-        np.testing.assert_allclose(s.data, np.full(grid.shape, 4))
+
+    for backend in ["numpy", "numba"]:
+        dot_op = v1.make_dot_operator(backend)
+        res = ScalarField(grid, dot_op(v1.data, v2.data))
+        for s in (v1 @ v2, v2 @ v1, v1.dot(v2), res):
+            assert isinstance(s, ScalarField)
+            assert s.grid is grid
+            np.testing.assert_allclose(s.data, np.full(grid.shape, 4))
 
     # test options for plotting images
     if module_available("matplotlib"):
@@ -142,19 +144,21 @@ def test_vector_boundary_conditions():
 def test_outer_product():
     """ test outer product of vector fields """
     vf = VectorField(UnitGrid([1, 1]), [[[1]], [[2]]])
-    outer = vf.make_outer_prod_operator()
 
-    tf = vf.outer_product(vf)
-    res = np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1)
-    np.testing.assert_equal(tf.data, res)
-    np.testing.assert_equal(outer(vf.data, vf.data), res)
+    for backend in ["numpy", "numba"]:
+        outer = vf.make_outer_prod_operator(backend)
 
-    tf.data = 0
-    res = np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1)
-    vf.outer_product(vf, out=tf)
-    np.testing.assert_equal(tf.data, res)
-    outer(vf.data, vf.data, out=tf.data)
-    np.testing.assert_equal(tf.data, res)
+        tf = vf.outer_product(vf)
+        res = np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1)
+        np.testing.assert_equal(tf.data, res)
+        np.testing.assert_equal(outer(vf.data, vf.data), res)
+
+        tf.data = 0
+        res = np.array([1, 2, 2, 4]).reshape(2, 2, 1, 1)
+        vf.outer_product(vf, out=tf)
+        np.testing.assert_equal(tf.data, res)
+        outer(vf.data, vf.data, out=tf.data)
+        np.testing.assert_equal(tf.data, res)
 
 
 def test_from_expressions():
@@ -226,21 +230,23 @@ def test_complex_vectors():
     v1 = VectorField(grid, numbers[0])
     v2 = VectorField(grid, numbers[1])
     assert v1.is_complex and v2.is_complex
-    dot_op = v1.make_dot_operator()
 
-    # test complex conjugate
-    expected = v1.to_scalar("norm_squared").data
-    np.testing.assert_allclose((v1 @ v1).data, expected)
-    np.testing.assert_allclose(dot_op(v1.data, v1.data), expected)
+    for backend in ["numpy", "numba"]:
+        dot_op = v1.make_dot_operator(backend)
 
-    # test dot product
-    res = dot_op(v1.data, v2.data)
-    for s in (v1 @ v2, (v2 @ v1).conjugate(), v1.dot(v2)):
-        assert isinstance(s, ScalarField)
-        assert s.grid is grid
-        np.testing.assert_allclose(s.data, res)
+        # test complex conjugate
+        expected = v1.to_scalar("norm_squared").data
+        np.testing.assert_allclose((v1 @ v1).data, expected)
+        np.testing.assert_allclose(dot_op(v1.data, v1.data), expected)
 
-    # test without conjugate
-    dot_op = v1.make_dot_operator(conjugate=False)
-    res = v1.dot(v2, conjugate=False)
-    np.testing.assert_allclose(dot_op(v1.data, v2.data), res.data)
+        # test dot product
+        res = dot_op(v1.data, v2.data)
+        for s in (v1 @ v2, (v2 @ v1).conjugate(), v1.dot(v2)):
+            assert isinstance(s, ScalarField)
+            assert s.grid is grid
+            np.testing.assert_allclose(s.data, res)
+
+        # test without conjugate
+        dot_op = v1.make_dot_operator(backend, conjugate=False)
+        res = v1.dot(v2, conjugate=False)
+        np.testing.assert_allclose(dot_op(v1.data, v2.data), res.data)
