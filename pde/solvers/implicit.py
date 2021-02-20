@@ -49,7 +49,9 @@ class ImplicitSolver(SolverBase):
         self.maxerror = maxerror
         self.backend = backend
 
-    def make_stepper(self, state: FieldBase, dt=None) -> Callable:
+    def make_stepper(
+        self, state: FieldBase, dt=None
+    ) -> Callable[[FieldBase, float, float], float]:
         """return a stepper function using an implicit scheme
 
         Args:

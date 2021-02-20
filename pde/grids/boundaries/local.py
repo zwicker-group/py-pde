@@ -96,7 +96,9 @@ def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) -> Tuple[np.ndarray, int, 
     return arr_1d, i, bc_idx
 
 
-def _make_get_arr_1d(dim: int, axis: int) -> Callable:
+def _make_get_arr_1d(
+    dim: int, axis: int
+) -> Callable[[np.ndarray, Tuple[int, ...]], Tuple[np.ndarray, int, Tuple]]:
     """create function that extracts a 1d array at a given position
 
     Args:
@@ -119,7 +121,7 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
     # extract the correct indices
     if dim == 1:
 
-        def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+        def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
             """ extract the 1d array along axis at point idx """
             i = idx[0]
             bc_idx: Tuple = (...,)
@@ -129,7 +131,7 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
     elif dim == 2:
         if axis == 0:
 
-            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
                 """ extract the 1d array along axis at point idx """
                 i, y = idx
                 bc_idx = (..., y)
@@ -138,7 +140,7 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
 
         elif axis == 1:
 
-            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
                 """ extract the 1d array along axis at point idx """
                 x, i = idx
                 bc_idx = (..., x)
@@ -148,7 +150,7 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
     elif dim == 3:
         if axis == 0:
 
-            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
                 """ extract the 1d array along axis at point idx """
                 i, y, z = idx
                 bc_idx = (..., y, z)
@@ -157,7 +159,7 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
 
         elif axis == 1:
 
-            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
                 """ extract the 1d array along axis at point idx """
                 x, i, z = idx
                 bc_idx = (..., x, z)
@@ -166,7 +168,7 @@ def _make_get_arr_1d(dim: int, axis: int) -> Callable:
 
         elif axis == 2:
 
-            def get_arr_1d(arr, idx: Tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
                 """ extract the 1d array along axis at point idx """
                 x, y, i = idx
                 bc_idx = (..., x, y)
@@ -406,7 +408,7 @@ class BCBase(metaclass=ABCMeta):
         self.homogeneous = False
         self.value_is_linked = True
 
-    def _make_value_getter(self) -> Callable:
+    def _make_value_getter(self) -> Callable[[], np.ndarray]:
         """return a (compiled) function for obtaining the value.
 
         Note:
@@ -430,9 +432,9 @@ class BCBase(metaclass=ABCMeta):
         # problems with address_as_void_pointer
 
         @nb.jit(nb.typeof(self._value)(), inline="always")
-        def get_value():
+        def get_value() -> np.ndarray:
             """ helper function returning the linked array """
-            return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)
+            return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
 
         # keep a reference to the array to prevent garbage collection
         get_value._value_ref = self._value

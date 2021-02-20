@@ -30,11 +30,13 @@ import os
 import unittest
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Sequence, Union
+from typing import Any, Callable, Dict, Sequence, TypeVar, Union
 
 import numpy as np
 
 from .typing import ArrayLike, Number
+
+TFunc = TypeVar("TFunc", bound=Callable[..., Any])
 
 
 def environment(dict_type=dict) -> Dict[str, Any]:
@@ -92,7 +94,7 @@ def ensure_directory_exists(folder: Union[str, Path]):
             raise
 
 
-def preserve_scalars(method: Callable) -> Callable:
+def preserve_scalars(method: TFunc) -> TFunc:
     """decorator that makes vectorized methods work with scalars
 
     This decorator allows to call functions that are written to work on numpy
@@ -115,7 +117,7 @@ def preserve_scalars(method: Callable) -> Callable:
         else:
             return method(self, *args)
 
-    return wrapper
+    return wrapper  # type: ignore
 
 
 def decorator_arguments(decorator: Callable) -> Callable:
@@ -145,7 +147,9 @@ def decorator_arguments(decorator: Callable) -> Callable:
     return new_decorator
 
 
-def skipUnlessModule(module_names: Union[Sequence[str], str]) -> Callable:
+def skipUnlessModule(
+    module_names: Union[Sequence[str], str]
+) -> Callable[[TFunc], TFunc]:
     """decorator that skips a test when a module is not available
 
     Args:
@@ -163,7 +167,7 @@ def skipUnlessModule(module_names: Union[Sequence[str], str]) -> Callable:
             return unittest.skip(f"requires {module_name}")
 
     # return no-op decorator if all modules are available
-    def wrapper(f: Callable) -> Callable:
+    def wrapper(f: TFunc) -> TFunc:
         return f
 
     return wrapper

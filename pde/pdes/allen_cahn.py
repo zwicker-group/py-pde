@@ -29,6 +29,8 @@ class AllenCahnPDE(PDEBase):
 
     explicit_time_dependence = False
 
+    interface_width: float
+
     @fill_in_docstring
     def __init__(self, interface_width: float = 1, bc: BoundariesData = "natural"):
         """
@@ -69,7 +71,9 @@ class AllenCahnPDE(PDEBase):
         laplace = state.laplace(bc=self.bc, label="evolution rate")
         return self.interface_width * laplace - state ** 3 + state  # type: ignore
 
-    def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
+    def _make_pde_rhs_numba(  # type: ignore
+        self, state: ScalarField
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function evaluating the right hand side of the PDE
 
         Args:
@@ -90,8 +94,8 @@ class AllenCahnPDE(PDEBase):
         laplace = state.grid.get_operator("laplace", bc=self.bc)
 
         @jit(signature)
-        def pde_rhs(state_data: np.ndarray, t: float):
+        def pde_rhs(state_data: np.ndarray, t: float) -> np.ndarray:
             """ compiled helper function evaluating right hand side """
-            return interface_width * laplace(state_data) - state_data ** 3 + state_data
+            return interface_width * laplace(state_data) - state_data ** 3 + state_data  # type: ignore
 
         return pde_rhs  # type: ignore

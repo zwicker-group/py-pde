@@ -195,7 +195,7 @@ def environment(dict_type=dict) -> Dict[str, Any]:
 
     # add details about optional packages
     result["optional packages"] = get_package_versions(
-        ["h5py", "pandas", "pyfftw", "tqdm"]
+        ["h5py", "napari", "pandas", "pyfftw", "tqdm"]
     )
     if module_available("numba"):
         result["numba environment"] = numba_environment()

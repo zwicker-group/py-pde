@@ -73,7 +73,9 @@ class DiffusionPDE(PDEBase):
         laplace = state.laplace(bc=self.bc, label="evolution rate")
         return self.diffusivity * laplace  # type: ignore
 
-    def _make_pde_rhs_numba(self, state: ScalarField) -> Callable:  # type: ignore
+    def _make_pde_rhs_numba(  # type: ignore
+        self, state: ScalarField
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function evaluating the right hand side of the PDE
 
         Args:

@@ -26,7 +26,7 @@ except ImportError:
 
 def make_colored_noise(
     shape: Tuple[int, ...], dx=1.0, exponent: float = 0, scale: float = 1
-) -> Callable:
+) -> Callable[[], np.ndarray]:
     r"""Return a function creating an array of random values that obey
 
     .. math::
@@ -81,10 +81,10 @@ def make_colored_noise(
 
     # TODO: accelerate the FFT using the pyfftw package
 
-    def noise_colored():
+    def noise_colored() -> np.ndarray:
         """ return array of colored noise """
         # random field
-        arr = np.random.randn(*shape)
+        arr: np.ndarray = np.random.randn(*shape)
 
         # forward transform
         arr = np_rfftn(arr)
