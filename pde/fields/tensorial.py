@@ -102,7 +102,9 @@ class Tensor2Field(DataFieldBase):
 
     __matmul__ = dot  # support python @-syntax for matrix multiplication
 
-    def make_dot_operator(self, conjugate: bool = True) -> Callable:
+    def make_dot_operator(
+        self, backend: str = "numba", *, conjugate: bool = True
+    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return operator calculating the dot product involving vector fields
 
         This supports both products between two vectors as well as products
@@ -124,63 +126,102 @@ class Tensor2Field(DataFieldBase):
         """
         dim = self.grid.dim
 
-        # create the inner function calculating the dot product
-        if conjugate:
+        if backend == "numba":
+            # create the dot product using a numba compiled function
 
-            @jit
-            def inner(a, b, out):
-                """ calculate dot product between fields `a` and `b` """
-                for i in range(dim):
-                    out[i] = a[i, 0] * b[0].conjugate()  # overwrite data in out
-                    for j in range(1, dim):
-                        out[i] += a[i, j] * b[j].conjugate()
-                return out
+            if conjugate:
+                # create inner function calculating the dot product using conjugate
 
-        else:
+                @jit
+                def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
+                    """ calculate dot product between fields `a` and `b` """
+                    for i in range(dim):
+                        out[i] = a[i, 0] * b[0].conjugate()  # overwrite data in out
+                        for j in range(1, dim):
+                            out[i] += a[i, j] * b[j].conjugate()
+                    return out
 
-            @jit
-            def inner(a, b, out):
-                """ calculate dot product between fields `a` and `b` """
-                for i in range(dim):
-                    out[i] = a[i, 0] * b[0]  # overwrite potential data in out
-                    for j in range(1, dim):
-                        out[i] += a[i, j] * b[j]
-                return out
+            else:
+                # create the inner function calculating the dot product
 
-        # build the outer function with the correct signature
-        if nb.config.DISABLE_JIT:
+                @jit
+                def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
+                    """ calculate dot product between fields `a` and `b` """
+                    for i in range(dim):
+                        out[i] = a[i, 0] * b[0]  # overwrite potential data in out
+                        for j in range(1, dim):
+                            out[i] += a[i, j] * b[j]
+                    return out
 
-            def dot(a, b, out=None):
-                """wrapper deciding whether the underlying function is called
-                with or without `out`."""
-                if out is None:
-                    out = np.empty(b.shape, dtype=get_common_dtype(a, b))
-                return inner(a, b, out)
+            # build the outer function with the correct signature
+            if nb.config.DISABLE_JIT:
 
-        else:
+                def dot(
+                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                ) -> np.ndarray:
+                    """wrapper deciding whether the underlying function is called
+                    with or without `out`."""
+                    if out is None:
+                        out = np.empty(b.shape, dtype=get_common_dtype(a, b))
+                    return calc(a, b, out)  # type: ignore
 
-            @nb.generated_jit
-            def dot(a, b, out=None):
-                """wrapper deciding whether the underlying function is called
-                with or without `out`."""
-                if isinstance(a, nb.types.Number):
-                    # simple scalar call -> do not need to allocate anything
-                    raise RuntimeError("Dot needs to be called with fields")
+            else:
 
-                elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out`
-                    dtype = get_common_numba_dtype(a, b)
+                @nb.generated_jit
+                def dot(
+                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                ) -> np.ndarray:
+                    """wrapper deciding whether the underlying function is called
+                    with or without `out`."""
+                    if isinstance(a, nb.types.Number):
+                        # simple scalar call -> do not need to allocate anything
+                        raise RuntimeError("Dot needs to be called with fields")
 
-                    def f_with_allocated_out(a, b, out):
-                        """ helper function allocating output array """
-                        out = np.empty(b.shape, dtype=dtype)
-                        return inner(a, b, out=out)
+                    elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                        # function is called without `out`
+                        dtype = get_common_numba_dtype(a, b)
 
-                    return f_with_allocated_out
+                        def f_with_allocated_out(
+                            a: np.ndarray, b: np.ndarray, out: np.ndarray
+                        ) -> np.ndarray:
+                            """ helper function allocating output array """
+                            out = np.empty(b.shape, dtype=dtype)
+                            return calc(a, b, out=out)  # type: ignore
 
+                        return f_with_allocated_out  # type: ignore
+
+                    else:
+                        # function is called with `out` argument
+                        return calc  # type: ignore
+
+        elif backend == "numpy":
+            # create the dot product using basic numpy functions
+
+            def calc(
+                a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+            ) -> np.ndarray:
+                if a.shape == b.shape:
+                    # dot product between tensor and tensor
+                    return np.einsum("ij...,jk...->ik...", a, b, out=out)  # type: ignore
+                elif a.shape[1:] == b.shape:
+                    # dot product between tensor and vector
+                    return np.einsum("ij...,j...->i...", a, b, out=out)  # type: ignore
                 else:
-                    # function is called with `out` argument
-                    return inner
+                    raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
+
+            if conjugate:
+                # create inner function calculating the dot product using conjugate
+
+                def dot(
+                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                ) -> np.ndarray:
+                    return calc(a, b.conjugate(), out=out)  # type: ignore
+
+            else:
+                dot = calc
+
+        else:
+            raise ValueError(f"Undefined backend `{backend}")
 
         return dot
 

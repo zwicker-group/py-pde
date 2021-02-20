@@ -243,11 +243,11 @@ class PDE(PDEBase):
         if "dot" in self.diagnostics["operators"]:  # type: ignore
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
-            ops_general["dot"] = VectorField(state.grid).make_dot_operator()
+            ops_general["dot"] = VectorField(state.grid).make_dot_operator(backend)
 
         if "inner" in self.diagnostics["operators"]:  # type: ignore
             # synonym for dot product operator
-            ops_general["inner"] = VectorField(state.grid).make_dot_operator()
+            ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
 
         if "outer" in self.diagnostics["operators"]:  # type: ignore
             # synonym for dot product operator
