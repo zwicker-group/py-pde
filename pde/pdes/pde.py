@@ -6,7 +6,7 @@ Defines a PDE class whose right hand side is given as a string
 
 import re
 from collections import OrderedDict
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Tuple
 
 import numpy as np
 
@@ -279,15 +279,14 @@ class PDE(PDEBase):
                     ops[func] = state.grid.get_operator(func, bc=bc)
                 except ValueError:
                     self._logger.info(
-                        "Operator %s was not defined, so we assume that sympy knows it",
-                        func,
+                        "Assuming that sympy knows undefined operator `%s`", func
                     )
 
             # obtain the function to calculate the right hand side
             expr = self._rhs_expr[var]
             signature = self.variables + ("t",)
 
-            def _get_expr_func(signature):
+            def _get_expr_func(signature: Tuple[str, ...]) -> Callable[..., np.ndarray]:
                 """ helper function obtaining expression and checking the signature """
                 extra_vars = set(expr.vars) - set(signature)
                 if extra_vars:
@@ -304,20 +303,22 @@ class PDE(PDEBase):
                     )
                 else:
                     raise ValueError(f"Unsupported backend {backend}")
-                return result
+                return result  # type: ignore
 
             if any(expr.depends_on(c) for c in state.grid.axes):
                 # expression has a spatial dependence, too
 
                 # determine and check the signature
-                inner_func = jit(_get_expr_func(signature + tuple(state.grid.axes)))
+                inner_func = _get_expr_func(signature + tuple(state.grid.axes))
+                if backend == "numba":
+                    inner_func = jit(inner_func)
 
                 # inject the spatial coordinates into the expression for the rhs
                 coords_tuple = tuple(  # @UnusedVariable
                     state.grid.cell_coords[..., i] for i in range(state.grid.num_axes)
                 )
 
-                def rhs_func(*args):
+                def rhs_func(*args) -> np.ndarray:
                     """ wrapper that inserts the spatial variables """
                     return inner_func(*args, *coords_tuple)
 
@@ -336,7 +337,7 @@ class PDE(PDEBase):
             starts = tuple(slc.start for slc in state._slices)
             stops = tuple(slc.stop for slc in state._slices)
 
-            def get_data_tuple(state_data):
+            def get_data_tuple(state_data: np.ndarray) -> Tuple[np.ndarray, ...]:
                 """ helper for turning state_data into a tuple of field data """
                 return tuple(
                     state_data[starts[i]]

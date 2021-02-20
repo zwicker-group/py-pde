@@ -164,20 +164,25 @@ def test_pde_noise(backend):
         eq.solve(ScalarField(grid), t_range=1, backend=backend, dt=1, tracker=None)
 
 
-def test_pde_spatial_args():
-    """ test ScalarFieldExpression without extra dependence """
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_pde_spatial_args(backend):
+    """ test PDE with spatial dependence """
+    field = ScalarField(grids.UnitGrid([2]))
 
     eq = PDE({"a": "x"})
-
-    field = ScalarField(grids.UnitGrid([2]))
-    rhs = eq.evolution_rate(field)
-    assert rhs == field.copy(data=[0.5, 1.5])
-    rhs = eq.make_pde_rhs(field, backend="numba")
+    rhs = eq.make_pde_rhs(field, backend=backend)
     np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.5, 1.5]))
 
+    # test combination of spatial dependence and differential oeprators
+    eq = PDE({"a": "dot(gradient(x), gradient(a))"})
+    rhs = eq.make_pde_rhs(field, backend=backend)
+    np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.0, 0.0]))
+
+    # test invalid spatial dependence
     eq = PDE({"a": "x + y"})
     with pytest.raises(RuntimeError):
-        eq.evolution_rate(field)
+        rhs = eq.make_pde_rhs(field, backend=backend)
+        rhs(field.data, 0.0)
 
 
 def test_pde_user_funcs():
