@@ -376,7 +376,9 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """
         return np.atleast_1d(p2) - np.atleast_1d(p1)  # type: ignore
 
-    def polar_coordinates_real(self, origin=None, *, ret_angle: bool = False, **kwargs):
+    def polar_coordinates_real(
+        self, origin=None, *, ret_angle: bool = False, **kwargs
+    ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
         """return spherical coordinates associated with the grid
 
         Args:
@@ -397,7 +399,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         # the distance to the origin is exactly the radial coordinate
         rs = self.axes_coords[0]
         if ret_angle:
-            return rs, (np.zeros_like(rs),) * (self.dim - 1)
+            return (rs,) + (np.zeros_like(rs),) * (self.dim - 1)
         else:
             return rs
 

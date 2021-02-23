@@ -266,7 +266,9 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         assert coords.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
         return coords
 
-    def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
+    def polar_coordinates_real(
+        self, origin: np.ndarray, *, ret_angle: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         """return polar coordinates associated with the grid
 
         Args:
@@ -287,15 +289,15 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
         # calculate the difference vector between all cells and the origin
         diff = self.difference_vector_real(origin, self.cell_coords)
-        dist = np.linalg.norm(diff, axis=-1)  # get distance
+        dist: np.ndarray = np.linalg.norm(diff, axis=-1)  # get distance
 
         # determine distance and optionally angles for these vectors
         if ret_angle:
             if self.dim == 1:
-                return dist, np.sign(diff)[..., 0]
+                return dist, np.sign(diff)[..., 0]  # type: ignore
 
             elif self.dim == 2:
-                return dist, np.arctan2(diff[:, :, 0], diff[:, :, 1])
+                return dist, np.arctan2(diff[:, :, 0], diff[:, :, 1])  # type: ignore
 
             elif self.dim == 3:
                 theta = np.arccos(diff[..., 2] / dist)

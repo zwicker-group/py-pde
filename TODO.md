@@ -1,5 +1,8 @@
 TODO
 ====
+* Think about incremental test run
+    - should break at first failure
+    - should restart at last failure
 * Think about a way to save information about how the right hand side of the PDE
     - this should be forwarded to solver to store with the diagnostics
     - this could for instance store whether a staggered grid was used
