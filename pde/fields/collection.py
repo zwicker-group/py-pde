@@ -443,7 +443,9 @@ class FieldCollection(FieldBase):
     def interpolate_to_grid(
         self,
         grid: GridBase,
-        method: str = "numba",
+        *,
+        backend: str = "numba",
+        method: str = "linear",
         fill: Number = None,
         label: Optional[str] = None,
     ) -> "FieldCollection":
@@ -453,9 +455,13 @@ class FieldCollection(FieldBase):
             grid (:class:`~pde.grids.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
+            backend (str):
+                The accepted values `scipy` and `numba` determine the backend that is
+                used for the interpolation.
             method (str):
-                Specifies interpolation method, e.g., 'numba', 'scipy_linear',
-                'scipy_nearest' .
+                Determines the method being used for interpolation. Typical values that
+                are `nearest` and `linear, but the supported values depend on the chosen
+                `backend.
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -469,13 +475,15 @@ class FieldCollection(FieldBase):
         if label is None:
             label = self.label
         fields = [
-            f.interpolate_to_grid(grid, method=method, fill=fill) for f in self.fields
+            f.interpolate_to_grid(grid, backend=backend, method=method, fill=fill)
+            for f in self.fields
         ]
         return self.__class__(fields, label=label)
 
     def smooth(
         self,
         sigma: float = 1,
+        *,
         out: Optional["FieldCollection"] = None,
         label: str = None,
     ) -> "FieldCollection":

@@ -1434,6 +1434,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def smooth(
         self: TDataField,
         sigma: float = 1,
+        *,
         out: Optional[TDataField] = None,
         label: str = None,
     ) -> TDataField:
