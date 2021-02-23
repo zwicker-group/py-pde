@@ -456,12 +456,12 @@ class FieldCollection(FieldBase):
                 The grid of the new field onto which the current field is
                 interpolated.
             backend (str):
-                The accepted values `scipy` and `numba` determine the backend that is
+                The accepted values "scipy" and "numba" determine the backend that is
                 used for the interpolation.
             method (str):
                 Determines the method being used for interpolation. Typical values that
-                are `nearest` and `linear, but the supported values depend on the chosen
-                `backend.
+                are "nearest" and "linear", but the supported values depend on the
+                chosen `backend`.
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.

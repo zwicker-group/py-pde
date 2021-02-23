@@ -16,10 +16,11 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, ".")
+sys.path.append(os.path.abspath("../sphinx_ext/"))
 
 from datetime import date
 
-import sphinx_simplify_typehints  # @UnresolvedImport @UnusedImport
+# import sphinx_simplify_typehints  # @UnresolvedImport @UnusedImport
 
 # -- Project information -----------------------------------------------------
 
@@ -35,11 +36,6 @@ version = pde.__version__.split("-")[0]
 release = pde.__version__
 
 
-# -- Pre-processing ---------------------------------------------------
-# from parse_examples import main
-# main()
-
-
 # -- General configuration ---------------------------------------------------
 
 # Sphinx extension modules
@@ -48,13 +44,14 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.coverage",
-    #     'sphinx.ext.mathjax',
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
-    #     'sphinx_autodoc_annotation',
-    "sphinx_simplify_typehints",
     "sphinx.ext.inheritance_diagram",
     "sphinx_gallery.gen_gallery",
+    # our own extensions
+    "toctree_filter",
+    "package_config",
+    "simplify_typehints",
 ]
 
 templates_path = ["_templates"]
@@ -239,9 +236,6 @@ intersphinx_mapping = {
 # -- Options for sphinx-gallery extension ---------------------------------------
 
 # filter toctree, inspired by https://stackoverflow.com/a/46600038/932593
-sys.path.append(os.path.abspath("../sphinx_ext/"))
-extensions.append("toctree_filter")
-extensions.append("package_config")
 if tags.has("exclude_gallery"):
     # exclude gallery from toc when creating a latex document
     print("Example gallery will be excluded...")
