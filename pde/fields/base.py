@@ -8,6 +8,7 @@ import functools
 import json
 import logging
 import operator
+import warnings
 from abc import ABCMeta, abstractmethod, abstractproperty
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar
@@ -238,7 +239,7 @@ class FieldBase(metaclass=ABCMeta):
         return self._data
 
     @data.setter
-    def data(self, value):
+    def data(self, value: NumberOrArray) -> None:
         if self.readonly:
             raise RuntimeError(f"Cannot write to {self.__class__.__name__}")
         if isinstance(value, FieldBase):
@@ -616,7 +617,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         super().__init__(grid, data=data, label=label)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """ return instance as string """
         class_name = self.__class__.__name__
         result = f"{class_name}(grid={self.grid!r}, data={self.data}"
@@ -624,7 +625,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             result += f', label="{self.label}"'
         return result + ")"
 
-    def __str__(self):
+    def __str__(self) -> str:
         """ return instance as string """
         result = (
             f"{self.__class__.__name__}(grid={self.grid}, "
@@ -941,26 +942,20 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
 
-        This uses scipy.interpolate.RegularGridInterpolator and the
-        interpolation method can thus be chosen when calling the returned
-        function using the `method` keyword argument. Keyword arguments are
-        directly forwarded to the constructor of `RegularGridInterpolator`.
-
-        Note that this interpolator does not respect periodic boundary
-        conditions, yet.
+        This uses :class:`scipy.interpolate.RegularGridInterpolator` and thus supports
+        extra options supplied by keyword arguments. Note that this interpolator does
+        not respect periodic boundary conditions, yet.
 
         Args:
             method (str):
-                The method used for interpolation. If 'linear' or 'nearest'
-                :class:`scipy.interpolate.RegularGridInterpolator` is used with
-                the specified method. If 'rbf', :class:`scipy.interpolate.Rbf`
-                is used for radial basis function interpolation.
+                The method used for interpolation. Currently, 'linear' and 'nearest' are
+                supported by :class:`~scipy.interpolate.RegularGridInterpolator`.
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
             \**kwargs: All keyword arguments are forwarded to
-                :class:`scipy.interpolate.RegularGridInterpolator`
+                :class:`~scipy.interpolate.RegularGridInterpolator`
 
         Returns:
             A function which returns interpolated values when called with
@@ -993,7 +988,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             kwargs["fill_value"] = fill
 
         # prepare the interpolator
-        intp = interpolate.RegularGridInterpolator(coords_src, data, **kwargs)
+        intp = interpolate.RegularGridInterpolator(
+            coords_src, data, method=method, **kwargs
+        )
 
         # determine under which conditions the axes can be squeezed
         if grid_dim == 1:
@@ -1020,7 +1017,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return interpolator  # type: ignore
 
     @fill_in_docstring
-    def _make_interpolator_compiled(
+    def _make_interpolator_numba(
         self, bc: BoundariesData = "natural", fill: Number = None
     ) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return a compiled interpolator
@@ -1104,19 +1101,22 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @cached_method()
     def make_interpolator(
-        self, method: str = "numba", fill: Number = None, **kwargs
+        self,
+        backend: str = "numba",
+        method: str = "linear",
+        fill: Number = None,
+        **kwargs,
     ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
 
         Args:
+            backend (str):
+                The accepted values `scipy` and `numba` determine the backend that is
+                used for the interpolation.
             method (str):
-                Determines the method being used for interpolation.
-                Possible values are:
-
-                * `scipy_nearest`: Use scipy to interpolate to nearest neighbors
-                * `scipy_linear`: Linear interpolation using scipy
-                * `numba`: Linear interpolation using numba (default)
-
+                Determines the method being used for interpolation. Typical values that
+                are `nearest` and `linear, but the supported values depend on the chosen
+                `backend.
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -1141,24 +1141,39 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             A function which returns interpolated values when called with
             arbitrary positions within the space of the grid.
         """
-        if method.startswith("scipy"):
-            return self._make_interpolator_scipy(method=method[6:], fill=fill, **kwargs)
-        elif method == "numba":
-            return self._make_interpolator_compiled(fill=fill, **kwargs)
+        if backend == "scipy":
+            return self._make_interpolator_scipy(method=method, fill=fill, **kwargs)
+        elif backend == "numba":
+            if method != "linear":
+                raise NotImplementedError(
+                    "The numba backend currently only supports linear interpolation"
+                )
+            return self._make_interpolator_numba(fill=fill, **kwargs)
         else:
-            raise ValueError(f"Unknown interpolation method `{method}`")
+            raise ValueError(f"Unknown backend `{backend}`")
 
     def interpolate(
-        self, point, method: str = "numba", fill: Number = None, **kwargs
+        self,
+        point: np.ndarray,
+        *,
+        backend: str = "numba",
+        method: str = "linear",
+        fill: Number = None,
+        **kwargs,
     ) -> NumberOrArray:
         r"""interpolate the field to points between support points
 
         Args:
             point (:class:`~numpy.ndarray`):
-                The points at which the values should be obtained. This is given
-                in grid coordinates.
+                The points at which the values should be obtained. This is given in grid
+                coordinates.
+            backend (str):
+                The accepted values `scipy` and `numba` determine the backend that is
+                used for the interpolation.
             method (str):
-                Determines the method being used for interpolation.
+                Determines the method being used for interpolation. Typical values that
+                are `nearest` and `linear, but the supported values depend on the chosen
+                `backend.
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -1170,13 +1185,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: the values of the field
         """
-        point = np.asarray(point)
-        return self.make_interpolator(method=method, fill=fill, **kwargs)(point)  # type: ignore
+        interpolator = self.make_interpolator(
+            backend=backend, method=method, fill=fill, **kwargs
+        )
+        return interpolator(np.asarray(point))  # type: ignore
 
     def interpolate_to_grid(
         self: TDataField,
         grid: GridBase,
-        method: str = "numba",
+        *,
+        backend: str = "numba",
+        method: str = "linear",
         fill: Number = None,
         label: Optional[str] = None,
     ) -> TDataField:
@@ -1186,9 +1205,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             grid (:class:`~pde.grids.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
+            backend (str):
+                The accepted values `scipy` and `numba` determine the backend that is
+                used for the interpolation.
             method (str):
-                Specifies interpolation method, e.g., 'numba', 'scipy_linear',
-                'scipy_nearest' .
+                Determines the method being used for interpolation. Typical values that
+                are `nearest` and `linear, but the supported values depend on the chosen
+                `backend.
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -1221,10 +1244,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise NotImplementedError(f"Cannot convert {grid_in} to {grid_out}")
 
         # interpolate the data to the grid
-        data = self.interpolate(points, method, fill)
+        data = self.interpolate(points, backend=backend, method=method, fill=fill)
         return self.__class__(grid, data, label=label)
 
-    def add_interpolated(self, point: np.ndarray, amount: ArrayLike):
+    def add_interpolated(self, point: np.ndarray, amount: ArrayLike) -> None:
+        """ deprecated alias of method `insert` """
+        # this was deprecated on 2021-02-23
+        warnings.warn(
+            "`add_interpolated` is deprecated. Use `insert` instead",
+            DeprecationWarning,
+        )
+        self.insert(point, amount)
+
+    def insert(self, point: np.ndarray, amount: ArrayLike) -> None:
         """adds an (integrated) value to the field at an interpolated position
 
         Args:
@@ -1366,13 +1398,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return self.integral / self.grid.volume
 
     @property
-    def fluctuations(self):
+    def fluctuations(self) -> NumberOrArray:
         """:class:`~numpy.ndarray`: fluctuations over the entire space.
 
-        The fluctuations are defined as the standard deviation of the data
-        scaled by the cell volume. This definition makes the fluctuations
-        independent of the discretization. It corresponds to the physical
-        scaling available in the :func:`~DataFieldBase.random_normal`.
+        The fluctuations are defined as the standard deviation of the data scaled by the
+        cell volume. This definition makes the fluctuations independent of the
+        discretization. It corresponds to the physical scaling available in the
+        :func:`~DataFieldBase.random_normal`.
 
         Returns:
             :class:`~numpy.ndarray`: A tensor with the same rank of the field,
@@ -1382,7 +1414,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         scaled_data = self.data * np.sqrt(self.grid.cell_volumes)
         axes = tuple(range(self.rank, self.data.ndim))
-        return np.std(scaled_data, axis=axes)
+        return np.std(scaled_data, axis=axes)  # type: ignore
 
     @property
     def magnitude(self) -> float:
@@ -1397,9 +1429,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif self.rank > 0:
             return abs(self.to_scalar().average)  # type: ignore
         else:
-            raise NotImplementedError(
-                "Magnitude cannot be determined for field " + self.__class__.__name__
-            )
+            raise AssertionError("Rank must be non-negative")
 
     def smooth(
         self: TDataField,

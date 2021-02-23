@@ -10,6 +10,7 @@ import inspect
 import itertools
 import json
 import logging
+import warnings
 from abc import ABCMeta, abstractmethod, abstractproperty
 from typing import (
     TYPE_CHECKING,
@@ -220,12 +221,12 @@ class GridBase(metaclass=ABCMeta):
         memo[id(self)] = result
         return result
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """ return instance as string """
         args = ", ".join(str(k) + "=" + str(v) for k, v in self.state.items())
         return f"{self.__class__.__name__}({args})"
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (
@@ -265,7 +266,7 @@ class GridBase(metaclass=ABCMeta):
             and self.axes_bounds == other.axes_bounds
         )
 
-    def assert_grid_compatible(self, other: "GridBase"):
+    def assert_grid_compatible(self, other: "GridBase") -> None:
         """checks whether `other` is compatible with the current grid
 
         Args:
@@ -378,7 +379,9 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
+    def polar_coordinates_real(
+        self, origin: np.ndarray, *, ret_angle: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
         pass
 
     @abstractmethod
@@ -954,8 +957,20 @@ class GridBase(metaclass=ABCMeta):
 
     def make_add_interpolated_compiled(
         self,
-    ) -> Callable[[np.ndarray, np.ndarray, Any], None]:
-        """return a compiled function to add amounts at interpolated positions
+    ) -> Callable[[np.ndarray, np.ndarray, NumberOrArray], None]:
+        """ deprecated alias of method `make_inserter_compiled` """
+        # this was deprecated on 2021-02-23
+        warnings.warn(
+            "`make_add_interpolated_compiled` is deprecated. Use "
+            "`make_inserter_compiled` instead",
+            DeprecationWarning,
+        )
+        return self.make_inserter_compiled()
+
+    def make_inserter_compiled(
+        self,
+    ) -> Callable[[np.ndarray, np.ndarray, NumberOrArray], None]:
+        """return a compiled function to insert values at interpolated positions
 
         Returns:
             A function with signature (data, position, amount), where `data` is
@@ -973,7 +988,9 @@ class GridBase(metaclass=ABCMeta):
             periodic = bool(self.periodic[0])
 
             @jit
-            def add_interpolated(data: np.ndarray, point: np.ndarray, amount):
+            def insert(
+                data: np.ndarray, point: np.ndarray, amount: NumberOrArray
+            ) -> None:
                 """add an amount to a field at an interpolated position
 
                 Args:
@@ -1024,7 +1041,9 @@ class GridBase(metaclass=ABCMeta):
             periodic_x, periodic_y = self.periodic
 
             @jit
-            def add_interpolated(data: np.ndarray, point: np.ndarray, amount):
+            def insert(
+                data: np.ndarray, point: np.ndarray, amount: NumberOrArray
+            ) -> None:
                 """add an amount to a field at an interpolated position
 
                 Args:
@@ -1091,7 +1110,9 @@ class GridBase(metaclass=ABCMeta):
             periodic_x, periodic_y, periodic_z = self.periodic
 
             @jit
-            def add_interpolated(data: np.ndarray, point: np.ndarray, amount):
+            def insert(
+                data: np.ndarray, point: np.ndarray, amount: NumberOrArray
+            ) -> None:
                 """add an amount to a field at an interpolated position
 
                 Args:
@@ -1177,7 +1198,7 @@ class GridBase(metaclass=ABCMeta):
                 f"Compiled interpolation not implemented for dimension {self.num_axes}"
             )
 
-        return add_interpolated  # type: ignore
+        return insert  # type: ignore
 
     def make_integrator(self) -> Callable[[np.ndarray], np.ndarray]:
         """Return function that can be used to integrates discretized data over the grid

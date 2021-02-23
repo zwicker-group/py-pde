@@ -20,13 +20,13 @@ def test_interpolation_singular():
     # test constant boundary conditions
     bc = [{"type": "value", "value": 1}, {"type": "value", "value": 5}]
     x = np.linspace(0, 1, 7).reshape((7, 1))
-    y = field.interpolate(x, method="numba", bc=bc)
+    y = field.interpolate(x, backend="numba", bc=bc)
     np.testing.assert_allclose(y, 1 + 4 * x.ravel())
 
     # test derivative boundary conditions
     bc = [{"type": "derivative", "value": -2}, {"type": "derivative", "value": 2}]
     x = np.linspace(0, 1, 7).reshape((7, 1))
-    y = field.interpolate(x, method="numba", bc=bc)
+    y = field.interpolate(x, backend="numba", bc=bc)
     np.testing.assert_allclose(y, 2 + 2 * x.ravel())
 
     # test boundary interpolation
@@ -124,45 +124,45 @@ def test_gradient():
 def test_interpolation_to_grid(example_grid):
     """ test whether data is interpolated correctly for different grids """
     sf = ScalarField.random_uniform(example_grid)
-    sf2 = sf.interpolate_to_grid(example_grid, method="numba")
+    sf2 = sf.interpolate_to_grid(example_grid, backend="numba")
     np.testing.assert_allclose(sf.data, sf2.data, rtol=1e-6)
 
 
-def test_add_interpolated_scalar(example_grid):
-    """ test the `add_interpolated` method """
+def test_insert_scalar(example_grid):
+    """ test the `insert` method """
     f = ScalarField(example_grid)
     a = np.random.random()
 
     c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
     p = example_grid.cell_to_point(c, cartesian=False)
-    f.add_interpolated(p, a)
+    f.insert(p, a)
     assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
 
-    f.add_interpolated(example_grid.get_random_point(cartesian=False), a)
+    f.insert(example_grid.get_random_point(cartesian=False), a)
     assert f.integral == pytest.approx(2 * a)
 
     f.data = 0  # reset
-    add_interpolated = example_grid.make_add_interpolated_compiled()
+    insert = example_grid.make_inserter_compiled()
     c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
     p = example_grid.cell_to_point(c, cartesian=False)
-    add_interpolated(f.data, p, a)
+    insert(f.data, p, a)
     assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
 
-    add_interpolated(f.data, example_grid.get_random_point(cartesian=False), a)
+    insert(f.data, example_grid.get_random_point(cartesian=False), a)
     assert f.integral == pytest.approx(2 * a)
 
 
-def test_add_interpolated_1d():
-    """ test the `add_interpolated` method for 1d systems """
+def test_insert_1d():
+    """ test the `insert` method for 1d systems """
     grid = PolarGrid(3, 5)
     f = ScalarField(grid)
     g = f.copy()
     a = np.random.random()
     for r in np.linspace(0, 3, 8).reshape(8, 1):
         f.data = g.data = 0
-        f.add_interpolated(r, a)
+        f.insert(r, a)
         assert f.integral == pytest.approx(a)
-        grid.make_add_interpolated_compiled()(g.data, r, a)
+        grid.make_inserter_compiled()(g.data, r, a)
         np.testing.assert_array_almost_equal(f.data, g.data)
 
 
@@ -204,9 +204,8 @@ def test_interpolation_inhomogeneous_bc():
     """ test field interpolation with inhomogeneous boundary condition """
     sf = ScalarField(UnitGrid([3, 3], periodic=False))
     x = 1 + np.random.random()
-    v = sf.interpolate(
-        [x, 0], method="numba", bc=["natural", {"type": "value", "value": "x"}]
-    )
+    bc = ["natural", {"type": "value", "value": "x"}]
+    v = sf.interpolate([x, 0], backend="numba", bc=bc)
     assert x == pytest.approx(v)
 
 
@@ -285,15 +284,15 @@ def test_interpolation_mutable():
     grid = UnitGrid([2], periodic=True)
     field = ScalarField(grid)
 
-    for method in ["numba", "scipy"]:
+    for backend in ["numba", "scipy"]:
         field.data = 1
-        np.testing.assert_allclose(field.interpolate([0.5], method=method), 1)
+        np.testing.assert_allclose(field.interpolate([0.5], backend=backend), 1)
         field.data = 2
-        np.testing.assert_allclose(field.interpolate([0.5], method=method), 2)
+        np.testing.assert_allclose(field.interpolate([0.5], backend=backend), 2)
 
     # test overwriting field values
     data = np.full_like(field.data, 3)
-    intp = field.make_interpolator(method="numba")
+    intp = field.make_interpolator(backend="numba")
     np.testing.assert_allclose(intp(np.array([0.5]), data), 3)
 
 
@@ -412,8 +411,8 @@ def test_complex_methods():
     """ test special methods for complex data type """
     grid = UnitGrid([2, 2])
     f = ScalarField(grid, 1j)
-    for method in ["scipy", "numba"]:
-        val = f.interpolate([1, 1], method=method)
+    for backend in ["scipy", "numba"]:
+        val = f.interpolate([1, 1], backend=backend)
         np.testing.assert_allclose(val, np.array([1j, 1j]))
 
     f = ScalarField(grid, 1 + 2j)

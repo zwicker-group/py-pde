@@ -15,7 +15,7 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
 from ..tools.plotting import PlotReference, plot_on_figure
-from ..tools.typing import ArrayLike
+from ..tools.typing import ArrayLike, NumberOrArray
 from .base import DataFieldBase, FieldBase
 from .scalar import ScalarField
 
@@ -158,31 +158,40 @@ class FieldCollection(FieldBase):
             for field in self.fields:
                 if field.label == index:
                     return field
-            raise KeyError(f"No field with name {index}")
+            raise KeyError(f"No field with name `{index}`")
 
         else:
-            raise TypeError(f"Unsupported index {index}")
+            raise TypeError(f"Unsupported index `{index}`")
 
-    def __setitem__(self, index: int, value):
-        """ set the value of a specific field """
+    def __setitem__(self, index: Union[int, str], value: NumberOrArray):
+        """set the value of a specific field
+
+        Args:
+            index (int or str):
+                Determines which field is updated. If `index` is an integer it specifies
+                the position of the field that will be updated. If `index` is a string,
+                the first field with this name will be updated.
+            value (float or :class:`~numpy.ndarray`):
+                The updated value(s) of the chosen field.
+        """
         # We need to load the field and set data explicitly
         # WARNING: Do not use `self.fields[index] = value`, since this would
         # break the connection between the data fields
         if isinstance(index, int):
             # simple numerical index
-            self.fields[index].data = value
+            self.fields[index].data = value  # type: ignore
 
         elif isinstance(index, str):
             # index specifying the label of the field
             for field in self.fields:
                 if field.label == index:
-                    field.data = value
-                    break
+                    field.data = value  # type: ignore
+                    break  # indicates that a field has been found
             else:
-                raise KeyError(f"No field with name {index}")
+                raise KeyError(f"No field with name `{index}`")
 
         else:
-            raise TypeError(f"Unsupported index {index}")
+            raise TypeError(f"Unsupported index `{index}`")
 
     @property
     def fields(self) -> List[DataFieldBase]:
@@ -342,7 +351,7 @@ class FieldCollection(FieldBase):
         vmax: float = 1,
         label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
-    ):
+    ) -> "FieldCollection":
         """create scalar fields with random values between `vmin` and `vmax`
 
         Args:
@@ -699,7 +708,7 @@ class _FieldLabels:
     def __eq__(self, other):
         return list(self) == list(other)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Optional[str]]:
         for field in self.collection:
             yield field.label
 

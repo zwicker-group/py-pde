@@ -414,7 +414,9 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
             diff[..., 1] = (diff[..., 1] + size / 2) % size - size / 2
         return diff  # type: ignore
 
-    def polar_coordinates_real(self, origin: np.ndarray, *, ret_angle: bool = False):
+    def polar_coordinates_real(
+        self, origin: np.ndarray, *, ret_angle: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
         """return spherical coordinates associated with the grid
 
         Args:
@@ -435,7 +437,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
         # calculate the difference vector between all cells and the origin
         diff = self.difference_vector_real(np.array([0, origin[2]]), self.cell_coords)
-        dist = np.linalg.norm(diff, axis=-1)  # get distance
+        dist: np.ndarray = np.linalg.norm(diff, axis=-1)  # get distance
 
         if ret_angle:
             return dist, np.arctan2(diff[:, :, 0], diff[:, :, 1])

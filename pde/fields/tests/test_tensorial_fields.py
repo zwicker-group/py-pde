@@ -96,29 +96,29 @@ def test_tensor_symmetrize():
     np.testing.assert_allclose(t2.data, ts.data)
 
 
-def test_add_interpolated_tensor(example_grid):
-    """ test the `add_interpolated` method """
+def test_insert_tensor(example_grid):
+    """ test the `insert` method """
     f = Tensor2Field(example_grid)
     a = np.random.random(f.data_shape)
 
     c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
     c_data = (Ellipsis,) + c
     p = example_grid.cell_to_point(c, cartesian=False)
-    f.add_interpolated(p, a)
+    f.insert(p, a)
     np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
 
-    f.add_interpolated(example_grid.get_random_point(cartesian=False), a)
+    f.insert(example_grid.get_random_point(cartesian=False), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
     f.data = 0  # reset
-    add_interpolated = example_grid.make_add_interpolated_compiled()
+    insert = example_grid.make_inserter_compiled()
     c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
     c_data = (Ellipsis,) + c
     p = example_grid.cell_to_point(c, cartesian=False)
-    add_interpolated(f.data, p, a)
+    insert(f.data, p, a)
     np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
 
-    add_interpolated(f.data, example_grid.get_random_point(cartesian=False), a)
+    insert(f.data, example_grid.get_random_point(cartesian=False), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
 

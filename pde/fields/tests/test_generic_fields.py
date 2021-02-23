@@ -42,18 +42,16 @@ def test_interpolation_natural(example_grid, field_class):
     else:
         p = example_grid.get_random_point(boundary_distance=1, avoid_center=True)
     p = example_grid.point_from_cartesian(p)
-    i1 = f.interpolate(p, method="scipy_linear")
-    i2 = f.interpolate(p, method="numba")
+    i1 = f.interpolate(p, backend="scipy", method="linear")
+    i2 = f.interpolate(p, backend="numba", method="linear")
     np.testing.assert_almost_equal(i1, i2, err_msg=msg)
 
     c = (1,) * len(example_grid.axes)  # specific cell
     p = f.grid.cell_coords[c]
-    np.testing.assert_allclose(
-        f.interpolate(p, method="scipy_linear"), f.data[(Ellipsis,) + c], err_msg=msg
-    )
-    np.testing.assert_allclose(
-        f.interpolate(p, method="numba"), f.data[(Ellipsis,) + c], err_msg=msg
-    )
+    val = f.interpolate(p, backend="scipy", method="linear")
+    np.testing.assert_allclose(val, f.data[(Ellipsis,) + c], err_msg=msg)
+    val = f.interpolate(p, backend="numba", method="linear")
+    np.testing.assert_allclose(val, f.data[(Ellipsis,) + c], err_msg=msg)
 
 
 @pytest.mark.parametrize("num", [1, 3])
@@ -236,8 +234,8 @@ def test_interpolation_to_grid_fields():
     fc = FieldCollection([sf, vf])
 
     for f in [sf, vf, fc]:
-        f2 = f.interpolate_to_grid(grid2, method="numba")
-        f3 = f2.interpolate_to_grid(grid, method="numba")
+        f2 = f.interpolate_to_grid(grid2, backend="numba")
+        f3 = f2.interpolate_to_grid(grid, backend="numba")
         np.testing.assert_allclose(f.data, f3.data, atol=0.2, rtol=0.2)
 
 
@@ -248,14 +246,14 @@ def test_interpolation_values(field_cls):
     grid = UnitGrid([3, 4])
     f = field_cls.random_uniform(grid)
 
-    intp = f.make_interpolator("numba")
+    intp = f.make_interpolator(backend="numba")
     c = f.grid.cell_coords[2, 2]
     np.testing.assert_allclose(intp(c), f.data[..., 2, 2])
 
     with pytest.raises(ValueError):
         intp(np.array([100, -100]))
 
-    res = f.make_interpolator("numba", fill=45)(np.array([100, -100]))
+    res = f.make_interpolator(backend="numba", fill=45)(np.array([100, -100]))
     np.testing.assert_almost_equal(res, np.full(f.data_shape, 45))
 
 
