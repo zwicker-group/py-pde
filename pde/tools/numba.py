@@ -152,11 +152,18 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
         # function is already jited
         return function  # type: ignore
 
-    jit_kwargs = _numba_get_signature(nopython=True, parallel=parallel, **kwargs)
+    # prepare the compilation arguments
+    kwargs.setdefault("nopython", True)
+    jit_kwargs = _numba_get_signature(parallel=parallel, **kwargs)
+
+    # log some details
+    logger = logging.getLogger(__name__)
     name = function.__name__  # type: ignore
-    logging.getLogger(__name__).info(
-        "Compile `%s` with parallel=%s", name, jit_kwargs["parallel"]
-    )
+    if kwargs["nopython"]:  # standard case
+        logger.info("Compile `%s` with parallel=%s", name, jit_kwargs["parallel"])
+    else:  # this might imply numba falls back to object mode
+        logger.warning("Compile `%s` with nopython=False", name)
+
     return nb.jit(signature, **jit_kwargs)(function)  # type: ignore
 
 
