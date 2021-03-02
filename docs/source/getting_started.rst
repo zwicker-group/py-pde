@@ -1,7 +1,7 @@
 Getting started
 ===============
 
-This `py-pde` package is developed for python 3.6+ and should run on all
+This `py-pde` package is developed for python 3.7+ and should run on all
 common platforms.
 The code is tested under Linux, Windows, and macOS.
 
