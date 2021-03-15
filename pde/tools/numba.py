@@ -17,10 +17,20 @@ from .. import config
 from ..tools.misc import decorator_arguments
 
 try:
-    from numba.core.dispatcher import Dispatcher
+    # is_jitted has been added in numba 0.53 on 2021-03-11
+    from numba.extending import is_jitted
+
 except ImportError:
-    # assume older numba module structure
-    from numba.dispatcher import Dispatcher
+    # for earlier version of numba, we need to define the function
+
+    def is_jitted(function: Callable) -> bool:
+        """determine whether a function has already been jitted"""
+        try:
+            from numba.core.dispatcher import Dispatcher
+        except ImportError:
+            # assume older numba module structure
+            from numba.dispatcher import Dispatcher
+        return isinstance(function, Dispatcher)
 
 
 # global settings for numba. These are currently global constants of this module, but
@@ -148,9 +158,8 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
     Returns:
         Function that will be compiled using numba
     """
-    if isinstance(function, Dispatcher):
-        # function is already jited
-        return function  # type: ignore
+    if is_jitted(function):
+        return function
 
     # prepare the compilation arguments
     kwargs.setdefault("nopython", True)
