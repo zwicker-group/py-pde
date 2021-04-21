@@ -13,6 +13,7 @@ import numpy as np
 from ..fields import FieldCollection, VectorField
 from ..fields.base import DataFieldBase, FieldBase
 from ..grids.boundaries.axes import BoundariesData
+from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit, nb
@@ -275,9 +276,18 @@ class PDE(PDEBase):
                         f"`{func}` applied in equation for `{var}`"
                     )
 
+                # Tell the user what BC we chose for a given operator
+                msg = "Using boundary condition `%s` for operator `%s` in PDE for `%s`"
+                self._logger.info(msg, bc, func, var)
+
                 try:
                     ops[func] = state.grid.get_operator(func, bc=bc)
+                except BCDataError:
+                    # wrong data was supplied for the boundary condition
+                    raise
                 except ValueError:
+                    # any other exception should signal that the operator is not defined,
+                    # so we (almost) silently assume that sympy defines the operator
                     self._logger.info(
                         "Assuming that sympy knows undefined operator `%s`", func
                     )
