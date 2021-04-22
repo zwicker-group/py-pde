@@ -71,12 +71,18 @@ class ConstantIntervals:
         if self._t_next is None:
             self._initialize(t)
 
-        self._t_next = self._t_next + self.dt  # type: ignore
+        # move next interrupt time by the appropriate interval
+        self._t_next += self.dt  # type: ignore
 
-        # make sure that the new time `_t_next` is larger than t
+        # make sure that the new interrupt time is in the future
         if self._t_next <= t:
-            # add `dt` until _t_next is larger
-            self._t_next += self.dt * math.ceil((t - self._t_next) / self.dt)
+            # add `dt` until _t_next is in the future (larger than t)
+            n = math.ceil((t - self._t_next) / self.dt)
+            self._t_next += self.dt * n
+            # adjust in special cases where float-point math fails us
+            if self._t_next < t:
+                self._t_next += self.dt
+
         return self._t_next
 
 
