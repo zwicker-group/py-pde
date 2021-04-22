@@ -74,8 +74,9 @@ class ConstantIntervals:
         self._t_next = self._t_next + self.dt  # type: ignore
 
         # make sure that the new time `_t_next` is larger than t
-        while self._t_next <= t:
-            self._t_next += self.dt
+        if self._t_next <= t:
+            # add `dt` until _t_next is larger
+            self._t_next += self.dt * math.ceil((t - self._t_next) / self.dt)
         return self._t_next
 
 
@@ -172,7 +173,9 @@ class RealtimeIntervals(ConstantIntervals):
             current_time = time.time()
             time_passed = current_time - self._last_time
             if time_passed > 0:
-                dt_predict = self.dt * self.duration / time_passed
+                # predict new time step, but limit it from below, to avoid problems with
+                # simulations where a single step takes a long time
+                dt_predict = max(1e-3, self.dt * self.duration / time_passed)
                 # use geometric average to provide some smoothing
                 self.dt = math.sqrt(self.dt * dt_predict)
             else:
