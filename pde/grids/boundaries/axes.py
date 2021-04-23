@@ -12,6 +12,7 @@ import numpy as np
 
 from ..base import GridBase, PeriodicityError
 from .axis import BoundaryPair, BoundaryPairData, get_boundary_axis
+from .local import BCDataError
 
 BoundariesData = Union[BoundaryPairData, Sequence[BoundaryPairData]]
 
@@ -26,20 +27,21 @@ class Boundaries(list):
     def __init__(self, boundaries):
         """ initialize with a list of boundaries """
         if len(boundaries) == 0:
-            raise ValueError("List of boundaries must not be empty")
+            raise BCDataError("List of boundaries must not be empty")
 
         # extract grid
         self.grid = boundaries[0].grid
 
         # check dimension
         if len(boundaries) != self.grid.num_axes:
-            raise ValueError(f"Need boundary conditions for {self.grid.num_axes} axes")
+            raise BCDataError(f"Need boundary conditions for {self.grid.num_axes} axes")
+
         # check consistency
         for axis, boundary in enumerate(boundaries):
             if boundary.grid != self.grid:
-                raise ValueError("Boundaries are not defined on the same grid")
+                raise BCDataError("Boundaries are not defined on the same grid")
             if boundary.axis != axis:
-                raise ValueError(
+                raise BCDataError(
                     "Boundaries need to be ordered like the respective axes"
                 )
             if boundary.periodic != self.grid.periodic[axis]:
@@ -120,7 +122,7 @@ class Boundaries(list):
 
         if bcs is None:
             # none of the logic worked
-            raise ValueError(
+            raise BCDataError(
                 f"Unsupported boundary format: `{boundaries}`. " + cls.get_help()
             )
 

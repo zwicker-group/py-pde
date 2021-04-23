@@ -138,6 +138,10 @@ class TrackerCollection:
         self.tracker_action_times = []
         self.time_next_action = np.inf
 
+    def __len__(self) -> int:
+        """ returns the number of trackers in the collection """
+        return len(self.trackers)
+
     @classmethod
     def from_data(
         cls, data: TrackerCollectionDataType, **kwargs

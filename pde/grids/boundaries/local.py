@@ -44,6 +44,12 @@ from ..base import GridBase
 BoundaryData = Union[Dict, str, "BCBase"]
 
 
+class BCDataError(ValueError):
+    """ exception that signals that incompatible data was supplied for the BC """
+
+    pass
+
+
 def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) -> Tuple[np.ndarray, int, Tuple]:
     """extract the 1d array along axis at point idx
 
@@ -572,7 +578,7 @@ class BCBase(metaclass=ABCMeta):
         """
         # raise warning to mention problem with legacy code (bug fixed 2021-01-18)
         if condition == "no-flux":
-            raise ValueError(
+            raise BCDataError(
                 "Specifying the boundary condition 'no-flux' is no longer supported "
                 "since it introduced a bug when specifying flux conditions. To impose "
                 "no flux conditions, please decide whether you need to impose a "
@@ -584,7 +590,7 @@ class BCBase(metaclass=ABCMeta):
         try:
             boundary_class = cls._conditions[condition]
         except KeyError:
-            raise ValueError(
+            raise BCDataError(
                 f"Boundary condition `{condition}` not defined. " + cls.get_help()
             )
 
@@ -626,7 +632,7 @@ class BCBase(metaclass=ABCMeta):
             b_type, b_value = data.popitem()
 
         else:
-            raise ValueError(
+            raise BCDataError(
                 f"Boundary conditions `{str(list(data.keys()))}` are not supported."
             )
 
@@ -677,7 +683,7 @@ class BCBase(metaclass=ABCMeta):
             return cls.from_str(grid, axis, upper=upper, condition=data, rank=rank)
 
         else:
-            raise ValueError(
+            raise BCDataError(
                 f"Unsupported boundary format: `{data}`. " + cls.get_help()
             )
 

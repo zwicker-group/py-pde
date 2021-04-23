@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from pde import PDE, FieldCollection, ScalarField, SwiftHohenbergPDE, VectorField, grids
+from pde.grids.boundaries.local import BCDataError
 
 
 def iter_grids():
@@ -259,3 +260,31 @@ def test_pde_consts():
     eq = PDE({"a": "laplace(b)"}, consts={"b": field.data})
     with pytest.raises(Exception):
         eq.evolution_rate(field)
+
+
+@pytest.mark.parametrize("bc", ["natural", {"value": 1}])
+def test_pde_bcs(bc):
+    """ test PDE with boundary conditions """
+    eq = PDE({"u": "laplace(u)"}, bc=bc)
+    assert not eq.explicit_time_dependence
+    assert not eq.complex_valued
+    grid = grids.UnitGrid([8])
+    field = ScalarField.random_normal(grid)
+
+    res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
+    res_b = eq.solve(field, t_range=1, dt=0.01, backend="numba", tracker=None)
+
+    res_a.assert_field_compatible(res_b)
+    np.testing.assert_allclose(res_a.data, res_b.data)
+
+
+@pytest.mark.parametrize("bc", ["asdf", [{"value": 1}] * 3])
+def test_pde_bcs_error(bc):
+    """ test PDE with wrong boundary conditions """
+    eq = PDE({"u": "laplace(u)"}, bc=bc)
+    grid = grids.UnitGrid([8, 8])
+    field = ScalarField.random_normal(grid)
+
+    for backend in ["numpy", "numba"]:
+        with pytest.raises(BCDataError):
+            eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)

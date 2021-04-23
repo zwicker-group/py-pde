@@ -62,13 +62,13 @@ def test_storage_truncation(tmp_path):
 
         grid = UnitGrid([8, 8])
         state = ScalarField.random_uniform(grid, 0.2, 0.3)
-        pde = DiffusionPDE()
+        eq = DiffusionPDE()
 
-        pde.solve(state, t_range=0.1, dt=0.001, tracker=tracker_list)
+        eq.solve(state, t_range=0.1, dt=0.001, tracker=tracker_list)
         if truncate:
             for storage in storages:
                 storage.clear()
-        pde.solve(state, t_range=[0.1, 0.2], dt=0.001, tracker=tracker_list)
+        eq.solve(state, t_range=[0.1, 0.2], dt=0.001, tracker=tracker_list)
 
         times = np.arange(0.1, 0.201, 0.01)
         if not truncate:
