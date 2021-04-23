@@ -349,8 +349,9 @@ class Tensor2Field(DataFieldBase):
         Args:
             scalar (str):
                 The method to calculate the scalar. Possible choices include `norm` (the
-                default), `min`, `max`, `squared_sum`, `norm_squared`, `trace` (or
-                `invariant1`), `invariant2`, and `determinant` (or `invariant3`)
+                default chosen when the value is `auto`), `min`, `max`, `squared_sum`,
+                `norm_squared`, `trace` (or `invariant1`), `invariant2`, and
+                `determinant` (or `invariant3`)
             label (str, optional):
                 Name of the returned field
             

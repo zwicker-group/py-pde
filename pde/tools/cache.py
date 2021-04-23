@@ -72,8 +72,8 @@ def _hash_iter(it: Iterable) -> int:
 
 
 def hash_mutable(obj) -> int:
-    """return hash also for (nested) mutable objects. 
-    
+    """return hash also for (nested) mutable objects.
+
     Notes:
         This function might be a bit slow, since it iterates over all containers and
         hashes objects recursively. Moreover, the returned value might change with each
@@ -135,7 +135,7 @@ def hash_mutable(obj) -> int:
 
 def hash_readable(obj) -> str:
     """return human readable hash also for (nested) mutable objects.
-    
+
     This function returns a JSON-like representation of the object. The function might
     be a bit slow, since it iterates over all containers and hashes objects recursively.
     Note that this hash function tries to return the same value for equivalent objects,

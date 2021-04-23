@@ -16,7 +16,7 @@ from numba.extending import register_jitable
 
 from ...tools.typing import NumberOrArray
 from ..base import DomainError, GridBase
-from .local import BCBase, BoundaryData, NeumannBC, _make_get_arr_1d
+from .local import BCBase, BCDataError, BoundaryData, NeumannBC, _make_get_arr_1d
 
 BoundaryPairData = Union[
     Dict[str, BoundaryData], BoundaryData, Tuple[BoundaryData, BoundaryData]
@@ -171,7 +171,7 @@ class BoundaryPair(BoundaryAxisBase):
                     grid, axis, upper=True, data=data_copy.pop("high"), rank=rank
                 )
                 if data_copy:
-                    raise ValueError(f"Data items {data_copy.keys()} were not used.")
+                    raise BCDataError(f"Data items {data_copy.keys()} were not used.")
             else:
                 # one condition for both sides
                 low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
@@ -190,7 +190,7 @@ class BoundaryPair(BoundaryAxisBase):
                 data_len = len(data)
             except TypeError:
                 # if len is not supported, the format must be wrong
-                raise ValueError(
+                raise BCDataError(
                     f"Unsupported boundary format: `{data}`. " + cls.get_help()
                 )
             else:
@@ -204,7 +204,7 @@ class BoundaryPair(BoundaryAxisBase):
                     )
                 else:
                     # if the length is strange, the format must be wrong
-                    raise ValueError(
+                    raise BCDataError(
                         "Expected two conditions for the two sides of the axis, but "
                         f"got `{data}`. " + cls.get_help()
                     )
