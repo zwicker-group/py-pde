@@ -152,7 +152,7 @@ class Controller:
         solver_start = datetime.datetime.now()
         self.info["solver_start"] = str(solver_start)
 
-        get_time = self._get_time  # type: ignore
+        get_time = self.get_current_time  # type: ignore
         profiler = {"solver": 0.0, "tracker": 0.0}
         self.info["profiler"] = profiler
         prof_start_tracker = get_time()
