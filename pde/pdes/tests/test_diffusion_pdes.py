@@ -54,3 +54,32 @@ def test_simple_diffusion_flux_left():
     pde = DiffusionPDE(bc=[b_l, b_r])
     sol = pde.solve(c, t_range=5, dt=0.001, tracker=None)
     np.testing.assert_allclose(sol.data, 2 - 2 * grid.axes_coords[0], rtol=5e-3)
+
+
+def test_diffusion_cached():
+    """ test some caching of rhs of the simple diffusion model """
+    grid = UnitGrid([8])
+    c0 = ScalarField.random_uniform(grid)
+
+    # first run without cache
+    eq1 = DiffusionPDE(diffusivity=1)
+    eq1.cache_rhs = False
+    c1a = eq1.solve(c0, t_range=1, dt=0.1, backend="numba", tracker=None)
+
+    eq1.diffusivity = 0.1
+    c1b = eq1.solve(c1a, t_range=1, dt=0.1, backend="numba", tracker=None)
+
+    # then run with cache
+    eq2 = DiffusionPDE(diffusivity=1)
+    eq2.cache_rhs = True
+    c2a = eq2.solve(c0, t_range=1, dt=0.1, backend="numba", tracker=None)
+
+    eq2.diffusivity = 0.1
+    c2b = eq2.solve(c2a, t_range=1, dt=0.1, backend="numba", tracker=None)
+
+    eq2._cache = {}  # clear cache
+    c2c = eq2.solve(c2a, t_range=1, dt=0.1, backend="numba", tracker=None)
+
+    np.testing.assert_allclose(c1a.data, c2a.data)
+    assert not np.allclose(c1b.data, c2b.data)
+    np.testing.assert_allclose(c1b.data, c2c.data)
