@@ -435,20 +435,30 @@ class PDEBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
-                The initial state (which also defines the grid)
+                The initial state (which also defines the spatial grid)
             t_range (float or tuple):
-                Sets the time range for which the PDE is solved. If only a
-                single value `t_end` is given, the time range is assumed to be
-                `[0, t_end]`.
+                Sets the time range for which the PDE is solved. This should typically
+                be a tuple of two numbers, `(t_start, t_end)`, specifying the initial
+                and final time of the simulation. If only a single value is given, it is
+                interpreted as `t_end` and the time range is assumed to be `(0, t_end)`.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default
-                value based on the stepper will be chosen.
+                Time step of the chosen stepping scheme. If `None`, a default value
+                based on the stepper will be chosen. In particular, if
+                `method == 'auto'`, the :class:`~pde.solvers.ScipySolver` with an
+                automatic, adaptive time step is used. This is a flexible choice, but
+                might be slower than using a fixed time step.
             tracker:
-                Defines a tracker that process the state of the simulation at
-                fixed time intervals. Multiple trackers can be specified as a
-                list. The default value is ['progress', 'consistency'], which
-                displays a progress bar and checks the state for consistency,
-                aborting the simulation when not-a-number values appear.
+                Defines a tracker that process the state of the simulation at specified
+                time intervals. A tracker is either an instance of
+                :class:`~pde.trackers.base.TrackerBase` or a string, which identifies a
+                tracker. All possible identifiers can be obtained by calling
+                :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be
+                specified as a list. The default value is `['progress', 'consistency']`,
+                which displays a progress bar and checks the state for consistency,
+                aborting the simulation when not-a-number values appear. More general
+                trackers are defined in :mod:`~pde.trackers`, where all options are
+                explained in detail. In particular, the interval at which the tracker is
+                evaluated can be chosen when creating a tracker object explicitly.
             method (:class:`~pde.solvers.base.SolverBase` or str):
                 Specifies a method for solving the differential equation. This
                 can either be an instance of
@@ -459,7 +469,8 @@ class PDEBase(metaclass=ABCMeta):
                 Flag determining whether diagnostic information about the solver
                 process should be returned.
             **kwargs:
-                Additional keyword arguments are forwarded to the solver class
+                Additional keyword arguments are forwarded to the solver class chosen
+                with the `method` argument.
 
         Returns:
             :class:`~pde.fields.base.FieldBase`:

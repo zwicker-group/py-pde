@@ -6,7 +6,7 @@ Base classes for trackers
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import numpy as np
 
@@ -27,7 +27,7 @@ class FinishedSimulation(StopIteration):
 class TrackerBase(metaclass=ABCMeta):
     """ base class for implementing trackers """
 
-    _subclasses: Dict[str, "TrackerBase"] = {}  # all inheriting classes
+    _subclasses: Dict[str, Type["TrackerBase"]] = {}  # all inheriting classes
 
     @fill_in_docstring
     def __init__(self, interval: IntervalData = 1):
@@ -62,7 +62,7 @@ class TrackerBase(metaclass=ABCMeta):
                 tracker_cls = cls._subclasses[data]
             except KeyError:
                 raise ValueError(f"Tracker `{data}` is not defined")
-            return tracker_cls(**kwargs)  # type: ignore
+            return tracker_cls(**kwargs)
         else:
             raise ValueError(f"Unsupported tracker format: `{data}`.")
 
@@ -245,3 +245,12 @@ class TrackerCollection:
         """
         for tracker in self.trackers:
             tracker.finalize(info=info)
+
+
+def get_named_trackers() -> Dict[str, Type[TrackerBase]]:
+    """returns all named trackers
+
+    Returns:
+        dict: a mapping of names to the actual tracker classes.
+    """
+    return TrackerBase._subclasses.copy()

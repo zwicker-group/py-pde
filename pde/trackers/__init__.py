@@ -18,6 +18,10 @@ store, or output it. The trackers defined in this module are:
    ~trackers.ConsistencyTracker
    ~interactive.InteractivePlotTracker
    
+Some trackers can also be referenced by name for convenience when using them in
+simulations. The lit of supported names is returned by
+:func:`~pde.trackers.base.get_named_trackers`.
+   
 Multiple trackers can be collected in a :class:`~base.TrackerCollection`, which provides
 methods for handling them efficiently. Moreover, custom trackers can be implemented by
 deriving from :class:`~.trackers.base.TrackerBase`. Note that trackers generally receive
@@ -40,6 +44,7 @@ of the following classes:
 """
 
 
+from .base import get_named_trackers
 from .interactive import InteractivePlotTracker
 from .intervals import ConstantIntervals, LogarithmicIntervals, RealtimeIntervals
 from .trackers import *
