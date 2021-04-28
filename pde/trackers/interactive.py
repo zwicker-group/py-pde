@@ -219,7 +219,7 @@ class NapariViewer:
 
 
 class InteractivePlotTracker(TrackerBase):
-    """Tracker that shows the state live in an interactive napari instance
+    """Tracker showing the state interactively in napari
 
     Note:
         The interactive tracker uses the python :mod:`multiprocessing` module to run

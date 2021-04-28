@@ -12,7 +12,8 @@ import pytest
 from pde import Controller, ExplicitSolver, MemoryStorage, ScalarField, UnitGrid
 from pde.pdes import AllenCahnPDE, CahnHilliardPDE, DiffusionPDE
 from pde.tools.misc import module_available
-from pde.trackers import trackers
+from pde.trackers import get_named_trackers, trackers
+from pde.trackers.base import TrackerBase
 from pde.visualization.movies import Movie
 
 
@@ -216,3 +217,11 @@ def test_material_conservation_tracker():
     controller = Controller(solver, t_range=1, tracker=["material_conservation"])
     controller.run(state, dt=1e-3)
     assert controller.info["t_final"] <= 1
+
+
+def test_get_named_trackers():
+    """ test the get_named_trackers function """
+    for name, cls in get_named_trackers().items():
+        assert isinstance(name, str)
+        tracker = TrackerBase.from_data(name)
+        assert isinstance(tracker, cls)
