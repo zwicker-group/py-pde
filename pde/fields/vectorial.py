@@ -617,13 +617,14 @@ class VectorField(DataFieldBase):
             data["title"] = self.label
 
         else:
-            raise NotImplementedError()
+            raise NotImplementedError("Only supports 2d grids")
 
         # transpose the data if requested
         if transpose:
             data["x"], data["y"] = data["y"], data["x"]
             data["data_x"], data["data_y"] = data["data_y"].T, data["data_x"].T
             data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
+            data["extent"] = data["extent"][2:] + data["extent"][:2]
 
         # reduce the sampling of the vector points
         if max_points is not None:
@@ -637,9 +638,11 @@ class VectorField(DataFieldBase):
                     data["data_x"] = np.take(data["data_x"], idx_i, axis=axis)
                     data["data_y"] = np.take(data["data_y"], idx_i, axis=axis)
                     if axis == 0:
-                        data["y"] = data["y"][idx_i]
-                    elif axis == 1:
                         data["x"] = data["x"][idx_i]
+                    elif axis == 1:
+                        data["y"] = data["y"][idx_i]
+                    else:
+                        raise RuntimeError("Only supports 2d grids")
 
         data["shape"] = data["data_x"].shape
         data["size"] = data["data_x"].size
