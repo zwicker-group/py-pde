@@ -39,7 +39,9 @@ class CahnHilliardPDE(PDEBase):
         """
         Args:
             interface_width (float):
-                The diffusivity of the described species
+                The width of the interface between the separated phases. This defines
+                a characteristic length in the simulation. The grid needs to resolve
+                this length of a stable simulation.
             bc_c:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
