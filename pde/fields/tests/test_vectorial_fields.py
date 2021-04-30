@@ -204,14 +204,20 @@ def test_boundary_interpolation_vector():
         np.testing.assert_allclose(ev(), bndry_val)
 
 
-def test_plotting_2d():
+@pytest.mark.parametrize("transpose", [True, False])
+def test_vector_plotting_2d(transpose):
     """ test plotting of 2d vector fields """
-    grid = UnitGrid([3, 3])
+    grid = UnitGrid([3, 4])
     field = VectorField.random_uniform(grid, 0.1, 0.9)
 
     for method in ["quiver", "streamplot"]:
-        ref = field.plot(method=method)
+        ref = field.plot(method=method, transpose=transpose)
         field._update_plot(ref)
+
+    # test sub-sampling
+    grid = UnitGrid([32, 15])
+    field = VectorField.random_uniform(grid, 0.1, 0.9)
+    field.get_vector_data(transpose=transpose, max_points=7)
 
 
 @skipUnlessModule("napari")

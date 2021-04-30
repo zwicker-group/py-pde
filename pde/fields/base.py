@@ -1737,14 +1737,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
         """
-        # do the plotting using the chosen method
+        # store the parameters of this plot for later updating
+        parameters = {
+            "method": method,
+            "transpose": transpose,
+            "kwargs": kwargs,
+        }
+
         if method == "quiver":
+            # plot vector field using a quiver plot
             data = self.get_vector_data(transpose=transpose, max_points=max_points)
+            parameters["max_points"] = max_points  # only save for quiver plot
             element = ax.quiver(
                 data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
 
         elif method == "streamplot":
+            # plot vector field using a streamplot
             data = self.get_vector_data(transpose=transpose)
             element = ax.streamplot(
                 data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
@@ -1759,12 +1768,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         ax.set_ylabel(data["label_y"])
         ax.set_title(data.get("title", self.label))
 
-        parameters = {
-            "method": method,
-            "transpose": transpose,
-            "max_points": max_points,
-            "kwargs": kwargs,
-        }
         return PlotReference(ax, element, parameters)
 
     def _update_vector_plot(self, reference: PlotReference) -> None:
@@ -1774,14 +1777,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             reference (:class:`PlotReference`):
                 The reference to the plot that is updated
         """
+        # extract general parameters
         method = reference.parameters.get("method", "quiver")
         transpose = reference.parameters.get("transpose", False)
+
         if method == "quiver":
+            # update the data of a quiver plot
             max_points = reference.parameters.get("max_points")
             data = self.get_vector_data(transpose=transpose, max_points=max_points)
             reference.element.set_UVC(data["data_x"], data["data_y"])
 
         elif method == "streamplot":
+            # update a streamplot by redrawing it completely
             ax = reference.ax
             kwargs = reference.parameters.get("kwargs", {})
             data = self.get_vector_data(transpose=transpose)
@@ -1789,7 +1796,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ax.cla()
             # update with new streamplot
             reference.element = ax.streamplot(
-                data["x"], data["y"], data["data_x"], data["data_y"], **kwargs
+                data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
 
         else:
