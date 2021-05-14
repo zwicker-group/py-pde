@@ -178,14 +178,14 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             for ax in reversed(range(self.dim)):
                 if ax != axis:
                     mid_point = self.shape[ax] // 2
-                    data_y = np.take(data_y, mid_point, axis=ax + rank)  # type: ignore
+                    data_y = np.take(data_y, mid_point, axis=ax + rank)
             label_y = f"Cut along {self.axes[axis]}"
 
         elif extract.startswith("project_"):
             # consider a projection along a given axis
             axis = _get_axis(extract[8:])
             avg_axes = [ax - self.dim for ax in range(self.dim) if ax != axis]
-            data_y = data.mean(axis=tuple(avg_axes))  # type: ignore
+            data_y = data.mean(axis=tuple(avg_axes))
             label_y = f"Projection onto {self.axes[axis]}"
 
         else:
