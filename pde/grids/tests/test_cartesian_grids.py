@@ -401,3 +401,25 @@ def test_interpolate_3d():
 
     val = intp(np.zeros((2, 2, 2)), np.array([0, 1, 1]))
     assert val == pytest.approx(1)
+
+
+@pytest.mark.parametrize("reflect", [True, False])
+def test_normalize_point(reflect):
+    """ test normalize_point method for Cartesian Grids """
+    grid = CartesianGrid([[1, 3]], [1], periodic=False)
+
+    norm_numba = grid.make_normalize_point_compiled(reflect=reflect)
+
+    def norm_numba_wrap(x):
+        y = np.array([x])
+        norm_numba(y)
+        return y
+
+    if reflect:
+        values = [(-2, 2), (0, 2), (1, 1), (2, 2), (3, 3), (4, 2), (5, 1), (6, 2)]
+    else:
+        values = [(-2, -2), (0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]
+
+    for norm in [norm_numba_wrap, partial(grid.normalize_point, reflect=reflect)]:
+        for x, y in values:
+            assert norm(x) == pytest.approx(y), (norm, x)

@@ -4,7 +4,6 @@
 
 import itertools
 from copy import copy, deepcopy
-from functools import partial
 
 import numpy as np
 import pytest
@@ -133,25 +132,3 @@ def test_operators():
         grid.register_operator("noop", make_op)
         assert "noop" in grid.operators
         del grid._operators["noop"]  # reset original state
-
-
-@pytest.mark.parametrize("reflect", [True, False])
-def test_normalize_point(reflect):
-    """ test normalize_point method """
-    grid = grids.CartesianGrid([[1, 3]], [1], periodic=False)
-
-    norm_numba = grid.make_normalize_point_compiled(reflect=reflect)
-
-    def norm_numba_wrap(x):
-        y = np.array([x])
-        norm_numba(y)
-        return y
-
-    if reflect:
-        values = [(0, 2), (1, 1), (2, 2), (3, 3), (4, 2), (5, 1), (6, 2)]
-    else:
-        values = [(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)]
-
-    for norm in [norm_numba_wrap, partial(grid.normalize_point, reflect=reflect)]:
-        for x, y in values:
-            assert norm(x) == pytest.approx(y), (norm, x)

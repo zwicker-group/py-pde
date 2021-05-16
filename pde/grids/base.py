@@ -417,6 +417,11 @@ class GridBase(metaclass=ABCMeta):
     def normalize_point(self, point: np.ndarray, reflect: bool = True) -> np.ndarray:
         """normalize coordinates by applying periodic boundary conditions
 
+        Here, the point is assumed to be specified by the physical values along
+        the non-symmetric axes of the grid. Normalizing points is useful to make sure
+        they lie within the domain of the  grid. This function respects periodic
+        boundary conditions and can also reflect points off the boundary.
+
         Args:
             point (:class:`~numpy.ndarray`):
                 Coordinates of a single point
@@ -643,11 +648,12 @@ class GridBase(metaclass=ABCMeta):
     def make_normalize_point_compiled(
         self, reflect: bool = True
     ) -> Callable[[np.ndarray], None]:
-        """return a compiled function that normalizes the points
+        """return a compiled function that normalizes a point
 
-        Normalizing points is useful to respect periodic boundary conditions.
-        Here, points are assumed to be specified by the physical values along
-        the non-symmetric axes of the grid.
+        Here, the point is assumed to be specified by the physical values along
+        the non-symmetric axes of the grid. Normalizing points is useful to make sure
+        they lie within the domain of the  grid. This function respects periodic
+        boundary conditions and can also reflect points off the boundary.
 
         Args:
             reflect (bool):
@@ -661,7 +667,7 @@ class GridBase(metaclass=ABCMeta):
             in-place!
         """
         num_axes = self.num_axes
-        periodic = tuple(self.periodic)
+        periodic = np.array(self.periodic)  # using a tuple instead led to a numba error
         bounds = np.array(self.axes_bounds)
         xmin = bounds[:, 0]
         xmax = bounds[:, 1]
@@ -670,12 +676,14 @@ class GridBase(metaclass=ABCMeta):
         @jit
         def normalize_point(point: np.ndarray) -> None:
             """ helper function normalizing a single point """
+            assert point.ndim == 1  # only support single points
             for i in range(num_axes):
                 if periodic[i]:
                     point[i] = (point[i] - xmin[i]) % size[i] + xmin[i]
                 elif reflect:
                     arg = (point[i] - xmax[i]) % (2 * size[i]) - size[i]
                     point[i] = xmin[i] + abs(arg)
+                # else: do nothing
 
         return normalize_point  # type: ignore
 
