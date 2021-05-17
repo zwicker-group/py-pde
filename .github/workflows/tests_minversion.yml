@@ -31,9 +31,3 @@ jobs:
         pip install pytest
         cd tests
         python run_tests.py --unit
-        
-    - name: Test types with mypy
-      continue-on-error: true
-      run: |
-        pip install mypy
-        python -m mypy --config-file tests/mypy.ini --pretty --package pde
