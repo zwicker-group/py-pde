@@ -284,12 +284,27 @@ class VectorField(DataFieldBase):
             def calc(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray = None
             ) -> np.ndarray:
+                """ inner function doing the actual calculation of the dot product """
                 if a.shape == b.shape:
                     # dot product between vector and vector
-                    return np.einsum("i...,i...->...", a, b, out=out)  # type: ignore
+                    if out is None:
+                        # TODO: Remove this construct once we make numpy 1.20 a minimal
+                        # requirement. Earlier version of numpy do not support out=None
+                        # correctly and we thus had to use this work-around 
+                        return np.einsum("i...,i...->...", a, b)  # type: ignore
+                    else:
+                        return np.einsum("i...,i...->...", a, b, out=out)  # type: ignore
+
                 elif a.shape == b.shape[1:]:
                     # dot product between vector and tensor
-                    return np.einsum("i...,ij...->j...", a, b, out=out)  # type: ignore
+                    if out is None:
+                        # TODO: Remove this construct once we make numpy 1.20 a minimal
+                        # requirement. Earlier version of numpy do not support out=None
+                        # correctly and we thus had to use this work-around 
+                        return np.einsum("i...,ij...->j...", a, b)  # type: ignore
+                    else:
+                        return np.einsum("i...,ij...->j...", a, b, out=out)  # type: ignore
+                    
                 else:
                     raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
 
@@ -299,6 +314,7 @@ class VectorField(DataFieldBase):
                 def dot(
                     a: np.ndarray, b: np.ndarray, out: np.ndarray = None
                 ) -> np.ndarray:
+                    """ dot product with conjugated second operand """
                     return calc(a, b.conjugate(), out=out)  # type: ignore
 
             else:
@@ -442,7 +458,14 @@ class VectorField(DataFieldBase):
             def outer(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray = None
             ) -> np.ndarray:
-                return np.einsum("i...,j...->ij...", a, b, out=out)  # type: ignore
+                """calculates the outer product between two vector fields """
+                if out is None:
+                    # TODO: Remove this construct once we make numpy 1.20 a minimal
+                    # requirement. Earlier version of numpy do not support out=None
+                    # correctly and we thus had to use this work-around
+                    return np.einsum("i...,j...->ij...", a, b)  # type: ignore
+                else: 
+                    return np.einsum("i...,j...->ij...", a, b, out=out)  # type: ignore
 
         else:
             raise ValueError(f"Undefined backend `{backend}")
