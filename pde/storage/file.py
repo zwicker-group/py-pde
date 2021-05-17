@@ -77,6 +77,9 @@ class FileStorage(StorageBase):
                     f"File `{filename}` could not be opened for reading"
                 )
 
+    def __del__(self):
+        self.close()  # ensure open files are closed when the FileStorage is deleted
+
     @property
     def _file_state(self) -> str:
         """ str: the state that the file is currently in """
