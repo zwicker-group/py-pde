@@ -1,4 +1,4 @@
-name: Test all requirements
+name: "Test all requirements"
 
 on: [push]
 

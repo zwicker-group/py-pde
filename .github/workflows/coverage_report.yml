@@ -1,4 +1,4 @@
-name: Generate coverage report
+name: "Generate coverage report"
 
 on: [push]
 

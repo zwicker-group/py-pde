@@ -1,4 +1,4 @@
-name: Test all requirements
+name: "Static type checking"
 
 on: [push]
 
