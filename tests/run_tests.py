@@ -10,29 +10,60 @@ PACKAGE = "pde"  # name of the package that needs to be tested
 PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package
 
 
-def test_codestyle(*, verbose: bool = True):
+def _run_check(cmd, retcode: int = 0, **kwargs) -> int:
+    """runs a command and returns an exit code
+
+    Args:
+        cmd (list): The command passed to :func:`subprocess.run`
+        retcode (int): An older exit code that is combined with the current one
+
+    Returns:
+        The exit code that is most severe between the current run and `retcode`.
+    """
+    result = sp.run(cmd, **kwargs)
+    if result.returncode == 0:
+        return retcode
+    elif result.returncode > retcode:
+        return result.returncode
+    elif retcode == 0:
+        return result.returncode
+    else:
+        return retcode
+
+
+def test_codestyle(*, verbose: bool = True) -> int:
     """run the codestyle tests
 
     Args:
         verbose (bool): Whether to do extra output
+
+    Returns:
+        int: The most severe exit code
     """
+    retcode = 0
+
     for folder in [PACKAGE, "examples"]:
         if verbose:
             print(f"Checking codestyle in folder {folder}...")
         path = PACKAGE_PATH / folder
 
         # format imports
-        sp.run(["isort", "--profile", "black", "--diff", path])
+        retcode = _run_check(["isort", "--profile", "black", "--diff", path], retcode)
         # format rest
-        sp.run(["black", "-t", "py36", "--check", path])
+        retcode = _run_check(["black", "-t", "py36", "--check", path], retcode)
+
+    return retcode
 
 
-def test_types(*, report: bool = False, verbose: bool = True):
+def test_types(*, report: bool = False, verbose: bool = True) -> int:
     """run mypy to check the types of the python code
 
     Args:
         report (bool): Whether to write a report
         verbose (bool): Whether to do extra output
+
+    Returns:
+        int: The most severe exit code
     """
     if verbose:
         print(f"Checking types in the {PACKAGE} package...")
@@ -58,7 +89,7 @@ def test_types(*, report: bool = False, verbose: bool = True):
 
     args.extend(["--package", PACKAGE])
 
-    sp.run(args, cwd=PACKAGE_PATH)
+    return _run_check(args, cwd=PACKAGE_PATH)
 
 
 def run_unit_tests(
@@ -126,7 +157,7 @@ def run_unit_tests(
     args.append(PACKAGE)
 
     # actually run the test
-    sp.run(args, env=env, cwd=PACKAGE_PATH)
+    return _run_check(args, env=env, cwd=PACKAGE_PATH)
 
 
 def main():
@@ -200,18 +231,30 @@ def main():
     run_all = not (args.style or args.types or args.unit)
 
     # run the requested tests
+    retcodes = []
     if run_all or args.style:
-        test_codestyle(verbose=not args.quite)
+        retcode = test_codestyle(verbose=not args.quite)
+        retcodes.append(retcode)
+
     if run_all or args.types:
-        test_types(report=args.report, verbose=not args.quite)
+        retcode = test_types(report=args.report, verbose=not args.quite)
+        retcodes.append(retcode)
+
     if run_all or args.unit:
-        run_unit_tests(
+        retcode = run_unit_tests(
             runslow=args.runslow,
             coverage=args.coverage,
             parallel=args.parallel,
             no_numba=args.no_numba,
             pattern=args.pattern,
         )
+        retcodes.append(retcode)
+
+    # return the most severe code
+    if all(c == 0 for c in retcodes):
+        return 0
+    else:
+        return max(retcodes, key=lambda c: abs(c))
 
 
 if __name__ == "__main__":
