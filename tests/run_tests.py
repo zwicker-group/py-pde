@@ -5,30 +5,25 @@ import os
 import subprocess as sp
 import sys
 from pathlib import Path
+from typing import Sequence
 
 PACKAGE = "pde"  # name of the package that needs to be tested
 PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package
 
 
-def _run_check(cmd, retcode: int = 0, **kwargs) -> int:
-    """runs a command and returns an exit code
+def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
+    """returns the most severe exit code of a given list
 
     Args:
-        cmd (list): The command passed to :func:`subprocess.run`
-        retcode (int): An older exit code that is combined with the current one
+        retcodes (list): A list of return codes
 
     Returns:
-        The exit code that is most severe between the current run and `retcode`.
+        int: the exit code that is most severe
     """
-    result = sp.run(cmd, **kwargs)
-    if result.returncode == 0:
-        return retcode
-    elif result.returncode > retcode:
-        return result.returncode
-    elif retcode == 0:
-        return result.returncode
+    if all(retcode == 0 for retcode in retcodes):
+        return 0
     else:
-        return retcode
+        return max(retcodes, key=lambda retcode: abs(retcode))
 
 
 def test_codestyle(*, verbose: bool = True) -> int:
@@ -40,7 +35,7 @@ def test_codestyle(*, verbose: bool = True) -> int:
     Returns:
         int: The most severe exit code
     """
-    retcode = 0
+    retcodes = []
 
     for folder in [PACKAGE, "examples"]:
         if verbose:
@@ -48,11 +43,13 @@ def test_codestyle(*, verbose: bool = True) -> int:
         path = PACKAGE_PATH / folder
 
         # format imports
-        retcode = _run_check(["isort", "--profile", "black", "--diff", path], retcode)
+        result = sp.run(["isort", "--profile", "black", "--diff", path])
+        retcodes.append(result.returncode)
         # format rest
-        retcode = _run_check(["black", "-t", "py36", "--check", path], retcode)
+        result = sp.run(["black", "-t", "py36", "--check", path])
+        retcodes.append(result.returncode)
 
-    return retcode
+    return _most_severe_exit_code(retcodes)
 
 
 def test_types(*, report: bool = False, verbose: bool = True) -> int:
@@ -63,7 +60,7 @@ def test_types(*, report: bool = False, verbose: bool = True) -> int:
         verbose (bool): Whether to do extra output
 
     Returns:
-        int: The most severe exit code
+        int: The return code indicating success or failure
     """
     if verbose:
         print(f"Checking types in the {PACKAGE} package...")
@@ -89,7 +86,7 @@ def test_types(*, report: bool = False, verbose: bool = True) -> int:
 
     args.extend(["--package", PACKAGE])
 
-    return _run_check(args, cwd=PACKAGE_PATH)
+    return sp.run(args, cwd=PACKAGE_PATH).returncode
 
 
 def run_unit_tests(
@@ -98,7 +95,7 @@ def run_unit_tests(
     coverage: bool = False,
     no_numba: bool = False,
     pattern: str = None,
-):
+) -> int:
     """run the unit tests
 
     Args:
@@ -107,6 +104,9 @@ def run_unit_tests(
         coverage (bool): Whether to determine the test coverage
         no_numba (bool): Whether to disable numba jit compilation
         pattern (str): A pattern that determines which tests are ran
+
+    Returns:
+        int: The return code indicating success or failure
     """
     # modify current environment
     env = os.environ.copy()
@@ -157,11 +157,15 @@ def run_unit_tests(
     args.append(PACKAGE)
 
     # actually run the test
-    return _run_check(args, env=env, cwd=PACKAGE_PATH)
+    return sp.run(args, env=env, cwd=PACKAGE_PATH).returncode
 
 
-def main():
-    """ the main program controlling the tests """
+def main() -> int:
+    """the main program controlling the tests
+
+    Returns:
+        int: The return code indicating success or failure
+    """
     # parse the command line arguments
     parser = argparse.ArgumentParser(
         description=f"Run tests of the `{PACKAGE}` package.",
@@ -251,11 +255,8 @@ def main():
         retcodes.append(retcode)
 
     # return the most severe code
-    if all(c == 0 for c in retcodes):
-        return 0
-    else:
-        return max(retcodes, key=lambda c: abs(c))
+    return _most_severe_exit_code(retcodes)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
