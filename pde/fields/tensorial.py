@@ -200,12 +200,27 @@ class Tensor2Field(DataFieldBase):
             def calc(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray = None
             ) -> np.ndarray:
+                """calculate dot product between two tensors"""
                 if a.shape == b.shape:
                     # dot product between tensor and tensor
-                    return np.einsum("ij...,jk...->ik...", a, b, out=out)  # type: ignore
+                    if out is None:
+                        # TODO: Remove this construct once we make numpy 1.20 a minimal
+                        # requirement. Earlier version of numpy do not support out=None
+                        # correctly and we thus had to use this work-around
+                        return np.einsum("ij...,jk...->ik...", a, b)  # type: ignore
+                    else:
+                        return np.einsum("ij...,jk...->ik...", a, b, out=out)  # type: ignore
+
                 elif a.shape[1:] == b.shape:
                     # dot product between tensor and vector
-                    return np.einsum("ij...,j...->i...", a, b, out=out)  # type: ignore
+                    if out is None:
+                        # TODO: Remove this construct once we make numpy 1.20 a minimal
+                        # requirement. Earlier version of numpy do not support out=None
+                        # correctly and we thus had to use this work-around
+                        return np.einsum("ij...,j...->i...", a, b)  # type: ignore
+                    else:
+                        return np.einsum("ij...,j...->i...", a, b, out=out)  # type: ignore
+
                 else:
                     raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
 
@@ -215,6 +230,7 @@ class Tensor2Field(DataFieldBase):
                 def dot(
                     a: np.ndarray, b: np.ndarray, out: np.ndarray = None
                 ) -> np.ndarray:
+                    """calculate dot product with conjugated second operand"""
                     return calc(a, b.conjugate(), out=out)  # type: ignore
 
             else:

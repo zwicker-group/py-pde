@@ -77,6 +77,9 @@ class FileStorage(StorageBase):
                     f"File `{filename}` could not be opened for reading"
                 )
 
+    def __del__(self):
+        self.close()  # ensure open files are closed when the FileStorage is deleted
+
     @property
     def _file_state(self) -> str:
         """ str: the state that the file is currently in """
@@ -166,8 +169,7 @@ class FileStorage(StorageBase):
                 raise RuntimeError(
                     "Currently writing data, so mode cannot be switched."
                 )
-            if self._file:
-                self.close()
+            self.close()
 
             # open file for reading or appending
             self._logger.info(f"Open file `{self.filename}` for appending")
@@ -213,7 +215,7 @@ class FileStorage(StorageBase):
             self.close()
 
         else:
-            raise NotImplementedError(f"Mode `{mode}` not implemented")
+            raise RuntimeError(f"Mode `{mode}` not implemented")
 
     def __len__(self):
         """ return the number of stored items, i.e., time steps """
@@ -249,8 +251,8 @@ class FileStorage(StorageBase):
                 also deleted.
         """
         if self._is_writing:
-            self._logger.info("Truncate data in hdf5 file")
             # remove data from opened file
+            self._logger.info("Truncate data in hdf5 file")
             if "times" in self._file:
                 del self._file["times"]
             self._times = self._create_hdf_dataset("times")
@@ -261,8 +263,11 @@ class FileStorage(StorageBase):
             self._data_length = 0  # start writing from start
 
         elif self.filename.is_file():
+            # we do not currently write to the file => clear by removing file completely
             self._logger.info("Truncate data by removing hdf5 file")
-            self.filename.unlink()
+
+            self._open("closed")  # close file if it was opened
+            self.filename.unlink()  # remove file
 
         else:
             self._logger.debug("Truncate is no-op since file does not exist")

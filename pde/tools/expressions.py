@@ -759,14 +759,17 @@ class TensorExpression(ExpressionBase):
             # special path used by coverage test without jitting. This can be
             # removed once the `convert_scalar` wrapper is obsolete
             lines = [
-                f"    out[{str(idx + (...,))[1:-1]}] = {val}"
-                for idx, val in np.ndenumerate(self._sympy_expr)
+                f"    out[{str(idx + (...,))[1:-1]}] = {self._sympy_expr[idx]}"
+                for idx in np.ndindex(*self._sympy_expr.shape)
             ]
         else:
             lines = [
-                f"    out[{str(idx + (...,))[1:-1]}] = convert_scalar({val})"
-                for idx, val in np.ndenumerate(self._sympy_expr)
+                f"    out[{str(idx + (...,))[1:-1]}] = "
+                f"convert_scalar({self._sympy_expr[idx]})"
+                for idx in np.ndindex(*self._sympy_expr.shape)
             ]
+        # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
+        # work with numpy 1.18, so we have the work around using np.ndindex 
 
         if variables:
             # the expression takes variables as input

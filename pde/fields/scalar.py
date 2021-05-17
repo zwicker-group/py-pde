@@ -89,7 +89,7 @@ class ScalarField(DataFieldBase):
         from matplotlib.pyplot import imread
 
         # read image and convert to grayscale
-        data = imread(path)
+        data = imread(str(path))
         if data.ndim == 2:
             pass  # is already gray scale
         elif data.ndim == 3:
