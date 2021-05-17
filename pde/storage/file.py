@@ -263,11 +263,8 @@ class FileStorage(StorageBase):
             # we do not currently write to the file => clear by removing file completely
             self._logger.info("Truncate data by removing hdf5 file")
 
-            file_state = self._file_state
             self._open("closed")  # close file if it was opened
             self.filename.unlink()  # remove file
-            if file_state == "writing":
-                self._open(file_state)  # restore old mode
 
         else:
             self._logger.debug("Truncate is no-op since file does not exist")
