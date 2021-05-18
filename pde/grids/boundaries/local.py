@@ -559,7 +559,7 @@ class BCBase(metaclass=ABCMeta):
         r"""creates boundary from a given string identifier
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
@@ -606,7 +606,7 @@ class BCBase(metaclass=ABCMeta):
         """create boundary from data given in dictionary
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
@@ -648,7 +648,7 @@ class BCBase(metaclass=ABCMeta):
         """create boundary from some data
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
@@ -1082,7 +1082,7 @@ class MixedBC(BCBase1stOrder):
     ):
         r"""
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated

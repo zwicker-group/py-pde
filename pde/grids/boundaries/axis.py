@@ -142,7 +142,7 @@ class BoundaryPair(BoundaryAxisBase):
         """create boundary pair from some data
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
@@ -401,7 +401,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
     def __init__(self, grid: GridBase, axis: int):
         """
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
@@ -581,7 +581,7 @@ def get_boundary_axis(
     """return object representing the boundary condition for a single axis
 
     Args:
-        grid (:class:`~pde.grids.GridBase`):
+        grid (:class:`~pde.grids.base.GridBase`):
             The grid for which the boundary conditions are defined
         axis (int):
             The axis to which this boundary condition is associated

@@ -254,7 +254,7 @@ class GridBase(metaclass=ABCMeta):
         not need to have the same periodicity in their boundaries.
 
         Args:
-            other (:class:`~pde.grids.GridBase`):
+            other (:class:`~pde.grids.base.GridBase`):
                 The other grid to test against
 
         Returns:
@@ -270,7 +270,7 @@ class GridBase(metaclass=ABCMeta):
         """checks whether `other` is compatible with the current grid
 
         Args:
-            other (:class:`~pde.grids.GridBase`):
+            other (:class:`~pde.grids.base.GridBase`):
                 The grid compared to this one
 
         Raises:
