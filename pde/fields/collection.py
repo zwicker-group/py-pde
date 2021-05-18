@@ -312,7 +312,7 @@ class FieldCollection(FieldBase):
             {WARNING_EXEC}
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             expressions (list of str):
                 A list of mathematical expression, one for each field in the
@@ -356,7 +356,7 @@ class FieldCollection(FieldBase):
 
         Args:
             num_fields (int): The number of fields to create
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which the fields are defined
             vmin (float): Smallest random value
             vmax (float): Largest random value
@@ -452,7 +452,7 @@ class FieldCollection(FieldBase):
         """interpolate the data of this field collection to another grid.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
             backend (str):

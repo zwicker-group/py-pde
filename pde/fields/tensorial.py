@@ -24,7 +24,7 @@ class Tensor2Field(DataFieldBase):
     """Single tensor field of rank 2 on a grid
 
     Attributes:
-        grid (:class:`~pde.grids.GridBase`):
+        grid (:class:`~pde.grids.base.GridBase`):
             The underlying grid defining the discretization
         data (:class:`~numpy.ndarray`):
             Tensor components at the support points of the grid
@@ -78,7 +78,8 @@ class Tensor2Field(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            VectorField or Tensor2Field: the result of applying the dot operator
+            :class:`~pde.fields.vectorial.VectorField` or
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the dot operator
         """
         # check input
         self.grid.assert_grid_compatible(other.grid)
@@ -271,7 +272,7 @@ class Tensor2Field(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            VectorField: the result of applying the operator
+            :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
         tensor_divergence = self.grid.get_operator("tensor_divergence", bc=bc)
         if out is None:
@@ -282,7 +283,7 @@ class Tensor2Field(DataFieldBase):
         return out
 
     @property
-    def integral(self):
+    def integral(self) -> np.ndarray:
         """ :class:`~numpy.ndarray`: integral of each component over space """
         return self.grid.integrate(self.data)
 
@@ -293,7 +294,7 @@ class Tensor2Field(DataFieldBase):
             label (str, optional): Name of the returned field
 
         Returns:
-            Tensor2Field: holding the transpose of the tensor field
+            :class:`~pde.fields.tensorial.Tensor2Field`: transpose of the tensor field
         """
         axes = (1, 0) + tuple(range(2, 2 + self.grid.dim))
         return Tensor2Field(self.grid, self.data.transpose(axes), label=label)
@@ -309,6 +310,9 @@ class Tensor2Field(DataFieldBase):
             inplace (bool):
                 Flag determining whether to symmetrize the current field or
                 return a new one
+
+        Returns:
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
         """
         if inplace:
             out = self
@@ -356,7 +360,7 @@ class Tensor2Field(DataFieldBase):
                 Name of the returned field
             
         Returns:
-            :class:`pde.fields.scalar.ScalarField`: the scalar field after
+            :class:`~pde.fields.scalar.ScalarField`: the scalar field after
             applying the operation
         """
         if scalar == "auto":
@@ -425,6 +429,6 @@ class Tensor2Field(DataFieldBase):
             label (str, optional): Name of the returned field
 
         Returns:
-            ScalarField: holding the trace
+            :class:`~pde.fields.scalar.ScalarField`: scalar field of traces
         """
         return self.to_scalar(scalar="trace", label=label)

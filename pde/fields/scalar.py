@@ -26,7 +26,7 @@ class ScalarField(DataFieldBase):
     """Single scalar field on a grid
 
     Attributes:
-        grid (:class:`~pde.grids.GridBase`):
+        grid (:class:`~pde.grids.base.GridBase`):
             The underlying grid defining the discretization
         data (:class:`np.ndarray`):
             Scalar values at the support points of the grid
@@ -47,7 +47,7 @@ class ScalarField(DataFieldBase):
             {WARNING_EXEC}
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             expression (str):
                 Mathematical expression for the scalar value as a function of
@@ -169,7 +169,7 @@ class ScalarField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            ScalarField: the result of applying the operator
+            :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
         """
         if out is not None:
             assert isinstance(out, ScalarField), f"`out` must be ScalarField"
@@ -205,7 +205,7 @@ class ScalarField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            ScalarField: the result of applying the operator
+            :class:`~pde.fields.scalar.ScalarField`: the squared gradient of the field
         """
         if out is not None:
             assert isinstance(out, ScalarField), f"`out` must be ScalarField"
@@ -234,7 +234,7 @@ class ScalarField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            VectorField: the result of applying the operator
+            :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
         from .vectorial import VectorField  # @Reimport
 
@@ -272,8 +272,8 @@ class ScalarField(DataFieldBase):
                 The label of the returned field
 
         Returns:
-            ScalarField: The projected data in a scalar field with a subgrid of
-            the original grid.
+            :class:`~pde.fields.scalar.ScalarField`: The projected data in a scalar
+            field with a subgrid of the original grid.
         """
         if isinstance(axes, str):
             axes = [axes]
@@ -327,8 +327,8 @@ class ScalarField(DataFieldBase):
                 The label of the returned field
 
         Returns:
-            ScalarField: The sliced data in a scalar field with a subgrid of
-            the original grid.
+            :class:`~pde.fields.scalar.ScalarField`: The sliced data in a scalar field
+            with a subgrid of the original grid.
         """
         grid = self.grid
 

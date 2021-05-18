@@ -92,7 +92,7 @@ class VectorField(DataFieldBase):
             {WARNING_EXEC}
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             expressions (list of str):
                 A list of mathematical expression, one for each component of the
@@ -160,7 +160,8 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            ScalarField or VectorField: the result of applying the dot operator
+            :class:`~pde.fields.scalar.ScalarField` or
+            :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
         from .tensorial import Tensor2Field  # @Reimport
 
@@ -341,13 +342,15 @@ class VectorField(DataFieldBase):
         """calculate the outer product of this vector field with another
 
         Args:
-            other (:class:`VectorField`):
+            other (:class:`~pde.fields.vectorial.VectorField`):
                 The second vector field
-            out (:class:`pde.fields.tensorial.Tensor2Field`, optional):
+            out (:class:`~pde.fields.tensorial.Tensor2Field`, optional):
                 Optional tensorial field to which the  result is written.
             label (str, optional):
                 Name of the returned field
 
+        Returns:
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
         """
         from .tensorial import Tensor2Field  # @Reimport
 
@@ -469,7 +472,7 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            ScalarField: the result of applying the operator
+            :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
         """
         divergence = self.grid.get_operator("divergence", bc=bc)
         if out is None:
@@ -488,7 +491,7 @@ class VectorField(DataFieldBase):
         *,
         label: str = "gradient",
     ) -> "Tensor2Field":
-        """apply (vecotr) gradient operator and return result as a field
+        """apply vector gradient operator and return result as a field
 
         Args:
             bc:
@@ -500,7 +503,7 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            Tensor2Field: the result of applying the operator
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the operator
         """
         from .tensorial import Tensor2Field  # @Reimport
 
@@ -533,7 +536,7 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            VectorField: the result of applying the operator
+            :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
         if out is not None:
             assert isinstance(out, VectorField), f"`out` must be VectorField"

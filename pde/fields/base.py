@@ -57,9 +57,9 @@ class FieldBase(metaclass=ABCMeta):
     ):
         """
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
-            data (array, optional):
+            data (:class:`~numpy.ndarray`, optional):
                 Field values at the support points of the grid
             label (str, optional):
                 Name of the field
@@ -554,7 +554,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     """abstract base class for describing fields of single entities
 
     Attributes:
-        grid (:class:`~pde.grids.GridBase`):
+        grid (:class:`~pde.grids.base.GridBase`):
             The underlying grid defining the discretization
         data (:class:`~numpy.ndarray`):
             Data values at the support points of the grid
@@ -577,7 +577,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     ):
         """
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined.
             data (Number or :class:`~numpy.ndarray`, optional):
                 Field values at the support points of the grid. The data is copied from
@@ -649,7 +649,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         These values are uncorrelated in space.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             vmin (float):
                 Smallest possible random value
@@ -682,7 +682,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         These values are uncorrelated in space.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             mean (float):
                 Mean of the Gaussian distribution
@@ -747,7 +747,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         function given by the parameter `harmonic`.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             modes (int):
                 Number :math:`M` of harmonic modes
@@ -810,7 +810,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         uncorrelated.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             exponent (float):
                 Exponent :math:`\nu` of the power spectrum
@@ -1202,7 +1202,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """interpolate the data of this field to another grid.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
             backend (str):
