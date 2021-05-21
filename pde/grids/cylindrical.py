@@ -540,10 +540,10 @@ class CylindricalGrid(CylindricalSymGrid):
         Use  :class:`~pde.grids.cylindrical.CylindricalSymGrid` instead.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """ class deprecated since 2021-05-21 """
         warnings.warn(
             "CylindricalGrid is a deprecated class. Use CylindricalSymGrid instead",
             DeprecationWarning,
         )
-        super().__init__()
+        super().__init__(*args, **kwargs)

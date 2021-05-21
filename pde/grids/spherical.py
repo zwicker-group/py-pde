@@ -618,13 +618,13 @@ class PolarGrid(PolarSymGrid):
         Use :class:`~pde.grids.spherical.PolarSymGrid` instead.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """ class deprecated since 2021-05-21 """
         warnings.warn(
             "PolarGrid is a deprecated class. Use PolarSymGrid instead",
             DeprecationWarning,
         )
-        super().__init__()
+        super().__init__(*args, **kwargs)
 
 
 class SphericalGrid(SphericalSymGrid):
@@ -634,10 +634,10 @@ class SphericalGrid(SphericalSymGrid):
         Use :class:`~pde.grids.spherical.SphericalSymGrid` instead.
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         """ class deprecated since 2021-05-21 """
         warnings.warn(
             "PolarGrid is a deprecated class. Use SphericalSymGrid instead",
             DeprecationWarning,
         )
-        super().__init__()
+        super().__init__(*args, **kwargs)
