@@ -24,8 +24,6 @@ TODO
 * Add documentation entry for how to build expressions
     - Improved documentation on how to set boundary conditions
 * Implement Gray Scott Model of Reaction Diffusion
-* pde.PDE:
-    - add test for dot operator and custom boundary conditions
 * Plot tracker:
     - plot final state in the live view (finalize does not get the final state yet)
     - we could for instance have a flag on trackers, whether they are being handled a final time
@@ -45,17 +43,16 @@ TODO
 * Fix progress bar when starting from non-zero t_start?
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`
-  - mimick this interface for plotting 3d droplets?
+  - mimic this interface for plotting 3d droplets?
 * Think about implementing vector differential operators more generally based
   on the scalar operators –> could this work for all grids?
-* Add conservative Laplace operator for polar and cylindrical grid?
 * Add tests:
     - update plotting of fields and field collections
 	- general Trackers
 	- Different intervals for trackers
 	- Interpolating using boundary conditions
 * Think about better interface to convert between different coordinate systems:
-	- we have global cartesian coordinates, grid coordinates, and cell indices
+	- we have global Cartesian coordinates, grid coordinates, and cell indices
 	- all functions dealing with points or returning points should be able to
 	  handle all coordinate types?!
 	- what is the best interface?
@@ -74,7 +71,7 @@ LOW-PRIORITY (Future ideas)
       Gudunov finite volume scheme or upwind finite difference scheme
     - Introduce gradient operator for given direction:
         https://en.wikipedia.org/wiki/Lax–Wendroff_method (Richtmyer or MacCormack)
-* Think about implementing helmholtz solver
+* Think about implementing Helmholtz solver
     - generally useful to discuss eigenvalues of laplace operator?
 * Add method showing the boundary condition as a mathematical equation
 * Consider using @numba.overload decorator instead of generated jit to support
@@ -109,9 +106,4 @@ LOW-PRIORITY (Future ideas)
     - This is similar to the wisdom created by FFTW
 * Provide class SymmmetricTensorField, which should be more efficient than the
 	full TensorField
-* Implement bipolar/bispherical coordinate systems
-* Rename SphericalGrid to SphericalSymmetricGrid
-	- also CylindricalGrid -> CylindricalSymmetricGrid
-	- this allows to use general spherical coordinates later
-
-	
+* Implement bipolar/bispherical coordinate systems	

@@ -13,9 +13,9 @@ def iter_grids():
     """ generate some test grids """
     yield grids.UnitGrid([2, 2], periodic=[True, False])
     yield grids.CartesianGrid([[0, 1]], [2], periodic=[False])
-    yield grids.CylindricalGrid(2, (0, 2), (2, 2), periodic_z=True)
-    yield grids.SphericalGrid(2, 2)
-    yield grids.PolarGrid(2, 2)
+    yield grids.CylindricalSymGrid(2, (0, 2), (2, 2), periodic_z=True)
+    yield grids.SphericalSymGrid(2, 2)
+    yield grids.PolarSymGrid(2, 2)
 
 
 def test_pde_wrong_input():

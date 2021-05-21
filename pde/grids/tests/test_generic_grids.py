@@ -19,9 +19,9 @@ def iter_grids():
         yield grids.UnitGrid([3], periodic=periodic)
         yield grids.UnitGrid([3, 3, 3], periodic=periodic)
         yield grids.CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic)
-        yield grids.CylindricalGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
-    yield grids.PolarGrid(3, 4)
-    yield grids.SphericalGrid(3, 4)
+        yield grids.CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
+    yield grids.PolarSymGrid(3, 4)
+    yield grids.SphericalSymGrid(3, 4)
 
 
 def test_discretize():
@@ -43,9 +43,9 @@ def test_serialization():
         for periodic in [True, False]:
             yield grids.UnitGrid([3, 4], periodic=periodic)
             yield grids.CartesianGrid([[0, 1], [-2, 3]], [4, 5], periodic=periodic)
-            yield grids.CylindricalGrid(3, [-1, 2], [5, 7], periodic_z=periodic)
-        yield grids.SphericalGrid(4, 6)
-        yield grids.PolarGrid(4, 5)
+            yield grids.CylindricalSymGrid(3, [-1, 2], [5, 7], periodic_z=periodic)
+        yield grids.SphericalSymGrid(4, 6)
+        yield grids.PolarSymGrid(4, 5)
 
     for grid in iter_grids():
         g = GridBase.from_state(grid.state_serialized)
@@ -60,8 +60,8 @@ def test_serialization():
 def test_iter_mirror_points():
     """ test iterating mirror points in grids """
     grid_cart = grids.UnitGrid([2, 2], periodic=[True, False])
-    grid_cyl = grids.CylindricalGrid(2, (0, 2), (2, 2), periodic_z=False)
-    grid_sph = grids.SphericalGrid(2, 2)
+    grid_cyl = grids.CylindricalSymGrid(2, (0, 2), (2, 2), periodic_z=False)
+    grid_sph = grids.SphericalSymGrid(2, 2)
     assert grid_cart._cache_hash() != grid_cyl._cache_hash() != grid_sph._cache_hash()
 
     for with_, only_periodic in itertools.product([False, True], repeat=2):
@@ -115,8 +115,8 @@ def test_grid_plotting():
     with pytest.raises(NotImplementedError):
         grids.UnitGrid([4, 4, 4]).plot()
 
-    grids.PolarGrid(4, 8).plot()
-    grids.PolarGrid((2, 4), 8).plot()
+    grids.PolarSymGrid(4, 8).plot()
+    grids.PolarSymGrid((2, 4), 8).plot()
 
 
 def test_operators():

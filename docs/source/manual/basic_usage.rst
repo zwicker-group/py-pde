@@ -14,9 +14,9 @@ Grids are defined by instance of various classes that capture the symmetries of 
 underlying space.
 In particular, the package offers Cartesian grids of `1` to `3` dimensions via   
 :class:`~pde.grids.cartesian.CartesianGrid`, as well as curvilinear coordinate for
-spherically symmetric systems in two dimension (:class:`~pde.grids.spherical.PolarGrid`)
-and three dimensions (:class:`~pde.grids.spherical.SphericalGrid`), as well as the
-special class :class:`~pde.grids.cylindrical.CylindricalGrid` for a cylindrical geometry
+spherically symmetric systems in two dimension (:class:`~pde.grids.spherical.PolarSymGrid`)
+and three dimensions (:class:`~pde.grids.spherical.SphericalSymGrid`), as well as the
+special class :class:`~pde.grids.cylindrical.CylindricalSymGrid` for a cylindrical geometry
 which is symmetric in the angle. 
 
 All grids allow to set the size of the underlying geometry and the number of support

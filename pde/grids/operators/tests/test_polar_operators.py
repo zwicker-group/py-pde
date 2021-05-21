@@ -5,13 +5,13 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, PolarGrid, ScalarField, Tensor2Field, VectorField
-from pde.grids.operators import polar as ops
+from pde import CartesianGrid, PolarSymGrid, ScalarField, Tensor2Field, VectorField
+from pde.grids.operators import polar_sym as ops
 
 
 def test_findiff():
     """ test operator for a simple polar grid """
-    grid = PolarGrid(1.5, 3)
+    grid = PolarSymGrid(1.5, 3)
     _, _, r2 = grid.axes_coords[0]
     assert grid.discretization == (0.5,)
     s = ScalarField(grid, [1, 2, 4])
@@ -32,7 +32,7 @@ def test_findiff():
 
 def test_conservative_laplace():
     """ test and compare the two implementation of the laplace operator """
-    grid = PolarGrid(1.5, 8)
+    grid = PolarSymGrid(1.5, 8)
     f = ScalarField.random_uniform(grid)
 
     bcs = grid.get_boundary_conditions("natural")
@@ -51,7 +51,11 @@ def test_conservative_laplace():
 )
 def test_small_annulus(make_op, field, rank):
     """ test whether a small annulus gives the same result as a sphere """
-    grids = [PolarGrid((0, 1), 8), PolarGrid((1e-8, 1), 8), PolarGrid((0.1, 1), 8)]
+    grids = [
+        PolarSymGrid((0, 1), 8),
+        PolarSymGrid((1e-8, 1), 8),
+        PolarSymGrid((0.1, 1), 8),
+    ]
 
     f = field.random_uniform(grids[0])
 
@@ -63,7 +67,7 @@ def test_small_annulus(make_op, field, rank):
 
 def test_grid_laplace():
     """ test the polar implementation of the laplace operator """
-    grid_sph = PolarGrid(7, 8)
+    grid_sph = PolarSymGrid(7, 8)
     grid_cart = CartesianGrid([[-5, 5], [-5, 5]], [12, 11])
 
     a_1d = ScalarField.from_expression(grid_sph, "cos(r)")
@@ -80,7 +84,7 @@ def test_grid_laplace():
 @pytest.mark.parametrize("r_inner", (0, 1))
 def test_gradient_squared(r_inner):
     """ compare gradient squared operator """
-    grid = PolarGrid((r_inner, 5), 64)
+    grid = PolarSymGrid((r_inner, 5), 64)
     field = ScalarField.random_harmonic(grid, modes=1)
     s1 = field.gradient("natural").to_scalar("squared_sum")
     s2 = field.gradient_squared("natural", central=True)
@@ -92,7 +96,7 @@ def test_gradient_squared(r_inner):
 
 def test_grid_div_grad():
     """ compare div grad to laplacian for polar grids """
-    grid = PolarGrid(2 * np.pi, 16)
+    grid = PolarSymGrid(2 * np.pi, 16)
     r = grid.axes_coords[0]
     arr = np.cos(r)
 
@@ -110,7 +114,7 @@ def test_grid_div_grad():
 
 def test_poisson_solver_polar():
     """ test the poisson solver on Polar grids """
-    grid = PolarGrid(4, 8)
+    grid = PolarSymGrid(4, 8)
     for bc_val in ["natural", {"value": 1}]:
         bcs = grid.get_boundary_conditions(bc_val)
         poisson = grid.get_operator("poisson_solver", bcs)
@@ -120,7 +124,7 @@ def test_poisson_solver_polar():
         d -= ScalarField(grid, d).average  # balance the right hand side
         np.testing.assert_allclose(laplace(poisson(d)), d, err_msg=f"bcs = {bc_val}")
 
-    grid = PolarGrid([2, 4], 8)
+    grid = PolarSymGrid([2, 4], 8)
     for bc_val in ["natural", {"value": 1}]:
         bcs = grid.get_boundary_conditions(bc_val)
         poisson = grid.get_operator("poisson_solver", bcs)

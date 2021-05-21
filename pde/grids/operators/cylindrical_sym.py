@@ -20,10 +20,10 @@ from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit_allocate_out, nb
 from ...tools.typing import OperatorType
 from ..boundaries import Boundaries
-from ..cylindrical import CylindricalGrid
+from ..cylindrical import CylindricalSymGrid
 
 
-@CylindricalGrid.register_operator("laplace", rank_in=0, rank_out=0)
+@CylindricalSymGrid.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(bcs: Boundaries) -> OperatorType:
     """make a discretized laplace operator for a cylindrical grid
@@ -37,7 +37,7 @@ def make_laplace(bcs: Boundaries) -> OperatorType:
     Returns:
         A function that can be applied to an array of values
     """
-    assert isinstance(bcs.grid, CylindricalGrid)
+    assert isinstance(bcs.grid, CylindricalSymGrid)
     bcs.check_value_rank(0)
     boundary_r, boundary_z = bcs
 
@@ -89,7 +89,7 @@ def make_laplace(bcs: Boundaries) -> OperatorType:
     return laplace  # type: ignore
 
 
-@CylindricalGrid.register_operator("gradient", rank_in=0, rank_out=1)
+@CylindricalSymGrid.register_operator("gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(bcs: Boundaries) -> OperatorType:
     """make a discretized gradient operator for a cylindrical grid
@@ -103,7 +103,7 @@ def make_gradient(bcs: Boundaries) -> OperatorType:
     Returns:
         A function that can be applied to an array of values
     """
-    assert isinstance(bcs.grid, CylindricalGrid)
+    assert isinstance(bcs.grid, CylindricalSymGrid)
     bcs.check_value_rank(0)
     boundary_r, boundary_z = bcs
 
@@ -147,7 +147,7 @@ def make_gradient(bcs: Boundaries) -> OperatorType:
     return gradient  # type: ignore
 
 
-@CylindricalGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
+@CylindricalSymGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType:
     """make a discretized gradient squared operator for a cylindrical grid
@@ -166,7 +166,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType
     Returns:
         A function that can be applied to an array of values
     """
-    assert isinstance(bcs.grid, CylindricalGrid)
+    assert isinstance(bcs.grid, CylindricalSymGrid)
     bcs.check_value_rank(0)
     boundary_r, boundary_z = bcs
 
@@ -244,7 +244,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType
     return gradient_squared  # type: ignore
 
 
-@CylindricalGrid.register_operator("divergence", rank_in=1, rank_out=0)
+@CylindricalSymGrid.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(bcs: Boundaries) -> OperatorType:
     """make a discretized divergence operator for a cylindrical grid
@@ -258,7 +258,7 @@ def make_divergence(bcs: Boundaries) -> OperatorType:
     Returns:
         A function that can be applied to an array of values
     """
-    assert isinstance(bcs.grid, CylindricalGrid)
+    assert isinstance(bcs.grid, CylindricalSymGrid)
     bcs.check_value_rank(0)
     boundary_r, boundary_z = bcs
 
@@ -305,7 +305,7 @@ def make_divergence(bcs: Boundaries) -> OperatorType:
     return divergence  # type: ignore
 
 
-@CylindricalGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
+@CylindricalSymGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(bcs: Boundaries) -> OperatorType:
     """make a discretized vector gradient operator for a cylindrical grid
@@ -319,7 +319,7 @@ def make_vector_gradient(bcs: Boundaries) -> OperatorType:
     Returns:
         A function that can be applied to an array of values
     """
-    assert isinstance(bcs.grid, CylindricalGrid)
+    assert isinstance(bcs.grid, CylindricalSymGrid)
     bcs.check_value_rank(1)
 
     # calculate preliminary quantities
@@ -338,7 +338,7 @@ def make_vector_gradient(bcs: Boundaries) -> OperatorType:
     return vector_gradient  # type: ignore
 
 
-@CylindricalGrid.register_operator("vector_laplace", rank_in=1, rank_out=1)
+@CylindricalSymGrid.register_operator("vector_laplace", rank_in=1, rank_out=1)
 @fill_in_docstring
 def make_vector_laplace(bcs: Boundaries) -> OperatorType:
     """make a discretized vector laplace operator for a cylindrical grid
@@ -352,7 +352,7 @@ def make_vector_laplace(bcs: Boundaries) -> OperatorType:
     Returns:
         A function that can be applied to an array of values
     """
-    assert isinstance(bcs.grid, CylindricalGrid)
+    assert isinstance(bcs.grid, CylindricalSymGrid)
     bcs.check_value_rank(1)
 
     laplace_r = make_laplace(bcs.extract_component(0))
@@ -370,7 +370,7 @@ def make_vector_laplace(bcs: Boundaries) -> OperatorType:
     return vector_laplace  # type: ignore
 
 
-@CylindricalGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
+@CylindricalSymGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
     """make a discretized tensor divergence operator for a cylindrical grid
@@ -384,7 +384,7 @@ def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
     Returns:
         A function that can be applied to an array of values
     """
-    assert isinstance(bcs.grid, CylindricalGrid)
+    assert isinstance(bcs.grid, CylindricalSymGrid)
     bcs.check_value_rank(1)
 
     divergence_r = make_divergence(bcs.extract_component(0))

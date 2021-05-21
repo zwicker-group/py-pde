@@ -121,9 +121,9 @@ For simplicity, we consider only regular, orthogonal grids, where each axis has
 a uniform discretization and all axes are (locally) orthogonal.
 Currently, we support simulations on  
 :class:`~pde.grids.cartesian.CartesianGrid`,
-:class:`~pde.grids.spherical.PolarGrid`,
-:class:`~pde.grids.spherical.SphericalGrid`, and 
-:class:`~pde.grids.cylindrical.CylindricalGrid`,
+:class:`~pde.grids.spherical.PolarSymGrid`,
+:class:`~pde.grids.spherical.SphericalSymGrid`, and 
+:class:`~pde.grids.cylindrical.CylindricalSymGrid`,
 with and without periodic boundaries where applicable.
 
 Fields are defined by specifying values at the grid points using the classes

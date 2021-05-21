@@ -769,7 +769,7 @@ class TensorExpression(ExpressionBase):
                 for idx in np.ndindex(*self._sympy_expr.shape)
             ]
         # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
-        # work with numpy 1.18, so we have the work around using np.ndindex 
+        # work with numpy 1.18, so we have the work around using np.ndindex
 
         if variables:
             # the expression takes variables as input

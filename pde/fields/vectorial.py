@@ -291,7 +291,7 @@ class VectorField(DataFieldBase):
                     if out is None:
                         # TODO: Remove this construct once we make numpy 1.20 a minimal
                         # requirement. Earlier version of numpy do not support out=None
-                        # correctly and we thus had to use this work-around 
+                        # correctly and we thus had to use this work-around
                         return np.einsum("i...,i...->...", a, b)  # type: ignore
                     else:
                         return np.einsum("i...,i...->...", a, b, out=out)  # type: ignore
@@ -301,11 +301,11 @@ class VectorField(DataFieldBase):
                     if out is None:
                         # TODO: Remove this construct once we make numpy 1.20 a minimal
                         # requirement. Earlier version of numpy do not support out=None
-                        # correctly and we thus had to use this work-around 
+                        # correctly and we thus had to use this work-around
                         return np.einsum("i...,ij...->j...", a, b)  # type: ignore
                     else:
                         return np.einsum("i...,ij...->j...", a, b, out=out)  # type: ignore
-                    
+
                 else:
                     raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
 
@@ -467,7 +467,7 @@ class VectorField(DataFieldBase):
                     # requirement. Earlier version of numpy do not support out=None
                     # correctly and we thus had to use this work-around
                     return np.einsum("i...,j...->ij...", a, b)  # type: ignore
-                else: 
+                else:
                     return np.einsum("i...,j...->ij...", a, b, out=out)  # type: ignore
 
         else:

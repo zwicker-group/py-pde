@@ -9,9 +9,9 @@ respective methods defined on fields and grids.
    :nosignatures:
 
    cartesian
-   cylindrical
-   polar
-   spherical
+   cylindrical_sym
+   polar_sym
+   spherical_sym
 """
 
-from . import cartesian, cylindrical, polar, spherical
+from . import cartesian, cylindrical_sym, polar_sym, spherical_sym

@@ -2,6 +2,7 @@
 black>=19.*
 h5py>=2.10
 isort>=5.1
+jupyter_contrib_nbextensions>=0.5
 mypy>=0.770
 pandas>=1.2
 pyinstrument>=3

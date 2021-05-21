@@ -8,10 +8,10 @@ This example displays methods for visualizing scalar fields.
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pde import CylindricalGrid, ScalarField
+from pde import CylindricalSymGrid, ScalarField
 
 # create a scalar field with some noise
-grid = CylindricalGrid(7, [0, 4 * np.pi], 64)
+grid = CylindricalSymGrid(7, [0, 4 * np.pi], 64)
 data = ScalarField.from_expression(grid, "sin(z) * exp(-r / 3)")
 data += 0.05 * ScalarField.random_normal(grid)
 

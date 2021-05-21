@@ -401,7 +401,7 @@ class ScalarField(DataFieldBase):
             label (str, optional): Name of the returned field
 
         Returns:
-            :class:`pde.fields.scalar.ScalarField`: the scalar field after
+            :class:`~pde.fields.scalar.ScalarField`: the scalar field after
             applying the operation
         """
         if callable(scalar):

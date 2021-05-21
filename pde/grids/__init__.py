@@ -14,15 +14,16 @@ indices using the methods :meth:`point_to_cell`.
 
    ~cartesian.UnitGrid
    ~cartesian.CartesianGrid
-   ~spherical.PolarGrid
-   ~spherical.SphericalGrid
-   ~cylindrical.CylindricalGrid
+   ~spherical.PolarSymGrid
+   ~spherical.SphericalSymGrid
+   ~cylindrical.CylindricalSymGrid
 
 
 Inheritance structure of the classes:
 
-.. inheritance-diagram:: pde.grids.base pde.grids.cartesian pde.grids.spherical
-        pde.grids.cylindrical
+.. inheritance-diagram:: pde.grids.base pde.grids.cartesian
+        pde.grids.spherical.PolarSymGrid pde.grids.spherical.SphericalSymGrid
+        pde.grids.cylindrical.CylindricalSymGrid
    :parts: 1
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
@@ -32,7 +33,7 @@ Inheritance structure of the classes:
 from . import operators
 from .base import DomainError, PeriodicityError
 from .cartesian import CartesianGrid, UnitGrid
-from .cylindrical import CylindricalGrid
-from .spherical import PolarGrid, SphericalGrid
+from .cylindrical import CylindricalGrid, CylindricalSymGrid
+from .spherical import PolarGrid, PolarSymGrid, SphericalGrid, SphericalSymGrid
 
 del operators  # remove the name from the namespace

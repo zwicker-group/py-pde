@@ -6,6 +6,7 @@ discretize the radial direction, assuming symmetry with respect to all angles.
  
 """
 
+import warnings
 from abc import ABCMeta
 from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, Union
 
@@ -26,7 +27,7 @@ PI_4 = 4 * np.pi
 PI_43 = 4 / 3 * np.pi
 
 
-class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals]
+class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals]
     r"""Base class for d-dimensional spherical grids with angular symmetry
 
     The angular symmetry implies that states only depend on the radial
@@ -94,7 +95,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         return self.axes_bounds[0][0] > 0
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> "SphericalGridBase":  # type: ignore
+    def from_state(cls, state: Dict[str, Any]) -> "SphericalSymGridBase":  # type: ignore
         """create a field from a stored `state`.
 
         Args:
@@ -525,7 +526,7 @@ class SphericalGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         ax.set_aspect(1)
 
 
-class PolarGrid(SphericalGridBase):
+class PolarSymGrid(SphericalSymGridBase):
     r"""2-dimensional polar grid assuming angular symmetry
 
     The angular symmetry implies that states only depend on the radial
@@ -566,7 +567,7 @@ class PolarGrid(SphericalGridBase):
         return np.stack((x, y), axis=-1)
 
 
-class SphericalGrid(SphericalGridBase):
+class SphericalSymGrid(SphericalSymGridBase):
     r"""3-dimensional spherical grid assuming spherical symmetry
 
     The symmetry implies that states only depend on the radial coordinate
@@ -608,3 +609,35 @@ class SphericalGrid(SphericalGridBase):
         z = points[..., 0]
         x = np.zeros_like(z)
         return np.stack((x, x, z), axis=-1)
+
+
+class PolarGrid(PolarSymGrid):
+    """2-dimensional polar grid assuming angular symmetry
+
+    .. deprecated:: 0.14 (2021-05-21)
+        Use :class:`~pde.grids.spherical.PolarSymGrid` instead.
+    """
+
+    def __init__(self):
+        """ class deprecated since 2021-05-21 """
+        warnings.warn(
+            "PolarGrid is a deprecated class. Use PolarSymGrid instead",
+            DeprecationWarning,
+        )
+        super().__init__()
+
+
+class SphericalGrid(SphericalSymGrid):
+    """3-dimensional spherical grid assuming spherical symmetry
+
+    .. deprecated:: 0.14 (2021-05-21)
+        Use :class:`~pde.grids.spherical.SphericalSymGrid` instead.
+    """
+
+    def __init__(self):
+        """ class deprecated since 2021-05-21 """
+        warnings.warn(
+            "PolarGrid is a deprecated class. Use SphericalSymGrid instead",
+            DeprecationWarning,
+        )
+        super().__init__()

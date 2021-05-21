@@ -37,7 +37,7 @@ returns a function that takes as an argument the actual data array for the grid.
 Note that the grid itself is an attribute of
 :class:`~pde.grids.boundaries.axes.Boundaries`.
 This operator would be registered with the grid by calling
-:code:`CylindricalGrid.register_operator("operator", make_operator)`, where the
+:code:`CylindricalSymGrid.register_operator("operator", make_operator)`, where the
 first argument is the name of the operator and the second argument is the
 factory function.
 
