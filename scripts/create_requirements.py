@@ -107,6 +107,7 @@ REQUIREMENTS = [
     Requirement(name="sphinx-rtd-theme", version="0.4", for_docs=True),
     Requirement(name="Pillow", version="7.0", for_docs=True),
     # for tests only
+    Requirement(name="jupyter_contrib_nbextensions", version="0.5", for_tests=True),
     Requirement(name="black", version="19.*", for_tests=True),
     Requirement(name="isort", version="5.1", for_tests=True),
     Requirement(name="mypy", version="0.770", for_tests=True),

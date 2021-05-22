@@ -69,7 +69,7 @@ spatial symmetries that might be present in the physical problem.
 For instance, the scalar field $f(z, r) = \sqrt{z} * e^{-r^2}$ in cylindrical
 coordinates assuming azimuthal symmetry can be visualized using
 ```python
-    grid = pde.CylindricalGrid(radius=5, bounds_z=[0, 1], shape=(32, 8))
+    grid = pde.CylindricalSymGrid(radius=5, bounds_z=[0, 1], shape=(32, 8))
     field = pde.ScalarField.from_expression(grid, 'sqrt(z) * exp(-r**2)')
     field.plot()
 ```

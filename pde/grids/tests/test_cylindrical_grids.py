@@ -5,14 +5,14 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, CylindricalGrid, ScalarField
+from pde import CartesianGrid, CylindricalSymGrid, ScalarField
 from pde.grids.boundaries.local import NeumannBC
 
 
 def test_cylindrical_grid():
     """ test simple cylindrical grid """
     for periodic in [True, False]:
-        grid = CylindricalGrid(4, (-1, 2), (8, 9), periodic_z=periodic)
+        grid = CylindricalSymGrid(4, (-1, 2), (8, 9), periodic_z=periodic)
 
         msg = str(grid)
         assert grid.dim == 3
@@ -48,7 +48,7 @@ def test_cylindrical_to_cartesian():
     expr_cart = expr_cyl.replace("r**2", "(x**2 + y**2)")
 
     z_range = (-np.pi, 2 * np.pi)
-    grid_cyl = CylindricalGrid(10, z_range, (16, 33))
+    grid_cyl = CylindricalSymGrid(10, z_range, (16, 33))
     pf_cyl = ScalarField.from_expression(grid_cyl, expression=expr_cyl)
 
     grid_cart = CartesianGrid([[-7, 7], [-6, 7], z_range], [16, 16, 16])
@@ -59,7 +59,7 @@ def test_cylindrical_to_cartesian():
 
 def test_setting_domain_cylindrical():
     """ test various versions of settings bcs for cylindrical grids """
-    grid = CylindricalGrid(1, [0, 1], [2, 2], periodic_z=False)
+    grid = CylindricalSymGrid(1, [0, 1], [2, 2], periodic_z=False)
     grid.get_boundary_conditions("natural")
     grid.get_boundary_conditions(["derivative", "derivative"])
     with pytest.raises(ValueError):
@@ -69,7 +69,7 @@ def test_setting_domain_cylindrical():
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions(["derivative", "periodic"])
 
-    grid = CylindricalGrid(1, [0, 1], [2, 2], periodic_z=True)
+    grid = CylindricalSymGrid(1, [0, 1], [2, 2], periodic_z=True)
     grid.get_boundary_conditions("natural")
     grid.get_boundary_conditions(["derivative", "periodic"])
     with pytest.raises(RuntimeError):
@@ -79,7 +79,7 @@ def test_setting_domain_cylindrical():
 @pytest.mark.parametrize("periodic", [True, False])
 def test_polar_conversion(periodic):
     """ test conversion to polar coordinates """
-    grid = CylindricalGrid(1, [-1, 1], [5, 5], periodic_z=periodic)
+    grid = CylindricalSymGrid(1, [-1, 1], [5, 5], periodic_z=periodic)
     dists = grid.polar_coordinates_real([0, 0, 0])
     assert np.all(0.09 <= dists)
     assert np.any(dists < 0.11)
@@ -89,7 +89,7 @@ def test_polar_conversion(periodic):
 
 def test_setting_boundary_conditions():
     """ test setting some boundary conditions """
-    grid = CylindricalGrid(1, [0, 1], 3)
+    grid = CylindricalSymGrid(1, [0, 1], 3)
     b_inner = NeumannBC(grid, 0, upper=False)
 
     assert grid.get_boundary_conditions("natural")[0].low == b_inner

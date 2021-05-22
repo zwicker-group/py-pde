@@ -7,7 +7,7 @@ import pytest
 
 from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
-from pde.grids import CartesianGrid, PolarGrid, UnitGrid, boundaries
+from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
 from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
 from pde.tools.misc import module_available, skipUnlessModule
 
@@ -154,7 +154,7 @@ def test_insert_scalar(example_grid):
 
 def test_insert_1d():
     """ test the `insert` method for 1d systems """
-    grid = PolarGrid(3, 5)
+    grid = PolarSymGrid(3, 5)
     f = ScalarField(grid)
     g = f.copy()
     a = np.random.random()

@@ -5,11 +5,11 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, PolarGrid, ScalarField, SphericalGrid
+from pde import CartesianGrid, PolarSymGrid, ScalarField, SphericalSymGrid
 from pde.grids.boundaries.local import NeumannBC
 
 
-@pytest.mark.parametrize("grid_class", [PolarGrid, SphericalGrid])
+@pytest.mark.parametrize("grid_class", [PolarSymGrid, SphericalSymGrid])
 def test_spherical_base_bcs(grid_class):
     """ test setting boundary conditions on spherical grids """
     grid = grid_class(2, 3)
@@ -28,7 +28,7 @@ def test_spherical_base_bcs(grid_class):
 
 def test_polar_grid():
     """ test simple polar grid """
-    grid = PolarGrid(4, 8)
+    grid = PolarSymGrid(4, 8)
     assert grid.dim == 2
     assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
@@ -57,7 +57,7 @@ def test_polar_grid():
 
 def test_polar_annulus():
     """ test simple polar grid with a hole """
-    grid = PolarGrid((2, 4), 8)
+    grid = PolarSymGrid((2, 4), 8)
     assert grid.dim == 2
     assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
@@ -93,7 +93,7 @@ def test_polar_to_cartesian():
     expr_pol = "1 / (1 + r**2)"
     expr_cart = expr_pol.replace("r**2", "(x**2 + y**2)")
 
-    grid_pol = PolarGrid(7, 16)
+    grid_pol = PolarSymGrid(7, 16)
     pf_pol = ScalarField.from_expression(grid_pol, expression=expr_pol)
 
     grid_cart = CartesianGrid([[-4, 4], [-3.9, 4.1]], [16, 16])
@@ -104,7 +104,7 @@ def test_polar_to_cartesian():
 
 def test_spherical_grid():
     """ test simple spherical grid """
-    grid = SphericalGrid(4, 8)
+    grid = SphericalSymGrid(4, 8)
     assert grid.dim == 3
     assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
@@ -133,7 +133,7 @@ def test_spherical_grid():
 
 def test_spherical_annulus():
     """ test simple spherical grid with a hole """
-    grid = SphericalGrid((2, 4), 8)
+    grid = SphericalSymGrid((2, 4), 8)
     assert grid.dim == 3
     assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
@@ -170,7 +170,7 @@ def test_spherical_to_cartesian():
     expr_sph = "1 / (1 + r**2)"
     expr_cart = expr_sph.replace("r**2", "(x**2 + y**2 + z**2)")
 
-    grid_sph = SphericalGrid(7, 16)
+    grid_sph = SphericalSymGrid(7, 16)
     pf_sph = ScalarField.from_expression(grid_sph, expression=expr_sph)
 
     grid_cart = CartesianGrid([[-4, 4], [-3.9, 4.1], [-4.1, 3.9]], [16] * 3)
@@ -179,7 +179,7 @@ def test_spherical_to_cartesian():
     np.testing.assert_allclose(pf_cart1.data, pf_cart2.data, atol=0.1)
 
 
-@pytest.mark.parametrize("grid_class", [PolarGrid, SphericalGrid])
+@pytest.mark.parametrize("grid_class", [PolarSymGrid, SphericalSymGrid])
 def test_setting_boundary_conditions(grid_class):
     """ test setting some boundary conditions """
     grid = grid_class([0, 1], 3)

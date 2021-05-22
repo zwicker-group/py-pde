@@ -8,7 +8,13 @@ from scipy import ndimage
 
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.fields.base import FieldBase
-from pde.grids import CartesianGrid, CylindricalGrid, PolarGrid, SphericalGrid, UnitGrid
+from pde.grids import (
+    CartesianGrid,
+    CylindricalSymGrid,
+    PolarSymGrid,
+    SphericalSymGrid,
+    UnitGrid,
+)
 from pde.grids.cartesian import CartesianGridBase
 from pde.tools.misc import skipUnlessModule
 
@@ -262,9 +268,9 @@ def test_interpolation_values(field_cls):
     "grid",
     [
         UnitGrid((6,)),
-        PolarGrid(6, 4),
-        SphericalGrid(7, 4),
-        CylindricalGrid(6, (0, 8), (7, 8)),
+        PolarSymGrid(6, 4),
+        SphericalSymGrid(7, 4),
+        CylindricalSymGrid(6, (0, 8), (7, 8)),
     ],
 )
 def test_interpolation_to_cartesian(grid):
@@ -289,7 +295,8 @@ def test_interpolation_to_cartesian(grid):
 
 
 @pytest.mark.parametrize(
-    "grid", [PolarGrid(6, 4), SphericalGrid(7, 4), CylindricalGrid(6, (0, 8), (7, 8))]
+    "grid",
+    [PolarSymGrid(6, 4), SphericalSymGrid(7, 4), CylindricalSymGrid(6, (0, 8), (7, 8))],
 )
 def test_get_cartesian_grid(grid):
     """ test whether Cartesian grids can be created """
