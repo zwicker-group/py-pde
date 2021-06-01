@@ -153,7 +153,7 @@ def disable_interactive():
 
 
 class PlotReference:
-    """ contains all information to update a plot element """
+    """contains all information to update a plot element"""
 
     __slots__ = ["ax", "element", "parameters"]
 
@@ -588,7 +588,7 @@ class PlottingContextBase:
             self._title.set_text(self.title)
 
     def close(self):
-        """ close the plot """
+        """close the plot"""
         # close matplotlib figure
         if self.fig is not None:
             import matplotlib.pyplot as plt
@@ -597,7 +597,7 @@ class PlottingContextBase:
 
 
 class BasicPlottingContext(PlottingContextBase):
-    """ basic plotting using just matplotlib """
+    """basic plotting using just matplotlib"""
 
     def __init__(self, fig_or_ax=None, title: str = None, show: bool = True):
         """
@@ -634,7 +634,7 @@ class BasicPlottingContext(PlottingContextBase):
 
 
 class JupyterPlottingContext(PlottingContextBase):
-    """ plotting in a jupyter widget using the `inline` backend """
+    """plotting in a jupyter widget using the `inline` backend"""
 
     supports_update = False
     """ flag indicating whether the context supports that plots can be updated
@@ -680,7 +680,7 @@ class JupyterPlottingContext(PlottingContextBase):
         plt.close(self.fig)
 
     def close(self):
-        """ close the plot """
+        """close the plot"""
         super().close()
         # close ipython output
         try:

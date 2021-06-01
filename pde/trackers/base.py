@@ -19,13 +19,13 @@ TrackerDataType = Union["TrackerBase", str]
 
 
 class FinishedSimulation(StopIteration):
-    """ exception for signaling that simulation finished successfully """
+    """exception for signaling that simulation finished successfully"""
 
     pass
 
 
 class TrackerBase(metaclass=ABCMeta):
-    """ base class for implementing trackers """
+    """base class for implementing trackers"""
 
     _subclasses: Dict[str, Type["TrackerBase"]] = {}  # all inheriting classes
 
@@ -40,7 +40,7 @@ class TrackerBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """ register all subclassess to reconstruct them later """
+        """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
         if hasattr(cls, "name"):
             cls._subclasses[cls.name] = cls
@@ -139,7 +139,7 @@ class TrackerCollection:
         self.time_next_action = np.inf
 
     def __len__(self) -> int:
-        """ returns the number of trackers in the collection """
+        """returns the number of trackers in the collection"""
         return len(self.trackers)
 
     @classmethod

@@ -130,7 +130,7 @@ class VectorField(DataFieldBase):
         )
 
     def __getitem__(self, key: int) -> ScalarField:
-        """ extract a component of the VectorField """
+        """extract a component of the VectorField"""
         if not isinstance(key, int):
             raise IndexError("Index must be an integer")
         return ScalarField(self.grid, self.data[key])
@@ -221,7 +221,7 @@ class VectorField(DataFieldBase):
 
                 @register_jitable
                 def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """ calculate dot product between fields `a` and `b` """
+                    """calculate dot product between fields `a` and `b`"""
                     out[:] = a[0] * b[0].conjugate()  # overwrite potential data in out
                     for i in range(1, dim):
                         out[:] += a[i] * b[i].conjugate()
@@ -232,7 +232,7 @@ class VectorField(DataFieldBase):
 
                 @register_jitable
                 def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """ calculate dot product between fields `a` and `b` """
+                    """calculate dot product between fields `a` and `b`"""
                     out[:] = a[0] * b[0]  # overwrite potential data in out
                     for i in range(1, dim):
                         out[:] += a[i] * b[i]
@@ -269,7 +269,7 @@ class VectorField(DataFieldBase):
                         def f_with_allocated_out(
                             a: np.ndarray, b: np.ndarray, out: np.ndarray
                         ) -> np.ndarray:
-                            """ helper function allocating output array """
+                            """helper function allocating output array"""
                             out = np.empty(b.shape[1:], dtype=dtype)
                             return calc(a, b, out=out)  # type: ignore
 
@@ -285,7 +285,7 @@ class VectorField(DataFieldBase):
             def calc(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray = None
             ) -> np.ndarray:
-                """ inner function doing the actual calculation of the dot product """
+                """inner function doing the actual calculation of the dot product"""
                 if a.shape == b.shape:
                     # dot product between vector and vector
                     if out is None:
@@ -315,7 +315,7 @@ class VectorField(DataFieldBase):
                 def dot(
                     a: np.ndarray, b: np.ndarray, out: np.ndarray = None
                 ) -> np.ndarray:
-                    """ dot product with conjugated second operand """
+                    """dot product with conjugated second operand"""
                     return calc(a, b.conjugate(), out=out)  # type: ignore
 
             else:
@@ -406,7 +406,7 @@ class VectorField(DataFieldBase):
             # create the inner function calculating the dot product
             @register_jitable
             def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                """ calculate dot product between fields `a` and `b` """
+                """calculate dot product between fields `a` and `b`"""
                 for i in range(0, dim):
                     for j in range(0, dim):
                         out[i, j, :] = a[i] * b[j]
@@ -445,7 +445,7 @@ class VectorField(DataFieldBase):
                         def f_with_allocated_out(
                             a: np.ndarray, b: np.ndarray, out: np.ndarray
                         ) -> np.ndarray:
-                            """ helper function allocating output array """
+                            """helper function allocating output array"""
                             out = np.empty((len(a),) + b.shape, dtype=dtype)
                             return calc(a, b, out=out)  # type: ignore
 
@@ -461,7 +461,7 @@ class VectorField(DataFieldBase):
             def outer(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray = None
             ) -> np.ndarray:
-                """calculates the outer product between two vector fields """
+                """calculates the outer product between two vector fields"""
                 if out is None:
                     # TODO: Remove this construct once we make numpy 1.20 a minimal
                     # requirement. Earlier version of numpy do not support out=None
@@ -568,7 +568,7 @@ class VectorField(DataFieldBase):
 
     @property
     def integral(self) -> np.ndarray:
-        """ :class:`~numpy.ndarray`: integral of each component over space """
+        """:class:`~numpy.ndarray`: integral of each component over space"""
         return self.grid.integrate(self.data)
 
     def to_scalar(

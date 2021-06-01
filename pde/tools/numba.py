@@ -128,7 +128,7 @@ def _numba_get_signature(parallel: bool = False, **kwargs) -> Dict[str, Any]:
 if nb.config.DISABLE_JIT:
     # use work-around for https://github.com/numba/numba/issues/4759
     def flat_idx(arr, i):
-        """ helper function allowing indexing of scalars as if they arrays """
+        """helper function allowing indexing of scalars as if they arrays"""
         if np.isscalar(arr):
             return arr
         else:
@@ -139,7 +139,7 @@ else:
     # compiled version that specializes correctly
     @nb.generated_jit(nopython=True)
     def flat_idx(arr, i):
-        """ helper function allowing indexing of scalars as if they arrays """
+        """helper function allowing indexing of scalars as if they arrays"""
         if isinstance(arr, (nb.types.Integer, nb.types.Float)):
             return lambda arr, i: arr
         else:
@@ -212,7 +212,7 @@ def jit_allocate_out(
         if num_args == 1:
 
             def f_arg1_with_allocated_out(arr, out=None):
-                """ helper function allocating output array """
+                """helper function allocating output array"""
                 if out is None:
                     if out_shape is None:
                         out = np.empty_like(arr)
@@ -225,7 +225,7 @@ def jit_allocate_out(
         elif num_args == 2:
 
             def f_arg2_with_allocated_out(a, b, out=None):
-                """ helper function allocating output array """
+                """helper function allocating output array"""
                 if out is None:
                     assert a.shape == b.shape
                     if out_shape is None:
@@ -278,13 +278,13 @@ def jit_allocate_out(
                     if out_shape is None:
                         # we have to obtain the shape of `out` from `arr`
                         def f_with_allocated_out(arr, out):
-                            """ helper function allocating output array """
+                            """helper function allocating output array"""
                             return f_jit(arr, out=np.empty_like(arr))
 
                     else:
                         # the shape of `out` is given by `out_shape`
                         def f_with_allocated_out(arr, out):
-                            """ helper function allocating output array """
+                            """helper function allocating output array"""
                             return f_jit(arr, out=np.empty(out_shape, dtype=arr.dtype))
 
                     return f_with_allocated_out
@@ -315,13 +315,13 @@ def jit_allocate_out(
                     if out_shape is None:
                         # we have to obtain the shape of `out` from `a`
                         def f_with_allocated_out(a, b, out):
-                            """ helper function allocating output array """
+                            """helper function allocating output array"""
                             return f_jit(a, b, out=np.empty_like(a))
 
                     else:
                         # the shape of `out` is given by `out_shape`
                         def f_with_allocated_out(a, b, out):
-                            """ helper function allocating output array """
+                            """helper function allocating output array"""
                             return f_jit(a, b, out=np.empty(out_shape, dtype=a.dtype))
 
                     return f_with_allocated_out

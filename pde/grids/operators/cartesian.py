@@ -200,7 +200,7 @@ def _make_derivative(
 
         @jit_allocate_out(out_shape=shape)
         def diff(arr, out=None):
-            """ calculate derivative of 1d array `arr` """
+            """calculate derivative of 1d array `arr`"""
             for i in range(shape[0]):
                 arr_l, arr_m, arr_h = region(arr, (i,))
                 if method == "central":
@@ -216,7 +216,7 @@ def _make_derivative(
 
         @jit_allocate_out(out_shape=shape)
         def diff(arr, out=None):
-            """ calculate derivative of 2d array `arr` """
+            """calculate derivative of 2d array `arr`"""
             for i in range(shape[0]):
                 for j in range(shape[1]):
                     arr_l, arr_m, arr_h = region(arr, (i, j))
@@ -233,7 +233,7 @@ def _make_derivative(
 
         @jit_allocate_out(out_shape=shape)
         def diff(arr, out=None):
-            """ calculate derivative of 3d array `arr` """
+            """calculate derivative of 3d array `arr`"""
             for i in range(shape[0]):
                 for j in range(shape[1]):
                     for k in range(shape[2]):
@@ -274,7 +274,7 @@ def _make_laplace_scipy_nd(bcs: Boundaries) -> OperatorType:
     args = bcs._scipy_border_mode
 
     def laplace(arr, out=None):
-        """ apply laplace operator to array `arr` """
+        """apply laplace operator to array `arr`"""
         assert arr.shape == bcs.grid.shape
         return ndimage.laplace(scaling * arr, output=out, **args)
 
@@ -298,7 +298,7 @@ def _make_laplace_numba_1d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out
     def laplace(arr, out=None):
-        """ apply laplace operator to array `arr` """
+        """apply laplace operator to array `arr`"""
         for i in range(dim_x):
             valm, val, valp = region_x(arr, (i,))
             out[i] = (valm - 2 * val + valp) * scale
@@ -330,7 +330,7 @@ def _make_laplace_numba_2d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
-        """ apply laplace operator to array `arr` """
+        """apply laplace operator to array `arr`"""
         for i in nb.prange(dim_x):
 
             # left-most part
@@ -390,7 +390,7 @@ def _make_laplace_numba_3d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
-        """ apply laplace operator to array `arr` """
+        """apply laplace operator to array `arr`"""
         for i in nb.prange(dim_x):
             for j in range(dim_y):
                 for k in range(dim_z):
@@ -476,7 +476,7 @@ def _make_gradient_scipy_nd(bcs: Boundaries) -> OperatorType:
     args = bcs._scipy_border_mode
 
     def gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         assert arr.shape == bcs.grid.shape
         if out is None:
             out = np.empty(shape_out)
@@ -507,7 +507,7 @@ def _make_gradient_numba_1d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(1, dim_x))
     def gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         for i in range(dim_x):
             valm, _, valp = region_x(arr, (i,))
             out[0, i] = (valp - valm) * scale
@@ -539,7 +539,7 @@ def _make_gradient_numba_2d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(parallel=parallel, out_shape=(2, dim_x, dim_y))
     def gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         for i in nb.prange(dim_x):
             for j in range(dim_y):
                 arr_x_l, _, arr_x_h = region_x(arr, (i, j))
@@ -576,7 +576,7 @@ def _make_gradient_numba_3d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(parallel=parallel, out_shape=(3, dim_x, dim_y, dim_z))
     def gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         for i in nb.prange(dim_x):
             for j in range(dim_y):
                 for k in range(dim_z):
@@ -665,7 +665,7 @@ def _make_gradient_squared_numba_1d(
 
         @jit_allocate_out(out_shape=(dim_x,))
         def gradient_squared(arr, out=None):
-            """ apply squared gradient operator to array `arr` """
+            """apply squared gradient operator to array `arr`"""
             for i in range(dim_x):
                 valm, _, valp = region_x(arr, (i,))
                 out[i] = (valp - valm) ** 2 * scale
@@ -678,7 +678,7 @@ def _make_gradient_squared_numba_1d(
 
         @jit_allocate_out(out_shape=(dim_x,))
         def gradient_squared(arr, out=None):
-            """ apply squared gradient operator to array `arr` """
+            """apply squared gradient operator to array `arr`"""
             for i in range(dim_x):
                 valm, valc, valp = region_x(arr, (i,))
                 out[i] = ((valp - valc) ** 2 + (valc - valm) ** 2) * scale
@@ -720,7 +720,7 @@ def _make_gradient_squared_numba_2d(
 
         @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y))
         def gradient_squared(arr, out=None):
-            """ apply squared gradient operator to array `arr` """
+            """apply squared gradient operator to array `arr`"""
             for i in nb.prange(dim_x):
                 for j in range(dim_y):
                     arr_x_l, _, arr_x_h = region_x(arr, (i, j))
@@ -738,7 +738,7 @@ def _make_gradient_squared_numba_2d(
 
         @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y))
         def gradient_squared(arr, out=None):
-            """ apply squared gradient operator to array `arr` """
+            """apply squared gradient operator to array `arr`"""
             for i in nb.prange(dim_x):
                 for j in range(dim_y):
                     arr_x_l, arr_c, arr_x_h = region_x(arr, (i, j))
@@ -786,7 +786,7 @@ def _make_gradient_squared_numba_3d(
 
         @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y, dim_z))
         def gradient_squared(arr, out=None):
-            """ apply squared gradient operator to array `arr` """
+            """apply squared gradient operator to array `arr`"""
             for i in nb.prange(dim_x):
                 for j in range(dim_y):
                     for k in range(dim_z):
@@ -807,7 +807,7 @@ def _make_gradient_squared_numba_3d(
 
         @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y, dim_z))
         def gradient_squared(arr, out=None):
-            """ apply squared gradient operator to array `arr` """
+            """apply squared gradient operator to array `arr`"""
             for i in nb.prange(dim_x):
                 for j in range(dim_y):
                     for k in range(dim_z):
@@ -880,7 +880,7 @@ def _make_divergence_scipy_nd(bcs: Boundaries) -> OperatorType:
     args = bcs._scipy_border_mode
 
     def divergence(arr, out=None):
-        """ apply divergence operator to array `arr` """
+        """apply divergence operator to array `arr`"""
         assert arr.shape[0] == len(shape) and arr.shape[1:] == shape
 
         # need to initialize with zeros since data is added later
@@ -915,7 +915,7 @@ def _make_divergence_numba_1d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(dim_x,))
     def divergence(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         for i in range(dim_x):
             valm, _, valp = region_x(arr[0], (i,))
             out[i] = (valp - valm) * scale
@@ -947,7 +947,7 @@ def _make_divergence_numba_2d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y))
     def divergence(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         for i in nb.prange(dim_x):
             for j in range(dim_y):
                 arr_x_l, _, arr_x_h = region_x(arr[0], (i, j))
@@ -985,7 +985,7 @@ def _make_divergence_numba_3d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(parallel=parallel, out_shape=(dim_x, dim_y, dim_z))
     def divergence(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         for i in nb.prange(dim_x):
             for j in range(dim_y):
                 for k in range(dim_z):
@@ -1067,7 +1067,7 @@ def _make_vector_gradient_scipy_nd(bcs: Boundaries) -> OperatorType:
     shape_out = (dim, dim) + bcs.grid.shape
 
     def vector_gradient(arr, out=None):
-        """ apply vector gradient operator to array `arr` """
+        """apply vector gradient operator to array `arr`"""
         assert arr.shape == shape_out[1:]
         if out is None:
             out = np.empty(shape_out)
@@ -1098,7 +1098,7 @@ def _make_vector_gradient_numba_1d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(1, 1) + bcs.grid.shape)
     def vector_gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         gradient(arr[0], out=out[0])
         return out
 
@@ -1121,7 +1121,7 @@ def _make_vector_gradient_numba_2d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(2, 2) + bcs.grid.shape)
     def vector_gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         gradient_x(arr[0], out=out[:, 0])
         gradient_y(arr[1], out=out[:, 1])
         return out
@@ -1148,7 +1148,7 @@ def _make_vector_gradient_numba_3d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(3, 3) + bcs.grid.shape)
     def vector_gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         gradient_x(arr[0], out=out[:, 0])
         gradient_y(arr[1], out=out[:, 1])
         gradient_z(arr[2], out=out[:, 2])
@@ -1222,7 +1222,7 @@ def _make_vector_laplace_scipy_nd(bcs: Boundaries) -> OperatorType:
     shape_out = (dim,) + bcs.grid.shape
 
     def vector_laplace(arr, out=None):
-        """ apply vector Laplacian operator to array `arr` """
+        """apply vector Laplacian operator to array `arr`"""
         assert arr.shape == shape_out
         if out is None:
             out = np.empty(shape_out)
@@ -1251,7 +1251,7 @@ def _make_vector_laplace_numba_1d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(1,) + bcs.grid.shape)
     def vector_laplace(arr, out=None):
-        """ apply vector Laplacian to array `arr` """
+        """apply vector Laplacian to array `arr`"""
         laplace(arr[0], out=out[0])
         return out
 
@@ -1274,7 +1274,7 @@ def _make_vector_laplace_numba_2d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(2,) + bcs.grid.shape)
     def vector_laplace(arr, out=None):
-        """ apply vector Laplacian  to array `arr` """
+        """apply vector Laplacian  to array `arr`"""
         laplace_x(arr[0], out=out[0])
         laplace_y(arr[1], out=out[1])
         return out
@@ -1299,7 +1299,7 @@ def _make_vector_laplace_numba_3d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(3,) + bcs.grid.shape)
     def vector_laplace(arr, out=None):
-        """ apply vector Laplacian to array `arr` """
+        """apply vector Laplacian to array `arr`"""
         laplace_x(arr[0], out=out[0])
         laplace_y(arr[1], out=out[1])
         laplace_z(arr[2], out=out[2])
@@ -1371,7 +1371,7 @@ def _make_tensor_divergence_scipy_nd(bcs: Boundaries) -> OperatorType:
     shape_out = (dim,) + bcs.grid.shape
 
     def tensor_divergence(arr, out=None):
-        """ apply tensor divergence operator to array `arr` """
+        """apply tensor divergence operator to array `arr`"""
         # need to initialize with zeros since data is added later
         assert arr.shape[0] == dim and arr.shape[1:] == shape_out
         if out is None:
@@ -1404,7 +1404,7 @@ def _make_tensor_divergence_numba_1d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(1,) + bcs.grid.shape)
     def tensor_divergence(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         divergence(arr[0], out=out[0])
         return out
 
@@ -1427,7 +1427,7 @@ def _make_tensor_divergence_numba_2d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(2,) + bcs.grid.shape)
     def tensor_divergence(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         divergence_x(arr[0], out=out[0])
         divergence_y(arr[1], out=out[1])
         return out
@@ -1452,7 +1452,7 @@ def _make_tensor_divergence_numba_3d(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(3,) + bcs.grid.shape)
     def tensor_divergence(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         divergence_x(arr[0], out=out[0])
         divergence_y(arr[1], out=out[1])
         divergence_z(arr[2], out=out[2])

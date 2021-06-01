@@ -10,7 +10,7 @@ from pde import PDE, ScalarField, UnitGrid, WavePDE
 
 @pytest.mark.parametrize("dim", [1, 2])
 def test_wave_consistency(dim):
-    """ test some methods of the wave model """
+    """test some methods of the wave model"""
     eq = WavePDE()
     assert isinstance(str(eq), str)
     assert isinstance(repr(eq), str)

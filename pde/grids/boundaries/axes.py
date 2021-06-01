@@ -18,14 +18,14 @@ BoundariesData = Union[BoundaryPairData, Sequence[BoundaryPairData]]
 
 
 class Boundaries(list):
-    """ class that bundles all boundary conditions for all axes """
+    """class that bundles all boundary conditions for all axes"""
 
     grid: GridBase
     """ :class:`~pde.grids.base.GridBase`:
     The grid for which the boundaries are defined """
 
     def __init__(self, boundaries):
-        """ initialize with a list of boundaries """
+        """initialize with a list of boundaries"""
         if len(boundaries) == 0:
             raise BCDataError("List of boundaries must not be empty")
 
@@ -134,7 +134,7 @@ class Boundaries(list):
         return super().__eq__(other) and self.grid == other.grid
 
     def _cache_hash(self) -> int:
-        """ returns a value to determine when a cache needs to be updated """
+        """returns a value to determine when a cache needs to be updated"""
         return hash(tuple(bc_ax._cache_hash() for bc_ax in self))
 
     def check_value_rank(self, rank: int):
@@ -152,7 +152,7 @@ class Boundaries(list):
 
     @classmethod
     def get_help(cls) -> str:
-        """ Return information on how boundary conditions can be set """
+        """Return information on how boundary conditions can be set"""
         return (
             "Boundary conditions for each axis are set using a list: [bc_x, bc_y, "
             "bc_z]. If the associated axis is periodic, the boundary condition needs "
@@ -219,7 +219,7 @@ class Boundaries(list):
 
     @property
     def _uniform_discretization(self) -> float:
-        """ float: returns the uniform discretization or raises RuntimeError """
+        """float: returns the uniform discretization or raises RuntimeError"""
         dx_mean = np.mean(self.grid.discretization)
         if np.allclose(self.grid.discretization, dx_mean):
             return float(dx_mean)
@@ -238,5 +238,5 @@ class Boundaries(list):
 
     @property
     def differentiated(self) -> "Boundaries":
-        """ Domain: with differentiated versions of all boundary conditions """
+        """Domain: with differentiated versions of all boundary conditions"""
         return self.__class__([b.differentiated for b in self])

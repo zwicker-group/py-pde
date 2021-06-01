@@ -21,7 +21,7 @@ from pde import ScalarField, UnitGrid, pdes
     ],
 )
 def test_pde_consistency(pde_class, dim):
-    """ test some methods of generic PDE models """
+    """test some methods of generic PDE models"""
     eq = pde_class()
     assert isinstance(str(eq), str)
     assert isinstance(repr(eq), str)
@@ -41,7 +41,7 @@ def test_pde_consistency(pde_class, dim):
 
 
 def test_pde_consistency_test():
-    """ test whether the consistency of a pde implementation is checked """
+    """test whether the consistency of a pde implementation is checked"""
 
     class TestPDE(pdes.PDEBase):
         def evolution_rate(self, field, t=0):

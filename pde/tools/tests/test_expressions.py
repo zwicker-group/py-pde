@@ -9,7 +9,7 @@ from pde.tools.expressions import ScalarExpression, TensorExpression, parse_numb
 
 
 def test_parse_number():
-    """ test parse_number function """
+    """test parse_number function"""
     assert parse_number(0) == pytest.approx(0)
     assert parse_number(1.235) == pytest.approx(1.235)
     assert parse_number("0") == pytest.approx(0)
@@ -25,7 +25,7 @@ def test_parse_number():
 
 
 def test_const():
-    """ test simple expressions """
+    """test simple expressions"""
     for expr in [None, 1, "1", "a - a"]:
         e = ScalarExpression() if expr is None else ScalarExpression(expr)
         val = 0 if expr is None or expr == "a - a" else float(expr)
@@ -56,7 +56,7 @@ def test_const():
 
 
 def test_single_arg():
-    """ test simple expressions """
+    """test simple expressions"""
     e = ScalarExpression("2 * a")
     assert not e.constant
     assert e.depends_on("a")
@@ -88,7 +88,7 @@ def test_single_arg():
 
 
 def test_two_args():
-    """ test simple expressions """
+    """test simple expressions"""
     e = ScalarExpression("2 * a ** b")
     assert e.depends_on("b")
     assert not e.constant
@@ -120,7 +120,7 @@ def test_two_args():
 
 
 def test_derivatives():
-    """ test vector expressions """
+    """test vector expressions"""
     e = ScalarExpression("a * b**2")
     assert e.depends_on("a") and e.depends_on("b")
     assert not e.constant
@@ -146,7 +146,7 @@ def test_derivatives():
 
 
 def test_indexed():
-    """ test simple expressions """
+    """test simple expressions"""
     e = ScalarExpression("2 * a[0] ** a[1]", allow_indexed=True)
     assert not e.constant
     assert e.depends_on("a")
@@ -165,14 +165,14 @@ def test_indexed():
 
 
 def test_synonyms():
-    """ test using synonyms in expression """
+    """test using synonyms in expression"""
     e = ScalarExpression("2 * all", [["a", "all"]])
     assert e.depends_on("a")
     assert not e.depends_on("all")
 
 
 def test_tensor_expression():
-    """ test TensorExpression """
+    """test TensorExpression"""
     e = TensorExpression("[[0, 1], [2, 3]]")
     assert isinstance(str(e), str)
     assert e.shape == (2, 2)
@@ -205,7 +205,7 @@ def test_tensor_expression():
 
 
 def test_expression_from_expression():
-    """ test creating expressions from expressions """
+    """test creating expressions from expressions"""
     expr = ScalarExpression("sin(a)")
     assert expr == ScalarExpression(expr)
     assert expr != ScalarExpression(expr, ["a", "b"])
@@ -220,7 +220,7 @@ def test_expression_from_expression():
 
 
 def test_expression_user_funcs():
-    """ test the usage of user_funcs """
+    """test the usage of user_funcs"""
     expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
     assert expr() == 1
     assert expr.get_compiled()() == 1
@@ -240,7 +240,7 @@ def test_expression_user_funcs():
 
 
 def test_complex_expression():
-    """ test expressions with complex numbers """
+    """test expressions with complex numbers"""
     for s in ["sqrt(-1)", "I"]:
         expr = ScalarExpression(s)
         assert expr.complex
@@ -254,7 +254,7 @@ def test_complex_expression():
 
 
 def test_expression_special():
-    """ test special cases of expressions """
+    """test special cases of expressions"""
     expr = ScalarExpression("Heaviside(x)")
     assert not expr.constant
     assert expr(-1) == 0
@@ -268,7 +268,7 @@ def test_expression_special():
 
 
 def test_expression_consts():
-    """ test the usage of consts """
+    """test the usage of consts"""
     expr = ScalarExpression("a", consts={"a": 1})
     assert expr.constant
     assert not expr.depends_on("a")

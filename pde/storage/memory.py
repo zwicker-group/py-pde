@@ -15,7 +15,7 @@ from .base import InfoDict, StorageBase
 
 
 class MemoryStorage(StorageBase):
-    """ store discretized fields in memory """
+    """store discretized fields in memory"""
 
     def __init__(
         self,

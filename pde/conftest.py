@@ -11,7 +11,7 @@ import pytest
 
 @pytest.fixture(scope="function", autouse=True)
 def suppressing():
-    """ helper function adjusting message reporting for all tests """
+    """helper function adjusting message reporting for all tests"""
     # raise all underflow errors
     np.seterr(all="raise", under="ignore")
 

@@ -88,7 +88,7 @@ def napari_process(
 
         @thread_worker(connect={"yielded": check_signal})
         def update_listener():
-            """helper thread that listens to the data_channel """
+            """helper thread that listens to the data_channel"""
             logger.info("Start napari thread to receive data")
 
             # infinite loop waiting for events in the queue

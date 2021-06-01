@@ -8,12 +8,12 @@ from pde.tools.config import Config, environment
 
 
 def test_environment():
-    """ test the environment function """
+    """test the environment function"""
     assert isinstance(environment(), dict)
 
 
 def test_config():
-    """ test configuration system """
+    """test configuration system"""
     c = Config()
 
     assert c["numba.parallel_threshold"] > 0
@@ -26,7 +26,7 @@ def test_config():
 
 
 def test_config_modes():
-    """ test configuration system running in different modes """
+    """test configuration system running in different modes"""
     c = Config(mode="insert")
     assert c["numba.parallel_threshold"] > 0
     c["numba.parallel_threshold"] = 0
@@ -73,7 +73,7 @@ def test_config_modes():
 
 
 def test_config_special_values():
-    """ test typical config objects """
+    """test typical config objects"""
     from pde.tools.numba import NUMBA_PARALLEL
 
     c = Config(mode="insert")

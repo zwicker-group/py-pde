@@ -24,7 +24,7 @@ InfoDict = Optional[Dict[str, Any]]
 
 
 class ConstantIntervals:
-    """ class representing equidistantly spaced time intervals """
+    """class representing equidistantly spaced time intervals"""
 
     def __init__(self, dt: float = 1, t_start: Optional[float] = None):
         """
@@ -44,7 +44,7 @@ class ConstantIntervals:
         return f"{self.__class__.__name__}(dt={self.dt:g}, t_start={self.t_start})"
 
     def copy(self):
-        """ return a copy of this instance """
+        """return a copy of this instance"""
         return copy.copy(self)
 
     def _initialize(self, t: float) -> float:
@@ -87,7 +87,7 @@ class ConstantIntervals:
 
 
 class LogarithmicIntervals(ConstantIntervals):
-    """ class representing logarithmically spaced time intervals """
+    """class representing logarithmically spaced time intervals"""
 
     def __init__(
         self, dt_initial: float = 1, factor: float = 1, t_start: Optional[float] = None

@@ -35,7 +35,7 @@ class Tensor2Field(DataFieldBase):
     rank = 2
 
     def __getitem__(self, key: Tuple[int, int]) -> ScalarField:
-        """ extract a component of the VectorField """
+        """extract a component of the VectorField"""
         try:
             if len(key) != 2:
                 raise IndexError("Index must be given as two integers")
@@ -45,7 +45,7 @@ class Tensor2Field(DataFieldBase):
 
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
-        """ set the data from a value from a collection """
+        """set the data from a value from a collection"""
         dim = self.grid.dim
         self._data = value.reshape(dim, dim, *self.grid.shape)
         # check whether both point to the same memory location
@@ -135,7 +135,7 @@ class Tensor2Field(DataFieldBase):
 
                 @jit
                 def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """ calculate dot product between fields `a` and `b` """
+                    """calculate dot product between fields `a` and `b`"""
                     for i in range(dim):
                         out[i] = a[i, 0] * b[0].conjugate()  # overwrite data in out
                         for j in range(1, dim):
@@ -147,7 +147,7 @@ class Tensor2Field(DataFieldBase):
 
                 @jit
                 def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """ calculate dot product between fields `a` and `b` """
+                    """calculate dot product between fields `a` and `b`"""
                     for i in range(dim):
                         out[i] = a[i, 0] * b[0]  # overwrite potential data in out
                         for j in range(1, dim):
@@ -185,7 +185,7 @@ class Tensor2Field(DataFieldBase):
                         def f_with_allocated_out(
                             a: np.ndarray, b: np.ndarray, out: np.ndarray
                         ) -> np.ndarray:
-                            """ helper function allocating output array """
+                            """helper function allocating output array"""
                             out = np.empty(b.shape, dtype=dtype)
                             return calc(a, b, out=out)  # type: ignore
 
@@ -300,7 +300,7 @@ class Tensor2Field(DataFieldBase):
 
     @property
     def integral(self) -> np.ndarray:
-        """ :class:`~numpy.ndarray`: integral of each component over space """
+        """:class:`~numpy.ndarray`: integral of each component over space"""
         return self.grid.integrate(self.data)
 
     def transpose(self, label: str = "transpose") -> "Tensor2Field":

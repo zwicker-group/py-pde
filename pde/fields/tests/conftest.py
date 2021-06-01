@@ -15,7 +15,7 @@ from pde import (
 
 
 def iter_grids():
-    """ generator providing some test grids """
+    """generator providing some test grids"""
     for periodic in [True, False]:
         yield UnitGrid([3], periodic=periodic)
         yield UnitGrid([3, 3, 3], periodic=periodic)

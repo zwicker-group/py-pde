@@ -53,7 +53,7 @@ def make_laplace(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(parallel=parallel, out_shape=(dim_r, dim_z))
     def laplace(arr, out=None):
-        """ apply laplace operator to array `arr` """
+        """apply laplace operator to array `arr`"""
         for j in nb.prange(0, dim_z):  # iterate axial points
             # inner radial boundary condition
             i = 0
@@ -119,7 +119,7 @@ def make_gradient(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(parallel=parallel, out_shape=(3, dim_r, dim_z))
     def gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         for j in nb.prange(0, dim_z):  # iterate axial points
             # inner radial boundary condition
             i = 0
@@ -185,7 +185,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType
 
         @jit_allocate_out(parallel=parallel, out_shape=(dim_r, dim_z))
         def gradient_squared(arr, out=None):
-            """ apply gradient operator to array `arr` """
+            """apply gradient operator to array `arr`"""
             for j in nb.prange(0, dim_z):  # iterate axial points
                 # inner radial boundary condition (Neumann condition)
                 i = 0
@@ -216,7 +216,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType
 
         @jit_allocate_out(parallel=parallel, out_shape=(dim_r, dim_z))
         def gradient_squared(arr, out=None):
-            """ apply gradient operator to array `arr` """
+            """apply gradient operator to array `arr`"""
             for j in nb.prange(0, dim_z):  # iterate axial points
                 # inner radial boundary condition (Neumann condition)
                 i = 0
@@ -275,7 +275,7 @@ def make_divergence(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(parallel=parallel, out_shape=(dim_r, dim_z))
     def divergence(arr, out=None):
-        """ apply divergence operator to array `arr` """
+        """apply divergence operator to array `arr`"""
         for j in nb.prange(0, dim_z):  # iterate axial points
             # inner radial boundary condition
             i = 0
@@ -329,7 +329,7 @@ def make_vector_gradient(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(3, 3) + bcs.grid.shape)
     def vector_gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         gradient_r(arr[0], out=out[:, 0])
         gradient_z(arr[1], out=out[:, 1])
         gradient_phi(arr[2], out=out[:, 2])
@@ -361,7 +361,7 @@ def make_vector_laplace(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(3,) + bcs.grid.shape)
     def vector_laplace(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         laplace_r(arr[0], out=out[0])
         laplace_z(arr[1], out=out[1])
         laplace_phi(arr[2], out=out[2])
@@ -393,7 +393,7 @@ def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(3,) + bcs.grid.shape)
     def tensor_divergence(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         divergence_r(arr[0], out=out[0])
         divergence_z(arr[1], out=out[1])
         divergence_phi(arr[2], out=out[2])

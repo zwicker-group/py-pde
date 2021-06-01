@@ -95,7 +95,7 @@ def parse_number(
 
 @overload(np.heaviside)
 def np_heaviside(x1, x2):
-    """ numba implementation of the heaviside function """
+    """numba implementation of the heaviside function"""
 
     def heaviside_impl(x1, x2):
         if np.isnan(x1):
@@ -116,7 +116,7 @@ SPECIAL_FUNCTIONS = {"Heaviside": lambda x: np.heaviside(x, 0.5)}
 
 
 class ListArrayPrinter(PythonCodePrinter):
-    """ special sympy printer returning arrays as lists """
+    """special sympy printer returning arrays as lists"""
 
     def _print_ImmutableDenseNDimArray(self, arr):
         arrays = ", ".join(f"{self._print(expr)}" for expr in arr)
@@ -124,7 +124,7 @@ class ListArrayPrinter(PythonCodePrinter):
 
 
 class NumpyArrayPrinter(PythonCodePrinter):
-    """ special sympy printer returning numpy arrays """
+    """special sympy printer returning numpy arrays"""
 
     def _print_ImmutableDenseNDimArray(self, arr):
         arrays = ", ".join(f"asarray({self._print(expr)})" for expr in arr)
@@ -135,7 +135,7 @@ ExpressionType = Union[float, str, np.ndarray, "ExpressionBase"]
 
 
 class ExpressionBase(metaclass=ABCMeta):
-    """ abstract base class for handling expressions """
+    """abstract base class for handling expressions"""
 
     @fill_in_docstring
     def __init__(
@@ -186,7 +186,7 @@ class ExpressionBase(metaclass=ABCMeta):
         )
 
     def __eq__(self, other):
-        """ compare this expression to another one """
+        """compare this expression to another one"""
         if not isinstance(other, self.__class__):
             return NotImplemented
         # compare what the expressions depend on
@@ -206,19 +206,19 @@ class ExpressionBase(metaclass=ABCMeta):
 
     @property
     def _free_symbols(self) -> Set:
-        """ return symbols that appear in the expression and are not in self.consts """
+        """return symbols that appear in the expression and are not in self.consts"""
         return {
             sym for sym in self._sympy_expr.free_symbols if sym.name not in self.consts
         }
 
     @property
     def constant(self) -> bool:
-        """ bool: whether the expression is a constant """
+        """bool: whether the expression is a constant"""
         return len(self._free_symbols) == 0
 
     @property
     def complex(self) -> bool:
-        """ bool: whether the expression contains the imaginary unit I """
+        """bool: whether the expression contains the imaginary unit I"""
         return sympy.I in self._sympy_expr.atoms()
 
     @abstractproperty
@@ -226,7 +226,7 @@ class ExpressionBase(metaclass=ABCMeta):
         pass
 
     def _check_signature(self, signature: Sequence[Union[str, List[str]]] = None):
-        """ validate the variables of the expression against the signature """
+        """validate the variables of the expression against the signature"""
         # get arguments of the expressions
         if self.constant:
             # constant expression do not depend on any variables
@@ -272,7 +272,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
     @property
     def expression(self) -> str:
-        """ str: the expression in string form """
+        """str: the expression in string form"""
         # turn numerical values into easily readable text
         if isinstance(self._sympy_expr, sympy.NDimArray):
             expr = self._sympy_expr.applyfunc(lambda x: x.evalf(chop=True))
@@ -283,7 +283,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
     @property
     def rank(self) -> int:
-        """ int: the rank of the expression """
+        """int: the rank of the expression"""
         return len(self.shape)
 
     def depends_on(self, variable: str) -> bool:
@@ -404,7 +404,7 @@ class ExpressionBase(metaclass=ABCMeta):
         return self._get_function(single_arg, prepare_compilation=prepare_compilation)
 
     def __call__(self, *args, **kwargs) -> NumberOrArray:
-        """ return the value of the expression for the given values """
+        """return the value of the expression for the given values"""
         return self._get_function_cached(single_arg=False)(*args, **kwargs)  # type: ignore
 
     @cached_method()
@@ -427,7 +427,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
 
 class ScalarExpression(ExpressionBase):
-    """ describes a mathematical expression of a scalar quantity """
+    """describes a mathematical expression of a scalar quantity"""
 
     shape: Tuple[int, ...] = tuple()
 
@@ -518,7 +518,7 @@ class ScalarExpression(ExpressionBase):
 
     @property
     def value(self) -> Number:
-        """ float: the value for a constant expression """
+        """float: the value for a constant expression"""
         if self.constant:
             try:
                 # try simply evaluating the expression as a number
@@ -541,11 +541,11 @@ class ScalarExpression(ExpressionBase):
 
     @property
     def is_zero(self) -> bool:
-        """ bool: returns whether the expression is zero """
+        """bool: returns whether the expression is zero"""
         return self.constant and self.value == 0
 
     def __bool__(self) -> bool:
-        """ tests whether the expression is nonzero """
+        """tests whether the expression is nonzero"""
         return not self.constant or self.value != 0
 
     def __eq__(self, other):
@@ -554,14 +554,14 @@ class ScalarExpression(ExpressionBase):
         return super().__eq__(other) and self.allow_indexed == other.allow_indexed
 
     def _prepare_expression(self, expression: str) -> str:
-        """ replace indexed variables, if allowed """
+        """replace indexed variables, if allowed"""
         if self.allow_indexed:
             return re.sub(r"(\w+)(\[\w+\])", r"IndexedBase(\1)\2", expression)
         else:
             return expression
 
     def _var_indexed(self, var: str) -> bool:
-        """ checks whether the variable `var` is used in an indexed form """
+        """checks whether the variable `var` is used in an indexed form"""
         from sympy.tensor.indexed import Indexed
 
         return any(
@@ -569,7 +569,7 @@ class ScalarExpression(ExpressionBase):
         )
 
     def differentiate(self, var: str) -> "ScalarExpression":
-        """ return the expression differentiated with respect to var """
+        """return the expression differentiated with respect to var"""
         if self.constant:
             # return empty expression
             return ScalarExpression(
@@ -590,7 +590,7 @@ class ScalarExpression(ExpressionBase):
 
     @cached_property()
     def derivatives(self) -> "TensorExpression":
-        """ differentiate the expression with respect to all variables """
+        """differentiate the expression with respect to all variables"""
         if self.constant:
             # return empty expression
             dim = len(self.vars)
@@ -610,7 +610,7 @@ class ScalarExpression(ExpressionBase):
 
 
 class TensorExpression(ExpressionBase):
-    """ describes a mathematical expression of a tensorial quantity """
+    """describes a mathematical expression of a tensorial quantity"""
 
     @fill_in_docstring
     def __init__(
@@ -681,7 +681,7 @@ class TensorExpression(ExpressionBase):
 
     @property
     def shape(self) -> Tuple[int, ...]:
-        """ tuple: the shape of the tensor """
+        """tuple: the shape of the tensor"""
         return self._sympy_expr.shape  # type: ignore
 
     def __getitem__(self, index):
@@ -697,7 +697,7 @@ class TensorExpression(ExpressionBase):
 
     @property
     def value(self):
-        """ the value for a constant expression """
+        """the value for a constant expression"""
         if self.constant:
             try:
                 # try simply evaluating the expression as a number
@@ -719,7 +719,7 @@ class TensorExpression(ExpressionBase):
             raise TypeError("Only constant expressions have a defined value")
 
     def differentiate(self, var: str) -> "TensorExpression":
-        """ return the expression differentiated with respect to var """
+        """return the expression differentiated with respect to var"""
         if self.constant:
             derivative = np.zeros(self.shape)
         else:
@@ -728,7 +728,7 @@ class TensorExpression(ExpressionBase):
 
     @cached_property()
     def derivatives(self) -> "TensorExpression":
-        """ differentiate the expression with respect to all variables """
+        """differentiate the expression with respect to all variables"""
         shape = (len(self.vars),) + self.shape
 
         if self.constant:

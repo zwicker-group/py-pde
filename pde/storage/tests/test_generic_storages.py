@@ -14,7 +14,7 @@ from pde.tools.misc import module_available
 
 
 def test_storage_write(tmp_path):
-    """ test simple memory storage """
+    """test simple memory storage"""
     dim = 5
     grid = UnitGrid([dim])
     field = ScalarField(grid)
@@ -53,7 +53,7 @@ def test_storage_write(tmp_path):
 
 
 def test_storage_truncation(tmp_path):
-    """ test whether simple trackers can be used """
+    """test whether simple trackers can be used"""
     file = tmp_path / "test_storage_truncation.hdf5"
     for truncate in [True, False]:
         storages = [MemoryStorage()]
@@ -87,7 +87,7 @@ def test_storage_truncation(tmp_path):
 
 
 def test_storing_extract_range(tmp_path):
-    """ test methods specific to FieldCollections in memory storage """
+    """test methods specific to FieldCollections in memory storage"""
     sf = ScalarField(UnitGrid([1]))
 
     storage_classes = {"MemoryStorage": MemoryStorage}
@@ -126,7 +126,7 @@ def test_storing_extract_range(tmp_path):
 
 
 def test_storing_collection(tmp_path):
-    """ test methods specific to FieldCollections in memory storage """
+    """test methods specific to FieldCollections in memory storage"""
     grid = UnitGrid([2, 2])
     f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="a")
     f2 = VectorField.random_uniform(grid, 0.1, 0.4, label="b")
@@ -161,7 +161,7 @@ def test_storing_collection(tmp_path):
 
 
 def test_storage_apply(tmp_path):
-    """ test the apply function of StorageBase """
+    """test the apply function of StorageBase"""
     grid = UnitGrid([2])
     field = ScalarField(grid)
 
@@ -192,7 +192,7 @@ def test_storage_apply(tmp_path):
 
 
 def test_storage_copy(tmp_path):
-    """ test the copy function of StorageBase """
+    """test the copy function of StorageBase"""
     grid = UnitGrid([2])
     field = ScalarField(grid)
 

@@ -61,7 +61,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
     @property
     def cell_volume_data(self):
-        """ size associated with each cell """
+        """size associated with each cell"""
         return tuple(self.discretization)
 
     def contains_point(self, point: np.ndarray) -> np.ndarray:
@@ -157,7 +157,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             )
 
         def _get_axis(axis):
-            """ determine the axis from a given specifier """
+            """determine the axis from a given specifier"""
             try:
                 axis = int(axis)
             except ValueError:
@@ -443,7 +443,7 @@ class UnitGrid(CartesianGridBase):
 
     @property
     def state(self) -> Dict[str, Any]:
-        """ dict: the state of the grid """
+        """dict: the state of the grid"""
         return {"shape": self.shape, "periodic": self.periodic}
 
     @classmethod
@@ -462,7 +462,7 @@ class UnitGrid(CartesianGridBase):
 
     @property
     def volume(self) -> float:
-        """ float: total volume of the grid """
+        """float: total volume of the grid"""
         return float(np.prod(self.shape))
 
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
@@ -524,7 +524,7 @@ class UnitGrid(CartesianGridBase):
         return diff  # type: ignore
 
     def to_cartesian(self) -> "CartesianGrid":
-        """ convert unit grid to CartesianGrid """
+        """convert unit grid to CartesianGrid"""
         return CartesianGrid(
             self.cuboid.bounds, shape=self.shape, periodic=self.periodic
         )
@@ -643,7 +643,7 @@ class CartesianGrid(CartesianGridBase):
 
     @property
     def state(self) -> Dict[str, Any]:
-        """ dict: the state of the grid """
+        """dict: the state of the grid"""
         return {
             "bounds": self.axes_bounds,
             "shape": self.shape,
@@ -670,7 +670,7 @@ class CartesianGrid(CartesianGridBase):
 
     @property
     def volume(self) -> float:
-        """ float: total volume of the grid """
+        """float: total volume of the grid"""
         return float(self.cuboid.volume)
 
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:

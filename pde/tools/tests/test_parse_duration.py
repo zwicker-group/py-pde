@@ -6,7 +6,7 @@ from pde.tools.parse_duration import parse_duration
 
 
 def test_parse_duration():
-    """ test function signature checks """
+    """test function signature checks"""
 
     def p(value):
         return parse_duration(value).total_seconds()

@@ -9,7 +9,7 @@ from pde.tools.math import SmoothData1D
 
 
 def test_SmoothData1D():
-    """ test smoothing """
+    """test smoothing"""
     x = np.random.uniform(0, 1, 128)
     xs = np.linspace(0, 1, 16)[1:-1]
 

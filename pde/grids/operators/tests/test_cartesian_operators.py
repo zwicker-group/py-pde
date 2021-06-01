@@ -15,7 +15,7 @@ from pde.grids.operators import cartesian as ops
 
 
 def _get_random_grid_bcs(ndim: int, dx="random", periodic="random", rank=0):
-    """ create a random Cartesian grid with natural bcs """
+    """create a random Cartesian grid with natural bcs"""
     shape = np.random.randint(2, 5, ndim)
 
     if dx == "random":
@@ -35,7 +35,7 @@ def _get_random_grid_bcs(ndim: int, dx="random", periodic="random", rank=0):
 
 @pytest.mark.parametrize("periodic", [True, False])
 def test_singular_dimensions_2d(periodic):
-    """ test grids with singular dimensions """
+    """test grids with singular dimensions"""
     dim = np.random.randint(3, 5)
     g1 = UnitGrid([dim], periodic=periodic)
     g2a = UnitGrid([dim, 1], periodic=periodic)
@@ -50,7 +50,7 @@ def test_singular_dimensions_2d(periodic):
 
 @pytest.mark.parametrize("periodic", [True, False])
 def test_singular_dimensions_3d(periodic):
-    """ test grids with singular dimensions """
+    """test grids with singular dimensions"""
     dim = np.random.randint(3, 5)
     g1 = UnitGrid([dim], periodic=periodic)
     g3a = UnitGrid([dim, 1, 1], periodic=periodic)
@@ -64,7 +64,7 @@ def test_singular_dimensions_3d(periodic):
 
 
 def test_laplace_1d():
-    """ test the implementation of the laplace operator """
+    """test the implementation of the laplace operator"""
     for periodic in [True, False]:
         bcs = _get_random_grid_bcs(1, periodic=periodic)
         a = np.random.random(bcs.grid.shape)  # test data
@@ -76,7 +76,7 @@ def test_laplace_1d():
 
 
 def test_laplace_2d():
-    """ test the implementation of the laplace operator """
+    """test the implementation of the laplace operator"""
     for periodic in [True, False]:
         bcs = _get_random_grid_bcs(2, dx="uniform", periodic=periodic)
         a = np.random.random(bcs.grid.shape)  # test data
@@ -116,7 +116,7 @@ def test_laplace_2d_nonuniform():
 
 
 def test_laplace_3d():
-    """ test the implementation of the laplace operator """
+    """test the implementation of the laplace operator"""
     for periodic in [True, False]:
         bcs = _get_random_grid_bcs(ndim=3, dx="uniform", periodic=periodic)
         a = np.random.random(bcs.grid.shape)
@@ -126,7 +126,7 @@ def test_laplace_3d():
 
 
 def test_gradient_1d():
-    """ test specific boundary conditions for the 1d gradient """
+    """test specific boundary conditions for the 1d gradient"""
     grid = UnitGrid(5)
 
     b_l = {"type": "derivative", "value": -1}
@@ -144,7 +144,7 @@ def test_gradient_1d():
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_gradient(ndim):
-    """ test different gradient operators """
+    """test different gradient operators"""
     for periodic in [True, False]:
         bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic)
         op1 = ops.make_gradient(bcs, method="scipy")
@@ -157,7 +157,7 @@ def test_gradient(ndim):
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_divergence(ndim):
-    """ test different divergence operators """
+    """test different divergence operators"""
     for periodic in [True, False]:
         bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic)
         op1 = ops.make_divergence(bcs, method="scipy")
@@ -168,7 +168,7 @@ def test_divergence(ndim):
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_vector_gradient(ndim):
-    """ test different vector gradient operators """
+    """test different vector gradient operators"""
     bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic="random", rank=1)
     mvg = ops.make_vector_gradient
     op1 = mvg(bcs, method="scipy")
@@ -181,7 +181,7 @@ def test_vector_gradient(ndim):
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_vector_laplace(ndim):
-    """ test different vector laplace operators """
+    """test different vector laplace operators"""
     bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic="random", rank=1)
     mvg = ops.make_vector_laplace
     op1 = mvg(bcs, method="scipy")
@@ -194,7 +194,7 @@ def test_vector_laplace(ndim):
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_tensor_divergence(ndim):
-    """ test different tensor divergence operators """
+    """test different tensor divergence operators"""
     bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic="random", rank=1)
     op1 = ops.make_tensor_divergence(bcs, method="scipy")
     op2 = ops.make_tensor_divergence(bcs, method="numba")
@@ -205,7 +205,7 @@ def test_tensor_divergence(ndim):
 
 
 def test_div_grad_const():
-    """ compare div grad to laplace operator """
+    """compare div grad to laplace operator"""
     grid = CartesianGrid([[-1, 1]], 32)
 
     # test constant
@@ -219,7 +219,7 @@ def test_div_grad_const():
 
 
 def test_div_grad_linear():
-    """ compare div grad to laplace operator """
+    """compare div grad to laplace operator"""
     grid = CartesianGrid([[-1, 1]], 32)
     x = grid.axes_coords[0]
 
@@ -238,7 +238,7 @@ def test_div_grad_linear():
 
 
 def test_div_grad_quadratic():
-    """ compare div grad to laplace operator """
+    """compare div grad to laplace operator"""
     grid = CartesianGrid([[-1, 1]], 32)
     x = grid.axes_coords[0]
 
@@ -255,7 +255,7 @@ def test_div_grad_quadratic():
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_gradient_squared(dim):
-    """ compare gradient squared operator """
+    """compare gradient squared operator"""
     grid = CartesianGrid(
         [[0, 2 * np.pi]] * dim,
         shape=np.random.randint(30, 35, dim),
@@ -271,7 +271,7 @@ def test_gradient_squared(dim):
 
 
 def test_rect_div_grad():
-    """ compare div grad to laplacian """
+    """compare div grad to laplacian"""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     arr = np.cos(x) + np.sin(y)
@@ -287,7 +287,7 @@ def test_rect_div_grad():
 
 
 def test_degenerated_grid():
-    """ test operators on grids with singular dimensions """
+    """test operators on grids with singular dimensions"""
     g1 = CartesianGrid([[0, 1]], 4)
     g2 = CartesianGrid([[0, 1], [0, 0.1]], [4, 1], periodic=[False, True])
     d = np.random.random(4)
@@ -301,7 +301,7 @@ def test_degenerated_grid():
 
 @pytest.mark.parametrize("dim", [1, 2])
 def test_poisson_solver_general(dim):
-    """ test the poisson solver on Cartesian grids """
+    """test the poisson solver on Cartesian grids"""
     bcs = _get_random_grid_bcs(dim)
 
     poisson = bcs.grid.get_operator("poisson_solver", bcs)
@@ -315,7 +315,7 @@ def test_poisson_solver_general(dim):
 
 
 def test_2nd_order_bc():
-    """ test whether 2nd order boundary conditions can be used """
+    """test whether 2nd order boundary conditions can be used"""
     grid = UnitGrid([8, 8])
     field = ScalarField.random_uniform(grid)
     field.laplace([{"value": "sin(y)"}, {"value": "x"}])
@@ -323,7 +323,7 @@ def test_2nd_order_bc():
 
 @pytest.mark.parametrize("ndim,axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)])
 def test_make_derivative(ndim, axis):
-    """ test the make derivative function """
+    """test the make derivative function"""
     periodic = random.choice([True, False])
     grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
     field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add)

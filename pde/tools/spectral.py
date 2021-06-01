@@ -58,7 +58,7 @@ def make_colored_noise(
     if exponent == 0:
         # fast case of white noise
         def noise_normal():
-            """ return array of colored noise """
+            """return array of colored noise"""
             return scale * np.random.randn(*shape)
 
         return noise_normal
@@ -82,7 +82,7 @@ def make_colored_noise(
     # TODO: accelerate the FFT using the pyfftw package
 
     def noise_colored() -> np.ndarray:
-        """ return array of colored noise """
+        """return array of colored noise"""
         # random field
         arr: np.ndarray = np.random.randn(*shape)
 

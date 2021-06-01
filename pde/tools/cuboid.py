@@ -16,7 +16,7 @@ from .typing import FloatNumerical
 
 
 class Cuboid:
-    """ class that represents a cuboid in :math:`n` dimensions """
+    """class that represents a cuboid in :math:`n` dimensions"""
 
     def __init__(self, pos, size, mutable: bool = True):
         """defines a cuboid from a position and a size vector
@@ -57,7 +57,7 @@ class Cuboid:
 
     @property
     def corners(self) -> Tuple[np.ndarray, np.ndarray]:
-        """ return coordinates of two extreme corners defining the cuboid """
+        """return coordinates of two extreme corners defining the cuboid"""
         return np.copy(self.pos), self.pos + self.size
 
     @property
@@ -124,7 +124,7 @@ class Cuboid:
         )
 
     def __add__(self, other: "Cuboid") -> "Cuboid":
-        """ The sum of two cuboids is the minimal cuboid enclosing both """
+        """The sum of two cuboids is the minimal cuboid enclosing both"""
         if isinstance(other, Cuboid):
             if self.dim != other.dim:
                 raise RuntimeError("Incompatible dimensions")
@@ -136,7 +136,7 @@ class Cuboid:
             return NotImplemented
 
     def __eq__(self, other) -> bool:
-        """ override the default equality test """
+        """override the default equality test"""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return np.all(self.pos == other.pos) and np.all(self.size == other.size)  # type: ignore
@@ -151,12 +151,12 @@ class Cuboid:
 
     @property
     def vertices(self) -> List[List[float]]:
-        """ return the coordinates of all the corners """
+        """return the coordinates of all the corners"""
         return list(itertools.product(*self.bounds))  # type: ignore
 
     @property
     def diagonal(self) -> float:
-        """ returns the length of the diagonal """
+        """returns the length of the diagonal"""
         return np.linalg.norm(self.size)  # type: ignore
 
     @property
@@ -193,7 +193,7 @@ class Cuboid:
         return np.prod(self.size)  # type: ignore
 
     def buffer(self, amount: FloatNumerical = 0, inplace=False) -> "Cuboid":
-        """ dilate the cuboid by a certain amount in all directions """
+        """dilate the cuboid by a certain amount in all directions"""
         amount = np.asarray(amount)
         if inplace:
             self.pos -= amount

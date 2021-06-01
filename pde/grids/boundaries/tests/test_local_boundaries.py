@@ -10,7 +10,7 @@ from pde.grids.boundaries.local import BCBase, _get_arr_1d
 
 
 def test_get_arr_1d():
-    """ test the _get_arr_1d function """
+    """test the _get_arr_1d function"""
     # 1d
     a = np.arange(3)
     arr_1d, i, bc_idx = _get_arr_1d(a, [1], 0)
@@ -49,7 +49,7 @@ def test_get_arr_1d():
 
 
 def test_individual_boundaries():
-    """ test setting individual boundaries """
+    """test setting individual boundaries"""
     g = UnitGrid([2])
     for data in [
         "value",
@@ -80,7 +80,7 @@ def test_individual_boundaries():
 
 
 def test_individual_boundaries_multidimensional():
-    """ test setting individual boundaries in 2d """
+    """test setting individual boundaries in 2d"""
     g2 = UnitGrid([2, 3])
     bc = BCBase.from_data(g2, 0, True, {"type": "value", "value": [1, 2]}, rank=1)
 
@@ -106,7 +106,7 @@ def test_individual_boundaries_multidimensional():
 
 
 def test_virtual_points():
-    """ test the calculation of virtual points """
+    """test the calculation of virtual points"""
     g = UnitGrid([2])
     data = np.array([1, 2])
 
@@ -146,7 +146,7 @@ def test_virtual_points():
 
 @pytest.mark.parametrize("upper", [False, True])
 def test_virtual_points_linked_data(upper):
-    """ test the calculation of virtual points with linked_data """
+    """test the calculation of virtual points with linked_data"""
     g = UnitGrid([2, 2])
     point = (1, 1) if upper else (0, 0)
     data = np.zeros(g.shape)
@@ -187,7 +187,7 @@ def test_virtual_points_linked_data(upper):
 
 
 def test_mixed_condition():
-    """ test the calculation of virtual points """
+    """test the calculation of virtual points"""
     g = UnitGrid([2])
     data = np.array([1, 2])
 
@@ -211,7 +211,7 @@ def test_mixed_condition():
 
 
 def test_inhomogeneous_bcs_1d():
-    """ test inhomogeneous boundary conditions in 1d grids """
+    """test inhomogeneous boundary conditions in 1d grids"""
     g = UnitGrid([2])
     data = np.ones((2,))  # field is 1 everywhere
 
@@ -234,7 +234,7 @@ def test_inhomogeneous_bcs_1d():
 
 
 def test_inhomogeneous_bcs_2d():
-    """ test inhomogeneous boundary conditions in 2d grids """
+    """test inhomogeneous boundary conditions in 2d grids"""
     g = UnitGrid([2, 2])
     data = np.ones((2, 2))
 

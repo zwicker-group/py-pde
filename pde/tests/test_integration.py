@@ -12,7 +12,7 @@ from pde.tools.misc import skipUnlessModule
 
 @skipUnlessModule("h5py")
 def test_writing_to_storage(tmp_path):
-    """ test whether data is written to storage """
+    """test whether data is written to storage"""
     state = ScalarField.random_uniform(UnitGrid([3]))
     pde = DiffusionPDE()
     path = tmp_path / "test_writing_to_storage.hdf5"
@@ -23,7 +23,7 @@ def test_writing_to_storage(tmp_path):
 
 
 def test_inhomogeneous_bcs():
-    """ test simulation with inhomogeneous boundary conditions """
+    """test simulation with inhomogeneous boundary conditions"""
     # single coordinate
     grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], [32, 2], periodic=[True, False])
     state = ScalarField(grid)

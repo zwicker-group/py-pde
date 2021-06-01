@@ -71,7 +71,7 @@ class ScipySolver(SolverBase):
         rhs = self._make_pde_rhs(state, backend=self.backend)
 
         def rhs_helper(t: float, state_flat: np.ndarray) -> np.ndarray:
-            """ helper function to provide the correct call convention """
+            """helper function to provide the correct call convention"""
             return rhs(state_flat.reshape(shape), t).flat  # type: ignore
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:

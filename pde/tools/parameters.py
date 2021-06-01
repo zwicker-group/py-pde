@@ -26,7 +26,7 @@ from .misc import hybridmethod, import_class
 
 
 class Parameter:
-    """ class representing a single parameter """
+    """class representing a single parameter"""
 
     def __init__(
         self,
@@ -130,13 +130,13 @@ class Parameter:
 
 
 class DeprecatedParameter(Parameter):
-    """ a parameter that can still be used normally but is deprecated """
+    """a parameter that can still be used normally but is deprecated"""
 
     pass
 
 
 class HideParameter:
-    """ a helper class that allows hiding parameters of the parent classes """
+    """a helper class that allows hiding parameters of the parent classes"""
 
     def __init__(self, name: str):
         """
@@ -151,7 +151,7 @@ ParameterListType = Sequence[Union[Parameter, HideParameter]]
 
 
 class Parameterized:
-    """ a mixin that manages the parameters of a class """
+    """a mixin that manages the parameters of a class"""
 
     parameters_default: ParameterListType = []
     _subclasses: Dict[str, "Parameterized"] = {}
@@ -177,7 +177,7 @@ class Parameterized:
             )
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """ register all subclasses to reconstruct them later """
+        """register all subclasses to reconstruct them later"""
         # normalize the parameters_default attribute
         if hasattr(cls, "parameters_default") and isinstance(
             cls.parameters_default, dict
@@ -225,7 +225,7 @@ class Parameterized:
 
         # filter parameters based on hidden and deprecated flags
         def show(p):
-            """ helper function to decide whether parameter will be shown """
+            """helper function to decide whether parameter will be shown"""
             # show based on hidden flag?
             show1 = include_hidden or not p.hidden
             # show based on deprecated flag?

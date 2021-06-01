@@ -8,19 +8,19 @@ from pde.tools.numba import flat_idx, jit_allocate_out, numba_environment
 
 
 def test_environment():
-    """ test function signature checks """
+    """test function signature checks"""
     assert isinstance(numba_environment(), dict)
 
 
 def test_flat_idx():
-    """ test flat_idx function """
+    """test flat_idx function"""
     assert flat_idx(2, 1) == 2
     assert flat_idx(np.arange(2), 1) == 1
     assert flat_idx(np.arange(4).reshape(2, 2), 1) == 1
 
 
 def test_jit_allocate_out_1arg():
-    """ test jit_allocate_out of functions with 1 argument """
+    """test jit_allocate_out of functions with 1 argument"""
 
     def f(arr, out):
         out[:] = arr
@@ -33,7 +33,7 @@ def test_jit_allocate_out_1arg():
 
 
 def test_jit_allocate_out_2arg():
-    """ test jit_allocate_out of functions with 1 argument """
+    """test jit_allocate_out of functions with 1 argument"""
 
     def f(a, b, out):
         out[:] = a + b

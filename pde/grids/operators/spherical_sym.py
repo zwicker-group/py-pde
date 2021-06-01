@@ -66,7 +66,7 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> OperatorType:
 
         @jit_allocate_out(out_shape=(dim_r,))
         def laplace(arr, out=None):
-            """ apply laplace operator to array `arr` """
+            """apply laplace operator to array `arr`"""
             i = 0
             out[i] = factor_h[i] * (arr[i + 1] - arr[i])
             if r_min > 0:
@@ -89,7 +89,7 @@ def make_laplace(bcs: Boundaries, conservative: bool = True) -> OperatorType:
 
         @jit_allocate_out(out_shape=(dim_r,))
         def laplace(arr, out=None):
-            """ apply laplace operator to array `arr` """
+            """apply laplace operator to array `arr`"""
             i = 0
             if r_min == 0:
                 out[i] = 3 * (arr[i + 1] - arr[i]) * dr2
@@ -143,7 +143,7 @@ def make_gradient(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(3, dim_r))
     def gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         i = 0
         if r_min == 0:
             # Apply Neumann condition at the origin
@@ -205,7 +205,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType
 
         @jit_allocate_out(out_shape=(dim_r,))
         def gradient_squared(arr, out=None):
-            """ apply squared gradient operator to array `arr` """
+            """apply squared gradient operator to array `arr`"""
             if r_min == 0:
                 # Apply Neumann condition at the origin
                 out[0] = (arr[1] - arr[0]) ** 2 * scale
@@ -228,7 +228,7 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType
 
         @jit_allocate_out(out_shape=(dim_r,))
         def gradient_squared(arr, out=None):
-            """ apply squared gradient operator to array `arr` """
+            """apply squared gradient operator to array `arr`"""
             if r_min == 0:
                 # Apply Neumann condition at the origin
                 out[0] = (arr[1] - arr[0]) ** 2 * scale
@@ -283,7 +283,7 @@ def make_divergence(bcs: Boundaries) -> OperatorType:
 
         @jit_allocate_out(out_shape=(dim_r,))
         def divergence(arr, out=None):
-            """ apply divergence operator to array `arr` """
+            """apply divergence operator to array `arr`"""
             i = 0
             out[i] = (arr[0, 1] + 7 * arr[0, 0]) * scale_r
 
@@ -303,7 +303,7 @@ def make_divergence(bcs: Boundaries) -> OperatorType:
 
         @jit_allocate_out(out_shape=(dim_r,))
         def divergence(arr, out=None):
-            """ apply divergence operator to array `arr` """
+            """apply divergence operator to array `arr`"""
             # inner radial boundary condition
             i = 0
             arr_r_l = value_lower_bc(arr[0], (i,))
@@ -345,7 +345,7 @@ def make_vector_gradient(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(3, 3) + bcs.grid.shape)
     def vector_gradient(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         gradient_r(arr[0], out=out[:, 0])
         gradient_theta(arr[1], out=out[:, 1])
         gradient_phi(arr[2], out=out[:, 2])
@@ -377,7 +377,7 @@ def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
 
     @jit_allocate_out(out_shape=(3,) + bcs.grid.shape)
     def tensor_divergence(arr, out=None):
-        """ apply gradient operator to array `arr` """
+        """apply gradient operator to array `arr`"""
         divergence_r(arr[0], out=out[0])
         divergence_theta(arr[1], out=out[1])
         divergence_phi(arr[2], out=out[2])

@@ -17,7 +17,7 @@ from ..tools.misc import classproperty
 
 
 class SolverBase(metaclass=ABCMeta):
-    """ base class for simulations """
+    """base class for simulations"""
 
     _subclasses: Dict[str, "SolverBase"] = {}  # all inheriting classes
 
@@ -35,7 +35,7 @@ class SolverBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """ register all subclassess to reconstruct them later """
+        """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
@@ -82,7 +82,7 @@ class SolverBase(metaclass=ABCMeta):
 
     @classproperty
     def registered_solvers(cls) -> List[str]:  # @NoSelf
-        """ list of str: the names of the registered solvers """
+        """list of str: the names of the registered solvers"""
         return list(sorted(cls._subclasses.keys()))
 
     def _make_pde_rhs(

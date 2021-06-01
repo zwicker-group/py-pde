@@ -57,7 +57,7 @@ class CahnHilliardPDE(PDEBase):
 
     @property
     def expression(self) -> str:
-        """ str: the expression of the right hand side of this PDE """
+        """str: the expression of the right hand side of this PDE"""
         return f"laplace(c**3 - c - {expr_prod(self.interface_width, 'laplace(c)')})"
 
     def evolution_rate(  # type: ignore
@@ -106,7 +106,7 @@ class CahnHilliardPDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """
+            """compiled helper function evaluating right hand side"""
             mu = state_data ** 3 - state_data - interface_width * laplace_c(state_data)
             return laplace_mu(mu)
 

@@ -10,7 +10,7 @@ from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 
 
 def test_memory_storage():
-    """ test methods specific to memory storage """
+    """test methods specific to memory storage"""
     sf = ScalarField(UnitGrid([1]))
     s1 = MemoryStorage()
     s1.start_writing(sf)
@@ -33,7 +33,7 @@ def test_memory_storage():
 
 
 def test_field_type_guessing():
-    """ test the ability to guess the field type """
+    """test the ability to guess the field type"""
     for cls in [ScalarField, VectorField, Tensor2Field]:
         grid = UnitGrid([3])
         field = cls.random_normal(grid)

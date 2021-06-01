@@ -16,14 +16,14 @@ from pde.solvers import (
 
 
 def test_solver_registration():
-    """ test solver registration """
+    """test solver registration"""
     solvers = registered_solvers()
     assert "explicit" in solvers
     assert "scipy" in solvers
 
 
 def test_solver_in_pde_class():
-    """ test whether solver instances can be used in pde instances """
+    """test whether solver instances can be used in pde instances"""
     field = ScalarField.random_uniform(UnitGrid([16, 16]), -1, 1)
     eq = DiffusionPDE()
     eq.solve(field, t_range=1, method=ScipySolver, tracker=None)
@@ -31,7 +31,7 @@ def test_solver_in_pde_class():
 
 @pytest.mark.parametrize("solver_class", [ExplicitSolver, ImplicitSolver, ScipySolver])
 def test_compare_solvers(solver_class):
-    """ compare several solvers """
+    """compare several solvers"""
     field = ScalarField.random_uniform(UnitGrid([8, 8]), -1, 1)
     eq = DiffusionPDE()
 
@@ -48,7 +48,7 @@ def test_compare_solvers(solver_class):
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_solvers_complex(backend):
-    """ test solvers with a complex PDE """
+    """test solvers with a complex PDE"""
     r = FieldCollection.scalar_random_uniform(2, UnitGrid([3]), labels=["a", "b"])
     c = r["a"] + 1j * r["b"]
     assert c.is_complex

@@ -112,11 +112,11 @@ class ScalarField(DataFieldBase):
 
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
-        """ set the data from a value from a collection """
+        """set the data from a value from a collection"""
         self._data = value[0]
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        """ support unary numpy ufuncs, like np.sin, but also np.multiply """
+        """support unary numpy ufuncs, like np.sin, but also np.multiply"""
         if method == "__call__":
             # only support unary functions in simple calls
 
@@ -248,7 +248,7 @@ class ScalarField(DataFieldBase):
 
     @property
     def integral(self) -> Number:
-        """ Number: integral of the scalar field over space """
+        """Number: integral of the scalar field over space"""
         return self.grid.integrate(self.data)  # type: ignore
 
     def project(
