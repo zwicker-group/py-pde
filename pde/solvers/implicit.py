@@ -20,7 +20,7 @@ class ConvergenceError(RuntimeError):
 
 
 class ImplicitSolver(SolverBase):
-    """ class for solving partial differential equations implicitly """
+    """class for solving partial differential equations implicitly"""
 
     name = "implicit"
 
@@ -89,7 +89,7 @@ class ImplicitSolver(SolverBase):
         def inner_stepper(
             state_data: np.ndarray, t_start: float, steps: int
         ) -> Tuple[float, int]:
-            """ compiled inner loop for speed """
+            """compiled inner loop for speed"""
             nfev = 0  # count function evaluations
             for i in range(steps):
                 t = t_start + i * dt  # current time point

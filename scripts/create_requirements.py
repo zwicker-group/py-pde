@@ -13,7 +13,7 @@ PACKAGE_PATH = Path(__file__).resolve().parents[1]
 
 @dataclass
 class Requirement:
-    """ simple class collecting data for a single required python package """
+    """simple class collecting data for a single required python package"""
 
     name: str  # name of the python package
     version: str  # minimal version
@@ -171,7 +171,7 @@ def write_requirements_csv(
 
 
 def main():
-    """ main function creating all the requirements """
+    """main function creating all the requirements"""
     # write basic requirements
     write_requirements_txt(
         Path(PACKAGE_PATH) / "requirements.txt",

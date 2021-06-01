@@ -13,14 +13,14 @@ from pde.grids.boundaries import Boundaries, DomainError, PeriodicityError
 
 
 def _get_cartesian_grid(dim=2, periodic=True):
-    """ return a random Cartesian grid of given dimension """
+    """return a random Cartesian grid of given dimension"""
     bounds = [[0, 1 + np.random.random()] for _ in range(dim)]
     shape = np.random.randint(32, 64, size=dim)
     return CartesianGrid(bounds, shape, periodic=periodic)
 
 
 def test_degenerated_grid():
-    """ test degenerated grids """
+    """test degenerated grids"""
     with pytest.raises(ValueError):
         UnitGrid([])
     with pytest.raises(ValueError):
@@ -28,7 +28,7 @@ def test_degenerated_grid():
 
 
 def test_generic_cartesian_grid():
-    """ test generic cartesian grid functions """
+    """test generic cartesian grid functions"""
     for dim in (1, 2, 3):
         periodic = random.choices([True, False], k=dim)
         shape = np.random.randint(2, 8, size=dim)
@@ -63,7 +63,7 @@ def test_generic_cartesian_grid():
 
 @pytest.mark.parametrize("periodic", [True, False])
 def test_unit_grid_1d(periodic):
-    """ test 1D grids """
+    """test 1D grids"""
     grid = UnitGrid(4, periodic=periodic)
     assert grid.dim == 1
     assert grid.numba_type == "f8[:]"
@@ -112,7 +112,7 @@ def test_unit_grid_1d(periodic):
 
 
 def test_unit_grid_2d():
-    """ test 2D grids """
+    """test 2D grids"""
     # test special case
     grid = UnitGrid([4, 4], periodic=True)
     assert grid.dim == 2
@@ -164,7 +164,7 @@ def test_unit_grid_2d():
 
 
 def test_unit_grid_3d():
-    """ test 3D grids """
+    """test 3D grids"""
     grid = UnitGrid([4, 4, 4])
     assert grid.dim == 3
     assert grid.numba_type == "f8[:, :, :]"
@@ -195,7 +195,7 @@ def test_unit_grid_3d():
 
 
 def test_rect_grid_1d():
-    """ test 1D grids """
+    """test 1D grids"""
     grid = CartesianGrid([32], 16, periodic=False)
     assert grid.dim == 1
     assert grid.volume == 32
@@ -229,7 +229,7 @@ def test_rect_grid_1d():
 
 
 def test_rect_grid_2d():
-    """ test 2D grids """
+    """test 2D grids"""
     grid = CartesianGrid([[2], [2]], 4, periodic=True)
     assert grid.get_image_data(np.zeros(grid.shape))["extent"] == [0, 2, 0, 2]
     for _ in range(10):
@@ -260,7 +260,7 @@ def test_rect_grid_2d():
 
 
 def test_rect_grid_3d():
-    """ test 3D grids """
+    """test 3D grids"""
     grid = CartesianGrid([4, 4, 4], 4)
     assert grid.dim == 3
     assert grid.volume == 64
@@ -310,7 +310,7 @@ def test_unit_rect_grid(periodic):
 
 
 def test_conversion_unit_rect_grid():
-    """ test the conversion from unit to rectangular grid """
+    """test the conversion from unit to rectangular grid"""
     dim = random.randrange(1, 4)
     shape = np.random.randint(2, 10, size=dim)
     periodic = random.choices([True, False], k=dim)
@@ -323,7 +323,7 @@ def test_conversion_unit_rect_grid():
 
 
 def test_setting_boundary_conditions():
-    """ test setting some boundary conditions """
+    """test setting some boundary conditions"""
     grid = UnitGrid([3, 3], periodic=[True, False])
     for bc in [
         grid.get_boundary_conditions("natural"),
@@ -345,7 +345,7 @@ def test_setting_boundary_conditions():
 
 
 def test_setting_domain_rect():
-    """ test various versions of settings bcs for cartesian grids """
+    """test various versions of settings bcs for cartesian grids"""
     grid = UnitGrid([2, 2])
     grid.get_boundary_conditions(["derivative", "derivative"])
 
@@ -369,7 +369,7 @@ def test_setting_domain_rect():
 
 
 def test_interpolate_1d():
-    """ test interpolation of 1d grid """
+    """test interpolation of 1d grid"""
     grid = UnitGrid(2, periodic=False)
     intp = grid.make_interpolator_compiled(bc={"type": "value", "value": 1})
 
@@ -387,7 +387,7 @@ def test_interpolate_1d():
 
 
 def test_interpolate_2d():
-    """ test interpolation of 2d grid """
+    """test interpolation of 2d grid"""
     grid = UnitGrid([2, 2], periodic=False)
     intp = grid.make_interpolator_compiled(bc={"type": "value", "value": 1})
 
@@ -395,7 +395,7 @@ def test_interpolate_2d():
 
 
 def test_interpolate_3d():
-    """ test interpolation of 3d grid """
+    """test interpolation of 3d grid"""
     grid = UnitGrid([2, 2, 2], periodic=False)
     intp = grid.make_interpolator_compiled(bc={"type": "value", "value": 1})
 
@@ -405,7 +405,7 @@ def test_interpolate_3d():
 
 @pytest.mark.parametrize("reflect", [True, False])
 def test_normalize_point(reflect):
-    """ test normalize_point method for Cartesian Grids """
+    """test normalize_point method for Cartesian Grids"""
     grid = CartesianGrid([[1, 3]], [1], periodic=False)
 
     norm_numba = grid.make_normalize_point_compiled(reflect=reflect)

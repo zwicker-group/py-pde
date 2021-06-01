@@ -86,12 +86,12 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
     @property
     def state(self) -> Dict[str, Any]:
-        """ state: the state of the grid """
+        """state: the state of the grid"""
         return {"radius": self.radius, "shape": self.shape}
 
     @property
     def has_hole(self) -> bool:
-        """ returns whether the inner radius is larger than zero """
+        """returns whether the inner radius is larger than zero"""
         return self.axes_bounds[0][0] > 0
 
     @classmethod
@@ -110,7 +110,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
     @property
     def radius(self) -> Union[float, Tuple[float, float]]:
-        """ float: radius of the sphere """
+        """float: radius of the sphere"""
         r_inner, r_outer = self.axes_bounds[0]
         if r_inner == 0:
             return r_outer
@@ -119,7 +119,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
     @property
     def volume(self) -> float:
-        """ float: total volume of the grid """
+        """float: total volume of the grid"""
         r_inner, r_outer = self.axes_bounds[0]
         volume = volume_from_radius(r_outer, dim=self.dim)
         if r_inner > 0:
@@ -128,7 +128,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
     @cached_property()
     def cell_volume_data(self) -> Tuple[np.ndarray]:
-        """ tuple of :class:`~numpy.ndarray`: the volumes of all cells """
+        """tuple of :class:`~numpy.ndarray`: the volumes of all cells"""
         dr = self.discretization[0]
         rs = self.axes_coords[0]
         volumes_h = volume_from_radius(rs + 0.5 * dr, dim=self.dim)
@@ -619,7 +619,7 @@ class PolarGrid(PolarSymGrid):
     """
 
     def __init__(self, *args, **kwargs):
-        """ class deprecated since 2021-05-21 """
+        """class deprecated since 2021-05-21"""
         warnings.warn(
             "PolarGrid is a deprecated class. Use PolarSymGrid instead",
             DeprecationWarning,
@@ -635,7 +635,7 @@ class SphericalGrid(SphericalSymGrid):
     """
 
     def __init__(self, *args, **kwargs):
-        """ class deprecated since 2021-05-21 """
+        """class deprecated since 2021-05-21"""
         warnings.warn(
             "PolarGrid is a deprecated class. Use SphericalSymGrid instead",
             DeprecationWarning,

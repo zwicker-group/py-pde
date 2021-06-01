@@ -45,7 +45,7 @@ BoundaryData = Union[Dict, str, "BCBase"]
 
 
 class BCDataError(ValueError):
-    """ exception that signals that incompatible data was supplied for the BC """
+    """exception that signals that incompatible data was supplied for the BC"""
 
     pass
 
@@ -128,7 +128,7 @@ def _make_get_arr_1d(
     if dim == 1:
 
         def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
-            """ extract the 1d array along axis at point idx """
+            """extract the 1d array along axis at point idx"""
             i = idx[0]
             bc_idx: Tuple = (...,)
             arr_1d = arr
@@ -138,7 +138,7 @@ def _make_get_arr_1d(
         if axis == 0:
 
             def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
-                """ extract the 1d array along axis at point idx """
+                """extract the 1d array along axis at point idx"""
                 i, y = idx
                 bc_idx = (..., y)
                 arr_1d = arr[..., :, y]
@@ -147,7 +147,7 @@ def _make_get_arr_1d(
         elif axis == 1:
 
             def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
-                """ extract the 1d array along axis at point idx """
+                """extract the 1d array along axis at point idx"""
                 x, i = idx
                 bc_idx = (..., x)
                 arr_1d = arr[..., x, :]
@@ -157,7 +157,7 @@ def _make_get_arr_1d(
         if axis == 0:
 
             def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
-                """ extract the 1d array along axis at point idx """
+                """extract the 1d array along axis at point idx"""
                 i, y, z = idx
                 bc_idx = (..., y, z)
                 arr_1d = arr[..., :, y, z]
@@ -166,7 +166,7 @@ def _make_get_arr_1d(
         elif axis == 1:
 
             def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
-                """ extract the 1d array along axis at point idx """
+                """extract the 1d array along axis at point idx"""
                 x, i, z = idx
                 bc_idx = (..., x, z)
                 arr_1d = arr[..., x, :, z]
@@ -175,7 +175,7 @@ def _make_get_arr_1d(
         elif axis == 2:
 
             def get_arr_1d(arr: np.ndarray, idx: Tuple[int, ...]) -> ResultType:
-                """ extract the 1d array along axis at point idx """
+                """extract the 1d array along axis at point idx"""
                 x, y, i = idx
                 bc_idx = (..., x, y)
                 arr_1d = arr[..., x, y, :]
@@ -188,7 +188,7 @@ def _make_get_arr_1d(
 
 
 class BCBase(metaclass=ABCMeta):
-    """ represents a single boundary in an BoundaryPair instance """
+    """represents a single boundary in an BoundaryPair instance"""
 
     names: List[str]
     """ list: identifiers used to specify the given boundary class """
@@ -255,7 +255,7 @@ class BCBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """ register all subclassess to reconstruct them later """
+        """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "names"):
@@ -361,7 +361,7 @@ class BCBase(metaclass=ABCMeta):
 
     @property
     def axis_coord(self) -> float:
-        """float: value of the coordinate that defines this boundary condition """
+        """float: value of the coordinate that defines this boundary condition"""
         if self.upper:
             return self.grid.axes_bounds[self.axis][1]
         else:
@@ -401,7 +401,7 @@ class BCBase(metaclass=ABCMeta):
         self.value_is_linked = False
 
     def link_value(self, value: np.ndarray):
-        """ link value of this boundary condition to external array """
+        """link value of this boundary condition to external array"""
         assert value.data.c_contiguous
 
         shape = self._shape_tensor + self._shape_boundary
@@ -439,7 +439,7 @@ class BCBase(metaclass=ABCMeta):
 
         @nb.jit(nb.typeof(self._value)(), inline="always")
         def get_value() -> np.ndarray:
-            """ helper function returning the linked array """
+            """helper function returning the linked array"""
             return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
 
         # keep a reference to the array to prevent garbage collection
@@ -449,7 +449,7 @@ class BCBase(metaclass=ABCMeta):
 
     @classmethod
     def get_help(cls) -> str:
-        """ Return information on how boundary conditions can be set """
+        """Return information on how boundary conditions can be set"""
         types = ", ".join(
             f"'{subclass.names[0]}'"
             for subclass in cls._subclasses.values()
@@ -492,7 +492,7 @@ class BCBase(metaclass=ABCMeta):
             return self.__repr__()
 
     def __eq__(self, other):
-        """ checks for equality neglecting the `upper` property """
+        """checks for equality neglecting the `upper` property"""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return (
@@ -508,7 +508,7 @@ class BCBase(metaclass=ABCMeta):
         return not self == other
 
     def _cache_hash(self) -> int:
-        """ returns a value to determine when a cache needs to be updated """
+        """returns a value to determine when a cache needs to be updated"""
         if self.value_is_linked:
             value: Union[int, bytes] = self.value.ctypes.data
         else:
@@ -524,7 +524,7 @@ class BCBase(metaclass=ABCMeta):
         rank: int = None,
         value: Union[float, np.ndarray, str] = None,
     ) -> "BCBase":
-        """ return a copy of itself, but with a reference to the same grid """
+        """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -724,12 +724,12 @@ class BCBase(metaclass=ABCMeta):
 
     @property
     def differentiated(self) -> "BCBase":
-        """ BCBase: differentiated version of this boundary condition """
+        """BCBase: differentiated version of this boundary condition"""
         raise NotImplementedError
 
 
 class BCBase1stOrder(BCBase):
-    """ represents a single boundary in an BoundaryPair instance """
+    """represents a single boundary in an BoundaryPair instance"""
 
     @abstractmethod
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
@@ -820,7 +820,7 @@ class BCBase1stOrder(BCBase):
 
             @register_jitable(inline="always")
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
-                """ evaluate the virtual point at `idx` """
+                """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
                 return const() + factor() * arr_1d[..., index]  # type: ignore
 
@@ -828,7 +828,7 @@ class BCBase1stOrder(BCBase):
 
             @register_jitable(inline="always")
             def virtual_point(arr, idx: Tuple[int, ...]) -> float:
-                """ evaluate the virtual point at `idx` """
+                """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
                 return (  # type: ignore
                     const()[bc_idx] + factor()[bc_idx] * arr_1d[..., index]
@@ -872,7 +872,7 @@ class BCBase1stOrder(BCBase):
             def adjacent_point(
                 arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
             ) -> FloatNumerical:
-                """ evaluate the value adjacent to the current point """
+                """evaluate the value adjacent to the current point"""
                 # determine the parameters for evaluating adjacent point. Note
                 # that defining the variables c and f for the interior points
                 # seems needless, but it turns out that this results in a 10x
@@ -895,7 +895,7 @@ class BCBase1stOrder(BCBase):
 
             @register_jitable(inline="always")
             def adjacent_point(arr_1d, i_point, bc_idx) -> float:
-                """ evaluate the value adjacent to the current point """
+                """evaluate the value adjacent to the current point"""
                 # determine the parameters for evaluating adjacent point. Note
                 # that defining the variables c and f for the interior points
                 # seems needless, but it turns out that this results in a 10x
@@ -914,7 +914,7 @@ class BCBase1stOrder(BCBase):
 
 
 class DirichletBC(BCBase1stOrder):
-    """ represents a boundary condition imposing the value """
+    """represents a boundary condition imposing the value"""
 
     names = ["value", "dirichlet"]  # identifiers for this boundary condition
 
@@ -967,7 +967,7 @@ class DirichletBC(BCBase1stOrder):
 
     @property
     def differentiated(self) -> BCBase:
-        """ BCBase: differentiated version of this boundary condition """
+        """BCBase: differentiated version of this boundary condition"""
         return NeumannBC(
             grid=self.grid,
             axis=self.axis,
@@ -1034,7 +1034,7 @@ class NeumannBC(BCBase1stOrder):
 
     @property
     def differentiated(self) -> BCBase:
-        """ BCBase: differentiated version of this boundary condition """
+        """BCBase: differentiated version of this boundary condition"""
         return CurvatureBC(
             grid=self.grid,
             axis=self.axis,
@@ -1109,13 +1109,13 @@ class MixedBC(BCBase1stOrder):
         self.const = self._parse_value(const)
 
     def __eq__(self, other):
-        """ checks for equality neglecting the `upper` property """
+        """checks for equality neglecting the `upper` property"""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return super().__eq__(other) and self.const == other.const
 
     def _cache_hash(self) -> int:
-        """ returns a value to determine when a cache needs to be updated """
+        """returns a value to determine when a cache needs to be updated"""
         return hash((super()._cache_hash(), self.const.tobytes()))
 
     def copy(
@@ -1125,7 +1125,7 @@ class MixedBC(BCBase1stOrder):
         value: Union[float, np.ndarray, str] = None,
         const: Union[float, np.ndarray, str] = None,
     ) -> "MixedBC":
-        """ return a copy of itself, but with a reference to the same grid """
+        """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
             grid=self.grid,
             axis=self.axis,
@@ -1214,7 +1214,7 @@ class MixedBC(BCBase1stOrder):
 
 
 class BCBase2ndOrder(BCBase):
-    """ abstract base class for boundary conditions of 2nd order """
+    """abstract base class for boundary conditions of 2nd order"""
 
     @abstractmethod
     def get_virtual_point_data(self) -> Tuple[Any, Any, int, Any, int]:
@@ -1326,7 +1326,7 @@ class BCBase2ndOrder(BCBase):
 
             @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]):
-                """ evaluate the virtual point at `idx` """
+                """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
 
                 return (
@@ -1339,7 +1339,7 @@ class BCBase2ndOrder(BCBase):
 
             @register_jitable
             def virtual_point(arr, idx: Tuple[int, ...]):
-                """ evaluate the virtual point at `idx` """
+                """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
 
                 return (
@@ -1394,7 +1394,7 @@ class BCBase2ndOrder(BCBase):
             def adjacent_point(
                 arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
             ):
-                """ evaluate the value adjacent to the current point """
+                """evaluate the value adjacent to the current point"""
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
                     data = data_vp
@@ -1415,7 +1415,7 @@ class BCBase2ndOrder(BCBase):
             def adjacent_point(
                 arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
             ):
-                """ evaluate the value adjacent to the current point """
+                """evaluate the value adjacent to the current point"""
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
                     data = data_vp

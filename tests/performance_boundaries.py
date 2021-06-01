@@ -17,7 +17,7 @@ from pde.tools.misc import estimate_computation_speed
 
 
 def main():
-    """ main routine testing the performance """
+    """main routine testing the performance"""
     print("Reports calls-per-second (larger is better)\n")
 
     # Cartesian grid with different shapes and boundary conditions

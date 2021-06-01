@@ -10,7 +10,7 @@ from pde.pdes import solve_laplace_equation, solve_poisson_equation
 
 
 def test_pde_poisson_solver_1d():
-    """ test the poisson solver on 1d grids """
+    """test the poisson solver on 1d grids"""
     # solve Laplace's equation
     grid = UnitGrid([4])
     res = solve_laplace_equation(grid, bc=[{"value": -1}, {"value": 3}])
@@ -37,7 +37,7 @@ def test_pde_poisson_solver_1d():
 
 
 def test_pde_poisson_solver_2d():
-    """ test the poisson solver on 2d grids """
+    """test the poisson solver on 2d grids"""
     grid = CartesianGrid([[0, 2 * np.pi]] * 2, 16)
     bcs = [{"value": "sin(y)"}, {"value": "sin(x)"}]
 

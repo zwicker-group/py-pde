@@ -10,7 +10,7 @@ from pde.solvers import Controller, ExplicitSolver
 
 
 def test_compare_explicit():
-    """ test explicit solvers """
+    """test explicit solvers"""
     grid = UnitGrid([16, 16])
     field = ScalarField.random_uniform(grid, -1, 1)
     eq = DiffusionPDE()
@@ -27,7 +27,7 @@ def test_compare_explicit():
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
 def test_stochastic_solvers(backend):
-    """ test simple version of the stochastic solver """
+    """test simple version of the stochastic solver"""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1)
     eq = DiffusionPDE()
     seq = DiffusionPDE(noise=1e-6)
@@ -46,7 +46,7 @@ def test_stochastic_solvers(backend):
 
 
 def test_unsupported_stochastic_solvers():
-    """ test some solvers that do not support stochasticity """
+    """test some solvers that do not support stochasticity"""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1)
     eq = DiffusionPDE(noise=1)
 

@@ -20,7 +20,7 @@ from typing import List, Type  # @UnusedImport
 
 
 class SimpleProgress:
-    """ indicates progress by printing dots to stderr """
+    """indicates progress by printing dots to stderr"""
 
     def __init__(self, iterable=None, *args, **kwargs):
         self.iterable = iterable
@@ -108,7 +108,7 @@ def display_progress(iterator, total=None, enabled=True, **kwargs):
 
 
 class OutputBase(metaclass=ABCMeta):
-    """ base class for output management """
+    """base class for output management"""
 
     @abstractmethod
     def __call__(self, line: str):
@@ -120,7 +120,7 @@ class OutputBase(metaclass=ABCMeta):
 
 
 class BasicOutput(OutputBase):
-    """ class that writes text line to stdout """
+    """class that writes text line to stdout"""
 
     def __init__(self, stream=sys.stdout):
         """
@@ -138,12 +138,12 @@ class BasicOutput(OutputBase):
         self.stream.write(line + "\n")
 
     def show(self):
-        """ shows the actual text """
+        """shows the actual text"""
         self.stream.flush()
 
 
 class JupyterOutput(OutputBase):
-    """ class that writes text lines as html in a jupyter cell """
+    """class that writes text lines as html in a jupyter cell"""
 
     def __init__(self, header: str = "", footer: str = ""):
         """
@@ -164,7 +164,7 @@ class JupyterOutput(OutputBase):
         self.lines.append(line)
 
     def show(self):
-        """ shows the actual html in a jupyter cell """
+        """shows the actual html in a jupyter cell"""
         try:
             from IPython.display import HTML, display
         except ImportError:
@@ -175,7 +175,7 @@ class JupyterOutput(OutputBase):
 
 
 def in_jupyter_notebook() -> bool:
-    """ checks whether we are in a jupyter notebook """
+    """checks whether we are in a jupyter notebook"""
     try:
         from IPython import display, get_ipython  # @UnusedImport
     except ImportError:

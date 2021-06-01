@@ -186,7 +186,7 @@ class PDE(PDEBase):
 
     @property
     def expressions(self) -> Dict[str, str]:
-        """ show the expressions of the PDE """
+        """show the expressions of the PDE"""
         return {k: v.expression for k, v in self._rhs_expr.items()}
 
     def _prepare_cache(
@@ -297,7 +297,7 @@ class PDE(PDEBase):
             signature = self.variables + ("t",)
 
             def _get_expr_func(signature: Tuple[str, ...]) -> Callable[..., np.ndarray]:
-                """ helper function obtaining expression and checking the signature """
+                """helper function obtaining expression and checking the signature"""
                 extra_vars = set(expr.vars) - set(signature)
                 if extra_vars:
                     extra_vars_str = ", ".join(sorted(extra_vars))
@@ -329,7 +329,7 @@ class PDE(PDEBase):
                 )
 
                 def rhs_func(*args) -> np.ndarray:
-                    """ wrapper that inserts the spatial variables """
+                    """wrapper that inserts the spatial variables"""
                     return inner_func(*args, *coords_tuple)
 
             else:
@@ -348,7 +348,7 @@ class PDE(PDEBase):
             stops = tuple(slc.stop for slc in state._slices)
 
             def get_data_tuple(state_data: np.ndarray) -> Tuple[np.ndarray, ...]:
-                """ helper for turning state_data into a tuple of field data """
+                """helper for turning state_data into a tuple of field data"""
                 return tuple(
                     state_data[starts[i]]
                     if isscalar[i]
@@ -434,7 +434,7 @@ class PDE(PDEBase):
         def chain(
             i: int = 0, inner: Callable[[np.ndarray, float, np.ndarray], None] = None
         ) -> Callable[[np.ndarray, float], np.ndarray]:
-            """ recursive helper function for applying all rhs """
+            """recursive helper function for applying all rhs"""
             # run through all functions
             rhs = rhs_list[i]
 

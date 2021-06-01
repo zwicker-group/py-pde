@@ -14,7 +14,7 @@ from .parameters import Parameter
 
 
 class ParameterModuleConstant:
-    """ special parameter class to access module constants as configuration values """
+    """special parameter class to access module constants as configuration values"""
 
     def __init__(
         self, name: str, module_path: str, variable: str, description: str = ""
@@ -31,7 +31,7 @@ class ParameterModuleConstant:
         self.description = description
 
     def get(self):
-        """ obtain the value of the constant """
+        """obtain the value of the constant"""
         mod = importlib.import_module(self.module_path)
         return getattr(mod, self.variable)
 
@@ -72,7 +72,7 @@ DEFAULT_CONFIG: List[Union[Parameter, ParameterModuleConstant]] = [
 
 
 class Config(collections.UserDict):
-    """ class handling the package configuration """
+    """class handling the package configuration"""
 
     def __init__(self, items: Dict[str, Any] = None, mode: str = "update"):
         """
@@ -97,7 +97,7 @@ class Config(collections.UserDict):
         self.mode = mode
 
     def __getitem__(self, key: str):
-        """ retrieve item `key` """
+        """retrieve item `key`"""
         parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
@@ -107,7 +107,7 @@ class Config(collections.UserDict):
             return parameter
 
     def __setitem__(self, key: str, value):
-        """ update item `key` with `value` """
+        """update item `key` with `value`"""
         if self.mode == "insert":
             self.data[key] = value
 
@@ -127,7 +127,7 @@ class Config(collections.UserDict):
             raise ValueError(f"Unsupported configuration mode `{self.mode}`")
 
     def __delitem__(self, key: str):
-        """ removes item `key` """
+        """removes item `key`"""
         if self.mode == "insert":
             del self.data[key]
         else:
@@ -142,7 +142,7 @@ class Config(collections.UserDict):
         return {k: v for k, v in self.items()}
 
     def __repr__(self) -> str:
-        """ represent the configuration as a string """
+        """represent the configuration as a string"""
         return f"{self.__class__.__name__}({repr(self.to_dict())})"
 
 
@@ -165,7 +165,7 @@ def environment(dict_type=dict) -> Dict[str, Any]:
     from .plotting import get_plotting_context
 
     def get_package_versions(packages: List[str]) -> Dict[str, str]:
-        """ tries to load certain python packages and returns their version """
+        """tries to load certain python packages and returns their version"""
         versions: Dict[str, str] = dict_type()
         for name in sorted(packages):
             try:

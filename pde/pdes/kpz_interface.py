@@ -60,7 +60,7 @@ class KPZInterfacePDE(PDEBase):
 
     @property
     def expression(self) -> str:
-        """ str: the expression of the right hand side of this PDE """
+        """str: the expression of the right hand side of this PDE"""
         return (
             expr_prod(self.nu, "laplace(c)")
             + " + "
@@ -114,7 +114,7 @@ class KPZInterfacePDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """
+            """compiled helper function evaluating right hand side"""
             result = nu_value * laplace(state_data)
             result += lambda_value * gradient_squared(state_data)
             return result

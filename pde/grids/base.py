@@ -45,7 +45,7 @@ PI_43 = 4 / 3 * np.pi
 
 
 class Operator(NamedTuple):
-    """ stores information about an operator """
+    """stores information about an operator"""
 
     factory: Callable[..., OperatorType]
     rank_in: int
@@ -53,7 +53,7 @@ class Operator(NamedTuple):
 
 
 def _check_shape(shape) -> Tuple[int, ...]:
-    """ checks the consistency of shape tuples """
+    """checks the consistency of shape tuples"""
     if not hasattr(shape, "__iter__"):
         shape = [shape]  # support single numbers
 
@@ -99,25 +99,25 @@ def discretize_interval(
 
 
 class DomainError(ValueError):
-    """ exception indicating that point lies outside domain """
+    """exception indicating that point lies outside domain"""
 
     pass
 
 
 class DimensionError(ValueError):
-    """ exception indicating that dimensions were inconsistent """
+    """exception indicating that dimensions were inconsistent"""
 
     pass
 
 
 class PeriodicityError(RuntimeError):
-    """ exception indicating that the grid periodicity is inconsistent """
+    """exception indicating that the grid periodicity is inconsistent"""
 
     pass
 
 
 class GridBase(metaclass=ABCMeta):
-    """ Base class for all grids defining common methods and interfaces """
+    """Base class for all grids defining common methods and interfaces"""
 
     _subclasses: Dict[str, "GridBase"] = {}  # all classes inheriting from this
     _operators: Dict[str, Operator] = {}  # all operators defined for the grid
@@ -145,11 +145,11 @@ class GridBase(metaclass=ABCMeta):
     """ set: names of all operators defined for this grid """
 
     def __init__(self):
-        """ initialize the grid """
+        """initialize the grid"""
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """ register all subclassess to reconstruct them later """
+        """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
         cls._operators: Dict[str, Callable] = {}
@@ -177,22 +177,22 @@ class GridBase(metaclass=ABCMeta):
 
     @property
     def axes_bounds(self) -> Tuple[Tuple[float, float], ...]:
-        """ tuple: lower and upper bounds of each axis """
+        """tuple: lower and upper bounds of each axis"""
         return self._axes_bounds
 
     @property
     def axes_coords(self) -> Tuple[np.ndarray, ...]:
-        """ tuple: coordinates of the cells for each axis """
+        """tuple: coordinates of the cells for each axis"""
         return self._axes_coords
 
     @property
     def discretization(self) -> np.ndarray:
-        """ :class:`numpy.array`: the linear size of a cell along each axis """
+        """:class:`numpy.array`: the linear size of a cell along each axis"""
         return self._discretization
 
     @property
     def shape(self) -> Tuple[int, ...]:
-        """ tuple of int: the number of support points of each axis """
+        """tuple of int: the number of support points of each axis"""
         return self._shape
 
     @abstractproperty
@@ -201,13 +201,13 @@ class GridBase(metaclass=ABCMeta):
 
     @property
     def state_serialized(self) -> str:
-        """ str: JSON-serialized version of the state of this grid """
+        """str: JSON-serialized version of the state of this grid"""
         state = self.state
         state["class"] = self.__class__.__name__
         return json.dumps(state)
 
     def copy(self) -> "GridBase":
-        """ return a copy of the grid """
+        """return a copy of the grid"""
         return self.__class__.from_state(self.state)
 
     __copy__ = copy
@@ -222,7 +222,7 @@ class GridBase(metaclass=ABCMeta):
         return result
 
     def __repr__(self) -> str:
-        """ return instance as string """
+        """return instance as string"""
         args = ", ".join(str(k) + "=" + str(v) for k, v in self.state.items())
         return f"{self.__class__.__name__}({args})"
 
@@ -236,7 +236,7 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def _cache_hash(self) -> int:
-        """ returns a value to determine when a cache needs to be updated """
+        """returns a value to determine when a cache needs to be updated"""
         return hash(
             (
                 self.__class__.__name__,
@@ -281,23 +281,23 @@ class GridBase(metaclass=ABCMeta):
 
     @property
     def numba_type(self) -> str:
-        """ str: represents type of the grid data in numba signatures """
+        """str: represents type of the grid data in numba signatures"""
         return "f8[" + ", ".join([":"] * self.num_axes) + "]"
 
     @cached_property()
     def cell_coords(self) -> np.ndarray:
-        """ :class:`~numpy.ndarray`: the coordinates of each cell """
+        """:class:`~numpy.ndarray`: the coordinates of each cell"""
         return np.moveaxis(np.meshgrid(*self.axes_coords, indexing="ij"), 0, -1)
 
     @cached_property()
     def cell_volumes(self) -> np.ndarray:
-        """ :class:`~numpy.ndarray`: volume of each cell """
+        """:class:`~numpy.ndarray`: volume of each cell"""
         vols = functools.reduce(np.outer, self.cell_volume_data)
         return np.broadcast_to(vols, self.shape)  # type: ignore
 
     @cached_property()
     def uniform_cell_volumes(self) -> bool:
-        """ bool: returns True if all cell volumes are the same """
+        """bool: returns True if all cell volumes are the same"""
         return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
     def distance_real(self, p1: np.ndarray, p2: np.ndarray) -> float:
@@ -513,7 +513,7 @@ class GridBase(metaclass=ABCMeta):
         """
 
         def register_operator(factor_func_arg: Callable):
-            """ helper function to register the operator """
+            """helper function to register the operator"""
             cls._operators[name] = Operator(
                 factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out
             )
@@ -528,7 +528,7 @@ class GridBase(metaclass=ABCMeta):
 
     @classproperty  # type: ignore
     def operators(cls) -> Set[str]:  # @NoSelf
-        """ set: all operators defined for this class """
+        """set: all operators defined for this class"""
         result = set()
         classes = inspect.getmro(cls)[:-1]  # type: ignore
         for anycls in classes:
@@ -577,20 +577,20 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":
-        """ return a subgrid of only the specified axes """
+        """return a subgrid of only the specified axes"""
         raise NotImplementedError(
             f"Subgrids are not implemented for class {self.__class__.__name__}"
         )
 
     def plot(self):
-        """ visualize the grid """
+        """visualize the grid"""
         raise NotImplementedError(
             f"Plotting is not implemented for class {self.__class__.__name__}"
         )
 
     @property
     def typical_discretization(self) -> float:
-        """ float: the average side length of the cells """
+        """float: the average side length of the cells"""
         return np.mean(self.discretization)  # type: ignore
 
     def integrate(
@@ -675,7 +675,7 @@ class GridBase(metaclass=ABCMeta):
 
         @jit
         def normalize_point(point: np.ndarray) -> None:
-            """ helper function normalizing a single point """
+            """helper function normalizing a single point"""
             assert point.ndim == 1  # only support single points
             for i in range(num_axes):
                 if periodic[i]:
@@ -966,7 +966,7 @@ class GridBase(metaclass=ABCMeta):
     def make_add_interpolated_compiled(
         self,
     ) -> Callable[[np.ndarray, np.ndarray, NumberOrArray], None]:
-        """ deprecated alias of method `make_inserter_compiled` """
+        """deprecated alias of method `make_inserter_compiled`"""
         # this was deprecated on 2021-02-23
         warnings.warn(
             "`make_add_interpolated_compiled` is deprecated. Use "
@@ -1013,13 +1013,13 @@ class GridBase(metaclass=ABCMeta):
                         different discretizations and in particular grids with
                         non-uniform discretizations
                 """
+                # determine grid points neighboring the chosen point
                 c_l, d_l = divmod((point[0] - lo) / dx - 0.5, 1.0)
-                if c_l < -1 or c_l > size - 1:
-                    raise DomainError("Point lies outside grid")
                 c_li = int(c_l)
                 c_hi = c_li + 1
 
                 if periodic:
+                    # handle periodic case separately
                     c_li %= size
                     c_hi %= size
                     w_l = 1 - d_l  # weights of the low point
@@ -1027,19 +1027,24 @@ class GridBase(metaclass=ABCMeta):
                     data[..., c_li] += w_l * amount / cell_volume(c_li)
                     data[..., c_hi] += w_h * amount / cell_volume(c_hi)
 
-                elif c_li < 0:
-                    if c_hi >= size:
-                        raise DomainError("Point lies outside the grid")
-                    else:  # c_hi < size
-                        data[..., c_hi] += amount / cell_volume(c_hi)
-                else:  # c_li >= 0
-                    if c_hi >= size:
-                        data[..., c_li] += amount / cell_volume(c_li)
-                    else:  # c_hi < size
-                        w_l = 1 - d_l  # weights of the low point
-                        w_h = d_l  # weights of the high point
-                        data[..., c_li] += w_l * amount / cell_volume(c_li)
-                        data[..., c_hi] += w_h * amount / cell_volume(c_hi)
+                elif c_hi < 0 or c_li > size - 1:
+                    # both grid points outside the domain
+                    raise DomainError("Point lies outside grid")
+
+                elif c_li == -1:
+                    # the leftmost point is outside the grid
+                    data[..., c_hi] += amount / cell_volume(c_hi)
+
+                elif c_li == size - 1:
+                    # the rightmost point is outside the grid
+                    data[..., c_li] += amount / cell_volume(c_li)
+
+                else:
+                    # both points are interior
+                    w_l = 1 - d_l  # weights of the low point
+                    w_h = d_l  # weights of the high point
+                    data[..., c_li] += w_l * amount / cell_volume(c_li)
+                    data[..., c_hi] += w_h * amount / cell_volume(c_hi)
 
         elif self.num_axes == 2:
             # specialize for 2-dimensional interpolation
@@ -1225,7 +1230,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def integrate(arr: np.ndarray) -> Number:
-                """ function that integrates data over a uniform grid """
+                """function that integrates data over a uniform grid"""
                 assert arr.ndim == num_axes
                 return cell_volume * arr.sum()  # type: ignore
 
@@ -1235,7 +1240,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def integrate(arr: np.ndarray) -> Number:
-                """ function that integrates scalar data over a non-uniform grid """
+                """function that integrates scalar data over a non-uniform grid"""
                 assert arr.ndim == num_axes
                 total = 0
                 for i in nb.prange(arr.size):

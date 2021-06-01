@@ -18,7 +18,7 @@ from .base import InfoDict, StorageBase
 
 
 class FileStorage(StorageBase):
-    """ store discretized fields in a hdf5 file """
+    """store discretized fields in a hdf5 file"""
 
     def __init__(
         self,
@@ -82,7 +82,7 @@ class FileStorage(StorageBase):
 
     @property
     def _file_state(self) -> str:
-        """ str: the state that the file is currently in """
+        """str: the state that the file is currently in"""
         if self._file is None:
             return "closed"
         elif self._file.mode == "r":
@@ -93,7 +93,7 @@ class FileStorage(StorageBase):
             raise NotImplementedError(f"Do not understand mode `{self._file.mode}")
 
     def close(self) -> None:
-        """ close the currently opened file """
+        """close the currently opened file"""
         if self._file is not None:
             self._logger.info(f"Close file `{self.filename}`")
             self._file.close()
@@ -218,7 +218,7 @@ class FileStorage(StorageBase):
             raise RuntimeError(f"Mode `{mode}` not implemented")
 
     def __len__(self):
-        """ return the number of stored items, i.e., time steps """
+        """return the number of stored items, i.e., time steps"""
         # determine size of data in HDF5 file
         try:
             length = len(self.times)
@@ -233,13 +233,13 @@ class FileStorage(StorageBase):
 
     @property
     def times(self):
-        """ :class:`~numpy.ndarray`: The times at which data is available """
+        """:class:`~numpy.ndarray`: The times at which data is available"""
         self._open("reading")
         return self._times
 
     @property
     def data(self):
-        """  :class:`~numpy.ndarray`: The actual data for all time """
+        """:class:`~numpy.ndarray`: The actual data for all time"""
         self._open("reading")
         return self._data
 

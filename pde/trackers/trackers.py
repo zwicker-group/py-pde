@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
 
 class CallbackTracker(TrackerBase):
-    """ Tracker calling a function periodically """
+    """Tracker calling a function periodically"""
 
     @fill_in_docstring
     def __init__(self, func: Callable, interval: IntervalData = 1):
@@ -90,7 +90,7 @@ class CallbackTracker(TrackerBase):
 
 
 class ProgressTracker(TrackerBase):
-    """ Tracker showing the progress of the simulation """
+    """Tracker showing the progress of the simulation"""
 
     name = "progress"
 
@@ -204,7 +204,7 @@ class ProgressTracker(TrackerBase):
 
 
 class PrintTracker(TrackerBase):
-    """ Tracker printing data to a stream (default: stdout) """
+    """Tracker printing data to a stream (default: stdout)"""
 
     name = "print"
 
@@ -706,7 +706,7 @@ class SteadyStateTracker(TrackerBase):
 
 
 class RuntimeTracker(TrackerBase):
-    """ Tracker interrupting the simulation once a duration has passed """
+    """Tracker interrupting the simulation once a duration has passed"""
 
     @fill_in_docstring
     def __init__(self, max_runtime: Union[Real, str], interval: IntervalData = 1):
@@ -758,7 +758,7 @@ class RuntimeTracker(TrackerBase):
 
 
 class ConsistencyTracker(TrackerBase):
-    """ Tracker interrupting the simulation when the state is not finite """
+    """Tracker interrupting the simulation when the state is not finite"""
 
     name = "consistency"
 
@@ -791,7 +791,7 @@ class ConsistencyTracker(TrackerBase):
 
 
 class MaterialConservationTracker(TrackerBase):
-    """ Tracking interrupting the simulation when material conservation is broken """
+    """Tracking interrupting the simulation when material conservation is broken"""
 
     name = "material_conservation"
 

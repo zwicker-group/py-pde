@@ -34,7 +34,7 @@ def make_laplace_from_matrix(matrix, vector) -> OperatorType:
     vec = vector.toarray()[:, 0]
 
     def laplace(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
-        """ apply the laplace operator to `arr` """
+        """apply the laplace operator to `arr`"""
         result = mat.dot(arr.flat) + vec
         if out is None:
             return result.reshape(arr.shape)  # type: ignore
@@ -74,7 +74,7 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Operato
     vec = vector.toarray()[:, 0]
 
     def solve_poisson(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
-        """ solves Poisson's equation using sparse linear algebra """
+        """solves Poisson's equation using sparse linear algebra"""
         # prepare the right hand side vector
         rhs = arr.flat - vec
 

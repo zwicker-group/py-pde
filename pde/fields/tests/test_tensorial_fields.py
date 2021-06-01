@@ -10,7 +10,7 @@ from pde.fields.base import FieldBase
 
 
 def test_tensors():
-    """ test some tensor calculations """
+    """test some tensor calculations"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
 
     t1 = Tensor2Field(grid, np.full((2, 2) + grid.shape, 1))
@@ -64,7 +64,7 @@ def test_tensors():
 
 
 def test_tensor_symmetrize():
-    """ test advanced tensor calculations """
+    """test advanced tensor calculations"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [2, 2])
     t1 = Tensor2Field(grid)
     t1.data[0, 0, :] = 1
@@ -97,7 +97,7 @@ def test_tensor_symmetrize():
 
 
 def test_insert_tensor(example_grid):
-    """ test the `insert` method """
+    """test the `insert` method"""
     f = Tensor2Field(example_grid)
     a = np.random.random(f.data_shape)
 
@@ -123,7 +123,7 @@ def test_insert_tensor(example_grid):
 
 
 def test_tensor_invariants():
-    """ test the invariants """
+    """test the invariants"""
     # dim == 1
     f = Tensor2Field.random_uniform(UnitGrid([3]))
     np.testing.assert_allclose(
@@ -168,7 +168,7 @@ def test_tensor_invariants():
 
 
 def test_complex_tensors():
-    """ test some complex tensor fields """
+    """test some complex tensor fields"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     shape = (2, 2, 2) + grid.shape
     numbers = np.random.random(shape) + np.random.random(shape) * 1j

@@ -41,7 +41,7 @@ class SmoothData1D:
 
     @property
     def bounds(self) -> Tuple[float, float]:
-        """ return minimal and maximal `x` values """
+        """return minimal and maximal `x` values"""
         return float(self.x.min()), float(self.x.max())
 
     def __call__(self, xs):

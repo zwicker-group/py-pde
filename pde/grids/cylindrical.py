@@ -101,7 +101,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
 
     @property
     def state(self) -> Dict[str, Any]:
-        """ state: the state of the grid """
+        """state: the state of the grid"""
         radius = self.axes_bounds[0][1]
         return {
             "radius": radius,
@@ -131,17 +131,17 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
 
     @property
     def radius(self) -> float:
-        """ float: radius of the cylinder """
+        """float: radius of the cylinder"""
         return self.axes_bounds[0][1]
 
     @property
     def length(self) -> float:
-        """ float: length of the cylinder """
+        """float: length of the cylinder"""
         return self.axes_bounds[1][1] - self.axes_bounds[1][0]
 
     @property
     def volume(self) -> float:
-        """ float: total volume of the grid """
+        """float: total volume of the grid"""
         return float(np.pi * self.radius ** 2 * self.length)
 
     def get_random_point(
@@ -297,7 +297,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
 
     @cached_property()
     def cell_volume_data(self) -> Tuple[np.ndarray, float]:
-        """ :class:`~numpy.ndarray`: the volumes of all cells """
+        """:class:`~numpy.ndarray`: the volumes of all cells"""
         dr, dz = self.discretization
         rs = np.arange(self.shape[0] + 1) * dr
         areas = np.pi * rs ** 2
@@ -541,7 +541,7 @@ class CylindricalGrid(CylindricalSymGrid):
     """
 
     def __init__(self, *args, **kwargs):
-        """ class deprecated since 2021-05-21 """
+        """class deprecated since 2021-05-21"""
         warnings.warn(
             "CylindricalGrid is a deprecated class. Use CylindricalSymGrid instead",
             DeprecationWarning,

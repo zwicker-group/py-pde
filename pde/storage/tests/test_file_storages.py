@@ -12,7 +12,7 @@ from pde.tools.misc import skipUnlessModule
 @skipUnlessModule("h5py")
 @pytest.mark.parametrize("compression", [True, False])
 def test_storage_persistence(compression, tmp_path):
-    """ test writing to persistent trackers """
+    """test writing to persistent trackers"""
     dim = 5
     grid = UnitGrid([dim])
     field = ScalarField(grid)
@@ -88,7 +88,7 @@ def test_simulation_persistence(compression, tmp_path):
 @skipUnlessModule("h5py")
 @pytest.mark.parametrize("compression", [True, False])
 def test_storage_fixed_size(compression, tmp_path):
-    """ test setting fixed size of FileStorage objects """
+    """test setting fixed size of FileStorage objects"""
     c = ScalarField(UnitGrid([2]), data=1)
 
     for fixed in [True, False]:
@@ -116,7 +116,7 @@ def test_storage_fixed_size(compression, tmp_path):
 
 @skipUnlessModule("h5py")
 def test_appending(tmp_path):
-    """ test the appending data """
+    """test the appending data"""
     path = tmp_path / "test_appending.hdf5"
 
     c = ScalarField(UnitGrid([2]), data=1)
@@ -138,7 +138,7 @@ def test_appending(tmp_path):
 
 @skipUnlessModule("h5py")
 def test_keep_opened(tmp_path):
-    """ test the keep opened option """
+    """test the keep opened option"""
     path = tmp_path / "test_keep_opened.hdf5"
 
     c = ScalarField(UnitGrid([2]), data=1)

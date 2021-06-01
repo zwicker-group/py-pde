@@ -11,7 +11,7 @@ from pde.tools.misc import skipUnlessModule
 
 
 def test_shapes_nfields(example_grid):
-    """ test single component field """
+    """test single component field"""
     for num in [1, 3]:
         fields = [ScalarField.random_uniform(example_grid) for _ in range(num)]
         field = FieldCollection(fields)
@@ -26,7 +26,7 @@ def test_shapes_nfields(example_grid):
 
 
 def test_collections():
-    """ test field collections """
+    """test field collections"""
     grid = UnitGrid([3, 4])
     sf = ScalarField.random_uniform(grid, label="sf")
     vf = VectorField.random_uniform(grid, label="vf")
@@ -76,7 +76,7 @@ def test_collections():
 
 
 def test_collections_copy():
-    """ test copying data of collections """
+    """test copying data of collections"""
     grid = UnitGrid([2, 2])
     sf = ScalarField(grid, 0)
     vf = VectorField(grid, 1)
@@ -102,7 +102,7 @@ def test_collections_copy():
 
 
 def test_collections_operators():
-    """ test field collections """
+    """test field collections"""
     grid = UnitGrid([3, 4])
     sf = ScalarField(grid, 1)
     vf = VectorField(grid, 1)
@@ -124,7 +124,7 @@ def test_collections_operators():
 
 
 def test_smoothing_collection():
-    """ test smoothing of a FieldCollection """
+    """test smoothing of a FieldCollection"""
     grid = UnitGrid([3, 4], periodic=[True, False])
     sf = ScalarField.random_uniform(grid)
     vf = VectorField.random_uniform(grid)
@@ -143,7 +143,7 @@ def test_smoothing_collection():
 
 
 def test_scalar_random_uniform():
-    """ test creating collections using scalar_random_uniform """
+    """test creating collections using scalar_random_uniform"""
     grid = UnitGrid([3, 4], periodic=[True, False])
     fc = FieldCollection.scalar_random_uniform(2, grid, label="c", labels=["a", "b"])
     assert fc.label == "c"
@@ -155,7 +155,7 @@ def test_scalar_random_uniform():
 
 
 def test_from_scalar_expressions():
-    """ test creating field collections from scalar expressions """
+    """test creating field collections from scalar expressions"""
     grid = UnitGrid([3])
     expressions = ["x**2", "1"]
     fc = FieldCollection.from_scalar_expressions(
@@ -172,7 +172,7 @@ def test_from_scalar_expressions():
 
 @skipUnlessModule("napari")
 def test_interactive_collection_plotting():
-    """ test the interactive plotting """
+    """test the interactive plotting"""
     grid = UnitGrid([3, 3])
     sf = ScalarField.random_uniform(grid, 0.1, 0.9)
     vf = VectorField.random_uniform(grid, 0.1, 0.9)
@@ -181,7 +181,7 @@ def test_interactive_collection_plotting():
 
 
 def test_field_labels():
-    """ test the FieldCollection.labels property """
+    """test the FieldCollection.labels property"""
     grid = UnitGrid([5])
     s1 = ScalarField(grid, label="s1")
     s2 = ScalarField(grid)
@@ -226,7 +226,7 @@ def test_field_labels():
 
 
 def test_collection_1_field():
-    """ test field collections with only one field """
+    """test field collections with only one field"""
     grid = UnitGrid([3])
     s1 = ScalarField(grid, label="a")
     fc = FieldCollection([s1])
@@ -236,7 +236,7 @@ def test_collection_1_field():
 
 
 def test_collection_plotting():
-    """ test simple plotting of various fields on various grids """
+    """test simple plotting of various fields on various grids"""
     grid = UnitGrid([5])
     s1 = ScalarField(grid, label="s1")
     s2 = ScalarField(grid)

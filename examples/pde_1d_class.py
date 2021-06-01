@@ -18,10 +18,10 @@ from pde import CartesianGrid, MemoryStorage, PDEBase, ScalarField, plot_kymogra
 
 
 class KortewegDeVriesPDE(PDEBase):
-    """ Korteweg-de Vries equation """
+    """Korteweg-de Vries equation"""
 
     def evolution_rate(self, state, t=0):
-        """ implement the python version of the evolution equation """
+        """implement the python version of the evolution equation"""
         assert state.grid.dim == 1  # ensure the state is one-dimensional
         grad_x = state.gradient("natural")[0]
         return 6 * state * grad_x - grad_x.laplace("natural")

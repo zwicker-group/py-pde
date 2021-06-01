@@ -20,7 +20,7 @@ from pde.tools.parameters import (
 
 
 def test_parameters():
-    """ test mixing Parameterized """
+    """test mixing Parameterized"""
 
     param = Parameter("a", 1, int, "help", extra={"b": 3})
     assert isinstance(str(param), str)
@@ -87,7 +87,7 @@ def test_parameters():
 
 
 def test_parameters_simple():
-    """ test adding parameters using a simple dictionary """
+    """test adding parameters using a simple dictionary"""
 
     class Test(Parameterized):
         parameters_default = {"a": 1}
@@ -97,7 +97,7 @@ def test_parameters_simple():
 
 
 def test_parameter_help(monkeypatch, capsys):
-    """ test how parameters are shown """
+    """test how parameters are shown"""
 
     class Test1(Parameterized):
         parameters_default = [DeprecatedParameter("a", 1, int, "random string")]
@@ -119,7 +119,7 @@ def test_parameter_help(monkeypatch, capsys):
 
 
 def test_hidden_parameter():
-    """ test how hidden parameters are handled """
+    """test how hidden parameters are handled"""
 
     class Test1(Parameterized):
         parameters_default = [Parameter("a", 1), Parameter("b", 2)]
@@ -151,7 +151,7 @@ def test_hidden_parameter():
 
 
 def test_convert_default_values(caplog):
-    """ test how default values are handled """
+    """test how default values are handled"""
 
     class Test1(Parameterized):
         parameters_default = [Parameter("a", 1, float)]

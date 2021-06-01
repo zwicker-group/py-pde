@@ -38,7 +38,7 @@ def spectral_density(data, dx=1.0):
 
 
 def test_colored_noise():
-    """ test the implementation of the colored noise """
+    """test the implementation of the colored noise"""
     grid = UnitGrid([64, 64], periodic=True)
     for exponent in [0, -1, 2]:
         scale = np.random.uniform(1, 10)

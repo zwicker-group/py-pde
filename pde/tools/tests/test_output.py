@@ -6,7 +6,7 @@ from pde.tools import output
 
 
 def test_progress_bars():
-    """ test progress bars """
+    """test progress bars"""
     for pb_cls in [output.SimpleProgress, output.get_progress_bar_class()]:
         tot = 0
         for i in pb_cls(range(4)):
@@ -15,12 +15,12 @@ def test_progress_bars():
 
 
 def test_in_jupyter_notebook():
-    """ test the function in_jupyter_notebook """
+    """test the function in_jupyter_notebook"""
     assert isinstance(output.in_jupyter_notebook(), bool)
 
 
 def test_display_progress(capsys):
-    """ test whether this works """
+    """test whether this works"""
     for _ in output.display_progress(range(2)):
         pass
     out, err = capsys.readouterr()

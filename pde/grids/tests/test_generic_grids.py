@@ -14,7 +14,7 @@ from pde.tools.misc import skipUnlessModule
 
 
 def iter_grids():
-    """ generator providing some test grids """
+    """generator providing some test grids"""
     for periodic in [True, False]:
         yield grids.UnitGrid([3], periodic=periodic)
         yield grids.UnitGrid([3, 3, 3], periodic=periodic)
@@ -25,7 +25,7 @@ def iter_grids():
 
 
 def test_discretize():
-    """ test the discretize function """
+    """test the discretize function"""
     x_min = np.random.uniform(0, 1)
     x_max = np.random.uniform(2, 3)
     num = np.random.randint(5, 8)
@@ -36,10 +36,10 @@ def test_discretize():
 
 
 def test_serialization():
-    """ test whether grid can be serialized and copied"""
+    """test whether grid can be serialized and copied"""
 
     def iter_grids():
-        """ helper function iterating over different grids """
+        """helper function iterating over different grids"""
         for periodic in [True, False]:
             yield grids.UnitGrid([3, 4], periodic=periodic)
             yield grids.CartesianGrid([[0, 1], [-2, 3]], [4, 5], periodic=periodic)
@@ -58,7 +58,7 @@ def test_serialization():
 
 
 def test_iter_mirror_points():
-    """ test iterating mirror points in grids """
+    """test iterating mirror points in grids"""
     grid_cart = grids.UnitGrid([2, 2], periodic=[True, False])
     grid_cyl = grids.CylindricalSymGrid(2, (0, 2), (2, 2), periodic_z=False)
     grid_sph = grids.SphericalSymGrid(2, 2)
@@ -81,7 +81,7 @@ def test_iter_mirror_points():
 
 
 def test_cell_to_point_conversion():
-    """ test the conversion between cells and points """
+    """test the conversion between cells and points"""
     for grid in iter_grids():
         c = grid.point_to_cell(grid.get_random_point())
         c2 = grid.point_to_cell(grid.cell_to_point(c))
@@ -94,7 +94,7 @@ def test_cell_to_point_conversion():
 
 
 def test_integration():
-    """ test integration of fields """
+    """test integration of fields"""
     for grid in iter_grids():
         arr = np.random.randn(*grid.shape)
         res = grid.make_integrator()(arr)
@@ -108,7 +108,7 @@ def test_integration():
 
 @skipUnlessModule("matplotlib")
 def test_grid_plotting():
-    """ test plotting of grids """
+    """test plotting of grids"""
     grids.UnitGrid([4]).plot()
     grids.UnitGrid([4, 4]).plot()
 
@@ -120,7 +120,7 @@ def test_grid_plotting():
 
 
 def test_operators():
-    """ test operator mechanism """
+    """test operator mechanism"""
 
     def make_op(state):
         return lambda state: state

@@ -70,7 +70,7 @@ class WavePDE(PDEBase):
 
     @property
     def expressions(self) -> Dict[str, str]:
-        """ dict: the expressions of the right hand side of this PDE """
+        """dict: the expressions of the right hand side of this PDE"""
         return {"u": "v", "v": expr_prod(self.speed ** 2, "laplace(u)")}
 
     def evolution_rate(  # type: ignore
@@ -121,7 +121,7 @@ class WavePDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """
+            """compiled helper function evaluating right hand side"""
             rate = np.empty_like(state_data)
             rate[0] = state_data[1]
             laplace(state_data[0], out=rate[1])

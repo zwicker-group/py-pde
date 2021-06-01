@@ -11,7 +11,7 @@ from pde.grids.boundaries.local import NeumannBC
 
 @pytest.mark.parametrize("grid_class", [PolarSymGrid, SphericalSymGrid])
 def test_spherical_base_bcs(grid_class):
-    """ test setting boundary conditions on spherical grids """
+    """test setting boundary conditions on spherical grids"""
     grid = grid_class(2, 3)
 
     domain1 = grid.get_boundary_conditions(["derivative", {"type": "value"}])
@@ -27,7 +27,7 @@ def test_spherical_base_bcs(grid_class):
 
 
 def test_polar_grid():
-    """ test simple polar grid """
+    """test simple polar grid"""
     grid = PolarSymGrid(4, 8)
     assert grid.dim == 2
     assert grid.numba_type == "f8[:]"
@@ -56,7 +56,7 @@ def test_polar_grid():
 
 
 def test_polar_annulus():
-    """ test simple polar grid with a hole """
+    """test simple polar grid with a hole"""
     grid = PolarSymGrid((2, 4), 8)
     assert grid.dim == 2
     assert grid.numba_type == "f8[:]"
@@ -89,7 +89,7 @@ def test_polar_annulus():
 
 
 def test_polar_to_cartesian():
-    """ test conversion of polar grid to Cartesian """
+    """test conversion of polar grid to Cartesian"""
     expr_pol = "1 / (1 + r**2)"
     expr_cart = expr_pol.replace("r**2", "(x**2 + y**2)")
 
@@ -103,7 +103,7 @@ def test_polar_to_cartesian():
 
 
 def test_spherical_grid():
-    """ test simple spherical grid """
+    """test simple spherical grid"""
     grid = SphericalSymGrid(4, 8)
     assert grid.dim == 3
     assert grid.numba_type == "f8[:]"
@@ -132,7 +132,7 @@ def test_spherical_grid():
 
 
 def test_spherical_annulus():
-    """ test simple spherical grid with a hole """
+    """test simple spherical grid with a hole"""
     grid = SphericalSymGrid((2, 4), 8)
     assert grid.dim == 3
     assert grid.numba_type == "f8[:]"
@@ -166,7 +166,7 @@ def test_spherical_annulus():
 
 
 def test_spherical_to_cartesian():
-    """ test conversion of spherical grid to cartesian """
+    """test conversion of spherical grid to cartesian"""
     expr_sph = "1 / (1 + r**2)"
     expr_cart = expr_sph.replace("r**2", "(x**2 + y**2 + z**2)")
 
@@ -181,7 +181,7 @@ def test_spherical_to_cartesian():
 
 @pytest.mark.parametrize("grid_class", [PolarSymGrid, SphericalSymGrid])
 def test_setting_boundary_conditions(grid_class):
-    """ test setting some boundary conditions """
+    """test setting some boundary conditions"""
     grid = grid_class([0, 1], 3)
     b_inner = NeumannBC(grid, 0, upper=False)
 

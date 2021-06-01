@@ -12,7 +12,7 @@ from pde.grids.boundaries.local import BCBase
 
 
 def test_boundary_pair():
-    """ test setting boundary conditions for whole axis """
+    """test setting boundary conditions for whole axis"""
     g = UnitGrid([2, 3])
     b = ["value", {"type": "derivative", "value": 1}]
     for bl, bh in itertools.product(b, b):
@@ -50,7 +50,7 @@ def test_boundary_pair():
 
 
 def test_get_axis_boundaries():
-    """ test setting boundary conditions including periodic ones """
+    """test setting boundary conditions including periodic ones"""
     g = UnitGrid([2])
     for data in ["value", "derivative", "periodic"]:
         b = get_boundary_axis(g, 0, data)

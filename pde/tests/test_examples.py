@@ -32,7 +32,7 @@ if not module_available("napari"):
 @pytest.mark.skipif(sys.platform == "win32", reason="Assumes unix setup")
 @pytest.mark.parametrize("path", EXAMPLES)
 def test_example(path):
-    """ runs an example script given by path """
+    """runs an example script given by path"""
     # check whether this test needs to be run
     if os.path.basename(path).startswith("_"):
         pytest.skip("skip examples starting with an underscore")
@@ -69,7 +69,7 @@ def test_example(path):
 @skipUnlessModule("jupyter")
 @pytest.mark.parametrize("path", NOTEBOOKS)
 def test_jupyter_notebooks(path, tmp_path):
-    """ run the jupyter notebooks """
+    """run the jupyter notebooks"""
     if os.path.basename(path).startswith("_"):
         pytest.skip("skip examples starting with an underscore")
 

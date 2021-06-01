@@ -27,7 +27,7 @@ TState = TypeVar("TState", bound="FieldBase")
 
 
 class Controller:
-    """ class controlling a simulation """
+    """class controlling a simulation"""
 
     # set a function to determine the current time for profiling purposes. We generally
     # use the more accurate time.process_time, but better performance may be obtained by
@@ -120,7 +120,7 @@ class Controller:
         self.trackers.initialize(state, info=self.diagnostics)
 
         def _handle_stop_iteration(err):
-            """ helper function for handling interrupts raised by trackers """
+            """helper function for handling interrupts raised by trackers"""
             if isinstance(err, FinishedSimulation):
                 # tracker determined that the simulation finished
                 self.info["successful"] = True

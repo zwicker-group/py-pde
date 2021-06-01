@@ -121,12 +121,12 @@ class StorageBase(metaclass=ABCMeta):
             self._data_shape = None
 
     def __len__(self):
-        """ return the number of stored items, i.e., time steps """
+        """return the number of stored items, i.e., time steps"""
         return len(self.times)
 
     @property
     def shape(self) -> Optional[Tuple[int, ...]]:
-        """ the shape of the stored data """
+        """the shape of the stored data"""
         if self._data_shape:
             return (len(self),) + self._data_shape
         else:
@@ -134,7 +134,7 @@ class StorageBase(metaclass=ABCMeta):
 
     @property
     def has_collection(self) -> bool:
-        """ bool: whether the storage is storing a collection """
+        """bool: whether the storage is storing a collection"""
         if self._field is not None:
             return isinstance(self._field, FieldCollection)
         elif len(self) > 0:
@@ -222,7 +222,7 @@ class StorageBase(metaclass=ABCMeta):
         return self._field.copy(data=self.data[t_index])
 
     def __getitem__(self, key: Union[int, slice]) -> Union[FieldBase, List[FieldBase]]:
-        """ return field at given index or a list of fields for a slice """
+        """return field at given index or a list of fields for a slice"""
         if isinstance(key, int):
             return self._get_field(key)
         elif isinstance(key, slice):
@@ -231,12 +231,12 @@ class StorageBase(metaclass=ABCMeta):
             raise TypeError("Unknown key type")
 
     def __iter__(self) -> Iterator[FieldBase]:
-        """ iterate over all stored fields """
+        """iterate over all stored fields"""
         for i in range(len(self)):
             yield self[i]  # type: ignore
 
     def items(self) -> Iterator[Tuple[float, FieldBase]]:
-        """ iterate over all times and stored fields, returning pairs """
+        """iterate over all times and stored fields, returning pairs"""
         for i in range(len(self)):
             yield self.times[i], self[i]  # type: ignore
 
@@ -278,7 +278,7 @@ class StorageBase(metaclass=ABCMeta):
         self.info["field_attributes"] = field.attributes_serialized
 
     def end_writing(self) -> None:
-        """ finalize the storage after writing """
+        """finalize the storage after writing"""
         pass
 
     def extract_field(

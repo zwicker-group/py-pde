@@ -99,7 +99,7 @@ class PDEBase(metaclass=ABCMeta):
         """
 
         def modify_after_step(state_data: np.ndarray) -> float:
-            """ no-op function """
+            """no-op function"""
             return 0
 
         return modify_after_step
@@ -111,7 +111,7 @@ class PDEBase(metaclass=ABCMeta):
     def _make_pde_rhs_numba(
         self, state: FieldBase
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """ create a compiled function for evaluating the right hand side """
+        """create a compiled function for evaluating the right hand side"""
         raise NotImplementedError
 
     def _make_pde_rhs_numba_cached(
@@ -201,7 +201,7 @@ class PDEBase(metaclass=ABCMeta):
             state = state.copy()
 
             def evolution_rate_numpy(state_data: np.ndarray, t: float) -> np.ndarray:
-                """ evaluate the rhs given only a state without the grid """
+                """evaluate the rhs given only a state without the grid"""
                 state.data = state_data
                 return self.evolution_rate(state, t).data
 
@@ -281,7 +281,7 @@ class PDEBase(metaclass=ABCMeta):
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
-                    """ helper function returning a noise realization """
+                    """helper function returning a noise realization"""
                     return noise_strength * np.random.randn(*data_shape)  # type: ignore
 
             elif isinstance(state, FieldCollection):
@@ -293,7 +293,7 @@ class PDEBase(metaclass=ABCMeta):
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
-                    """ helper function returning a noise realization """
+                    """helper function returning a noise realization"""
                     out = np.random.randn(*data_shape)
                     for i in range(data_shape[0]):
                         # TODO: Avoid creating random numbers when noise_strengths == 0
@@ -310,7 +310,7 @@ class PDEBase(metaclass=ABCMeta):
 
             @jit
             def noise_realization(state_data: np.ndarray, t: float) -> None:
-                """ helper function returning a noise realization """
+                """helper function returning a noise realization"""
                 return None
 
         return noise_realization  # type: ignore
@@ -333,7 +333,7 @@ class PDEBase(metaclass=ABCMeta):
 
         @jit
         def sde_rhs(state_data: np.ndarray, t: float) -> Tuple[np.ndarray, np.ndarray]:
-            """ compiled helper function returning a noise realization """
+            """compiled helper function returning a noise realization"""
             return (evolution_rate(state_data, t), noise_realization(state_data, t))
 
         return sde_rhs  # type: ignore
@@ -401,7 +401,7 @@ class PDEBase(metaclass=ABCMeta):
             def sde_rhs(
                 state_data: np.ndarray, t: float
             ) -> Tuple[np.ndarray, np.ndarray]:
-                """ evaluate the rhs given only a state without the grid """
+                """evaluate the rhs given only a state without the grid"""
                 state.data = state_data
                 return (
                     self.evolution_rate(state, t).data,
