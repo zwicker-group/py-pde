@@ -48,7 +48,7 @@ class AllenCahnPDE(PDEBase):
 
     @property
     def expression(self) -> str:
-        """ str: the expression of the right hand side of this PDE """
+        """str: the expression of the right hand side of this PDE"""
         return f"{expr_prod(self.interface_width, 'laplace(c)')} - c**3 + c"
 
     def evolution_rate(  # type: ignore
@@ -95,7 +95,7 @@ class AllenCahnPDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float) -> np.ndarray:
-            """ compiled helper function evaluating right hand side """
+            """compiled helper function evaluating right hand side"""
             return interface_width * laplace(state_data) - state_data ** 3 + state_data  # type: ignore
 
         return pde_rhs  # type: ignore

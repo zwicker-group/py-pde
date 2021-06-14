@@ -24,7 +24,7 @@ BoundaryPairData = Union[
 
 
 class BoundaryAxisBase:
-    """ base class for defining boundaries of a single axis in a grid """
+    """base class for defining boundaries of a single axis in a grid"""
 
     grid: GridBase
     """ :class:`~pde.grids.base.GridBase`:
@@ -34,7 +34,7 @@ class BoundaryAxisBase:
 
 
 class BoundaryPair(BoundaryAxisBase):
-    """ represents the two boundaries of an axis along a single dimension """
+    """represents the two boundaries of an axis along a single dimension"""
 
     periodic = False
 
@@ -89,15 +89,15 @@ class BoundaryPair(BoundaryAxisBase):
         )
 
     def _cache_hash(self) -> int:
-        """ returns a value to determine when a cache needs to be updated """
+        """returns a value to determine when a cache needs to be updated"""
         return hash((self.low._cache_hash(), self.high._cache_hash()))
 
     def copy(self) -> "BoundaryPair":
-        """ return a copy of itself, but with a reference to the same grid """
+        """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(self.low.copy(), self.high.copy())
 
     def __getitem__(self, index: Union[int, bool]) -> BCBase:
-        """ returns one of the sides """
+        """returns one of the sides"""
         if index == 0 or index is False:
             return self.low
         elif index == 1 or index is True:
@@ -129,7 +129,7 @@ class BoundaryPair(BoundaryAxisBase):
 
     @classmethod
     def get_help(cls) -> str:
-        """ Return information on how boundary conditions can be set """
+        """Return information on how boundary conditions can be set"""
         return (
             "Boundary conditions for each side can be set using a tuple: "
             f"(lower_bc, upper_bc). {BCBase.get_help()}"
@@ -142,7 +142,7 @@ class BoundaryPair(BoundaryAxisBase):
         """create boundary pair from some data
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
@@ -301,7 +301,7 @@ class BoundaryPair(BoundaryAxisBase):
 
     @property
     def differentiated(self) -> "BoundaryPair":
-        """ BoundaryPair: differentiated version of this boundary condition """
+        """BoundaryPair: differentiated version of this boundary condition"""
         return self.__class__(self.low.differentiated, self.high.differentiated)
 
     def get_point_evaluator(
@@ -330,7 +330,7 @@ class BoundaryPair(BoundaryAxisBase):
 
         @register_jitable
         def evaluate(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
-            """ evaluate values of the 1d array `arr_1d` at an index `i` """
+            """evaluate values of the 1d array `arr_1d` at an index `i`"""
             arr_1d, i, _ = get_arr_1d(arr, idx)
 
             if i == -1:
@@ -380,7 +380,7 @@ class BoundaryPair(BoundaryAxisBase):
         def region_evaluator(
             arr: np.ndarray, idx: Tuple[int, ...]
         ) -> Tuple[NumberOrArray, NumberOrArray, NumberOrArray]:
-            """ compiled function return the values in the region """
+            """compiled function return the values in the region"""
             # extract the 1d array along axis
             arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
             return (
@@ -393,7 +393,7 @@ class BoundaryPair(BoundaryAxisBase):
 
 
 class BoundaryPeriodic(BoundaryAxisBase):
-    """ represent a periodic axis """
+    """represent a periodic axis"""
 
     periodic = True
     _scipy_border_mode = {"mode": "wrap"}
@@ -401,7 +401,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
     def __init__(self, grid: GridBase, axis: int):
         """
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
@@ -437,11 +437,11 @@ class BoundaryPeriodic(BoundaryAxisBase):
         )
 
     def _cache_hash(self) -> int:
-        """ returns a value to determine when a cache needs to be updated """
+        """returns a value to determine when a cache needs to be updated"""
         return hash((self.grid._cache_hash(), self.axis))
 
     def copy(self) -> "BoundaryPeriodic":
-        """ return a copy of itself, but with a reference to the same grid """
+        """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(grid=self.grid, axis=self.axis)
 
     def extract_component(self, *indices):
@@ -474,12 +474,12 @@ class BoundaryPeriodic(BoundaryAxisBase):
 
         @register_jitable
         def value_low(arr):
-            """ evaluate the virtual point using the data array `arr` """
+            """evaluate the virtual point using the data array `arr`"""
             return arr[size - 1]
 
         @register_jitable
         def value_high(arr):
-            """ evaluate the virtual point using the data array `arr` """
+            """evaluate the virtual point using the data array `arr`"""
             return arr[0]
 
         return (value_low, value_high)
@@ -509,7 +509,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
 
     @property
     def differentiated(self) -> "BoundaryPeriodic":
-        """ BoundaryPeriodic: differentiated boundary condition """
+        """BoundaryPeriodic: differentiated boundary condition"""
         return self
 
     def get_point_evaluator(
@@ -533,7 +533,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
 
         @register_jitable
         def evaluate(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
-            """ evaluate values of the array `arr` at an index `idx` """
+            """evaluate values of the array `arr` at an index `idx`"""
             arr_1d, i, _ = get_arr_1d(arr, idx)
             # wrap around for periodic boundaries
             return arr_1d[..., i % size]  # type: ignore
@@ -561,7 +561,7 @@ class BoundaryPeriodic(BoundaryAxisBase):
 
         @register_jitable
         def region_evaluator(arr, idx: Tuple[int, ...]) -> Tuple[float, float, float]:
-            """ compiled function return the values in the region """
+            """compiled function return the values in the region"""
             # extract the 1d array along axis
             arr_1d, i, _ = get_arr_1d(arr, idx)
 
@@ -581,7 +581,7 @@ def get_boundary_axis(
     """return object representing the boundary condition for a single axis
 
     Args:
-        grid (:class:`~pde.grids.GridBase`):
+        grid (:class:`~pde.grids.base.GridBase`):
             The grid for which the boundary conditions are defined
         axis (int):
             The axis to which this boundary condition is associated

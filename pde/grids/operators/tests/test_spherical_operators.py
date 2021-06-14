@@ -5,13 +5,13 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, ScalarField, SphericalGrid, Tensor2Field, VectorField
-from pde.grids.operators import spherical as ops
+from pde import CartesianGrid, ScalarField, SphericalSymGrid, Tensor2Field, VectorField
+from pde.grids.operators import spherical_sym as ops
 
 
 def test_findiff_sph():
-    """ test operator for a simple spherical grid """
-    grid = SphericalGrid(1.5, 3)
+    """test operator for a simple spherical grid"""
+    grid = SphericalSymGrid(1.5, 3)
     _, r1, r2 = grid.axes_coords[0]
     assert grid.discretization == (0.5,)
     s = ScalarField(grid, [1, 2, 4])
@@ -31,10 +31,10 @@ def test_findiff_sph():
 
 
 def test_conservative_laplace_sph():
-    """ test and compare the two implementation of the laplace operator """
+    """test and compare the two implementation of the laplace operator"""
     r_max = 3.14
     for r_min in [0, 0.1]:
-        grid = SphericalGrid((r_min, r_max), 8)
+        grid = SphericalSymGrid((r_min, r_max), 8)
         f = ScalarField.from_expression(grid, "cos(r)")
 
         bcs = grid.get_boundary_conditions("natural")
@@ -55,11 +55,11 @@ def test_conservative_laplace_sph():
     ],
 )
 def test_small_annulus(make_op, field, rank):
-    """ test whether a small annulus gives the same result as a sphere """
+    """test whether a small annulus gives the same result as a sphere"""
     grids = [
-        SphericalGrid((0, 1), 8),
-        SphericalGrid((1e-8, 1), 8),
-        SphericalGrid((0.1, 1), 8),
+        SphericalSymGrid((0, 1), 8),
+        SphericalSymGrid((1e-8, 1), 8),
+        SphericalSymGrid((0.1, 1), 8),
     ]
 
     f = field.random_uniform(grids[0])
@@ -71,8 +71,8 @@ def test_small_annulus(make_op, field, rank):
 
 
 def test_grid_laplace():
-    """ test the polar implementation of the laplace operator """
-    grid_sph = SphericalGrid(9, 11)
+    """test the polar implementation of the laplace operator"""
+    grid_sph = SphericalSymGrid(9, 11)
     grid_cart = CartesianGrid([[-5, 5], [-5, 5], [-5, 5]], [12, 10, 11])
 
     a_1d = ScalarField.from_expression(grid_sph, "cos(r)")
@@ -90,8 +90,8 @@ def test_grid_laplace():
 
 @pytest.mark.parametrize("r_inner", (0, 1))
 def test_gradient_squared(r_inner):
-    """ compare gradient squared operator """
-    grid = SphericalGrid((r_inner, 5), 64)
+    """compare gradient squared operator"""
+    grid = SphericalSymGrid((r_inner, 5), 64)
     field = ScalarField.random_harmonic(grid, modes=1)
     s1 = field.gradient("natural").to_scalar("squared_sum")
     s2 = field.gradient_squared("natural", central=True)
@@ -102,8 +102,8 @@ def test_gradient_squared(r_inner):
 
 
 def test_grid_div_grad():
-    """ compare div grad to laplacian """
-    grid = SphericalGrid(2 * np.pi, 16)
+    """compare div grad to laplacian"""
+    grid = SphericalSymGrid(2 * np.pi, 16)
     r = grid.axes_coords[0]
     arr = np.cos(r)
 
@@ -120,8 +120,8 @@ def test_grid_div_grad():
 
 
 def test_poisson_solver_spherical():
-    """ test the poisson solver on Polar grids """
-    grid = SphericalGrid(4, 8)
+    """test the poisson solver on Polar grids"""
+    grid = SphericalSymGrid(4, 8)
     for bc_val in ["natural", {"value": 1}]:
         bcs = grid.get_boundary_conditions(bc_val)
         poisson = grid.get_operator("poisson_solver", bcs)
@@ -131,7 +131,7 @@ def test_poisson_solver_spherical():
         d -= ScalarField(grid, d).average  # balance the right hand side
         np.testing.assert_allclose(laplace(poisson(d)), d, err_msg=f"bcs = {bc_val}")
 
-    grid = SphericalGrid([2, 4], 8)
+    grid = SphericalSymGrid([2, 4], 8)
     for bc_val in ["natural", {"value": 1}]:
         bcs = grid.get_boundary_conditions(bc_val)
         poisson = grid.get_operator("poisson_solver", bcs)

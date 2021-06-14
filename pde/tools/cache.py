@@ -67,7 +67,7 @@ def objects_equal(a, b) -> bool:
 
 
 def _hash_iter(it: Iterable) -> int:
-    """ get hash of an iterable but turning it into a tuple first """
+    """get hash of an iterable but turning it into a tuple first"""
     return hash(tuple(it))
 
 
@@ -284,7 +284,7 @@ def make_unserializer(method: str) -> Callable:
 
 
 class DictFiniteCapacity(collections.OrderedDict):
-    """ cache with a limited number of items """
+    """cache with a limited number of items"""
 
     default_capacity: int = 100
 
@@ -293,7 +293,7 @@ class DictFiniteCapacity(collections.OrderedDict):
         super(DictFiniteCapacity, self).__init__(*args, **kwargs)
 
     def check_length(self):
-        """ ensures that the dictionary does not grow beyond its capacity """
+        """ensures that the dictionary does not grow beyond its capacity"""
         while len(self) > self.capacity:
             self.popitem(last=False)
 
@@ -385,7 +385,7 @@ class SerializedDict(collections.abc.MutableMapping):
 
 
 class _class_cache:
-    """ class handling the caching of results of methods and properties """
+    """class handling the caching of results of methods and properties"""
 
     def __init__(
         self,
@@ -496,7 +496,7 @@ class _class_cache:
         of the wrapped method"""
 
         def clear_cache(obj) -> None:
-            """ clears the cache associated with this method """
+            """clears the cache associated with this method"""
             try:
                 # try getting an initialized cache
                 cache = obj._cache_methods[self.name]
@@ -517,7 +517,7 @@ class _class_cache:
         return clear_cache
 
     def _get_wrapped_function(self, func: Callable) -> Callable:
-        """ return the wrapped method, which implements the cache """
+        """return the wrapped method, which implements the cache"""
 
         if self.name is None:
             self.name = func.__name__
@@ -608,7 +608,7 @@ class cached_property(_class_cache):
     """
 
     def __call__(self, method):
-        """ apply the cache decorator to the property """
+        """apply the cache decorator to the property"""
         # save name, e.g., to be able to delete cache later
         self._cache_name = self.name
         self.clear_cache_of_obj = self._get_clear_cache_method()
@@ -620,7 +620,7 @@ class cached_property(_class_cache):
         return self
 
     def __get__(self, obj, owner):
-        """ call the method to obtain the result for this property """
+        """call the method to obtain the result for this property"""
         return self.func(obj)
 
 
@@ -651,7 +651,7 @@ class cached_method(_class_cache):
     """
 
     def __call__(self, method: Callable) -> Callable:
-        """ apply the cache decorator to the method """
+        """apply the cache decorator to the method"""
 
         wrapper = self._get_wrapped_function(method)
 

@@ -12,7 +12,7 @@ from pde.tools import misc
 
 
 def test_ensure_directory_exists(tmp_path):
-    """ tests the ensure_directory_exists function """
+    """tests the ensure_directory_exists function"""
     # create temporary name
     path = tmp_path / "test_ensure_directory_exists"
     assert not path.exists()
@@ -28,7 +28,7 @@ def test_ensure_directory_exists(tmp_path):
 
 
 def test_preserve_scalars():
-    """ test the preserve_scalars decorator """
+    """test the preserve_scalars decorator"""
 
     class Test:
         @misc.preserve_scalars
@@ -42,7 +42,7 @@ def test_preserve_scalars():
 
 
 def test_hybridmethod():
-    """ test the hybridmethod decorator """
+    """test the hybridmethod decorator"""
 
     class Test:
         @misc.hybridmethod
@@ -58,7 +58,7 @@ def test_hybridmethod():
 
 
 def test_estimate_computation_speed():
-    """ test estimate_computation_speed method """
+    """test estimate_computation_speed method"""
 
     def f(x):
         return 2 * x
@@ -70,7 +70,7 @@ def test_estimate_computation_speed():
 
 
 def test_classproperty():
-    """ test classproperty decorator """
+    """test classproperty decorator"""
 
     class Test:
         _value = 2
@@ -84,7 +84,7 @@ def test_classproperty():
 
 @misc.skipUnlessModule("h5py")
 def test_hdf_write_attributes(tmp_path):
-    """ test hdf_write_attributes function """
+    """test hdf_write_attributes function"""
     import h5py
 
     path = tmp_path / "test_hdf_write_attributes.hdf5"

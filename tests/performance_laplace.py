@@ -14,7 +14,7 @@ import numba
 import numpy as np
 
 from pde import config
-from pde.grids import CylindricalGrid, SphericalGrid, UnitGrid
+from pde.grids import CylindricalSymGrid, SphericalSymGrid, UnitGrid
 from pde.grids.boundaries import Boundaries
 from pde.grids.operators import cartesian, cylindrical, spherical
 from pde.tools.misc import estimate_computation_speed
@@ -22,14 +22,14 @@ from pde.tools.numba import jit, jit_allocate_out
 
 
 def custom_laplace_2d_periodic(shape, dx=1):
-    """ make laplace operator with periodic boundary conditions """
+    """make laplace operator with periodic boundary conditions"""
     dx_2 = 1 / dx ** 2
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
-        """ apply laplace operator to array `arr` """
+        """apply laplace operator to array `arr`"""
         for i in numba.prange(dim_x):
             im = dim_x - 1 if i == 0 else i - 1
             ip = 0 if i == dim_x - 1 else i + 1
@@ -57,14 +57,14 @@ def custom_laplace_2d_periodic(shape, dx=1):
 
 
 def custom_laplace_2d_neumann(shape, dx=1):
-    """ make laplace operator with Neumann boundary conditions """
+    """make laplace operator with Neumann boundary conditions"""
     dx_2 = 1 / dx ** 2
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
-        """ apply laplace operator to array `arr` """
+        """apply laplace operator to array `arr`"""
         for i in numba.prange(dim_x):
             im = 0 if i == 0 else i - 1
             ip = dim_x - 1 if i == dim_x - 1 else i + 1
@@ -81,7 +81,7 @@ def custom_laplace_2d_neumann(shape, dx=1):
 
 
 def custom_laplace_2d(shape, periodic, dx=1):
-    """ make laplace operator with Neumann or periodic boundary conditions """
+    """make laplace operator with Neumann or periodic boundary conditions"""
     if periodic:
         return custom_laplace_2d_periodic(shape, dx=dx)
     else:
@@ -89,7 +89,7 @@ def custom_laplace_2d(shape, periodic, dx=1):
 
 
 def flexible_laplace_2d(bcs):
-    """ make laplace operator with flexible boundary conditions """
+    """make laplace operator with flexible boundary conditions"""
     bc_x, bc_y = bcs
     dx = bcs._uniform_discretization
     dx_2 = 1 / dx ** 2
@@ -100,7 +100,7 @@ def flexible_laplace_2d(bcs):
 
     @jit_allocate_out
     def laplace(arr, out=None):
-        """ apply laplace operator to array `arr` """
+        """apply laplace operator to array `arr`"""
         for i in range(dim_x):
             for j in range(dim_y):
                 val_x_l, val_x, val_x_r = region_x(arr, (i, j))
@@ -113,14 +113,14 @@ def flexible_laplace_2d(bcs):
 
 
 def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
-    """ make laplace operator with Neumann boundary conditions """
+    """make laplace operator with Neumann boundary conditions"""
     dim_r, dim_z = shape
     dr_2 = 1 / dr ** 2
     dz_2 = 1 / dz ** 2
 
     @jit
     def laplace(arr, out=None):
-        """ apply laplace operator to array `arr` """
+        """apply laplace operator to array `arr`"""
         if out is None:
             out = np.empty((dim_r, dim_z))
 
@@ -155,7 +155,7 @@ def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
 
 
 def main():
-    """ main routine testing the performance """
+    """main routine testing the performance"""
     print("Reports calls-per-second (larger is better)")
     print("  The `CUSTOM` method implemented by hand is the baseline case.")
     print(
@@ -191,7 +191,7 @@ def main():
     # Cylindrical grid with different shapes
     for shape in [(32, 64), (512, 512)]:
         data = np.random.random(shape)
-        grid = CylindricalGrid(shape[0], [0, shape[1]], shape)
+        grid = CylindricalSymGrid(shape[0], [0, shape[1]], shape)
         print(f"Cylindrical grid, shape={shape}")
         bcs = Boundaries.from_data(grid, "derivative")
         laplace_cyl = cylindrical.make_laplace(bcs)
@@ -213,7 +213,7 @@ def main():
     # Spherical grid with different shapes
     for shape in [32, 512]:
         data = np.random.random(shape)
-        grid = SphericalGrid(shape, shape)
+        grid = SphericalSymGrid(shape, shape)
         print(grid)
         bcs = Boundaries.from_data(grid, "derivative")
         make_laplace = spherical.make_laplace

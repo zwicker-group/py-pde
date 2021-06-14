@@ -11,7 +11,7 @@ from pde.tools.misc import module_available, skipUnlessModule
 
 
 def test_vectors():
-    """ test some vector fields """
+    """test some vector fields"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     v1 = VectorField(grid, np.full((2,) + grid.shape, 1))
     v2 = VectorField(grid, np.full((2,) + grid.shape, 2))
@@ -68,7 +68,7 @@ def test_vectors():
 
 
 def test_divergence():
-    """ test the divergence operator """
+    """test the divergence operator"""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(x) + y, np.sin(y) - x]
@@ -85,7 +85,7 @@ def test_divergence():
 
 
 def test_vector_gradient():
-    """ test the vector gradient operator """
+    """test the vector gradient operator"""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(x) + y, np.sin(y) - x]
@@ -108,7 +108,7 @@ def test_vector_gradient():
 
 
 def test_vector_laplace():
-    """ test the laplace operator """
+    """test the laplace operator"""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(x) + np.sin(y), np.sin(y) - np.cos(x)]
@@ -124,7 +124,7 @@ def test_vector_laplace():
 
 
 def test_vector_boundary_conditions():
-    """ test some boundary conditions of operators of vector fields """
+    """test some boundary conditions of operators of vector fields"""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], 32, periodic=False)
     v_x = np.sin(grid.cell_coords[..., 0])
     v_y = grid.cell_coords[..., 1]
@@ -142,7 +142,7 @@ def test_vector_boundary_conditions():
 
 
 def test_outer_product():
-    """ test outer product of vector fields """
+    """test outer product of vector fields"""
     vf = VectorField(UnitGrid([1, 1]), [[[1]], [[2]]])
 
     for backend in ["numpy", "numba"]:
@@ -162,7 +162,7 @@ def test_outer_product():
 
 
 def test_from_expressions():
-    """ test initializing vector fields with expressions """
+    """test initializing vector fields with expressions"""
     grid = UnitGrid([4, 4])
     vf = VectorField.from_expression(grid, ["x**2", "x * y"])
     xs = grid.cell_coords[..., 0]
@@ -182,7 +182,7 @@ def test_from_expressions():
 
 
 def test_vector_plot_quiver_reduction():
-    """ test whether quiver plots reduce the resolution """
+    """test whether quiver plots reduce the resolution"""
     grid = UnitGrid([6, 6])
     field = VectorField.random_normal(grid)
     ref = field.plot(method="quiver", max_points=4)
@@ -190,7 +190,7 @@ def test_vector_plot_quiver_reduction():
 
 
 def test_boundary_interpolation_vector():
-    """ test boundary interpolation """
+    """test boundary interpolation"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
     field = VectorField.random_normal(grid)
 
@@ -204,26 +204,32 @@ def test_boundary_interpolation_vector():
         np.testing.assert_allclose(ev(), bndry_val)
 
 
-def test_plotting_2d():
-    """ test plotting of 2d vector fields """
-    grid = UnitGrid([3, 3])
+@pytest.mark.parametrize("transpose", [True, False])
+def test_vector_plotting_2d(transpose):
+    """test plotting of 2d vector fields"""
+    grid = UnitGrid([3, 4])
     field = VectorField.random_uniform(grid, 0.1, 0.9)
 
     for method in ["quiver", "streamplot"]:
-        ref = field.plot(method=method)
+        ref = field.plot(method=method, transpose=transpose)
         field._update_plot(ref)
+
+    # test sub-sampling
+    grid = UnitGrid([32, 15])
+    field = VectorField.random_uniform(grid, 0.1, 0.9)
+    field.get_vector_data(transpose=transpose, max_points=7)
 
 
 @skipUnlessModule("napari")
 def test_interactive_vector_plotting():
-    """ test the interactive plotting """
+    """test the interactive plotting"""
     grid = UnitGrid([3, 3])
     field = VectorField.random_uniform(grid, 0.1, 0.9)
     field.plot_interactive(viewer_args={"show": False, "close": True})
 
 
 def test_complex_vectors():
-    """ test some complex vector fields """
+    """test some complex vector fields"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     shape = (2, 2) + grid.shape
     numbers = np.random.random(shape) + np.random.random(shape) * 1j

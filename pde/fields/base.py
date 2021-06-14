@@ -57,9 +57,9 @@ class FieldBase(metaclass=ABCMeta):
     ):
         """
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
-            data (array, optional):
+            data (:class:`~numpy.ndarray`, optional):
                 Field values at the support points of the grid
             label (str, optional):
                 Name of the field
@@ -70,18 +70,18 @@ class FieldBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """ register all subclassess to reconstruct them later """
+        """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
 
     @property
     def label(self) -> Optional[str]:
-        """str: the name of the field """
+        """str: the name of the field"""
         return self._label
 
     @label.setter
     def label(self, value: str = None):
-        """ set the new label of the field """
+        """set the new label of the field"""
         if value is None or isinstance(value, str):
             self._label = value
         else:
@@ -139,7 +139,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> "FieldBase":
-        """ construct a field by reading data from an hdf5 dataset """
+        """construct a field by reading data from an hdf5 dataset"""
         # copy attributes from hdf
         attributes = dict(dataset.attrs)
 
@@ -153,7 +153,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def grid(self) -> GridBase:
-        """ GridBase: The grid on which the field is defined """
+        """GridBase: The grid on which the field is defined"""
         return self._grid
 
     def to_file(self, filename: str, **kwargs):
@@ -190,7 +190,7 @@ class FieldBase(metaclass=ABCMeta):
             raise ValueError(f"Do not know how to save data to `*{extension}`")
 
     def _write_hdf_dataset(self, hdf_path, key: str = "data"):
-        """ write data to a given hdf5 path `hdf_path` """
+        """write data to a given hdf5 path `hdf_path`"""
         # write the data
         dataset = hdf_path.create_dataset(key, data=self.data)
 
@@ -235,7 +235,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def data(self) -> np.ndarray:
-        """ :class:`~numpy.ndarray`: discretized data at the support points """
+        """:class:`~numpy.ndarray`: discretized data at the support points"""
         return self._data
 
     @data.setter
@@ -251,18 +251,18 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def dtype(self):
-        """ returns the numpy dtype of the underlying data """
+        """returns the numpy dtype of the underlying data"""
         # this property is necessary to support np.iscomplexobj for DataFieldBases
         return self.data.dtype
 
     @property
     def is_complex(self) -> bool:
-        """ bool: whether the field contains real or complex data """
+        """bool: whether the field contains real or complex data"""
         return np.iscomplexobj(self.data)  # type: ignore
 
     @property
     def attributes(self) -> Dict[str, Any]:
-        """ dict: describes the state of the instance (without the data) """
+        """dict: describes the state of the instance (without the data)"""
         return {
             "class": self.__class__.__name__,
             "grid": self.grid,
@@ -271,7 +271,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def attributes_serialized(self) -> Dict[str, str]:
-        """ dict: serialized version of the attributes """
+        """dict: serialized version of the attributes"""
         results = {}
         for key, value in self.attributes.items():
             if key == "grid":
@@ -302,13 +302,13 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def _data_flat(self):
-        """ :class:`~numpy.ndarray`: flat version of discretized data """
+        """:class:`~numpy.ndarray`: flat version of discretized data"""
         # flatten the first dimension of the internal data
         return self._data.reshape(-1, *self.grid.shape)
 
     @_data_flat.setter
     def _data_flat(self, value):
-        """ set the data from a value from a collection """
+        """set the data from a value from a collection"""
         if self.readonly:
             raise RuntimeError(f"Cannot write to {self.__class__.__name__}")
         # simply set the data -> this might need to be overwritten
@@ -316,26 +316,26 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def real(self: TField) -> TField:
-        """:class:`FieldBase`: Real part of the field """
+        """:class:`FieldBase`: Real part of the field"""
         return self.copy(data=self.data.real)
 
     @property
     def imag(self: TField) -> TField:
-        """:class:`FieldBase`: Imaginary part of the field """
+        """:class:`FieldBase`: Imaginary part of the field"""
         return self.copy(data=self.data.imag)
 
     def conjugate(self: TField) -> TField:
-        """ returns complex conjugate of the field """
+        """returns complex conjugate of the field"""
         return self.copy(data=self.data.conj())
 
     def __eq__(self, other):
-        """ test fields for equality, ignoring the label """
+        """test fields for equality, ignoring the label"""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return self.grid == other.grid and np.array_equal(self.data, other.data)
 
     def __neg__(self):
-        """ return the negative of the current field """
+        """return the negative of the current field"""
         return self.copy(data=-self.data)
 
     def _binary_operation(
@@ -422,55 +422,55 @@ class FieldBase(metaclass=ABCMeta):
         return self
 
     def __add__(self, other) -> "FieldBase":
-        """ add two fields """
+        """add two fields"""
         return self._binary_operation(other, operator.add, scalar_second=False)
 
     __radd__ = __add__
 
     def __iadd__(self: TField, other) -> TField:
-        """ add `other` to the current field """
+        """add `other` to the current field"""
         return self._binary_operation_inplace(other, operator.iadd, scalar_second=False)
 
     def __sub__(self, other) -> "FieldBase":
-        """ subtract two fields """
+        """subtract two fields"""
         return self._binary_operation(other, operator.sub, scalar_second=False)
 
     def __rsub__(self, other) -> "FieldBase":
-        """ subtract two fields """
+        """subtract two fields"""
         return self._binary_operation(other, lambda x, y: y - x, scalar_second=False)
 
     def __isub__(self: TField, other) -> TField:
-        """ add `other` to the current field """
+        """add `other` to the current field"""
         return self._binary_operation_inplace(other, operator.isub, scalar_second=False)
 
     def __mul__(self, other) -> "FieldBase":
-        """ multiply field by value """
+        """multiply field by value"""
         return self._binary_operation(other, operator.mul, scalar_second=False)
 
     __rmul__ = __mul__
 
     def __imul__(self: TField, other) -> TField:
-        """ multiply field by value """
+        """multiply field by value"""
         return self._binary_operation_inplace(other, operator.imul, scalar_second=False)
 
     def __truediv__(self, other) -> "FieldBase":
-        """ divide field by value """
+        """divide field by value"""
         return self._binary_operation(other, operator.truediv, scalar_second=True)
 
     def __itruediv__(self: TField, other) -> TField:
-        """ divide field by value """
+        """divide field by value"""
         return self._binary_operation_inplace(
             other, operator.itruediv, scalar_second=True
         )
 
     def __pow__(self, exponent: float) -> "FieldBase":
-        """ raise data of the field to a certain power """
+        """raise data of the field to a certain power"""
         if not np.isscalar(exponent):
             raise NotImplementedError("Only scalar exponents are supported")
         return self.copy(data=self.data ** exponent)
 
     def __ipow__(self: TField, exponent: float) -> TField:
-        """ raise data of the field to a certain power in-place """
+        """raise data of the field to a certain power in-place"""
         if self.readonly:
             raise RuntimeError(f"Cannot write to {self.__class__.__name__}")
 
@@ -554,7 +554,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     """abstract base class for describing fields of single entities
 
     Attributes:
-        grid (:class:`~pde.grids.GridBase`):
+        grid (:class:`~pde.grids.base.GridBase`):
             The underlying grid defining the discretization
         data (:class:`~numpy.ndarray`):
             Data values at the support points of the grid
@@ -577,7 +577,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     ):
         """
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined.
             data (Number or :class:`~numpy.ndarray`, optional):
                 Field values at the support points of the grid. The data is copied from
@@ -618,7 +618,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         super().__init__(grid, data=data, label=label)
 
     def __repr__(self) -> str:
-        """ return instance as string """
+        """return instance as string"""
         class_name = self.__class__.__name__
         result = f"{class_name}(grid={self.grid!r}, data={self.data}"
         if self.label:
@@ -626,7 +626,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return result + ")"
 
     def __str__(self) -> str:
-        """ return instance as string """
+        """return instance as string"""
         result = (
             f"{self.__class__.__name__}(grid={self.grid}, "
             f"data=Array{self.data.shape}"
@@ -649,7 +649,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         These values are uncorrelated in space.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             vmin (float):
                 Smallest possible random value
@@ -682,7 +682,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         These values are uncorrelated in space.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             mean (float):
                 Mean of the Gaussian distribution
@@ -747,7 +747,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         function given by the parameter `harmonic`.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             modes (int):
                 Number :math:`M` of harmonic modes
@@ -810,7 +810,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         uncorrelated.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             exponent (float):
                 Exponent :math:`\nu` of the power spectrum
@@ -888,7 +888,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @property
     def data_shape(self) -> Tuple[int, ...]:
-        """ tuple: the shape of the data at each grid point """
+        """tuple: the shape of the data at each grid point"""
         return (self.grid.dim,) * self.rank
 
     @classmethod
@@ -1000,7 +1000,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # introduce wrapper function to process arrays
         def interpolator(point: np.ndarray, **kwargs) -> NumberOrArray:
-            """ return the interpolated value at the position `point` """
+            """return the interpolated value at the position `point`"""
             point = np.atleast_1d(point)
             # apply periodic boundary conditions to grid point
             point = self.grid.normalize_point(point, reflect=False)
@@ -1202,7 +1202,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """interpolate the data of this field to another grid.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
             backend (str):
@@ -1248,7 +1248,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return self.__class__(grid, data, label=label)
 
     def add_interpolated(self, point: np.ndarray, amount: ArrayLike) -> None:
-        """ deprecated alias of method `insert` """
+        """deprecated alias of method `insert`"""
         # this was deprecated on 2021-02-23
         warnings.warn(
             "`add_interpolated` is deprecated. Use `insert` instead",
@@ -1278,19 +1278,24 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if point.size != grid_dim or point.ndim != 1:
             raise DimensionError(f"Dimension mismatch for point {point}")
 
-        point = grid.normalize_point(point, reflect=False)
-
+        # determine the grid coordinates next to the chosen points
         low = np.array(grid.axes_bounds)[:, 0]
         c_l, d_l = np.divmod((point - low) / grid.discretization - 0.5, 1.0)
-        c_l = c_l.astype(np.intc)
+        c_l = c_l.astype(np.intc)  # support points to the left of the chosen points
         w_l = 1 - d_l  # weights of the low point
         w_h = d_l  # weights of the high point
 
-        # determine the total weight in first iteration
+        # apply periodic boundary conditions to grid coordinates
+        c_h = c_l + 1  # support points to the right of the chosen points
+        for ax in np.flatnonzero(grid.periodic):
+            c_l[..., ax] %= grid.shape[ax]
+            c_h[..., ax] %= grid.shape[ax]
+
+        # determine the valid points and the total weight in first iteration
         total_weight = 0
         cells = []
         for i in np.ndindex(*((2,) * grid_dim)):
-            coords = np.choose(i, [c_l, c_l + 1])
+            coords = np.choose(i, [c_l, c_h])
             if np.all(coords >= 0) and np.all(coords < grid.shape):
                 weight = np.prod(np.choose(i, [w_l, w_h]))
                 total_weight += weight
@@ -1737,14 +1742,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             :class:`PlotReference`: Instance that contains information to update
             the plot with new data later.
         """
-        # do the plotting using the chosen method
+        # store the parameters of this plot for later updating
+        parameters = {
+            "method": method,
+            "transpose": transpose,
+            "kwargs": kwargs,
+        }
+
         if method == "quiver":
+            # plot vector field using a quiver plot
             data = self.get_vector_data(transpose=transpose, max_points=max_points)
+            parameters["max_points"] = max_points  # only save for quiver plot
             element = ax.quiver(
                 data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
 
         elif method == "streamplot":
+            # plot vector field using a streamplot
             data = self.get_vector_data(transpose=transpose)
             element = ax.streamplot(
                 data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
@@ -1759,12 +1773,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         ax.set_ylabel(data["label_y"])
         ax.set_title(data.get("title", self.label))
 
-        parameters = {
-            "method": method,
-            "transpose": transpose,
-            "max_points": max_points,
-            "kwargs": kwargs,
-        }
         return PlotReference(ax, element, parameters)
 
     def _update_vector_plot(self, reference: PlotReference) -> None:
@@ -1774,14 +1782,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             reference (:class:`PlotReference`):
                 The reference to the plot that is updated
         """
+        # extract general parameters
         method = reference.parameters.get("method", "quiver")
         transpose = reference.parameters.get("transpose", False)
+
         if method == "quiver":
+            # update the data of a quiver plot
             max_points = reference.parameters.get("max_points")
             data = self.get_vector_data(transpose=transpose, max_points=max_points)
             reference.element.set_UVC(data["data_x"], data["data_y"])
 
         elif method == "streamplot":
+            # update a streamplot by redrawing it completely
             ax = reference.ax
             kwargs = reference.parameters.get("kwargs", {})
             data = self.get_vector_data(transpose=transpose)
@@ -1789,7 +1801,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ax.cla()
             # update with new streamplot
             reference.element = ax.streamplot(
-                data["x"], data["y"], data["data_x"], data["data_y"], **kwargs
+                data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
 
         else:

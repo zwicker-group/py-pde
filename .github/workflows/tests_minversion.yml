@@ -1,4 +1,4 @@
-name: Test minimal requirements
+name: "Test minimal requirements"
 
 on: [push]
 
@@ -8,7 +8,7 @@ jobs:
     
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest]  # windows-latest
 
     steps:
     - uses: actions/checkout@v2
@@ -31,9 +31,3 @@ jobs:
         pip install pytest
         cd tests
         python run_tests.py --unit
-        
-    - name: Test types with mypy
-      continue-on-error: true
-      run: |
-        pip install mypy
-        python -m mypy --config-file tests/mypy.ini --pretty --package pde

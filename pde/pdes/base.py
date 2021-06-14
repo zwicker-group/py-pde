@@ -35,6 +35,14 @@ class PDEBase(metaclass=ABCMeta):
     checked against their numpy counter-parts. This can help with implementing a
     correct compiled version for a PDE class. """
 
+    cache_rhs: bool = False
+    """ bool: Flag indicating whether the right hand side of the equation should be
+    cached. If True, the same implementation is used in subsequent calls to `solve`.
+    Note that this might lead to wrong results if the parameters of the PDE were changed
+    after the first call. This option is thus disabled by default and should be used
+    with care. 
+    """
+
     explicit_time_dependence: Optional[bool] = None
     """ bool: Flag indicating whether the right hand side of the PDE has an
     explicit time dependence. """
@@ -59,6 +67,7 @@ class PDEBase(metaclass=ABCMeta):
             for the `numpy` and `numba` backend, respectively.
         """
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._cache: Dict[str, Any] = {}
         self.noise = noise
 
     @property
@@ -90,7 +99,7 @@ class PDEBase(metaclass=ABCMeta):
         """
 
         def modify_after_step(state_data: np.ndarray) -> float:
-            """ no-op function """
+            """no-op function"""
             return 0
 
         return modify_after_step
@@ -102,8 +111,63 @@ class PDEBase(metaclass=ABCMeta):
     def _make_pde_rhs_numba(
         self, state: FieldBase
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """ create a compiled function for evaluating the right hand side """
+        """create a compiled function for evaluating the right hand side"""
         raise NotImplementedError
+
+    def _make_pde_rhs_numba_cached(
+        self, state: FieldBase
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
+        """create a compiled function for evaluating the right hand side
+
+        This method implements caching and checking of the actual method, which is
+        defined by overwriting the method `_make_pde_rhs_numba`.
+        """
+        check_implementation = self.check_implementation
+
+        if self.cache_rhs:
+            # support caching of the right hand side
+            grid_state = state.grid.state_serialized
+            if self._cache.get("pde_rhs_numba_state") == grid_state:
+                # cache was successful
+                self._logger.info("Use compiled rhs from cache")
+                check_implementation = False  # skip checking to save time
+            else:
+                # cache was not hit
+                self._logger.info("Write compiled rhs to cache")
+                self._cache["pde_rhs_numba_state"] = grid_state
+                self._cache["pde_rhs_numba"] = self._make_pde_rhs_numba(state)
+            rhs = self._cache["pde_rhs_numba"]
+
+        else:
+            # caching was skipped
+            rhs = self._make_pde_rhs_numba(state)
+
+        if check_implementation:
+            # obtain and check result from the numpy implementation
+            res_numpy = self.evolution_rate(state.copy(), 0).data
+            if not np.all(np.isfinite(res_numpy)):
+                self._logger.warning(
+                    "The numpy implementation of the PDE returned non-finite values."
+                )
+
+            # obtain and check result from the numba implementation
+            test_state = state.copy()
+            res_numba = rhs(test_state.data, 0)
+            if not np.all(np.isfinite(res_numba)):
+                self._logger.warning(
+                    "The numba implementation of the PDE returned non-finite values."
+                )
+
+            # compare the two implementations
+            msg = (
+                "The numba compiled implementation of the right hand side is not "
+                "compatible with the numpy implementation. This check can be disabled "
+                "by setting the class attribute `check_implementation` to `False`."
+            )
+            np.testing.assert_allclose(
+                res_numba, res_numpy, err_msg=msg, rtol=1e-7, atol=1e-7, equal_nan=True
+            )
+        return rhs  # type: ignore
 
     def make_pde_rhs(
         self, state: FieldBase, backend: str = "auto"
@@ -123,21 +187,21 @@ class PDEBase(metaclass=ABCMeta):
         """
         if backend == "auto":
             try:
-                rhs = self._make_pde_rhs_numba(state)
+                rhs = self._make_pde_rhs_numba_cached(state)
             except NotImplementedError:
                 backend = "numpy"
             else:
                 rhs._backend = "numba"  # type: ignore
 
         if backend == "numba":
-            rhs = self._make_pde_rhs_numba(state)
+            rhs = self._make_pde_rhs_numba_cached(state)
             rhs._backend = "numba"  # type: ignore
 
         elif backend == "numpy":
             state = state.copy()
 
             def evolution_rate_numpy(state_data: np.ndarray, t: float) -> np.ndarray:
-                """ evaluate the rhs given only a state without the grid """
+                """evaluate the rhs given only a state without the grid"""
                 state.data = state_data
                 return self.evolution_rate(state, t).data
 
@@ -148,32 +212,6 @@ class PDEBase(metaclass=ABCMeta):
             raise ValueError(
                 f"Unknown backend `{backend}`. Possible values are ['auto', 'numpy', "
                 "'numba']"
-            )
-
-        if self.check_implementation and rhs._backend == "numba":  # type: ignore
-            # obtain and check result from the numpy implementation
-            rhs_numpy = self.evolution_rate(state.copy(), 0).data
-            if not np.all(np.isfinite(rhs_numpy)):
-                self._logger.warning(
-                    "The numpy implementation of the PDE returned non-finite values."
-                )
-
-            # obtain and check result from the numba implementation
-            test_state = state.copy()
-            rhs_numba = rhs(test_state.data, 0)
-            if not np.all(np.isfinite(rhs_numba)):
-                self._logger.warning(
-                    "The numba implementation of the PDE returned non-finite values."
-                )
-
-            # compare the two implementations
-            msg = (
-                "The numba compiled implementation of the right hand side is not "
-                "compatible with the numpy implementation. This check can be disabled "
-                "by setting the class attribute `check_implementation` to `False`."
-            )
-            np.testing.assert_allclose(
-                rhs_numba, rhs_numpy, err_msg=msg, rtol=1e-7, atol=1e-7, equal_nan=True
             )
 
         return rhs
@@ -243,7 +281,7 @@ class PDEBase(metaclass=ABCMeta):
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
-                    """ helper function returning a noise realization """
+                    """helper function returning a noise realization"""
                     return noise_strength * np.random.randn(*data_shape)  # type: ignore
 
             elif isinstance(state, FieldCollection):
@@ -255,7 +293,7 @@ class PDEBase(metaclass=ABCMeta):
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
-                    """ helper function returning a noise realization """
+                    """helper function returning a noise realization"""
                     out = np.random.randn(*data_shape)
                     for i in range(data_shape[0]):
                         # TODO: Avoid creating random numbers when noise_strengths == 0
@@ -272,7 +310,7 @@ class PDEBase(metaclass=ABCMeta):
 
             @jit
             def noise_realization(state_data: np.ndarray, t: float) -> None:
-                """ helper function returning a noise realization """
+                """helper function returning a noise realization"""
                 return None
 
         return noise_realization  # type: ignore
@@ -290,13 +328,40 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             Function determining the right hand side of the PDE
         """
-        evolution_rate = self._make_pde_rhs_numba(state)
+        evolution_rate = self._make_pde_rhs_numba_cached(state)
         noise_realization = self._make_noise_realization_numba(state)
 
         @jit
         def sde_rhs(state_data: np.ndarray, t: float) -> Tuple[np.ndarray, np.ndarray]:
-            """ compiled helper function returning a noise realization """
+            """compiled helper function returning a noise realization"""
             return (evolution_rate(state_data, t), noise_realization(state_data, t))
+
+        return sde_rhs  # type: ignore
+
+    def _make_sde_rhs_numba_cached(
+        self, state: FieldBase
+    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
+        """create a compiled function for evaluating the noise term of the PDE
+
+        This method implements caching and checking of the actual method, which is
+        defined by overwriting the method `_make_pde_rhs_numba`.
+        """
+        if self.cache_rhs:
+            # support caching of the noise term
+            grid_state = state.grid.state_serialized
+            if self._cache.get("sde_rhs_numba_state") == grid_state:
+                # cache was successful
+                self._logger.info("Use compiled noise term from cache")
+            else:
+                # cache was not hit
+                self._logger.info("Write compiled noise term to cache")
+                self._cache["sde_rhs_numba_state"] = grid_state
+                self._cache["sde_rhs_numba"] = self._make_sde_rhs_numba(state)
+            sde_rhs = self._cache["sde_rhs_numba"]
+
+        else:
+            # caching was skipped
+            sde_rhs = self._make_sde_rhs_numba(state)
 
         return sde_rhs  # type: ignore
 
@@ -319,7 +384,7 @@ class PDEBase(metaclass=ABCMeta):
         """
         if backend == "auto":
             try:
-                sde_rhs = self._make_sde_rhs_numba(state)
+                sde_rhs = self._make_sde_rhs_numba_cached(state)
             except NotImplementedError:
                 backend = "numpy"
             else:
@@ -327,7 +392,7 @@ class PDEBase(metaclass=ABCMeta):
                 return sde_rhs
 
         if backend == "numba":
-            sde_rhs = self._make_sde_rhs_numba(state)
+            sde_rhs = self._make_sde_rhs_numba_cached(state)
             sde_rhs._backend = "numba"  # type: ignore
 
         elif backend == "numpy":
@@ -336,7 +401,7 @@ class PDEBase(metaclass=ABCMeta):
             def sde_rhs(
                 state_data: np.ndarray, t: float
             ) -> Tuple[np.ndarray, np.ndarray]:
-                """ evaluate the rhs given only a state without the grid """
+                """evaluate the rhs given only a state without the grid"""
                 state.data = state_data
                 return (
                     self.evolution_rate(state, t).data,
@@ -370,20 +435,30 @@ class PDEBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
-                The initial state (which also defines the grid)
+                The initial state (which also defines the spatial grid)
             t_range (float or tuple):
-                Sets the time range for which the PDE is solved. If only a
-                single value `t_end` is given, the time range is assumed to be
-                `[0, t_end]`.
+                Sets the time range for which the PDE is solved. This should typically
+                be a tuple of two numbers, `(t_start, t_end)`, specifying the initial
+                and final time of the simulation. If only a single value is given, it is
+                interpreted as `t_end` and the time range is assumed to be `(0, t_end)`.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default
-                value based on the stepper will be chosen.
+                Time step of the chosen stepping scheme. If `None`, a default value
+                based on the stepper will be chosen. In particular, if
+                `method == 'auto'`, the :class:`~pde.solvers.ScipySolver` with an
+                automatic, adaptive time step is used. This is a flexible choice, but
+                might be slower than using a fixed time step.
             tracker:
-                Defines a tracker that process the state of the simulation at
-                fixed time intervals. Multiple trackers can be specified as a
-                list. The default value is ['progress', 'consistency'], which
-                displays a progress bar and checks the state for consistency,
-                aborting the simulation when not-a-number values appear.
+                Defines a tracker that process the state of the simulation at specified
+                time intervals. A tracker is either an instance of
+                :class:`~pde.trackers.base.TrackerBase` or a string, which identifies a
+                tracker. All possible identifiers can be obtained by calling
+                :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be
+                specified as a list. The default value is `['progress', 'consistency']`,
+                which displays a progress bar and checks the state for consistency,
+                aborting the simulation when not-a-number values appear. More general
+                trackers are defined in :mod:`~pde.trackers`, where all options are
+                explained in detail. In particular, the interval at which the tracker is
+                evaluated can be chosen when creating a tracker object explicitly.
             method (:class:`~pde.solvers.base.SolverBase` or str):
                 Specifies a method for solving the differential equation. This
                 can either be an instance of
@@ -394,7 +469,8 @@ class PDEBase(metaclass=ABCMeta):
                 Flag determining whether diagnostic information about the solver
                 process should be returned.
             **kwargs:
-                Additional keyword arguments are forwarded to the solver class
+                Additional keyword arguments are forwarded to the solver class chosen
+                with the `method` argument.
 
         Returns:
             :class:`~pde.fields.base.FieldBase`:

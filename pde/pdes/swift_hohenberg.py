@@ -67,7 +67,7 @@ class SwiftHohenbergPDE(PDEBase):
 
     @property
     def expression(self) -> str:
-        """ str: the expression of the right hand side of this PDE """
+        """str: the expression of the right hand side of this PDE"""
         return (
             f"{expr_prod(self.rate - self.kc2 ** 2, 'c')} - c**3"
             f" + {expr_prod(self.delta, 'c**2')}"
@@ -132,7 +132,7 @@ class SwiftHohenbergPDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """
+            """compiled helper function evaluating right hand side"""
             state_laplace = laplace(state_data)
             state_laplace2 = laplace2(state_laplace)
 

@@ -13,7 +13,7 @@ from pde.visualization import movies
 
 @pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
 def test_movie(tmp_path):
-    """ test Movie class"""
+    """test Movie class"""
     import matplotlib.pyplot as plt
 
     path = tmp_path / "test_movie.mov"
@@ -35,7 +35,7 @@ def test_movie(tmp_path):
 
 @pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
 def test_movie_scalar(tmp_path):
-    """ test Movie class"""
+    """test Movie class"""
 
     # create some data
     state = ScalarField.random_uniform(UnitGrid([16, 16]))

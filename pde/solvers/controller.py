@@ -27,9 +27,12 @@ TState = TypeVar("TState", bound="FieldBase")
 
 
 class Controller:
-    """ class controlling a simulation """
+    """class controlling a simulation"""
 
-    _t_range: Tuple[float, float]
+    # set a function to determine the current time for profiling purposes. We generally
+    # use the more accurate time.process_time, but better performance may be obtained by
+    # the faster time.time. This will only affect simulations with many iterations.
+    get_current_time = time.process_time
 
     def __init__(
         self,
@@ -42,16 +45,14 @@ class Controller:
             solver (:class:`~pde.solvers.base.SolverBase`):
                 Solver instance that is used to advance the simulation in time
             t_range (float or tuple):
-                Sets the time range for which the simulation is run. If only a
-                single value `t_end` is given, the time range is assumed to be
-                `[0, t_end]`.
+                Sets the time range for which the simulation is run. If only a single
+                value `t_end` is given, the time range is assumed to be `[0, t_end]`.
             tracker:
-                Defines trackers that process the state of the simulation at
-                fixed time intervals. Multiple trackers can be specified as a
-                list. The default value 'auto' is converted to
-                `['progress', 'consistency']` for normal simulations. This thus
-                displays a progress bar and checks the state for consistency,
-                aborting the simulation when not-a-number values appear. To
+                Defines trackers that process the state of the simulation at fixed time
+                intervals. Multiple trackers can be specified as a list. The default
+                value 'auto' is converted to `['progress', 'consistency']` for normal
+                simulations. This thus displays a progress bar and checks the state for
+                consistency, aborting the simulation when not-a-number values appear. To
                 disable trackers, set the value to `None`.
         """
         self.solver = solver
@@ -69,7 +70,7 @@ class Controller:
     def t_range(self, value: TRangeType):
         # determine time range
         try:
-            self._t_range = 0, float(value)  # type: ignore
+            self._t_range: Tuple[float, float] = (0, float(value))  # type: ignore
         except TypeError:  # assume a single number was given
             if len(value) == 2:  # type: ignore
                 self._t_range = tuple(value)  # type: ignore
@@ -119,7 +120,7 @@ class Controller:
         self.trackers.initialize(state, info=self.diagnostics)
 
         def _handle_stop_iteration(err):
-            """ helper function for handling interrupts raised by trackers """
+            """helper function for handling interrupts raised by trackers"""
             if isinstance(err, FinishedSimulation):
                 # tracker determined that the simulation finished
                 self.info["successful"] = True
@@ -150,9 +151,11 @@ class Controller:
         # initialize profiling information
         solver_start = datetime.datetime.now()
         self.info["solver_start"] = str(solver_start)
+
+        get_time = self.get_current_time  # type: ignore
         profiler = {"solver": 0.0, "tracker": 0.0}
         self.info["profiler"] = profiler
-        prof_start_tracker = time.process_time()
+        prof_start_tracker = get_time()
 
         # add some tolerance to account for inaccurate float point math
         if dt is None:
@@ -174,13 +177,13 @@ class Controller:
                 t_next_action = max(t_next_action, t + atol)
                 t_break = min(t_next_action, t_end)
 
-                prof_start_solve = time.process_time()
+                prof_start_solve = get_time()
                 profiler["tracker"] += prof_start_solve - prof_start_tracker
 
                 # advance the system to the new time point
                 t = stepper(state, t, t_break)
 
-                prof_start_tracker = time.process_time()
+                prof_start_tracker = get_time()
                 profiler["solver"] += prof_start_tracker - prof_start_solve
 
         except StopIteration as err:
@@ -209,7 +212,7 @@ class Controller:
                 msg_level, msg = _handle_stop_iteration(err)
 
         # calculate final statistics
-        profiler["tracker"] += time.process_time() - prof_start_tracker
+        profiler["tracker"] += get_time() - prof_start_tracker
         duration = datetime.datetime.now() - solver_start
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t

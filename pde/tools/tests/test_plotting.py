@@ -6,7 +6,7 @@ from pde.tools.plotting import plot_on_axes, plot_on_figure
 
 
 def test_plot_on_axes(tmp_path):
-    """ test the plot_on_axes decorator """
+    """test the plot_on_axes decorator"""
 
     @plot_on_axes
     def plot(ax):
@@ -18,7 +18,7 @@ def test_plot_on_axes(tmp_path):
 
 
 def test_plot_on_figure(tmp_path):
-    """ test the plot_on_figure decorator """
+    """test the plot_on_figure decorator"""
 
     @plot_on_figure
     def plot(fig):

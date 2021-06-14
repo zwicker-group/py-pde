@@ -63,7 +63,7 @@ class KuramotoSivashinskyPDE(PDEBase):
 
     @property
     def expression(self) -> str:
-        """ str: the expression of the right hand side of this PDE """
+        """str: the expression of the right hand side of this PDE"""
         expr = f"c + {expr_prod(self.nu, 'laplace(c)')}"
         return f"-laplace({expr}) - 0.5 * gradient_squared(c)"
 
@@ -119,7 +119,7 @@ class KuramotoSivashinskyPDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """
+            """compiled helper function evaluating right hand side"""
             result = -laplace(state_data)
             result += nu_value * laplace2(result)
             result -= 0.5 * gradient_sq(state_data)

@@ -21,7 +21,7 @@ from .scalar import ScalarField
 
 
 class FieldCollection(FieldBase):
-    """ Collection of fields defined on the same grid """
+    """Collection of fields defined on the same grid"""
 
     def __init__(
         self,
@@ -129,7 +129,7 @@ class FieldCollection(FieldBase):
             self.labels = labels  # type: ignore
 
     def __repr__(self):
-        """ return instance as string """
+        """return instance as string"""
         fields = []
         for f in self.fields:
             name = f.__class__.__name__
@@ -140,15 +140,15 @@ class FieldCollection(FieldBase):
         return f"{self.__class__.__name__}({', '.join(fields)})"
 
     def __len__(self):
-        """ return the number of stored fields """
+        """return the number of stored fields"""
         return len(self.fields)
 
     def __iter__(self) -> Iterator[DataFieldBase]:
-        """ return iterator over the actual fields """
+        """return iterator over the actual fields"""
         return iter(self.fields)
 
     def __getitem__(self, index: Union[int, str]) -> DataFieldBase:
-        """ return a specific field """
+        """return a specific field"""
         if isinstance(index, int):
             # simple numerical index
             return self.fields[index]
@@ -195,7 +195,7 @@ class FieldCollection(FieldBase):
 
     @property
     def fields(self) -> List[DataFieldBase]:
-        """ list: the fields of this collection """
+        """list: the fields of this collection"""
         return self._fields
 
     @property
@@ -212,14 +212,14 @@ class FieldCollection(FieldBase):
 
     @labels.setter
     def labels(self, values: List[Optional[str]]):
-        """ sets the labels of all fields """
+        """sets the labels of all fields"""
         if len(values) != len(self):
             raise ValueError("Require a label for each field")
         for field, value in zip(self.fields, values):
             field.label = value
 
     def __eq__(self, other):
-        """ test fields for equality, ignoring the label """
+        """test fields for equality, ignoring the label"""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return self.fields == other.fields
@@ -250,7 +250,7 @@ class FieldCollection(FieldBase):
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> "FieldCollection":
-        """ construct the class by reading data from an hdf5 dataset """
+        """construct the class by reading data from an hdf5 dataset"""
         # copy attributes from hdf
         attributes = dict(dataset.attrs)
 
@@ -270,7 +270,7 @@ class FieldCollection(FieldBase):
         return cls(fields, **attributes)  # type: ignore
 
     def _write_hdf_dataset(self, hdf_path):
-        """ write data to a given hdf5 path `hdf_path` """
+        """write data to a given hdf5 path `hdf_path`"""
         # write attributes of the collection
         for key, value in self.attributes_serialized.items():
             hdf_path.attrs[key] = value
@@ -312,7 +312,7 @@ class FieldCollection(FieldBase):
             {WARNING_EXEC}
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             expressions (list of str):
                 A list of mathematical expression, one for each field in the
@@ -356,7 +356,7 @@ class FieldCollection(FieldBase):
 
         Args:
             num_fields (int): The number of fields to create
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which the fields are defined
             vmin (float): Smallest random value
             vmax (float): Largest random value
@@ -375,7 +375,7 @@ class FieldCollection(FieldBase):
 
     @property
     def attributes(self) -> Dict[str, Any]:
-        """ dict: describes the state of the instance (without the data) """
+        """dict: describes the state of the instance (without the data)"""
         results = super().attributes
         del results["grid"]
         results["fields"] = [f.attributes for f in self.fields]
@@ -383,7 +383,7 @@ class FieldCollection(FieldBase):
 
     @property
     def attributes_serialized(self) -> Dict[str, str]:
-        """ dict: serialized version of the attributes """
+        """dict: serialized version of the attributes"""
         results = {}
         for key, value in self.attributes.items():
             if key == "fields":
@@ -452,7 +452,7 @@ class FieldCollection(FieldBase):
         """interpolate the data of this field collection to another grid.
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
             backend (str):
@@ -519,17 +519,17 @@ class FieldCollection(FieldBase):
 
     @property
     def integrals(self) -> List:
-        """integrals of all fields """
+        """integrals of all fields"""
         return [field.integral for field in self]
 
     @property
     def averages(self) -> List:
-        """ averages of all fields """
+        """averages of all fields"""
         return [field.average for field in self]
 
     @property
     def magnitudes(self) -> np.ndarray:
-        """ :class:`~numpy.ndarray`: scalar magnitudes of all fields """
+        """:class:`~numpy.ndarray`: scalar magnitudes of all fields"""
         return np.array([field.magnitude for field in self])
 
     def get_line_data(  # type: ignore
@@ -694,7 +694,7 @@ class FieldCollection(FieldBase):
 
 
 class _FieldLabels:
-    """ helper class that allows manipulating all labels of field collections"""
+    """helper class that allows manipulating all labels of field collections"""
 
     def __init__(self, collection: FieldCollection):
         """
@@ -723,7 +723,7 @@ class _FieldLabels:
     def __getitem__(
         self, index: Union[int, slice]
     ) -> Union[Optional[str], List[Optional[str]]]:
-        """ return one or many labels of a field in the collection """
+        """return one or many labels of a field in the collection"""
         if isinstance(index, int):
             return self.collection[index].label
         elif isinstance(index, slice):
@@ -734,7 +734,7 @@ class _FieldLabels:
     def __setitem__(
         self, index: Union[int, slice], value: Union[Optional[str], List[Optional[str]]]
     ):
-        """ change one or many labels of a field in the collection """
+        """change one or many labels of a field in the collection"""
         if isinstance(index, int):
             self.collection.fields[index].label = value  # type: ignore
         elif isinstance(index, slice):

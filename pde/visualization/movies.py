@@ -85,7 +85,7 @@ class Movie:
         return False
 
     def _end(self):
-        """ clear up temporary things if necessary """
+        """clear up temporary things if necessary"""
         if self._writer is not None:
             self._writer.finish()
         self._writer = None
@@ -119,7 +119,7 @@ class Movie:
         self._writer.grab_frame(facecolor="white")
 
     def save(self):
-        """ convert the recorded images to a movie using ffmpeg """
+        """convert the recorded images to a movie using ffmpeg"""
         self._end()
 
 

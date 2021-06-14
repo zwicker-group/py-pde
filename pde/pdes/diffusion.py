@@ -50,7 +50,7 @@ class DiffusionPDE(PDEBase):
 
     @property
     def expression(self) -> str:
-        """ str: the expression of the right hand side of this PDE """
+        """str: the expression of the right hand side of this PDE"""
         return expr_prod(self.diffusivity, "laplace(c)")
 
     def evolution_rate(  # type: ignore
@@ -97,7 +97,7 @@ class DiffusionPDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """ compiled helper function evaluating right hand side """
+            """compiled helper function evaluating right hand side"""
             return diffusivity_value * laplace(state_data)
 
         return pde_rhs  # type: ignore

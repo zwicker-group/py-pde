@@ -15,10 +15,10 @@ from pde import PDEBase, ScalarField, UnitGrid
 
 
 class KuramotoSivashinskyPDE(PDEBase):
-    """ Implementation of the normalized Kuramoto–Sivashinsky equation """
+    """Implementation of the normalized Kuramoto–Sivashinsky equation"""
 
     def evolution_rate(self, state, t=0):
-        """ implement the python version of the evolution equation """
+        """implement the python version of the evolution equation"""
         state_lap = state.laplace(bc="natural")
         state_lap2 = state_lap.laplace(bc="natural")
         state_grad = state.gradient(bc="natural")

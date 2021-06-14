@@ -15,7 +15,7 @@ from .base import SolverBase
 
 
 class ExplicitSolver(SolverBase):
-    """ class for solving partial differential equations explicitly """
+    """class for solving partial differential equations explicitly"""
 
     name = "explicit"
 
@@ -66,7 +66,7 @@ class ExplicitSolver(SolverBase):
             def stepper(
                 state_data: np.ndarray, t_start: float, steps: int
             ) -> Tuple[float, float]:
-                """ compiled inner loop for speed """
+                """compiled inner loop for speed"""
                 modifications = 0.0
                 for i in range(steps):
                     # calculate the right hand side
@@ -91,7 +91,7 @@ class ExplicitSolver(SolverBase):
             def stepper(
                 state_data: np.ndarray, t_start: float, steps: int
             ) -> Tuple[float, float]:
-                """ compiled inner loop for speed """
+                """compiled inner loop for speed"""
                 modifications = 0
                 for i in range(steps):
                     # calculate the right hand side
@@ -138,7 +138,7 @@ class ExplicitSolver(SolverBase):
         def stepper(
             state_data: np.ndarray, t_start: float, steps: int
         ) -> Tuple[float, float]:
-            """ compiled inner loop for speed """
+            """compiled inner loop for speed"""
             modifications = 0
             for i in range(steps):
                 # calculate the right hand side
@@ -198,7 +198,7 @@ class ExplicitSolver(SolverBase):
             inner_stepper = jit(inner_stepper)
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """ use Euler stepping to advance `state` from `t_start` to `t_end` """
+            """use Euler stepping to advance `state` from `t_start` to `t_end`"""
             # calculate number of steps (which is at least 1)
             steps = max(1, int(np.ceil((t_end - t_start) / dt)))
             t_last, modifications = inner_stepper(state.data, t_start, steps)

@@ -58,7 +58,7 @@ def deep_getsizeof(obj, ids=None):
 
 
 def test_objects_equal():
-    """ test the objects_equal function """
+    """test the objects_equal function"""
     # basic python objects
     eq = cache.objects_equal
     assert eq(1, 1)
@@ -86,7 +86,7 @@ def test_objects_equal():
 
 
 def get_serialization_methods(with_none=True):
-    """ returns possible methods for serialization that are supported """
+    """returns possible methods for serialization that are supported"""
     methods = ["json", "pickle"]
 
     if with_none:
@@ -104,7 +104,7 @@ def get_serialization_methods(with_none=True):
 
 
 def test_hashes():
-    """ test whether the hash key makes sense """
+    """test whether the hash key makes sense"""
 
     class Dummy:
         def __init__(self, value):
@@ -137,7 +137,7 @@ def test_hashes():
 
 
 def test_serializer_nonsense():
-    """ test whether errors are thrown for wrong input """
+    """test whether errors are thrown for wrong input"""
     with pytest.raises(ValueError):
         cache.make_serializer("non-sense")
     with pytest.raises(ValueError):
@@ -146,7 +146,7 @@ def test_serializer_nonsense():
 
 @pytest.mark.parametrize("method", get_serialization_methods())
 def test_serializer(method):
-    """ tests whether the make_serializer returns a canonical hash """
+    """tests whether the make_serializer returns a canonical hash"""
     encode = cache.make_serializer(method)
 
     assert encode(1) == encode(1)
@@ -158,7 +158,7 @@ def test_serializer(method):
 
 
 def test_serializer_hash_mutable():
-    """ tests whether the make_serializer returns a canonical hash """
+    """tests whether the make_serializer returns a canonical hash"""
     # test special serializer
     encode = cache.make_serializer("hash_mutable")
     assert encode({"a": 1, "b": 2}) == encode({"b": 2, "a": 1})
@@ -169,7 +169,7 @@ def test_serializer_hash_mutable():
     assert cache.hash_mutable(dict(c1)) == cache.hash_mutable(dict(c2))
 
     class Test:
-        """ test class that neither implements __eq__ nor __hash__ """
+        """test class that neither implements __eq__ nor __hash__"""
 
         def __init__(self, a):
             self.a = a
@@ -177,7 +177,7 @@ def test_serializer_hash_mutable():
     assert cache.hash_mutable(Test(1)) != cache.hash_mutable(Test(1))
 
     class TestEq:
-        """ test class that only implements __eq__ and not __hash__ """
+        """test class that only implements __eq__ and not __hash__"""
 
         def __init__(self, a):
             self.a = a
@@ -203,7 +203,7 @@ def test_unserializer():
 def _test_SerializedDict(
     storage, reinitialize=None, key_serialization="pickle", value_serialization="pickle"
 ):
-    """ tests the SerializedDict class with a particular parameter set """
+    """tests the SerializedDict class with a particular parameter set"""
     data = cache.SerializedDict(
         key_serialization, value_serialization, storage_dict=storage
     )
@@ -250,11 +250,11 @@ def _test_SerializedDict(
 
 @pytest.mark.parametrize("cache_storage", [None, "get_finite_dict"])
 def test_property_cache(cache_storage):
-    """ test cached_property decorator """
+    """test cached_property decorator"""
 
     # create test class
     class CacheTest:
-        """ class for testing caching """
+        """class for testing caching"""
 
         def __init__(self):
             self.counter = 0
@@ -297,11 +297,11 @@ def test_property_cache(cache_storage):
 @pytest.mark.parametrize("serializer", get_serialization_methods(with_none=False))
 @pytest.mark.parametrize("cache_factory", [None, "get_finite_dict"])
 def test_method_cache(serializer, cache_factory):
-    """ test one particular parameter set of the cached_method decorator """
+    """test one particular parameter set of the cached_method decorator"""
 
     # create test class
     class CacheTest:
-        """ class for testing caching """
+        """class for testing caching"""
 
         def __init__(self):
             self.counter = 0
@@ -391,10 +391,10 @@ def test_method_cache(serializer, cache_factory):
 @pytest.mark.parametrize("serializer", get_serialization_methods(with_none=False))
 @pytest.mark.parametrize("cache_factory", [None, "get_finite_dict"])
 def test_method_cache_extra_args(serializer, cache_factory):
-    """ test extra arguments in the cached_method decorator """
+    """test extra arguments in the cached_method decorator"""
     # create test class
     class CacheTest:
-        """ class for testing caching """
+        """class for testing caching"""
 
         def __init__(self, value=0):
             self.counter = 0
@@ -438,10 +438,10 @@ def test_method_cache_extra_args(serializer, cache_factory):
 @pytest.mark.parametrize("cache_factory", [None, "get_finite_dict"])
 @pytest.mark.parametrize("ignore_args", ["display", ["display"]])
 def test_method_cache_ignore(serializer, cache_factory, ignore_args):
-    """ test ignored parameters of the cached_method decorator """
+    """test ignored parameters of the cached_method decorator"""
     # create test class
     class CacheTest:
-        """ class for testing caching """
+        """class for testing caching"""
 
         def __init__(self):
             self.counter = 0
@@ -474,10 +474,10 @@ def test_method_cache_ignore(serializer, cache_factory, ignore_args):
 
 
 def test_cache_clearing():
-    """ make sure that memory is freed when cache is cleared """
+    """make sure that memory is freed when cache is cleared"""
 
     class Test:
-        """ simple test object with a cache """
+        """simple test object with a cache"""
 
         @cache.cached_method()
         def calc(self, n):
@@ -511,7 +511,7 @@ def test_cache_clearing():
 
 
 def test_serialized_dict():
-    """ test SerializedDict """
+    """test SerializedDict"""
     d = cache.SerializedDict()
     assert len(d) == 0
     d["a"] = 1
@@ -524,7 +524,7 @@ def test_serialized_dict():
 
 
 def test_finite_dict():
-    """ test DictFiniteCapacity """
+    """test DictFiniteCapacity"""
     d = cache.DictFiniteCapacity(capacity=1)
     d["a"] = 1
     assert d["a"] == 1

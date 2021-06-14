@@ -48,7 +48,7 @@ if TYPE_CHECKING:
 
 
 class CallbackTracker(TrackerBase):
-    """ Tracker that calls a function periodically """
+    """Tracker calling a function periodically"""
 
     @fill_in_docstring
     def __init__(self, func: Callable, interval: IntervalData = 1):
@@ -90,7 +90,7 @@ class CallbackTracker(TrackerBase):
 
 
 class ProgressTracker(TrackerBase):
-    """ Tracker that shows the progress of the simulation """
+    """Tracker showing the progress of the simulation"""
 
     name = "progress"
 
@@ -204,7 +204,7 @@ class ProgressTracker(TrackerBase):
 
 
 class PrintTracker(TrackerBase):
-    """ Tracker that prints data to a stream (default: stdout) """
+    """Tracker printing data to a stream (default: stdout)"""
 
     name = "print"
 
@@ -237,7 +237,7 @@ class PrintTracker(TrackerBase):
 
 
 class PlotTracker(TrackerBase):
-    """Tracker that plots the state, either on screen or to a file
+    """Tracker plotting data on screen, to files, or writes a movie
 
     This tracker can be used to create movies from simulations or to simply
     update a single image file on the fly (i.e. to monitor simulations running
@@ -444,7 +444,7 @@ class PlotTracker(TrackerBase):
 
 
 class LivePlotTracker(PlotTracker):
-    """Tracker that plots data on screen, to files, or writes a movie
+    """PlotTracker with defaults for live plotting
 
     The only difference to :class:`PlotTracker` are the changed default values,
     where output is by default shown on screen and the `interval` is set
@@ -483,7 +483,7 @@ class LivePlotTracker(PlotTracker):
 
 
 class DataTracker(CallbackTracker):
-    """Tracker that stores custom data obtained by calling a function
+    """Tracker storing custom data obtained by calling a function
 
     Attributes:
         times (list):
@@ -599,7 +599,7 @@ class DataTracker(CallbackTracker):
 
 
 class SteadyStateTracker(TrackerBase):
-    """Tracker that interrupts the simulation once steady state is reached
+    """Tracker interrupting the simulation once steady state is reached
 
     Steady state is obtained when the state does not change anymore. This is the case
     when the derivative is close to zero. Concretely, the current state `cur` is
@@ -706,7 +706,7 @@ class SteadyStateTracker(TrackerBase):
 
 
 class RuntimeTracker(TrackerBase):
-    """ Tracker that interrupts the simulation once a duration has passed """
+    """Tracker interrupting the simulation once a duration has passed"""
 
     @fill_in_docstring
     def __init__(self, max_runtime: Union[Real, str], interval: IntervalData = 1):
@@ -758,7 +758,7 @@ class RuntimeTracker(TrackerBase):
 
 
 class ConsistencyTracker(TrackerBase):
-    """ Tracker that interrupts the simulation when the state is not finite """
+    """Tracker interrupting the simulation when the state is not finite"""
 
     name = "consistency"
 
@@ -787,11 +787,11 @@ class ConsistencyTracker(TrackerBase):
         if not np.all(np.isfinite(field.data)):
             raise StopIteration("Field was not finite")
 
-        self._last = field.data.copy()  # store data from last timestep
+        self._last = field.data.copy()  # store data from last time step
 
 
 class MaterialConservationTracker(TrackerBase):
-    """ Ensure that the amount of material is conserved """
+    """Tracking interrupting the simulation when material conservation is broken"""
 
     name = "material_conservation"
 

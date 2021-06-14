@@ -395,7 +395,7 @@ def get_spherical_polygon_area(vertices: np.ndarray, radius: float = 1) -> float
 
 
 class PointsOnSphere:
-    """ class representing points on an n-dimensional unit sphere """
+    """class representing points on an n-dimensional unit sphere"""
 
     def __init__(self, points):
         """
@@ -542,7 +542,7 @@ class PointsOnSphere:
         return spatial.distance.squareform(dists)
 
     def get_mean_separation(self) -> float:
-        """ float: calculates the mean distance to the nearest neighbor """
+        """float: calculates the mean distance to the nearest neighbor"""
         if len(self.points) < 1:
             return float("nan")
 

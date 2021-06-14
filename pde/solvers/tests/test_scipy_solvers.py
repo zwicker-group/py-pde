@@ -9,7 +9,7 @@ from pde.solvers import Controller, ScipySolver
 
 
 def test_no_dt():
-    """ test scipy solver without timestep """
+    """test scipy solver without timestep"""
     grid = UnitGrid([16])
     field = ScalarField.random_uniform(grid, -1, 1)
     eq = DiffusionPDE()

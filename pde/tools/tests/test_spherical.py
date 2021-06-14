@@ -13,7 +13,7 @@ from pde.tools import spherical
 
 
 def test_volume_conversion():
-    """ tests conversion of volume and radius of droplet """
+    """tests conversion of volume and radius of droplet"""
     for dim in [1, 2, 3]:
         radius = 1 + random.random()
         volume = spherical.volume_from_radius(radius, dim=dim)
@@ -22,7 +22,7 @@ def test_volume_conversion():
 
 
 def test_volume_conversion_numba():
-    """ tests conversion of volume and radius of droplet using numba """
+    """tests conversion of volume and radius of droplet using numba"""
     for dim in [1, 2, 3]:
         r2v = spherical.make_volume_from_radius_compiled(dim)
         v2r = spherical.make_radius_from_volume_compiled(dim)
@@ -31,7 +31,7 @@ def test_volume_conversion_numba():
 
 
 def test_surface():
-    """ test whether the surface is calculated correctly """
+    """test whether the surface is calculated correctly"""
     for dim in [1, 2, 3]:
         radius = 1 + random.random()
         eps = 1e-10
@@ -54,7 +54,7 @@ def test_surface():
 
 
 def test_spherical_conversion():
-    """ test the conversion between spherical and Cartesian coordinates """
+    """test the conversion between spherical and Cartesian coordinates"""
     s2c = spherical.points_spherical_to_cartesian
     c2s = spherical.points_cartesian_to_spherical
 
@@ -69,14 +69,14 @@ def test_spherical_conversion():
 
 
 def test_spherical_polygon_area():
-    """ test the function get_spherical_polygon_area """
+    """test the function get_spherical_polygon_area"""
     area = spherical.get_spherical_polygon_area
     sector_area = area([[0, 1.0, 0], [0, 0, 1.0], [-1.0, 0, 0]])
     assert sector_area == pytest.approx(np.pi / 2)
 
 
 def test_spherical_voronoi():
-    """ test spatial.SphericalVoronoi """
+    """test spatial.SphericalVoronoi"""
     # random points on the sphere
     ps = np.random.random((32, 3)) - 0.5
     ps /= np.linalg.norm(ps, axis=1)[:, None]
@@ -93,7 +93,7 @@ def test_spherical_voronoi():
 
 @pytest.mark.parametrize("dim", range(1, 4))
 def test_points_on_sphere(dim, tmp_path):
-    """ test spatial.SphericalVoronoi """
+    """test spatial.SphericalVoronoi"""
     shell = spherical.PointsOnSphere.make_uniform(dim=dim)
     assert shell.dim == dim
 
@@ -111,14 +111,14 @@ def test_points_on_sphere(dim, tmp_path):
 
 
 def test_points_on_sphere_2():
-    """ special tests for 2 dimensions """
+    """special tests for 2 dimensions"""
     num = np.random.randint(3, 9)
     shell = spherical.PointsOnSphere.make_uniform(dim=2, num_points=num)
     assert num * shell.get_mean_separation() == pytest.approx(2 * np.pi)
 
 
 def test_spherical_index():
-    """ test the conversion of the spherical index """
+    """test the conversion of the spherical index"""
     # check initial state
     assert spherical.spherical_index_lm(0) == (0, 0)
     assert spherical.spherical_index_k(0, 0) == 0
@@ -147,7 +147,7 @@ def test_spherical_index():
 
 
 def test_spherical_harmonics_real():
-    """ test spherical harmonics """
+    """test spherical harmonics"""
     # test real spherical harmonics for symmetric case
     for deg in range(4):
         for _ in range(5):

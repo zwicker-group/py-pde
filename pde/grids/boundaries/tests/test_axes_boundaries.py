@@ -13,7 +13,7 @@ from pde.grids.boundaries.axis import BoundaryPair, BoundaryPeriodic, get_bounda
 
 
 def test_boundaries():
-    """ test setting boundaries for multiple systems """
+    """test setting boundaries for multiple systems"""
     b = ["periodic", "value", {"type": "derivative", "value": 1}]
     for bx, by in itertools.product(b, b):
         g = UnitGrid([2, 2], periodic=[b == "periodic" for b in (bx, by)])
@@ -39,7 +39,7 @@ def test_boundaries():
 
 
 def test_boundary_specifications():
-    """ test different ways of specifying boundary conditions """
+    """test different ways of specifying boundary conditions"""
     g = UnitGrid([2])
     bc1 = Boundaries.from_data(
         g, [{"type": "derivative", "value": 0}, {"type": "value", "value": 0}]
@@ -50,7 +50,7 @@ def test_boundary_specifications():
 
 
 def test_mixed_boundary_condition():
-    """ test limiting cases of the mixed boundary condition """
+    """test limiting cases of the mixed boundary condition"""
     g = UnitGrid([2])
     d = np.random.random(2)
     g1 = g.get_operator("gradient", bc=[{"mixed": 0}, {"mixed": np.inf}])
@@ -67,7 +67,7 @@ def test_mixed_boundary_condition():
     ],
 )
 def test_natural_boundary_conditions(cond, is_value):
-    """ test special automatic boundary conditions """
+    """test special automatic boundary conditions"""
     g = UnitGrid([2, 2], periodic=[True, False])
     for bc in [
         Boundaries.from_data(g, cond),
@@ -81,7 +81,7 @@ def test_natural_boundary_conditions(cond, is_value):
 
 
 def test_special_cases():
-    """ test some special boundary conditions """
+    """test some special boundary conditions"""
     g = UnitGrid([5])
     s = ScalarField(g, np.arange(5))
     for bc in ["extrapolate", {"curvature": 0}]:
@@ -89,7 +89,7 @@ def test_special_cases():
 
 
 def test_bc_values():
-    """ test setting the values of boundary conditions """
+    """test setting the values of boundary conditions"""
     g = UnitGrid([5])
     bc = g.get_boundary_conditions([{"value": 2}, {"derivative": 3}])
     assert bc[0].low.value == 2 and bc[0].high.value == 3

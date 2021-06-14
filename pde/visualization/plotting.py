@@ -109,7 +109,7 @@ def extract_field(
 
 
 class ScalarFieldPlot:
-    """ class managing compound plots of scalar fields """
+    """class managing compound plots of scalar fields"""
 
     @fill_in_docstring
     def __init__(
@@ -415,7 +415,7 @@ class ScalarFieldPlot:
                 img.set_clim(vmin, vmax)
 
     def _show(self):
-        """ show the updated plot """
+        """show the updated plot"""
         if self._ipython_out:
             # seems to be in an ipython instance => update widget
             from IPython.display import clear_output, display

@@ -7,13 +7,13 @@ import pytest
 
 from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
-from pde.grids import CartesianGrid, PolarGrid, UnitGrid, boundaries
+from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
 from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
 from pde.tools.misc import module_available, skipUnlessModule
 
 
 def test_interpolation_singular():
-    """ test interpolation on singular dimensions """
+    """test interpolation on singular dimensions"""
     grid = UnitGrid([1])
     field = ScalarField(grid, data=3)
 
@@ -36,7 +36,7 @@ def test_interpolation_singular():
 
 
 def test_simple_shapes(example_grid):
-    """ test simple scalar fields """
+    """test simple scalar fields"""
     pf = ScalarField.random_uniform(example_grid)
     np.testing.assert_equal(pf.data.shape, example_grid.shape)
     pf_lap = pf.laplace("natural")
@@ -53,7 +53,7 @@ def test_simple_shapes(example_grid):
 
 
 def test_scalars():
-    """ test some scalar fields """
+    """test some scalar fields"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     s1 = ScalarField(grid, np.full(grid.shape, 1))
     s2 = ScalarField(grid, np.full(grid.shape, 2))
@@ -90,7 +90,7 @@ def test_scalars():
 
 
 def test_laplacian():
-    """ test the gradient operator """
+    """test the gradient operator"""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     s = ScalarField.random_harmonic(grid, axis_combination=np.add, modes=1)
 
@@ -104,7 +104,7 @@ def test_laplacian():
 
 
 def test_gradient():
-    """ test the gradient operator """
+    """test the gradient operator"""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = np.cos(x) + np.sin(y)
@@ -122,14 +122,14 @@ def test_gradient():
 
 
 def test_interpolation_to_grid(example_grid):
-    """ test whether data is interpolated correctly for different grids """
+    """test whether data is interpolated correctly for different grids"""
     sf = ScalarField.random_uniform(example_grid)
     sf2 = sf.interpolate_to_grid(example_grid, backend="numba")
     np.testing.assert_allclose(sf.data, sf2.data, rtol=1e-6)
 
 
 def test_insert_scalar(example_grid):
-    """ test the `insert` method """
+    """test the `insert` method"""
     f = ScalarField(example_grid)
     a = np.random.random()
 
@@ -153,8 +153,22 @@ def test_insert_scalar(example_grid):
 
 
 def test_insert_1d():
-    """ test the `insert` method for 1d systems """
-    grid = PolarGrid(3, 5)
+    """test the `insert` method for 1d systems"""
+    grid = UnitGrid([2], periodic=True)
+    f = ScalarField(grid)
+    g = f.copy()
+    a = np.random.random()
+    for r in np.linspace(0, 3, 8).reshape(8, 1):
+        f.data = g.data = 0
+        f.insert(r, a)
+        assert f.integral == pytest.approx(a)
+        grid.make_inserter_compiled()(g.data, r, a)
+        np.testing.assert_array_almost_equal(f.data, g.data)
+
+
+def test_insert_polar():
+    """test the `insert` method for polar systems"""
+    grid = PolarSymGrid(3, 5)
     f = ScalarField(grid)
     g = f.copy()
     a = np.random.random()
@@ -167,7 +181,7 @@ def test_insert_1d():
 
 
 def test_random_harmonic():
-    """ test whether random harmonic fields behave correctly """
+    """test whether random harmonic fields behave correctly"""
     grid = _get_cartesian_grid(2)  # get random Cartesian grid
     x = ScalarField.random_harmonic(grid, modes=1)
     scaling = sum((2 * np.pi / L) ** 2 for L in grid.cuboid.size)
@@ -176,7 +190,7 @@ def test_random_harmonic():
 
 
 def test_get_line_data():
-    """ test different extraction methods for line data """
+    """test different extraction methods for line data"""
     grid = UnitGrid([16, 32])
     c = ScalarField.random_harmonic(grid)
 
@@ -193,7 +207,7 @@ def test_get_line_data():
 
 
 def test_from_expression():
-    """ test creating scalar field from expression """
+    """test creating scalar field from expression"""
     grid = UnitGrid([1, 2])
     sf = ScalarField.from_expression(grid, "x * y", label="abc")
     assert sf.label == "abc"
@@ -201,7 +215,7 @@ def test_from_expression():
 
 
 def test_interpolation_inhomogeneous_bc():
-    """ test field interpolation with inhomogeneous boundary condition """
+    """test field interpolation with inhomogeneous boundary condition"""
     sf = ScalarField(UnitGrid([3, 3], periodic=False))
     x = 1 + np.random.random()
     bc = ["natural", {"type": "value", "value": "x"}]
@@ -222,7 +236,7 @@ def test_from_image(tmp_path):
 
 
 def test_to_scalar():
-    """ test conversion to scalar field """
+    """test conversion to scalar field"""
     sf = ScalarField.random_uniform(UnitGrid([3, 3]))
     np.testing.assert_allclose(sf.to_scalar().data, sf.data)
     np.testing.assert_allclose(sf.to_scalar("norm_squared").data, sf.data ** 2)
@@ -234,7 +248,7 @@ def test_to_scalar():
 
 @pytest.mark.parametrize("method", ["integral", "average"])
 def test_projection(example_grid_nd, method):
-    """ test scalar projection """
+    """test scalar projection"""
     sf = ScalarField.random_uniform(example_grid_nd)
     for ax in example_grid_nd.axes:
         sp = sf.project(ax, method=method)
@@ -250,7 +264,7 @@ def test_projection(example_grid_nd, method):
 
 
 def test_slice(example_grid_nd):
-    """ test scalar slicing """
+    """test scalar slicing"""
     sf = ScalarField(example_grid_nd, 0.5)
     p = example_grid_nd.get_random_point()
     for i in range(example_grid_nd.num_axes):
@@ -266,7 +280,7 @@ def test_slice(example_grid_nd):
 
 
 def test_slice_positions():
-    """ test scalar slicing at standard positions """
+    """test scalar slicing at standard positions"""
     grid = UnitGrid([3, 1])
     sf = ScalarField(grid, np.arange(3).reshape(3, 1))
     assert sf.slice({"x": "min"}).data == 0
@@ -280,7 +294,7 @@ def test_slice_positions():
 
 
 def test_interpolation_mutable():
-    """ test interpolation on mutable fields """
+    """test interpolation on mutable fields"""
     grid = UnitGrid([2], periodic=True)
     field = ScalarField(grid)
 
@@ -297,7 +311,7 @@ def test_interpolation_mutable():
 
 
 def test_boundary_interpolation_1d():
-    """ test boundary interpolation for 1d fields """
+    """test boundary interpolation for 1d fields"""
     grid = UnitGrid([5])
     field = ScalarField(grid, np.arange(grid.shape[0]))
 
@@ -315,7 +329,7 @@ def test_boundary_interpolation_1d():
 
 
 def test_boundary_interpolation_2d():
-    """ test boundary interpolation for 2d fields """
+    """test boundary interpolation for 2d fields"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
     field = ScalarField.random_normal(grid)
 
@@ -333,7 +347,7 @@ def test_boundary_interpolation_2d():
 
 
 def test_numpy_ufuncs():
-    """ test numpy ufuncs """
+    """test numpy ufuncs"""
     grid = UnitGrid([2, 2])
     f1 = ScalarField.random_uniform(grid, 0.1, 0.9)
 
@@ -350,7 +364,7 @@ def test_numpy_ufuncs():
 
 
 def test_plotting_1d():
-    """ test plotting of 1d scalar fields """
+    """test plotting of 1d scalar fields"""
     grid = UnitGrid([3])
     field = ScalarField.random_uniform(grid, 0.1, 0.9)
 
@@ -359,7 +373,7 @@ def test_plotting_1d():
 
 
 def test_plotting_2d():
-    """ test plotting of 2d scalar fields """
+    """test plotting of 2d scalar fields"""
     grid = UnitGrid([3, 3])
     field = ScalarField.random_uniform(grid, 0.1, 0.9)
 
@@ -369,7 +383,7 @@ def test_plotting_2d():
 
 @skipUnlessModule("napari")
 def test_interactive_plotting():
-    """ test the interactive plotting """
+    """test the interactive plotting"""
     grid = UnitGrid([3, 3])
     field = ScalarField.random_uniform(grid, 0.1, 0.9)
     field.plot_interactive(viewer_args={"show": False, "close": True})
@@ -380,7 +394,7 @@ def test_interactive_plotting():
 
 
 def test_complex_dtype():
-    """ test the support of a complex data type """
+    """test the support of a complex data type"""
     grid = UnitGrid([2])
     f = ScalarField(grid, 1j)
     assert f.is_complex
@@ -401,14 +415,14 @@ def test_complex_dtype():
 
 
 def test_complex_plotting():
-    """ test plotting of complex fields """
+    """test plotting of complex fields"""
     for dim in (1, 2):
         f = ScalarField(UnitGrid([3] * dim), 1j)
         f.plot()
 
 
 def test_complex_methods():
-    """ test special methods for complex data type """
+    """test special methods for complex data type"""
     grid = UnitGrid([2, 2])
     f = ScalarField(grid, 1j)
     for backend in ["scipy", "numba"]:
@@ -421,6 +435,6 @@ def test_complex_methods():
 
 
 def test_complex_operators():
-    """ test differential operators for complex data type """
+    """test differential operators for complex data type"""
     f = ScalarField(UnitGrid([2, 2]), 1j)
     assert f.laplace("natural").magnitude == pytest.approx(0)

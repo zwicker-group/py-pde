@@ -5,18 +5,24 @@ Created on Nov 24, 2020
 """
 
 
-from pde import CartesianGrid, CylindricalGrid, PolarGrid, SphericalGrid, UnitGrid
+from pde import (
+    CartesianGrid,
+    CylindricalSymGrid,
+    PolarSymGrid,
+    SphericalSymGrid,
+    UnitGrid,
+)
 
 
 def iter_grids():
-    """ generator providing some test grids """
+    """generator providing some test grids"""
     for periodic in [True, False]:
         yield UnitGrid([3], periodic=periodic)
         yield UnitGrid([3, 3, 3], periodic=periodic)
         yield CartesianGrid([[-1, 2], [0, 3]], [5, 7], periodic=periodic)
-        yield CylindricalGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
-    yield PolarGrid(3, 4)
-    yield SphericalGrid(3, 4)
+        yield CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
+    yield PolarSymGrid(3, 4)
+    yield SphericalSymGrid(3, 4)
 
 
 def pytest_generate_tests(metafunc):

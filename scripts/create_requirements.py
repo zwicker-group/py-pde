@@ -13,7 +13,7 @@ PACKAGE_PATH = Path(__file__).resolve().parents[1]
 
 @dataclass
 class Requirement:
-    """ simple class collecting data for a single required python package """
+    """simple class collecting data for a single required python package"""
 
     name: str  # name of the python package
     version: str  # minimal version
@@ -107,6 +107,7 @@ REQUIREMENTS = [
     Requirement(name="sphinx-rtd-theme", version="0.4", for_docs=True),
     Requirement(name="Pillow", version="7.0", for_docs=True),
     # for tests only
+    Requirement(name="jupyter_contrib_nbextensions", version="0.5", for_tests=True),
     Requirement(name="black", version="19.*", for_tests=True),
     Requirement(name="isort", version="5.1", for_tests=True),
     Requirement(name="mypy", version="0.770", for_tests=True),
@@ -170,7 +171,7 @@ def write_requirements_csv(
 
 
 def main():
-    """ main function creating all the requirements """
+    """main function creating all the requirements"""
     # write basic requirements
     write_requirements_txt(
         Path(PACKAGE_PATH) / "requirements.txt",

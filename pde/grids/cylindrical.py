@@ -5,6 +5,7 @@ Cylindrical grids with azimuthal symmetry
  
 """
 
+import warnings
 from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
 
 import numpy as np
@@ -16,10 +17,10 @@ from .cartesian import CartesianGrid
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
-    from .spherical import PolarGrid  # @UnusedImport
+    from .spherical import PolarSymGrid  # @UnusedImport
 
 
-class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
+class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     r""" 3-dimensional cylindrical grid assuming polar symmetry 
     
     The polar symmetry implies that states only depend on the radial and axial
@@ -100,7 +101,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
     @property
     def state(self) -> Dict[str, Any]:
-        """ state: the state of the grid """
+        """state: the state of the grid"""
         radius = self.axes_bounds[0][1]
         return {
             "radius": radius,
@@ -110,7 +111,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
         }
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> "CylindricalGrid":  # type: ignore
+    def from_state(cls, state: Dict[str, Any]) -> "CylindricalSymGrid":  # type: ignore
         """create a field from a stored `state`.
 
         Args:
@@ -130,17 +131,17 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
     @property
     def radius(self) -> float:
-        """ float: radius of the cylinder """
+        """float: radius of the cylinder"""
         return self.axes_bounds[0][1]
 
     @property
     def length(self) -> float:
-        """ float: length of the cylinder """
+        """float: length of the cylinder"""
         return self.axes_bounds[1][1] - self.axes_bounds[1][0]
 
     @property
     def volume(self) -> float:
-        """ float: total volume of the grid """
+        """float: total volume of the grid"""
         return float(np.pi * self.radius ** 2 * self.length)
 
     def get_random_point(
@@ -296,7 +297,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
     @cached_property()
     def cell_volume_data(self) -> Tuple[np.ndarray, float]:
-        """ :class:`~numpy.ndarray`: the volumes of all cells """
+        """:class:`~numpy.ndarray`: the volumes of all cells"""
         dr, dz = self.discretization
         rs = np.arange(self.shape[0] + 1) * dr
         areas = np.pi * rs ** 2
@@ -497,7 +498,7 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
     def get_subgrid(
         self, indices: Sequence[int]
-    ) -> Union["CartesianGrid", "PolarGrid"]:
+    ) -> Union["CartesianGrid", "PolarSymGrid"]:
         """return a subgrid of only the specified axes
 
 
@@ -507,16 +508,16 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
         Returns:
             :class:`~pde.grids.cartesian.CartesianGrid` or
-            :class:`~pde.grids.spherical.PolarGrid`: The subgrid
+            :class:`~pde.grids.spherical.PolarSymGrid`: The subgrid
         """
         if len(indices) != 1:
             raise ValueError(f"Can only get sub-grid for one axis.")
 
         if indices[0] == 0:
             # return a radial grid
-            from .spherical import PolarGrid  # @Reimport
+            from .spherical import PolarSymGrid  # @Reimport
 
-            return PolarGrid(self.radius, self.shape[0])
+            return PolarSymGrid(self.radius, self.shape[0])
 
         elif indices[0] == 1:
             # return a Cartesian grid along the z-axis
@@ -530,3 +531,19 @@ class CylindricalGrid(GridBase):  # lgtm [py/missing-equals]
 
         else:
             raise ValueError(f"Cannot get sub-grid for index {indices[0]}")
+
+
+class CylindricalGrid(CylindricalSymGrid):
+    r"""3-dimensional cylindrical grid assuming polar symmetry
+
+    .. deprecated:: 0.14 (2021-05-21)
+        Use  :class:`~pde.grids.cylindrical.CylindricalSymGrid` instead.
+    """
+
+    def __init__(self, *args, **kwargs):
+        """class deprecated since 2021-05-21"""
+        warnings.warn(
+            "CylindricalGrid is a deprecated class. Use CylindricalSymGrid instead",
+            DeprecationWarning,
+        )
+        super().__init__(*args, **kwargs)

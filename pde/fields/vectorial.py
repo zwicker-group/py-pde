@@ -92,7 +92,7 @@ class VectorField(DataFieldBase):
             {WARNING_EXEC}
 
         Args:
-            grid (:class:`~pde.grids.GridBase`):
+            grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             expressions (list of str):
                 A list of mathematical expression, one for each component of the
@@ -130,7 +130,7 @@ class VectorField(DataFieldBase):
         )
 
     def __getitem__(self, key: int) -> ScalarField:
-        """ extract a component of the VectorField """
+        """extract a component of the VectorField"""
         if not isinstance(key, int):
             raise IndexError("Index must be an integer")
         return ScalarField(self.grid, self.data[key])
@@ -160,7 +160,8 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            ScalarField or VectorField: the result of applying the dot operator
+            :class:`~pde.fields.scalar.ScalarField` or
+            :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
         from .tensorial import Tensor2Field  # @Reimport
 
@@ -220,7 +221,7 @@ class VectorField(DataFieldBase):
 
                 @register_jitable
                 def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """ calculate dot product between fields `a` and `b` """
+                    """calculate dot product between fields `a` and `b`"""
                     out[:] = a[0] * b[0].conjugate()  # overwrite potential data in out
                     for i in range(1, dim):
                         out[:] += a[i] * b[i].conjugate()
@@ -231,7 +232,7 @@ class VectorField(DataFieldBase):
 
                 @register_jitable
                 def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """ calculate dot product between fields `a` and `b` """
+                    """calculate dot product between fields `a` and `b`"""
                     out[:] = a[0] * b[0]  # overwrite potential data in out
                     for i in range(1, dim):
                         out[:] += a[i] * b[i]
@@ -268,7 +269,7 @@ class VectorField(DataFieldBase):
                         def f_with_allocated_out(
                             a: np.ndarray, b: np.ndarray, out: np.ndarray
                         ) -> np.ndarray:
-                            """ helper function allocating output array """
+                            """helper function allocating output array"""
                             out = np.empty(b.shape[1:], dtype=dtype)
                             return calc(a, b, out=out)  # type: ignore
 
@@ -284,12 +285,27 @@ class VectorField(DataFieldBase):
             def calc(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray = None
             ) -> np.ndarray:
+                """inner function doing the actual calculation of the dot product"""
                 if a.shape == b.shape:
                     # dot product between vector and vector
-                    return np.einsum("i...,i...->...", a, b, out=out)  # type: ignore
+                    if out is None:
+                        # TODO: Remove this construct once we make numpy 1.20 a minimal
+                        # requirement. Earlier version of numpy do not support out=None
+                        # correctly and we thus had to use this work-around
+                        return np.einsum("i...,i...->...", a, b)  # type: ignore
+                    else:
+                        return np.einsum("i...,i...->...", a, b, out=out)  # type: ignore
+
                 elif a.shape == b.shape[1:]:
                     # dot product between vector and tensor
-                    return np.einsum("i...,ij...->j...", a, b, out=out)  # type: ignore
+                    if out is None:
+                        # TODO: Remove this construct once we make numpy 1.20 a minimal
+                        # requirement. Earlier version of numpy do not support out=None
+                        # correctly and we thus had to use this work-around
+                        return np.einsum("i...,ij...->j...", a, b)  # type: ignore
+                    else:
+                        return np.einsum("i...,ij...->j...", a, b, out=out)  # type: ignore
+
                 else:
                     raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
 
@@ -299,6 +315,7 @@ class VectorField(DataFieldBase):
                 def dot(
                     a: np.ndarray, b: np.ndarray, out: np.ndarray = None
                 ) -> np.ndarray:
+                    """dot product with conjugated second operand"""
                     return calc(a, b.conjugate(), out=out)  # type: ignore
 
             else:
@@ -341,13 +358,15 @@ class VectorField(DataFieldBase):
         """calculate the outer product of this vector field with another
 
         Args:
-            other (:class:`VectorField`):
+            other (:class:`~pde.fields.vectorial.VectorField`):
                 The second vector field
-            out (:class:`pde.fields.tensorial.Tensor2Field`, optional):
+            out (:class:`~pde.fields.tensorial.Tensor2Field`, optional):
                 Optional tensorial field to which the  result is written.
             label (str, optional):
                 Name of the returned field
 
+        Returns:
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
         """
         from .tensorial import Tensor2Field  # @Reimport
 
@@ -387,7 +406,7 @@ class VectorField(DataFieldBase):
             # create the inner function calculating the dot product
             @register_jitable
             def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                """ calculate dot product between fields `a` and `b` """
+                """calculate dot product between fields `a` and `b`"""
                 for i in range(0, dim):
                     for j in range(0, dim):
                         out[i, j, :] = a[i] * b[j]
@@ -426,7 +445,7 @@ class VectorField(DataFieldBase):
                         def f_with_allocated_out(
                             a: np.ndarray, b: np.ndarray, out: np.ndarray
                         ) -> np.ndarray:
-                            """ helper function allocating output array """
+                            """helper function allocating output array"""
                             out = np.empty((len(a),) + b.shape, dtype=dtype)
                             return calc(a, b, out=out)  # type: ignore
 
@@ -442,7 +461,14 @@ class VectorField(DataFieldBase):
             def outer(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray = None
             ) -> np.ndarray:
-                return np.einsum("i...,j...->ij...", a, b, out=out)  # type: ignore
+                """calculates the outer product between two vector fields"""
+                if out is None:
+                    # TODO: Remove this construct once we make numpy 1.20 a minimal
+                    # requirement. Earlier version of numpy do not support out=None
+                    # correctly and we thus had to use this work-around
+                    return np.einsum("i...,j...->ij...", a, b)  # type: ignore
+                else:
+                    return np.einsum("i...,j...->ij...", a, b, out=out)  # type: ignore
 
         else:
             raise ValueError(f"Undefined backend `{backend}")
@@ -469,7 +495,7 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            ScalarField: the result of applying the operator
+            :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
         """
         divergence = self.grid.get_operator("divergence", bc=bc)
         if out is None:
@@ -488,7 +514,7 @@ class VectorField(DataFieldBase):
         *,
         label: str = "gradient",
     ) -> "Tensor2Field":
-        """apply (vecotr) gradient operator and return result as a field
+        """apply vector gradient operator and return result as a field
 
         Args:
             bc:
@@ -500,7 +526,7 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            Tensor2Field: the result of applying the operator
+            :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the operator
         """
         from .tensorial import Tensor2Field  # @Reimport
 
@@ -533,7 +559,7 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            VectorField: the result of applying the operator
+            :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
         if out is not None:
             assert isinstance(out, VectorField), f"`out` must be VectorField"
@@ -542,7 +568,7 @@ class VectorField(DataFieldBase):
 
     @property
     def integral(self) -> np.ndarray:
-        """ :class:`~numpy.ndarray`: integral of each component over space """
+        """:class:`~numpy.ndarray`: integral of each component over space"""
         return self.grid.integrate(self.data)
 
     def to_scalar(
@@ -617,13 +643,14 @@ class VectorField(DataFieldBase):
             data["title"] = self.label
 
         else:
-            raise NotImplementedError()
+            raise NotImplementedError("Only supports 2d grids")
 
         # transpose the data if requested
         if transpose:
             data["x"], data["y"] = data["y"], data["x"]
             data["data_x"], data["data_y"] = data["data_y"].T, data["data_x"].T
             data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
+            data["extent"] = data["extent"][2:] + data["extent"][:2]
 
         # reduce the sampling of the vector points
         if max_points is not None:
@@ -637,9 +664,11 @@ class VectorField(DataFieldBase):
                     data["data_x"] = np.take(data["data_x"], idx_i, axis=axis)
                     data["data_y"] = np.take(data["data_y"], idx_i, axis=axis)
                     if axis == 0:
-                        data["y"] = data["y"][idx_i]
-                    elif axis == 1:
                         data["x"] = data["x"][idx_i]
+                    elif axis == 1:
+                        data["y"] = data["y"][idx_i]
+                    else:
+                        raise RuntimeError("Only supports 2d grids")
 
         data["shape"] = data["data_x"].shape
         data["size"] = data["data_x"].size
