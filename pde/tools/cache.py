@@ -59,8 +59,10 @@ def objects_equal(a, b) -> bool:
         if a.__class__ != b.__class__ or len(a) != len(b):
             return False
         return all(objects_equal(x, y) for x, y in zip(a, b))
+
     if isinstance(a,csr_matrix):
         return np.array_equal(b.todense(), a.todense())
+
 
     # use direct comparison
     return a == b  # type: ignore
