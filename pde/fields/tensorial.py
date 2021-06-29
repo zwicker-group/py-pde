@@ -360,10 +360,10 @@ class Tensor2Field(DataFieldBase):
             \right] \\
             I_3 &= \det(A)
             
-        where `tr` denotes the trace and `det` denotes the determinant.
-        Note that the three invariants can only be distinct and non-zero in three
-        dimensions. In two dimensional spaces, we have the identity :math:`2 I_2 = I_3`
-        and in one-dimensional spaces, we have :math:`I_1 = I_3` as well as
+        where `tr` denotes the trace and `det` denotes the determinant. Note that the
+        three invariants can only be distinct and non-zero in three dimensions. In two
+        dimensional spaces, we have the identity :math:`2 I_2 = I_3` and in
+        one-dimensional spaces, we have :math:`I_1 = I_3` as well as
         :math:`I_2 = 0`.
             
         Args:

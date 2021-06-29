@@ -572,16 +572,21 @@ class VectorField(DataFieldBase):
         return self.grid.integrate(self.data)
 
     def to_scalar(
-        self, scalar: str = "auto", *, label: Optional[str] = "scalar `{scalar}`"
+        self,
+        scalar: Union[str, int] = "auto",
+        *,
+        label: Optional[str] = "scalar `{scalar}`",
     ) -> ScalarField:
         """return a scalar field by applying `method`
 
-        The two tensor invariants are given by
-
         Args:
             scalar (str):
-                Choose the method to use. Possible  choices are `norm` (the
-                default), `max`, `min`, `squared_sum`, or `norm_squared`.
+                Choose the method to use. Possible  choices are `norm`, `max`, `min`,
+                `squared_sum`, `norm_squared`, or an integer specifying which component
+                is returned (indexing starts at `0`). The default value `auto` picks the
+                method based on the dimension of the space: The first (and only)
+                component is returned for one-dimensional spaces, while the norm of the
+                vector is returned otherwise.
             label (str, optional):
                 Name of the returned field
 
@@ -590,9 +595,12 @@ class VectorField(DataFieldBase):
             applying the operation
         """
         if scalar == "auto":
-            scalar = "norm"
+            scalar = "norm" if self.grid.dim > 1 else 0
 
-        if scalar == "norm":
+        if isinstance(scalar, int):
+            data = self.data[scalar]
+
+        elif scalar == "norm":
             data = np.linalg.norm(self.data, axis=0)
 
         elif scalar == "max":
