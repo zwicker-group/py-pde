@@ -51,7 +51,7 @@ class PDEBase(metaclass=ABCMeta):
     """ bool: Flag indicating whether the right hand side is a complex-valued PDE, which
     requires all involved variables to be of complex type """
 
-    def __init__(self, noise: ArrayLike = 0):
+    def __init__(self, noise: ArrayLike = 0, rng: np.random.Generator = None):
         """
         Args:
             noise (float or :class:`~numpy.ndarray`):
@@ -59,6 +59,10 @@ class PDEBase(metaclass=ABCMeta):
                 PDEs by default. If set to zero, a deterministic partial differential
                 equation will be solved. Different noise magnitudes can be supplied for
                 each field in coupled PDEs.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`).
+                Note that this random number generator is only used for numpy function,
+                while compiled numba code is unaffected.
 
         Note:
             If more complicated noise structures are required, the methods
@@ -69,6 +73,10 @@ class PDEBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
         self._cache: Dict[str, Any] = {}
         self.noise = noise
+        if rng is None:
+            self.rng = np.random.default_rng()
+        else:
+            self.rng = rng
 
     @property
     def is_sde(self) -> bool:
@@ -236,7 +244,7 @@ class PDEBase(metaclass=ABCMeta):
         if self.noise:
             if np.isscalar(self.noise):
                 # a single noise value is given for all fields
-                data = np.random.normal(scale=self.noise, size=state.data.shape)
+                data = self.rng.normal(scale=self.noise, size=state.data.shape)
                 return state.copy(data=data, label=label)
 
             elif isinstance(state, FieldCollection):
@@ -246,7 +254,7 @@ class PDEBase(metaclass=ABCMeta):
                     if n == 0:
                         data = 0
                     else:
-                        data = np.random.normal(scale=n, size=f.data.shape)
+                        data = self.rng.normal(scale=n, size=f.data.shape)
                     fields.append(f.copy(data=data))
                 return FieldCollection(fields, label=label)
 

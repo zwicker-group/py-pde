@@ -642,7 +642,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         vmin: float = 0,
         vmax: float = 1,
         label: Optional[str] = None,
-        seed: Optional[int] = None,
+        rng: np.random.Generator = None,
     ):
         """create field with uniform distributed random values
 
@@ -657,14 +657,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Largest random value
             label (str, optional):
                 Name of the field
-            seed (int, optional):
-                Seed of the random number generator. If `None`, the current
-                state is not changed.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
+        if rng is None:
+            rng = np.random.default_rng()
+
         shape = (grid.dim,) * cls.rank + grid.shape
-        if seed is not None:
-            np.random.seed(seed)
-        data = np.random.uniform(vmin, vmax, shape)
+        data = rng.uniform(vmin, vmax, size=shape)
         return cls(grid, data, label=label)
 
     @classmethod
@@ -675,7 +675,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         std: float = 1,
         scaling: str = "physical",
         label: Optional[str] = None,
-        seed: Optional[int] = None,
+        rng: np.random.Generator = None,
     ):
         """create field with normal distributed random values
 
@@ -697,12 +697,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 larger volumes).
             label (str, optional):
                 Name of the field
-            seed (int, optional):
-                Seed of the random number generator. If `None`, the current
-                state is not changed.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
-        if seed is not None:
-            np.random.seed(seed)
+        if rng is None:
+            rng = np.random.default_rng()
 
         if scaling == "none":
             noise_scale = std
@@ -712,7 +711,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise ValueError(f"Unknown noise scaling {scaling}")
 
         shape = (grid.dim,) * cls.rank + grid.shape
-        data = mean + noise_scale * np.random.randn(*shape)
+        data = mean + noise_scale * rng.normal(size=shape)
         return cls(grid, data, label=label)
 
     @classmethod
@@ -723,7 +722,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         harmonic=np.cos,
         axis_combination=np.multiply,
         label: Optional[str] = None,
-        seed: Optional[int] = None,
+        rng: np.random.Generator = None,
     ):
         r"""create a random field build from harmonics
 
@@ -762,13 +761,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 respectively.
             label (str, optional):
                 Name of the field
-            seed (int, optional):
-                Seed of the random number generator. If `None`, the current
-                state is not changed.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
+        if rng is None:
+            rng = np.random.default_rng()
+
         tensor_shape = (grid.dim,) * cls.rank
-        if seed is not None:
-            np.random.seed(seed)
 
         data = np.empty(tensor_shape + grid.shape)
         # determine random field for each component
@@ -777,7 +776,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # random harmonic function along each axis
             for i in range(len(grid.axes)):
                 # choose wave vectors
-                ampl = np.random.random(modes)  # amplitudes
+                ampl = rng.random(size=modes)  # amplitudes
                 x = discretize_interval(0, 2 * np.pi, grid.shape[i])[0]
                 data_axis.append(
                     sum(a * harmonic(n * x) for n, a in enumerate(ampl, 1))
@@ -794,7 +793,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         exponent: float = 0,
         scale: float = 1,
         label: Optional[str] = None,
-        seed: Optional[int] = None,
+        rng: np.random.Generator = None,
     ):
         r"""create a field of random values with colored noise
 
@@ -818,18 +817,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Scaling factor :math:`\Gamma` determining noise strength
             label (str, optional):
                 Name of the field
-            seed (int, optional):
-                Seed of the random number generator. If `None`, the current
-                state is not changed.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
-        if seed is not None:
-            np.random.seed(seed)
-
-        # create function making colored noise
+        # get function making colored noise
         from ..tools.spectral import make_colored_noise
 
         make_noise = make_colored_noise(
-            grid.shape, dx=grid.discretization, exponent=exponent, scale=scale
+            grid.shape, dx=grid.discretization, exponent=exponent, scale=scale, rng=rng
         )
 
         # create random fields for each tensor component
