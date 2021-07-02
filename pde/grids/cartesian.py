@@ -104,7 +104,10 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 yield point + offset
 
     def get_random_point(
-        self, boundary_distance: float = 0, cartesian: bool = True
+        self,
+        boundary_distance: float = 0,
+        cartesian: bool = True,
+        rng: np.random.Generator = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -115,10 +118,15 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 Cartesian coordinates or grid coordinates. This does not have
                 any effect for Cartesian coordinate systems, but the argument is
                 retained to have a unified interface for all grids.
+            rng (:class:`~np.random.Generator`):
+                Random number generator. Uses default one if omitted.
 
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
+        if rng is None:
+            rng = np.random.default_rng()
+
         # handle the boundary distance
         cuboid = self.cuboid
         if boundary_distance != 0:
@@ -127,7 +135,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             cuboid = cuboid.buffer(-boundary_distance)
 
         # create random point
-        return cuboid.pos + np.random.random(self.dim) * cuboid.size  # type: ignore
+        return cuboid.pos + rng.random(self.dim) * cuboid.size  # type: ignore
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
         """return a line cut through the given data
