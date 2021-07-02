@@ -657,8 +657,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Largest random value
             label (str, optional):
                 Name of the field
-            rng (:class:`~np.random.Generator`):
-                Random number generator. Uses default one if omitted.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
         if rng is None:
             rng = np.random.default_rng()
@@ -697,8 +697,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 larger volumes).
             label (str, optional):
                 Name of the field
-            rng (:class:`~np.random.Generator`):
-                Random number generator. Uses default one if omitted.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
         if rng is None:
             rng = np.random.default_rng()
@@ -761,8 +761,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 respectively.
             label (str, optional):
                 Name of the field
-            rng (:class:`~np.random.Generator`):
-                Random number generator. Uses default one if omitted.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
         if rng is None:
             rng = np.random.default_rng()
@@ -817,8 +817,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Scaling factor :math:`\Gamma` determining noise strength
             label (str, optional):
                 Name of the field
-            rng (:class:`~np.random.Generator`):
-                Random number generator. Uses default one if omitted.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
         # get function making colored noise
         from ..tools.spectral import make_colored_noise

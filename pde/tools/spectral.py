@@ -51,8 +51,8 @@ def make_colored_noise(
             Exponent :math:`\nu` of the power spectrum
         scale:
             Scaling factor :math:`\Gamma` determining noise strength
-        rng (:class:`~np.random.Generator`):
-            Random number generator. Uses default one if omitted.
+        rng (:class:`~numpy.random.Generator`):
+            Random number generator (default: :func:`~numpy.random.default_rng()`)
 
     Returns:
         callable: a function returning a random realization

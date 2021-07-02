@@ -118,8 +118,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
                 Cartesian coordinates or grid coordinates. This does not have
                 any effect for Cartesian coordinate systems, but the argument is
                 retained to have a unified interface for all grids.
-            rng (:class:`~np.random.Generator`):
-                Random number generator. Uses default one if omitted.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
 
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point

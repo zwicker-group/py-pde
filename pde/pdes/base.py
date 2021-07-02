@@ -59,8 +59,10 @@ class PDEBase(metaclass=ABCMeta):
                 PDEs by default. If set to zero, a deterministic partial differential
                 equation will be solved. Different noise magnitudes can be supplied for
                 each field in coupled PDEs.
-            rng (:class:`~np.random.Generator`):
-                Random number generator. Uses default one if omitted.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`).
+                Note that this random number generator is only used for numpy function,
+                while compiled numba code is unaffected.
 
         Note:
             If more complicated noise structures are required, the methods

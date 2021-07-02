@@ -164,8 +164,8 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             avoid_center (bool): Determines whether the boundary distance
                 should also be kept from the center, i.e., whether points close
                 to the center are returned.
-            rng (:class:`~np.random.Generator`):
-                Random number generator. Uses default one if omitted.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
 
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
