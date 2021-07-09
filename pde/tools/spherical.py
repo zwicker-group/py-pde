@@ -290,7 +290,7 @@ def points_cartesian_to_spherical(points: np.ndarray) -> np.ndarray:
     assert points.shape[-1] == 3, "Points must have 3 coordinates"
 
     ps_spherical = np.empty(points.shape)
-    # calculate radius in [0, infinty]
+    # calculate radius in [0, infinity]
     ps_spherical[..., 0] = np.linalg.norm(points, axis=-1)
     # calculate θ in [0, pi]
     ps_spherical[..., 1] = np.arccos(points[..., 2] / ps_spherical[..., 0])
@@ -320,7 +320,7 @@ def points_spherical_to_cartesian(points: np.ndarray) -> np.ndarray:
     return ps_cartesian
 
 
-def haversine_distance(point1, point2) -> float:
+def haversine_distance(point1: np.ndarray, point2: np.ndarray) -> np.ndarray:
     """Calculate the haversine-based distance between two points on the surface
     of a sphere. Should be more accurate than the arc cosine strategy.
     See, for example: https://en.wikipedia.org/wiki/Haversine_formula
@@ -329,17 +329,22 @@ def haversine_distance(point1, point2) -> float:
     Licensed under MIT License (see copy in root of this project)
 
     Args:
-        point1 (:class:`~numpy.ndarray`): First point on the sphere (given in
-            Cartesian coordinates)
+        point1 (:class:`~numpy.ndarray`):
+            First point(s) on the sphere (given in Cartesian coordinates)
         point2 (:class:`~numpy.ndarray`): Second point on the sphere
-        radius (float): Radius of the sphere
+            Second point(s) on the sphere (given in Cartesian coordinates)
+
+    Returns:
+        :class:`~numpy.ndarray`: The distances between the points
     """
     # note that latitude φ is θ and longitude λ is φ in our notation
-    r1, φ1, λ1 = points_cartesian_to_spherical(point1)
-    r2, φ2, λ2 = points_cartesian_to_spherical(point2)
+    coords = points_cartesian_to_spherical(point1)
+    r1, φ1, λ1 = coords[..., 0], coords[..., 1], coords[..., 2]
+    coords = points_cartesian_to_spherical(point2)
+    r2, φ2, λ2 = coords[..., 0], coords[..., 1], coords[..., 2]
 
     # check whether both points lie on the same sphere
-    assert np.isclose(r1, r2)
+    assert np.allclose(r1, r2)
 
     # we rewrite the standard Haversine slightly as long/lat is not the same as
     # spherical coordinates - φ differs by π/4
@@ -475,6 +480,7 @@ class PointsOnSphere:
 
         points_flat = self.points.reshape(-1, self.dim)
         if self.dim == 1:
+            assert points_flat.shape == (2, 1)
             weights = np.array([0.5, 0.5])
 
         elif self.dim == 2:
