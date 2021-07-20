@@ -669,9 +669,9 @@ class FieldCollection(FieldBase):
         # plot all the elements onto the respective axes
         reference = [
             field.plot(kind=knd, ax=ax, action="create", **kwargs, **sp_args)
-            for field, knd, ax, sp_args in zip(
+            for field, knd, ax, sp_args in zip(  # @UnusedVariable
                 self.fields, kind, axs, subplot_args
-            )  # @UnusedVariable
+            )
         ]
 
         # return the references for all subplots
