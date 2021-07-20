@@ -122,7 +122,8 @@ def test_poisson_solver_polar():
 
         d = np.random.random(grid.shape)
         d -= ScalarField(grid, d).average  # balance the right hand side
-        np.testing.assert_allclose(laplace(poisson(d)), d, err_msg=f"bcs = {bc_val}")
+        res = laplace(poisson(d))
+        np.testing.assert_allclose(res, d, rtol=1e-6, err_msg=f"bcs = {bc_val}")
 
     grid = PolarSymGrid([2, 4], 8)
     for bc_val in ["natural", {"value": 1}]:
@@ -132,4 +133,5 @@ def test_poisson_solver_polar():
 
         d = np.random.random(grid.shape)
         d -= ScalarField(grid, d).average  # balance the right hand side
-        np.testing.assert_allclose(laplace(poisson(d)), d, err_msg=f"bcs = {bc_val}")
+        res = laplace(poisson(d))
+        np.testing.assert_allclose(res, d, rtol=1e-6, err_msg=f"bcs = {bc_val}")
