@@ -11,7 +11,7 @@ import operator
 import warnings
 from abc import ABCMeta, abstractmethod, abstractproperty
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, TypeVar
 
 import numba as nb
 import numpy as np
@@ -36,6 +36,10 @@ if TYPE_CHECKING:
 
 
 TField = TypeVar("TField", bound="FieldBase")
+
+
+class RankError(TypeError):
+    """error indicating that the field has the wrong rank"""
 
 
 class FieldBase(metaclass=ABCMeta):
@@ -1430,6 +1434,39 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             return abs(self.to_scalar().average)  # type: ignore
         else:
             raise AssertionError("Rank must be non-negative")
+
+    def _apply_with_out(
+        self,
+        func: Callable,
+        out_cls: Type[TDataField],
+        *,
+        out: Optional[TDataField] = None,
+        label: str = None,
+    ) -> TDataField:
+        """applies a function to the data and returns it as a field
+
+        Args:
+            func (callable or str):
+                The (vectorized) function being applied to the data or the name
+                of an operator that is defined for the grid of this field.
+            out_cls:
+                Type of the result of this operation
+            out (FieldBase, optional):
+                Optional field into which the data is written
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            Field with new data. This is stored at `out` if given.
+        """
+        if out is None:
+            out = out_cls(self.grid, func(self.data), label=label)
+        elif not isinstance(out, out_cls):
+            raise RankError(f"`out` must be a {out_cls.__name__}")
+        else:
+            self.grid.assert_grid_compatible(out.grid)
+            func(self.data, out=out.data)
+        return out
 
     def smooth(
         self: TDataField,

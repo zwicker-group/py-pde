@@ -498,13 +498,7 @@ class VectorField(DataFieldBase):
             :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
         """
         divergence = self.grid.get_operator("divergence", bc=bc)
-        if out is None:
-            out = ScalarField(self.grid, divergence(self.data), label=label)
-        else:
-            assert isinstance(out, ScalarField), f"`out` must be ScalarField"
-            self.grid.assert_grid_compatible(out.grid)
-            divergence(self.data, out=out.data)
-        return out
+        return self._apply_with_out(divergence, ScalarField, out=out, label=label)
 
     @fill_in_docstring
     def gradient(
@@ -531,13 +525,7 @@ class VectorField(DataFieldBase):
         from .tensorial import Tensor2Field  # @Reimport
 
         vector_gradient = self.grid.get_operator("vector_gradient", bc=bc)
-        if out is None:
-            out = Tensor2Field(self.grid, vector_gradient(self.data), label=label)
-        else:
-            assert isinstance(out, Tensor2Field), f"`out` must be Tensor2Field"
-            self.grid.assert_grid_compatible(out.grid)
-            vector_gradient(self.data, out=out.data)
-        return out
+        return self._apply_with_out(vector_gradient, Tensor2Field, out=out, label=label)
 
     @fill_in_docstring
     def laplace(
@@ -561,10 +549,8 @@ class VectorField(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        if out is not None:
-            assert isinstance(out, VectorField), f"`out` must be VectorField"
         laplace = self.grid.get_operator("vector_laplace", bc=bc)
-        return self.apply(laplace, out=out, label=label)
+        return self._apply_with_out(laplace, VectorField, out=out, label=label)
 
     @property
     def integral(self) -> np.ndarray:

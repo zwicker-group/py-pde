@@ -78,6 +78,8 @@ LOW-PRIORITY (Future ideas)
 	out=None idiom
 * Ensure that stochastic simulations on a single core can be resumed from any
 	stored state (this requires storing random seeds)
+	- we now have support for random state in numpy implementations
+	- it's not clear how to support numba, since the random state is not as accessible
 * Implement multiprocessing:
 	- Separate CartesianGrid into different blocks
 	  (we need to slice the whole grid at defined locations)
@@ -89,6 +91,8 @@ LOW-PRIORITY (Future ideas)
 	- How would this play with numba? (we might need to only use numba for the
 	  time stepping and do the rest in python)
 	- Also look into ipyparallel, pyop
+    - this likely relies on BCs that are implemented on ghost cells
+    - however, it is not clear how to define the value of ghost cells for divergence(vector_field)
 * Support more flexible boundary conditions
     - Think about implementing vectorial boundary conditions without creating three
     separate compiled functions
