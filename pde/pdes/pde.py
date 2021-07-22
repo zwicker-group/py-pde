@@ -111,7 +111,9 @@ class PDE(PDEBase):
         if not isinstance(rhs, OrderedDict):
             rhs = OrderedDict(rhs)
         if "t" in rhs:
-            raise RuntimeError("`t` is not allowed as a variable since it denotes time")
+            raise ValueError("Cannot name field `t` since it denotes time")
+        if "E" in rhs:
+            raise ValueError("Cannot name field `E` since it denotes Euler's number")
         if consts is None:
             consts = {}
 
