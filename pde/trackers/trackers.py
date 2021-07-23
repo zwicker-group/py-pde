@@ -245,6 +245,8 @@ class PlotTracker(TrackerBase):
     output to a file in mind.
     """
 
+    max_fps: float = 2  # maximal frames per second that are shown
+
     @fill_in_docstring
     def __init__(
         self,
@@ -322,13 +324,12 @@ class PlotTracker(TrackerBase):
             self._save_movie = True
 
         else:
-            raise TypeError(
-                f"Unknown type of argument `movie`: {movie.__class__.__name__}"
-            )
+            raise TypeError(f"Unknown type of `movie`: {movie.__class__.__name__}")
 
         # determine whether to show the images interactively
+        self._write_images = self._save_movie or self.output_file
         if show is None:
-            self.show = not (self._save_movie or self.output_file)
+            self.show = not self._write_images
         else:
             self.show = show
 
@@ -379,7 +380,7 @@ class PlotTracker(TrackerBase):
             self._update_method = "replot"
 
         self._logger.info(f'Update method: "{self._update_method}"')
-
+        self._last_update = time.monotonic()
         return super().initialize(state, info=info)
 
     def handle(self, state: FieldBase, t: float) -> None:
@@ -391,6 +392,12 @@ class PlotTracker(TrackerBase):
             t (float):
                 The associated time
         """
+        if not self._write_images:
+            # check whether we can skip this image
+            time_passed = time.monotonic() - self._last_update
+            if time_passed < 1 / self.max_fps:
+                return  # we just recently updated the image
+
         if callable(self.title):
             self._context.title = str(self.title(state, t))
         else:
@@ -424,6 +431,8 @@ class PlotTracker(TrackerBase):
             self._context.fig.savefig(self.output_file)
         if self.movie:
             self.movie.add_figure(self._context.fig)
+
+        self._last_update = time.monotonic()
 
     def finalize(self, info: InfoDict = None) -> None:
         """finalize the tracker, supplying additional information
@@ -740,7 +749,7 @@ class RuntimeTracker(TrackerBase):
         Returns:
             float: The first time the tracker needs to handle data
         """
-        self.max_time = time.time() + self.max_runtime
+        self.max_time = time.monotonic() + self.max_runtime
         return super().initialize(field, info)
 
     def handle(self, field: FieldBase, t: float) -> None:
@@ -752,7 +761,7 @@ class RuntimeTracker(TrackerBase):
             t (float):
                 The associated time
         """
-        if time.time() > self.max_time:
+        if time.monotonic() > self.max_time:
             dt = timedelta(seconds=self.max_runtime)
             raise FinishedSimulation(f"Reached maximal runtime of {str(dt)}")
 

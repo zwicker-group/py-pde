@@ -163,7 +163,7 @@ class RealtimeIntervals(ConstantIntervals):
         Returns:
             float: The first time the tracker needs to handle data
         """
-        self._last_time = time.time()
+        self._last_time = time.monotonic()
         return super()._initialize(t)
 
     def next(self, t: float) -> float:
@@ -173,10 +173,10 @@ class RealtimeIntervals(ConstantIntervals):
             t (float): The current time point of the simulation
         """
         if self._last_time is None:
-            self._last_time = time.time()
+            self._last_time = time.monotonic()
         else:
             # adapt time step
-            current_time = time.time()
+            current_time = time.monotonic()
             time_passed = current_time - self._last_time
             if time_passed > 0:
                 # predict new time step, but limit it from below, to avoid problems with
