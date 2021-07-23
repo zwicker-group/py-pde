@@ -112,8 +112,11 @@ class PDE(PDEBase):
             rhs = OrderedDict(rhs)
         if "t" in rhs:
             raise ValueError("Cannot name field `t` since it denotes time")
-        if "E" in rhs:
-            raise ValueError("Cannot name field `E` since it denotes Euler's number")
+        reserved_symbols = set(rhs) & ScalarExpression._reserved_symbols
+        if any(reserved_symbols):
+            raise ValueError(
+                f"Cannot use reserved symbols {reserved_symbols} as field names"
+            )
         if consts is None:
             consts = {}
 
