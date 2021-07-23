@@ -111,3 +111,5 @@ LOW-PRIORITY (Future ideas)
 * Provide class SymmmetricTensorField, which should be more efficient than the
 	full TensorField
 * Implement bipolar/bispherical coordinate systems	
+* Introduce project and slice methods for VectorFields:
+	- the component that is removed by reduction could be returned in a separate ScalarField
