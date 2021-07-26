@@ -24,6 +24,8 @@ def test_pde_wrong_input():
         PDE({"t": 1})
     with pytest.raises(ValueError):
         PDE({"E": 1})
+    with pytest.raises(ValueError):
+        PDE({"E": 1, "t": 0})
 
     grid = grids.UnitGrid([4])
     eq = PDE({"u": 1})
