@@ -4,11 +4,12 @@ Defines a tensorial field of rank 2 over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, Sequence
 
 import numba as nb
 import numpy as np
 
+from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.numba import get_common_numba_dtype, jit
@@ -33,6 +34,64 @@ class Tensor2Field(DataFieldBase):
     """
 
     rank = 2
+
+    @classmethod
+    @fill_in_docstring
+    def from_expression(
+        cls,
+        grid: GridBase,
+        expressions: Sequence[Sequence[str]],
+        *,
+        label: str = None,
+        dtype=None,
+    ) -> "Tensor2Field":
+        """create a tensor field on a grid from given expressions
+
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                Grid defining the space on which this field is defined
+            expressions (list of str):
+                A 2d list of mathematical expression, one for each component of the
+                tensor field. The expressions determine the values as a function of the
+                position on the grid. The expressions may contain standard mathematical
+                functions and they may depend on the axes labels of the grid.
+            label (str, optional):
+                Name of the field
+            dtype (numpy dtype):
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
+        """
+        from ..tools.expressions import ScalarExpression
+
+        if (
+            isinstance(expressions, str)
+            or len(expressions) != grid.dim
+            or any(len(expr) != grid.dim for expr in expressions)
+        ):
+            axes_names = grid.axes + grid.axes_symmetric
+            raise DimensionError(
+                f"Expected a nested list of {grid.dim}x{grid.dim} expressions for the "
+                f"tensor components of the coordinates {axes_names}."
+            )
+
+        # obtain the coordinates of the grid points
+        points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
+
+        # evaluate all vector components at all points
+        data = [[None] * grid.dim for _ in range(grid.dim)]
+        for i in range(grid.dim):
+            for j in range(grid.dim):
+                expr = ScalarExpression(expressions[i][j], signature=grid.axes)
+                values = np.broadcast_to(expr(**points), grid.shape)
+                data[i][j] = values
+
+        # create vector field from the data
+        return cls(  # lgtm [py/call-to-non-callable]
+            grid=grid, data=data, label=label, dtype=dtype
+        )
 
     def __getitem__(self, key: Tuple[int, int]) -> ScalarField:
         """extract a component of the VectorField"""

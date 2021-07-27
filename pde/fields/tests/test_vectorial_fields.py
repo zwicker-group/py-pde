@@ -172,6 +172,9 @@ def test_from_expressions():
 
     # corner case
     vf = VectorField.from_expression(grid, ["1", "x * y"])
+    np.testing.assert_allclose(vf.data[0], 1)
+    vf = VectorField.from_expression(grid, [1, "x * y"])
+    np.testing.assert_allclose(vf.data[0], 1)
 
     with pytest.raises(ValueError):
         VectorField.from_expression(grid, "xy")

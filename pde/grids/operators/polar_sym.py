@@ -306,14 +306,56 @@ def make_vector_gradient(bcs: Boundaries) -> OperatorType:
     assert isinstance(bcs.grid, PolarSymGrid)
     bcs.check_value_rank(1)
 
-    gradient_r = make_gradient(bcs.extract_component(0))
-    gradient_phi = make_gradient(bcs.extract_component(1))
+    # calculate preliminary quantities
+    dim_r = bcs.grid.shape[0]
+    r_min, _ = bcs.grid.axes_bounds[0]
+    rs = bcs.grid.axes_coords[0]
+    dr = bcs.grid.discretization[0]
+    scale_r = 1 / (2 * dr)
 
-    @jit_allocate_out(out_shape=(2, 2) + bcs.grid.shape)
+    # prepare boundary evaluators
+    bc_r = bcs.extract_component(0)[0]
+    value_r_lower_bc = bc_r.low.make_virtual_point_evaluator()
+    value_r_upper_bc = bc_r.high.make_virtual_point_evaluator()
+    bc_φ = bcs.extract_component(1)[0]
+    value_φ_lower_bc = bc_φ.low.make_virtual_point_evaluator()
+    value_φ_upper_bc = bc_φ.high.make_virtual_point_evaluator()
+
+    @jit_allocate_out(out_shape=(2, 2, dim_r))
     def vector_gradient(arr, out=None):
-        """apply gradient operator to array `arr`"""
-        gradient_r(arr[0], out=out[:, 0])
-        gradient_phi(arr[1], out=out[:, 1])
+        """apply vector gradient operator to array `arr`"""
+        # assign aliases
+        arr_r, arr_φ = arr
+        out_rr, out_rφ = out[0, 0, :], out[0, 1, :]
+        out_φr, out_φφ = out[1, 0, :], out[1, 1, :]
+
+        # inner radial boundary condition
+        i = 0
+        if r_min == 0:
+            # apply Neumann condition at the origin
+            out_rr[i] = (arr_r[i + 1] - arr_r[i]) * scale_r
+            out_rφ[i] = -arr_φ[i] / rs[i]
+            out_φr[i] = (arr_φ[i + 1] - arr_φ[i]) * scale_r
+            out_φφ[i] = arr_r[i] / rs[i]
+        else:  # r_min > 0
+            out_rr[i] = (arr_r[i + 1] - value_r_lower_bc(arr_r, (i,))) * scale_r
+            out_rφ[i] = -arr_φ[i] / rs[i]
+            out_φr[i] = (arr_φ[i + 1] - value_φ_lower_bc(arr_φ, (i,))) * scale_r
+            out_φφ[i] = arr_r[i] / rs[i]
+
+        for i in range(1, dim_r - 1):  # iterate radial points
+            out_rr[i] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
+            out_rφ[i] = -arr_φ[i] / rs[i]
+            out_φr[i] = (arr_φ[i + 1] - arr_φ[i - 1]) * scale_r
+            out_φφ[i] = arr_r[i] / rs[i]
+
+        # # outer radial boundary condition
+        i = dim_r - 1
+        out_rr[i] = (value_r_upper_bc(arr_r, (i,)) - arr_r[i - 1]) * scale_r
+        out_rφ[i] = -arr_φ[i] / rs[i]
+        out_φr[i] = (value_φ_upper_bc(arr_φ, (i,)) - arr_φ[i - 1]) * scale_r
+        out_φφ[i] = arr_r[i] / rs[i]
+
         return out
 
     return vector_gradient  # type: ignore
@@ -336,14 +378,57 @@ def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
     assert isinstance(bcs.grid, PolarSymGrid)
     bcs.check_value_rank(1)
 
-    divergence_r = make_divergence(bcs.extract_component(0))
-    divergence_phi = make_divergence(bcs.extract_component(1))
+    # calculate preliminary quantities
+    dim_r = bcs.grid.shape[0]
+    r_min, _ = bcs.grid.axes_bounds[0]
+    rs = bcs.grid.axes_coords[0]
+    dr = bcs.grid.discretization[0]
+    scale_r = 1 / (2 * dr)
 
-    @jit_allocate_out(out_shape=(2,) + bcs.grid.shape)
+    # prepare boundary evaluators
+    bc_r = bcs.extract_component(0)[0]
+    value_r_lower_bc = bc_r.low.make_virtual_point_evaluator()
+    value_r_upper_bc = bc_r.high.make_virtual_point_evaluator()
+    bc_φ = bcs.extract_component(1)[0]
+    value_φ_lower_bc = bc_φ.low.make_virtual_point_evaluator()
+    value_φ_upper_bc = bc_φ.high.make_virtual_point_evaluator()
+
+    @jit_allocate_out(out_shape=(2, dim_r))
     def tensor_divergence(arr, out=None):
-        """apply gradient operator to array `arr`"""
-        divergence_r(arr[0], out=out[0])
-        divergence_phi(arr[1], out=out[1])
+        """apply tensor divergence operator to array `arr`"""
+        # assign aliases
+        arr_rr, arr_rφ = arr[0, 0, :], arr[0, 1, :]
+        arr_φr, arr_φφ = arr[1, 0, :], arr[1, 1, :]
+        out_r, out_φ = out[0, :], out[1, :]
+
+        # evaluate innermost point
+        i = 0
+        if r_min == 0:
+            # apply Neumann condition at the origin
+            term = (arr_rr[i] - arr_φφ[i]) / rs[i]
+            out_r[i] = (arr_rr[i + 1] - arr_rr[i]) * scale_r + term
+            term = (arr_rφ[i] + arr_φr[i]) / rs[i]
+            out_φ[i] = (arr_φr[i + 1] - arr_φr[i]) * scale_r + term
+        else:  # r_min > 0
+            term = (arr_rr[i] - arr_φφ[i]) / rs[i]
+            out_r[i] = (arr_rr[i + 1] - value_r_lower_bc(arr_rr, (i,))) * scale_r + term
+            term = (arr_rφ[i] + arr_φr[i]) / rs[i]
+            out_φ[i] = (arr_φr[i + 1] - value_φ_lower_bc(arr_φr, (i,))) * scale_r + term
+
+        # iterate over inner points
+        for i in range(1, dim_r - 1):
+            term = (arr_rr[i] - arr_φφ[i]) / rs[i]
+            out_r[i] = (arr_rr[i + 1] - arr_rr[i - 1]) * scale_r + term
+            term = (arr_rφ[i] + arr_φr[i]) / rs[i]
+            out_φ[i] = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r + term
+
+        # evaluate outermost point
+        i = dim_r - 1
+        term = (arr_rr[i] - arr_φφ[i]) / rs[i]
+        out_r[i] = (value_r_upper_bc(arr_rr, (i,)) - arr_rr[i - 1]) * scale_r + term
+        term = (arr_rφ[i] + arr_φr[i]) / rs[i]
+        out_φ[i] = (value_φ_upper_bc(arr_φr, (i,)) - arr_φr[i - 1]) * scale_r + term
+
         return out
 
     return tensor_divergence  # type: ignore

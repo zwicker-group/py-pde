@@ -110,7 +110,7 @@ class VectorField(DataFieldBase):
 
         if isinstance(expressions, str) or len(expressions) != grid.dim:
             axes_names = grid.axes + grid.axes_symmetric
-            raise ValueError(
+            raise DimensionError(
                 f"Expected {grid.dim} expressions for the coordinates {axes_names}."
             )
 

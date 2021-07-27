@@ -190,3 +190,25 @@ def test_complex_tensors():
         dot_op = t1.make_dot_operator(backend, conjugate=False)
         res = t1.dot(t2, conjugate=False)
         np.testing.assert_allclose(dot_op(t1.data, t2.data), res.data)
+
+
+def test_from_expressions():
+    """test initializing tensor fields with expressions"""
+    grid = UnitGrid([4, 4])
+    tf = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * y"]])
+    xs = grid.cell_coords[..., 0]
+    ys = grid.cell_coords[..., 1]
+    np.testing.assert_allclose(tf.data[0, 1], 1)
+    np.testing.assert_allclose(tf.data[0, 1], 1)
+    np.testing.assert_allclose(tf.data[1, 0], xs ** 2)
+    np.testing.assert_allclose(tf.data[1, 1], xs * ys)
+
+    # corner case
+    with pytest.raises(ValueError):
+        Tensor2Field.from_expression(grid, "xy")
+    with pytest.raises(ValueError):
+        Tensor2Field.from_expression(grid, ["xy"])
+    with pytest.raises(ValueError):
+        Tensor2Field.from_expression(grid, ["x"] * 3)
+    with pytest.raises(ValueError):
+        Tensor2Field.from_expression(grid, [["x"], [1, 1]])
