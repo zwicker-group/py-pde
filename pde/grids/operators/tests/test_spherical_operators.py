@@ -64,6 +64,12 @@ def test_small_annulus(make_op, field, rank):
 
     f = field.random_uniform(grids[0])
 
+    # remove angular components in higher ranked fields to express ops
+    if f.rank == 1:
+        f.data[1:, :] = 0
+    elif f.rank == 2:
+        f.data[:, 1:, :] = 0
+
     res = [make_op(g.get_boundary_conditions(rank=rank))(f.data) for g in grids]
 
     np.testing.assert_almost_equal(res[0], res[1], decimal=5)
