@@ -1,6 +1,10 @@
 """
 Spherically-symmetric grids in 2 and 3 dimensions. These are grids that only
 discretize the radial direction, assuming symmetry with respect to all angles.
+This choice implies that differential operators might not be applicable to all fields.
+For instance, the divergence of a vector field on a spherical grid can only be
+represented as a scalar field on the same grid if the θ-component of the vector field
+vanishes.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
  
@@ -32,7 +36,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
     The angular symmetry implies that states only depend on the radial
     coordinate :math:`r`, which is discretized uniformly as
-
 
     .. math::
         r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r

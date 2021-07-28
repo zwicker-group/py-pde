@@ -508,7 +508,14 @@ class VectorField(DataFieldBase):
         *,
         label: str = "gradient",
     ) -> "Tensor2Field":
-        """apply vector gradient operator and return result as a field
+        r"""apply vector gradient operator and return result as a field
+
+        The vector gradient field is a tensor field :math:`t_{\alpha\beta}` that
+        specifies the derivatives of the vector field :math:`v_\alpha` with respect to
+        all coordinates :math:`x_\beta`:
+
+        .. math::
+            t_{\alpha\beta} = \frac{\partial v_\alpha}{\partial x_\beta}
 
         Args:
             bc:
@@ -535,7 +542,15 @@ class VectorField(DataFieldBase):
         *,
         label: str = "vector laplacian",
     ) -> "VectorField":
-        """apply vector Laplace operator and return result as a field
+        r"""apply vector Laplace operator and return result as a field
+
+        The vector Laplacian is a vector field :math:`L_\alpha` containing the second
+        derivatives of the vector field :math:`v_\alpha` with respect to the coordinates
+        :math:`x_\beta`:
+
+        .. math::
+            L_\alpha = \sum_\beta
+                \frac{\partial^2 v_\alpha}{\partial x_\beta \partial x_\beta}
 
         Args:
             bc:

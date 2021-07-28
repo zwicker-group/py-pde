@@ -251,14 +251,21 @@ def make_gradient_squared(bcs: Boundaries, central: bool = True) -> OperatorType
 
 @SphericalSymGrid.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
-def make_divergence(bcs: Boundaries) -> OperatorType:
+def make_divergence(bcs: Boundaries, safe: bool = True) -> OperatorType:
     """make a discretized divergence operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
 
+    Warning:
+        This operator ignores the θ-component of the field when calculating the
+        divergence. This is because the resulting scalar field could not be expressed
+        on a :class:`~pde.grids.spherical_sym.SphericalSymGrid`.
+
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
+        safe (bool):
+            Add extra checks for the validity of the input
 
     Returns:
         A function that can be applied to an array of values
@@ -284,17 +291,20 @@ def make_divergence(bcs: Boundaries) -> OperatorType:
         @jit_allocate_out(out_shape=(dim_r,))
         def divergence(arr, out=None):
             """apply divergence operator to array `arr`"""
+            if safe:
+                assert np.all(arr[1, :] == 0)
+            arr_r = arr[0, :]
             i = 0
-            out[i] = (arr[0, 1] + 7 * arr[0, 0]) * scale_r
+            out[i] = (arr_r[1] + 7 * arr_r[0]) * scale_r
 
             for i in range(1, dim_r - 1):  # iterate inner radial points
-                out[i] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r
-                out[i] += 2 * arr[0, i] / ((i + 0.5) * dr)
+                out[i] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
+                out[i] += 2 * arr_r[i] / ((i + 0.5) * dr)
 
             i = dim_r - 1
             arr_r_h = value_upper_bc(arr[0], (i,))
-            out[i] = (arr_r_h - arr[0, i - 1]) * scale_r
-            out[i] += 2 * arr[0, i] / ((i + 0.5) * dr)
+            out[i] = (arr_r_h - arr_r[i - 1]) * scale_r
+            out[i] += 2 * arr_r[i] / ((i + 0.5) * dr)
 
             return out
 
@@ -304,18 +314,22 @@ def make_divergence(bcs: Boundaries) -> OperatorType:
         @jit_allocate_out(out_shape=(dim_r,))
         def divergence(arr, out=None):
             """apply divergence operator to array `arr`"""
+            if safe:
+                assert np.all(arr[1, :] == 0)
+            arr_r = arr[0, :]
+
             # inner radial boundary condition
             i = 0
             arr_r_l = value_lower_bc(arr[0], (i,))
-            out[i] = (arr[0, i + 1] - arr_r_l) * scale_r + fs[i] * arr[0, i]
+            out[i] = (arr_r[i + 1] - arr_r_l) * scale_r + fs[i] * arr_r[i]
 
             for i in range(1, dim_r - 1):  # iterate radial points
-                out[i] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r + fs[i] * arr[0, i]
+                out[i] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r + fs[i] * arr_r[i]
 
             # outer radial boundary condition
             i = dim_r - 1
             arr_r_h = value_upper_bc(arr[0], (i,))
-            out[i] = (arr_r_h - arr[0, i - 1]) * scale_r + fs[i] * arr[0, i]
+            out[i] = (arr_r_h - arr_r[i - 1]) * scale_r + fs[i] * arr_r[i]
 
             return out
 
@@ -324,14 +338,21 @@ def make_divergence(bcs: Boundaries) -> OperatorType:
 
 @SphericalSymGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
-def make_vector_gradient(bcs: Boundaries) -> OperatorType:
+def make_vector_gradient(bcs: Boundaries, safe: bool = True) -> OperatorType:
     """make a discretized vector gradient operator for a spherical grid
+
+    Warning:
+        This operator ignores the two angular components of the field when calculating
+        the gradient. This is because the resulting field could not be expressed on a
+        :class:`~pde.grids.spherical_sym.SphericalSymGrid`.
 
     {DESCR_SPHERICAL_GRID}
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
+        safe (bool):
+            Add extra checks for the validity of the input
 
     Returns:
         A function that can be applied to an array of values
@@ -339,16 +360,61 @@ def make_vector_gradient(bcs: Boundaries) -> OperatorType:
     assert isinstance(bcs.grid, SphericalSymGrid)
     bcs.check_value_rank(1)
 
-    gradient_r = make_gradient(bcs.extract_component(0))
-    gradient_theta = make_gradient(bcs.extract_component(1))
-    gradient_phi = make_gradient(bcs.extract_component(2))
+    # calculate preliminary quantities
+    dim_r = bcs.grid.shape[0]
+    r_min, _ = bcs.grid.axes_bounds[0]
+    rs = bcs.grid.axes_coords[0]
+    dr = bcs.grid.discretization[0]
+    scale_r = 1 / (2 * dr)
 
-    @jit_allocate_out(out_shape=(3, 3) + bcs.grid.shape)
+    # prepare boundary evaluators
+    bc_r = bcs.extract_component(0)[0]
+    value_r_lower_bc = bc_r.low.make_virtual_point_evaluator()
+    value_r_upper_bc = bc_r.high.make_virtual_point_evaluator()
+
+    @jit_allocate_out(out_shape=(3, 3, dim_r))
     def vector_gradient(arr, out=None):
-        """apply gradient operator to array `arr`"""
-        gradient_r(arr[0], out=out[:, 0])
-        gradient_theta(arr[1], out=out[:, 1])
-        gradient_phi(arr[2], out=out[:, 2])
+        """apply vector gradient operator to array `arr`"""
+        if safe:
+            assert np.all(arr[1:, :] == 0)
+
+        # assign aliases
+        arr_r = arr[0, :]
+        out_rr, out_rθ, out_rφ = out[0, 0, :], out[0, 1, :], out[0, 2, :]
+        out_θr, out_θθ, out_θφ = out[1, 0, :], out[1, 1, :], out[1, 2, :]
+        out_φr, out_φθ, out_φφ = out[2, 0, :], out[2, 1, :], out[2, 2, :]
+
+        # set all components to zero that are not affected
+        out_rθ[:] = 0
+        out_rφ[:] = 0
+        out_θr[:] = 0
+        out_θφ[:] = 0
+        out_φr[:] = 0
+        out_φθ[:] = 0
+
+        # inner radial boundary condition
+        i = 0
+        if r_min == 0:
+            # apply Neumann condition at the origin
+            out_rr[i] = (arr_r[i + 1] - arr_r[i]) * scale_r
+            out_θθ[i] = arr_r[i] / rs[i]
+            out_φφ[i] = arr_r[i] / rs[i]
+        else:  # r_min > 0
+            out_rr[i] = (arr_r[i + 1] - value_r_lower_bc(arr_r, (i,))) * scale_r
+            out_θθ[i] = arr_r[i] / rs[i]
+            out_φφ[i] = arr_r[i] / rs[i]
+
+        for i in range(1, dim_r - 1):  # iterate radial points
+            out_rr[i] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
+            out_θθ[i] = arr_r[i] / rs[i]
+            out_φφ[i] = arr_r[i] / rs[i]
+
+        # # outer radial boundary condition
+        i = dim_r - 1
+        out_rr[i] = (value_r_upper_bc(arr_r, (i,)) - arr_r[i - 1]) * scale_r
+        out_θθ[i] = arr_r[i] / rs[i]
+        out_φφ[i] = arr_r[i] / rs[i]
+
         return out
 
     return vector_gradient  # type: ignore
@@ -356,7 +422,7 @@ def make_vector_gradient(bcs: Boundaries) -> OperatorType:
 
 @SphericalSymGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
-def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
+def make_tensor_divergence(bcs: Boundaries, safe: bool = True) -> OperatorType:
     """make a discretized tensor divergence operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -364,6 +430,8 @@ def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
+        safe (bool):
+            Add extra checks for the validity of the input
 
     Returns:
         A function that can be applied to an array of values
@@ -371,16 +439,73 @@ def make_tensor_divergence(bcs: Boundaries) -> OperatorType:
     assert isinstance(bcs.grid, SphericalSymGrid)
     bcs.check_value_rank(1)
 
-    divergence_r = make_divergence(bcs.extract_component(0))
-    divergence_theta = make_divergence(bcs.extract_component(1))
-    divergence_phi = make_divergence(bcs.extract_component(2))
+    # calculate preliminary quantities
+    dim_r = bcs.grid.shape[0]
+    r_min, _ = bcs.grid.axes_bounds[0]
+    rs = bcs.grid.axes_coords[0]
+    dr = bcs.grid.discretization[0]
+    scale_r = 1 / (2 * dr)
 
-    @jit_allocate_out(out_shape=(3,) + bcs.grid.shape)
+    # prepare boundary evaluators
+    bc_r = bcs.extract_component(0)[0]
+    value_r_lower_bc = bc_r.low.make_virtual_point_evaluator()
+    value_r_upper_bc = bc_r.high.make_virtual_point_evaluator()
+    bc_θ = bcs.extract_component(1)[0]
+    value_θ_lower_bc = bc_θ.low.make_virtual_point_evaluator()
+    value_θ_upper_bc = bc_θ.high.make_virtual_point_evaluator()
+    bc_φ = bcs.extract_component(2)[0]
+    value_φ_lower_bc = bc_φ.low.make_virtual_point_evaluator()
+    value_φ_upper_bc = bc_φ.high.make_virtual_point_evaluator()
+
+    @jit_allocate_out(out_shape=(3, dim_r))
     def tensor_divergence(arr, out=None):
-        """apply gradient operator to array `arr`"""
-        divergence_r(arr[0], out=out[0])
-        divergence_theta(arr[1], out=out[1])
-        divergence_phi(arr[2], out=out[2])
+        """apply tensor divergence operator to array `arr`"""
+        # assign aliases
+        arr_rr, arr_rθ, arr_rφ = arr[0, 0, :], arr[0, 1, :], arr[0, 2, :]
+        arr_θr, arr_θθ, arr_θφ = arr[1, 0, :], arr[1, 1, :], arr[1, 2, :]
+        arr_φr, arr_φθ, arr_φφ = arr[2, 0, :], arr[2, 1, :], arr[2, 2, :]
+        out_r, out_θ, out_φ = out[0, :], out[1, :], out[2, :]
+
+        # check inputs
+        if safe:
+            assert np.all(arr_rθ == 0)
+            assert np.all(arr_θθ == 0)
+            assert np.all(arr_φφ == 0)
+            assert np.all(arr_φθ == 0)
+            assert np.all(arr_θφ == 0)
+
+        # evaluate innermost point
+        i = 0
+        if r_min == 0:
+            # apply Neumann condition at the origin
+            out_r[i] = (arr_rr[i + 1] - arr_rr[i]) * scale_r + 2 * arr_rr[i] / rs[i]
+            out_θ[i] = (arr_θr[i + 1] - arr_θr[i]) * scale_r + 2 * arr_θr[i] / rs[i]
+            term = (2 * arr_φr[i] + arr_rφ[i]) / rs[i]
+            out_φ[i] = (arr_φr[i + 1] - arr_φr[i]) * scale_r + term
+        else:  # r_min > 0
+            term = 2 * arr_rr[i] / rs[i]
+            out_r[i] = (arr_rr[i + 1] - value_r_lower_bc(arr_rr, (i,))) * scale_r + term
+            term = 2 * arr_θr[i] / rs[i]
+            out_θ[i] = (arr_θr[i + 1] - value_θ_lower_bc(arr_θr, (i,))) * scale_r + term
+            term = (2 * arr_φr[i] + arr_rφ[i]) / rs[i]
+            out_φ[i] = (arr_φr[i + 1] - value_φ_lower_bc(arr_φr, (i,))) * scale_r + term
+
+        # iterate over inner points
+        for i in range(1, dim_r - 1):
+            out_r[i] = (arr_rr[i + 1] - arr_rr[i - 1]) * scale_r + 2 * arr_rr[i] / rs[i]
+            out_θ[i] = (arr_θr[i + 1] - arr_θr[i - 1]) * scale_r + 2 * arr_θr[i] / rs[i]
+            term = (2 * arr_φr[i] + arr_rφ[i]) / rs[i]
+            out_φ[i] = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r + term
+
+        # evaluate outermost point
+        i = dim_r - 1
+        term = 2 * arr_rr[i] / rs[i]
+        out_r[i] = (value_r_upper_bc(arr_rr, (i,)) - arr_rr[i - 1]) * scale_r + term
+        term = 2 * arr_θr[i] / rs[i]
+        out_θ[i] = (value_θ_upper_bc(arr_θr, (i,)) - arr_θr[i - 1]) * scale_r + term
+        term = (2 * arr_φr[i] + arr_rφ[i]) / rs[i]
+        out_φ[i] = (value_φ_upper_bc(arr_φr, (i,)) - arr_φr[i - 1]) * scale_r + term
+
         return out
 
     return tensor_divergence  # type: ignore

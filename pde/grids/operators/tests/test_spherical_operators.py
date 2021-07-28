@@ -142,3 +142,56 @@ def test_poisson_solver_spherical():
         np.testing.assert_allclose(
             laplace(poisson(d)), d, err_msg=f"bcs = {bc_val}", rtol=1e-6
         )
+
+
+def test_examples_scalar():
+    """compare derivatives of scalar fields for spherical grids"""
+    grid = SphericalSymGrid(1, 32)
+    sf = ScalarField.from_expression(grid, "r**3")
+
+    # gradient
+    res = sf.gradient([{"derivative": 0}, {"derivative": 3}])
+    expect = VectorField.from_expression(grid, ["3 * r**2", 0, 0])
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+    # gradient squared
+    expect = ScalarField.from_expression(grid, "9 * r**4")
+    for c in [True, False]:
+        res = sf.gradient_squared([{"derivative": 0}, {"value": 1}], central=c)
+        np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+    # laplace
+    res = sf.laplace([{"derivative": 0}, {"derivative": 3}])
+    expect = ScalarField.from_expression(grid, "12 * r")
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+
+def test_examples_vector():
+    """compare derivatives of vector fields for spherical grids"""
+    grid = SphericalSymGrid(1, 32)
+
+    # divergence
+    vf = VectorField.from_expression(grid, ["r**3", 0, "r**2"])
+    res = vf.divergence([{"derivative": 0}, {"value": 1}])
+    expect = ScalarField.from_expression(grid, "5 * r**2")
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+    # vector gradient
+    vf = VectorField.from_expression(grid, ["r**3", 0, 0])
+    res = vf.gradient([{"derivative": 0}, {"value": [1, 1, 1]}])
+    expr = [["3 * r**2", 0, 0], [0, "r**2", 0], [0, 0, "r**2"]]
+    expect = Tensor2Field.from_expression(grid, expr)
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+
+def test_examples_tensor():
+    """compare derivatives of tensorial fields for spherical grids"""
+    grid = SphericalSymGrid(1, 32)
+    tf = Tensor2Field.from_expression(grid, [["r**3"] * 3] * 3)
+    tfd = tf.data
+    tfd[0, 1] = tfd[1, 1] = tfd[1, 2] = tfd[2, 1] = tfd[2, 2] = 0
+
+    # tensor divergence
+    res = tf.divergence([{"derivative": 0}, {"value": [1, 1, 1]}])
+    expect = VectorField.from_expression(grid, ["5 * r**2", "5 * r**2", "6 * r**2"])
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)

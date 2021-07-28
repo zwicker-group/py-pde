@@ -1,5 +1,10 @@
 TODO
 ====
+* Add tests to implementation of curvilinear operators
+	- develop mathematica notebook using to obtain the operators
+	- convert it to python usign ToPython
+	- write special tests
+* Support item assignment to vector and tensor fields
 * Think about incremental test run
     - should break at first failure
     - should restart at last failure

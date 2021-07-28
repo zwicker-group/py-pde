@@ -4,7 +4,7 @@ Defines a tensorial field of rank 2 over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, Sequence
+from typing import TYPE_CHECKING, Callable, Optional, Sequence, Tuple, Union
 
 import numba as nb
 import numpy as np
@@ -335,7 +335,13 @@ class Tensor2Field(DataFieldBase):
         *,
         label: str = "divergence",
     ) -> VectorField:
-        """apply (tensor) divergence and return result as a field
+        r"""apply tensor divergence and return result as a field
+
+        The tensor divergence is a vector field :math:`v_\alpha` resulting from a
+        contracting of the derivative of the tensor field :math:`t_{\alpha\beta}`:
+
+        .. math::
+            v_\alpha = \sum_\beta \frac{\partial t_{\alpha\beta}}{\partial x_\beta}
 
         Args:
             bc:
