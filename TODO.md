@@ -1,6 +1,5 @@
 TODO
 ====
-* Support item assignment to vector and tensor fields
 * Think about incremental test run
     - should break at first failure
     - should restart at last failure
