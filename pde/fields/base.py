@@ -1096,6 +1096,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             return out
 
+        # store a reference to the data so it is not garbage collected too early
+        interpolator._data = self.data
+
         return interpolator  # type: ignore
 
     @cached_method()
