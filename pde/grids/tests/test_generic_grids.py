@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from pde import grids
-from pde.grids.base import GridBase, discretize_interval
+from pde.grids.base import GridBase, discretize_interval, registered_operators
 from pde.tools.misc import skipUnlessModule
 
 
@@ -132,3 +132,10 @@ def test_operators():
         grid.register_operator("noop", make_op)
         assert "noop" in grid.operators
         del grid._operators["noop"]  # reset original state
+
+
+def test_registered_operators():
+    """test the registered_operators function"""
+    for grid_name, ops in registered_operators().items():
+        grid_class_ops = getattr(grids, grid_name).operators
+        assert all(op in grid_class_ops for op in ops)

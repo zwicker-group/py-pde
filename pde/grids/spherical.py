@@ -592,6 +592,13 @@ class SphericalSymGrid(SphericalSymGridBase):
     :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is
     zero by default. The radial direction is discretized by :math:`N` support
     points.
+
+    Warning:
+        Not all results of differential operators on vectorial and tensorial fields can
+        be expressed in terms of fields that only depend on the radial coordinate
+        :math:`r`. In particular, the gradient of a vector field can only be calculated
+        if the azimuthal component of the vector field vanishes. Similarly, the
+        divergence of a tensor field can only be taken in special situations.
     """
 
     dim = 3  # dimension of the described space
@@ -627,6 +634,8 @@ class PolarGrid(PolarSymGrid):
         Use :class:`~pde.grids.spherical.PolarSymGrid` instead.
     """
 
+    deprecated: bool = True
+
     def __init__(self, *args, **kwargs):
         """class deprecated since 2021-05-21"""
         warnings.warn(
@@ -642,6 +651,8 @@ class SphericalGrid(SphericalSymGrid):
     .. deprecated:: 0.14 (2021-05-21)
         Use :class:`~pde.grids.spherical.SphericalSymGrid` instead.
     """
+
+    deprecated: bool = True
 
     def __init__(self, *args, **kwargs):
         """class deprecated since 2021-05-21"""

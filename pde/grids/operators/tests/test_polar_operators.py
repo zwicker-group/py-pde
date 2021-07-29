@@ -137,7 +137,7 @@ def test_poisson_solver_polar():
         np.testing.assert_allclose(res, d, rtol=1e-6, err_msg=f"bcs = {bc_val}")
 
 
-def test_examples_scalar():
+def test_examples_scalar_polar():
     """compare derivatives of scalar fields for polar grids"""
     grid = PolarSymGrid(1, 32)
     sf = ScalarField.from_expression(grid, "r**3")
@@ -159,7 +159,7 @@ def test_examples_scalar():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-def test_examples_vector():
+def test_examples_vector_polar():
     """compare derivatives of vector fields for polar grids"""
     grid = PolarSymGrid(1, 32)
     vf = VectorField.from_expression(grid, ["r**3", "r**2"])
@@ -169,6 +169,11 @@ def test_examples_vector():
     expect = ScalarField.from_expression(grid, "4 * r**2")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
+    # # vector Laplacian
+    # res = vf.laplace([{"derivative": 0}, {"value": 1}])
+    # expect = VectorField.from_expression(grid, ["8 * r", "3"])
+    # np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
     # vector gradient
     res = vf.gradient([{"derivative": 0}, {"value": [1, 1]}])
     expr = [["3 * r**2", "-r"], ["2 * r", "r**2"]]
@@ -176,7 +181,7 @@ def test_examples_vector():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-def test_examples_tensor():
+def test_examples_tensor_polar():
     """compare derivatives of tensorial fields for polar grids"""
     grid = PolarSymGrid(1, 32)
     tf = Tensor2Field.from_expression(grid, [["r**3"] * 2] * 2)

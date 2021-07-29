@@ -1248,3 +1248,16 @@ class GridBase(metaclass=ABCMeta):
                 return total
 
         return integrate  # type: ignore
+
+
+def registered_operators() -> Dict[str, List[str]]:
+    """returns all operators that are currently defined
+
+    Returns:
+        dict: a dictionary with the names of the operators defined for each grid class
+    """
+    return {
+        name: sorted(cls.operators)
+        for name, cls in GridBase._subclasses.items()
+        if not (name.endswith("Base") or hasattr(cls, "deprecated") and cls.deprecated)  # type: ignore
+    }
