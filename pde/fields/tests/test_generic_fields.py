@@ -359,6 +359,20 @@ def test_random_colored(field_cls):
     assert np.allclose(f.average, 0)
 
 
+def test_random_rng():
+    """test whether the random number generator arguments are accepted"""
+    grid = UnitGrid([2, 2])
+    for create_random_field in [
+        ScalarField.random_colored,
+        ScalarField.random_harmonic,
+        ScalarField.random_normal,
+        ScalarField.random_uniform,
+    ]:
+        f1 = create_random_field(grid, rng=np.random.default_rng(1))
+        f2 = create_random_field(grid, rng=np.random.default_rng(1))
+        np.testing.assert_allclose(f1.data, f2.data)
+
+
 def test_fluctuations():
     """test the scaling of fluctuations"""
     for dim in [1, 2]:

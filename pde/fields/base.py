@@ -11,7 +11,7 @@ import operator
 import warnings
 from abc import ABCMeta, abstractmethod, abstractproperty
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Type, TypeVar
 
 import numba as nb
 import numpy as np
@@ -36,6 +36,10 @@ if TYPE_CHECKING:
 
 
 TField = TypeVar("TField", bound="FieldBase")
+
+
+class RankError(TypeError):
+    """error indicating that the field has the wrong rank"""
 
 
 class FieldBase(metaclass=ABCMeta):
@@ -642,7 +646,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         vmin: float = 0,
         vmax: float = 1,
         label: Optional[str] = None,
-        seed: Optional[int] = None,
+        rng: np.random.Generator = None,
     ):
         """create field with uniform distributed random values
 
@@ -657,14 +661,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Largest random value
             label (str, optional):
                 Name of the field
-            seed (int, optional):
-                Seed of the random number generator. If `None`, the current
-                state is not changed.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
+        if rng is None:
+            rng = np.random.default_rng()
+
         shape = (grid.dim,) * cls.rank + grid.shape
-        if seed is not None:
-            np.random.seed(seed)
-        data = np.random.uniform(vmin, vmax, shape)
+        data = rng.uniform(vmin, vmax, size=shape)
         return cls(grid, data, label=label)
 
     @classmethod
@@ -675,7 +679,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         std: float = 1,
         scaling: str = "physical",
         label: Optional[str] = None,
-        seed: Optional[int] = None,
+        rng: np.random.Generator = None,
     ):
         """create field with normal distributed random values
 
@@ -697,12 +701,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 larger volumes).
             label (str, optional):
                 Name of the field
-            seed (int, optional):
-                Seed of the random number generator. If `None`, the current
-                state is not changed.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
-        if seed is not None:
-            np.random.seed(seed)
+        if rng is None:
+            rng = np.random.default_rng()
 
         if scaling == "none":
             noise_scale = std
@@ -712,7 +715,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise ValueError(f"Unknown noise scaling {scaling}")
 
         shape = (grid.dim,) * cls.rank + grid.shape
-        data = mean + noise_scale * np.random.randn(*shape)
+        data = mean + noise_scale * rng.normal(size=shape)
         return cls(grid, data, label=label)
 
     @classmethod
@@ -723,7 +726,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         harmonic=np.cos,
         axis_combination=np.multiply,
         label: Optional[str] = None,
-        seed: Optional[int] = None,
+        rng: np.random.Generator = None,
     ):
         r"""create a random field build from harmonics
 
@@ -762,13 +765,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 respectively.
             label (str, optional):
                 Name of the field
-            seed (int, optional):
-                Seed of the random number generator. If `None`, the current
-                state is not changed.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
+        if rng is None:
+            rng = np.random.default_rng()
+
         tensor_shape = (grid.dim,) * cls.rank
-        if seed is not None:
-            np.random.seed(seed)
 
         data = np.empty(tensor_shape + grid.shape)
         # determine random field for each component
@@ -777,7 +780,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # random harmonic function along each axis
             for i in range(len(grid.axes)):
                 # choose wave vectors
-                ampl = np.random.random(modes)  # amplitudes
+                ampl = rng.random(size=modes)  # amplitudes
                 x = discretize_interval(0, 2 * np.pi, grid.shape[i])[0]
                 data_axis.append(
                     sum(a * harmonic(n * x) for n, a in enumerate(ampl, 1))
@@ -794,7 +797,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         exponent: float = 0,
         scale: float = 1,
         label: Optional[str] = None,
-        seed: Optional[int] = None,
+        rng: np.random.Generator = None,
     ):
         r"""create a field of random values with colored noise
 
@@ -818,18 +821,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Scaling factor :math:`\Gamma` determining noise strength
             label (str, optional):
                 Name of the field
-            seed (int, optional):
-                Seed of the random number generator. If `None`, the current
-                state is not changed.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
-        if seed is not None:
-            np.random.seed(seed)
-
-        # create function making colored noise
+        # get function making colored noise
         from ..tools.spectral import make_colored_noise
 
         make_noise = make_colored_noise(
-            grid.shape, dx=grid.discretization, exponent=exponent, scale=scale
+            grid.shape, dx=grid.discretization, exponent=exponent, scale=scale, rng=rng
         )
 
         # create random fields for each tensor component
@@ -1435,6 +1434,39 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             return abs(self.to_scalar().average)  # type: ignore
         else:
             raise AssertionError("Rank must be non-negative")
+
+    def _apply_with_out(
+        self,
+        func: Callable,
+        out_cls: Type[TDataField],
+        *,
+        out: Optional[TDataField] = None,
+        label: str = None,
+    ) -> TDataField:
+        """applies a function to the data and returns it as a field
+
+        Args:
+            func (callable or str):
+                The (vectorized) function being applied to the data or the name
+                of an operator that is defined for the grid of this field.
+            out_cls:
+                Type of the result of this operation
+            out (FieldBase, optional):
+                Optional field into which the data is written
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            Field with new data. This is stored at `out` if given.
+        """
+        if out is None:
+            out = out_cls(self.grid, func(self.data), label=label)
+        elif not isinstance(out, out_cls):
+            raise RankError(f"`out` must be a {out_cls.__name__}")
+        else:
+            self.grid.assert_grid_compatible(out.grid)
+            func(self.data, out=out.data)
+        return out
 
     def smooth(
         self: TDataField,

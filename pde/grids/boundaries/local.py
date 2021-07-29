@@ -284,8 +284,7 @@ class BCBase(metaclass=ABCMeta):
             # inhomogeneous value given by an expression
             if self.rank != 0:
                 raise NotImplementedError(
-                    "Expressions for boundary values are "
-                    "only supported for scalar values."
+                    "Expressions for boundaries are only supported for scalar values."
                 )
 
             from ...tools.expressions import ScalarExpression
@@ -420,7 +419,7 @@ class BCBase(metaclass=ABCMeta):
         Note:
             This should only be used in numba compiled functions that need to
             support boundary values that can be changed after the function has
-            been compiled. In essence, the helper function created here servers
+            been compiled. In essence, the helper function created here serves
             to get around the compile-time constants that are otherwise created.
 
         Warning:

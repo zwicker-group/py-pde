@@ -171,10 +171,8 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
         """
-        if out is not None:
-            assert isinstance(out, ScalarField), f"`out` must be ScalarField"
         laplace = self.grid.get_operator("laplace", bc=bc)
-        return self.apply(laplace, out=out, label=label)
+        return self._apply_with_out(laplace, ScalarField, out=out, label=label)
 
     @fill_in_docstring
     def gradient_squared(
@@ -207,12 +205,9 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the squared gradient of the field
         """
-        if out is not None:
-            assert isinstance(out, ScalarField), f"`out` must be ScalarField"
-        gradient_squared = self.grid.get_operator(
-            "gradient_squared", bc=bc, central=central
-        )
-        return self.apply(gradient_squared, out=out, label=label)
+
+        grad_square = self.grid.get_operator("gradient_squared", bc=bc, central=central)
+        return self._apply_with_out(grad_square, ScalarField, out=out, label=label)
 
     @fill_in_docstring
     def gradient(
@@ -239,12 +234,7 @@ class ScalarField(DataFieldBase):
         from .vectorial import VectorField  # @Reimport
 
         gradient = self.grid.get_operator("gradient", bc=bc)
-        if out is None:
-            out = VectorField(self.grid, gradient(self.data), label=label)
-        else:
-            assert isinstance(out, VectorField), f"`out` must be VectorField"
-            gradient(self.data, out=out.data)
-        return out
+        return self._apply_with_out(gradient, VectorField, out=out, label=label)
 
     @property
     def integral(self) -> Number:

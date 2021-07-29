@@ -290,13 +290,8 @@ class Tensor2Field(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        tensor_divergence = self.grid.get_operator("tensor_divergence", bc=bc)
-        if out is None:
-            out = VectorField(self.grid, tensor_divergence(self.data), label=label)
-        else:
-            assert isinstance(out, VectorField), "Output must be a vector field"
-            tensor_divergence(self.data, out=out.data)
-        return out
+        tensor_div = self.grid.get_operator("tensor_divergence", bc=bc)
+        return self._apply_with_out(tensor_div, VectorField, out=out, label=label)
 
     @property
     def integral(self) -> np.ndarray:
@@ -360,10 +355,10 @@ class Tensor2Field(DataFieldBase):
             \right] \\
             I_3 &= \det(A)
             
-        where `tr` denotes the trace and `det` denotes the determinant.
-        Note that the three invariants can only be distinct and non-zero in three
-        dimensions. In two dimensional spaces, we have the identity :math:`2 I_2 = I_3`
-        and in one-dimensional spaces, we have :math:`I_1 = I_3` as well as
+        where `tr` denotes the trace and `det` denotes the determinant. Note that the
+        three invariants can only be distinct and non-zero in three dimensions. In two
+        dimensional spaces, we have the identity :math:`2 I_2 = I_3` and in
+        one-dimensional spaces, we have :math:`I_1 = I_3` as well as
         :math:`I_2 = 0`.
             
         Args:

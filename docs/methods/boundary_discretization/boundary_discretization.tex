@@ -35,13 +35,13 @@ We also derive special versions of the Laplace operator that conserves the total
 
 \section{General considerations}
 We start with general considerations that are independent of the grid type.
-
-\subsection{Differential operators}
-We first define the differential operators that act on fields defined in a domain~$\dom$.
+Here, we consider differential operators that act on fields defined in a domain~$\dom$.
 In particular, we discuss the boundary conditions that can be enforced with each type of operator.
+We here use a component notation with implicit Einstein summation to denote contractions explicitly.
+For instance, $\partial_\alpha v_\alpha$ denotes the divergence of a vector field $v_\alpha(\vect r)$ and $t_{\alpha\alpha}(\vect r)$is the trace of a tensor field $t_{\alpha\beta}(\vect r)$.
 
-\paragraph{Laplace operator:}
-The Laplace operator $\partial_\alpha^2 c$ is defined to act on scalar fields~$c(\vect r)$.
+\subsection{Laplace operator and Vector Laplacian}
+The ordinary Laplace operator $\partial_\alpha^2 c$ is defined to act on scalar fields~$c(\vect r)$.
 Possible boundary conditions are
 \begin{salign}[eqn:bc_laplace]
 	\text{value:} &&	c &= A
@@ -49,10 +49,12 @@ Possible boundary conditions are
 	\text{derivative:} && n_\alpha \partial_\alpha c &= B
 \end{salign}
 which are applied at positions $\vect r \in \bndry$.
-Consequently, either the value~$A$ of the field can be determined, \ie, $c(\vect r) = A$ at $\vect r \in \bndry$, or the derivative can be specified, $n_\alpha \partial_\alpha c = B$, where $n_\alpha$ is the outwards oriented normal vector at the boundary.
+Consequently, either the value~$A$ of the field can be determined (Dirichlet condition $c(\vect r) = A$ at $\vect r \in \bndry$) or the derivative can be specified (Neumann condition $n_\alpha \partial_\alpha c = B$), where $n_\alpha$ is the outwards oriented normal vector at the boundary.
+The Vector Laplacian is a simple generalization of the ordinary Laplace operator, where it is applied to each component of a vector field.
+For instance, the derivative condition then reads $n_\alpha \partial_\alpha c_\beta = B_\beta$.
 
 
-\paragraph{Gradient operator:}
+\subsection{Gradient operator}
 The gradient operator $\partial_\alpha c$ acts on a scalar field $c(\vect r)$ yielding a vector field.
 Possible boundary conditions are
 \begin{salign}[eqn:bc_gradient]
@@ -60,17 +62,20 @@ Possible boundary conditions are
 \\
 	\text{derivative:} && n_\alpha \partial_\alpha c &= B
 \end{salign}
+where $n_\alpha$ is again the outward normal of the boundary.
 
-\paragraph{Divergence operator:}
+\subsection{Divergence operator}
 The divergence operator $\partial_\alpha v_\alpha$ acts on a vector field $v_\alpha(\vect r)$ with possible boundary conditions
 \begin{salign}[eqn:bc_divergence]
 	\text{value:} && n_\alpha v_\alpha  &= A
 \\
-	\text{derivative:} && \partial_\alpha v_\alpha &= B
+	\text{derivative:} && n_\alpha n_\beta \partial_\alpha v_\beta &= B
 \end{salign}
 Note that the Dirichlet condition in this case imposes the dot product between the normal vector and the vector field, which in a simple 1d system implies $v_1(x=x\L)=-A$ and $v_1(x=x\R)=A$ for the lower and upper boundary, respectively.
+Similarly, the Neumann condition evaluates the directional derivative of the vector field in the normal direction~$n_\beta$ of the boundary.
+This implies that the tangential components of the vector field do not affect the boundary condition.
 
-\paragraph{Vector gradient operator:}
+\subsection{Vector gradient operator}
 The vector gradient  operator $\partial_\alpha v_\beta$ acts on a vector field $v_\alpha(\vect r)$ and yields a tensorial field.
 This operator can be though of as a gradient applied to each component of $v_\beta$ and the boundary conditions thus are also applied to each component,
 \begin{salign}
@@ -79,7 +84,7 @@ This operator can be though of as a gradient applied to each component of $v_\be
 	\text{derivative:} && n_\alpha \partial_\alpha v_\beta &= B_\beta
 \end{salign}
 
-\paragraph{Tensor divergence operator:}
+\subsection{Tensor divergence operator}
 The vector gradient  operator $\partial_\beta t_{\alpha\beta}$ acts on a tensor field $t_{\alpha\beta}(\vect r)$ and yields a vector field.
 This operator can be though of as a divergence applied along the $\beta$-direction to each $\alpha$-component.
 The boundary conditions thus are applied to each component,
@@ -91,15 +96,12 @@ The boundary conditions thus are applied to each component,
 \end{align}
 \end{subequations}
 
-\paragraph{Operators not implemented:}
+\subsection{Operators not implemented}
 Currently not implemented are the following operators
 \begin{subequations}
 \begin{align}
 	\text{Curl:} &&
 		\epsilon_{\alpha\beta\gamma} \partial_\beta v_\gamma
-\\
-	\text{Vector laplacian:} &&
-		\partial_\alpha^2 v_\beta
 \\
 	\text{Material derivative:}&&
 		w_\alpha \partial_\alpha v_\beta

@@ -154,6 +154,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         boundary_distance: float = 0,
         cartesian: bool = True,
         avoid_center: bool = False,
+        rng: np.random.Generator = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -168,10 +169,15 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
             avoid_center (bool): Determines whether the boundary distance
                 should also be kept from the center, i.e., whether points close
                 to the center are returned.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
 
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
+        if rng is None:
+            rng = np.random.default_rng()
+
         # handle the boundary distance
         r_inner, r_outer = self.axes_bounds[0]
         r_min = r_inner
@@ -183,7 +189,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
             raise RuntimeError("Random points would be too close to boundary")
 
         # create random point
-        r = np.array([r_mag * np.random.random() + r_min])
+        r = np.array([r_mag * rng.random() + r_min])
         if cartesian:
             return self.point_to_cartesian(r)
         else:

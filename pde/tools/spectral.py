@@ -25,7 +25,11 @@ except ImportError:
 
 
 def make_colored_noise(
-    shape: Tuple[int, ...], dx=1.0, exponent: float = 0, scale: float = 1
+    shape: Tuple[int, ...],
+    dx=1.0,
+    exponent: float = 0,
+    scale: float = 1,
+    rng: np.random.Generator = None,
 ) -> Callable[[], np.ndarray]:
     r"""Return a function creating an array of random values that obey
 
@@ -47,10 +51,15 @@ def make_colored_noise(
             Exponent :math:`\nu` of the power spectrum
         scale:
             Scaling factor :math:`\Gamma` determining noise strength
+        rng (:class:`~numpy.random.Generator`):
+            Random number generator (default: :func:`~numpy.random.default_rng()`)
 
     Returns:
         callable: a function returning a random realization
     """
+    if rng is None:
+        rng = np.random.default_rng()
+
     # extract some information about the grid
     dim = len(shape)
     dx = np.broadcast_to(dx, (dim,))
@@ -59,7 +68,7 @@ def make_colored_noise(
         # fast case of white noise
         def noise_normal():
             """return array of colored noise"""
-            return scale * np.random.randn(*shape)
+            return scale * rng.normal(size=shape)
 
         return noise_normal
 
@@ -84,7 +93,7 @@ def make_colored_noise(
     def noise_colored() -> np.ndarray:
         """return array of colored noise"""
         # random field
-        arr: np.ndarray = np.random.randn(*shape)
+        arr: np.ndarray = rng.normal(size=shape)  # type: ignore
 
         # forward transform
         arr = np_rfftn(arr)

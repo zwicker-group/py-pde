@@ -149,6 +149,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         boundary_distance: float = 0,
         cartesian: bool = True,
         avoid_center: bool = False,
+        rng: np.random.Generator = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -163,10 +164,15 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             avoid_center (bool): Determines whether the boundary distance
                 should also be kept from the center, i.e., whether points close
                 to the center are returned.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
 
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
+        if rng is None:
+            rng = np.random.default_rng()
+
         # handle the boundary distance
         r_min = boundary_distance if avoid_center else 0
         r_mag = self.radius - boundary_distance - r_min
@@ -179,8 +185,8 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
                 raise RuntimeError("Random points would be too close to boundary")
 
         # create random point
-        r = r_mag * np.random.random() + r_min
-        z = z_min + (z_max - z_min) * np.random.random()
+        r = r_mag * rng.random() + r_min
+        z = z_min + (z_max - z_min) * rng.random()
         point = np.array([r, z])
         if cartesian:
             return self.point_to_cartesian(point)

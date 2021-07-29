@@ -18,20 +18,22 @@ representations using :mod:`sympy`.
 
 import builtins
 import copy
+import json
 import logging
 import numbers
 import re
 from abc import ABCMeta, abstractproperty
-from typing import Optional  # @UnusedImport
-from typing import Set  # @UnusedImport
-from typing import (
+from pathlib import Path
+from typing import (  # @UnusedImport
     TYPE_CHECKING,
     Any,
     Callable,
     Dict,
     List,
     Mapping,
+    Optional,
     Sequence,
+    Set,
     Tuple,
     Union,
 )
@@ -42,7 +44,7 @@ import sympy
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
-from ..tools.misc import Number, number, number_array
+from ..tools.misc import Number, classproperty, number, number_array
 from ..tools.typing import NumberOrArray
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
@@ -203,6 +205,27 @@ class ExpressionBase(metaclass=ABCMeta):
             return diff == sympy.Array(np.zeros(self._sympy_expr.shape))
         else:
             return diff == 0
+
+    @classproperty
+    def _reserved_symbols(self) -> Set[str]:
+        """set: reserved sympy symbols that should not be used in expressions"""
+        try:
+            # try returning a cached version of the list
+            return ExpressionBase._reserved_symbols_cache  # type: ignore
+
+        except AttributeError:
+            # the cache was not present => load list from resources
+            module_path = Path(__file__).resolve().parent
+            resource_path = module_path / "resources" / "reserved_sympy_symbols.json"
+
+            try:
+                with open(resource_path) as f:
+                    ExpressionBase._reserved_symbols_cache = set(json.load(f))  # type: ignore
+            except (IOError, OSError):
+                # cannot read the file, so return a minimal list
+                ExpressionBase._reserved_symbols_cache = {"E", "I", "pi"}  # type: ignore
+
+        return ExpressionBase._reserved_symbols_cache  # type: ignore
 
     @property
     def _free_symbols(self) -> Set:

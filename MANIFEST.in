@@ -1,0 +1,2 @@
+include pde/py.typed
+recursive-include pde/**/resources *

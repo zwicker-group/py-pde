@@ -20,8 +20,12 @@ def iter_grids():
 
 def test_pde_wrong_input():
     """test some wrong input"""
-    with pytest.raises(RuntimeError):
+    with pytest.raises(ValueError):
         PDE({"t": 1})
+    with pytest.raises(ValueError):
+        PDE({"E": 1})
+    with pytest.raises(ValueError):
+        PDE({"E": 1, "t": 0})
 
     grid = grids.UnitGrid([4])
     eq = PDE({"u": 1})
