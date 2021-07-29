@@ -19,6 +19,7 @@ from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.numba import get_common_numba_dtype
+from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
 
@@ -110,7 +111,7 @@ class VectorField(DataFieldBase):
 
         if isinstance(expressions, str) or len(expressions) != grid.dim:
             axes_names = grid.axes + grid.axes_symmetric
-            raise ValueError(
+            raise DimensionError(
                 f"Expected {grid.dim} expressions for the coordinates {axes_names}."
             )
 
@@ -129,11 +130,20 @@ class VectorField(DataFieldBase):
             grid=grid, data=data, label=label, dtype=dtype
         )
 
-    def __getitem__(self, key: int) -> ScalarField:
+    def __getitem__(self, key: Union[int, str]) -> ScalarField:
         """extract a component of the VectorField"""
-        if not isinstance(key, int):
-            raise IndexError("Index must be an integer")
-        return ScalarField(self.grid, self.data[key])
+        return ScalarField(self.grid, self.data[self.grid.get_axis_index(key)])
+
+    def __setitem__(
+        self, key: Union[int, str], value: Union[NumberOrArray, ScalarField]
+    ):
+        """set a component of the VectorField"""
+        idx = self.grid.get_axis_index(key)
+        if isinstance(value, ScalarField):
+            self.grid.assert_grid_compatible(value.grid)
+            self.data[idx] = value.data
+        else:
+            self.data[idx] = value
 
     def dot(
         self,
@@ -508,7 +518,14 @@ class VectorField(DataFieldBase):
         *,
         label: str = "gradient",
     ) -> "Tensor2Field":
-        """apply vector gradient operator and return result as a field
+        r"""apply vector gradient operator and return result as a field
+
+        The vector gradient field is a tensor field :math:`t_{\alpha\beta}` that
+        specifies the derivatives of the vector field :math:`v_\alpha` with respect to
+        all coordinates :math:`x_\beta`:
+
+        .. math::
+            t_{\alpha\beta} = \frac{\partial v_\alpha}{\partial x_\beta}
 
         Args:
             bc:
@@ -535,7 +552,15 @@ class VectorField(DataFieldBase):
         *,
         label: str = "vector laplacian",
     ) -> "VectorField":
-        """apply vector Laplace operator and return result as a field
+        r"""apply vector Laplace operator and return result as a field
+
+        The vector Laplacian is a vector field :math:`L_\alpha` containing the second
+        derivatives of the vector field :math:`v_\alpha` with respect to the coordinates
+        :math:`x_\beta`:
+
+        .. math::
+            L_\alpha = \sum_\beta
+                \frac{\partial^2 v_\alpha}{\partial x_\beta \partial x_\beta}
 
         Args:
             bc:

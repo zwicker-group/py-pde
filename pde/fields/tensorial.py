@@ -4,14 +4,16 @@ Defines a tensorial field of rank 2 over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Optional, Sequence, Tuple, Union
 
 import numba as nb
 import numpy as np
 
+from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.numba import get_common_numba_dtype, jit
+from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
 from .vectorial import VectorField
@@ -34,14 +36,91 @@ class Tensor2Field(DataFieldBase):
 
     rank = 2
 
-    def __getitem__(self, key: Tuple[int, int]) -> ScalarField:
-        """extract a component of the VectorField"""
+    @classmethod
+    @fill_in_docstring
+    def from_expression(
+        cls,
+        grid: GridBase,
+        expressions: Sequence[Sequence[str]],
+        *,
+        label: str = None,
+        dtype=None,
+    ) -> "Tensor2Field":
+        """create a tensor field on a grid from given expressions
+
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                Grid defining the space on which this field is defined
+            expressions (list of str):
+                A 2d list of mathematical expression, one for each component of the
+                tensor field. The expressions determine the values as a function of the
+                position on the grid. The expressions may contain standard mathematical
+                functions and they may depend on the axes labels of the grid.
+            label (str, optional):
+                Name of the field
+            dtype (numpy dtype):
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
+        """
+        from ..tools.expressions import ScalarExpression
+
+        if (
+            isinstance(expressions, str)
+            or len(expressions) != grid.dim
+            or any(len(expr) != grid.dim for expr in expressions)
+        ):
+            axes_names = grid.axes + grid.axes_symmetric
+            raise DimensionError(
+                f"Expected a nested list of {grid.dim}x{grid.dim} expressions for the "
+                f"tensor components of the coordinates {axes_names}."
+            )
+
+        # obtain the coordinates of the grid points
+        points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
+
+        # evaluate all vector components at all points
+        data = [[None] * grid.dim for _ in range(grid.dim)]
+        for i in range(grid.dim):
+            for j in range(grid.dim):
+                expr = ScalarExpression(expressions[i][j], signature=grid.axes)
+                values = np.broadcast_to(expr(**points), grid.shape)
+                data[i][j] = values
+
+        # create vector field from the data
+        return cls(  # lgtm [py/call-to-non-callable]
+            grid=grid, data=data, label=label, dtype=dtype
+        )
+
+    def _get_axes_index(
+        self, key: Tuple[Union[int, str], Union[int, str]]
+    ) -> Tuple[int, int]:
+        """turns a general index of two axis into a tuple of two numeric indices"""
         try:
             if len(key) != 2:
                 raise IndexError("Index must be given as two integers")
         except TypeError:
-            raise IndexError("Index must be given as two integers")
-        return ScalarField(self.grid, self.data[key])
+            raise IndexError("Index must be given as two values")
+        return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
+
+    def __getitem__(self, key: Tuple[Union[int, str], Union[int, str]]) -> ScalarField:
+        """extract a component of the VectorField"""
+        return ScalarField(self.grid, self.data[self._get_axes_index(key)])
+
+    def __setitem__(
+        self,
+        key: Tuple[Union[int, str], Union[int, str]],
+        value: Union[NumberOrArray, ScalarField],
+    ):
+        """set a component of the VectorField"""
+        idx = self._get_axes_index(key)
+        if isinstance(value, ScalarField):
+            self.grid.assert_grid_compatible(value.grid)
+            self.data[idx] = value.data
+        else:
+            self.data[idx] = value
 
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
@@ -276,7 +355,13 @@ class Tensor2Field(DataFieldBase):
         *,
         label: str = "divergence",
     ) -> VectorField:
-        """apply (tensor) divergence and return result as a field
+        r"""apply tensor divergence and return result as a field
+
+        The tensor divergence is a vector field :math:`v_\alpha` resulting from a
+        contracting of the derivative of the tensor field :math:`t_{\alpha\beta}`:
+
+        .. math::
+            v_\alpha = \sum_\beta \frac{\partial t_{\alpha\beta}}{\partial x_\beta}
 
         Args:
             bc:

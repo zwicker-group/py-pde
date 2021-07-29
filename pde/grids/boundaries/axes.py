@@ -227,7 +227,7 @@ class Boundaries(list):
             raise RuntimeError("Grid discretization is not uniform")
 
     def extract_component(self, *indices) -> "Boundaries":
-        """extracts the boundary conditions of the given extract_component.
+        """extracts the boundary conditions of the given component of the tensor.
 
         Args:
             *indices:

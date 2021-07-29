@@ -1,6 +1,10 @@
 """
 Spherically-symmetric grids in 2 and 3 dimensions. These are grids that only
 discretize the radial direction, assuming symmetry with respect to all angles.
+This choice implies that differential operators might not be applicable to all fields.
+For instance, the divergence of a vector field on a spherical grid can only be
+represented as a scalar field on the same grid if the θ-component of the vector field
+vanishes.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
  
@@ -32,7 +36,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
     The angular symmetry implies that states only depend on the radial
     coordinate :math:`r`, which is discretized uniformly as
-
 
     .. math::
         r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
@@ -589,6 +592,13 @@ class SphericalSymGrid(SphericalSymGridBase):
     :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is
     zero by default. The radial direction is discretized by :math:`N` support
     points.
+
+    Warning:
+        Not all results of differential operators on vectorial and tensorial fields can
+        be expressed in terms of fields that only depend on the radial coordinate
+        :math:`r`. In particular, the gradient of a vector field can only be calculated
+        if the azimuthal component of the vector field vanishes. Similarly, the
+        divergence of a tensor field can only be taken in special situations.
     """
 
     dim = 3  # dimension of the described space
@@ -624,6 +634,8 @@ class PolarGrid(PolarSymGrid):
         Use :class:`~pde.grids.spherical.PolarSymGrid` instead.
     """
 
+    deprecated: bool = True
+
     def __init__(self, *args, **kwargs):
         """class deprecated since 2021-05-21"""
         warnings.warn(
@@ -639,6 +651,8 @@ class SphericalGrid(SphericalSymGrid):
     .. deprecated:: 0.14 (2021-05-21)
         Use :class:`~pde.grids.spherical.SphericalSymGrid` instead.
     """
+
+    deprecated: bool = True
 
     def __init__(self, *args, **kwargs):
         """class deprecated since 2021-05-21"""
