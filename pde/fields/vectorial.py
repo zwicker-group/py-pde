@@ -336,32 +336,6 @@ class VectorField(DataFieldBase):
 
         return dot
 
-    def get_dot_operator(self) -> Callable:
-        """return operator calculating the dot product involving vector fields
-
-        This supports both products between two vectors as well as products
-        between a vector and a tensor.
-
-        Warning:
-            This function does not check types or dimensions.
-
-        Returns:
-            function that takes two instance of :class:`~numpy.ndarray`, which
-            contain the discretized data of the two operands. An optional third
-            argument can specify the output array to which the result is
-            written. Note that the returned function is jitted with numba for
-            speed.
-        """
-        # Deprecated this method on 2020-10-07
-        import warnings
-
-        warnings.warn(
-            "get_dot_operator() method is deprecated. Use the `make_dot_operator()` "
-            "method instead",
-            DeprecationWarning,
-        )
-        return self.make_dot_operator()
-
     def outer_product(
         self, other: "VectorField", out: "Tensor2Field" = None, *, label: str = None
     ) -> "Tensor2Field":
