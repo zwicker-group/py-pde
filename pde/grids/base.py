@@ -185,6 +185,31 @@ class GridBase(metaclass=ABCMeta):
         """tuple: coordinates of the cells for each axis"""
         return self._axes_coords
 
+    def get_axis_index(self, key: Union[int, str], allow_symmetric: bool = True) -> int:
+        """return the index belonging to an axis
+
+        Args:
+            key (int or str): The index or name of an axis
+            allow_symmetric (bool): Whether axes with assumed symmetry are included
+
+        Returns:
+            int: The index of the axis
+        """
+        if isinstance(key, str):
+            # determine key index from name of the axis
+            if allow_symmetric:
+                axes = self.axes + self.axes_symmetric
+            else:
+                axes = self.axes
+            if key in axes:
+                return axes.index(key)
+            else:
+                raise IndexError(f"`{key}` is not in the axes {axes}")
+        elif isinstance(key, int):
+            # assume that it is already an index
+            return key
+        raise IndexError("Index must be an integer or the name of an axes")
+
     @property
     def discretization(self) -> np.ndarray:
         """:class:`numpy.array`: the linear size of a cell along each axis"""

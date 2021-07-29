@@ -19,6 +19,7 @@ from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.numba import get_common_numba_dtype
+from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
 
@@ -129,11 +130,20 @@ class VectorField(DataFieldBase):
             grid=grid, data=data, label=label, dtype=dtype
         )
 
-    def __getitem__(self, key: int) -> ScalarField:
+    def __getitem__(self, key: Union[int, str]) -> ScalarField:
         """extract a component of the VectorField"""
-        if not isinstance(key, int):
-            raise IndexError("Index must be an integer")
-        return ScalarField(self.grid, self.data[key])
+        return ScalarField(self.grid, self.data[self.grid.get_axis_index(key)])
+
+    def __setitem__(
+        self, key: Union[int, str], value: Union[NumberOrArray, ScalarField]
+    ):
+        """set a component of the VectorField"""
+        idx = self.grid.get_axis_index(key)
+        if isinstance(value, ScalarField):
+            self.grid.assert_grid_compatible(value.grid)
+            self.data[idx] = value.data
+        else:
+            self.data[idx] = value
 
     def dot(
         self,
