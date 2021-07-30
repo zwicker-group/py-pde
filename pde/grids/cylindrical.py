@@ -51,7 +51,9 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     Warning:
         The order of components in the vector and tensor fields defined on this grid
         is different than in ordinary math. While it is common to use
-        :math:`(r, \phi, z)`, we here use the order :math:`(r, z, \phi)`.    
+        :math:`(r, \phi, z)`, we here use the order :math:`(r, z, \phi)`. It might thus
+        be best to access components by name instead of index, e.g., use 
+        :code:`field['z']` instead of :code:`field[1]`.
     """
 
     dim = 3  # dimension of the described space

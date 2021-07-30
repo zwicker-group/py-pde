@@ -36,7 +36,7 @@ two-dimensional coordinates system. They are defined by the transformation
     \text{and} \; \phi \in [0, 2\pi)
 
 
-The associated symmetric grid :class:`~pde.grids.polar.PolarSymGrid` assumes that
+The associated symmetric grid :class:`~pde.grids.spherical.PolarSymGrid` assumes that
 fields only depend on the radial coordinate :math:`r`. Note that vector and tensor
 fields can still have components in the polar direction. In particular, vector fields
 still have two components: :math:`\vec v(r) = v_r(r) \vec e_r +  v_\phi(r) \vec e_\phi`. 
@@ -96,7 +96,8 @@ tensor fields still specify all components in the three-dimensional space.
 .. warning::
    The order of components in the vector and tensor fields defined on cylindrical grids
    is different than in ordinary math. While it is common to use :math:`(r, \phi, z)`,
-   we here use the order :math:`(r, z, \phi)`.
+   we here use the order :math:`(r, z, \phi)`. It might thus be best to access
+   components by name instead of index.
 
 Spatial discretization
 """"""""""""""""""""""
