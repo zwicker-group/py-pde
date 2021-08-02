@@ -11,8 +11,8 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 
 import numba as nb  # lgtm [py/import-and-import-from]
-from numba.extending import register_jitable
 import numpy as np
+from numba.extending import register_jitable
 
 from .. import config
 from ..tools.misc import decorator_arguments

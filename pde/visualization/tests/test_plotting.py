@@ -67,7 +67,8 @@ def test_kymograph_single(tmp_path):
     field = ScalarField(UnitGrid(8))
     with get_memory_storage(field) as storage:
         for i in range(8):
-            storage.append(field.copy(data=i), i)
+            field.data = i
+            storage.append(field, i)
 
     # create single kymograph
     path = tmp_path / "test1.png"
@@ -88,7 +89,8 @@ def test_kymograph_collection(tmp_path):
     )
     with get_memory_storage(field) as storage:
         for i in range(8):
-            storage.append(field.copy(data=i), i)
+            field.data = i
+            storage.append(field, i)
 
     # create single kymograph
     path = tmp_path / "test1.png"
@@ -111,6 +113,7 @@ def test_interactive_plotting():
     field = ScalarField.random_uniform(UnitGrid([8]))
     with get_memory_storage(field) as storage:
         for i in range(8):
-            storage.append(field.copy(data=i), i)
+            field.data = i
+            storage.append(field.data, i)
 
     plotting.plot_interactive(storage, viewer_args={"show": False, "close": True})

@@ -27,8 +27,10 @@ def test_storage_write(tmp_path):
     for name, storage_cls in storage_classes.items():
         storage = storage_cls(info={"a": 1})
         storage.start_writing(field, info={"b": 2})
-        storage.append(field.copy(data=np.arange(dim)), 0)
-        storage.append(field.copy(data=np.arange(dim)), 1)
+        field.data = np.arange(dim)
+        storage.append(field, 0)
+        field.data = np.arange(dim)
+        storage.append(field, 1)
         storage.end_writing()
 
         assert not storage.has_collection
@@ -44,7 +46,8 @@ def test_storage_write(tmp_path):
         storage.clear()
         for i in range(3):
             storage.start_writing(field)
-            storage.append(field.copy(data=np.arange(dim) + i), i)
+            field.data = np.arange(dim) + i
+            storage.append(field, i)
             storage.end_writing()
 
         np.testing.assert_allclose(
@@ -99,8 +102,10 @@ def test_storing_extract_range(tmp_path):
         # store some data
         s1 = storage_cls()
         s1.start_writing(sf)
-        s1.append(sf.copy(data=np.array([0])), 0)
-        s1.append(sf.copy(data=np.array([2])), 1)
+        sf.data = np.array([0])
+        s1.append(sf, 0)
+        sf.data = np.array([2])
+        s1.append(sf, 1)
         s1.end_writing()
 
         np.testing.assert_equal(s1[0].data, 0)
@@ -172,8 +177,10 @@ def test_storage_apply(tmp_path):
 
     s1 = MemoryStorage()
     s1.start_writing(field, info={"b": 2})
-    s1.append(field.copy(data=np.array([0, 1])), 0)
-    s1.append(field.copy(data=np.array([1, 2])), 1)
+    field.data = np.array([0, 1])
+    s1.append(field, 0)
+    field.data = np.array([1, 2])
+    s1.append(field, 1)
     s1.end_writing()
 
     for name, storage_cls in storage_classes.items():
@@ -203,8 +210,10 @@ def test_storage_copy(tmp_path):
 
     s1 = MemoryStorage()
     s1.start_writing(field, info={"b": 2})
-    s1.append(field.copy(data=np.array([0, 1])), 0)
-    s1.append(field.copy(data=np.array([1, 2])), 1)
+    field.data = np.array([0, 1])
+    s1.append(field, 0)
+    field.data = np.array([1, 2])
+    s1.append(field, 1)
     s1.end_writing()
 
     for name, storage_cls in storage_classes.items():
