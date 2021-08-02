@@ -16,7 +16,7 @@ import numpy as np
 from pde import config
 from pde.grids import CylindricalSymGrid, SphericalSymGrid, UnitGrid
 from pde.grids.boundaries import Boundaries
-from pde.grids.operators import cartesian, cylindrical, spherical
+from pde.grids.operators import cartesian, cylindrical_sym, spherical_sym
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit, jit_allocate_out
 
@@ -194,7 +194,7 @@ def main():
         grid = CylindricalSymGrid(shape[0], [0, shape[1]], shape)
         print(f"Cylindrical grid, shape={shape}")
         bcs = Boundaries.from_data(grid, "derivative")
-        laplace_cyl = cylindrical.make_laplace(bcs)
+        laplace_cyl = cylindrical_sym.make_laplace(bcs)
         result = laplace_cyl(data)
 
         for method in ["CUSTOM", "numba"]:
@@ -216,7 +216,7 @@ def main():
         grid = SphericalSymGrid(shape, shape)
         print(grid)
         bcs = Boundaries.from_data(grid, "derivative")
-        make_laplace = spherical.make_laplace
+        make_laplace = spherical_sym.make_laplace
 
         for conservative in [True, False]:
             laplace = make_laplace(bcs, conservative=conservative)
