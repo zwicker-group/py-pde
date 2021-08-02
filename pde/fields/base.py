@@ -1075,7 +1075,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             # spatial dimensions need to come first => move data to last axis
             assert self.data.shape[:-grid_dim] == self.data_shape
-            data_flat = self._data_flat
+            idx = (slice(None),) + (slice(1, -1),) * self.grid.num_axes
+            data_flat = self._data_flat[idx]
             data_flat = np.moveaxis(data_flat, 0, -1)
             new_shape = self.grid.shape + (-1,)
             data = data_flat.reshape(new_shape)
