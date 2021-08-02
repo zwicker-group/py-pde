@@ -83,7 +83,7 @@ class ScipySolver(SolverBase):
             sol = integrate.solve_ivp(
                 rhs_helper,
                 t_span=(t_start, t_end),
-                y0=state.data.flat,
+                y0=np.ravel(state.data),
                 t_eval=[t_end],  # only store necessary
                 **self.solver_params,
             )

@@ -65,7 +65,7 @@ class WavePDE(PDEBase):
                 The combined fields u and v, suitable for the simulation
         """
         if v is None:
-            v = u.copy(data=0)
+            v = u.copy(data_full="zeros")
         return FieldCollection([u, v])
 
     @property
@@ -112,8 +112,7 @@ class WavePDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        shape = state.grid.shape
-        arr_type = nb.typeof(np.empty((2,) + shape, dtype=state.data.dtype))
+        arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
         speed2 = self.speed ** 2

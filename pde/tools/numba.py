@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 
 import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
+from numba.extending import register_jitable
 
 from .. import config
 from ..tools.misc import decorator_arguments
@@ -384,6 +385,27 @@ else:
             return builder.inttoptr(args[0], cgutils.voidptr_t)
 
         return sig, codegen
+
+
+@register_jitable
+def construct_array(
+    data_addr: int, dtype, shape: Tuple[int, ...], strides: Tuple[int, ...] = None
+) -> np.ndarray:
+    """returns an array using basic information
+
+    Args:
+        data_addr (int): The memory address of the underlying data
+        dtype: The numpy dtype
+        shape (tuple): The shape of array
+        strides: Optional strides
+
+    Returns:
+        :class:`~numpy.ndarray`: The reconstructed array
+    """
+    data: np.ndarray = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
+    if strides is not None:
+        data = np.lib.index_tricks.as_strided(data, shape, strides)
+    return data
 
 
 @nb.generated_jit(nopython=True)

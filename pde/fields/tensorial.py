@@ -125,12 +125,17 @@ class Tensor2Field(DataFieldBase):
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
         """set the data from a value from a collection"""
+        # create a view and reshape it to disallow copying
+        data_full = value.view()
         dim = self.grid.dim
-        self._data = value.reshape(dim, dim, *self.grid.shape)
-        # check whether both point to the same memory location
-        addr_value = value.__array_interface__["data"][0]
-        addr_self_data = self._data.__array_interface__["data"][0]
-        assert addr_value == addr_self_data
+        full_grid_shape = tuple(s + 2 for s in self.grid.shape)
+        data_full.shape = (dim, dim, *full_grid_shape)
+
+        # set the result as the full data array
+        self._data_full = data_full
+
+        # ensure that no copying happend
+        assert np.may_share_memory(self.data, value)
 
     def dot(
         self,
@@ -234,7 +239,7 @@ class Tensor2Field(DataFieldBase):
                     return out
 
             # build the outer function with the correct signature
-            if nb.config.DISABLE_JIT:
+            if nb.config.DISABLE_JIT:  # @UndefinedVariable
 
                 def dot(
                     a: np.ndarray, b: np.ndarray, out: np.ndarray = None

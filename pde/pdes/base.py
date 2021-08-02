@@ -152,7 +152,7 @@ class PDEBase(metaclass=ABCMeta):
 
         if check_implementation:
             # obtain and check result from the numpy implementation
-            res_numpy = self.evolution_rate(state.copy(), 0).data
+            res_numpy = self.evolution_rate(state.copy(), 0.0).data
             if not np.all(np.isfinite(res_numpy)):
                 self._logger.warning(
                     "The numpy implementation of the PDE returned non-finite values."
@@ -160,7 +160,7 @@ class PDEBase(metaclass=ABCMeta):
 
             # obtain and check result from the numba implementation
             test_state = state.copy()
-            res_numba = rhs(test_state.data, 0)
+            res_numba = rhs(test_state.data, 0.0)
             if not np.all(np.isfinite(res_numba)):
                 self._logger.warning(
                     "The numba implementation of the PDE returned non-finite values."
@@ -242,21 +242,19 @@ class PDEBase(metaclass=ABCMeta):
             Scalar field describing the evolution rate of the PDE
         """
         if self.noise:
+            result = state.copy(data_full="empty", label=label)
+
             if np.isscalar(self.noise):
                 # a single noise value is given for all fields
-                data = self.rng.normal(scale=self.noise, size=state.data.shape)
-                return state.copy(data=data, label=label)
+                result.data = self.rng.normal(scale=self.noise, size=state.data.shape)
 
             elif isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
-                fields = []
-                for f, n in zip(state, np.broadcast_to(self.noise, len(state))):
+                for f, n in zip(result, np.broadcast_to(self.noise, len(state))):  # type: ignore
                     if n == 0:
-                        data = 0
+                        f.data = 0
                     else:
-                        data = self.rng.normal(scale=n, size=f.data.shape)
-                    fields.append(f.copy(data=data))
-                return FieldCollection(fields, label=label)
+                        f.data = self.rng.normal(scale=n, size=f.data.shape)
 
             else:
                 # different noise strengths, but a single field
@@ -265,7 +263,10 @@ class PDEBase(metaclass=ABCMeta):
                 )
 
         else:
-            return state.copy(data=0, label=label)
+            # no noise
+            result = state.copy(data_full="zeros", label=label)
+
+        return result
 
     def _make_noise_realization_numba(
         self, state: FieldBase
