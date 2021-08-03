@@ -9,7 +9,7 @@ from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid
 from pde.fields.base import FieldBase
 
 
-def test_tensors():
+def test_tensors_basic():
     """test some tensor calculations"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
 
@@ -17,6 +17,10 @@ def test_tensors():
     t2 = Tensor2Field(grid, np.full((2, 2) + grid.shape, 2))
     np.testing.assert_allclose(t2.average, [[2, 2], [2, 2]])
     assert t1.magnitude == pytest.approx(2)
+
+    assert t1["x", "x"] == t1[0, 0]
+    assert t1["x", 1] == t1[0, "y"] == t1[0, 1]
+    t1[0, 0] = t1[0, 0]
 
     t3 = t1 + t2
     assert t3.grid == grid
@@ -31,10 +35,10 @@ def test_tensors():
     np.testing.assert_allclose(trace.data, field.data.trace())
 
     t1 = Tensor2Field(grid)
-    t1.data[0, 0, :] = 1
-    t1.data[0, 1, :] = 2
-    t1.data[1, 0, :] = 3
-    t1.data[1, 1, :] = 4
+    t1[0, 0] = 1
+    t1[0, 1] = 2
+    t1[1, 0] = 3
+    t1[1, 1] = 4
     for method, value in [
         ("min", 1),
         ("max", 4),
@@ -190,3 +194,25 @@ def test_complex_tensors():
         dot_op = t1.make_dot_operator(backend, conjugate=False)
         res = t1.dot(t2, conjugate=False)
         np.testing.assert_allclose(dot_op(t1.data, t2.data), res.data)
+
+
+def test_from_expressions():
+    """test initializing tensor fields with expressions"""
+    grid = UnitGrid([4, 4])
+    tf = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * y"]])
+    xs = grid.cell_coords[..., 0]
+    ys = grid.cell_coords[..., 1]
+    np.testing.assert_allclose(tf.data[0, 1], 1)
+    np.testing.assert_allclose(tf.data[0, 1], 1)
+    np.testing.assert_allclose(tf.data[1, 0], xs ** 2)
+    np.testing.assert_allclose(tf.data[1, 1], xs * ys)
+
+    # corner case
+    with pytest.raises(ValueError):
+        Tensor2Field.from_expression(grid, "xy")
+    with pytest.raises(ValueError):
+        Tensor2Field.from_expression(grid, ["xy"])
+    with pytest.raises(ValueError):
+        Tensor2Field.from_expression(grid, ["x"] * 3)
+    with pytest.raises(ValueError):
+        Tensor2Field.from_expression(grid, [["x"], [1, 1]])

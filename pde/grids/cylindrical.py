@@ -47,6 +47,13 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     :math:`z_\mathrm{max} - z_\mathrm{min}` is the total height.
     The two axes are discretized by :math:`N_r` and :math:`N_z` support points,
     respectively.
+    
+    Warning:
+        The order of components in the vector and tensor fields defined on this grid
+        is different than in ordinary math. While it is common to use
+        :math:`(r, \phi, z)`, we here use the order :math:`(r, z, \phi)`. It might thus
+        be best to access components by name instead of index, e.g., use 
+        :code:`field['z']` instead of :code:`field[1]`.
     """
 
     dim = 3  # dimension of the described space
@@ -507,7 +514,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     ) -> Union["CartesianGrid", "PolarSymGrid"]:
         """return a subgrid of only the specified axes
 
-
         Args:
             indices (list):
                 Indices indicating the axes that are retained in the subgrid
@@ -545,6 +551,8 @@ class CylindricalGrid(CylindricalSymGrid):
     .. deprecated:: 0.14 (2021-05-21)
         Use  :class:`~pde.grids.cylindrical.CylindricalSymGrid` instead.
     """
+
+    deprecated: bool = True
 
     def __init__(self, *args, **kwargs):
         """class deprecated since 2021-05-21"""

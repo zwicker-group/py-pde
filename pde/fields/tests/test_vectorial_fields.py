@@ -10,13 +10,19 @@ from pde.fields.base import FieldBase
 from pde.tools.misc import module_available, skipUnlessModule
 
 
-def test_vectors():
+def test_vectors_basic():
     """test some vector fields"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     v1 = VectorField(grid, np.full((2,) + grid.shape, 1))
     v2 = VectorField(grid, np.full((2,) + grid.shape, 2))
     np.testing.assert_allclose(v1.average, (1, 1))
     assert np.allclose(v1.magnitude, np.sqrt(2))
+
+    assert v1[0] == v1["x"]
+    assert v1[1] == v1["y"]
+    v1[0] = v1[0]
+    with pytest.raises(IndexError):
+        v1["z"]
 
     v3 = v1 + v2
     assert v3.grid == grid
@@ -26,8 +32,8 @@ def test_vectors():
 
     # test projections
     v1 = VectorField(grid)
-    v1.data[0, :] = 3
-    v1.data[1, :] = 4
+    v1[0] = 3
+    v1[1] = 4
     for method, value in [
         ("min", 3),
         ("max", 4),
@@ -172,6 +178,9 @@ def test_from_expressions():
 
     # corner case
     vf = VectorField.from_expression(grid, ["1", "x * y"])
+    np.testing.assert_allclose(vf.data[0], 1)
+    vf = VectorField.from_expression(grid, [1, "x * y"])
+    np.testing.assert_allclose(vf.data[0], 1)
 
     with pytest.raises(ValueError):
         VectorField.from_expression(grid, "xy")

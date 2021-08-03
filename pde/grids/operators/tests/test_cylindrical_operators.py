@@ -4,7 +4,13 @@
 
 import numpy as np
 
-from pde import CartesianGrid, CylindricalSymGrid, ScalarField, VectorField
+from pde import (
+    CartesianGrid,
+    CylindricalSymGrid,
+    ScalarField,
+    Tensor2Field,
+    VectorField,
+)
 from pde.grids.operators import cylindrical_sym as ops
 
 
@@ -76,22 +82,12 @@ def test_findiff_cyl():
     _, r1, r2 = grid.axes_coords[0]
     np.testing.assert_array_equal(grid.discretization, np.full(2, 0.5))
     s = ScalarField(grid, [[1, 1], [2, 2], [4, 4]])
-    v = VectorField(grid, [[[1, 1], [2, 2], [4, 4]], [[0, 0]] * 3, [[0, 0]] * 3])
 
     # test gradient
     grad = s.gradient(bc=["value", "periodic"])
     np.testing.assert_allclose(grad.data[0], [[1, 1], [3, 3], [-6, -6]])
     grad = s.gradient(bc=["derivative", "periodic"])
     np.testing.assert_allclose(grad.data[0], [[1, 1], [3, 3], [2, 2]])
-
-    # test divergence
-    div = v.divergence(bc=["value", "periodic"])
-    y1 = 3 + 2 / r1
-    y2 = -6 + 4 / r2
-    np.testing.assert_allclose(div.data, [[5, 5], [y1, y1], [y2, y2]])
-    div = v.divergence(bc=["derivative", "periodic"])
-    y2 = 2 + 4 / r2
-    np.testing.assert_allclose(div.data, [[5, 5], [y1, y1], [y2, y2]])
 
     # test laplace
     lap = s.laplace(bc=[{"type": "value", "value": 3}, "periodic"])
@@ -146,3 +142,95 @@ def test_grid_div_grad():
     # do not test the radial boundary points
     np.testing.assert_allclose(a[1:-1], res[1:-1], rtol=0.1, atol=0.05)
     np.testing.assert_allclose(b[1:-1], res[1:-1], rtol=0.1, atol=0.05)
+
+
+def test_examples_scalar_cyl():
+    """compare derivatives of scalar fields for cylindrical grids"""
+    grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32)
+    expr = "r**3 * sin(z)"
+    sf = ScalarField.from_expression(grid, expr)
+    bcs = [[{"derivative": 0}, {"value": expr}], [{"value": expr}, {"value": expr}]]
+
+    # gradient - The coordinates are ordered as (r, z, φ) in py-pde
+    res = sf.gradient(bcs)
+    expect = VectorField.from_expression(
+        grid, ["3 * r**2 * sin(z)", "r**3 * cos(z)", 0]
+    )
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+    # gradient squared
+    expect = ScalarField.from_expression(
+        grid, "r**6 * cos(z)**2 + 9 * r**4 * sin(z)**2"
+    )
+    for c in [True, False]:
+        res = sf.gradient_squared(bcs, central=c)
+        np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+    # laplace
+    bcs[0][1] = {"curvature": "6 * sin(z)"}  # adjust BC to fit laplacian better
+    res = sf.laplace(bcs)
+    expect = ScalarField.from_expression(grid, "9 * r * sin(z) - r**3 * sin(z)")
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+
+def test_examples_vector_cyl():
+    """compare derivatives of vector fields for cylindrical grids"""
+    grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32)
+    e_r = "r**3 * sin(z)"
+    e_φ = "r**2 * sin(z)"
+    e_z = "r**4 * cos(z)"
+    vf = VectorField.from_expression(grid, [e_r, e_z, e_φ])
+    bcs = [
+        ({"derivative": 0}, {"value": "r**3 * sin(z)"}),
+        ({"curvature": "-r**4  * cos(z)"}, {"curvature": "-r**4 * cos(z)"}),
+    ]
+
+    # divergence
+    res = vf.divergence(bcs)
+    expect = ScalarField.from_expression(grid, "4 * r**2 * sin(z) - r**4 * sin(z)")
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+    # vector Laplacian
+    grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32, periodic_z=True)
+    vf = VectorField.from_expression(grid, ["r**3 * sin(z)"] * 3)
+    val_r_outer = np.broadcast_to(6 * np.sin(grid.axes_coords[1]), (3, 32))
+    bcs = [({"derivative": 0}, {"curvature": val_r_outer}), "periodic"]
+    res = vf.laplace(bcs)
+    expr = [
+        "8 * r * sin(z) - r**3 * sin(z)",
+        "9 * r * sin(z) - r**3 * sin(z)",
+        "8 * r * sin(z) - r**3 * sin(z)",
+    ]
+    expect = VectorField.from_expression(grid, expr)
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+    # vector gradient
+    res = vf.gradient(bcs)
+    expr = [
+        ["3 * r**2 * sin(z)", "r**3 * cos(z)", "-r**2 * sin(z)"],
+        ["3 * r**2 * sin(z)", "r**3 * cos(z)", 0],
+        ["3 * r**2 * sin(z)", "r**3 * cos(z)", "r**2 * sin(z)"],
+    ]
+    expect = Tensor2Field.from_expression(grid, expr)
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+
+def test_examples_tensor_cyl():
+    """compare derivatives of tensorial fields for cylindrical grids"""
+    grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32, periodic_z=True)
+    tf = Tensor2Field.from_expression(grid, [["r**3 * sin(z)"] * 3] * 3)
+
+    # tensor divergence
+    rs, zs = grid.axes_coords
+    val_r_outer = np.broadcast_to(6 * rs * np.sin(zs), (3, 32))
+    bcs = [({"derivative": 0}, {"curvature": val_r_outer}), "periodic"]
+    res = tf.divergence(bcs)
+    expect = VectorField.from_expression(
+        grid,
+        [
+            "r**2 * (r * cos(z) + 3 * sin(z))",
+            "r**2 * (r * cos(z) + 4 * sin(z))",
+            "r**2 * (r * cos(z) + 5 * sin(z))",
+        ],
+    )
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)

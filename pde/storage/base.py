@@ -94,16 +94,6 @@ class StorageBase(metaclass=ABCMeta):
         if time is None:
             time = 0 if len(self) == 0 else self.times[-1] + 1
 
-        if isinstance(field, np.ndarray):
-            # Deprecated this interface on 2020-10-12
-            import warnings
-
-            warnings.warn(
-                "Expected FieldBase instead of append numpy array", DeprecationWarning
-            )
-
-            return self._append_data(field, time)
-
         if self._grid is None:
             self._grid = field.grid
         elif self._grid != field.grid:

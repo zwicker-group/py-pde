@@ -3,15 +3,18 @@ Advanced usage
 
 Boundary conditions
 """""""""""""""""""
-Boundary conditions can be specified for both sides of each axis individually.
-For instance, one can enforce the value of a field to be `4` at the lower side and its
-derivative (in the outward direction) to be `2` on the upper side using the following
-code:
+A crucial aspect of partial differential equations are boundary conditions, which need
+to be specified at the domain boundaries. For th simple domains contained in `py-pde`,
+all boundaries are orthogonal to one of the axes in the domain, so boundary conditions
+need to be applied to both sides of each axis. Here, the lower side of an axis can have
+a differnt condition than the upper side. For instance, one can enforce the value of a
+field to be `4` at the lower side and its derivative (in the outward direction) to be
+`2` on the upper side using the following code:
 
 .. code-block:: python
 
-    bc_lower = {'type': 'value', 'value': 4}
-    bc_upper = {'type': 'derivative', 'value': 2}
+    bc_lower = {'value': 4}
+    bc_upper = {'derivative': 2}
     bc = [bc_lower, bc_upper]
     
     grid = pde.UnitGrid([16])
@@ -23,14 +26,18 @@ the boundary conditions.
 Note that it suffices to give one condition if both sides of the axis require the same
 condition.
 For instance, to enforce a value of `3` on both side, one could simply use
-:code:`bc = {'type': 'value', 'value': 3}`.
+:code:`bc = {'value': 3}`.
+Vectorial boundary conditions, e.g., to calculate the vector gradient or tensor
+divergence, can have vectorial values for the boundary condition. 
 
 Boundary values that depend on space can be set by specifying a mathematical expression,
 which may depend on the coordinates of all axes:
 
 .. code-block:: python
 
-    bc_x = [{"derivative": 0.1}, {"value": "sin(y / 2)"}]
+    # two different conditions for lower and upper end of x-axis
+    bc_x = [{"derivative": 0.1}, {"value": "sin(y / 2)"}] 
+    # the same condition on the lower and upper end of the y-axis
     bc_y = {"value": "sqrt(1 + cos(x))"}
      
     grid = UnitGrid([32, 32])
@@ -58,12 +65,13 @@ can be used:
     field.laplace(bc)
     
 For convenience, this typical situation can be described with the special boundary
-condition `natural`, e.g., calling the Laplace operator using `field.laplace('natural')`
-is identical to the example above. Alternatively, this condition can be called
-`auto_periodic_neumann` to stress that this chooses between periodic and Neumann
-boundary conditions automatically. Similarly, the special condition
-`auto_periodic_dirichlet` enforces periodic boundary conditions or Dirichlet boundary
-condition (vanishing value), depending on the periodicity of the underlying grid. 
+condition `natural`, e.g., calling the Laplace operator using 
+:code:`field.laplace('natural')` is identical to the example above.
+Alternatively, this condition can be called `auto_periodic_neumann` to stress that this
+chooses between periodic and Neumann boundary conditions automatically. Similarly, the
+special condition `auto_periodic_dirichlet` enforces periodic boundary conditions or
+Dirichlet boundary condition (vanishing value), depending on the periodicity of the
+underlying grid. 
 
 
 Custom PDE classes
@@ -115,7 +123,7 @@ While such an implementation is helpful for testing initial ideas, actual
 computations should be performed with compiled PDEs as described below.
 
 
-Low-level operators 
+Low-level operators
 """""""""""""""""""
 This section explains how to use the low-level version of the field operators.
 This is necessary for the numba-accelerated implementations described above and

@@ -17,8 +17,7 @@ indices using the methods :meth:`point_to_cell`.
    ~spherical.PolarSymGrid
    ~spherical.SphericalSymGrid
    ~cylindrical.CylindricalSymGrid
-
-
+   
 Inheritance structure of the classes:
 
 .. inheritance-diagram:: pde.grids.base pde.grids.cartesian
@@ -31,7 +30,7 @@ Inheritance structure of the classes:
 
 # import all operator modules to register the operators
 from . import operators
-from .base import DomainError, PeriodicityError
+from .base import DomainError, PeriodicityError, registered_operators
 from .cartesian import CartesianGrid, UnitGrid
 from .cylindrical import CylindricalGrid, CylindricalSymGrid
 from .spherical import PolarGrid, PolarSymGrid, SphericalGrid, SphericalSymGrid

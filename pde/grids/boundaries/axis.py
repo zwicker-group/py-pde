@@ -391,6 +391,57 @@ class BoundaryPair(BoundaryAxisBase):
 
         return region_evaluator  # type: ignore
 
+    def make_derivative_evaluator(
+        self, order: int = 1
+    ) -> Callable[[np.ndarray, Tuple[int, ...]], NumberOrArray]:
+        """return a function to evaluate the derivative at a point
+
+        Args:
+            order (int): The order of the derivative
+
+        Returns:
+            function: A function that can be called with the data array and a tuple
+            indicating around what point the derivative is evaluated. The function
+            returns the central finite difference at the point. The function takes
+            boundary conditions into account if the point lies on the boundary.
+        """
+        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
+        ap_low = self.low.make_adjacent_evaluator()
+        ap_high = self.high.make_adjacent_evaluator()
+
+        if order == 1:
+            # first derivative
+            scale = 1 / (2 * self.grid.discretization[self.axis])
+
+            @register_jitable
+            def deriv_evaluator(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
+                """compiled function return the derivative at the pint"""
+                # extract the 1d array along axis
+                arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
+                val_low = ap_low(arr_1d, i_point, bc_idx)
+                val_high = ap_high(arr_1d, i_point, bc_idx)
+                # return the central derivative
+                return (val_high - val_low) * scale  # type: ignore
+
+        elif order == 2:
+            # second derivative
+            scale = 1 / self.grid.discretization[self.axis] ** 2
+
+            @register_jitable
+            def deriv_evaluator(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
+                """compiled function return the derivative at the pint"""
+                # extract the 1d array along axis
+                arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
+                val_low = ap_low(arr_1d, i_point, bc_idx)
+                val_high = ap_high(arr_1d, i_point, bc_idx)
+                # return the central derivative
+                return (val_low - 2 * arr_1d[..., i_point] + val_high) * scale  # type: ignore
+
+        else:
+            raise NotImplementedError(f"Derivative of oder {order} not implemented")
+
+        return deriv_evaluator  # type: ignore
+
 
 class BoundaryPeriodic(BoundaryAxisBase):
     """represent a periodic axis"""
@@ -574,6 +625,62 @@ class BoundaryPeriodic(BoundaryAxisBase):
 
         return region_evaluator  # type: ignore
 
+    def make_derivative_evaluator(
+        self, order: int = 1
+    ) -> Callable[[np.ndarray, Tuple[int, ...]], NumberOrArray]:
+        """return a function to evaluate the derivative at a point
+
+        Args:
+            order (int): The order of the derivative
+
+        Returns:
+            function: A function that can be called with the data array and a tuple
+            indicating around what point the derivative is evaluated. The function
+            returns the central finite difference at the point. The function takes
+            boundary conditions into account if the point lies on the boundary.
+        """
+        size = self.grid.shape[self.axis]
+        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
+
+        if order == 1:
+            # first derivative
+            scale = 1 / (2 * self.grid.discretization[self.axis])
+
+            @register_jitable
+            def deriv_evaluator(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
+                """compiled function return the derivative at the pint"""
+                # extract the 1d array along axis
+                arr_1d, i, _ = get_arr_1d(arr, idx)
+
+                # determine the indices in the vicinity
+                im = size - 1 if i == 0 else i - 1
+                ip = 0 if i == size - 1 else i + 1
+
+                # return the central derivative
+                return (arr_1d[..., ip] - arr_1d[..., im]) * scale  # type: ignore
+
+        elif order == 2:
+            # second derivative
+            scale = 1 / self.grid.discretization[self.axis] ** 2
+
+            @register_jitable
+            def deriv_evaluator(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
+                """compiled function return the derivative at the pint"""
+                # extract the 1d array along axis
+                arr_1d, i, _ = get_arr_1d(arr, idx)
+
+                # determine the indices in the vicinity
+                im = size - 1 if i == 0 else i - 1
+                ip = 0 if i == size - 1 else i + 1
+
+                # return the second derivative
+                return (arr_1d[..., im] - 2 * arr_1d[..., i] + arr_1d[..., ip]) * scale  # type: ignore
+
+        else:
+            raise NotImplementedError(f"Derivative of oder {order} not implemented")
+
+        return deriv_evaluator  # type: ignore
+
 
 def get_boundary_axis(
     grid: GridBase, axis: int, data, rank: int = 0
@@ -604,7 +711,7 @@ def get_boundary_axis(
 
     # handle different types of data that specify boundary conditions
     if isinstance(data, BoundaryAxisBase):
-        # boundary is already in the correct format
+        # boundary is already an the correct format
         return data
     elif data == "periodic" or data == ("periodic", "periodic"):
         # initialize a periodic boundary condition
