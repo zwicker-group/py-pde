@@ -4,6 +4,8 @@ Defines a vectorial field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Union
 
 import numba as nb
@@ -29,23 +31,14 @@ if TYPE_CHECKING:
 
 
 class VectorField(DataFieldBase):
-    """Single vector field on a grid
-
-    Attributes:
-        grid (:class:`~pde.grids.base.GridBase`):
-            The underlying grid defining the discretization
-        data (:class:`~numpy.ndarray`):
-            Vector components at the support points of the grid
-        label (str):
-            Name of the field
-    """
+    """Vector field discretized on a grid"""
 
     rank = 1
 
     @classmethod
     def from_scalars(
         cls, fields: List[ScalarField], *, label: str = None, dtype=None
-    ) -> "VectorField":
+    ) -> VectorField:
         """create a vector field from a list of ScalarFields
 
         Note that the data of the scalar fields is copied in the process
@@ -86,7 +79,7 @@ class VectorField(DataFieldBase):
         *,
         label: str = None,
         dtype=None,
-    ) -> "VectorField":
+    ) -> VectorField:
         """create a vector field on a grid from given expressions
 
         Warning:
@@ -147,12 +140,12 @@ class VectorField(DataFieldBase):
 
     def dot(
         self,
-        other: Union["VectorField", "Tensor2Field"],
-        out: Optional[Union[ScalarField, "VectorField"]] = None,
+        other: Union[VectorField, "Tensor2Field"],
+        out: Optional[Union[ScalarField, VectorField]] = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
-    ) -> Union[ScalarField, "VectorField"]:
+    ) -> Union[ScalarField, VectorField]:
         """calculate the dot product involving a vector field
 
         This supports the dot product between two vectors fields as well as the
@@ -249,7 +242,7 @@ class VectorField(DataFieldBase):
                     return out
 
             # build the outer function with the correct signature
-            if nb.config.DISABLE_JIT:
+            if nb.config.DISABLE_JIT:  # @UndefinedVariable
 
                 def dot(
                     a: np.ndarray, b: np.ndarray, out: np.ndarray = None
@@ -337,7 +330,7 @@ class VectorField(DataFieldBase):
         return dot
 
     def outer_product(
-        self, other: "VectorField", out: "Tensor2Field" = None, *, label: str = None
+        self, other: VectorField, out: "Tensor2Field" = None, *, label: str = None
     ) -> "Tensor2Field":
         """calculate the outer product of this vector field with another
 
@@ -522,10 +515,10 @@ class VectorField(DataFieldBase):
     def laplace(
         self,
         bc: "BoundariesData",
-        out: Optional["VectorField"] = None,
+        out: Optional[VectorField] = None,
         *,
         label: str = "vector laplacian",
-    ) -> "VectorField":
+    ) -> VectorField:
         r"""apply vector Laplace operator and return result as a field
 
         The vector Laplacian is a vector field :math:`L_\alpha` containing the second

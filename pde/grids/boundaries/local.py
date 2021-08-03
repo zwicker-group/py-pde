@@ -727,47 +727,44 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def set_boundary_values(self, data_full: np.ndarray) -> None:
-        """set the boundary values on virtual points for all boundaries
+    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+        """set the ghost cell values for this boundary
 
         Args:
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
 
-    def make_bc_setter(self) -> Callable[[np.ndarray], None]:
-        """return function that sets the BCs for this axis on a full array"""
-
-        # get shape of grid and index of the virtual point
-        axis = self.axis
-
-        vp_idx = self.grid.shape[axis] + 1 if self.upper else 0
+    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the ghost cells for this boundary"""
+        # get information of the virtual points (ghost cells)
+        vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
         vp_value = self.make_virtual_point_evaluator()
 
         if self.grid.num_axes == 1:  # 1d grid
 
             @register_jitable
-            def bc_setter(data_full: np.ndarray) -> None:
+            def ghost_cell_setter(data_full: np.ndarray) -> None:
                 """helper function setting the conditions on all axes"""
                 data_full[..., vp_idx] = vp_value(data_full[..., 1:-1], (vp_idx,))
 
         elif self.grid.num_axes == 2:  # 2d grid
 
-            if axis == 0:
+            if self.axis == 0:
                 num_y = self.grid.shape[1]
 
                 @register_jitable
-                def bc_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_full: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for j in range(num_y):
                         val = vp_value(data_full[..., 1:-1, 1:-1], (vp_idx, j))
                         data_full[..., vp_idx, j + 1] = val
 
-            elif axis == 1:
+            elif self.axis == 1:
                 num_x = self.grid.shape[0]
 
                 @register_jitable
-                def bc_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_full: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for i in range(num_x):
                         val = vp_value(data_full[..., 1:-1, 1:-1], (i, vp_idx))
@@ -775,11 +772,11 @@ class BCBase(metaclass=ABCMeta):
 
         elif self.grid.num_axes == 3:  # 3d grid
 
-            if axis == 0:
+            if self.axis == 0:
                 num_y, num_z = self.grid.shape[1:]
 
                 @register_jitable
-                def bc_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_full: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for j in range(num_y):
                         for k in range(num_z):
@@ -787,11 +784,11 @@ class BCBase(metaclass=ABCMeta):
                             val = vp_value(arr, (vp_idx, j, k))
                             data_full[..., vp_idx, j + 1, k + 1] = val
 
-            elif axis == 1:
+            elif self.axis == 1:
                 num_x, num_z = self.grid.shape[0], self.grid.shape[2]
 
                 @register_jitable
-                def bc_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_full: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for i in range(num_x):
                         for k in range(num_z):
@@ -799,11 +796,11 @@ class BCBase(metaclass=ABCMeta):
                             val = vp_value(arr, (i, vp_idx, k))
                             data_full[..., i + 1, vp_idx, k + 1] = val
 
-            elif axis == 1:
+            elif self.axis == 1:
                 num_x, num_y = self.grid.shape[:2]
 
                 @register_jitable
-                def bc_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_full: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for i in range(num_x):
                         for j in range(num_y):
@@ -814,7 +811,7 @@ class BCBase(metaclass=ABCMeta):
         else:
             raise NotImplementedError("Too many axes")
 
-        return bc_setter  # type: ignore
+        return ghost_cell_setter  # type: ignore
 
 
 class BCBase1stOrder(BCBase):
@@ -1001,8 +998,8 @@ class BCBase1stOrder(BCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_boundary_values(self, data_full: np.ndarray) -> None:
-        """set the boundary values on virtual points for all boundaries
+    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+        """set the ghost cell values for this boundary
 
         Args:
             data_full (:class:`~numpy.ndarray`):
@@ -1538,8 +1535,8 @@ class BCBase2ndOrder(BCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_boundary_values(self, data_full: np.ndarray) -> None:
-        """set the boundary values on virtual points for all boundaries
+    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+        """set the ghost cell values for this boundary
 
         Args:
             data_full (:class:`~numpy.ndarray`):
