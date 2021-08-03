@@ -4,6 +4,8 @@ Defines a scalar field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import numbers
 from pathlib import Path
 from typing import List  # @UnusedImport
@@ -23,16 +25,7 @@ if TYPE_CHECKING:
 
 
 class ScalarField(DataFieldBase):
-    """Single scalar field on a grid
-
-    Attributes:
-        grid (:class:`~pde.grids.base.GridBase`):
-            The underlying grid defining the discretization
-        data (:class:`np.ndarray`):
-            Scalar values at the support points of the grid
-        label (str):
-            Name of the field
-    """
+    """Scalar field discretized on a grid"""
 
     rank = 0
 
@@ -40,7 +33,7 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def from_expression(
         cls, grid: GridBase, expression: str, *, label: str = None, dtype=None
-    ) -> "ScalarField":
+    ) -> ScalarField:
         """create a scalar field on a grid from a given expression
 
         Warning:
@@ -71,7 +64,7 @@ class ScalarField(DataFieldBase):
     @classmethod
     def from_image(
         cls, path: Union[Path, str], bounds=None, periodic=False, *, label: str = None
-    ) -> "ScalarField":
+    ) -> ScalarField:
         """create a scalar field from an image
 
         Args:
@@ -153,10 +146,10 @@ class ScalarField(DataFieldBase):
     def laplace(
         self,
         bc: "BoundariesData",
-        out: Optional["ScalarField"] = None,
+        out: Optional[ScalarField] = None,
         *,
         label: str = "laplace",
-    ) -> "ScalarField":
+    ) -> ScalarField:
         """apply Laplace operator and return result as a field
 
         Args:
@@ -171,6 +164,7 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
         """
+        self.set_ghost_cells(bc)
         laplace = self.grid.get_operator("laplace", bc=bc)
         return self._apply_with_out(laplace, ScalarField, out=out, label=label)
 
@@ -178,11 +172,11 @@ class ScalarField(DataFieldBase):
     def gradient_squared(
         self,
         bc: "BoundariesData",
-        out: Optional["ScalarField"] = None,
+        out: Optional[ScalarField] = None,
         *,
         central: bool = True,
         label: str = "squared gradient",
-    ) -> "ScalarField":
+    ) -> ScalarField:
         r"""apply squared gradient operator and return result as a field
 
         This evaluates :math:`|\nabla \phi|^2` for the scalar field :math:`\phi`
@@ -246,7 +240,7 @@ class ScalarField(DataFieldBase):
         axes: Union[str, Sequence[str]],
         method: str = "integral",
         label: str = None,
-    ) -> "ScalarField":
+    ) -> ScalarField:
         """project scalar field along given axes
 
         Args:
@@ -298,7 +292,7 @@ class ScalarField(DataFieldBase):
 
     def slice(
         self, position: Dict[str, float], *, method: str = "nearest", label: str = None
-    ) -> "ScalarField":
+    ) -> ScalarField:
         """slice data at a given position
 
         Args:
@@ -378,7 +372,7 @@ class ScalarField(DataFieldBase):
 
     def to_scalar(
         self, scalar: Union[str, Callable] = "auto", *, label: Optional[str] = None
-    ) -> "ScalarField":
+    ) -> ScalarField:
         """return a modified scalar field by applying `method`
 
         Args:

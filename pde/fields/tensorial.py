@@ -4,6 +4,8 @@ Defines a tensorial field of rank 2 over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Callable, Optional, Sequence, Tuple, Union
 
 import numba as nb
@@ -23,16 +25,7 @@ if TYPE_CHECKING:
 
 
 class Tensor2Field(DataFieldBase):
-    """Single tensor field of rank 2 on a grid
-
-    Attributes:
-        grid (:class:`~pde.grids.base.GridBase`):
-            The underlying grid defining the discretization
-        data (:class:`~numpy.ndarray`):
-            Tensor components at the support points of the grid
-        label (str):
-            Name of the field
-    """
+    """Tensor field of rank 2 discretized on a grid"""
 
     rank = 2
 
@@ -45,7 +38,7 @@ class Tensor2Field(DataFieldBase):
         *,
         label: str = None,
         dtype=None,
-    ) -> "Tensor2Field":
+    ) -> Tensor2Field:
         """create a tensor field on a grid from given expressions
 
         Warning:
@@ -139,12 +132,12 @@ class Tensor2Field(DataFieldBase):
 
     def dot(
         self,
-        other: Union[VectorField, "Tensor2Field"],
-        out: Optional[Union[VectorField, "Tensor2Field"]] = None,
+        other: Union[VectorField, Tensor2Field],
+        out: Optional[Union[VectorField, Tensor2Field]] = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
-    ) -> Union[VectorField, "Tensor2Field"]:
+    ) -> Union[VectorField, Tensor2Field]:
         """calculate the dot product involving a tensor field
 
         This supports the dot product between two tensor fields as well as the
@@ -362,7 +355,7 @@ class Tensor2Field(DataFieldBase):
         """:class:`~numpy.ndarray`: integral of each component over space"""
         return self.grid.integrate(self.data)
 
-    def transpose(self, label: str = "transpose") -> "Tensor2Field":
+    def transpose(self, label: str = "transpose") -> Tensor2Field:
         """return the transpose of the tensor field
 
         Args:
@@ -376,7 +369,7 @@ class Tensor2Field(DataFieldBase):
 
     def symmetrize(
         self, make_traceless: bool = False, inplace: bool = False
-    ) -> "Tensor2Field":
+    ) -> Tensor2Field:
         """symmetrize the tensor field in place
 
         Args:
@@ -401,7 +394,7 @@ class Tensor2Field(DataFieldBase):
             dim = self.grid.dim
             value = self.trace() / dim
             for i in range(dim):
-                out._data[i, i] -= value.data
+                out.data[i, i] -= value.data
         return out
 
     def to_scalar(

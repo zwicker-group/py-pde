@@ -562,36 +562,37 @@ class GridBase(metaclass=ABCMeta):
 
     @cached_method()
     @fill_in_docstring
-    def get_operator(self, name: str, bc: "Boundaries", **kwargs) -> OperatorType:
+    def get_operator(self, name: str, bc: "BoundariesData", **kwargs) -> OperatorType:
         """return a discretized operator defined on this grid
 
         Args:
             name (str):
-                Identifier for the operator. Some examples are 'laplace',
-                'gradient', or 'divergence'. The registered operators for this
-                grid can be obtained from the
-                :attr:`~pde.grids.base.GridBase.operators` attribute.
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             **kwargs:
-                Specifies extra arguments that can influence how the operator
-                is created. Many operators support a `method` argument that can
-                typically be set to 'numba', 'scipy', or `auto`.
+                Specifies extra arguments that can influence how the operator is
+                created. Many operators support a `method` argument that can typically
+                be set to 'numba', 'scipy', or `auto`.
 
         Returns:
-            A function that takes the discretized data as an input and returns
-            the data to which the operator `name` has been applied. This
-            function optionally supports a second argument, which provides
-            allocated memory for the output.
+            A function that takes the discretized data as an input and returns the data
+            to which the operator `name` has been applied. This function optionally
+            supports a second argument, which provides allocated memory for the output.
         """
         # obtain all parent classes, except `object`
         classes = inspect.getmro(self.__class__)[:-1]
         for cls in classes:
             if name in cls._operators:  # type: ignore
                 operator = cls._operators[name]  # type: ignore
+                # determine the rank of the boundary condition of this operator
                 rank = min(operator.rank_in, operator.rank_out)
+                # obtain the correct boundary conditions for this operator
                 bcs = self.get_boundary_conditions(bc, rank=rank)
+                # instantiate the operator
                 return operator.factory(bcs, **kwargs)  # type: ignore
 
         # operator was not found

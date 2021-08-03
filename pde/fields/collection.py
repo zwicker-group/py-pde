@@ -5,6 +5,8 @@ grid.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Union
@@ -227,7 +229,7 @@ class FieldCollection(FieldBase):
     @classmethod
     def from_state(
         cls, attributes: Dict[str, Any], data: np.ndarray = None
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """create a field collection from given state.
 
         Args:
@@ -255,7 +257,7 @@ class FieldCollection(FieldBase):
         return collection
 
     @classmethod
-    def _from_hdf_dataset(cls, dataset) -> "FieldCollection":
+    def _from_hdf_dataset(cls, dataset) -> FieldCollection:
         """construct the class by reading data from an hdf5 dataset"""
         # copy attributes from hdf
         attributes = dict(dataset.attrs)
@@ -311,7 +313,7 @@ class FieldCollection(FieldBase):
         label: str = None,
         labels: Optional[Sequence[str]] = None,
         dtype=None,
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """create a field collection on a grid from given expressions
 
         Warning:
@@ -357,7 +359,7 @@ class FieldCollection(FieldBase):
         vmax: float = 1,
         label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """create scalar fields with random values between `vmin` and `vmax`
 
         Args:
@@ -422,18 +424,20 @@ class FieldCollection(FieldBase):
         return results
 
     def copy(
-        self: "FieldCollection",
+        self: FieldCollection,
         *,
         data_full: Union[ArrayLike, str] = "copy",
         label: str = None,
         dtype=None,
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """return a copy of the data, but not of the grid
 
         Args:
-            data_full (:class:`~numpy.ndarray`, optional):
-                Data values at the support points of the grid that define the
-                field. Note that the data is not copied but used directly.
+            data_full (:class:`~numpy.ndarray`, str):
+                Data values at the support points of the grid that define the field.
+                Special values are "copy", copying the current data, "zeros",
+                initializing the copy with zeros, and "empty", just allocating memory
+                with unspecified values.
             label (str, optional):
                 Name of the copied field
             dtype (numpy dtype):
@@ -444,16 +448,21 @@ class FieldCollection(FieldBase):
             label = self.label
         fields = [f.copy() for f in self.fields]
 
-        if data_full == "empty":
-            data: Optional[np.ndarray] = np.empty_like(self._data_full, dtype=dtype)
-        elif data_full == "zeros":
-            data = np.zeros_like(self._data_full, dtype=dtype)
-        elif data_full == "ones":
-            data = np.ones_like(self._data_full, dtype=dtype)
-        elif data_full == "copy":
-            # The data of the individual fields is copied in their copy() method above.
-            # The underlying data is therefore independent from the current field
-            data = None
+        if isinstance(data_full, str):
+            if dtype is None:
+                dtype = self.dtype  # use current dtype in copy when none is supplied
+            if data_full == "empty":
+                data: Optional[np.ndarray] = np.empty_like(self._data_full, dtype=dtype)
+            elif data_full == "zeros":
+                data = np.zeros_like(self._data_full, dtype=dtype)
+            elif data_full == "ones":
+                data = np.ones_like(self._data_full, dtype=dtype)
+            elif data_full == "copy":
+                # The data of the individual fields is copied in their copy() method above.
+                # The underlying data is therefore independent from the current field
+                data = None
+            else:
+                raise ValueError(f"Unknown data '{data}'")
         else:
             data = number_array(data_full, dtype=dtype, copy=True)
 
@@ -469,7 +478,7 @@ class FieldCollection(FieldBase):
         method: str = "linear",
         fill: Number = None,
         label: Optional[str] = None,
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """interpolate the data of this field collection to another grid.
 
         Args:
@@ -491,7 +500,7 @@ class FieldCollection(FieldBase):
                 Name of the returned field collection
 
         Returns:
-            FieldCollection: Interpolated data
+            :class:`~pde.fields.coolection.FieldCollection`: Interpolated data
         """
         if label is None:
             label = self.label
@@ -505,9 +514,9 @@ class FieldCollection(FieldBase):
         self,
         sigma: float = 1,
         *,
-        out: Optional["FieldCollection"] = None,
+        out: Optional[FieldCollection] = None,
         label: str = None,
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """applies Gaussian smoothing with the given standard deviation
 
         This function respects periodic boundary conditions of the underlying

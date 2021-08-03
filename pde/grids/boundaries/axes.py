@@ -243,24 +243,24 @@ class Boundaries(list):
         """Domain: with differentiated versions of all boundary conditions"""
         return self.__class__([b.differentiated for b in self])
 
-    def set_boundary_values(self, data_full: np.ndarray) -> None:
-        """set the boundary values on virtual points for all boundaries
+    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+        """set the ghost cells for all boundaries
 
         Args:
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
         for b in self:
-            b.set_boundary_values(data_full)
+            b.set_ghost_cells(data_full)
 
-    def make_bc_setter(self) -> Callable[[np.ndarray], None]:
-        """return function that sets the boundary conditions on a full array"""
-        bc_setters = tuple(b.make_bc_setter() for b in self)
+    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the ghost cells on a full array"""
+        ghost_cell_setters = tuple(b.make_ghost_cell_setter() for b in self)
 
         @register_jitable
-        def bc_setter(data_full: np.ndarray) -> None:
+        def ghost_cell_setter(data_full: np.ndarray) -> None:
             """helper function setting the conditions on all axes"""
-            for set_bc in literal_unroll(bc_setters):
+            for set_bc in literal_unroll(ghost_cell_setters):
                 set_bc(data_full)
 
-        return bc_setter  # type: ignore
+        return ghost_cell_setter  # type: ignore
