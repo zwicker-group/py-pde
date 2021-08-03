@@ -13,10 +13,9 @@ sys.path.append(str(PACKAGE_PATH))
 import numba
 import numpy as np
 
-from pde import config
-from pde.grids import CylindricalSymGrid, SphericalSymGrid, UnitGrid
+from pde import config, ScalarField, CylindricalSymGrid, SphericalSymGrid, UnitGrid
 from pde.grids.boundaries import Boundaries
-from pde.grids.operators import cartesian, cylindrical_sym, spherical_sym
+from pde.grids.operators import cylindrical_sym, spherical_sym
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit, jit_allocate_out
 
@@ -91,7 +90,7 @@ def custom_laplace_2d(shape, periodic, dx=1):
 def flexible_laplace_2d(bcs):
     """make laplace operator with flexible boundary conditions"""
     bc_x, bc_y = bcs
-    dx = bcs._uniform_discretization
+    dx = np.mean(bcs.grid.discretization)
     dx_2 = 1 / dx ** 2
     dim_x, dim_y = bcs.grid.shape
 
@@ -166,24 +165,32 @@ def main():
 
     # Cartesian grid with different shapes and boundary conditions
     for shape in [(32, 32), (512, 512)]:
-        data = np.random.random(shape)
         for periodic in [True, False]:
             grid = UnitGrid(shape, periodic=periodic)
-            bcs = Boundaries.from_data(grid, "natural")
             print(grid)
-            result = cartesian.make_laplace(bcs, method="scipy")(data)
+            field = ScalarField.random_normal(grid)
+            bcs = grid.get_boundary_conditions("natural", rank=0)
+            result = field.laplace("natural")
 
-            for method in ["FLEXIBLE", "CUSTOM", "numba", "matrix", "scipy"]:
+            for method in ["FLEXIBLE", "CUSTOM", "numba", "scipy"]:
                 if method == "FLEXIBLE":
                     laplace = flexible_laplace_2d(bcs)
+                    data = field.data
                 elif method == "CUSTOM":
                     laplace = custom_laplace_2d(shape, periodic=periodic)
-                elif method in {"numba", "matrix", "scipy"}:
-                    laplace = cartesian.make_laplace(bcs, method=method)
+                    data = field.data
+                elif method in {"numba", "scipy"}:
+                    laplace = grid.make_operator("laplace", bc=bcs, method=method)
+                    data = np.empty(tuple(s + 2 for s in grid.shape))
+                    data[1:-1, 1:-1] = field.data
                 else:
                     raise ValueError(f"Unknown method `{method}`")
+
                 # call once to pre-compile and test result
-                np.testing.assert_allclose(laplace(data), result)
+                if method in {"numba", "scipy"}:
+                    np.testing.assert_allclose(laplace(data)[1:-1, 1:-1], result.data)
+                else:
+                    np.testing.assert_allclose(laplace(data), result.data)
                 speed = estimate_computation_speed(laplace, data)
                 print(f"{method:>8s}: {int(speed):>9d}")
             print()

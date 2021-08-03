@@ -9,9 +9,19 @@ import warnings
 
 import numpy as np
 
+from ..base import GridBase
 from ...tools.typing import OperatorType
 
 logger = logging.getLogger(__name__)
+
+
+def uniform_discretization(grid: GridBase) -> float:
+    """returns the uniform discretization or raises RuntimeError"""
+    dx_mean = np.mean(grid.discretization)
+    if np.allclose(grid.discretization, dx_mean):
+        return float(dx_mean)
+    else:
+        raise RuntimeError("Grid discretization is not uniform")
 
 
 def make_laplace_from_matrix(matrix, vector) -> OperatorType:

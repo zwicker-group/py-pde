@@ -9,7 +9,6 @@ This module handles the boundaries of all axes of a grid. It only defines
 from typing import Callable, List, Sequence, Union
 
 import numpy as np
-from numba import literal_unroll
 from numba.extending import register_jitable
 
 from ..base import GridBase, PeriodicityError
@@ -219,15 +218,6 @@ class Boundaries(list):
                 raise RuntimeError("Incompatible dimensions")
         return mode
 
-    @property
-    def _uniform_discretization(self) -> float:
-        """float: returns the uniform discretization or raises RuntimeError"""
-        dx_mean = np.mean(self.grid.discretization)
-        if np.allclose(self.grid.discretization, dx_mean):
-            return float(dx_mean)
-        else:
-            raise RuntimeError("Grid discretization is not uniform")
-
     def extract_component(self, *indices) -> "Boundaries":
         """extracts the boundary conditions of the given component of the tensor.
 
@@ -255,12 +245,28 @@ class Boundaries(list):
 
     def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
         """return function that sets the ghost cells on a full array"""
-        ghost_cell_setters = tuple(b.make_ghost_cell_setter() for b in self)
+        ghost_cell_setters = [b.make_ghost_cell_setter() for b in self]
 
-        @register_jitable
-        def ghost_cell_setter(data_full: np.ndarray) -> None:
-            """helper function setting the conditions on all axes"""
-            for set_bc in literal_unroll(ghost_cell_setters):
-                set_bc(data_full)
+        def chain(fs, inner=None):
+            """helper function composing setters of all axes recursively"""
+            first, rest = fs[0], fs[1:]
 
-        return ghost_cell_setter  # type: ignore
+            if inner:
+
+                @register_jitable
+                def wrap(data_full: np.ndarray) -> None:
+                    inner(data_full)
+                    first(data_full)
+
+            else:
+
+                @register_jitable
+                def wrap(data_full: np.ndarray) -> None:
+                    first(data_full)
+
+            if rest:
+                return chain(rest, wrap)
+            else:
+                return wrap
+
+        return chain(ghost_cell_setters)

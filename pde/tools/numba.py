@@ -408,6 +408,33 @@ def construct_array(
     return data
 
 
+def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
+    """returns an array within a jitted function using basic information
+
+    Args:
+        arr (:class:`~numpy.ndarray`): The array that should be accessible within jit
+
+    Warning:
+        A reference to the array needs to be retained outside the numba code to prevent
+        garbage collection from removing the array
+    """
+
+    data_addr = arr.__array_interface__["data"][0]
+    strides = arr.__array_interface__["strides"]
+    shape = arr.__array_interface__["shape"]
+    dtype = arr.dtype
+
+    @register_jitable
+    def array_constructor():
+        """helper that reconstructs the array from the pointer and structural info"""
+        data: np.ndarray = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
+        if strides is not None:
+            data = np.lib.index_tricks.as_strided(data, shape, strides)
+        return data
+
+    return array_constructor
+
+
 @nb.generated_jit(nopython=True)
 def convert_scalar(arr):
     """helper function that turns 0d-arrays into scalars

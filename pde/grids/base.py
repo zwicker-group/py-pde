@@ -33,7 +33,7 @@ import numpy as np
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, classproperty
-from ..tools.numba import jit
+from ..tools.numba import jit, jit_allocate_out
 from ..tools.typing import FloatNumerical, NumberOrArray, OperatorType
 
 if TYPE_CHECKING:
@@ -601,6 +601,74 @@ class GridBase(metaclass=ABCMeta):
             f"'{name}' is not one of the defined operators ({op_list}). Custom "
             "operators can be added using the `register_operator` method."
         )
+
+    @cached_method()
+    @fill_in_docstring
+    def make_operator(
+        self, name: str, bc: "BoundariesData", method: str = "numba", **kwargs
+    ) -> OperatorType:
+        """return a compiled function applying a discretized operator for this grid
+
+        Args:
+            name (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            bc (str or list or tuple or dict):
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES}
+            **kwargs:
+                Specifies extra arguments influencing how the operator is created.
+
+        Returns:
+            A function that takes the discretized data as an input and returns the data
+            to which the operator `name` has been applied. This function optionally
+            supports a second argument, which provides allocated memory for the output.
+        """
+        # obtain all parent classes, except `object`
+        classes = inspect.getmro(self.__class__)[:-1]
+        for cls in classes:
+            if name in cls._operators:  # type: ignore
+                operator = cls._operators[name]  # type: ignore
+                # determine the rank of the boundary condition of this operator
+                bc_rank = min(operator.rank_in, operator.rank_out)
+                # instantiate the operator
+                apply_operator = operator.factory(self, method=method, **kwargs)  # type: ignore
+                break
+        else:
+            # operator was not found
+            op_list = ", ".join(sorted(self.operators))
+            raise ValueError(
+                f"'{name}' is not one of the defined operators ({op_list}). Custom "
+                "operators can be added using the `register_operator` method."
+            )
+
+        # obtain the correct boundary conditions for this operator
+        bcs = self.get_boundary_conditions(bc, rank=bc_rank)
+
+        if method == "numba":
+            set_ghost_cells = bcs.make_ghost_cell_setter()
+
+            #TODO: pre-calculate output shape
+
+            @jit_allocate_out
+            def apply_operator_with_bc(
+                arr: np.ndarray, out: np.ndarray = None
+            ) -> np.ndarray:
+                """applies operator to the data"""
+                set_ghost_cells(arr)
+                apply_operator(arr, out)
+                return out
+
+        elif method == "scipy":
+
+            def apply_operator_with_bc(
+                arr: np.ndarray, out: np.ndarray = None
+            ) -> np.ndarray:
+                bcs.set_ghost_cells(arr)
+                return apply_operator(arr, out)
+
+        return apply_operator_with_bc
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":
         """return a subgrid of only the specified axes"""
