@@ -9,7 +9,7 @@ non-periodic axes have more option, which are represented by
 :class:`~pde.grids.boundaries.axis.BoundaryPair`.
 """
 
-from typing import Callable, Dict, Tuple, Union
+from typing import Callable, Dict, List, Tuple, Union
 
 import numpy as np
 from numba.extending import register_jitable
@@ -442,6 +442,30 @@ class BoundaryPair(BoundaryAxisBase):
 
         return deriv_evaluator  # type: ignore
 
+    def set_boundary_values(self, data_full: np.ndarray) -> None:
+        """set the boundary values on virtual points for all boundaries
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        self.low.set_boundary_values(data_full)
+        self.high.set_boundary_values(data_full)
+
+    def make_bc_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the BCs for this axis on a full array"""
+
+        bc_setter_low = self.low.make_bc_setter()
+        bc_setter_high = self.high.make_bc_setter()
+
+        @register_jitable
+        def bc_setter(data_full: np.ndarray) -> None:
+            """helper function setting the conditions on all axes"""
+            bc_setter_low(data_full)
+            bc_setter_high(data_full)
+
+        return bc_setter  # type: ignore
+
 
 class BoundaryPeriodic(BoundaryAxisBase):
     """represent a periodic axis"""
@@ -680,6 +704,60 @@ class BoundaryPeriodic(BoundaryAxisBase):
             raise NotImplementedError(f"Derivative of oder {order} not implemented")
 
         return deriv_evaluator  # type: ignore
+
+    def set_boundary_values(self, data_full: np.ndarray) -> None:
+        """set the boundary values on virtual points for all boundaries
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        idx_read: List[Union[int, slice]] = [slice(1, -1)] * self.grid.num_axes
+        idx_write = idx_read[:]
+
+        # set lower BC
+        idx_write[self.axis] = 0
+        idx_read[self.axis] = -2
+        data_full[tuple(idx_write)] = data_full[tuple(idx_read)]
+
+        # set upper BC
+        idx_write[self.axis] = -1
+        idx_read[self.axis] = 1
+        data_full[tuple(idx_write)] = data_full[tuple(idx_read)]
+
+    def make_bc_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the BCs for this axis on a full array"""
+        # calculate the axis of this BC (counting from the back)
+        axis_back = self.grid.num_axes - self.axis
+
+        if axis_back == 1:
+
+            @register_jitable
+            def bc_setter(data_full: np.ndarray) -> None:
+                """helper function setting the conditions on all axes"""
+                data_full[..., 0] = data_full[..., -2]
+                data_full[..., -1] = data_full[..., 1]
+
+        elif axis_back == 2:
+
+            @register_jitable
+            def bc_setter(data_full: np.ndarray) -> None:
+                """helper function setting the conditions on all axes"""
+                data_full[..., 0, :] = data_full[..., -2, :]
+                data_full[..., -1, :] = data_full[..., 1, :]
+
+        elif axis_back == 3:
+
+            @register_jitable
+            def bc_setter(data_full: np.ndarray) -> None:
+                """helper function setting the conditions on all axes"""
+                data_full[..., 0, :, :] = data_full[..., -2, :, :]
+                data_full[..., -1, :, :] = data_full[..., 1, :, :]
+
+        else:
+            raise NotImplementedError("Grids with more than 3 axes are not supported")
+
+        return bc_setter  # type: ignore
 
 
 def get_boundary_axis(

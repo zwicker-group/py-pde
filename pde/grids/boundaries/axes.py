@@ -6,9 +6,11 @@ This module handles the boundaries of all axes of a grid. It only defines
 :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`.
 """
 
-from typing import List, Sequence, Union
+from typing import Callable, List, Sequence, Union
 
 import numpy as np
+from numba import literal_unroll
+from numba.extending import register_jitable
 
 from ..base import GridBase, PeriodicityError
 from .axis import BoundaryPair, BoundaryPairData, get_boundary_axis
@@ -240,3 +242,25 @@ class Boundaries(list):
     def differentiated(self) -> "Boundaries":
         """Domain: with differentiated versions of all boundary conditions"""
         return self.__class__([b.differentiated for b in self])
+
+    def set_boundary_values(self, data_full: np.ndarray) -> None:
+        """set the boundary values on virtual points for all boundaries
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        for b in self:
+            b.set_boundary_values(data_full)
+
+    def make_bc_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the boundary conditions on a full array"""
+        bc_setters = tuple(b.make_bc_setter() for b in self)
+
+        @register_jitable
+        def bc_setter(data_full: np.ndarray) -> None:
+            """helper function setting the conditions on all axes"""
+            for set_bc in literal_unroll(bc_setters):
+                set_bc(data_full)
+
+        return bc_setter  # type: ignore
