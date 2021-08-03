@@ -165,7 +165,7 @@ class ScalarField(DataFieldBase):
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
         """
         self.set_ghost_cells(bc)
-        laplace = self.grid.get_operator("laplace", bc=bc)
+        laplace = self.grid.make_operator("laplace", bc=bc)
         return self._apply_with_out(laplace, ScalarField, out=out, label=label)
 
     @fill_in_docstring

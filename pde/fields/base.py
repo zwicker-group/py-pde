@@ -32,7 +32,7 @@ from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
-from ..tools.numba import construct_array, jit
+from ..tools.numba import make_array_constructor, jit
 from ..tools.plotting import (
     PlotReference,
     napari_add_layers,
@@ -1178,10 +1178,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         )
 
         # extract information about the data field
-        data_addr = self.data.__array_interface__["data"][0]
-        strides = self.data.__array_interface__["strides"]
-        shape = self.data.__array_interface__["shape"]
-        dtype = self.data.dtype
+        get_data_array = make_array_constructor(self.data)
 
         @jit
         def interpolator(point: np.ndarray, data: np.ndarray = None) -> np.ndarray:
@@ -1208,7 +1205,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             # reconstruct data field from memory address
             if data is None:
-                data = construct_array(data_addr, dtype, shape, strides)
+                data = get_data_array()
 
             # interpolate at every point
             out = np.empty(data_shape + point_shape, dtype=data.dtype)
@@ -1605,7 +1602,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 out.label = label
 
         # apply the function
-        func(self.data, out=out.data)  # type: ignore
+        func(self._data_full, out=out._data_full)  # type: ignore
         return out
 
     def smooth(
