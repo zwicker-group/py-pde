@@ -726,6 +726,96 @@ class BCBase(metaclass=ABCMeta):
         """BCBase: differentiated version of this boundary condition"""
         raise NotImplementedError
 
+    @abstractmethod
+    def set_boundary_values(self, data_full: np.ndarray) -> None:
+        """set the boundary values on virtual points for all boundaries
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+
+    def make_bc_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the BCs for this axis on a full array"""
+
+        # get shape of grid and index of the virtual point
+        axis = self.axis
+
+        vp_idx = self.grid.shape[axis] + 1 if self.upper else 0
+        vp_value = self.make_virtual_point_evaluator()
+
+        if self.grid.num_axes == 1:  # 1d grid
+
+            @register_jitable
+            def bc_setter(data_full: np.ndarray) -> None:
+                """helper function setting the conditions on all axes"""
+                data_full[..., vp_idx] = vp_value(data_full[..., 1:-1], (vp_idx,))
+
+        elif self.grid.num_axes == 2:  # 2d grid
+
+            if axis == 0:
+                num_y = self.grid.shape[1]
+
+                @register_jitable
+                def bc_setter(data_full: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for j in range(num_y):
+                        val = vp_value(data_full[..., 1:-1, 1:-1], (vp_idx, j))
+                        data_full[..., vp_idx, j + 1] = val
+
+            elif axis == 1:
+                num_x = self.grid.shape[0]
+
+                @register_jitable
+                def bc_setter(data_full: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for i in range(num_x):
+                        val = vp_value(data_full[..., 1:-1, 1:-1], (i, vp_idx))
+                        data_full[..., i + 1, vp_idx] = val
+
+        elif self.grid.num_axes == 3:  # 3d grid
+
+            if axis == 0:
+                num_y, num_z = self.grid.shape[1:]
+
+                @register_jitable
+                def bc_setter(data_full: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for j in range(num_y):
+                        for k in range(num_z):
+                            arr = data_full[..., 1:-1, 1:-1, 1:-1]
+                            val = vp_value(arr, (vp_idx, j, k))
+                            data_full[..., vp_idx, j + 1, k + 1] = val
+
+            elif axis == 1:
+                num_x, num_z = self.grid.shape[0], self.grid.shape[2]
+
+                @register_jitable
+                def bc_setter(data_full: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for i in range(num_x):
+                        for k in range(num_z):
+                            arr = data_full[..., 1:-1, 1:-1, 1:-1]
+                            val = vp_value(arr, (i, vp_idx, k))
+                            data_full[..., i + 1, vp_idx, k + 1] = val
+
+            elif axis == 1:
+                num_x, num_y = self.grid.shape[:2]
+
+                @register_jitable
+                def bc_setter(data_full: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for i in range(num_x):
+                        for j in range(num_y):
+                            arr = data_full[..., 1:-1, 1:-1, 1:-1]
+                            val = vp_value(arr, (i, j, vp_idx))
+                            data_full[..., i + 1, j + 1, vp_idx] = val
+
+        else:
+            raise NotImplementedError("Too many axes")
+
+        return bc_setter  # type: ignore
+
 
 class BCBase1stOrder(BCBase):
     """represents a single boundary in an BoundaryPair instance"""
@@ -818,7 +908,7 @@ class BCBase1stOrder(BCBase):
         if self.homogeneous:
 
             @register_jitable(inline="always")
-            def virtual_point(arr, idx: Tuple[int, ...]) -> float:
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
                 return const() + factor() * arr_1d[..., index]  # type: ignore
@@ -826,7 +916,7 @@ class BCBase1stOrder(BCBase):
         else:
 
             @register_jitable(inline="always")
-            def virtual_point(arr, idx: Tuple[int, ...]) -> float:
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
                 return (  # type: ignore
@@ -910,6 +1000,25 @@ class BCBase1stOrder(BCBase):
                 return c[bc_idx] + f[bc_idx] * arr_1d[..., i]  # type: ignore
 
         return adjacent_point  # type: ignore
+
+    def set_boundary_values(self, data_full: np.ndarray) -> None:
+        """set the boundary values on virtual points for all boundaries
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        # calculate necessary constants
+        const, factor, index = self.get_virtual_point_data()
+
+        # prepare the array of slices to index bcs
+        idx_write: List[Union[int, slice]] = [slice(1, -1)] * self.grid.num_axes
+        idx_write[self.axis] = -1 if self.upper else 0
+        idx_read = idx_write[:]
+        idx_read[self.axis] = index + 1
+
+        # calculate the virtual points
+        data_full[tuple(idx_write)] = const + factor * data_full[tuple(idx_read)]
 
 
 class DirichletBC(BCBase1stOrder):
@@ -1428,6 +1537,31 @@ class BCBase2ndOrder(BCBase):
                 )
 
         return adjacent_point  # type: ignore
+
+    def set_boundary_values(self, data_full: np.ndarray) -> None:
+        """set the boundary values on virtual points for all boundaries
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        # calculate necessary constants
+        data = self.get_virtual_point_data()
+
+        # prepare the array of slices to index bcs
+        idx_write: List[Union[int, slice]] = [slice(1, -1)] * self.grid.num_axes
+        idx_write[self.axis] = -1 if self.upper else 0
+        idx_1 = idx_write[:]
+        idx_1[self.axis] = data[2] + 1
+        idx_2 = idx_write[:]
+        idx_2[self.axis] = data[4] + 1
+
+        # calculate the virtual points
+        data_full[tuple(idx_write)] = (
+            data[0]
+            + data[1] * data_full[tuple(idx_1)]
+            + data[3] * data_full[tuple(idx_2)]
+        )
 
 
 class ExtrapolateBC(BCBase2ndOrder):

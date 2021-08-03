@@ -25,6 +25,7 @@ from typing import (
 import numpy as np
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
+from ..grids.boundaries import Boundaries
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
@@ -1485,11 +1486,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 return res
             else:
                 # the following just copies the data from res to out. It is a
-                # workaround for a bug in numba existing up to at least ver 0.49
+                # workaround for a bug in numba existing up to at least version 0.49
                 out[...] = res[()]
                 return out
 
         return get_boundary_values  # type: ignore
+
+    @fill_in_docstring
+    def set_boundary_values(self, bc: Boundaries) -> None:
+        """set the boundary values on virtual points for all boundaries
+
+        Args:
+            bc (str or list or tuple or dict):
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES}
+        """
+        bcs = self.grid.get_boundary_conditions(bc, rank=self.rank)
+        bcs.set_boundary_values(self._data_full)
 
     @abstractproperty
     def integral(self) -> NumberOrArray:
