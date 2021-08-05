@@ -6,7 +6,7 @@ Defines a tensorial field of rank 2 over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Tuple, Union
 
 import numba as nb
 import numpy as np
@@ -15,6 +15,7 @@ from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.numba import get_common_numba_dtype, jit
+from ..tools.plotting import PlotReference, plot_on_figure
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
@@ -495,3 +496,59 @@ class Tensor2Field(DataFieldBase):
             :class:`~pde.fields.scalar.ScalarField`: scalar field of traces
         """
         return self.to_scalar(scalar="trace", label=label)
+
+    def _update_plot_components(self, reference: List[List[PlotReference]]) -> None:
+        """update a plot collection with the current field values
+
+        Args:
+            reference (list of :class:`PlotReference`):
+                All references of the plot to update
+        """
+        for i in range(self.grid.dim):
+            for j in range(self.grid.dim):
+                self[i, j]._update_plot(reference[i][j])
+
+    @plot_on_figure(update_method="_update_plot_components")
+    def plot_components(
+        self,
+        kind: str = "auto",
+        fig=None,
+        **kwargs,
+    ) -> List[List[PlotReference]]:
+        r"""visualize all the components of this tensor field
+
+        Args:
+            kind (str or list of str):
+                Determines the kind of the visualizations. Supported values are `image`
+                or `line`. Alternatively, `auto` determines the best visualization based
+                on the grid.
+            {PLOT_ARGS}
+            \**kwargs:
+                All additional keyword arguments are forwarded to the actual plotting
+                function of all subplots.
+
+        Returns:
+            2d list of :class:`PlotReference`: Instances that contain information
+            to update all the plots with new data later.
+        """
+        # create all the subpanels
+        dim = self.grid.dim
+        axs = fig.subplots(nrows=dim, ncols=dim, squeeze=False)
+
+        # plot all the elements onto the respective axes
+        kwargs.setdefault("action", "create")
+        kwargs["kind"] = kind
+        comps = self.grid.axes + self.grid.axes_symmetric
+        references = [
+            [
+                self[i, j].plot(
+                    ax=axs[i][j],
+                    title=f"{comps[i]}{comps[j]} Component",
+                    **kwargs,
+                )
+                for j in range(dim)
+            ]
+            for i in range(dim)
+        ]
+        # return the references for all subplots
+        return references

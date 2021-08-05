@@ -16,10 +16,11 @@ This module implements differential operators on Cartesian grids
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>   
 """
 
-from typing import Tuple
+from typing import Callable, Tuple
 
 import numba as nb
 import numpy as np
+from numba.extending import register_jitable
 
 from ... import config
 from ...tools.numba import jit
@@ -911,104 +912,39 @@ def make_divergence(grid: CartesianGridBase, backend: str = "auto") -> OperatorT
     return divergence
 
 
-def _make_vector_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
-    """make a vector gradient operator using the scipy module
+def _vectorize_operator(
+    make_operator: Callable, grid: CartesianGridBase, *, backend: str = "numba"
+) -> OperatorType:
+    """apply an operator to on all dimensions of a vector
 
     Args:
+        make_operator (callable):
+            The function that creates the basic operator
         grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
             The grid for which the operator is created
+        backend (str):
+            Backend used for calculating the vector gradient operator.
 
     Returns:
         A function that can be applied to an array of values
     """
-    from scipy import ndimage
-
-    scaling = 0.5 / grid.discretization
     dim = grid.dim
-    shape_out = (dim, dim) + grid._shape_full
+    operator = make_operator(grid, backend=backend)
 
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
+    def vectorized_operator(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector gradient operator to array `arr`"""
-        assert arr.shape == shape_out[1:]
-        if out is None:
-            out = np.empty(shape_out)
-        else:
-            assert out.shape == shape_out
-
         for i in range(dim):
-            for j in range(dim):
-                conv = ndimage.convolve1d(arr[j], [1, 0, -1], axis=i)
-                out[i, j] = conv * scaling[i]
+            operator(arr[i], out[i])
 
-    return vector_gradient
-
-
-def _make_vector_gradient_numba_1d(grid: CartesianGridBase) -> OperatorType:
-    """make a 1d vector gradient operator using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    gradient = _make_gradient_numba_1d(grid)
-
-    @jit
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
-        gradient(arr[0], out[0])
-
-    return vector_gradient  # type: ignore
-
-
-def _make_vector_gradient_numba_2d(grid: CartesianGridBase) -> OperatorType:
-    """make a 2d vector gradient operator using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    gradient = _make_gradient_numba_2d(grid)
-
-    @jit
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
-        gradient(arr[0], out[:, 0])
-        gradient(arr[1], out[:, 1])
-
-    return vector_gradient  # type: ignore
-
-
-def _make_vector_gradient_numba_3d(grid: CartesianGridBase) -> OperatorType:
-    """make a 3d vector gradient operator using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    gradient = _make_gradient_numba_3d(grid)
-
-    @jit
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
-        gradient(arr[0], out[:, 0])
-        gradient(arr[1], out[:, 1])
-        gradient(arr[2], out[:, 2])
-
-    return vector_gradient  # type: ignore
+    if backend == "numba":
+        return register_jitable(vectorized_operator)  # type: ignore
+    else:
+        return vectorized_operator
 
 
 @CartesianGridBase.register_operator("vector_gradient", rank_in=1, rank_out=2)
 def make_vector_gradient(
-    grid: CartesianGridBase, backend: str = "auto"
+    grid: CartesianGridBase, backend: str = "numba"
 ) -> OperatorType:
     """make a vector gradient operator on a Cartesian grid
 
@@ -1017,137 +953,17 @@ def make_vector_gradient(
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the vector gradient operator.
-            If backend='auto', a suitable backend is chosen automatically
 
     Returns:
         A function that can be applied to an array of values
     """
-    dim = grid.dim
-
-    # choose the fastest available vector gradient operator
-    if backend == "auto":
-        if 1 <= dim <= 3:
-            backend = "numba"
-        else:
-            backend = "scipy"
-
-    if backend == "numba":
-        if dim == 1:
-            gradient = _make_vector_gradient_numba_1d(grid)
-        elif dim == 2:
-            gradient = _make_vector_gradient_numba_2d(grid)
-        elif dim == 3:
-            gradient = _make_vector_gradient_numba_3d(grid)
-        else:
-            raise NotImplementedError(
-                f"Numba vector gradient operator not implemented for dimension {dim}"
-            )
-
-    elif backend == "scipy":
-        gradient = _make_vector_gradient_scipy_nd(grid)
-    else:
-        raise ValueError(f"Backend `{backend}` is not defined")
-
-    return gradient
-
-
-def _make_vector_laplace_scipy_nd(grid: CartesianGridBase) -> OperatorType:
-    """make a vector Laplacian using the scipy module
-
-    This only supports uniform discretizations.
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    from scipy import ndimage
-
-    scaling = uniform_discretization(grid) ** -2
-    dim = grid.dim
-    shape_out = (dim,) + grid._shape_full
-
-    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply vector Laplacian operator to array `arr`"""
-        assert arr.shape == shape_out
-        if out is None:
-            out = np.empty(shape_out)
-        else:
-            assert out.shape == shape_out
-
-        for i in range(dim):
-            ndimage.laplace(scaling * arr[i], output=out[i])
-
-    return vector_laplace
-
-
-def _make_vector_laplace_numba_1d(grid: CartesianGridBase) -> OperatorType:
-    """make a 1d vector Laplacian using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    laplace = _make_laplace_numba_1d(grid)
-
-    @jit
-    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply vector Laplacian to array `arr`"""
-        laplace(arr[0], out[0])
-
-    return vector_laplace  # type: ignore
-
-
-def _make_vector_laplace_numba_2d(grid: CartesianGridBase) -> OperatorType:
-    """make a 2d vector Laplacian using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    laplace = _make_laplace_numba_2d(grid)
-
-    @jit
-    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply vector Laplacian  to array `arr`"""
-        laplace(arr[0], out[0])
-        laplace(arr[1], out[1])
-
-    return vector_laplace  # type: ignore
-
-
-def _make_vector_laplace_numba_3d(grid: CartesianGridBase) -> OperatorType:
-    """make a 3d vector Laplacian using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    laplace = _make_laplace_numba_3d(grid)
-
-    @jit
-    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply vector Laplacian to array `arr`"""
-        laplace(arr[0], out[0])
-        laplace(arr[1], out[1])
-        laplace(arr[2], out[2])
-
-    return vector_laplace  # type: ignore
+    return _vectorize_operator(make_gradient, grid, backend=backend)
 
 
 @CartesianGridBase.register_operator("vector_laplace", rank_in=1, rank_out=1)
-def make_vector_laplace(grid: CartesianGridBase, backend: str = "auto") -> OperatorType:
+def make_vector_laplace(
+    grid: CartesianGridBase, backend: str = "numba"
+) -> OperatorType:
     """make a vector Laplacian on a Cartesian grid
 
     Args:
@@ -1155,140 +971,16 @@ def make_vector_laplace(grid: CartesianGridBase, backend: str = "auto") -> Opera
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the vector laplace operator.
-            If backend='auto', a suitable backend is chosen automatically.
 
     Returns:
         A function that can be applied to an array of values
     """
-    dim = grid.dim
-
-    # choose the fastest available vector gradient operator
-    if backend == "auto":
-        if 1 <= dim <= 3:
-            backend = "numba"
-        else:
-            backend = "scipy"
-
-    if backend == "numba":
-        if dim == 1:
-            gradient = _make_vector_laplace_numba_1d(grid)
-        elif dim == 2:
-            gradient = _make_vector_laplace_numba_2d(grid)
-        elif dim == 3:
-            gradient = _make_vector_laplace_numba_3d(grid)
-        else:
-            raise NotImplementedError(
-                f"Numba vector gradient operator not implemented for dimension {dim}"
-            )
-
-    elif backend == "scipy":
-        gradient = _make_vector_laplace_scipy_nd(grid)
-    else:
-        raise ValueError(f"Backend `{backend}` is not defined")
-
-    return gradient
-
-
-def _make_tensor_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
-    """make a tensor divergence operator using the scipy module
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    from scipy import ndimage
-
-    scaling = 0.5 / grid.discretization
-    dim = grid.dim
-    shape_out = (dim,) + grid._shape_full
-
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply tensor divergence operator to array `arr`"""
-        # need to initialize with zeros since data is added later
-        assert arr.shape[0] == dim and arr.shape[1:] == shape_out
-        if out is None:
-            out = np.zeros(shape_out)
-        else:
-            assert out.shape == shape_out
-            out[:] = 0
-
-        for i in range(dim):
-            for j in range(dim):
-                conv = ndimage.convolve1d(arr[i, j], [1, 0, -1], axis=j)
-                out[i] += conv * scaling[j]
-
-    return tensor_divergence
-
-
-def _make_tensor_divergence_numba_1d(grid: CartesianGridBase) -> OperatorType:
-    """make a 1d tensor divergence  operator using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    divergence = _make_divergence_numba_1d(grid)
-
-    @jit
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
-        divergence(arr[0], out[0])
-
-    return tensor_divergence  # type: ignore
-
-
-def _make_tensor_divergence_numba_2d(grid: CartesianGridBase) -> OperatorType:
-    """make a 2d tensor divergence  operator using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    divergence = _make_divergence_numba_2d(grid)
-
-    @jit
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
-        divergence(arr[0], out[0])
-        divergence(arr[1], out[1])
-
-    return tensor_divergence  # type: ignore
-
-
-def _make_tensor_divergence_numba_3d(grid: CartesianGridBase) -> OperatorType:
-    """make a 3d tensor divergence  operator using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
-
-    Returns:
-        A function that can be applied to an array of values
-    """
-    divergence = _make_divergence_numba_3d(grid)
-
-    @jit
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
-        divergence(arr[0], out[0])
-        divergence(arr[1], out[1])
-        divergence(arr[2], out[2])
-
-    return tensor_divergence  # type: ignore
+    return _vectorize_operator(make_laplace, grid, backend=backend)
 
 
 @CartesianGridBase.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 def make_tensor_divergence(
-    grid: CartesianGridBase, backend: str = "auto"
+    grid: CartesianGridBase, backend: str = "numba"
 ) -> OperatorType:
     """make a tensor divergence operator on a Cartesian grid
 
@@ -1297,38 +989,11 @@ def make_tensor_divergence(
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the tensor divergence operator.
-            If backend='auto', a suitable backend is chosen automatically.
 
     Returns:
         A function that can be applied to an array of values
     """
-    dim = grid.dim
-
-    # choose the fastest available tensor divergence operator
-    if backend == "auto":
-        if 1 <= dim <= 3:
-            backend = "numba"
-        else:
-            backend = "scipy"
-
-    if backend == "numba":
-        if dim == 1:
-            func = _make_tensor_divergence_numba_1d(grid)
-        elif dim == 2:
-            func = _make_tensor_divergence_numba_2d(grid)
-        elif dim == 3:
-            func = _make_tensor_divergence_numba_3d(grid)
-        else:
-            raise NotImplementedError(
-                f"Numba tensor divergence operator not implemented for dimension {dim}"
-            )
-
-    elif backend == "scipy":
-        func = _make_tensor_divergence_scipy_nd(grid)
-    else:
-        raise ValueError(f"Backend `{backend}` is not defined")
-
-    return func
+    return _vectorize_operator(make_divergence, grid, backend=backend)
 
 
 @CartesianGridBase.register_operator("poisson_solver", rank_in=0, rank_out=0)
