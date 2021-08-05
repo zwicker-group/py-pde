@@ -209,7 +209,7 @@ class StorageBase(metaclass=ABCMeta):
                 )
 
         # create the field with the data of the given index
-        field = self._field.copy(data_full="empty")
+        field = self._field.copy(data_all="empty")
         field.data = self.data[t_index]
         return field
 

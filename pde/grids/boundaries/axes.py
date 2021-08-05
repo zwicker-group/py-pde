@@ -233,15 +233,15 @@ class Boundaries(list):
         """Domain: with differentiated versions of all boundary conditions"""
         return self.__class__([b.differentiated for b in self])
 
-    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
         """set the ghost cells for all boundaries
 
         Args:
-            data_full (:class:`~numpy.ndarray`):
+            data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
         for b in self:
-            b.set_ghost_cells(data_full)
+            b.set_ghost_cells(data_all)
 
     def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
         """return function that sets the ghost cells on a full array"""
@@ -254,15 +254,15 @@ class Boundaries(list):
             if inner:
 
                 @register_jitable
-                def wrap(data_full: np.ndarray) -> None:
-                    inner(data_full)
-                    first(data_full)
+                def wrap(data_all: np.ndarray) -> None:
+                    inner(data_all)
+                    first(data_all)
 
             else:
 
                 @register_jitable
-                def wrap(data_full: np.ndarray) -> None:
-                    first(data_full)
+                def wrap(data_all: np.ndarray) -> None:
+                    first(data_all)
 
             if rest:
                 return chain(rest, wrap)

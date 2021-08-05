@@ -9,7 +9,7 @@ non-periodic axes have more option, which are represented by
 :class:`~pde.grids.boundaries.axis.BoundaryPair`.
 """
 
-from typing import Callable, Dict, List, Tuple, Union
+from typing import Callable, Dict, Tuple, Union
 
 import numpy as np
 from numba.extending import register_jitable
@@ -442,15 +442,15 @@ class BoundaryPair(BoundaryAxisBase):
 
         return deriv_evaluator  # type: ignore
 
-    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
         """set the ghost cell values for all boundaries
 
         Args:
-            data_full (:class:`~numpy.ndarray`):
+            data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
-        self.low.set_ghost_cells(data_full)
-        self.high.set_ghost_cells(data_full)
+        self.low.set_ghost_cells(data_all)
+        self.high.set_ghost_cells(data_all)
 
     def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
         """return function that sets the ghost cells for this axis on a full array"""
@@ -459,10 +459,10 @@ class BoundaryPair(BoundaryAxisBase):
         ghost_cell_setter_high = self.high.make_ghost_cell_setter()
 
         @register_jitable
-        def ghost_cell_setter(data_full: np.ndarray) -> None:
+        def ghost_cell_setter(data_all: np.ndarray) -> None:
             """helper function setting the conditions on all axes"""
-            ghost_cell_setter_low(data_full)
-            ghost_cell_setter_high(data_full)
+            ghost_cell_setter_low(data_all)
+            ghost_cell_setter_high(data_all)
 
         return ghost_cell_setter  # type: ignore
 
@@ -705,25 +705,26 @@ class BoundaryPeriodic(BoundaryAxisBase):
 
         return deriv_evaluator  # type: ignore
 
-    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
         """set the ghost cell values for all boundaries
 
         Args:
-            data_full (:class:`~numpy.ndarray`):
+            data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
-        idx_read: List[Union[int, slice]] = [slice(1, -1)] * self.grid.num_axes
-        idx_write = idx_read[:]
+        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
+        idx_read = idx_write[:]
 
         # set lower BC
-        idx_write[self.axis] = 0
-        idx_read[self.axis] = -2
-        data_full[tuple(idx_write)] = data_full[tuple(idx_read)]
+        idx_write[offset + self.axis] = 0
+        idx_read[offset + self.axis] = -2
+        data_all[tuple(idx_write)] = data_all[tuple(idx_read)]
 
         # set upper BC
-        idx_write[self.axis] = -1
-        idx_read[self.axis] = 1
-        data_full[tuple(idx_write)] = data_full[tuple(idx_read)]
+        idx_write[offset + self.axis] = -1
+        idx_read[offset + self.axis] = 1
+        data_all[tuple(idx_write)] = data_all[tuple(idx_read)]
 
     def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
         """return function that sets the ghost cells for this axis on a full array"""
@@ -733,26 +734,26 @@ class BoundaryPeriodic(BoundaryAxisBase):
         if axis_back == 1:
 
             @register_jitable
-            def ghost_cell_setter(data_full: np.ndarray) -> None:
+            def ghost_cell_setter(data_all: np.ndarray) -> None:
                 """helper function setting the conditions on all axes"""
-                data_full[..., 0] = data_full[..., -2]
-                data_full[..., -1] = data_full[..., 1]
+                data_all[..., 0] = data_all[..., -2]
+                data_all[..., -1] = data_all[..., 1]
 
         elif axis_back == 2:
 
             @register_jitable
-            def ghost_cell_setter(data_full: np.ndarray) -> None:
+            def ghost_cell_setter(data_all: np.ndarray) -> None:
                 """helper function setting the conditions on all axes"""
-                data_full[..., 0, :] = data_full[..., -2, :]
-                data_full[..., -1, :] = data_full[..., 1, :]
+                data_all[..., 0, :] = data_all[..., -2, :]
+                data_all[..., -1, :] = data_all[..., 1, :]
 
         elif axis_back == 3:
 
             @register_jitable
-            def ghost_cell_setter(data_full: np.ndarray) -> None:
+            def ghost_cell_setter(data_all: np.ndarray) -> None:
                 """helper function setting the conditions on all axes"""
-                data_full[..., 0, :, :] = data_full[..., -2, :, :]
-                data_full[..., -1, :, :] = data_full[..., 1, :, :]
+                data_all[..., 0, :, :] = data_all[..., -2, :, :]
+                data_all[..., -1, :, :] = data_all[..., 1, :, :]
 
         else:
             raise NotImplementedError("Grids with more than 3 axes are not supported")

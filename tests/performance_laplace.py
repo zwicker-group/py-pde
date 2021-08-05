@@ -13,7 +13,7 @@ sys.path.append(str(PACKAGE_PATH))
 import numba
 import numpy as np
 
-from pde import config, ScalarField, CylindricalSymGrid, SphericalSymGrid, UnitGrid
+from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
 from pde.grids.boundaries import Boundaries
 from pde.grids.operators import cylindrical_sym, spherical_sym
 from pde.tools.misc import estimate_computation_speed
@@ -180,7 +180,7 @@ def main():
                     laplace = custom_laplace_2d(shape, periodic=periodic)
                     data = field.data
                 elif method in {"numba", "scipy"}:
-                    laplace = grid.make_operator("laplace", bc=bcs, method=method)
+                    laplace = grid.make_operator("laplace", bc=bcs, backend=method)
                     data = np.empty(tuple(s + 2 for s in grid.shape))
                     data[1:-1, 1:-1] = field.data
                 else:

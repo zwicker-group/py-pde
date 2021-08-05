@@ -727,11 +727,11 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
         """set the ghost cell values for this boundary
 
         Args:
-            data_full (:class:`~numpy.ndarray`):
+            data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
 
@@ -744,9 +744,9 @@ class BCBase(metaclass=ABCMeta):
         if self.grid.num_axes == 1:  # 1d grid
 
             @register_jitable
-            def ghost_cell_setter(data_full: np.ndarray) -> None:
+            def ghost_cell_setter(data_all: np.ndarray) -> None:
                 """helper function setting the conditions on all axes"""
-                data_full[..., vp_idx] = vp_value(data_full[..., 1:-1], (vp_idx,))
+                data_all[..., vp_idx] = vp_value(data_all[..., 1:-1], (vp_idx,))
 
         elif self.grid.num_axes == 2:  # 2d grid
 
@@ -754,21 +754,21 @@ class BCBase(metaclass=ABCMeta):
                 num_y = self.grid.shape[1]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for j in range(num_y):
-                        val = vp_value(data_full[..., 1:-1, 1:-1], (vp_idx, j))
-                        data_full[..., vp_idx, j + 1] = val
+                        val = vp_value(data_all[..., 1:-1, 1:-1], (vp_idx, j))
+                        data_all[..., vp_idx, j + 1] = val
 
             elif self.axis == 1:
                 num_x = self.grid.shape[0]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for i in range(num_x):
-                        val = vp_value(data_full[..., 1:-1, 1:-1], (i, vp_idx))
-                        data_full[..., i + 1, vp_idx] = val
+                        val = vp_value(data_all[..., 1:-1, 1:-1], (i, vp_idx))
+                        data_all[..., i + 1, vp_idx] = val
 
         elif self.grid.num_axes == 3:  # 3d grid
 
@@ -776,37 +776,37 @@ class BCBase(metaclass=ABCMeta):
                 num_y, num_z = self.grid.shape[1:]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for j in range(num_y):
                         for k in range(num_z):
-                            arr = data_full[..., 1:-1, 1:-1, 1:-1]
+                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
                             val = vp_value(arr, (vp_idx, j, k))
-                            data_full[..., vp_idx, j + 1, k + 1] = val
+                            data_all[..., vp_idx, j + 1, k + 1] = val
 
             elif self.axis == 1:
                 num_x, num_z = self.grid.shape[0], self.grid.shape[2]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for i in range(num_x):
                         for k in range(num_z):
-                            arr = data_full[..., 1:-1, 1:-1, 1:-1]
+                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
                             val = vp_value(arr, (i, vp_idx, k))
-                            data_full[..., i + 1, vp_idx, k + 1] = val
+                            data_all[..., i + 1, vp_idx, k + 1] = val
 
-            elif self.axis == 1:
+            elif self.axis == 2:
                 num_x, num_y = self.grid.shape[:2]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
                     """helper function setting the conditions on all axes"""
                     for i in range(num_x):
                         for j in range(num_y):
-                            arr = data_full[..., 1:-1, 1:-1, 1:-1]
+                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
                             val = vp_value(arr, (i, j, vp_idx))
-                            data_full[..., i + 1, j + 1, vp_idx] = val
+                            data_all[..., i + 1, j + 1, vp_idx] = val
 
         else:
             raise NotImplementedError("Too many axes")
@@ -998,24 +998,31 @@ class BCBase1stOrder(BCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
         """set the ghost cell values for this boundary
 
         Args:
-            data_full (:class:`~numpy.ndarray`):
+            data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
         # calculate necessary constants
         const, factor, index = self.get_virtual_point_data()
 
         # prepare the array of slices to index bcs
-        idx_write: List[Union[int, slice]] = [slice(1, -1)] * self.grid.num_axes
-        idx_write[self.axis] = -1 if self.upper else 0
+        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
+        idx_write[offset + self.axis] = -1 if self.upper else 0
         idx_read = idx_write[:]
-        idx_read[self.axis] = index + 1
+        idx_read[offset + self.axis] = index + 1  # point to read from
+
+        # add dimension to const until it can be broadcasted to shape of data_all
+        while factor.ndim < self.grid.num_axes:
+            factor = factor[..., np.newaxis]
+        while const.ndim < self.grid.num_axes:
+            const = const[..., np.newaxis]
 
         # calculate the virtual points
-        data_full[tuple(idx_write)] = const + factor * data_full[tuple(idx_read)]
+        data_all[tuple(idx_write)] = const + factor * data_all[tuple(idx_read)]
 
 
 class DirichletBC(BCBase1stOrder):
@@ -1535,29 +1542,37 @@ class BCBase2ndOrder(BCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_ghost_cells(self, data_full: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
         """set the ghost cell values for this boundary
 
         Args:
-            data_full (:class:`~numpy.ndarray`):
+            data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
         # calculate necessary constants
         data = self.get_virtual_point_data()
 
         # prepare the array of slices to index bcs
-        idx_write: List[Union[int, slice]] = [slice(1, -1)] * self.grid.num_axes
-        idx_write[self.axis] = -1 if self.upper else 0
+        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
+        idx_write[offset + self.axis] = -1 if self.upper else 0
         idx_1 = idx_write[:]
-        idx_1[self.axis] = data[2] + 1
+        idx_1[offset + self.axis] = data[2] + 1
         idx_2 = idx_write[:]
-        idx_2[self.axis] = data[4] + 1
+        idx_2[offset + self.axis] = data[4] + 1
+
+        # add dimension to const until it can be broadcasted to shape of data_all
+        const, factor1, factor2 = data[0], data[1], data[3]
+        while factor1.ndim < self.grid.num_axes:
+            factor1 = factor1[..., np.newaxis]
+        while factor2.ndim < self.grid.num_axes:
+            factor2 = factor2[..., np.newaxis]
+        while const.ndim < self.grid.num_axes:
+            const = const[..., np.newaxis]
 
         # calculate the virtual points
-        data_full[tuple(idx_write)] = (
-            data[0]
-            + data[1] * data_full[tuple(idx_1)]
-            + data[3] * data_full[tuple(idx_2)]
+        data_all[tuple(idx_write)] = (
+            const + factor1 * data_all[tuple(idx_1)] + factor2 * data_all[tuple(idx_2)]
         )
 
 

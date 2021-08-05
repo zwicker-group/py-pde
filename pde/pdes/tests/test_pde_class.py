@@ -138,7 +138,10 @@ def test_custom_operators():
         eq.evolution_rate(field)
 
     def make_op(state):
-        return lambda state: state
+        def op(arr, out):
+            out[:] = arr
+
+        return op
 
     grids.UnitGrid.register_operator("undefined", make_op)
 

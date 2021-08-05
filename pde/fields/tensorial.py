@@ -119,13 +119,13 @@ class Tensor2Field(DataFieldBase):
     def _data_flat(self, value):
         """set the data from a value from a collection"""
         # create a view and reshape it to disallow copying
-        data_full = value.view()
+        data_all = value.view()
         dim = self.grid.dim
         full_grid_shape = tuple(s + 2 for s in self.grid.shape)
-        data_full.shape = (dim, dim, *full_grid_shape)
+        data_all.shape = (dim, dim, *full_grid_shape)
 
         # set the result as the full data array
-        self._data_full = data_full
+        self._data_all = data_all
 
         # ensure that no copying happend
         assert np.may_share_memory(self.data, value)
@@ -321,11 +321,7 @@ class Tensor2Field(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self,
-        bc: "BoundariesData",
-        out: Optional[VectorField] = None,
-        *,
-        label: str = "divergence",
+        self, bc: "BoundariesData", out: Optional[VectorField] = None, **kwargs
     ) -> VectorField:
         r"""apply tensor divergence and return result as a field
 
@@ -347,8 +343,7 @@ class Tensor2Field(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        tensor_div = self.grid.get_operator("tensor_divergence", bc=bc)
-        return self._apply_with_out(tensor_div, VectorField, out=out, label=label)
+        return self._apply_operator("tensor_divergence", bc=bc, out=out, **kwargs)
 
     @property
     def integral(self) -> np.ndarray:

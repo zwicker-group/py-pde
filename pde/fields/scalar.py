@@ -106,7 +106,7 @@ class ScalarField(DataFieldBase):
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
         """set the data from a value from a collection"""
-        self._data_full = value[0]
+        self._data_all = value[0]
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """support unary numpy ufuncs, like np.sin, but also np.multiply"""
@@ -144,11 +144,7 @@ class ScalarField(DataFieldBase):
 
     @fill_in_docstring
     def laplace(
-        self,
-        bc: "BoundariesData",
-        out: Optional[ScalarField] = None,
-        *,
-        label: str = "laplace",
+        self, bc: "BoundariesData", out: Optional[ScalarField] = None, **kwargs
     ) -> ScalarField:
         """apply Laplace operator and return result as a field
 
@@ -160,22 +156,17 @@ class ScalarField(DataFieldBase):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
+            backend (str):
+                The backend (e.g., 'numba' or 'scipy') used for this operator.
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
         """
-        self.set_ghost_cells(bc)
-        laplace = self.grid.make_operator("laplace", bc=bc)
-        return self._apply_with_out(laplace, ScalarField, out=out, label=label)
+        return self._apply_operator("laplace", bc=bc, out=out, **kwargs)
 
     @fill_in_docstring
     def gradient_squared(
-        self,
-        bc: "BoundariesData",
-        out: Optional[ScalarField] = None,
-        *,
-        central: bool = True,
-        label: str = "squared gradient",
+        self, bc: "BoundariesData", out: Optional[ScalarField] = None, **kwargs
     ) -> ScalarField:
         r"""apply squared gradient operator and return result as a field
 
@@ -185,31 +176,25 @@ class ScalarField(DataFieldBase):
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
-            central (bool):
-                Determines whether a central difference approximation is used
-                for the gradient operator or not. If not, the squared gradient
-                is calculated as the mean of the squared values of the forward
-                and backward derivatives, which thus includes the value at a
-                support point in the result at the same point.
             out (ScalarField, optional):
-                Optional scalar field to which the  result is written.
+                Optional vector field to which the result is written.
             label (str, optional):
                 Name of the returned field
+            central (bool):
+                Determines whether a central difference approximation is used for the
+                gradient operator or not. If not, the squared gradient is calculated as
+                the mean of the squared values of the forward and backward derivatives,
+                which thus includes the value at a support point in the result at the
+                same point.
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the squared gradient of the field
         """
-
-        grad_square = self.grid.get_operator("gradient_squared", bc=bc, central=central)
-        return self._apply_with_out(grad_square, ScalarField, out=out, label=label)
+        return self._apply_operator("gradient_squared", bc=bc, out=out, **kwargs)
 
     @fill_in_docstring
     def gradient(
-        self,
-        bc: "BoundariesData",
-        out: Optional["VectorField"] = None,
-        *,
-        label: str = "gradient",
+        self, bc: "BoundariesData", out: Optional["VectorField"] = None, **kwargs
     ) -> "VectorField":
         """apply gradient operator and return result as a field
 
@@ -225,10 +210,7 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        from .vectorial import VectorField  # @Reimport
-
-        gradient = self.grid.get_operator("gradient", bc=bc)
-        return self._apply_with_out(gradient, VectorField, out=out, label=label)
+        return self._apply_operator("gradient", bc=bc, out=out, **kwargs)
 
     @property
     def integral(self) -> Number:
