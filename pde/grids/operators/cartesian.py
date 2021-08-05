@@ -23,8 +23,8 @@ import numpy as np
 
 from ... import config
 from ...tools.numba import jit
-from ..boundaries import Boundaries
 from ...tools.typing import OperatorType
+from ..boundaries import Boundaries
 from ..cartesian import CartesianGridBase
 from .common import make_general_poisson_solver, uniform_discretization
 
@@ -268,10 +268,10 @@ def _make_laplace_scipy_nd(grid: CartesianGridBase) -> OperatorType:
 
     scaling = uniform_discretization(grid) ** -2
 
-    def laplace(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply laplace operator to array `arr`"""
         assert arr.shape == grid._shape_full
-        return ndimage.laplace(scaling * arr, output=out)
+        ndimage.laplace(scaling * arr, output=out)
 
     return laplace
 
@@ -290,12 +290,10 @@ def _make_laplace_numba_1d(grid: CartesianGridBase) -> OperatorType:
     scale = grid.discretization[0] ** -2
 
     @jit
-    def laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply laplace operator to array `arr`"""
         for i in range(1, dim_x + 1):
             out[i] = (arr[i - 1] - 2 * arr[i] + arr[i + 1]) * scale
-
-        return out
 
     return laplace  # type: ignore
 
@@ -317,15 +315,13 @@ def _make_laplace_numba_2d(grid: CartesianGridBase) -> OperatorType:
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply laplace operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 lap_x = (arr[i - 1, j] - 2 * arr[i, j] + arr[i + 1, j]) * scale_x
                 lap_y = (arr[i, j - 1] - 2 * arr[i, j] + arr[i, j + 1]) * scale_y
                 out[i, j] = lap_x + lap_y
-
-        return out
 
     return laplace  # type: ignore
 
@@ -347,7 +343,7 @@ def _make_laplace_numba_3d(grid: CartesianGridBase) -> OperatorType:
     parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply laplace operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
@@ -357,8 +353,6 @@ def _make_laplace_numba_3d(grid: CartesianGridBase) -> OperatorType:
                     lap_y = (arr[i, j - 1, k] - val_mid + arr[i, j + 1, k]) * scale_y
                     lap_z = (arr[i, j, k - 1] - val_mid + arr[i, j, k + 1]) * scale_z
                     out[i, j, k] = lap_x + lap_y + lap_z
-
-        return out
 
     return laplace  # type: ignore
 
@@ -427,7 +421,7 @@ def _make_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     dim = grid.dim
     shape_out = (dim,) + grid._shape_full
 
-    def gradient(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         assert arr.shape == grid._shape_full
         if out is None:
@@ -437,7 +431,6 @@ def _make_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
 
         for i in range(dim):
             out[i] = ndimage.convolve1d(arr, [1, 0, -1], axis=i) * scaling[i]
-        return out
 
     return gradient
 
@@ -456,12 +449,10 @@ def _make_gradient_numba_1d(grid: CartesianGridBase) -> OperatorType:
     scale = 0.5 / grid.discretization[0]
 
     @jit
-    def gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
             out[0, i] = (arr[i + 1] - arr[i - 1]) * scale
-
-        return out
 
     return gradient  # type: ignore
 
@@ -483,14 +474,12 @@ def _make_gradient_numba_2d(grid: CartesianGridBase) -> OperatorType:
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 out[0, i, j] = (arr[i + 1, j] - arr[i - 1, j]) * scale_x
                 out[1, i, j] = (arr[i, j + 1] - arr[i, j - 1]) * scale_y
-
-        return out
 
     return gradient  # type: ignore
 
@@ -512,7 +501,7 @@ def _make_gradient_numba_3d(grid: CartesianGridBase) -> OperatorType:
     parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
@@ -520,8 +509,6 @@ def _make_gradient_numba_3d(grid: CartesianGridBase) -> OperatorType:
                     out[0, i, j, k] = (arr[i + 1, j, k] - arr[i - 1, j, k]) * scale_x
                     out[1, i, j, k] = (arr[i, j + 1, k] - arr[i, j - 1, k]) * scale_y
                     out[2, i, j, k] = (arr[i, j, k + 1] - arr[i, j, k - 1]) * scale_z
-
-        return out
 
     return gradient  # type: ignore
 
@@ -594,26 +581,22 @@ def _make_gradient_squared_numba_1d(
         scale = 1 / (2 * grid.discretization[0]) ** 2
 
         @jit
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in range(1, dim_x + 1):
                 out[i] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
-
-            return out
 
     else:
         # use forward and backward differences
         scale = 1 / (2 * grid.discretization[0] ** 2)
 
         @jit
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in range(1, dim_x + 1):
                 diff_l = (arr[i + 1] - arr[i]) ** 2
                 diff_r = (arr[i] - arr[i - 1]) ** 2
                 out[i] = (diff_l + diff_r) * scale
-
-            return out
 
     return gradient_squared  # type: ignore
 
@@ -645,7 +628,7 @@ def _make_gradient_squared_numba_2d(
         scale_x, scale_y = 1 / (2 * grid.discretization) ** 2
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
@@ -653,14 +636,12 @@ def _make_gradient_squared_numba_2d(
                     term_y = (arr[i, j] - arr[i, j - 1]) ** 2 * scale_y
                     out[i, j] = term_x + term_y
 
-            return out
-
     else:
         # use forward and backward differences
         scale_x, scale_y = 1 / (2 * grid.discretization ** 2)
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
@@ -673,8 +654,6 @@ def _make_gradient_squared_numba_2d(
                         + (arr[i, j] - arr[i, j - 1]) ** 2
                     ) * scale_y
                     out[i, j] = term_x + term_y
-
-            return out
 
     return gradient_squared  # type: ignore
 
@@ -706,7 +685,7 @@ def _make_gradient_squared_numba_3d(
         scale_x, scale_y, scale_z = 1 / (2 * grid.discretization) ** 2
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
@@ -716,14 +695,12 @@ def _make_gradient_squared_numba_3d(
                         term_z = (arr[i, j, k + 1] - arr[i, j, k - 1]) ** 2 * scale_z
                         out[i, j, k] = term_x + term_y + term_z
 
-            return out
-
     else:
         # use forward and backward differences
         scale_x, scale_y, scale_z = 1 / (2 * grid.discretization ** 2)
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
@@ -741,8 +718,6 @@ def _make_gradient_squared_numba_3d(
                             + (arr[i, j, k] - arr[i, j, k - 1]) ** 2
                         ) * scale_z
                         out[i, j, k] = term_x + term_y + term_z
-
-            return out
 
     return gradient_squared  # type: ignore
 
@@ -796,7 +771,7 @@ def _make_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     data_shape = grid._shape_full
     scaling = 0.5 / grid.discretization
 
-    def divergence(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply divergence operator to array `arr`"""
         assert arr.shape[0] == len(data_shape) and arr.shape[1:] == data_shape
 
@@ -808,7 +783,6 @@ def _make_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
 
         for i in range(len(data_shape)):
             out += ndimage.convolve1d(arr[i], [1, 0, -1], axis=i) * scaling[i]
-        return out
 
     return divergence
 
@@ -827,12 +801,10 @@ def _make_divergence_numba_1d(grid: CartesianGridBase) -> OperatorType:
     scale = 0.5 / grid.discretization[0]
 
     @jit
-    def divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
             out[i] = (arr[0, i + 1] - arr[0, i - 1]) * scale
-
-        return out
 
     return divergence  # type: ignore
 
@@ -854,15 +826,13 @@ def _make_divergence_numba_2d(grid: CartesianGridBase) -> OperatorType:
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 d_x = (arr[0, i + 1, j] - arr[0, i - 1, j]) * scale_x
                 d_y = (arr[1, i, j + 1] - arr[1, i, j - 1]) * scale_y
                 out[i, j] = d_x + d_y
-
-        return out
 
     return divergence  # type: ignore
 
@@ -884,7 +854,7 @@ def _make_divergence_numba_3d(grid: CartesianGridBase) -> OperatorType:
     parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
@@ -893,8 +863,6 @@ def _make_divergence_numba_3d(grid: CartesianGridBase) -> OperatorType:
                     d_y = (arr[1, i, j + 1, k] - arr[1, i, j - 1, k]) * scale_y
                     d_z = (arr[2, i, j, k + 1] - arr[2, i, j, k - 1]) * scale_z
                     out[i, j, k] = d_x + d_y + d_z
-
-        return out
 
     return divergence  # type: ignore
 
@@ -959,7 +927,7 @@ def _make_vector_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     dim = grid.dim
     shape_out = (dim, dim) + grid._shape_full
 
-    def vector_gradient(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector gradient operator to array `arr`"""
         assert arr.shape == shape_out[1:]
         if out is None:
@@ -971,7 +939,6 @@ def _make_vector_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
             for j in range(dim):
                 conv = ndimage.convolve1d(arr[j], [1, 0, -1], axis=i)
                 out[i, j] = conv * scaling[i]
-        return out
 
     return vector_gradient
 
@@ -989,10 +956,9 @@ def _make_vector_gradient_numba_1d(grid: CartesianGridBase) -> OperatorType:
     gradient = _make_gradient_numba_1d(grid)
 
     @jit
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
-        gradient(arr[0], out=out[0])
-        return out
+        gradient(arr[0], out[0])
 
     return vector_gradient  # type: ignore
 
@@ -1010,11 +976,10 @@ def _make_vector_gradient_numba_2d(grid: CartesianGridBase) -> OperatorType:
     gradient = _make_gradient_numba_2d(grid)
 
     @jit
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
-        gradient(arr[0], out=out[:, 0])
-        gradient(arr[1], out=out[:, 1])
-        return out
+        gradient(arr[0], out[:, 0])
+        gradient(arr[1], out[:, 1])
 
     return vector_gradient  # type: ignore
 
@@ -1032,12 +997,11 @@ def _make_vector_gradient_numba_3d(grid: CartesianGridBase) -> OperatorType:
     gradient = _make_gradient_numba_3d(grid)
 
     @jit
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
-        gradient(arr[0], out=out[:, 0])
-        gradient(arr[1], out=out[:, 1])
-        gradient(arr[2], out=out[:, 2])
-        return out
+        gradient(arr[0], out[:, 0])
+        gradient(arr[1], out[:, 1])
+        gradient(arr[2], out[:, 2])
 
     return vector_gradient  # type: ignore
 
@@ -1105,7 +1069,7 @@ def _make_vector_laplace_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     dim = grid.dim
     shape_out = (dim,) + grid._shape_full
 
-    def vector_laplace(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector Laplacian operator to array `arr`"""
         assert arr.shape == shape_out
         if out is None:
@@ -1115,7 +1079,6 @@ def _make_vector_laplace_scipy_nd(grid: CartesianGridBase) -> OperatorType:
 
         for i in range(dim):
             ndimage.laplace(scaling * arr[i], output=out[i])
-        return out
 
     return vector_laplace
 
@@ -1133,10 +1096,9 @@ def _make_vector_laplace_numba_1d(grid: CartesianGridBase) -> OperatorType:
     laplace = _make_laplace_numba_1d(grid)
 
     @jit
-    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector Laplacian to array `arr`"""
-        laplace(arr[0], out=out[0])
-        return out
+        laplace(arr[0], out[0])
 
     return vector_laplace  # type: ignore
 
@@ -1154,11 +1116,10 @@ def _make_vector_laplace_numba_2d(grid: CartesianGridBase) -> OperatorType:
     laplace = _make_laplace_numba_2d(grid)
 
     @jit
-    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector Laplacian  to array `arr`"""
-        laplace(arr[0], out=out[0])
-        laplace(arr[1], out=out[1])
-        return out
+        laplace(arr[0], out[0])
+        laplace(arr[1], out[1])
 
     return vector_laplace  # type: ignore
 
@@ -1176,12 +1137,11 @@ def _make_vector_laplace_numba_3d(grid: CartesianGridBase) -> OperatorType:
     laplace = _make_laplace_numba_3d(grid)
 
     @jit
-    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector Laplacian to array `arr`"""
-        laplace(arr[0], out=out[0])
-        laplace(arr[1], out=out[1])
-        laplace(arr[2], out=out[2])
-        return out
+        laplace(arr[0], out[0])
+        laplace(arr[1], out[1])
+        laplace(arr[2], out[2])
 
     return vector_laplace  # type: ignore
 
@@ -1245,7 +1205,7 @@ def _make_tensor_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     dim = grid.dim
     shape_out = (dim,) + grid._shape_full
 
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply tensor divergence operator to array `arr`"""
         # need to initialize with zeros since data is added later
         assert arr.shape[0] == dim and arr.shape[1:] == shape_out
@@ -1259,7 +1219,6 @@ def _make_tensor_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
             for j in range(dim):
                 conv = ndimage.convolve1d(arr[i, j], [1, 0, -1], axis=j)
                 out[i] += conv * scaling[j]
-        return out
 
     return tensor_divergence
 
@@ -1277,10 +1236,9 @@ def _make_tensor_divergence_numba_1d(grid: CartesianGridBase) -> OperatorType:
     divergence = _make_divergence_numba_1d(grid)
 
     @jit
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
-        divergence(arr[0], out=out[0])
-        return out
+        divergence(arr[0], out[0])
 
     return tensor_divergence  # type: ignore
 
@@ -1298,11 +1256,10 @@ def _make_tensor_divergence_numba_2d(grid: CartesianGridBase) -> OperatorType:
     divergence = _make_divergence_numba_2d(grid)
 
     @jit
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
-        divergence(arr[0], out=out[0])
-        divergence(arr[1], out=out[1])
-        return out
+        divergence(arr[0], out[0])
+        divergence(arr[1], out[1])
 
     return tensor_divergence  # type: ignore
 
@@ -1320,12 +1277,11 @@ def _make_tensor_divergence_numba_3d(grid: CartesianGridBase) -> OperatorType:
     divergence = _make_divergence_numba_3d(grid)
 
     @jit
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
-        divergence(arr[0], out=out[0])
-        divergence(arr[1], out=out[1])
-        divergence(arr[2], out=out[2])
-        return out
+        divergence(arr[0], out[0])
+        divergence(arr[1], out[1])
+        divergence(arr[2], out[2])
 
     return tensor_divergence  # type: ignore
 

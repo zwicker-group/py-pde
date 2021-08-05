@@ -11,8 +11,19 @@ import json
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod, abstractproperty
+from inspect import isabstract
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 
@@ -45,7 +56,7 @@ class RankError(TypeError):
 class FieldBase(metaclass=ABCMeta):
     """abstract base class for describing (discretized) fields"""
 
-    _subclasses: Dict[str, FieldBase] = {}  # all classes inheriting from this
+    _subclasses: Dict[str, Type[FieldBase]] = {}  # all classes inheriting from this
     _grid: GridBase  # the grid on which the field is defined
     __data_all: np.ndarray  # the data on the grid including ghost points
     _data_valid: np.ndarray  # the valid data without ghost points
@@ -1565,11 +1576,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         self,
         operator: str,
         bc: "BoundariesData",
-        out: Optional[ScalarField] = None,
+        out: Optional[DataFieldBase] = None,
         *,
         label: str = None,
         **kwargs,
-    ) -> TDataField:
+    ) -> DataFieldBase:
         r"""apply an operator and return result as a field
 
         Args:
@@ -1589,8 +1600,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Field with new data. This is stored at `out` if given.
         """
         # get information about the operator
-        operator = self.grid._get_operator_info(operator)
-        out_cls = _get_field_class_by_rank(operator.rank_out)
+        operator_info = self.grid._get_operator_info(operator)
+        out_cls = _get_field_class_by_rank(operator_info.rank_out)
 
         # prepare the output field
         if out is None:
@@ -1603,8 +1614,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 out.label = label
 
         # obtain and apply the operator
-        func = self.grid.make_operator(operator, bc=bc, **kwargs)
-        out.data[:] = func(self.data)  # type: ignore
+        func = self.grid.make_operator(operator_info, bc=bc, **kwargs)
+        out.data[:] = func(self.data)
         return out
 
     def smooth(
@@ -2089,13 +2100,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return {name: self._get_napari_layer_data(**kwargs)}
 
 
-def _get_field_class_by_rank(rank: int) -> FieldBase:
+def _get_field_class_by_rank(rank: int) -> Type[DataFieldBase]:
     """return a field class associated with a certain rank
 
     Args:
         rank (int): The rank of the tensor field
     """
     for cls in FieldBase._subclasses.values():
-        if hasattr(cls, "rank") and cls.rank == rank:
+        if issubclass(cls, DataFieldBase) and not isabstract(cls) and cls.rank == rank:
             return cls
     raise RuntimeError(f"Could not find field class for rank {rank}")

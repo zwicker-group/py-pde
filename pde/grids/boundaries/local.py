@@ -1011,9 +1011,9 @@ class BCBase1stOrder(BCBase):
         # prepare the array of slices to index bcs
         offset = data_all.ndim - self.grid.num_axes  # additional data axes
         idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
-        idx_write[offset + self.axis] = -1 if self.upper else 0
+        idx_write[offset + self.axis] = -1 if self.upper else 0  # type: ignore
         idx_read = idx_write[:]
-        idx_read[offset + self.axis] = index + 1  # point to read from
+        idx_read[offset + self.axis] = index + 1  # type: ignore
 
         # add dimension to const until it can be broadcasted to shape of data_all
         while factor.ndim < self.grid.num_axes:
@@ -1555,11 +1555,11 @@ class BCBase2ndOrder(BCBase):
         # prepare the array of slices to index bcs
         offset = data_all.ndim - self.grid.num_axes  # additional data axes
         idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
-        idx_write[offset + self.axis] = -1 if self.upper else 0
+        idx_write[offset + self.axis] = -1 if self.upper else 0  # type: ignore
         idx_1 = idx_write[:]
-        idx_1[offset + self.axis] = data[2] + 1
+        idx_1[offset + self.axis] = data[2] + 1  # type: ignore
         idx_2 = idx_write[:]
-        idx_2[offset + self.axis] = data[4] + 1
+        idx_2[offset + self.axis] = data[4] + 1  # type: ignore
 
         # add dimension to const until it can be broadcasted to shape of data_all
         const, factor1, factor2 = data[0], data[1], data[3]

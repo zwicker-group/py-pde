@@ -206,18 +206,6 @@ class Boundaries(list):
             if not b.periodic:
                 b.scale_value(factor)
 
-    @property
-    def _scipy_border_mode(self) -> dict:
-        """dict: return a dictionary that can be used in the scipy ndimage
-        functions to specify the border mode. If the current boundary cannot be
-        represented by these modes, a RuntimeError is raised
-        """
-        mode: dict = self[0]._scipy_border_mode
-        for b in self[1:]:
-            if mode != b._scipy_border_mode:
-                raise RuntimeError("Incompatible dimensions")
-        return mode
-
     def extract_component(self, *indices) -> "Boundaries":
         """extracts the boundary conditions of the given component of the tensor.
 
@@ -245,28 +233,30 @@ class Boundaries(list):
 
     def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
         """return function that sets the ghost cells on a full array"""
+        # get the setters for all axes
         ghost_cell_setters = [b.make_ghost_cell_setter() for b in self]
+        SetterType = Callable[[np.ndarray], None]
 
-        def chain(fs, inner=None):
+        def chain(fs: Sequence[SetterType], inner: SetterType = None) -> SetterType:
             """helper function composing setters of all axes recursively"""
             first, rest = fs[0], fs[1:]
 
-            if inner:
+            if inner is None:
 
                 @register_jitable
                 def wrap(data_all: np.ndarray) -> None:
-                    inner(data_all)
                     first(data_all)
 
             else:
 
                 @register_jitable
                 def wrap(data_all: np.ndarray) -> None:
+                    inner(data_all)  # type: ignore
                     first(data_all)
 
             if rest:
                 return chain(rest, wrap)
             else:
-                return wrap
+                return wrap  # type: ignore
 
         return chain(ghost_cell_setters)
