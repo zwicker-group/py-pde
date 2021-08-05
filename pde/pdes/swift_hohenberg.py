@@ -126,8 +126,8 @@ class SwiftHohenbergPDE(PDEBase):
         kc2 = self.kc2
         delta = self.delta
 
-        laplace = state.grid.get_operator("laplace", bc=self.bc)
-        laplace2 = state.grid.get_operator("laplace", bc=self.bc_lap)
+        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):

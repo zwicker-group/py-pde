@@ -90,7 +90,7 @@ class AllenCahnPDE(PDEBase):
         signature = arr_type(arr_type, nb.double)
 
         interface_width = self.interface_width
-        laplace = state.grid.get_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float) -> np.ndarray:

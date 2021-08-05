@@ -454,11 +454,7 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self,
-        bc: "BoundariesData",
-        out: Optional[ScalarField] = None,
-        *,
-        label: str = "divergence",
+        self, bc: "BoundariesData", out: Optional[ScalarField] = None, **kwargs
     ) -> ScalarField:
         """apply divergence operator and return result as a field
 
@@ -474,16 +470,11 @@ class VectorField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
         """
-        divergence = self.grid.get_operator("divergence", bc=bc)
-        return self._apply_with_out(divergence, ScalarField, out=out, label=label)
+        return self._apply_operator("divergence", bc=bc, out=out, **kwargs)
 
     @fill_in_docstring
     def gradient(
-        self,
-        bc: "BoundariesData",
-        out: Optional["Tensor2Field"] = None,
-        *,
-        label: str = "gradient",
+        self, bc: "BoundariesData", out: Optional["Tensor2Field"] = None, **kwargs
     ) -> "Tensor2Field":
         r"""apply vector gradient operator and return result as a field
 
@@ -491,33 +482,23 @@ class VectorField(DataFieldBase):
         specifies the derivatives of the vector field :math:`v_\alpha` with respect to
         all coordinates :math:`x_\beta`:
 
-        .. math::
-            t_{\alpha\beta} = \frac{\partial v_\alpha}{\partial x_\beta}
-
         Args:
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
-            out (Tensor2Field, optional):
-                Optional tensorial field to which the  result is written.
+            out (VectorField, optional):
+                Optional vector field to which the result is written.
             label (str, optional):
                 Name of the returned field
 
         Returns:
             :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the operator
         """
-        from .tensorial import Tensor2Field  # @Reimport
-
-        vector_gradient = self.grid.get_operator("vector_gradient", bc=bc)
-        return self._apply_with_out(vector_gradient, Tensor2Field, out=out, label=label)
+        return self._apply_operator("vector_gradient", bc=bc, out=out, **kwargs)
 
     @fill_in_docstring
     def laplace(
-        self,
-        bc: "BoundariesData",
-        out: Optional[VectorField] = None,
-        *,
-        label: str = "vector laplacian",
+        self, bc: "BoundariesData", out: Optional[VectorField] = None, **kwargs
     ) -> VectorField:
         r"""apply vector Laplace operator and return result as a field
 
@@ -541,8 +522,7 @@ class VectorField(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        laplace = self.grid.get_operator("vector_laplace", bc=bc)
-        return self._apply_with_out(laplace, VectorField, out=out, label=label)
+        return self._apply_operator("vector_laplace", bc=bc, out=out, **kwargs)
 
     @property
     def integral(self) -> np.ndarray:

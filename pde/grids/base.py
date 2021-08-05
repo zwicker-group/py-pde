@@ -27,6 +27,7 @@ from typing import (
     Union,
 )
 
+from numba.extending import register_jitable
 import numba as nb
 import numpy as np
 
@@ -219,6 +220,34 @@ class GridBase(metaclass=ABCMeta):
     def shape(self) -> Tuple[int, ...]:
         """tuple of int: the number of support points of each axis"""
         return self._shape
+
+    @property
+    def _shape_full(self) -> Tuple[int, ...]:
+        """tuple of int: number of support points including ghost points"""
+        return tuple(num + 2 for num in self.shape)
+
+    @property
+    def _idx_valid(self) -> Tuple[slice, ...]:
+        """tuple: slices to extract valid data from full data"""
+        return tuple(slice(1, s + 1) for s in self.shape)
+
+    def _make_get_valid(self) -> Callable[[np.ndarray], np.ndarray]:
+        """callable: function to extract the valid part of a full data array"""
+        num_axes = self.num_axes
+
+        @register_jitable
+        def get_valid(arr: np.ndarray) -> np.ndarray:
+            """return valid part of the data (without ghost cells)"""
+            if num_axes == 1:
+                return arr[..., 1:-1]
+            elif num_axes == 2:
+                return arr[..., 1:-1, 1:-1]
+            elif num_axes == 3:
+                return arr[..., 1:-1, 1:-1, 1:-1]
+            else:
+                raise NotImplementedError
+
+        return get_valid
 
     @abstractproperty
     def state(self) -> Dict[str, Any]:
@@ -560,57 +589,80 @@ class GridBase(metaclass=ABCMeta):
             result |= set(anycls._operators.keys())  # type: ignore
         return result
 
-    @cached_method()
-    @fill_in_docstring
-    def get_operator(self, name: str, bc: "BoundariesData", **kwargs) -> OperatorType:
-        """return a discretized operator defined on this grid
+    def _get_operator_info(self, operator: Union[str, Operator]) -> Operator:
+        """return the operator defined on this grid
 
         Args:
-            name (str):
+            operator (str):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
+
+        Returns:
+            :class:`~pde.grids.base.Operator`: information for the operator
+        """
+        if isinstance(operator, Operator):
+            return operator
+
+        # obtain all parent classes, except `object`
+        classes = inspect.getmro(self.__class__)[:-1]
+        for cls in classes:
+            if operator in cls._operators:  # type: ignore
+                return cls._operators[operator]  # type: ignore
+
+        # operator was not found
+        op_list = ", ".join(sorted(self.operators))
+        raise ValueError(
+            f"'{operator}' is not one of the defined operators ({op_list}). Custom "
+            "operators can be added using the `register_operator` method."
+        )
+
+    @cached_method()
+    @fill_in_docstring
+    def make_operator_raw(
+        self,
+        operator: Union[str, Operator],
+        **kwargs,
+    ) -> OperatorType:
+        """return a compiled function applying an operator without boundary conditions
+
+        Args:
+            operator (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
             **kwargs:
-                Specifies extra arguments that can influence how the operator is
-                created. Many operators support a `method` argument that can typically
-                be set to 'numba', 'scipy', or `auto`.
+                Specifies extra arguments influencing how the operator is created.
 
         Returns:
             A function that takes the discretized data as an input and returns the data
             to which the operator `name` has been applied. This function optionally
             supports a second argument, which provides allocated memory for the output.
         """
-        # obtain all parent classes, except `object`
-        classes = inspect.getmro(self.__class__)[:-1]
-        for cls in classes:
-            if name in cls._operators:  # type: ignore
-                operator = cls._operators[name]  # type: ignore
-                # determine the rank of the boundary condition of this operator
-                rank = min(operator.rank_in, operator.rank_out)
-                # obtain the correct boundary conditions for this operator
-                bcs = self.get_boundary_conditions(bc, rank=rank)
-                # instantiate the operator
-                return operator.factory(bcs, **kwargs)  # type: ignore
+        operator = self._get_operator_info(operator)
+        # instantiate the operator
+        apply_operator = operator.factory(self, **kwargs)  # type: ignore
+        # calculate output shape
+        out_shape = (self.dim,) * operator.rank_out + self._shape_full
 
-        # operator was not found
-        op_list = ", ".join(sorted(self.operators))
-        raise ValueError(
-            f"'{name}' is not one of the defined operators ({op_list}). Custom "
-            "operators can be added using the `register_operator` method."
-        )
+        # boundary conditions are not enforced
+        if kwargs.get("backend", "numba") == "numba":
+            return jit_allocate_out(out_shape=out_shape)(apply_operator)
+        else:
+            return apply_operator
 
     @cached_method()
     @fill_in_docstring
     def make_operator(
-        self, name: str, bc: "BoundariesData", method: str = "numba", **kwargs
+        self,
+        operator: Union[str, Operator],
+        bc: "BoundariesData",
+        **kwargs,
     ) -> OperatorType:
-        """return a compiled function applying a discretized operator for this grid
+        """return a compiled function applying an operator with boundary conditions
 
         Args:
-            name (str):
+            operator (str):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
                 'divergence'. The registered operators for this grid can be obtained
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
@@ -625,50 +677,62 @@ class GridBase(metaclass=ABCMeta):
             to which the operator `name` has been applied. This function optionally
             supports a second argument, which provides allocated memory for the output.
         """
-        # obtain all parent classes, except `object`
-        classes = inspect.getmro(self.__class__)[:-1]
-        for cls in classes:
-            if name in cls._operators:  # type: ignore
-                operator = cls._operators[name]  # type: ignore
-                # determine the rank of the boundary condition of this operator
-                bc_rank = min(operator.rank_in, operator.rank_out)
-                # instantiate the operator
-                apply_operator = operator.factory(self, method=method, **kwargs)  # type: ignore
-                break
-        else:
-            # operator was not found
-            op_list = ", ".join(sorted(self.operators))
-            raise ValueError(
-                f"'{name}' is not one of the defined operators ({op_list}). Custom "
-                "operators can be added using the `register_operator` method."
-            )
+        backend = kwargs.get("backend", "numba")  # numba is the default backend
 
-        # obtain the correct boundary conditions for this operator
+        operator = self._get_operator_info(operator)
+        # determine the rank of the boundary condition of this operator
+        bc_rank = min(operator.rank_in, operator.rank_out)
+        # instantiate the operator
+        operator_raw = operator.factory(self, **kwargs)  # type: ignore
+
+        # set the boundary conditions before applying this operator
         bcs = self.get_boundary_conditions(bc, rank=bc_rank)
 
-        if method == "numba":
+        # calculate shapes of the full data
+        shape_in_full = (self.dim,) * operator.rank_in + self._shape_full
+        shape_out_full = (self.dim,) * operator.rank_out + self._shape_full
+
+        if backend == "numba":
             set_ghost_cells = bcs.make_ghost_cell_setter()
+            get_valid = self._make_get_valid()
+            operator_raw = jit(operator_raw)
 
-            #TODO: pre-calculate output shape
-
-            @jit_allocate_out
-            def apply_operator_with_bc(
-                arr: np.ndarray, out: np.ndarray = None
-            ) -> np.ndarray:
+            @jit
+            def apply_op(arr: np.ndarray) -> np.ndarray:
                 """applies operator to the data"""
-                set_ghost_cells(arr)
-                apply_operator(arr, out)
-                return out
+                # prepare input with boundary conditions
+                arr_full = np.empty(shape_in_full, dtype=arr.dtype)
+                arr_valid = get_valid(arr_full)
+                arr_valid[:] = arr
+                set_ghost_cells(arr_full)
 
-        elif method == "scipy":
+                # apply operator
+                out_full = np.empty(shape_out_full, dtype=arr.dtype)
+                operator_raw(arr_full, out_full)
 
-            def apply_operator_with_bc(
-                arr: np.ndarray, out: np.ndarray = None
-            ) -> np.ndarray:
-                bcs.set_ghost_cells(arr)
-                return apply_operator(arr, out)
+                # return valid part of the output
+                return get_valid(out_full)
 
-        return apply_operator_with_bc
+        elif backend == "scipy":
+
+            def apply_op(arr: np.ndarray) -> np.ndarray:
+                """set boundary conditions and apply operator"""
+                # prepare input with boundary conditions
+                arr_full = np.empty(shape_in_full, dtype=arr.dtype)
+                arr_full[(...,) + self._idx_valid] = arr
+                bcs.set_ghost_cells(arr_full)
+
+                # apply operator
+                out_full = np.empty(shape_out_full, dtype=arr.dtype)
+                operator_raw(arr_full, out_full)
+
+                # return valid part of the output
+                return out_full[(...,) + self._idx_valid]
+
+        else:
+            raise NotImplemented
+
+        return apply_op
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":
         """return a subgrid of only the specified axes"""

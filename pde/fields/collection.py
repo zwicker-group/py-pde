@@ -121,11 +121,11 @@ class FieldCollection(FieldBase):
         if not copy_fields:
             for i, field in enumerate(self.fields):
                 field_shape = field.data.shape
-                field._data_flat = self._data_full[self._slices[i]]
+                field._data_flat = self._data_all[self._slices[i]]
 
                 # check whether the field data is based on our data field
                 assert field.data.shape == field_shape
-                assert np.may_share_memory(field._data_full, self._data_full)
+                assert np.may_share_memory(field._data_all, self._data_all)
 
         if labels is not None:
             self.labels = labels  # type: ignore
@@ -426,14 +426,14 @@ class FieldCollection(FieldBase):
     def copy(
         self: FieldCollection,
         *,
-        data_full: Union[ArrayLike, str] = "copy",
+        data_all: Union[ArrayLike, str] = "copy",
         label: str = None,
         dtype=None,
     ) -> FieldCollection:
         """return a copy of the data, but not of the grid
 
         Args:
-            data_full (:class:`~numpy.ndarray`, str):
+            data_all (:class:`~numpy.ndarray`, str):
                 Data values at the support points of the grid that define the field.
                 Special values are "copy", copying the current data, "zeros",
                 initializing the copy with zeros, and "empty", just allocating memory
@@ -448,23 +448,23 @@ class FieldCollection(FieldBase):
             label = self.label
         fields = [f.copy() for f in self.fields]
 
-        if isinstance(data_full, str):
+        if isinstance(data_all, str):
             if dtype is None:
                 dtype = self.dtype  # use current dtype in copy when none is supplied
-            if data_full == "empty":
-                data: Optional[np.ndarray] = np.empty_like(self._data_full, dtype=dtype)
-            elif data_full == "zeros":
-                data = np.zeros_like(self._data_full, dtype=dtype)
-            elif data_full == "ones":
-                data = np.ones_like(self._data_full, dtype=dtype)
-            elif data_full == "copy":
+            if data_all == "empty":
+                data: Optional[np.ndarray] = np.empty_like(self._data_all, dtype=dtype)
+            elif data_all == "zeros":
+                data = np.zeros_like(self._data_all, dtype=dtype)
+            elif data_all == "ones":
+                data = np.ones_like(self._data_all, dtype=dtype)
+            elif data_all == "copy":
                 # The data of the individual fields is copied in their copy() method above.
                 # The underlying data is therefore independent from the current field
                 data = None
             else:
                 raise ValueError(f"Unknown data '{data}'")
         else:
-            data = number_array(data_full, dtype=dtype, copy=True)
+            data = number_array(data_all, dtype=dtype, copy=True)
 
         return self.__class__(
             fields, data=data, copy_fields=False, label=label, dtype=dtype

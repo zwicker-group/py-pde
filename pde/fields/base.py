@@ -12,17 +12,7 @@ import logging
 import warnings
 from abc import ABCMeta, abstractmethod, abstractproperty
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -32,14 +22,14 @@ from ..grids.cartesian import CartesianGridBase
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
-from ..tools.numba import make_array_constructor, jit
+from ..tools.numba import jit, make_array_constructor
 from ..tools.plotting import (
     PlotReference,
     napari_add_layers,
     napari_viewer,
     plot_on_axes,
 )
-from ..tools.typing import ArrayLike, NumberOrArray, OperatorType
+from ..tools.typing import ArrayLike, NumberOrArray
 
 if TYPE_CHECKING:
     from .scalar import ScalarField  # @UnusedImport
@@ -57,7 +47,7 @@ class FieldBase(metaclass=ABCMeta):
 
     _subclasses: Dict[str, FieldBase] = {}  # all classes inheriting from this
     _grid: GridBase  # the grid on which the field is defined
-    __data_full: np.ndarray  # the data on the grid including ghost points
+    __data_all: np.ndarray  # the data on the grid including ghost points
     _data_valid: np.ndarray  # the valid data without ghost points
     _label: Optional[str]
 
@@ -78,7 +68,7 @@ class FieldBase(metaclass=ABCMeta):
                 Name of the field
         """
         self._grid = grid
-        self._data_full = data
+        self._data_all = data
         self.label = label
         self._logger = logging.getLogger(self.__class__.__name__)
 
@@ -109,12 +99,18 @@ class FieldBase(metaclass=ABCMeta):
             self._data_valid[:] = value
 
     @property
-    def _data_full(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: the full data including ghost cells"""
-        return self.__data_full
+    def _idx_valid(self) -> Tuple[slice, ...]:
+        """tuple: slices to extract valid data from full data"""
+        idx_comp = (slice(None),) * (self.__data_all.ndim - self.grid.num_axes)
+        return idx_comp + self.grid._idx_valid
 
-    @_data_full.setter
-    def _data_full(self, value: np.ndarray) -> None:
+    @property
+    def _data_all(self) -> np.ndarray:
+        """:class:`~numpy.ndarray`: the full data including ghost cells"""
+        return self.__data_all
+
+    @_data_all.setter
+    def _data_all(self, value: np.ndarray) -> None:
         """set the full data including ghost cells
 
         Args:
@@ -126,43 +122,39 @@ class FieldBase(metaclass=ABCMeta):
             raise ValueError("assignment destination is read-only")
 
         # check the shape of the supplied data
-        full_grid_shape = tuple(s + 2 for s in self.grid.shape)
-        if value.shape[-self.grid.num_axes :] != full_grid_shape:
+        if value.shape[-self.grid.num_axes :] != self.grid._shape_full:
             raise ValueError(
                 f"Supplied data has wrong shape: {value.shape} is not compatible with "
-                f"{full_grid_shape}"
+                f"{self.grid._shape_full}"
             )
 
         # actually set the data
-        self.__data_full = value
-
+        self.__data_all = value
         # set reference to valid data
-        idx_comp = (slice(None),) * (value.ndim - self.grid.num_axes)
-        idx_grid = (slice(1, -1),) * self.grid.num_axes
-        self._data_valid = self.__data_full[idx_comp + idx_grid]
+        self._data_valid = self.__data_all[self._idx_valid]
 
     @property
     def _data_flat(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: flat version of discretized data with ghost cells"""
         # flatten the first dimension of the internal data
         full_shape = tuple(s + 2 for s in self.grid.shape)
-        return self._data_full.reshape(-1, *full_shape)
+        return self._data_all.reshape(-1, *full_shape)
 
     @_data_flat.setter
     def _data_flat(self, value: np.ndarray) -> None:
         """set the full data including ghost cells from a flattened array"""
         # simply set the data -> this might need to be overwritten
-        self._data_full = value
+        self._data_all = value
 
     @property
     def writeable(self) -> bool:
         """bool: whether the field data can be changed or not"""
-        return not hasattr(self, "_data_full") or self._data_full.flags.writeable
+        return not hasattr(self, "_data_all") or self._data_all.flags.writeable
 
     @writeable.setter
     def writeable(self, value: bool) -> None:
         """set whether the field data can be changed or not"""
-        self._data_full.flags.writeable = value
+        self._data_all.flags.writeable = value
         self._data_valid.flags.writeable = value
 
     @property
@@ -301,7 +293,7 @@ class FieldBase(metaclass=ABCMeta):
     def copy(
         self: TField,
         *,
-        data_full: Union[ArrayLike, str] = "copy",
+        data_all: Union[ArrayLike, str] = "copy",
         label: str = None,
         dtype=None,
     ) -> TField:
@@ -397,7 +389,7 @@ class FieldBase(metaclass=ABCMeta):
             FieldBase: An field that contains the result of the operation.
         """
         data = op(self.data)
-        result = self.copy(data_full="empty", dtype=data.dtype)
+        result = self.copy(data_all="empty", dtype=data.dtype)
         result.data = data
         return result
 
@@ -450,24 +442,24 @@ class FieldBase(metaclass=ABCMeta):
                 if not isinstance(other, ScalarField):
                     raise TypeError("Right operator must be a scalar field")
                 self.grid.assert_grid_compatible(other.grid)
-                result: FieldBase = self.copy(data_full="empty", dtype=dtype)
+                result: FieldBase = self.copy(data_all="empty", dtype=dtype)
 
             elif isinstance(self, ScalarField):
                 # left operator is a scalar field (right can be tensor)
                 self.grid.assert_grid_compatible(other.grid)
-                result = other.copy(data_full="empty", dtype=dtype)
+                result = other.copy(data_all="empty", dtype=dtype)
 
             else:
                 # left operator is tensor and right one might be anything
                 self.assert_field_compatible(other, accept_scalar=True)
-                result = self.copy(data_full="empty", dtype=dtype)
+                result = self.copy(data_all="empty", dtype=dtype)
 
             op(self.data, other.data, out=result.data)
 
         else:
             # the second operator is a number or a numpy array
             dtype = np.result_type(self.data, other)
-            result = self.copy(data_full="empty", dtype=dtype)
+            result = self.copy(data_all="empty", dtype=dtype)
             op(self.data, other, out=result.data)
 
         return result
@@ -583,7 +575,7 @@ class FieldBase(metaclass=ABCMeta):
             Field with new data. This is stored at `out` if given.
         """
         if out is None:
-            out = self.copy(data_full="empty", label=label)
+            out = self.copy(data_all="empty", label=label)
             out.data = func(self.data)
         else:
             self.assert_field_compatible(out)
@@ -672,7 +664,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if isinstance(data, self.__class__):
             # special case where a DataFieldBase is supplied
-            data_arr = number_array(data._data_full, dtype=dtype, copy=True)
+            data_arr = number_array(data._data_all, dtype=dtype, copy=True)
             super().__init__(grid, data=data_arr, label=label)
 
         elif with_ghost_cells:
@@ -706,7 +698,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             elif isinstance(data, DataFieldBase):
                 # copy the full data from the supplied field
                 grid.assert_grid_compatible(data.grid)
-                data_arr = number_array(data._data_full, dtype=dtype, copy=True)
+                data_arr = number_array(data._data_all, dtype=dtype, copy=True)
                 super().__init__(grid, data=data_arr, label=label)
 
             else:
@@ -957,14 +949,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def copy(
         self: TDataField,
         *,
-        data_full: Union[ArrayLike, str] = "copy",
+        data_all: Union[ArrayLike, str] = "copy",
         label: str = None,
         dtype=None,
     ) -> TDataField:
         """return a copy of the data, but not of the grid
 
         Args:
-            data_full (:class:`~numpy.ndarray`, str):
+            data_all (:class:`~numpy.ndarray`, str):
                 Data values at the support points of the grid that define the field.
                 Special values are "copy", copying the current data, "zeros",
                 initializing the copy with zeros, and "empty", just allocating memory
@@ -978,22 +970,22 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if label is None:
             label = self.label
 
-        if isinstance(data_full, str):
+        if isinstance(data_all, str):
             if dtype is None:
                 dtype = self.dtype  # use current dtype in copy when none is supplied
-            if data_full == "empty":
-                data = np.empty_like(self._data_full, dtype=dtype)
-            elif data_full == "zeros":
-                data = np.zeros_like(self._data_full, dtype=dtype)
-            elif data_full == "ones":
-                data = np.ones_like(self._data_full, dtype=dtype)
-            elif data_full == "copy":
-                data = number_array(self._data_full, dtype=dtype, copy=True)
+            if data_all == "empty":
+                data = np.empty_like(self._data_all, dtype=dtype)
+            elif data_all == "zeros":
+                data = np.zeros_like(self._data_all, dtype=dtype)
+            elif data_all == "ones":
+                data = np.ones_like(self._data_all, dtype=dtype)
+            elif data_all == "copy":
+                data = number_array(self._data_all, dtype=dtype, copy=True)
             else:
                 raise ValueError(f"Unknown data '{data}'")
         else:
             # use the supplied data
-            data = number_array(data_full, dtype=dtype, copy=True)
+            data = number_array(data_all, dtype=dtype, copy=True)
 
         return self.__class__(
             self.grid,
@@ -1513,7 +1505,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 {ARG_BOUNDARIES}
         """
         bcs = self.grid.get_boundary_conditions(bc, rank=self.rank)
-        bcs.set_ghost_cells(self._data_full)
+        bcs.set_ghost_cells(self._data_all)
 
     @abstractproperty
     def integral(self) -> NumberOrArray:
@@ -1568,30 +1560,39 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             raise AssertionError("Rank must be non-negative")
 
-    def _apply_with_out(
+    @fill_in_docstring
+    def _apply_operator(
         self,
-        func: OperatorType,
-        out_cls: Type[TDataField],
+        operator: str,
+        bc: "BoundariesData",
+        out: Optional[ScalarField] = None,
         *,
-        out: Optional[TDataField] = None,
         label: str = None,
+        **kwargs,
     ) -> TDataField:
-        """applies a function to the data and returns it as a field
+        r"""apply an operator and return result as a field
 
         Args:
-            func (callable or str):
-                The (vectorized) function being applied to the data or the name
-                of an operator that is defined for the grid of this field.
-            out_cls:
-                Type of the result of this operation
-            out (FieldBase, optional):
-                Optional field into which the data is written
+            operator (str):
+                An identifier determining the registered on the grid.
+            bc:
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES}
+            out (ScalarField, optional):
+                Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
+            **kwargs:
+                Additional arguments affecting how the operator behaves.
 
         Returns:
             Field with new data. This is stored at `out` if given.
         """
+        # get information about the operator
+        operator = self.grid._get_operator_info(operator)
+        out_cls = _get_field_class_by_rank(operator.rank_out)
+
+        # prepare the output field
         if out is None:
             out = out_cls(self.grid, data="empty", label=label, dtype=self.dtype)
         elif not isinstance(out, out_cls):
@@ -1601,8 +1602,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if label is not None:
                 out.label = label
 
-        # apply the function
-        func(self._data_full, out=out._data_full)  # type: ignore
+        # obtain and apply the operator
+        func = self.grid.make_operator(operator, bc=bc, **kwargs)
+        out.data[:] = func(self.data)  # type: ignore
         return out
 
     def smooth(
@@ -2085,3 +2087,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         name = "Field" if self.label is None else self.label
         return {name: self._get_napari_layer_data(**kwargs)}
+
+
+def _get_field_class_by_rank(rank: int) -> FieldBase:
+    """return a field class associated with a certain rank
+
+    Args:
+        rank (int): The rank of the tensor field
+    """
+    for cls in FieldBase._subclasses.values():
+        if hasattr(cls, "rank") and cls.rank == rank:
+            return cls
+    raise RuntimeError(f"Could not find field class for rank {rank}")

@@ -4,7 +4,7 @@ Provides support for mypy type checking of the package
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Any, Callable, Optional, Sequence, Union
+from typing import Any, Callable, Sequence, Union
 
 import numpy as np
 
@@ -14,4 +14,4 @@ NumberOrArray = Union[Number, np.ndarray]
 FloatNumerical = Union[float, np.ndarray]
 ArrayLike = Union[NumberOrArray, Sequence[NumberOrArray], Sequence[Sequence[Any]]]
 
-OperatorType = Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]
+OperatorType = Callable[[np.ndarray, np.ndarray], None]

@@ -54,7 +54,6 @@ class ExplicitSolver(SolverBase):
             `t_start` to time `t_end`. The function call signature is
             `(state: numpy.ndarray, t_start: float, t_end: float)`
         """
-
         # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step(state))
 
@@ -85,7 +84,7 @@ class ExplicitSolver(SolverBase):
             )
 
         else:
-            # handle deterministic  version of the pde
+            # handle deterministic version of the pde
             rhs_pde = self._make_pde_rhs(state, backend=self.backend)
 
             def stepper(

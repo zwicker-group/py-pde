@@ -9,8 +9,8 @@ import warnings
 
 import numpy as np
 
-from ..base import GridBase
 from ...tools.typing import OperatorType
+from ..base import GridBase
 
 logger = logging.getLogger(__name__)
 
@@ -83,10 +83,10 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Operato
     mat = matrix.tocsc()
     vec = vector.toarray()[:, 0]
 
-    def solve_poisson(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def solve_poisson(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
         """solves Poisson's equation using sparse linear algebra"""
         # prepare the right hand side vector
-        rhs = arr.flat - vec
+        rhs = np.ravel(arr) - vec
 
         # solve the linear problem using a sparse solver
         try:
@@ -119,14 +119,14 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Operato
             # use least squares to solve an underdetermined problem
             result = sparse.linalg.lsmr(mat, rhs)[0]
             if not np.allclose(mat.dot(result), rhs, rtol=1e-5, atol=1e-5):
-                raise RuntimeError("Poisson problem could not be solved")
+                residual = np.linalg.norm(mat.dot(result) - rhs)
+                raise RuntimeError(
+                    f"Poisson problem could not be solved (Residual: {residual})"
+                )
             logger.info("Solved Poisson problem with sparse.linalg.lsmr")
 
         # convert the result to the correct format
-        if out is None:
-            out = result.reshape(arr.shape)
-        else:
-            out[:] = result.reshape(arr.shape)
+        out[:] = result.reshape(arr.shape)
         return out
 
     return solve_poisson

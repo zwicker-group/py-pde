@@ -62,7 +62,7 @@ def test_noise_scaling():
 
     # divergence of white noise
     shape = (grid.dim,) + grid.shape
-    div = grid.get_operator("divergence", bc="natural")
+    div = grid.make_operator("divergence", bc="natural")
 
     def noise_div():
         return div(np.random.randn(*shape))

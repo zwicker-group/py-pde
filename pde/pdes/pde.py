@@ -290,7 +290,7 @@ class PDE(PDEBase):
                 self._logger.info(msg, bc, func, var)
 
                 try:
-                    ops[func] = state.grid.get_operator(func, bc=bc)
+                    ops[func] = state.grid.make_operator(func, bc=bc)
                 except BCDataError:
                     # wrong data was supplied for the boundary condition
                     raise
@@ -390,18 +390,18 @@ class PDE(PDEBase):
         cache = self._prepare_cache(state, backend="numpy")
 
         # create an empty copy of the current field
-        result = state.copy(data_full="empty")
+        result = state.copy(data_all="empty")
 
         # fill it with data
         if isinstance(state, DataFieldBase):
             # state is a single field
-            result.data = cache["rhs_funcs"][0](state.data, t)
+            result.data[:] = cache["rhs_funcs"][0](state.data, t)
 
         elif isinstance(state, FieldCollection):
             # state is a collection of fields
             for i in range(len(state)):
                 data_tpl = cache["get_data_tuple"](state.data)
-                result[i].data = cache["rhs_funcs"][i](*data_tpl, t)  # type: ignore
+                result[i].data[:] = cache["rhs_funcs"][i](*data_tpl, t)  # type: ignore
 
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
