@@ -27,9 +27,9 @@ from typing import (
     Union,
 )
 
-from numba.extending import register_jitable
 import numba as nb
 import numpy as np
+from numba.extending import register_jitable
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
@@ -239,15 +239,15 @@ class GridBase(metaclass=ABCMeta):
         def get_valid(arr: np.ndarray) -> np.ndarray:
             """return valid part of the data (without ghost cells)"""
             if num_axes == 1:
-                return arr[..., 1:-1]
+                return arr[..., 1:-1]  # type: ignore
             elif num_axes == 2:
-                return arr[..., 1:-1, 1:-1]
+                return arr[..., 1:-1, 1:-1]  # type: ignore
             elif num_axes == 3:
-                return arr[..., 1:-1, 1:-1, 1:-1]
+                return arr[..., 1:-1, 1:-1, 1:-1]  # type: ignore
             else:
                 raise NotImplementedError
 
-        return get_valid
+        return get_valid  # type: ignore
 
     @abstractproperty
     def state(self) -> Dict[str, Any]:
@@ -641,13 +641,13 @@ class GridBase(metaclass=ABCMeta):
         """
         operator = self._get_operator_info(operator)
         # instantiate the operator
-        apply_operator = operator.factory(self, **kwargs)  # type: ignore
+        apply_operator = operator.factory(self, **kwargs)
         # calculate output shape
         out_shape = (self.dim,) * operator.rank_out + self._shape_full
 
         # boundary conditions are not enforced
         if kwargs.get("backend", "numba") == "numba":
-            return jit_allocate_out(out_shape=out_shape)(apply_operator)
+            return jit_allocate_out(out_shape=out_shape)(apply_operator)  # type: ignore
         else:
             return apply_operator
 
@@ -658,7 +658,7 @@ class GridBase(metaclass=ABCMeta):
         operator: Union[str, Operator],
         bc: "BoundariesData",
         **kwargs,
-    ) -> OperatorType:
+    ) -> Callable[[np.ndarray], np.ndarray]:
         """return a compiled function applying an operator with boundary conditions
 
         Args:
@@ -683,7 +683,7 @@ class GridBase(metaclass=ABCMeta):
         # determine the rank of the boundary condition of this operator
         bc_rank = min(operator.rank_in, operator.rank_out)
         # instantiate the operator
-        operator_raw = operator.factory(self, **kwargs)  # type: ignore
+        operator_raw = operator.factory(self, **kwargs)
 
         # set the boundary conditions before applying this operator
         bcs = self.get_boundary_conditions(bc, rank=bc_rank)
@@ -727,12 +727,12 @@ class GridBase(metaclass=ABCMeta):
                 operator_raw(arr_full, out_full)
 
                 # return valid part of the output
-                return out_full[(...,) + self._idx_valid]
+                return out_full[(...,) + self._idx_valid]  # type: ignore
 
         else:
             raise NotImplemented
 
-        return apply_op
+        return apply_op  # type: ignore
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":
         """return a subgrid of only the specified axes"""

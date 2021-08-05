@@ -43,14 +43,10 @@ def make_laplace_from_matrix(matrix, vector) -> OperatorType:
     mat = matrix.tocsc()
     vec = vector.toarray()[:, 0]
 
-    def laplace(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply the laplace operator to `arr`"""
         result = mat.dot(arr.flat) + vec
-        if out is None:
-            return result.reshape(arr.shape)  # type: ignore
-        else:
-            out[:] = result.reshape(arr.shape)
-            return out
+        out[:] = result.reshape(arr.shape)
 
     return laplace
 
@@ -83,7 +79,7 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Operato
     mat = matrix.tocsc()
     vec = vector.toarray()[:, 0]
 
-    def solve_poisson(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def solve_poisson(arr: np.ndarray, out: np.ndarray) -> None:
         """solves Poisson's equation using sparse linear algebra"""
         # prepare the right hand side vector
         rhs = np.ravel(arr) - vec
@@ -127,6 +123,5 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Operato
 
         # convert the result to the correct format
         out[:] = result.reshape(arr.shape)
-        return out
 
     return solve_poisson

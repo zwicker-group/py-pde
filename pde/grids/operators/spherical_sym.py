@@ -61,23 +61,21 @@ def make_laplace(grid: SphericalSymGrid, conservative: bool = True) -> OperatorT
         factor_h = (rs + 0.5 * dr) ** 2 / (dr * volumes)
 
         @jit
-        def laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def laplace(arr: np.ndarray, out: np.ndarray) -> None:
             """apply laplace operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
                 out[i] = factor_h[i - 1] * (arr[i + 1] - arr[i])
                 out[i] -= factor_l[i - 1] * (arr[i] - arr[i - 1])
-            return out
 
     else:  # create an operator that is not conservative
         dr2 = 1 / dr ** 2
 
         @jit
-        def laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def laplace(arr: np.ndarray, out: np.ndarray) -> None:
             """apply laplace operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
                 out[i] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr2
                 out[i] += (arr[i + 1] - arr[i - 1]) / (rs[i - 1] * dr)
-            return out
 
     return laplace  # type: ignore
 
@@ -105,12 +103,11 @@ def make_gradient(grid: SphericalSymGrid) -> OperatorType:
     scale_r = 1 / (2 * dr)
 
     @jit
-    def gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
             out[0, i] = (arr[i + 1] - arr[i - 1]) * scale_r
             out[1, i] = out[2, i] = 0  # no angular dependence by definition
-        return out
 
     return gradient  # type: ignore
 
@@ -145,23 +142,21 @@ def make_gradient_squared(grid: SphericalSymGrid, central: bool = True) -> Opera
         scale = 1 / (2 * dr) ** 2
 
         @jit
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
                 out[i] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
-            return out
 
     else:
         # use forward and backward differences
         scale = 1 / (2 * dr ** 2)
 
         @jit
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
                 term = (arr[i + 1] - arr[i]) ** 2 + (arr[i] - arr[i - 1]) ** 2
                 out[i] = term * scale
-            return out
 
     return gradient_squared  # type: ignore
 
@@ -198,14 +193,13 @@ def make_divergence(grid: SphericalSymGrid, safe: bool = True) -> OperatorType:
     fs = 2 / rs  # factors that need to be multiplied below
 
     @jit
-    def divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply divergence operator to array `arr`"""
         if safe:
             assert np.all(arr[1, 1:-1] == 0)
         arr_r = arr[0, :]
         for i in range(1, dim_r + 1):  # iterate radial points
             out[i] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r + fs[i - 1] * arr_r[i]
-        return out
 
     return divergence  # type: ignore
 
@@ -240,7 +234,7 @@ def make_vector_gradient(grid: SphericalSymGrid, safe: bool = True) -> OperatorT
     scale_r = 1 / (2 * dr)
 
     @jit
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector gradient operator to array `arr`"""
         if safe:
             assert np.all(arr[1:, 1:-1] == 0)
@@ -264,8 +258,6 @@ def make_vector_gradient(grid: SphericalSymGrid, safe: bool = True) -> OperatorT
             out_rr[i] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
             out_θθ[i] = arr_r[i] / rs[i - 1]
             out_φφ[i] = arr_r[i] / rs[i - 1]
-
-        return out
 
     return vector_gradient  # type: ignore
 
@@ -295,7 +287,7 @@ def make_tensor_divergence(grid: SphericalSymGrid, safe: bool = True) -> Operato
     scale_r = 1 / (2 * dr)
 
     @jit
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply tensor divergence operator to array `arr`"""
         # assign aliases
         arr_rr, arr_rθ, arr_rφ = arr[0, 0, :], arr[0, 1, :], arr[0, 2, :]
@@ -321,8 +313,6 @@ def make_tensor_divergence(grid: SphericalSymGrid, safe: bool = True) -> Operato
 
             deriv_r = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r
             out_φ[i] = deriv_r + (2 * arr_φr[i] + arr_rφ[i]) / rs[i - 1]
-
-        return out
 
     return tensor_divergence  # type: ignore
 

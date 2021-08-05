@@ -47,7 +47,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply laplace operator to array `arr`"""
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
@@ -58,8 +58,6 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
                     + (arr_r_h - arr_r_l) / (2 * i - 1) * dr_2
                     + (arr_z_l - 2 * arr[i, j] + arr_z_h) * dz_2
                 )
-
-        return out
 
     return laplace  # type: ignore
 
@@ -86,15 +84,13 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
                 out[0, i, j] = (arr[i + 1, j] - arr[i - 1, j]) * scale_r
                 out[1, i, j] = (arr[i, j + 1] - arr[i, j - 1]) * scale_z
                 out[2, i, j] = 0  # no phi dependence by definition
-
-        return out
 
     return gradient  # type: ignore
 
@@ -129,7 +125,7 @@ def make_gradient_squared(
         # use central differences
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply gradient operator to array `arr`"""
             for i in nb.prange(1, dim_r + 1):  # iterate radial points
                 for j in range(1, dim_z + 1):  # iterate axial points
@@ -138,13 +134,11 @@ def make_gradient_squared(
                     term_z = (arr_z_h - arr_z_l) ** 2
                     out[i, j] = term_r * scale_r + term_z * scale_z
 
-            return out
-
     else:
         # use forward and backward differences
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply gradient operator to array `arr`"""
             for i in nb.prange(1, dim_r + 1):  # iterate radial points
                 for j in range(1, dim_z + 1):  # iterate axial points
@@ -152,8 +146,6 @@ def make_gradient_squared(
                     term_r = (arr[i + 1, j] - arr_c) ** 2 + (arr_c - arr[i - 1, j]) ** 2
                     term_z = (arr_z_h - arr_c) ** 2 + (arr_c - arr_z_l) ** 2
                     out[i, j] = term_r * scale_r + term_z * scale_z
-
-            return out
 
     return gradient_squared  # type: ignore
 
@@ -181,7 +173,7 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply divergence operator to array `arr`"""
         arr_r, arr_z = arr[0], arr[1]
 
@@ -192,8 +184,6 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
                     + (arr_r[i + 1, j] - arr_r[i - 1, j]) * scale_r
                     + (arr_z[i, j + 1] - arr_z[i, j - 1]) * scale_z
                 )
-
-        return out
 
     return divergence  # type: ignore
 
@@ -221,7 +211,7 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         # assign aliases
         arr_r, arr_z, arr_φ = arr
@@ -242,8 +232,6 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
                 out_rz[i, j] = (arr_r[i, j + 1] - arr_r[i, j - 1]) * scale_z
                 out_φz[i, j] = (arr_φ[i, j + 1] - arr_φ[i, j - 1]) * scale_z
                 out_zz[i, j] = (arr_z[i, j + 1] - arr_z[i, j - 1]) * scale_z
-
-        return out
 
     return vector_gradient  # type: ignore
 
@@ -274,7 +262,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector laplace operator to array `arr`"""
         # assign aliases
         arr_r, arr_z, arr_φ = arr
@@ -305,8 +293,6 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
                     + (f_z_h - 2 * f_z_m + f_z_l) * s2
                 )
 
-        return out
-
     return vector_laplace  # type: ignore
 
 
@@ -333,7 +319,7 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     @jit(parallel=parallel)
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> np.ndarray:
+    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply tensor divergence operator to array `arr`"""
         # assign aliases
         arr_rr, arr_rz, arr_rφ = arr[0, 0], arr[0, 1], arr[0, 2]
@@ -360,7 +346,5 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
                     + (arr_zr[i + 1, j] - arr_zr[i - 1, j]) * scale_r
                     + arr_zr[i, j] / rs[i - 1]
                 )
-
-        return out
 
     return tensor_divergence  # type: ignore

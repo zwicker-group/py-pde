@@ -52,7 +52,7 @@ class BrusselatorPDE(PDEBase):
         """nunmba-compiled implementation of the PDE"""
         d0, d1 = self.diffusivity
         a, b = self.a, self.b
-        laplace = state.grid.get_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc)
 
         @nb.jit
         def pde_rhs(state_data, t):

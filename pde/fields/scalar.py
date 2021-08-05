@@ -162,7 +162,7 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
         """
-        return self._apply_operator("laplace", bc=bc, out=out, **kwargs)
+        return self._apply_operator("laplace", bc=bc, out=out, **kwargs)  # type: ignore
 
     @fill_in_docstring
     def gradient_squared(
@@ -190,7 +190,7 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the squared gradient of the field
         """
-        return self._apply_operator("gradient_squared", bc=bc, out=out, **kwargs)
+        return self._apply_operator("gradient_squared", bc=bc, out=out, **kwargs)  # type: ignore
 
     @fill_in_docstring
     def gradient(
@@ -210,7 +210,7 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        return self._apply_operator("gradient", bc=bc, out=out, **kwargs)
+        return self._apply_operator("gradient", bc=bc, out=out, **kwargs)  # type: ignore
 
     @property
     def integral(self) -> Number:

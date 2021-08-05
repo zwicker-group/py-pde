@@ -64,7 +64,7 @@ def solve_poisson_equation(
     # solve the poisson problem
     result = rhs.copy(data_all="empty", label=label)
     try:
-        solver(rhs.data, out=result.data)
+        solver(rhs.data, result.data)
     except RuntimeError:
         magnitude = rhs.magnitude
         if magnitude > 1e-10:

@@ -16,7 +16,7 @@ from numba.extending import register_jitable
 
 from ...tools.typing import NumberOrArray
 from ..base import DomainError, GridBase
-from .local import BCBase, BCDataError, BoundaryData, NeumannBC, _make_get_arr_1d
+from .local import BCBase, BCDataError, BoundaryData, _make_get_arr_1d
 
 BoundaryPairData = Union[
     Dict[str, BoundaryData], BoundaryData, Tuple[BoundaryData, BoundaryData]
@@ -210,32 +210,6 @@ class BoundaryPair(BoundaryAxisBase):
                     )
 
         return cls(low, high)
-
-    @property
-    def _scipy_border_mode(self) -> dict:
-        """dict: a dictionary that can be used in scipy functions
-
-        This returns arguments that can be passed to functions of the
-        scipy.ndimage module to specify border conditions.
-
-        Raise:
-            RuntimeError if the boundary cannot be represented
-        """
-        if self.low != self.high:
-            raise RuntimeError("Incompatible boundaries")
-
-        # check whether both sides have vanishing derivative conditions
-        zero_neumann_bcs = all(
-            isinstance(b, NeumannBC) and np.all(b.value == 0)
-            for b in [self.low, self.high]
-        )
-        if zero_neumann_bcs:
-            return {"mode": "reflect"}
-        else:
-            # BoundaryCondition.value cannot be supported since the scipy value
-            # mode='constant' applies the boundary conditions at a different
-            # position then we would
-            raise RuntimeError("Unsupported boundaries")
 
     def extract_component(self, *indices):
         """extracts the boundary pair of the given index.
@@ -717,13 +691,13 @@ class BoundaryPeriodic(BoundaryAxisBase):
         idx_read = idx_write[:]
 
         # set lower BC
-        idx_write[offset + self.axis] = 0
-        idx_read[offset + self.axis] = -2
+        idx_write[offset + self.axis] = 0  # type: ignore
+        idx_read[offset + self.axis] = -2  # type: ignore
         data_all[tuple(idx_write)] = data_all[tuple(idx_read)]
 
         # set upper BC
-        idx_write[offset + self.axis] = -1
-        idx_read[offset + self.axis] = 1
+        idx_write[offset + self.axis] = -1  # type: ignore
+        idx_read[offset + self.axis] = 1  # type: ignore
         data_all[tuple(idx_write)] = data_all[tuple(idx_read)]
 
     def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
