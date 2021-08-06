@@ -62,7 +62,7 @@ def solve_poisson_equation(
     solver = operator.factory(bcs=bcs, **kwargs)
 
     # solve the poisson problem
-    result = rhs.copy(data_all="empty", label=label)
+    result = ScalarField(rhs.grid, label=label)
     try:
         solver(rhs.data, result.data)
     except RuntimeError:

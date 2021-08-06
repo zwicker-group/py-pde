@@ -390,7 +390,7 @@ class PDE(PDEBase):
         cache = self._prepare_cache(state, backend="numpy")
 
         # create an empty copy of the current field
-        result = state.copy(data_all="empty")
+        result = state.copy()
 
         # fill it with data
         if isinstance(state, DataFieldBase):

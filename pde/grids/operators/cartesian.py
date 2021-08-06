@@ -363,7 +363,6 @@ def make_laplace(grid: CartesianGridBase, backend: str = "auto") -> OperatorType
     """make a laplace operator on a Cartesian grid
 
     Args:
-    Args:
         grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
             The grid for which the operator is created
         backend (str):

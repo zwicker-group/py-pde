@@ -15,7 +15,6 @@ import numpy as np
 
 from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
 from pde.grids.boundaries import Boundaries
-from pde.grids.operators import cylindrical_sym, spherical_sym
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit, jit_allocate_out
 
@@ -172,64 +171,54 @@ def main():
             bcs = grid.get_boundary_conditions("natural", rank=0)
             result = field.laplace("natural")
 
-            for method in ["FLEXIBLE", "CUSTOM", "numba", "scipy"]:
-                if method == "FLEXIBLE":
-                    laplace = flexible_laplace_2d(bcs)
-                    data = field.data
-                elif method == "CUSTOM":
+            for method in ["CUSTOM", "FLEXIBLE", "numba", "scipy"]:
+                if method == "CUSTOM":
                     laplace = custom_laplace_2d(shape, periodic=periodic)
-                    data = field.data
+                elif method == "FLEXIBLE":
+                    laplace = flexible_laplace_2d(bcs)
                 elif method in {"numba", "scipy"}:
                     laplace = grid.make_operator("laplace", bc=bcs, backend=method)
-                    data = np.empty(tuple(s + 2 for s in grid.shape))
-                    data[1:-1, 1:-1] = field.data
                 else:
                     raise ValueError(f"Unknown method `{method}`")
 
                 # call once to pre-compile and test result
-                if method in {"numba", "scipy"}:
-                    np.testing.assert_allclose(laplace(data)[1:-1, 1:-1], result.data)
-                else:
-                    np.testing.assert_allclose(laplace(data), result.data)
-                speed = estimate_computation_speed(laplace, data)
+                np.testing.assert_allclose(laplace(field.data), result.data)
+                speed = estimate_computation_speed(laplace, field.data)
                 print(f"{method:>8s}: {int(speed):>9d}")
             print()
 
     # Cylindrical grid with different shapes
     for shape in [(32, 64), (512, 512)]:
-        data = np.random.random(shape)
         grid = CylindricalSymGrid(shape[0], [0, shape[1]], shape)
         print(f"Cylindrical grid, shape={shape}")
+        field = ScalarField.random_normal(grid)
         bcs = Boundaries.from_data(grid, "derivative")
-        laplace_cyl = cylindrical_sym.make_laplace(bcs)
-        result = laplace_cyl(data)
+        result = field.laplace(bcs)
 
         for method in ["CUSTOM", "numba"]:
             if method == "CUSTOM":
                 laplace = custom_laplace_cyl_neumann(shape)
             elif method == "numba":
-                laplace = laplace_cyl
+                laplace = grid.make_operator("laplace", bc=bcs)
             else:
                 raise ValueError(f"Unknown method `{method}`")
             # call once to pre-compile and test result
-            np.testing.assert_allclose(laplace(data), result)
-            speed = estimate_computation_speed(laplace, data)
+            np.testing.assert_allclose(laplace(field.data), result.data)
+            speed = estimate_computation_speed(laplace, field.data)
             print(f"{method:>8s}: {int(speed):>9d}")
         print()
 
     # Spherical grid with different shapes
     for shape in [32, 512]:
-        data = np.random.random(shape)
         grid = SphericalSymGrid(shape, shape)
         print(grid)
+        field = ScalarField.random_normal(grid)
         bcs = Boundaries.from_data(grid, "derivative")
-        make_laplace = spherical_sym.make_laplace
 
         for conservative in [True, False]:
-            laplace = make_laplace(bcs, conservative=conservative)
-            # call once to pre-compile
-            laplace(data)
-            speed = estimate_computation_speed(laplace, data)
+            laplace = grid.make_operator("laplace", bcs, conservative=conservative)
+            laplace(field.data)  # call once to pre-compile
+            speed = estimate_computation_speed(laplace, field.data)
             print(f" numba (conservative={str(conservative):<5}): {int(speed):>9d}")
         print()
 

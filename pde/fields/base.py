@@ -304,7 +304,6 @@ class FieldBase(metaclass=ABCMeta):
     def copy(
         self: TField,
         *,
-        data_all: Union[ArrayLike, str] = "copy",
         label: str = None,
         dtype=None,
     ) -> TField:
@@ -400,7 +399,7 @@ class FieldBase(metaclass=ABCMeta):
             FieldBase: An field that contains the result of the operation.
         """
         data = op(self.data)
-        result = self.copy(data_all="empty", dtype=data.dtype)
+        result = self.copy(dtype=data.dtype)
         result.data = data
         return result
 
@@ -453,24 +452,24 @@ class FieldBase(metaclass=ABCMeta):
                 if not isinstance(other, ScalarField):
                     raise TypeError("Right operator must be a scalar field")
                 self.grid.assert_grid_compatible(other.grid)
-                result: FieldBase = self.copy(data_all="empty", dtype=dtype)
+                result: FieldBase = self.copy(dtype=dtype)
 
             elif isinstance(self, ScalarField):
                 # left operator is a scalar field (right can be tensor)
                 self.grid.assert_grid_compatible(other.grid)
-                result = other.copy(data_all="empty", dtype=dtype)
+                result = other.copy(dtype=dtype)
 
             else:
                 # left operator is tensor and right one might be anything
                 self.assert_field_compatible(other, accept_scalar=True)
-                result = self.copy(data_all="empty", dtype=dtype)
+                result = self.copy(dtype=dtype)
 
             op(self.data, other.data, out=result.data)
 
         else:
             # the second operator is a number or a numpy array
             dtype = np.result_type(self.data, other)
-            result = self.copy(data_all="empty", dtype=dtype)
+            result = self.copy(dtype=dtype)
             op(self.data, other, out=result.data)
 
         return result
@@ -586,7 +585,7 @@ class FieldBase(metaclass=ABCMeta):
             Field with new data. This is stored at `out` if given.
         """
         if out is None:
-            out = self.copy(data_all="empty", label=label)
+            out = self.copy(label=label)
             out.data = func(self.data)
         else:
             self.assert_field_compatible(out)
@@ -960,20 +959,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def copy(
         self: TDataField,
         *,
-        data_all: Union[ArrayLike, str] = "copy",
         label: str = None,
         dtype=None,
     ) -> TDataField:
         """return a copy of the data, but not of the grid
 
         Args:
-            data_all (:class:`~numpy.ndarray`, str):
-                Data values at the support points of the grid that define the field.
-                Special values are "copy", copying the current data, "zeros",
-                initializing the copy with zeros, and "empty", just allocating memory
-                with unspecified values.
             label (str, optional):
-                Name of the copied field
+                Name of the returned field
             dtype (numpy dtype):
                 The data type of the field. If omitted, it will be determined from
                 `data` automatically or the dtype of the current field is used.
@@ -981,26 +974,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if label is None:
             label = self.label
 
-        if isinstance(data_all, str):
-            if dtype is None:
-                dtype = self.dtype  # use current dtype in copy when none is supplied
-            if data_all == "empty":
-                data = np.empty_like(self._data_all, dtype=dtype)
-            elif data_all == "zeros":
-                data = np.zeros_like(self._data_all, dtype=dtype)
-            elif data_all == "ones":
-                data = np.ones_like(self._data_all, dtype=dtype)
-            elif data_all == "copy":
-                data = number_array(self._data_all, dtype=dtype, copy=True)
-            else:
-                raise ValueError(f"Unknown data '{data}'")
-        else:
-            # use the supplied data
-            data = number_array(data_all, dtype=dtype, copy=True)
-
         return self.__class__(
             self.grid,
-            data=data,
+            data=np.array(self._data_all, dtype=dtype, copy=True),
             label=label,
             dtype=dtype,
             with_ghost_cells=True,

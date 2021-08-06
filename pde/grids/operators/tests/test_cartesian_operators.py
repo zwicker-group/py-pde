@@ -309,7 +309,8 @@ def test_make_derivative(ndim, axis):
     for method in ["central", "forward", "backward"]:
         msg = f"method={method}, periodic={periodic}"
         diff = ops._make_derivative(grid, axis=axis, method=method)
-        res = field.copy(data_all="zeros")
+        res = field.copy()
+        res.data[:] = 0
         field.set_ghost_cells(bcs)
         diff(field._data_all, out=res._data_all)
         np.testing.assert_allclose(
