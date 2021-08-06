@@ -674,7 +674,10 @@ class GridBase(metaclass=ABCMeta):
         The returned function takes the discretized data on the grid as an input and
         returns the data to which the operator `operator` has been applied. The function
         only takes the valid grid points and allocates memory for the ghost points
-        internally to apply the boundary conditions specified as `bc`.
+        internally to apply the boundary conditions specified as `bc`. Note that the
+        function supports an optional argument `out`, which if given should provide
+        space for the full output array including ghost cells. The result of the
+        function is then a view into this supplied array returning the valid data.        
 
         Args:
             operator (str):
@@ -711,8 +714,8 @@ class GridBase(metaclass=ABCMeta):
             get_valid = self._make_get_valid()
             operator_raw = jit(operator_raw)
 
-            @jit
-            def apply_op(arr: np.ndarray) -> np.ndarray:
+            @jit_allocate_out(out_shape=shape_out_full)
+            def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
                 """applies operator to the data"""
                 # prepare input with boundary conditions
                 arr_full = np.empty(shape_in_full, dtype=arr.dtype)
@@ -721,16 +724,15 @@ class GridBase(metaclass=ABCMeta):
                 set_ghost_cells(arr_full)
 
                 # apply operator
-                out_full = np.empty(shape_out_full, dtype=arr.dtype)
-                operator_raw(arr_full, out_full)
+                operator_raw(arr_full, out)
 
                 # return valid part of the output
-                return get_valid(out_full)
+                return get_valid(out)
 
         elif backend == "scipy":
             # create a numpy/scipy function to apply to the operator
 
-            def apply_op(arr: np.ndarray) -> np.ndarray:
+            def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
                 """set boundary conditions and apply operator"""
                 # prepare input with boundary conditions
                 arr_full = np.empty(shape_in_full, dtype=arr.dtype)
@@ -738,11 +740,12 @@ class GridBase(metaclass=ABCMeta):
                 bcs.set_ghost_cells(arr_full)
 
                 # apply operator
-                out_full = np.empty(shape_out_full, dtype=arr.dtype)
-                operator_raw(arr_full, out_full)
+                if out is None:
+                    out = np.empty(shape_out_full, dtype=arr.dtype)
+                operator_raw(arr_full, out)
 
                 # return valid part of the output
-                return out_full[(...,) + self._idx_valid]  # type: ignore
+                return out[(...,) + self._idx_valid]  # type: ignore
 
         else:
             raise NotImplementedError(f"Undefined backend '{backend}'")
