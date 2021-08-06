@@ -242,7 +242,7 @@ class PDEBase(metaclass=ABCMeta):
             Scalar field describing the evolution rate of the PDE
         """
         if self.noise:
-            result = state.copy(data_all="empty", label=label)
+            result = state.copy(label=label)
 
             if np.isscalar(self.noise):
                 # a single noise value is given for all fields
@@ -264,7 +264,8 @@ class PDEBase(metaclass=ABCMeta):
 
         else:
             # no noise
-            result = state.copy(data_all="zeros", label=label)
+            result = state.copy(label=label)
+            result.data[:] = 0
 
         return result
 

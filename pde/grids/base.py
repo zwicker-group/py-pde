@@ -619,12 +619,24 @@ class GridBase(metaclass=ABCMeta):
 
     @cached_method()
     @fill_in_docstring
-    def make_operator_raw(
+    def make_operator_no_bc(
         self,
         operator: Union[str, Operator],
         **kwargs,
     ) -> OperatorType:
         """return a compiled function applying an operator without boundary conditions
+
+        A function that takes the discretized full data as an input and returns an array
+        to which the operator `operator` has been applied. This function optionally
+        supports a second argument, which provides allocated memory for the output.
+        All data arrays must include the ghost cells!
+
+        Note:
+            The resulting function does not check whether the ghost cells have been
+            supplied with sensible values. It is the responsibility of the user to set
+            the values of the ghost cells beforehand. Use this function only if you
+            absolutely know what you're doing. In all other cases, :meth:`make_operator`
+            is probably the better choice.
 
         Args:
             operator (str):
@@ -635,9 +647,7 @@ class GridBase(metaclass=ABCMeta):
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            A function that takes the discretized data as an input and returns the data
-            to which the operator `name` has been applied. This function optionally
-            supports a second argument, which provides allocated memory for the output.
+            callable: the function that applies the operator
         """
         operator = self._get_operator_info(operator)
         # instantiate the operator
@@ -661,6 +671,11 @@ class GridBase(metaclass=ABCMeta):
     ) -> Callable[[np.ndarray], np.ndarray]:
         """return a compiled function applying an operator with boundary conditions
 
+        The returned function takes the discretized data on the grid as an input and
+        returns the data to which the operator `operator` has been applied. The function
+        only takes the valid grid points and allocates memory for the ghost points
+        internally to apply the boundary conditions specified as `bc`.
+
         Args:
             operator (str):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
@@ -673,9 +688,7 @@ class GridBase(metaclass=ABCMeta):
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            A function that takes the discretized data as an input and returns the data
-            to which the operator `name` has been applied. This function optionally
-            supports a second argument, which provides allocated memory for the output.
+            callable: the function that applies the operator
         """
         backend = kwargs.get("backend", "numba")  # numba is the default backend
 
@@ -693,6 +706,7 @@ class GridBase(metaclass=ABCMeta):
         shape_out_full = (self.dim,) * operator.rank_out + self._shape_full
 
         if backend == "numba":
+            # create a compiled function to apply to the operator
             set_ghost_cells = bcs.make_ghost_cell_setter()
             get_valid = self._make_get_valid()
             operator_raw = jit(operator_raw)
@@ -714,6 +728,7 @@ class GridBase(metaclass=ABCMeta):
                 return get_valid(out_full)
 
         elif backend == "scipy":
+            # create a numpy/scipy function to apply to the operator
 
             def apply_op(arr: np.ndarray) -> np.ndarray:
                 """set boundary conditions and apply operator"""
@@ -730,9 +745,23 @@ class GridBase(metaclass=ABCMeta):
                 return out_full[(...,) + self._idx_valid]  # type: ignore
 
         else:
-            raise NotImplemented
+            raise NotImplementedError(f"Undefined backend '{backend}'")
 
         return apply_op  # type: ignore
+
+    def get_operator(
+        self,
+        operator: Union[str, Operator],
+        bc: "BoundariesData",
+        **kwargs,
+    ) -> Callable[[np.ndarray], np.ndarray]:
+        """deprecated alias of method `make_operator`"""
+        # this was deprecated on 2021-08-05
+        warnings.warn(
+            "`get_operator` is deprecated. Use `make_operator` instead",
+            DeprecationWarning,
+        )
+        return self.make_operator(operator, bc, **kwargs)  # type: ignore
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":
         """return a subgrid of only the specified axes"""

@@ -65,7 +65,7 @@ class WavePDE(PDEBase):
                 The combined fields u and v, suitable for the simulation
         """
         if v is None:
-            v = u.copy(data_all="zeros")
+            v = ScalarField(u.grid)
         return FieldCollection([u, v])
 
     @property

@@ -26,7 +26,7 @@ from datetime import date
 
 project = "py-pde"
 module_name = "pde"
-author = "David Zwicker"
+author = "Zwicker Group"
 copyright = f"{date.today().year}, {author}"  # @ReservedAssignment
 
 # Determine the version from the actual package
