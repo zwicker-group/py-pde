@@ -647,7 +647,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: Union[ArrayLike, str] = None,
+        data: Optional[Union[ArrayLike, str]] = "zeros",
         *,
         label: str = None,
         dtype=None,
@@ -766,7 +766,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         shape = (grid.dim,) * cls.rank + grid.shape
         data = rng.uniform(vmin, vmax, size=shape)
-        return cls(grid, data, label=label)
+        return cls(grid, data=data, label=label)
 
     @classmethod
     def random_normal(
@@ -813,7 +813,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         shape = (grid.dim,) * cls.rank + grid.shape
         data = mean + noise_scale * rng.normal(size=shape)
-        return cls(grid, data, label=label)
+        return cls(grid, data=data, label=label)
 
     @classmethod
     def random_harmonic(
@@ -885,7 +885,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # full dataset is product of values along axes
             data[index] = functools.reduce(axis_combination.outer, data_axis)
 
-        return cls(grid, data, label=label)
+        return cls(grid, data=data, label=label)
 
     @classmethod
     def random_colored(
@@ -935,7 +935,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         for index in np.ndindex(*tensor_shape):
             data[index] = make_noise()
 
-        return cls(grid, data, label=label)
+        return cls(grid, data=data, label=label)
 
     @classmethod
     def from_state(

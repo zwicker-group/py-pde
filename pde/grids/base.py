@@ -712,7 +712,6 @@ class GridBase(metaclass=ABCMeta):
             # create a compiled function to apply to the operator
             set_ghost_cells = bcs.make_ghost_cell_setter()
             get_valid = self._make_get_valid()
-            operator_raw = jit(operator_raw)
 
             @jit_allocate_out(out_shape=shape_out_full)
             def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:

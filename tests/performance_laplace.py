@@ -10,7 +10,7 @@ from pathlib import Path
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 sys.path.append(str(PACKAGE_PATH))
 
-import numba
+import numba as nb
 import numpy as np
 
 from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
@@ -28,7 +28,7 @@ def custom_laplace_2d_periodic(shape, dx=1):
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
         """apply laplace operator to array `arr`"""
-        for i in numba.prange(dim_x):
+        for i in nb.prange(dim_x):
             im = dim_x - 1 if i == 0 else i - 1
             ip = 0 if i == dim_x - 1 else i + 1
 
@@ -63,7 +63,7 @@ def custom_laplace_2d_neumann(shape, dx=1):
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
         """apply laplace operator to array `arr`"""
-        for i in numba.prange(dim_x):
+        for i in nb.prange(dim_x):
             im = 0 if i == 0 else i - 1
             ip = dim_x - 1 if i == dim_x - 1 else i + 1
 
@@ -96,10 +96,12 @@ def flexible_laplace_2d(bcs):
     region_x = bc_x.make_region_evaluator()
     region_y = bc_y.make_region_evaluator()
 
-    @jit_allocate_out
+    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
+
+    @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None):
         """apply laplace operator to array `arr`"""
-        for i in range(dim_x):
+        for i in nb.prange(dim_x):
             for j in range(dim_y):
                 val_x_l, val_x, val_x_r = region_x(arr, (i, j))
                 val_y_l, _, val_y_r = region_y(arr, (i, j))
