@@ -204,7 +204,6 @@ class BCBase(metaclass=ABCMeta):
     _subclasses: Dict[str, BCBase] = {}  # all classes inheriting from this
     _conditions: Dict[str, BCBase] = {}  # mapping from all names to classes
 
-    @fill_in_docstring
     def __init__(
         self,
         grid: GridBase,
@@ -219,13 +218,11 @@ class BCBase(metaclass=ABCMeta):
             axis (int):
                 The axis to which this boundary condition is associated
             upper (bool):
-                Flag indicating whether this boundary condition is associated
-                with the upper side of an axis or not. In essence, this
-                determines the direction of the local normal vector of the
-                boundary.
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the value associated with the boundary condition.
         """
         self.grid = grid
         self.axis = axis
@@ -695,7 +692,33 @@ class BCFunction(BCBase):
 
     names = ["virtual_point"]
 
-    def __init__(self, grid: GridBase, axis: int, upper: bool, rank: int = 0, value=0):
+    @fill_in_docstring
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        rank: int = 0,
+        value: Union[float, str] = 0,
+    ):
+        """
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the value associated with the boundary condition.
+            value (float or str):
+                An expression that determines the value of the virtual point.
+        """
         super().__init__(grid, axis, upper, rank)
         assert self.rank == 0
         from pde.tools.expressions import ScalarExpression
@@ -814,13 +837,11 @@ class BCConstBase(BCBase):
             axis (int):
                 The axis to which this boundary condition is associated
             upper (bool):
-                Flag indicating whether this boundary condition is associated
-                with the upper side of an axis or not. In essence, this
-                determines the direction of the local normal vector of the
-                boundary.
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the value associated with the boundary condition.
             value (float or str or :class:`~numpy.ndarray`):
                 a value stored with the boundary condition. The interpretation
                 of this value depends on the type of boundary condition. If

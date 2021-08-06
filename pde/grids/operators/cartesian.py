@@ -626,7 +626,7 @@ def _make_gradient_squared_numba_2d(
 
     if central:
         # use central differences
-        scale_x, scale_y = 1 / (2 * grid.discretization) ** 2
+        scale_x, scale_y = 0.25 / grid.discretization ** 2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -639,7 +639,7 @@ def _make_gradient_squared_numba_2d(
 
     else:
         # use forward and backward differences
-        scale_x, scale_y = 1 / (2 * grid.discretization ** 2)
+        scale_x, scale_y = 0.5 / grid.discretization ** 2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:

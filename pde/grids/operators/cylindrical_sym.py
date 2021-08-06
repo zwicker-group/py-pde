@@ -118,24 +118,24 @@ def make_gradient_squared(
     """
     # use processing for large enough arrays
     dim_r, dim_z = grid.shape
-    scale_r, scale_z = 1 / (2 * grid.discretization) ** 2
     parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
 
     if central:
         # use central differences
+        scale_r, scale_z = 0.25 / grid.discretization ** 2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply gradient operator to array `arr`"""
             for i in nb.prange(1, dim_r + 1):  # iterate radial points
                 for j in range(1, dim_z + 1):  # iterate axial points
-                    arr_z_l, arr_z_h = arr[i, j - 1], arr[i, j + 1]
                     term_r = (arr[i + 1, j] - arr[i - 1, j]) ** 2
-                    term_z = (arr_z_h - arr_z_l) ** 2
+                    term_z = (arr[i, j + 1] - arr[i, j - 1]) ** 2
                     out[i, j] = term_r * scale_r + term_z * scale_z
 
     else:
         # use forward and backward differences
+        scale_r, scale_z = 0.5 / grid.discretization ** 2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
