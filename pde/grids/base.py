@@ -29,7 +29,7 @@ from typing import (
 
 import numba as nb
 import numpy as np
-from numba.extending import register_jitable
+from numba.extending import is_jitted, register_jitable
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
@@ -649,17 +649,7 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             callable: the function that applies the operator
         """
-        operator = self._get_operator_info(operator)
-        # instantiate the operator
-        apply_operator = operator.factory(self, **kwargs)
-        # calculate output shape
-        out_shape = (self.dim,) * operator.rank_out + self._shape_full
-
-        # boundary conditions are not enforced
-        if kwargs.get("backend", "numba") == "numba":
-            return jit_allocate_out(out_shape=out_shape)(apply_operator)  # type: ignore
-        else:
-            return apply_operator
+        return self._get_operator_info(operator).factory(self, **kwargs)
 
     @cached_method()
     @fill_in_docstring
@@ -712,6 +702,9 @@ class GridBase(metaclass=ABCMeta):
             # create a compiled function to apply to the operator
             set_ghost_cells = bcs.make_ghost_cell_setter()
             get_valid = self._make_get_valid()
+
+            if not is_jitted(operator_raw):
+                operator_raw = jit(operator_raw)
 
             @jit_allocate_out(out_shape=shape_out_full)
             def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
