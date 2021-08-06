@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde import UnitGrid
+from pde import CartesianGrid, ScalarField, UnitGrid
 from pde.grids.boundaries.local import BCBase, _get_arr_1d
 
 
@@ -272,3 +272,26 @@ def test_inhomogeneous_bcs_2d():
     assert ev(*_get_arr_1d(data, (1, 1), axis=0)) == pytest.approx(1)
     assert ev(*_get_arr_1d(data, (0, 0), axis=0)) == pytest.approx(1.5)
     assert ev(*_get_arr_1d(data, (0, 1), axis=0)) == pytest.approx(2.5)
+
+
+def test_function_bc():
+    """test the boundary conditions that calculate the virtual point directly"""
+    grid = CartesianGrid([[0, 1], [0, 1]], 4)
+    bc1 = grid.get_boundary_conditions({"value": "x + y**2"})
+    bc2 = grid.get_boundary_conditions({"virtual_point": "2 * (x + y**2) - value"})
+
+    field = ScalarField.random_uniform(grid)
+
+    f1 = field.copy()
+    f1.set_ghost_cells(bc1)
+    f2 = field.copy()
+    f2.set_ghost_cells(bc2)
+
+    f3 = field.copy()
+    bc1.make_ghost_cell_setter()(f3._data_all)
+    f4 = field.copy()
+    bc2.make_ghost_cell_setter()(f4._data_all)
+
+    np.testing.assert_almost_equal(f1._data_all, f2._data_all)
+    np.testing.assert_almost_equal(f1._data_all, f3._data_all)
+    np.testing.assert_almost_equal(f1._data_all, f4._data_all)

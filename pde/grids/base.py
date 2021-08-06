@@ -380,7 +380,7 @@ class GridBase(metaclass=ABCMeta):
         return itertools.product(range(self.num_axes), [True, False])
 
     def _boundary_coordinates(self, axis: int, upper: bool) -> np.ndarray:
-        """get indices for accessing the points on the boundary
+        """get coordinates of points on the boundary
 
         Args:
             axis (int):
@@ -389,7 +389,8 @@ class GridBase(metaclass=ABCMeta):
                 Whether the boundary is at the upper side of the axis
 
         Returns:
-            :class:`~numpy.ndarray`: Coordinates of the boundary points.
+            :class:`~numpy.ndarray`: Coordinates of the boundary points. This array has
+            one less dimension than the grid has axes.
         """
         # get coordinate along the axis determining the boundary
         if upper:

@@ -144,6 +144,7 @@ class ExpressionBase(metaclass=ABCMeta):
         self,
         expression: "basic.Basic",
         signature: Sequence[Union[str, List[str]]] = None,
+        *,
         user_funcs: Dict[str, Any] = None,
         consts: Dict[str, Any] = None,
     ):
@@ -459,6 +460,7 @@ class ScalarExpression(ExpressionBase):
         self,
         expression: ExpressionType = 0,
         signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        *,
         user_funcs: Optional[Dict[str, Any]] = None,
         consts: Optional[Dict[str, Any]] = None,
         allow_indexed: bool = False,
@@ -640,6 +642,7 @@ class TensorExpression(ExpressionBase):
         self,
         expression: ExpressionType,
         signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        *,
         user_funcs: Optional[Dict[str, Any]] = None,
     ):
         """

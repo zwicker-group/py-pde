@@ -121,7 +121,7 @@ class FieldBase(metaclass=ABCMeta):
         return self.__data_all
 
     @_data_all.setter
-    def _data_all(self, value: np.ndarray) -> None:
+    def _data_all(self, value: NumberOrArray) -> None:
         """set the full data including ghost cells
 
         Args:
@@ -132,15 +132,23 @@ class FieldBase(metaclass=ABCMeta):
         if not self.writeable:
             raise ValueError("assignment destination is read-only")
 
-        # check the shape of the supplied data
-        if value.shape[-self.grid.num_axes :] != self.grid._shape_full:
-            raise ValueError(
-                f"Supplied data has wrong shape: {value.shape} is not compatible with "
-                f"{self.grid._shape_full}"
-            )
+        if np.isscalar(value):
+            # supplied value is a scalar
+            self.__data_all[:] = value
 
-        # actually set the data
-        self.__data_all = value
+        elif isinstance(value, np.ndarray):
+            # check the shape of the supplied array
+            if value.shape[-self.grid.num_axes :] != self.grid._shape_full:
+                raise ValueError(
+                    f"Supplied data has wrong shape: {value.shape} is not compatible with "
+                    f"{self.grid._shape_full}"
+                )
+            # actually set the data
+            self.__data_all = value
+
+        else:
+            raise TypeError(f"Cannot set field values to {value}")
+
         # set reference to valid data
         self._data_valid = self.__data_all[self._idx_valid]
 
