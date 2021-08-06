@@ -116,7 +116,7 @@ def make_gradient_squared(grid: PolarSymGrid, central: bool = True) -> OperatorT
 
     if central:
         # use central differences
-        scale = 0.25 / dr
+        scale = 0.25 / dr ** 2
 
         @jit
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:

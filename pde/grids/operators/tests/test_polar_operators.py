@@ -86,11 +86,11 @@ def test_grid_laplace_polar():
     np.testing.assert_allclose(b_1d_2.data[i, i], b_2d.data[i, i], rtol=0.2, atol=0.2)
 
 
-@pytest.mark.parametrize("r_inner", (0, 1))
+@pytest.mark.parametrize("r_inner", (0, 2 * np.pi))
 def test_gradient_squared_polar(r_inner):
     """compare gradient squared operator"""
-    grid = PolarSymGrid((r_inner, 5), 64)
-    field = ScalarField.random_harmonic(grid, modes=1)
+    grid = PolarSymGrid((r_inner, 4 * np.pi), 32)
+    field = ScalarField.from_expression(grid, "cos(r)")
     s1 = field.gradient("natural").to_scalar("squared_sum")
     s2 = field.gradient_squared("natural", central=True)
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.1, atol=0.1)

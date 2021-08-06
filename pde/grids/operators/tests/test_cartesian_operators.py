@@ -176,10 +176,11 @@ def test_vector_gradient(ndim):
     np.testing.assert_allclose(res1, res2)
 
 
-@pytest.mark.parametrize("ndim", [3])
+@pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_vector_laplace_cart(ndim):
     """test different vector laplace operators"""
     bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic="random", rank=1)
+    print(bcs)
     field = VectorField.random_uniform(bcs.grid)
     res1 = field.laplace(bcs, backend="scipy").data
     res2 = field.laplace(bcs, backend="numba").data
@@ -255,7 +256,7 @@ def test_gradient_squared_cart(dim):
         shape=np.random.randint(30, 35, dim),
         periodic=np.random.choice([False, True], dim),
     )
-    field = ScalarField.random_harmonic(grid, modes=1)
+    field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add)
     s1 = field.gradient("natural").to_scalar("squared_sum")
     s2 = field.gradient_squared("natural", central=True)
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.1, atol=0.1)

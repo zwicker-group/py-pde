@@ -687,7 +687,7 @@ class BCBase(metaclass=ABCMeta):
         return ghost_cell_setter  # type: ignore
 
 
-class BCFunction(BCBase):
+class FunctionBC(BCBase):
     """represents a boundary whose virtual point is calculated from an expression"""
 
     names = ["virtual_point"]
@@ -739,7 +739,7 @@ class BCFunction(BCBase):
         self,
         upper: Optional[bool] = None,
         rank: int = None,
-    ) -> BCFunction:
+    ) -> FunctionBC:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(
             grid=self.grid,
@@ -812,7 +812,7 @@ class BCFunction(BCBase):
         return virtual_point  # type: ignore
 
 
-class BCConstBase(BCBase):
+class ConstBCBase(BCBase):
     """base class representing a boundary whose virtual point is set from constants"""
 
     _value: np.ndarray
@@ -917,7 +917,7 @@ class BCConstBase(BCBase):
         upper: Optional[bool] = None,
         rank: int = None,
         value: Union[float, np.ndarray, str] = None,
-    ) -> BCConstBase:
+    ) -> ConstBCBase:
         """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
             grid=self.grid,
@@ -973,7 +973,7 @@ class BCConstBase(BCBase):
         return get_value  # type: ignore
 
 
-class BCBase1stOrder(BCConstBase):
+class ConstBC1stOrderBase(ConstBCBase):
     """represents a single boundary in an BoundaryPair instance"""
 
     @abstractmethod
@@ -1170,7 +1170,7 @@ class BCBase1stOrder(BCConstBase):
 
         if self.homogeneous:
             # add dimension to const so it can be broadcasted to shape of data_all
-            for _ in range(self.grid.num_axes):
+            for _ in range(self.grid.num_axes - 1):
                 factor = factor[..., np.newaxis]
                 const = const[..., np.newaxis]
 
@@ -1178,7 +1178,7 @@ class BCBase1stOrder(BCConstBase):
         data_all[tuple(idx_write)] = const + factor * data_all[tuple(idx_read)]
 
 
-class DirichletBC(BCBase1stOrder):
+class DirichletBC(ConstBC1stOrderBase):
     """represents a boundary condition imposing the value"""
 
     names = ["value", "dirichlet"]  # identifiers for this boundary condition
@@ -1242,7 +1242,7 @@ class DirichletBC(BCBase1stOrder):
         )
 
 
-class NeumannBC(BCBase1stOrder):
+class NeumannBC(ConstBC1stOrderBase):
     """represents a boundary condition imposing the derivative in the outward
     normal direction of the boundary"""
 
@@ -1309,7 +1309,7 @@ class NeumannBC(BCBase1stOrder):
         )
 
 
-class MixedBC(BCBase1stOrder):
+class MixedBC(ConstBC1stOrderBase):
     r"""represents a mixed (or Robin) boundary condition imposing a derivative
     in the outward normal direction of the boundary that is given by an affine
     function involving the actual value:
@@ -1478,7 +1478,7 @@ class MixedBC(BCBase1stOrder):
         return (const_func, factor_func, index)
 
 
-class BCBase2ndOrder(BCConstBase):
+class ConstBC2ndOrderBase(ConstBCBase):
     """abstract base class for boundary conditions of 2nd order"""
 
     @abstractmethod
@@ -1723,7 +1723,7 @@ class BCBase2ndOrder(BCConstBase):
         )
 
 
-class ExtrapolateBC(BCBase2ndOrder):
+class ExtrapolateBC(ConstBC2ndOrderBase):
     """represents a boundary condition that extrapolates the virtual point
     using two points close to the boundary
 
@@ -1756,7 +1756,7 @@ class ExtrapolateBC(BCBase2ndOrder):
         return (np.array(0.0), np.array(2.0), i1, np.array(-1.0), i2)
 
 
-class CurvatureBC(BCBase2ndOrder):
+class CurvatureBC(ConstBC2ndOrderBase):
     """represents a boundary condition imposing the 2nd derivative at the
     boundary"""
 
