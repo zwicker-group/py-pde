@@ -742,6 +742,8 @@ class GridBase(metaclass=ABCMeta):
                 # apply operator
                 if out is None:
                     out = np.empty(shape_out_full, dtype=arr.dtype)
+                else:
+                    assert out.shape == shape_out_full
                 operator_raw(arr_full, out)
 
                 # return valid part of the output

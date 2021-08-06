@@ -272,8 +272,8 @@ def _make_laplace_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply laplace operator to array `arr`"""
         assert arr.shape == grid._shape_full
-        ndimage.laplace(arr, output=out)
-        out *= scaling
+        with np.errstate(all="ignore"):  # can happen for ghost cells
+            ndimage.laplace(scaling * arr, output=out)
 
     return laplace
 
