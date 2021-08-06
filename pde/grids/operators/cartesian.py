@@ -634,7 +634,7 @@ def _make_gradient_squared_numba_2d(
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
                     term_x = (arr[i + 1, j] - arr[i - 1, j]) ** 2 * scale_x
-                    term_y = (arr[i, j] - arr[i, j - 1]) ** 2 * scale_y
+                    term_y = (arr[i, j + 1] - arr[i, j - 1]) ** 2 * scale_y
                     out[i, j] = term_x + term_y
 
     else:
