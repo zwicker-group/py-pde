@@ -677,7 +677,7 @@ class GridBase(metaclass=ABCMeta):
         internally to apply the boundary conditions specified as `bc`. Note that the
         function supports an optional argument `out`, which if given should provide
         space for the full output array including ghost cells. The result of the
-        function is then a view into this supplied array returning the valid data.        
+        function is then a view into this supplied array returning the valid data.
 
         Args:
             operator (str):
@@ -724,10 +724,10 @@ class GridBase(metaclass=ABCMeta):
                 set_ghost_cells(arr_full)
 
                 # apply operator
-                operator_raw(arr_full, out)
+                operator_raw(arr_full, out)  # type: ignore
 
                 # return valid part of the output
-                return get_valid(out)
+                return get_valid(out)  # type: ignore
 
         elif backend == "scipy":
             # create a numpy/scipy function to apply to the operator
