@@ -382,6 +382,7 @@ class ExpressionBase(metaclass=ABCMeta):
         constants = tuple(self.consts)
 
         # turn the expression into a callable function
+        self._logger.info("Compile sympy expression `%s`", self._sympy_expr)
         func = sympy.lambdify(
             variables + constants,
             self._sympy_expr,

@@ -274,11 +274,12 @@ def test_inhomogeneous_bcs_2d():
     assert ev(*_get_arr_1d(data, (0, 1), axis=0)) == pytest.approx(2.5)
 
 
-def test_function_bc():
+@pytest.mark.parametrize("expr", ["1", "x + y**2"])
+def test_function_bc_setting(expr):
     """test the boundary conditions that calculate the virtual point directly"""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
-    bc1 = grid.get_boundary_conditions({"value": "x + y**2"})
-    bc2 = grid.get_boundary_conditions({"virtual_point": "2 * (x + y**2) - value"})
+    bc1 = grid.get_boundary_conditions({"value": expr})
+    bc2 = grid.get_boundary_conditions({"virtual_point": f"2 * ({expr}) - value"})
 
     field = ScalarField.random_uniform(grid)
 
@@ -295,3 +296,17 @@ def test_function_bc():
     np.testing.assert_almost_equal(f1._data_all, f2._data_all)
     np.testing.assert_almost_equal(f1._data_all, f3._data_all)
     np.testing.assert_almost_equal(f1._data_all, f4._data_all)
+
+
+def test_function_bc_operator():
+    """test the boundary conditions that calculate the virtual point directly"""
+    grid = CartesianGrid([[0, 1], [0, 1]], 4)
+    bc1 = grid.get_boundary_conditions({"value": 1})
+    bc2 = grid.get_boundary_conditions({"virtual_point": f"2 - value"})
+
+    field = ScalarField(grid, 1)
+
+    result = field.laplace(bc1)
+    np.testing.assert_allclose(result.data, 0.0)
+    result = field.laplace(bc2)
+    np.testing.assert_allclose(result.data, 0.0)

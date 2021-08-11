@@ -800,14 +800,23 @@ class FunctionBC(BCBase):
         bc_coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
         bc_coords = np.moveaxis(bc_coords, -1, 0)  # point coordinates to first axis
         func = self._expr.get_compiled()
+        dim = self.grid.dim
+        assert dim <= 3
 
         @register_jitable(inline="always")
         def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
             """evaluate the virtual point at `idx`"""
             _, _, bc_idx = get_arr_1d(arr, idx)
-            value = arr[idx]
+            grid_value = arr[idx]
             coords = bc_coords[bc_idx]
-            return func(value, dx, *coords)  # type: ignore
+            if dim == 1:
+                return func(grid_value, dx, coords[0])  # type: ignore
+            elif dim == 2:
+                return func(grid_value, dx, coords[0], coords[1])  # type: ignore
+            elif dim == 3:
+                return func(grid_value, dx, coords[0], coords[1], coords[2])  # type: ignore
+            else:
+                return np.nan  #  cheap way to signal a problem
 
         return virtual_point  # type: ignore
 

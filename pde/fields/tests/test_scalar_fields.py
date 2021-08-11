@@ -3,6 +3,7 @@
 """
 
 import gc
+
 import numpy as np
 import pytest
 
@@ -449,7 +450,7 @@ def test_interpolation_after_free():
     # delete original field
     del f
     gc.collect()
-    
+
     # hope that this overwrites the memory
     f = ScalarField.random_uniform(UnitGrid([5]))
 
