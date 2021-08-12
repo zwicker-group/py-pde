@@ -687,7 +687,7 @@ class BCBase(metaclass=ABCMeta):
         return ghost_cell_setter  # type: ignore
 
 
-class FunctionBC(BCBase):
+class ExpressionBC(BCBase):
     """represents a boundary whose virtual point is calculated from an expression"""
 
     names = ["virtual_point"]
@@ -700,6 +700,7 @@ class FunctionBC(BCBase):
         upper: bool,
         rank: int = 0,
         value: Union[float, str] = 0,
+        target: str = "virtual_point",
     ):
         """
         Warning:
@@ -717,16 +718,30 @@ class FunctionBC(BCBase):
             rank (int):
                 The tensorial rank of the value associated with the boundary condition.
             value (float or str):
-                An expression that determines the value of the virtual point.
+                An expression that determines the value of the boundary condition.
+            target (str):
+                Selects which value is actually set. Possible choices include `value`,
+                `derivative`, and `virtual_point`.
         """
         super().__init__(grid, axis, upper, rank)
         assert self.rank == 0
         from pde.tools.expressions import ScalarExpression
 
-        signature = ["value", "dx"] + grid.axes
-        # allow discretization in the boundary condition
-        self._expr = ScalarExpression(value, signature=signature)
         self._logger = logging.getLogger(self.__class__.__name__)
+
+        # allow discretization in the boundary condition
+        signature = ["value", "dx"] + grid.axes
+
+        if target == "virtual_point":
+            self._expr = ScalarExpression(value, signature=signature)
+        elif target == "value":
+            expression = f"2 * ({value}) - value"
+            self._expr = ScalarExpression(expression, signature=signature)
+        elif target == "derivative":
+            expression = f"dx * ({value}) + value"
+            self._expr = ScalarExpression(expression, signature=signature)
+        else:
+            raise ValueError(f"Unknown target `{target}` for expression")
 
     def _cache_hash(self) -> int:
         """returns a value to determine when a cache needs to be updated"""
@@ -739,7 +754,7 @@ class FunctionBC(BCBase):
         self,
         upper: Optional[bool] = None,
         rank: int = None,
-    ) -> FunctionBC:
+    ) -> ExpressionBC:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(
             grid=self.grid,
@@ -819,6 +834,84 @@ class FunctionBC(BCBase):
                 return np.nan  #  cheap way to signal a problem
 
         return virtual_point  # type: ignore
+
+
+class ExpressionValueBC(ExpressionBC):
+    """represents a boundary whose value is calculated from an expression"""
+
+    names = ["value_expression", "value_expr"]
+
+    @fill_in_docstring
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        rank: int = 0,
+        value: Union[float, str] = 0,
+        target: str = "value",
+    ):
+        """
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the value associated with the boundary condition.
+            value (float or str):
+                An expression that determines the value of the boundary condition.
+            target (str):
+                Selects which value is actually set. Possible choices include `value`,
+                `derivative`, and `virtual_point`.
+        """
+        super().__init__(grid, axis, upper, rank, value, target)
+
+
+class ExpressionDerivativeBC(ExpressionBC):
+    """represents a boundary whose outward derivative is calculated from an expression"""
+
+    names = ["derivative_expression", "derivative_expr"]
+
+    @fill_in_docstring
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        rank: int = 0,
+        value: Union[float, str] = 0,
+        target: str = "derivative",
+    ):
+        """
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the value associated with the boundary condition.
+            value (float or str):
+                An expression that determines the value of the boundary condition.
+            target (str):
+                Selects which value is actually set. Possible choices include `value`,
+                `derivative`, and `virtual_point`.
+        """
+        super().__init__(grid, axis, upper, rank, value, target)
 
 
 class ConstBCBase(BCBase):

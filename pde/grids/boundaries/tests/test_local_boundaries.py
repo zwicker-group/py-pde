@@ -275,7 +275,7 @@ def test_inhomogeneous_bcs_2d():
 
 
 @pytest.mark.parametrize("expr", ["1", "x + y**2"])
-def test_function_bc_setting(expr):
+def test_expression_bc_setting(expr):
     """test the boundary conditions that calculate the virtual point directly"""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
     bc1 = grid.get_boundary_conditions({"value": expr})
@@ -298,11 +298,42 @@ def test_function_bc_setting(expr):
     np.testing.assert_almost_equal(f1._data_all, f4._data_all)
 
 
-def test_function_bc_operator():
+@pytest.mark.parametrize("dim", [1, 2, 3])
+def test_expression_bc_operator(dim):
     """test the boundary conditions that calculate the virtual point directly"""
-    grid = CartesianGrid([[0, 1], [0, 1]], 4)
+    grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"value": 1})
     bc2 = grid.get_boundary_conditions({"virtual_point": f"2 - value"})
+
+    field = ScalarField(grid, 1)
+
+    result = field.laplace(bc1)
+    np.testing.assert_allclose(result.data, 0.0)
+    result = field.laplace(bc2)
+    np.testing.assert_allclose(result.data, 0.0)
+
+
+@pytest.mark.parametrize("dim", [1, 2, 3])
+def test_expression_bc_value(dim):
+    """test the boundary conditions that calculate the virtual point directly"""
+    grid = CartesianGrid([[0, 1]] * dim, 4)
+    bc1 = grid.get_boundary_conditions({"value": 1})
+    bc2 = grid.get_boundary_conditions({"value_expression": "1"})
+
+    field = ScalarField(grid, 1)
+
+    result = field.laplace(bc1)
+    np.testing.assert_allclose(result.data, 0.0)
+    result = field.laplace(bc2)
+    np.testing.assert_allclose(result.data, 0.0)
+
+
+@pytest.mark.parametrize("dim", [1, 2, 3])
+def test_expression_bc_derivative(dim):
+    """test the boundary conditions that calculate the virtual point directly"""
+    grid = CartesianGrid([[0, 1]] * dim, 4)
+    bc1 = grid.get_boundary_conditions({"derivative": 0})
+    bc2 = grid.get_boundary_conditions({"derivative_expression": "0"})
 
     field = ScalarField(grid, 1)
 
