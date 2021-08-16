@@ -86,7 +86,7 @@ def make_colored_noise(
     # scaling of all modes with k != 0
     k2s.flat[0] = 1  # type: ignore
     scaling = 2 * np.pi * scale * k2s ** (exponent / 4)
-    scaling.flat[0] = 0
+    scaling.flat[0] = 0  # type: ignore
 
     # TODO: accelerate the FFT using the pyfftw package
 

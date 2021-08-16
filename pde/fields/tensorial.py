@@ -288,7 +288,7 @@ class Tensor2Field(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("ij...,jk...->ik...", a, b)  # type: ignore
                     else:
-                        return np.einsum("ij...,jk...->ik...", a, b, out=out)  # type: ignore
+                        return np.einsum("ij...,jk...->ik...", a, b, out=out)
 
                 elif a.shape[1:] == b.shape:
                     # dot product between tensor and vector
@@ -298,7 +298,7 @@ class Tensor2Field(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("ij...,j...->i...", a, b)  # type: ignore
                     else:
-                        return np.einsum("ij...,j...->i...", a, b, out=out)  # type: ignore
+                        return np.einsum("ij...,j...->i...", a, b, out=out)
 
                 else:
                     raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
@@ -467,8 +467,8 @@ class Tensor2Field(DataFieldBase):
                 # the interface of np.linalg.det is not very flexible. We could
                 # in principle use the definition of np.linalg.det without the
                 # multiple checks to gain some speed
-                for i in np.ndindex(self.grid.shape):
-                    data[i] = np.linalg.det(self.data[(...,) + i])  # type: ignore
+                for idx in np.ndindex(*self.grid.shape):
+                    data[idx] = np.linalg.det(self.data[(...,) + idx])
 
         else:
             raise ValueError(

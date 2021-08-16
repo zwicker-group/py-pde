@@ -724,24 +724,28 @@ class ExpressionBC(BCBase):
                 `derivative`, and `virtual_point`.
         """
         super().__init__(grid, axis, upper, rank)
-        assert self.rank == 0
-        from pde.tools.expressions import ScalarExpression
 
+        if self.rank != 0:
+            raise NotImplementedError(
+                "Expression boundary conditions only work for scalar conditions"
+            )
         self._logger = logging.getLogger(self.__class__.__name__)
 
-        # allow discretization in the boundary condition
-        signature = ["value", "dx"] + grid.axes
-
+        # determine the full expression for setting the value of the virtual point
         if target == "virtual_point":
-            self._expr = ScalarExpression(value, signature=signature)
+            expression = value
         elif target == "value":
             expression = f"2 * ({value}) - value"
-            self._expr = ScalarExpression(expression, signature=signature)
         elif target == "derivative":
             expression = f"dx * ({value}) + value"
-            self._expr = ScalarExpression(expression, signature=signature)
         else:
             raise ValueError(f"Unknown target `{target}` for expression")
+
+        # parse this expression
+        from pde.tools.expressions import ScalarExpression
+
+        signature = ["value", "dx"] + grid.axes
+        self._expr = ScalarExpression(expression, signature=signature)
 
     def _cache_hash(self) -> int:
         """returns a value to determine when a cache needs to be updated"""

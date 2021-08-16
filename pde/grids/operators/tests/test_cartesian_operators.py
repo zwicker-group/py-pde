@@ -16,7 +16,7 @@ from pde.grids.operators import cartesian as ops
 
 def _get_random_grid_bcs(ndim: int, dx="random", periodic="random", rank=0):
     """create a random Cartesian grid with natural bcs"""
-    shape = np.random.randint(2, 5, ndim)
+    shape = tuple(np.random.randint(2, 5, ndim))
 
     if dx == "random":
         dx = np.random.uniform(0.5, 1.5, ndim)

@@ -1052,7 +1052,7 @@ class GridBase(metaclass=ABCMeta):
                     else:
                         return fill
 
-                return value / weight  # type: ignore
+                return value / weight
 
         elif self.num_axes == 3:
             # specialize for 3-dimensional interpolation
@@ -1139,7 +1139,7 @@ class GridBase(metaclass=ABCMeta):
                     else:
                         return fill
 
-                return value / weight  # type: ignore
+                return value / weight
 
         else:
             raise NotImplementedError(

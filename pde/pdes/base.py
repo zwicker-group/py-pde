@@ -72,7 +72,7 @@ class PDEBase(metaclass=ABCMeta):
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._cache: Dict[str, Any] = {}
-        self.noise = noise
+        self.noise = np.asanyarray(noise)
         if rng is None:
             self.rng = np.random.default_rng()
         else:
@@ -87,7 +87,7 @@ class PDEBase(metaclass=ABCMeta):
         is `True` if `self.noise != 0`.
         """
         # check for self.noise, in case __init__ is not called in a subclass
-        return hasattr(self, "noise") and np.any(np.asarray(self.noise) != 0)  # type: ignore
+        return hasattr(self, "noise") and np.any(self.noise != 0)  # type: ignore
 
     def make_modify_after_step(self, state: FieldBase) -> Callable[[np.ndarray], float]:
         """returns a function that can be called to modify a state
@@ -241,10 +241,10 @@ class PDEBase(metaclass=ABCMeta):
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE
         """
-        if self.noise:
+        if self.is_sde:
             result = state.copy(label=label)
 
-            if np.isscalar(self.noise):
+            if np.isscalar(self.noise) or self.noise.size == 1:
                 # a single noise value is given for all fields
                 result.data = self.rng.normal(scale=self.noise, size=state.data.shape)
 
@@ -282,17 +282,17 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             Function determining the right hand side of the PDE
         """
-        if self.noise:
+        if self.is_sde:
             data_shape = state.data.shape
 
-            if np.isscalar(self.noise):
+            if np.isscalar(self.noise) or self.noise.size == 1:
                 # a single noise value is given for all fields
-                noise_strength = float(self.noise)  # type: ignore
+                noise_strength = float(self.noise)
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
                     """helper function returning a noise realization"""
-                    return noise_strength * np.random.randn(*data_shape)  # type: ignore
+                    return noise_strength * np.random.randn(*data_shape)
 
             elif isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
@@ -308,7 +308,7 @@ class PDEBase(metaclass=ABCMeta):
                     for i in range(data_shape[0]):
                         # TODO: Avoid creating random numbers when noise_strengths == 0
                         out[i] *= noise_strengths[i]
-                    return out  # type: ignore
+                    return out
 
             else:
                 # different noise strengths, but a single field

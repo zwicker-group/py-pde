@@ -1155,7 +1155,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # convert `fill` to dtype of data
         if fill is not None:
             if self.rank == 0:
-                fill = self.data.dtype.type(fill)  # type: ignore
+                fill = self.data.dtype.type(fill)
             else:
                 fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
 
@@ -1196,7 +1196,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             # interpolate at every point
             out = np.empty(data_shape + point_shape, dtype=data.dtype)
-            for idx in np.ndindex(point_shape):
+            for idx in np.ndindex(*point_shape):
                 out[(...,) + idx] = interpolate_single(data, point[idx])
 
             return out
