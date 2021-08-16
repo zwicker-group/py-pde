@@ -10,8 +10,18 @@ import warnings
 import numpy as np
 
 from ...tools.typing import OperatorType
+from ..base import GridBase
 
 logger = logging.getLogger(__name__)
+
+
+def uniform_discretization(grid: GridBase) -> float:
+    """returns the uniform discretization or raises RuntimeError"""
+    dx_mean = np.mean(grid.discretization)
+    if np.allclose(grid.discretization, dx_mean):
+        return float(dx_mean)
+    else:
+        raise RuntimeError("Grid discretization is not uniform")
 
 
 def make_laplace_from_matrix(matrix, vector) -> OperatorType:
@@ -33,14 +43,10 @@ def make_laplace_from_matrix(matrix, vector) -> OperatorType:
     mat = matrix.tocsc()
     vec = vector.toarray()[:, 0]
 
-    def laplace(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply the laplace operator to `arr`"""
         result = mat.dot(arr.flat) + vec
-        if out is None:
-            return result.reshape(arr.shape)  # type: ignore
-        else:
-            out[:] = result.reshape(arr.shape)
-            return out
+        out[:] = result.reshape(arr.shape)
 
     return laplace
 
@@ -73,10 +79,10 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Operato
     mat = matrix.tocsc()
     vec = vector.toarray()[:, 0]
 
-    def solve_poisson(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+    def solve_poisson(arr: np.ndarray, out: np.ndarray) -> None:
         """solves Poisson's equation using sparse linear algebra"""
         # prepare the right hand side vector
-        rhs = arr.flat - vec
+        rhs = np.ravel(arr) - vec
 
         # solve the linear problem using a sparse solver
         try:
@@ -109,14 +115,13 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Operato
             # use least squares to solve an underdetermined problem
             result = sparse.linalg.lsmr(mat, rhs)[0]
             if not np.allclose(mat.dot(result), rhs, rtol=1e-5, atol=1e-5):
-                raise RuntimeError("Poisson problem could not be solved")
+                residual = np.linalg.norm(mat.dot(result) - rhs)
+                raise RuntimeError(
+                    f"Poisson problem could not be solved (Residual: {residual})"
+                )
             logger.info("Solved Poisson problem with sparse.linalg.lsmr")
 
         # convert the result to the correct format
-        if out is None:
-            out = result.reshape(arr.shape)
-        else:
-            out[:] = result.reshape(arr.shape)
-        return out
+        out[:] = result.reshape(arr.shape)
 
     return solve_poisson

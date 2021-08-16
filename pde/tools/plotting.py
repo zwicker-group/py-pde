@@ -262,10 +262,13 @@ def plot_on_axes(wrapped=None, update_method=None):
         if ax_style is None:
             ax_style = {}
 
-        # show figure if action == 'auto' and backend is not `inline`. This safeguard is
-        # necessary to allow specifying subplot axes explicitly through the `ax`
-        # argument.
-        auto_show_figure = "backend_inline" not in mpl.get_backend()
+        # Show figure by calling `plt.show` automatically only if
+        #    - action == 'auto'
+        #    - axis is not given, i.e., ax == None
+        #    - backend is not `inline` (which would show figure anyway)
+        # This safeguard is necessary to allow specifying subplot axes explicitly
+        # through the `ax` argument.
+        auto_show_figure = ax is None and "backend_inline" not in mpl.get_backend()
 
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:

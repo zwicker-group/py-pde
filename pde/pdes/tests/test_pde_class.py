@@ -138,7 +138,10 @@ def test_custom_operators():
         eq.evolution_rate(field)
 
     def make_op(state):
-        return lambda state: state
+        def op(arr, out):
+            out[:] = arr
+
+        return op
 
     grids.UnitGrid.register_operator("undefined", make_op)
 
@@ -234,7 +237,7 @@ def test_pde_setting_noise():
     for noise in [[0, 1], {"b": 1}, {"b": 1, "a": 0}, {"b": 1, "c": 1}]:
         eq = PDE({"a": "0", "b": "0"}, noise=noise)
         assert eq.is_sde
-        assert eq.noise == [0, 1]
+        np.testing.assert_allclose(eq.noise, [0, 1])
 
     for noise in [0, [0, 0]]:
         eq = PDE({"a": "0", "b": "0"}, noise=noise)

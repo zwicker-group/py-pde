@@ -6,9 +6,10 @@ This module handles the boundaries of all axes of a grid. It only defines
 :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`.
 """
 
-from typing import List, Sequence, Union
+from typing import Callable, List, Sequence, Union
 
 import numpy as np
+from numba.extending import register_jitable
 
 from ..base import GridBase, PeriodicityError
 from .axis import BoundaryPair, BoundaryPairData, get_boundary_axis
@@ -205,27 +206,6 @@ class Boundaries(list):
             if not b.periodic:
                 b.scale_value(factor)
 
-    @property
-    def _scipy_border_mode(self) -> dict:
-        """dict: return a dictionary that can be used in the scipy ndimage
-        functions to specify the border mode. If the current boundary cannot be
-        represented by these modes, a RuntimeError is raised
-        """
-        mode: dict = self[0]._scipy_border_mode
-        for b in self[1:]:
-            if mode != b._scipy_border_mode:
-                raise RuntimeError("Incompatible dimensions")
-        return mode
-
-    @property
-    def _uniform_discretization(self) -> float:
-        """float: returns the uniform discretization or raises RuntimeError"""
-        dx_mean = np.mean(self.grid.discretization)
-        if np.allclose(self.grid.discretization, dx_mean):
-            return float(dx_mean)
-        else:
-            raise RuntimeError("Grid discretization is not uniform")
-
     def extract_component(self, *indices) -> "Boundaries":
         """extracts the boundary conditions of the given component of the tensor.
 
@@ -240,3 +220,43 @@ class Boundaries(list):
     def differentiated(self) -> "Boundaries":
         """Domain: with differentiated versions of all boundary conditions"""
         return self.__class__([b.differentiated for b in self])
+
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+        """set the ghost cells for all boundaries
+
+        Args:
+            data_all (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        for b in self:
+            b.set_ghost_cells(data_all)
+
+    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the ghost cells on a full array"""
+        # get the setters for all axes
+        ghost_cell_setters = [b.make_ghost_cell_setter() for b in self]
+        SetterType = Callable[[np.ndarray], None]
+
+        def chain(fs: Sequence[SetterType], inner: SetterType = None) -> SetterType:
+            """helper function composing setters of all axes recursively"""
+            first, rest = fs[0], fs[1:]
+
+            if inner is None:
+
+                @register_jitable
+                def wrap(data_all: np.ndarray) -> None:
+                    first(data_all)
+
+            else:
+
+                @register_jitable
+                def wrap(data_all: np.ndarray) -> None:
+                    inner(data_all)  # type: ignore
+                    first(data_all)
+
+            if rest:
+                return chain(rest, wrap)
+            else:
+                return wrap  # type: ignore
+
+        return chain(ghost_cell_setters)

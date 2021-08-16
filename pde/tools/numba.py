@@ -11,8 +11,8 @@ from functools import wraps
 from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 
 import numba as nb  # lgtm [py/import-and-import-from]
-from numba.extending import register_jitable
 import numpy as np
+from numba.extending import register_jitable
 
 from .. import config
 from ..tools.misc import decorator_arguments
@@ -187,20 +187,23 @@ def jit_allocate_out(
 ) -> Callable:
     """Decorator that compiles a function with allocating an output array.
 
-    This decorator compiles a function that takes the arguments `arr` and
-    `out`. The point of this function is to make the `out` array optional by
-    supplying an empty array of the same shape as `arr` if necessary. This is
-    implemented efficiently by using :func:`nb.generated_jit`.
+    This decorator compiles a function that takes the arguments `arr` and `out`. The
+    point of this decorator is to make the `out` array optional by supplying an empty
+    array of the same shape as `arr` if necessary. This is implemented efficiently by
+    using :func:`numba.generated_jit`.
 
     Args:
-        func: The function to be compiled
-        parallel (bool): Determines whether the function is jitted with
-            parallel=True.
-        out_shape (tuple): Determines the shape of the `out` array. If omitted,
-            the same shape as the input array is used.
-        num_args (int, optional): Determines the number of input arguments of
-            the function.
-        **kwargs: Additional arguments to `nb.jit`
+        func:
+            The function to be compiled
+        parallel (bool):
+            Determines whether the function is jitted with parallel=True.
+        out_shape (tuple):
+            Determines the shape of the `out` array. If omitted, the same shape as the
+            input array is used.
+        num_args (int, optional):
+            Determines the number of input arguments of the function.
+        **kwargs:
+            Additional arguments used in :func:`numba.jit`
 
     Returns:
         The decorated function
@@ -245,9 +248,8 @@ def jit_allocate_out(
         jit_kwargs_outer = _numba_get_signature(nopython=True, parallel=False, **kwargs)
         # we need to cast `parallel` to bool since np.bool is not supported by jit
         jit_kwargs_inner = _numba_get_signature(parallel=bool(parallel), **kwargs)
-        register_jitable = nb.extending.register_jitable
         logging.getLogger(__name__).info(
-            "Compile `%s` with parallel=%s", func.__name__, jit_kwargs_inner["parallel"]
+            "Compile `%s` with %s", func.__name__, jit_kwargs_inner
         )
 
         if num_args == 1:
@@ -272,9 +274,10 @@ def jit_allocate_out(
                         f"type {arr.__class__.__name__}"
                     )
 
+                f_jit = register_jitable(**jit_kwargs_inner)(func)
+
                 if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # function is called without `out`
-                    f_jit = register_jitable(**jit_kwargs_inner)(func)
 
                     if out_shape is None:
                         # we have to obtain the shape of `out` from `arr`
@@ -292,7 +295,17 @@ def jit_allocate_out(
 
                 else:
                     # function is called with `out` argument
-                    return func
+                    if out_shape is None:
+                        return f_jit
+
+                    else:
+
+                        def f_with_tested_out(arr, out):
+                            """helper function allocating output array"""
+                            assert out.shape == out_shape
+                            return f_jit(arr, out)
+
+                        return f_with_tested_out
 
         elif num_args == 2:
 
@@ -404,14 +417,14 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
     dtype = arr.dtype
 
     @register_jitable
-    def array_constructor():
+    def array_constructor() -> np.ndarray:
         """helper that reconstructs the array from the pointer and structural info"""
         data: np.ndarray = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
         if strides is not None:
-            data = np.lib.index_tricks.as_strided(data, shape, strides)
+            data = np.lib.index_tricks.as_strided(data, shape, strides)  # type: ignore
         return data
 
-    return array_constructor
+    return array_constructor  # type: ignore
 
 
 @nb.generated_jit(nopython=True)

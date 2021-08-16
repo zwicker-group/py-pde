@@ -65,7 +65,7 @@ class WavePDE(PDEBase):
                 The combined fields u and v, suitable for the simulation
         """
         if v is None:
-            v = u.copy(data=0)
+            v = ScalarField(u.grid)
         return FieldCollection([u, v])
 
     @property
@@ -112,19 +112,18 @@ class WavePDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        shape = state.grid.shape
-        arr_type = nb.typeof(np.empty((2,) + shape, dtype=state.data.dtype))
+        arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
         speed2 = self.speed ** 2
-        laplace = state.grid.get_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
             """compiled helper function evaluating right hand side"""
             rate = np.empty_like(state_data)
             rate[0] = state_data[1]
-            laplace(state_data[0], out=rate[1])
+            rate[1][:] = laplace(state_data[0])
             rate[1] *= speed2
             return rate
 

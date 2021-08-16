@@ -27,8 +27,9 @@ boundary, which corresponds to an inwards flux. Conversely, negative
 derivatives are associated with effluxes.
 """
 
+from __future__ import annotations
+
 import logging
-import numbers
 from abc import ABCMeta, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -200,46 +201,28 @@ class BCBase(metaclass=ABCMeta):
     boundary condition is linked to :class:`~numpy.ndarray` managed by external
     code. """
 
-    _subclasses: Dict[str, "BCBase"] = {}  # all classes inheriting from this
-    _conditions: Dict[str, "BCBase"] = {}  # mapping from all names to classes
+    _subclasses: Dict[str, BCBase] = {}  # all classes inheriting from this
+    _conditions: Dict[str, BCBase] = {}  # mapping from all names to classes
 
-    _value: np.ndarray
-
-    @fill_in_docstring
     def __init__(
         self,
         grid: GridBase,
         axis: int,
         upper: bool,
         rank: int = 0,
-        value: Union[float, np.ndarray, str] = 0,
     ):
         """
-        Warning:
-            {WARNING_EXEC} However, the function is safe when `value` cannot be
-            an arbitrary string.
-
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
             upper (bool):
-                Flag indicating whether this boundary condition is associated
-                with the upper side of an axis or not. In essence, this
-                determines the direction of the local normal vector of the
-                boundary.
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
-            value (float or str or :class:`~numpy.ndarray`):
-                a value stored with the boundary condition. The interpretation
-                of this value depends on the type of boundary condition. If
-                value is a single value (or tensor in case of tensorial boundary
-                conditions), the same value is applied to all points.
-                Inhomogeneous boundary conditions are possible by supplying an
-                expression as a string, which then may depend on the axes names
-                of the respective grid.
+                The tensorial rank of the value associated with the boundary condition.
         """
         self.grid = grid
         self.axis = axis
@@ -251,7 +234,6 @@ class BCBase(metaclass=ABCMeta):
             self.grid.shape[: self.axis] + self.grid.shape[self.axis + 1 :]
         )
 
-        self.value = value  # type: ignore
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
@@ -366,86 +348,6 @@ class BCBase(metaclass=ABCMeta):
         else:
             return self.grid.axes_bounds[self.axis][0]
 
-    @property
-    def value(self) -> np.ndarray:
-        return self._value
-
-    @value.setter  # type: ignore
-    @fill_in_docstring
-    def value(self, value: Union[float, np.ndarray, str] = 0):
-        """set the value of this boundary condition
-
-        Warning:
-            {WARNING_EXEC}
-
-        Args:
-            value (float or str or array):
-                a value stored with the boundary condition. The interpretation
-                of this value depends on the type of boundary condition.
-        """
-        self._value = self._parse_value(value)
-
-        if self._value.shape == self._shape_tensor:
-            # value does not depend on space
-            self.homogeneous = True
-        elif self._value.shape == self._shape_tensor + self._shape_boundary:
-            # inhomogeneous field
-            self.homogeneous = False
-        else:
-            raise ValueError(
-                f"Dimensions {self._value.shape} of the value are incompatible with "
-                f"rank {self.rank} and spatial dimensions {self._shape_boundary}"
-            )
-
-        self.value_is_linked = False
-
-    def link_value(self, value: np.ndarray):
-        """link value of this boundary condition to external array"""
-        assert value.data.c_contiguous
-
-        shape = self._shape_tensor + self._shape_boundary
-        if value.shape != shape:
-            raise ValueError(
-                f"The shape of the value, {value.shape}, is incompatible with the "
-                f"expected shape for this boundary condition, {shape}"
-            )
-        self._value = value
-        self.homogeneous = False
-        self.value_is_linked = True
-
-    def _make_value_getter(self) -> Callable[[], np.ndarray]:
-        """return a (compiled) function for obtaining the value.
-
-        Note:
-            This should only be used in numba compiled functions that need to
-            support boundary values that can be changed after the function has
-            been compiled. In essence, the helper function created here serves
-            to get around the compile-time constants that are otherwise created.
-
-        Warning:
-            The returned function has a hard-coded reference to the memory
-            address of the value error, which must thus be maintained in memory.
-            If the address of self.value changes, a new function needs to be
-            created by calling this factory function again.
-        """
-        # obtain details about the array
-        mem_addr = self.value.ctypes.data
-        shape = self.value.shape
-        dtype = self.value.dtype
-
-        # Note that we tried using register_jitable here, but this lead to
-        # problems with address_as_void_pointer
-
-        @nb.jit(nb.typeof(self._value)(), inline="always")
-        def get_value() -> np.ndarray:
-            """helper function returning the linked array"""
-            return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
-
-        # keep a reference to the array to prevent garbage collection
-        get_value._value_ref = self._value
-
-        return get_value  # type: ignore
-
     @classmethod
     def get_help(cls) -> str:
         """Return information on how boundary conditions can be set"""
@@ -506,44 +408,6 @@ class BCBase(metaclass=ABCMeta):
     def __ne__(self, other):
         return not self == other
 
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        if self.value_is_linked:
-            value: Union[int, bytes] = self.value.ctypes.data
-        else:
-            value = self.value.tobytes()
-
-        return hash(
-            (self.__class__.__name__, self.grid._cache_hash(), self.axis, value)
-        )
-
-    def copy(
-        self,
-        upper: Optional[bool] = None,
-        rank: int = None,
-        value: Union[float, np.ndarray, str] = None,
-    ) -> "BCBase":
-        """return a copy of itself, but with a reference to the same grid"""
-        obj = self.__class__(
-            grid=self.grid,
-            axis=self.axis,
-            upper=self.upper if upper is None else upper,
-            rank=self.rank if rank is None else rank,
-            value=self.value if value is None else value,
-        )
-        if self.value_is_linked:
-            obj.link_value(self.value)
-        return obj
-
-    def extract_component(self, *indices):
-        """extracts the boundary conditions for the given component
-
-        Args:
-            *indices:
-                One or two indices for vector or tensor fields, respectively
-        """
-        return self.copy(value=self.value[indices], rank=self.rank - len(indices))
-
     @classmethod
     def from_str(
         cls,
@@ -554,7 +418,7 @@ class BCBase(metaclass=ABCMeta):
         rank: int = 0,
         value=0,
         **kwargs,
-    ) -> "BCBase":
+    ) -> BCBase:
         r"""creates boundary from a given string identifier
 
         Args:
@@ -601,7 +465,7 @@ class BCBase(metaclass=ABCMeta):
     @classmethod
     def from_dict(
         cls, grid: GridBase, axis: int, upper: bool, data: Dict[str, Any], rank: int = 0
-    ) -> "BCBase":
+    ) -> BCBase:
         """create boundary from data given in dictionary
 
         Args:
@@ -643,7 +507,7 @@ class BCBase(metaclass=ABCMeta):
     @classmethod
     def from_data(
         cls, grid: GridBase, axis: int, upper: bool, data: BoundaryData, rank: int = 0
-    ) -> "BCBase":
+    ) -> BCBase:
         """create boundary from some data
 
         Args:
@@ -702,6 +566,14 @@ class BCBase(metaclass=ABCMeta):
             )
 
     @abstractmethod
+    def _cache_hash(self) -> int:
+        pass
+
+    @abstractmethod
+    def copy(self, upper: Optional[bool] = None, rank: int = None) -> BCBase:
+        pass
+
+    @abstractmethod
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         pass
 
@@ -722,12 +594,492 @@ class BCBase(metaclass=ABCMeta):
         pass
 
     @property
-    def differentiated(self) -> "BCBase":
+    def differentiated(self) -> BCBase:
         """BCBase: differentiated version of this boundary condition"""
         raise NotImplementedError
 
+    @abstractmethod
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+        """set the ghost cell values for this boundary
 
-class BCBase1stOrder(BCBase):
+        Args:
+            data_all (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+
+    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the ghost cells for this boundary"""
+        # get information of the virtual points (ghost cells)
+        vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
+        np_idx = self.grid.shape[self.axis] - 1 if self.upper else 0
+        vp_value = self.make_virtual_point_evaluator()
+
+        if self.grid.num_axes == 1:  # 1d grid
+
+            @register_jitable
+            def ghost_cell_setter(data_all: np.ndarray) -> None:
+                """helper function setting the conditions on all axes"""
+                data_all[..., vp_idx] = vp_value(data_all[..., 1:-1], (np_idx,))
+
+        elif self.grid.num_axes == 2:  # 2d grid
+
+            if self.axis == 0:
+                num_y = self.grid.shape[1]
+
+                @register_jitable
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for j in range(num_y):
+                        val = vp_value(data_all[..., 1:-1, 1:-1], (np_idx, j))
+                        data_all[..., vp_idx, j + 1] = val
+
+            elif self.axis == 1:
+                num_x = self.grid.shape[0]
+
+                @register_jitable
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for i in range(num_x):
+                        val = vp_value(data_all[..., 1:-1, 1:-1], (i, np_idx))
+                        data_all[..., i + 1, vp_idx] = val
+
+        elif self.grid.num_axes == 3:  # 3d grid
+
+            if self.axis == 0:
+                num_y, num_z = self.grid.shape[1:]
+
+                @register_jitable
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for j in range(num_y):
+                        for k in range(num_z):
+                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
+                            val = vp_value(arr, (np_idx, j, k))
+                            data_all[..., vp_idx, j + 1, k + 1] = val
+
+            elif self.axis == 1:
+                num_x, num_z = self.grid.shape[0], self.grid.shape[2]
+
+                @register_jitable
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for i in range(num_x):
+                        for k in range(num_z):
+                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
+                            val = vp_value(arr, (i, np_idx, k))
+                            data_all[..., i + 1, vp_idx, k + 1] = val
+
+            elif self.axis == 2:
+                num_x, num_y = self.grid.shape[:2]
+
+                @register_jitable
+                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                    """helper function setting the conditions on all axes"""
+                    for i in range(num_x):
+                        for j in range(num_y):
+                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
+                            val = vp_value(arr, (i, j, np_idx))
+                            data_all[..., i + 1, j + 1, vp_idx] = val
+
+        else:
+            raise NotImplementedError("Too many axes")
+
+        return ghost_cell_setter  # type: ignore
+
+
+class ExpressionBC(BCBase):
+    """represents a boundary whose virtual point is calculated from an expression"""
+
+    names = ["virtual_point"]
+
+    @fill_in_docstring
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        rank: int = 0,
+        value: Union[float, str] = 0,
+        target: str = "virtual_point",
+    ):
+        """
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the value associated with the boundary condition.
+            value (float or str):
+                An expression that determines the value of the boundary condition.
+            target (str):
+                Selects which value is actually set. Possible choices include `value`,
+                `derivative`, and `virtual_point`.
+        """
+        super().__init__(grid, axis, upper, rank)
+
+        if self.rank != 0:
+            raise NotImplementedError(
+                "Expression boundary conditions only work for scalar conditions"
+            )
+        self._logger = logging.getLogger(self.__class__.__name__)
+
+        # determine the full expression for setting the value of the virtual point
+        if target == "virtual_point":
+            expression = value
+        elif target == "value":
+            expression = f"2 * ({value}) - value"
+        elif target == "derivative":
+            expression = f"dx * ({value}) + value"
+        else:
+            raise ValueError(f"Unknown target `{target}` for expression")
+
+        # parse this expression
+        from pde.tools.expressions import ScalarExpression
+
+        signature = ["value", "dx"] + grid.axes
+        self._expr = ScalarExpression(expression, signature=signature)
+
+    def _cache_hash(self) -> int:
+        """returns a value to determine when a cache needs to be updated"""
+        expression = self._expr.expression
+        return hash(
+            (self.__class__.__name__, self.grid._cache_hash(), self.axis, expression)
+        )
+
+    def copy(
+        self,
+        upper: Optional[bool] = None,
+        rank: int = None,
+    ) -> ExpressionBC:
+        """return a copy of itself, but with a reference to the same grid"""
+        return self.__class__(
+            grid=self.grid,
+            axis=self.axis,
+            upper=self.upper if upper is None else upper,
+            rank=self.rank if rank is None else rank,
+            value=self._expr.expression,
+        )
+
+    def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
+        raise NotImplementedError
+
+    def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
+        raise NotImplementedError
+
+    def make_adjacent_evaluator(
+        self,
+    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
+        raise NotImplementedError
+
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+        """set the ghost cell values for this boundary
+
+        Args:
+            data_all (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        dx = self.grid.discretization[self.axis]
+
+        # prepare the array of slices to index bcs
+        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
+        idx_write[offset + self.axis] = -1 if self.upper else 0  # type: ignore
+        idx_read = idx_write[:]
+        idx_read[offset + self.axis] = -2 if self.upper else 1  # type: ignore
+
+        # prepare the arguments
+        values = data_all[tuple(idx_read)]
+        coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
+        coords = np.moveaxis(coords, -1, 0)  # point coordinates to first axis
+
+        # calculate the virtual points
+        data_all[tuple(idx_write)] = self._expr(values, dx, *coords)
+
+    def make_virtual_point_evaluator(
+        self,
+    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
+        """returns a function evaluating the value at the virtual support point
+
+        Returns:
+            function: A function that takes the data array and an index marking
+            the current point, which is assumed to be a virtual point. The
+            result is the data value at this point, which is calculated using
+            the boundary condition.
+        """
+        dx = self.grid.discretization[self.axis]
+        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
+        bc_coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
+        bc_coords = np.moveaxis(bc_coords, -1, 0)  # point coordinates to first axis
+        func = self._expr.get_compiled()
+        dim = self.grid.dim
+        assert dim <= 3
+
+        @register_jitable(inline="always")
+        def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
+            """evaluate the virtual point at `idx`"""
+            _, _, bc_idx = get_arr_1d(arr, idx)
+            grid_value = arr[idx]
+            coords = bc_coords[bc_idx]
+            if dim == 1:
+                return func(grid_value, dx, coords[0])  # type: ignore
+            elif dim == 2:
+                return func(grid_value, dx, coords[0], coords[1])  # type: ignore
+            elif dim == 3:
+                return func(grid_value, dx, coords[0], coords[1], coords[2])  # type: ignore
+            else:
+                return np.nan  #  cheap way to signal a problem
+
+        return virtual_point  # type: ignore
+
+
+class ExpressionValueBC(ExpressionBC):
+    """represents a boundary whose value is calculated from an expression"""
+
+    names = ["value_expression", "value_expr"]
+
+    @fill_in_docstring
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        rank: int = 0,
+        value: Union[float, str] = 0,
+        target: str = "value",
+    ):
+        """
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the value associated with the boundary condition.
+            value (float or str):
+                An expression that determines the value of the boundary condition.
+            target (str):
+                Selects which value is actually set. Possible choices include `value`,
+                `derivative`, and `virtual_point`.
+        """
+        super().__init__(grid, axis, upper, rank, value, target)
+
+
+class ExpressionDerivativeBC(ExpressionBC):
+    """represents a boundary whose outward derivative is calculated from an expression"""
+
+    names = ["derivative_expression", "derivative_expr"]
+
+    @fill_in_docstring
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        rank: int = 0,
+        value: Union[float, str] = 0,
+        target: str = "derivative",
+    ):
+        """
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the value associated with the boundary condition.
+            value (float or str):
+                An expression that determines the value of the boundary condition.
+            target (str):
+                Selects which value is actually set. Possible choices include `value`,
+                `derivative`, and `virtual_point`.
+        """
+        super().__init__(grid, axis, upper, rank, value, target)
+
+
+class ConstBCBase(BCBase):
+    """base class representing a boundary whose virtual point is set from constants"""
+
+    _value: np.ndarray
+
+    @fill_in_docstring
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        rank: int = 0,
+        value: Union[float, np.ndarray, str] = 0,
+    ):
+        """
+        Warning:
+            {WARNING_EXEC} However, the function is safe when `value` cannot be
+            an arbitrary string.
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the value associated with the boundary condition.
+            value (float or str or :class:`~numpy.ndarray`):
+                a value stored with the boundary condition. The interpretation
+                of this value depends on the type of boundary condition. If
+                value is a single value (or tensor in case of tensorial boundary
+                conditions), the same value is applied to all points.
+                Inhomogeneous boundary conditions are possible by supplying an
+                expression as a string, which then may depend on the axes names
+                of the respective grid.
+        """
+        super().__init__(grid=grid, axis=axis, upper=upper, rank=rank)
+        self.value = value  # type: ignore
+
+    @property
+    def value(self) -> np.ndarray:
+        return self._value
+
+    @value.setter  # type: ignore
+    @fill_in_docstring
+    def value(self, value: Union[float, np.ndarray, str] = 0):
+        """set the value of this boundary condition
+
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            value (float or str or array):
+                a value stored with the boundary condition. The interpretation
+                of this value depends on the type of boundary condition.
+        """
+        self._value = self._parse_value(value)
+
+        if self._value.shape == self._shape_tensor:
+            # value does not depend on space
+            self.homogeneous = True
+        elif self._value.shape == self._shape_tensor + self._shape_boundary:
+            # inhomogeneous field
+            self.homogeneous = False
+        else:
+            raise ValueError(
+                f"Dimensions {self._value.shape} of the value are incompatible with "
+                f"rank {self.rank} and spatial dimensions {self._shape_boundary}"
+            )
+
+        self.value_is_linked = False
+
+    def link_value(self, value: np.ndarray):
+        """link value of this boundary condition to external array"""
+        assert value.data.c_contiguous
+
+        shape = self._shape_tensor + self._shape_boundary
+        if value.shape != shape:
+            raise ValueError(
+                f"The shape of the value, {value.shape}, is incompatible with the "
+                f"expected shape for this boundary condition, {shape}"
+            )
+        self._value = value
+        self.homogeneous = False
+        self.value_is_linked = True
+
+    def _cache_hash(self) -> int:
+        """returns a value to determine when a cache needs to be updated"""
+        if self.value_is_linked:
+            value: Union[int, bytes] = self.value.ctypes.data
+        else:
+            value = self.value.tobytes()
+
+        return hash(
+            (self.__class__.__name__, self.grid._cache_hash(), self.axis, value)
+        )
+
+    def copy(
+        self,
+        upper: Optional[bool] = None,
+        rank: int = None,
+        value: Union[float, np.ndarray, str] = None,
+    ) -> ConstBCBase:
+        """return a copy of itself, but with a reference to the same grid"""
+        obj = self.__class__(
+            grid=self.grid,
+            axis=self.axis,
+            upper=self.upper if upper is None else upper,
+            rank=self.rank if rank is None else rank,
+            value=self.value if value is None else value,
+        )
+        if self.value_is_linked:
+            obj.link_value(self.value)
+        return obj
+
+    def extract_component(self, *indices):
+        """extracts the boundary conditions for the given component
+
+        Args:
+            *indices:
+                One or two indices for vector or tensor fields, respectively
+        """
+        return self.copy(value=self.value[indices], rank=self.rank - len(indices))
+
+    def _make_value_getter(self) -> Callable[[], np.ndarray]:
+        """return a (compiled) function for obtaining the value.
+
+        Note:
+            This should only be used in numba compiled functions that need to
+            support boundary values that can be changed after the function has
+            been compiled. In essence, the helper function created here serves
+            to get around the compile-time constants that are otherwise created.
+
+        Warning:
+            The returned function has a hard-coded reference to the memory
+            address of the value error, which must thus be maintained in memory.
+            If the address of self.value changes, a new function needs to be
+            created by calling this factory function again.
+        """
+        # obtain details about the array
+        mem_addr = self.value.ctypes.data
+        shape = self.value.shape
+        dtype = self.value.dtype
+
+        # Note that we tried using register_jitable here, but this lead to
+        # problems with address_as_void_pointer
+
+        @nb.jit(nb.typeof(self._value)(), inline="always")
+        def get_value() -> np.ndarray:
+            """helper function returning the linked array"""
+            return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
+
+        # keep a reference to the array to prevent garbage collection
+        get_value._value_ref = self._value
+
+        return get_value  # type: ignore
+
+
+class ConstBC1stOrderBase(ConstBCBase):
     """represents a single boundary in an BoundaryPair instance"""
 
     @abstractmethod
@@ -804,13 +1156,7 @@ class BCBase1stOrder(BCBase):
             result is the data value at this point, which is calculated using
             the boundary condition.
         """
-        dx = self.grid.discretization[self.axis]
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        if not isinstance(dx, numbers.Number):
-            raise ValueError(
-                f"Discretization along axis {self.axis} must be a number, not `{dx}`"
-            )
 
         # calculate necessary constants
         const, factor, index = self.get_virtual_point_data(compiled=True)
@@ -818,7 +1164,7 @@ class BCBase1stOrder(BCBase):
         if self.homogeneous:
 
             @register_jitable(inline="always")
-            def virtual_point(arr, idx: Tuple[int, ...]) -> float:
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
                 return const() + factor() * arr_1d[..., index]  # type: ignore
@@ -826,7 +1172,7 @@ class BCBase1stOrder(BCBase):
         else:
 
             @register_jitable(inline="always")
-            def virtual_point(arr, idx: Tuple[int, ...]) -> float:
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
                 return (  # type: ignore
@@ -911,8 +1257,34 @@ class BCBase1stOrder(BCBase):
 
         return adjacent_point  # type: ignore
 
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+        """set the ghost cell values for this boundary
 
-class DirichletBC(BCBase1stOrder):
+        Args:
+            data_all (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        # calculate necessary constants
+        const, factor, index = self.get_virtual_point_data()
+
+        # prepare the array of slices to index bcs
+        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
+        idx_write[offset + self.axis] = -1 if self.upper else 0  # type: ignore
+        idx_read = idx_write[:]
+        idx_read[offset + self.axis] = index + 1  # type: ignore
+
+        if self.homogeneous:
+            # add dimension to const so it can be broadcasted to shape of data_all
+            for _ in range(self.grid.num_axes - 1):
+                factor = factor[..., np.newaxis]
+                const = const[..., np.newaxis]
+
+        # calculate the virtual points
+        data_all[tuple(idx_write)] = const + factor * data_all[tuple(idx_read)]
+
+
+class DirichletBC(ConstBC1stOrderBase):
     """represents a boundary condition imposing the value"""
 
     names = ["value", "dirichlet"]  # identifiers for this boundary condition
@@ -976,7 +1348,7 @@ class DirichletBC(BCBase1stOrder):
         )
 
 
-class NeumannBC(BCBase1stOrder):
+class NeumannBC(ConstBC1stOrderBase):
     """represents a boundary condition imposing the derivative in the outward
     normal direction of the boundary"""
 
@@ -1043,7 +1415,7 @@ class NeumannBC(BCBase1stOrder):
         )
 
 
-class MixedBC(BCBase1stOrder):
+class MixedBC(ConstBC1stOrderBase):
     r"""represents a mixed (or Robin) boundary condition imposing a derivative
     in the outward normal direction of the boundary that is given by an affine
     function involving the actual value:
@@ -1212,7 +1584,7 @@ class MixedBC(BCBase1stOrder):
         return (const_func, factor_func, index)
 
 
-class BCBase2ndOrder(BCBase):
+class ConstBC2ndOrderBase(ConstBCBase):
     """abstract base class for boundary conditions of 2nd order"""
 
     @abstractmethod
@@ -1305,17 +1677,11 @@ class BCBase2ndOrder(BCBase):
             the boundary condition.
         """
         size = self.grid.shape[self.axis]
-        dx = self.grid.discretization[self.axis]
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
 
         if size < 2:
             raise ValueError(
-                "Need at least two support points along axis "
-                f"{self.axis} to apply boundary conditions"
-            )
-        if not isinstance(dx, numbers.Number):
-            raise ValueError(
-                f"Discretization along axis {self.axis} must be a number, not `{dx}`"
+                f"Need two support points along axis {self.axis} to apply conditions"
             )
 
         # calculate necessary constants
@@ -1429,8 +1795,41 @@ class BCBase2ndOrder(BCBase):
 
         return adjacent_point  # type: ignore
 
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+        """set the ghost cell values for this boundary
 
-class ExtrapolateBC(BCBase2ndOrder):
+        Args:
+            data_all (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        # calculate necessary constants
+        data = self.get_virtual_point_data()
+
+        # prepare the array of slices to index bcs
+        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
+        idx_write[offset + self.axis] = -1 if self.upper else 0  # type: ignore
+        idx_1 = idx_write[:]
+        idx_1[offset + self.axis] = data[2] + 1  # type: ignore
+        idx_2 = idx_write[:]
+        idx_2[offset + self.axis] = data[4] + 1  # type: ignore
+
+        # add dimension to const until it can be broadcasted to shape of data_all
+        const, factor1, factor2 = data[0], data[1], data[3]
+        while factor1.ndim < self.grid.num_axes:
+            factor1 = factor1[..., np.newaxis]
+        while factor2.ndim < self.grid.num_axes:
+            factor2 = factor2[..., np.newaxis]
+        while const.ndim < self.grid.num_axes:
+            const = const[..., np.newaxis]
+
+        # calculate the virtual points
+        data_all[tuple(idx_write)] = (
+            const + factor1 * data_all[tuple(idx_1)] + factor2 * data_all[tuple(idx_2)]
+        )
+
+
+class ExtrapolateBC(ConstBC2ndOrderBase):
     """represents a boundary condition that extrapolates the virtual point
     using two points close to the boundary
 
@@ -1463,7 +1862,7 @@ class ExtrapolateBC(BCBase2ndOrder):
         return (np.array(0.0), np.array(2.0), i1, np.array(-1.0), i2)
 
 
-class CurvatureBC(BCBase2ndOrder):
+class CurvatureBC(ConstBC2ndOrderBase):
     """represents a boundary condition imposing the 2nd derivative at the
     boundary"""
 

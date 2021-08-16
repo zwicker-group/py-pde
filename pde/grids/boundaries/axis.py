@@ -16,7 +16,7 @@ from numba.extending import register_jitable
 
 from ...tools.typing import NumberOrArray
 from ..base import DomainError, GridBase
-from .local import BCBase, BCDataError, BoundaryData, NeumannBC, _make_get_arr_1d
+from .local import BCBase, BCDataError, BoundaryData, _make_get_arr_1d
 
 BoundaryPairData = Union[
     Dict[str, BoundaryData], BoundaryData, Tuple[BoundaryData, BoundaryData]
@@ -210,32 +210,6 @@ class BoundaryPair(BoundaryAxisBase):
                     )
 
         return cls(low, high)
-
-    @property
-    def _scipy_border_mode(self) -> dict:
-        """dict: a dictionary that can be used in scipy functions
-
-        This returns arguments that can be passed to functions of the
-        scipy.ndimage module to specify border conditions.
-
-        Raise:
-            RuntimeError if the boundary cannot be represented
-        """
-        if self.low != self.high:
-            raise RuntimeError("Incompatible boundaries")
-
-        # check whether both sides have vanishing derivative conditions
-        zero_neumann_bcs = all(
-            isinstance(b, NeumannBC) and np.all(b.value == 0)
-            for b in [self.low, self.high]
-        )
-        if zero_neumann_bcs:
-            return {"mode": "reflect"}
-        else:
-            # BoundaryCondition.value cannot be supported since the scipy value
-            # mode='constant' applies the boundary conditions at a different
-            # position then we would
-            raise RuntimeError("Unsupported boundaries")
 
     def extract_component(self, *indices):
         """extracts the boundary pair of the given index.
@@ -441,6 +415,30 @@ class BoundaryPair(BoundaryAxisBase):
             raise NotImplementedError(f"Derivative of oder {order} not implemented")
 
         return deriv_evaluator  # type: ignore
+
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+        """set the ghost cell values for all boundaries
+
+        Args:
+            data_all (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        self.low.set_ghost_cells(data_all)
+        self.high.set_ghost_cells(data_all)
+
+    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the ghost cells for this axis on a full array"""
+
+        ghost_cell_setter_low = self.low.make_ghost_cell_setter()
+        ghost_cell_setter_high = self.high.make_ghost_cell_setter()
+
+        @register_jitable
+        def ghost_cell_setter(data_all: np.ndarray) -> None:
+            """helper function setting the conditions on all axes"""
+            ghost_cell_setter_low(data_all)
+            ghost_cell_setter_high(data_all)
+
+        return ghost_cell_setter  # type: ignore
 
 
 class BoundaryPeriodic(BoundaryAxisBase):
@@ -680,6 +678,61 @@ class BoundaryPeriodic(BoundaryAxisBase):
             raise NotImplementedError(f"Derivative of oder {order} not implemented")
 
         return deriv_evaluator  # type: ignore
+
+    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+        """set the ghost cell values for all boundaries
+
+        Args:
+            data_all (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
+        idx_read = idx_write[:]
+
+        # set lower BC
+        idx_write[offset + self.axis] = 0  # type: ignore
+        idx_read[offset + self.axis] = -2  # type: ignore
+        data_all[tuple(idx_write)] = data_all[tuple(idx_read)]
+
+        # set upper BC
+        idx_write[offset + self.axis] = -1  # type: ignore
+        idx_read[offset + self.axis] = 1  # type: ignore
+        data_all[tuple(idx_write)] = data_all[tuple(idx_read)]
+
+    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+        """return function that sets the ghost cells for this axis on a full array"""
+        # calculate the axis of this BC (counting from the back)
+        axis_back = self.grid.num_axes - self.axis
+
+        if axis_back == 1:
+
+            @register_jitable
+            def ghost_cell_setter(data_all: np.ndarray) -> None:
+                """helper function setting the conditions on all axes"""
+                data_all[..., 0] = data_all[..., -2]
+                data_all[..., -1] = data_all[..., 1]
+
+        elif axis_back == 2:
+
+            @register_jitable
+            def ghost_cell_setter(data_all: np.ndarray) -> None:
+                """helper function setting the conditions on all axes"""
+                data_all[..., 0, :] = data_all[..., -2, :]
+                data_all[..., -1, :] = data_all[..., 1, :]
+
+        elif axis_back == 3:
+
+            @register_jitable
+            def ghost_cell_setter(data_all: np.ndarray) -> None:
+                """helper function setting the conditions on all axes"""
+                data_all[..., 0, :, :] = data_all[..., -2, :, :]
+                data_all[..., -1, :, :] = data_all[..., 1, :, :]
+
+        else:
+            raise NotImplementedError("Grids with more than 3 axes are not supported")
+
+        return ghost_cell_setter  # type: ignore
 
 
 def get_boundary_axis(

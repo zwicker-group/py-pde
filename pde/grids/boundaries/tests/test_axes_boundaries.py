@@ -53,8 +53,8 @@ def test_mixed_boundary_condition():
     """test limiting cases of the mixed boundary condition"""
     g = UnitGrid([2])
     d = np.random.random(2)
-    g1 = g.get_operator("gradient", bc=[{"mixed": 0}, {"mixed": np.inf}])
-    g2 = g.get_operator("gradient", bc=["derivative", "value"])
+    g1 = g.make_operator("gradient", bc=[{"mixed": 0}, {"mixed": np.inf}])
+    g2 = g.make_operator("gradient", bc=["derivative", "value"])
     np.testing.assert_allclose(g1(d), g2(d))
 
 
@@ -97,3 +97,25 @@ def test_bc_values():
     assert bc[0].low.value == 10 and bc[0].high.value == 15
     bc.set_value(7)
     assert bc[0].low.value == bc[0].high.value == 7
+
+
+@pytest.mark.parametrize("dim", [1, 2, 3])
+@pytest.mark.parametrize("periodic", [True, False])
+def test_set_ghost_cells(dim, periodic):
+    """test setting values for ghost cells"""
+    grid = UnitGrid([1] * dim, periodic=periodic)
+    field = ScalarField.random_uniform(grid)
+    bcs = grid.get_boundary_conditions("natural")
+
+    arr1 = field._data_all.copy()
+    bcs.set_ghost_cells(arr1)
+
+    arr2 = field._data_all.copy()
+    setter = bcs.make_ghost_cell_setter()
+    setter(arr2)
+
+    # test valid BCs:
+    for n in range(dim):
+        idx = [slice(1, -1)] * dim
+        idx[n] = slice(None)
+        np.testing.assert_allclose(arr1[tuple(idx)], arr2[tuple(idx)])

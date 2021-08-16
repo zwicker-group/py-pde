@@ -4,7 +4,9 @@ Defines a tensorial field of rank 2 over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import TYPE_CHECKING, Callable, Optional, Sequence, Tuple, Union
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Tuple, Union
 
 import numba as nb
 import numpy as np
@@ -13,6 +15,7 @@ from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.numba import get_common_numba_dtype, jit
+from ..tools.plotting import PlotReference, plot_on_figure
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
@@ -23,16 +26,7 @@ if TYPE_CHECKING:
 
 
 class Tensor2Field(DataFieldBase):
-    """Single tensor field of rank 2 on a grid
-
-    Attributes:
-        grid (:class:`~pde.grids.base.GridBase`):
-            The underlying grid defining the discretization
-        data (:class:`~numpy.ndarray`):
-            Tensor components at the support points of the grid
-        label (str):
-            Name of the field
-    """
+    """Tensor field of rank 2 discretized on a grid"""
 
     rank = 2
 
@@ -45,7 +39,7 @@ class Tensor2Field(DataFieldBase):
         *,
         label: str = None,
         dtype=None,
-    ) -> "Tensor2Field":
+    ) -> Tensor2Field:
         """create a tensor field on a grid from given expressions
 
         Warning:
@@ -125,21 +119,26 @@ class Tensor2Field(DataFieldBase):
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
         """set the data from a value from a collection"""
+        # create a view and reshape it to disallow copying
+        data_all = value.view()
         dim = self.grid.dim
-        self._data = value.reshape(dim, dim, *self.grid.shape)
-        # check whether both point to the same memory location
-        addr_value = value.__array_interface__["data"][0]
-        addr_self_data = self._data.__array_interface__["data"][0]
-        assert addr_value == addr_self_data
+        full_grid_shape = tuple(s + 2 for s in self.grid.shape)
+        data_all.shape = (dim, dim, *full_grid_shape)
+
+        # set the result as the full data array
+        self._data_all = data_all
+
+        # ensure that no copying happend
+        assert np.may_share_memory(self.data, value)
 
     def dot(
         self,
-        other: Union[VectorField, "Tensor2Field"],
-        out: Optional[Union[VectorField, "Tensor2Field"]] = None,
+        other: Union[VectorField, Tensor2Field],
+        out: Optional[Union[VectorField, Tensor2Field]] = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
-    ) -> Union[VectorField, "Tensor2Field"]:
+    ) -> Union[VectorField, Tensor2Field]:
         """calculate the dot product involving a tensor field
 
         This supports the dot product between two tensor fields as well as the
@@ -234,7 +233,7 @@ class Tensor2Field(DataFieldBase):
                     return out
 
             # build the outer function with the correct signature
-            if nb.config.DISABLE_JIT:
+            if nb.config.DISABLE_JIT:  # @UndefinedVariable
 
                 def dot(
                     a: np.ndarray, b: np.ndarray, out: np.ndarray = None
@@ -289,7 +288,7 @@ class Tensor2Field(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("ij...,jk...->ik...", a, b)  # type: ignore
                     else:
-                        return np.einsum("ij...,jk...->ik...", a, b, out=out)  # type: ignore
+                        return np.einsum("ij...,jk...->ik...", a, b, out=out)
 
                 elif a.shape[1:] == b.shape:
                     # dot product between tensor and vector
@@ -299,7 +298,7 @@ class Tensor2Field(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("ij...,j...->i...", a, b)  # type: ignore
                     else:
-                        return np.einsum("ij...,j...->i...", a, b, out=out)  # type: ignore
+                        return np.einsum("ij...,j...->i...", a, b, out=out)
 
                 else:
                     raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
@@ -323,11 +322,7 @@ class Tensor2Field(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self,
-        bc: "BoundariesData",
-        out: Optional[VectorField] = None,
-        *,
-        label: str = "divergence",
+        self, bc: "BoundariesData", out: Optional[VectorField] = None, **kwargs
     ) -> VectorField:
         r"""apply tensor divergence and return result as a field
 
@@ -349,15 +344,14 @@ class Tensor2Field(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        tensor_div = self.grid.get_operator("tensor_divergence", bc=bc)
-        return self._apply_with_out(tensor_div, VectorField, out=out, label=label)
+        return self._apply_operator("tensor_divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
     @property
     def integral(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: integral of each component over space"""
         return self.grid.integrate(self.data)
 
-    def transpose(self, label: str = "transpose") -> "Tensor2Field":
+    def transpose(self, label: str = "transpose") -> Tensor2Field:
         """return the transpose of the tensor field
 
         Args:
@@ -371,7 +365,7 @@ class Tensor2Field(DataFieldBase):
 
     def symmetrize(
         self, make_traceless: bool = False, inplace: bool = False
-    ) -> "Tensor2Field":
+    ) -> Tensor2Field:
         """symmetrize the tensor field in place
 
         Args:
@@ -396,7 +390,7 @@ class Tensor2Field(DataFieldBase):
             dim = self.grid.dim
             value = self.trace() / dim
             for i in range(dim):
-                out._data[i, i] -= value.data
+                out.data[i, i] -= value.data
         return out
 
     def to_scalar(
@@ -473,8 +467,8 @@ class Tensor2Field(DataFieldBase):
                 # the interface of np.linalg.det is not very flexible. We could
                 # in principle use the definition of np.linalg.det without the
                 # multiple checks to gain some speed
-                for i in np.ndindex(self.grid.shape):
-                    data[i] = np.linalg.det(self.data[(...,) + i])  # type: ignore
+                for idx in np.ndindex(*self.grid.shape):
+                    data[idx] = np.linalg.det(self.data[(...,) + idx])
 
         else:
             raise ValueError(
@@ -502,3 +496,59 @@ class Tensor2Field(DataFieldBase):
             :class:`~pde.fields.scalar.ScalarField`: scalar field of traces
         """
         return self.to_scalar(scalar="trace", label=label)
+
+    def _update_plot_components(self, reference: List[List[PlotReference]]) -> None:
+        """update a plot collection with the current field values
+
+        Args:
+            reference (list of :class:`PlotReference`):
+                All references of the plot to update
+        """
+        for i in range(self.grid.dim):
+            for j in range(self.grid.dim):
+                self[i, j]._update_plot(reference[i][j])
+
+    @plot_on_figure(update_method="_update_plot_components")
+    def plot_components(
+        self,
+        kind: str = "auto",
+        fig=None,
+        **kwargs,
+    ) -> List[List[PlotReference]]:
+        r"""visualize all the components of this tensor field
+
+        Args:
+            kind (str or list of str):
+                Determines the kind of the visualizations. Supported values are `image`
+                or `line`. Alternatively, `auto` determines the best visualization based
+                on the grid.
+            {PLOT_ARGS}
+            \**kwargs:
+                All additional keyword arguments are forwarded to the actual plotting
+                function of all subplots.
+
+        Returns:
+            2d list of :class:`PlotReference`: Instances that contain information
+            to update all the plots with new data later.
+        """
+        # create all the subpanels
+        dim = self.grid.dim
+        axs = fig.subplots(nrows=dim, ncols=dim, squeeze=False)
+
+        # plot all the elements onto the respective axes
+        kwargs.setdefault("action", "create")
+        kwargs["kind"] = kind
+        comps = self.grid.axes + self.grid.axes_symmetric
+        references = [
+            [
+                self[i, j].plot(
+                    ax=axs[i][j],
+                    title=f"{comps[i]}{comps[j]} Component",
+                    **kwargs,
+                )
+                for j in range(dim)
+            ]
+            for i in range(dim)
+        ]
+        # return the references for all subplots
+        return references

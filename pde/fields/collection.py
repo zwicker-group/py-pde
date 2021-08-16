@@ -5,6 +5,8 @@ grid.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from typing import Any, Dict, Iterator, List, Optional, Sequence, Union
@@ -15,7 +17,7 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
 from ..tools.plotting import PlotReference, plot_on_figure
-from ..tools.typing import ArrayLike, NumberOrArray
+from ..tools.typing import NumberOrArray
 from .base import DataFieldBase, FieldBase
 from .scalar import ScalarField
 
@@ -26,7 +28,6 @@ class FieldCollection(FieldBase):
     def __init__(
         self,
         fields: Sequence[DataFieldBase],
-        data: ArrayLike = None,
         *,
         copy_fields: bool = False,
         label: Optional[str] = None,
@@ -37,12 +38,9 @@ class FieldCollection(FieldBase):
         Args:
             fields:
                 Sequence of the individual fields
-            data (:class:`~numpy.ndarray`):
-                Data of the fields. If `None`, the data is instead taken from
-                the individual fields given by `fields`.
             copy_fields (bool):
-                Flag determining whether the individual fields given in `fields`
-                are copied. Note that fields are always copied if some of the supplied
+                Flag determining whether the individual fields given in `fields` are
+                copied. Note that fields are always copied if some of the supplied
                 fields are identical.
             label (str):
                 Label of the field collection
@@ -98,32 +96,21 @@ class FieldCollection(FieldBase):
             self._slices.append(slice(start, len(fields_data)))
             dof += len(this_data)
 
-        # combine into one data field
-        data_shape = (dof,) + grid.shape
-        if data is None:
-            # the data is taken from the individual fields
-            data_arr = number_array(fields_data, dtype=dtype, copy=False)
-
-        else:
-            # the data is taken from the supplied data argument
-            data_arr = number_array(data, dtype=dtype, copy=False)
-            if data_arr.shape != data_shape:
-                data_arr = np.array(np.broadcast_to(data_arr, data_shape))
-        assert data_arr.shape == data_shape
+        # initialize the data from the individual fields
+        data_arr = number_array(fields_data, dtype=dtype, copy=False)
 
         # initialize the class
         super().__init__(grid, data_arr, label=label)
 
-        # link the data of the original fields back to self._data if they were
-        # not copied
         if not copy_fields:
+            # link the data of the original fields back to self._data
             for i, field in enumerate(self.fields):
                 field_shape = field.data.shape
-                field._data_flat = self.data[self._slices[i]]
+                field._data_flat = self._data_all[self._slices[i]]
 
                 # check whether the field data is based on our data field
                 assert field.data.shape == field_shape
-                assert field.data.base is self.data
+                assert np.may_share_memory(field._data_all, self._data_all)
 
         if labels is not None:
             self.labels = labels  # type: ignore
@@ -227,7 +214,7 @@ class FieldCollection(FieldBase):
     @classmethod
     def from_state(
         cls, attributes: Dict[str, Any], data: np.ndarray = None
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """create a field collection from given state.
 
         Args:
@@ -246,10 +233,16 @@ class FieldCollection(FieldBase):
             for field_state in attributes.pop("fields")
         ]
 
-        return cls(fields, data=data, **attributes)  # type: ignore
+        # create the collection
+        collection = cls(fields, **attributes)  # type: ignore
+
+        if data is not None:
+            collection.data = data  # set the data of all fields
+
+        return collection
 
     @classmethod
-    def _from_hdf_dataset(cls, dataset) -> "FieldCollection":
+    def _from_hdf_dataset(cls, dataset) -> FieldCollection:
         """construct the class by reading data from an hdf5 dataset"""
         # copy attributes from hdf
         attributes = dict(dataset.attrs)
@@ -305,7 +298,7 @@ class FieldCollection(FieldBase):
         label: str = None,
         labels: Optional[Sequence[str]] = None,
         dtype=None,
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """create a field collection on a grid from given expressions
 
         Warning:
@@ -351,7 +344,7 @@ class FieldCollection(FieldBase):
         vmax: float = 1,
         label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """create scalar fields with random values between `vmin` and `vmax`
 
         Args:
@@ -416,16 +409,23 @@ class FieldCollection(FieldBase):
         return results
 
     def copy(
-        self, data: ArrayLike = None, *, label: str = None, dtype=None
-    ) -> "FieldCollection":
+        self: FieldCollection,
+        *,
+        # data: Union[ArrayLike, str] = "copy",
+        label: str = None,
+        dtype=None,
+    ) -> FieldCollection:
         """return a copy of the data, but not of the grid
 
         Args:
-            data (:class:`~numpy.ndarray`, optional):
-                Data values at the support points of the grid that define the
-                field. Note that the data is not copied but used directly.
+            data (:class:`~numpy.ndarray`, str):
+                Data values at the support points of the grid that define the field.
+                Special values are "copy", copying the current data, "zeros",
+                initializing the copy with zeros, and "empty", just allocating memory
+                with unspecified values. If an actual array is supplied, it must not
+                include data on the ghost cells.
             label (str, optional):
-                Name of the copied field
+                Name of the returned field
             dtype (numpy dtype):
                 The data type of the field. If omitted, it will be determined from
                 `data` automatically.
@@ -433,12 +433,9 @@ class FieldCollection(FieldBase):
         if label is None:
             label = self.label
         fields = [f.copy() for f in self.fields]
-        # if data is None, the data of the individual fields is copied in their
-        # copy() method above. The underlying data is therefore independent from
-        # the current field
-        return self.__class__(
-            fields, data=data, copy_fields=False, label=label, dtype=dtype
-        )
+
+        # create the collection from the copied fields
+        return self.__class__(fields, copy_fields=False, label=label, dtype=dtype)
 
     def interpolate_to_grid(
         self,
@@ -448,7 +445,7 @@ class FieldCollection(FieldBase):
         method: str = "linear",
         fill: Number = None,
         label: Optional[str] = None,
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """interpolate the data of this field collection to another grid.
 
         Args:
@@ -470,7 +467,7 @@ class FieldCollection(FieldBase):
                 Name of the returned field collection
 
         Returns:
-            FieldCollection: Interpolated data
+            :class:`~pde.fields.coolection.FieldCollection`: Interpolated data
         """
         if label is None:
             label = self.label
@@ -484,9 +481,9 @@ class FieldCollection(FieldBase):
         self,
         sigma: float = 1,
         *,
-        out: Optional["FieldCollection"] = None,
+        out: Optional[FieldCollection] = None,
         label: str = None,
-    ) -> "FieldCollection":
+    ) -> FieldCollection:
         """applies Gaussian smoothing with the given standard deviation
 
         This function respects periodic boundary conditions of the underlying

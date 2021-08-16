@@ -2,6 +2,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import gc
+
 import numpy as np
 import pytest
 
@@ -438,3 +440,18 @@ def test_complex_operators():
     """test differential operators for complex data type"""
     f = ScalarField(UnitGrid([2, 2]), 1j)
     assert f.laplace("natural").magnitude == pytest.approx(0)
+
+
+def test_interpolation_after_free():
+    """test whether interpolation is possible when the original field is removed"""
+    f = ScalarField.from_expression(UnitGrid([5]), "x")
+    intp = f.make_interpolator(backend="numba")
+
+    # delete original field
+    del f
+    gc.collect()
+
+    # hope that this overwrites the memory
+    f = ScalarField.random_uniform(UnitGrid([5]))
+
+    assert intp(np.array([2.3])) == pytest.approx(2.3)

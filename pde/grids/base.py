@@ -29,11 +29,12 @@ from typing import (
 
 import numba as nb
 import numpy as np
+from numba.extending import is_jitted, register_jitable
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, classproperty
-from ..tools.numba import jit
+from ..tools.numba import jit, jit_allocate_out
 from ..tools.typing import FloatNumerical, NumberOrArray, OperatorType
 
 if TYPE_CHECKING:
@@ -220,6 +221,34 @@ class GridBase(metaclass=ABCMeta):
         """tuple of int: the number of support points of each axis"""
         return self._shape
 
+    @property
+    def _shape_full(self) -> Tuple[int, ...]:
+        """tuple of int: number of support points including ghost points"""
+        return tuple(num + 2 for num in self.shape)
+
+    @property
+    def _idx_valid(self) -> Tuple[slice, ...]:
+        """tuple: slices to extract valid data from full data"""
+        return tuple(slice(1, s + 1) for s in self.shape)
+
+    def _make_get_valid(self) -> Callable[[np.ndarray], np.ndarray]:
+        """callable: function to extract the valid part of a full data array"""
+        num_axes = self.num_axes
+
+        @register_jitable
+        def get_valid(arr: np.ndarray) -> np.ndarray:
+            """return valid part of the data (without ghost cells)"""
+            if num_axes == 1:
+                return arr[..., 1:-1]  # type: ignore
+            elif num_axes == 2:
+                return arr[..., 1:-1, 1:-1]  # type: ignore
+            elif num_axes == 3:
+                return arr[..., 1:-1, 1:-1, 1:-1]  # type: ignore
+            else:
+                raise NotImplementedError
+
+        return get_valid  # type: ignore
+
     @abstractproperty
     def state(self) -> Dict[str, Any]:
         pass
@@ -351,7 +380,7 @@ class GridBase(metaclass=ABCMeta):
         return itertools.product(range(self.num_axes), [True, False])
 
     def _boundary_coordinates(self, axis: int, upper: bool) -> np.ndarray:
-        """get indices for accessing the points on the boundary
+        """get coordinates of points on the boundary
 
         Args:
             axis (int):
@@ -360,7 +389,8 @@ class GridBase(metaclass=ABCMeta):
                 Whether the boundary is at the upper side of the axis
 
         Returns:
-            :class:`~numpy.ndarray`: Coordinates of the boundary points.
+            :class:`~numpy.ndarray`: Coordinates of the boundary points. This array has
+            one less dimension than the grid has axes.
         """
         # get coordinate along the axis determining the boundary
         if upper:
@@ -560,46 +590,176 @@ class GridBase(metaclass=ABCMeta):
             result |= set(anycls._operators.keys())  # type: ignore
         return result
 
-    @cached_method()
-    @fill_in_docstring
-    def get_operator(self, name: str, bc: "Boundaries", **kwargs) -> OperatorType:
-        """return a discretized operator defined on this grid
+    def _get_operator_info(self, operator: Union[str, Operator]) -> Operator:
+        """return the operator defined on this grid
 
         Args:
-            name (str):
-                Identifier for the operator. Some examples are 'laplace',
-                'gradient', or 'divergence'. The registered operators for this
-                grid can be obtained from the
-                :attr:`~pde.grids.base.GridBase.operators` attribute.
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-            **kwargs:
-                Specifies extra arguments that can influence how the operator
-                is created. Many operators support a `method` argument that can
-                typically be set to 'numba', 'scipy', or `auto`.
+            operator (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
 
         Returns:
-            A function that takes the discretized data as an input and returns
-            the data to which the operator `name` has been applied. This
-            function optionally supports a second argument, which provides
-            allocated memory for the output.
+            :class:`~pde.grids.base.Operator`: information for the operator
         """
+        if isinstance(operator, Operator):
+            return operator
+
         # obtain all parent classes, except `object`
         classes = inspect.getmro(self.__class__)[:-1]
         for cls in classes:
-            if name in cls._operators:  # type: ignore
-                operator = cls._operators[name]  # type: ignore
-                rank = min(operator.rank_in, operator.rank_out)
-                bcs = self.get_boundary_conditions(bc, rank=rank)
-                return operator.factory(bcs, **kwargs)  # type: ignore
+            if operator in cls._operators:  # type: ignore
+                return cls._operators[operator]  # type: ignore
 
         # operator was not found
         op_list = ", ".join(sorted(self.operators))
         raise ValueError(
-            f"'{name}' is not one of the defined operators ({op_list}). Custom "
+            f"'{operator}' is not one of the defined operators ({op_list}). Custom "
             "operators can be added using the `register_operator` method."
         )
+
+    @cached_method()
+    @fill_in_docstring
+    def make_operator_no_bc(
+        self,
+        operator: Union[str, Operator],
+        **kwargs,
+    ) -> OperatorType:
+        """return a compiled function applying an operator without boundary conditions
+
+        A function that takes the discretized full data as an input and returns an array
+        to which the operator `operator` has been applied. This function optionally
+        supports a second argument, which provides allocated memory for the output.
+        All data arrays must include the ghost cells!
+
+        Note:
+            The resulting function does not check whether the ghost cells have been
+            supplied with sensible values. It is the responsibility of the user to set
+            the values of the ghost cells beforehand. Use this function only if you
+            absolutely know what you're doing. In all other cases, :meth:`make_operator`
+            is probably the better choice.
+
+        Args:
+            operator (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            **kwargs:
+                Specifies extra arguments influencing how the operator is created.
+
+        Returns:
+            callable: the function that applies the operator
+        """
+        return self._get_operator_info(operator).factory(self, **kwargs)
+
+    @cached_method()
+    @fill_in_docstring
+    def make_operator(
+        self,
+        operator: Union[str, Operator],
+        bc: "BoundariesData",
+        **kwargs,
+    ) -> Callable[[np.ndarray], np.ndarray]:
+        """return a compiled function applying an operator with boundary conditions
+
+        The returned function takes the discretized data on the grid as an input and
+        returns the data to which the operator `operator` has been applied. The function
+        only takes the valid grid points and allocates memory for the ghost points
+        internally to apply the boundary conditions specified as `bc`. Note that the
+        function supports an optional argument `out`, which if given should provide
+        space for the full output array including ghost cells. The result of the
+        function is then a view into this supplied array returning the valid data.
+
+        Args:
+            operator (str):
+                Identifier for the operator. Some examples are 'laplace', 'gradient', or
+                'divergence'. The registered operators for this grid can be obtained
+                from the :attr:`~pde.grids.base.GridBase.operators` attribute.
+            bc (str or list or tuple or dict):
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES}
+            **kwargs:
+                Specifies extra arguments influencing how the operator is created.
+
+        Returns:
+            callable: the function that applies the operator
+        """
+        backend = kwargs.get("backend", "numba")  # numba is the default backend
+
+        operator = self._get_operator_info(operator)
+        # determine the rank of the boundary condition of this operator
+        bc_rank = min(operator.rank_in, operator.rank_out)
+        # instantiate the operator
+        operator_raw = operator.factory(self, **kwargs)
+
+        # set the boundary conditions before applying this operator
+        bcs = self.get_boundary_conditions(bc, rank=bc_rank)
+
+        # calculate shapes of the full data
+        shape_in_full = (self.dim,) * operator.rank_in + self._shape_full
+        shape_out_full = (self.dim,) * operator.rank_out + self._shape_full
+
+        if backend == "numba":
+            # create a compiled function to apply to the operator
+            set_ghost_cells = bcs.make_ghost_cell_setter()
+            get_valid = self._make_get_valid()
+
+            if not is_jitted(operator_raw):
+                operator_raw = jit(operator_raw)
+
+            @jit_allocate_out(out_shape=shape_out_full)
+            def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+                """applies operator to the data"""
+                # prepare input with boundary conditions
+                arr_full = np.empty(shape_in_full, dtype=arr.dtype)
+                arr_valid = get_valid(arr_full)
+                arr_valid[:] = arr
+                set_ghost_cells(arr_full)
+
+                # apply operator
+                operator_raw(arr_full, out)  # type: ignore
+
+                # return valid part of the output
+                return get_valid(out)  # type: ignore
+
+        elif backend == "scipy":
+            # create a numpy/scipy function to apply to the operator
+
+            def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+                """set boundary conditions and apply operator"""
+                # prepare input with boundary conditions
+                arr_full = np.empty(shape_in_full, dtype=arr.dtype)
+                arr_full[(...,) + self._idx_valid] = arr
+                bcs.set_ghost_cells(arr_full)
+
+                # apply operator
+                if out is None:
+                    out = np.empty(shape_out_full, dtype=arr.dtype)
+                else:
+                    assert out.shape == shape_out_full
+                operator_raw(arr_full, out)
+
+                # return valid part of the output
+                return out[(...,) + self._idx_valid]  # type: ignore
+
+        else:
+            raise NotImplementedError(f"Undefined backend '{backend}'")
+
+        return apply_op  # type: ignore
+
+    def get_operator(
+        self,
+        operator: Union[str, Operator],
+        bc: "BoundariesData",
+        **kwargs,
+    ) -> Callable[[np.ndarray], np.ndarray]:
+        """deprecated alias of method `make_operator`"""
+        # this was deprecated on 2021-08-05
+        warnings.warn(
+            "`get_operator` is deprecated. Use `make_operator` instead",
+            DeprecationWarning,
+        )
+        return self.make_operator(operator, bc, **kwargs)  # type: ignore
 
     def get_subgrid(self, indices: Sequence[int]) -> "GridBase":
         """return a subgrid of only the specified axes"""
@@ -892,7 +1052,7 @@ class GridBase(metaclass=ABCMeta):
                     else:
                         return fill
 
-                return value / weight  # type: ignore
+                return value / weight
 
         elif self.num_axes == 3:
             # specialize for 3-dimensional interpolation
@@ -979,7 +1139,7 @@ class GridBase(metaclass=ABCMeta):
                     else:
                         return fill
 
-                return value / weight  # type: ignore
+                return value / weight
 
         else:
             raise NotImplementedError(

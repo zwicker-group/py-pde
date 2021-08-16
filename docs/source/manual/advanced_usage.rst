@@ -156,7 +156,7 @@ Similarly, a gradient operator can be defined
 .. code-block:: python
     
     grid = UnitGrid([6, 8])
-    apply_gradient = grid.get_operator('gradient', bc='natural')
+    apply_gradient = grid.make_operator('gradient', bc='natural')
     
     data = np.random.random((6, 8))
     gradient_data = apply_gradient(data)
@@ -167,7 +167,7 @@ defines a `grid` and the respective gradient operator.
 This operator is then applied to a random field and the resulting
 :class:`numpy.ndarray` represents the 2-dimensional vector field.
 
-The :code:`get_operator` method of the grids generally supports the following
+The :code:`make_operator` method of the grids generally supports the following
 differential operators: :code:`'laplacian'`, :code:`'gradient'`,
 :code:`'gradient_squared'`, :code:`'divergence'`, :code:`'vector_gradient'`,
 :code:`'vector_laplace'`, and :code:`'tensor_divergence'`.

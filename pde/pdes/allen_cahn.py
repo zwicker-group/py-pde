@@ -86,12 +86,11 @@ class AllenCahnPDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        shape = state.grid.shape
-        arr_type = nb.typeof(np.empty(shape, dtype=state.data.dtype))
+        arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
         interface_width = self.interface_width
-        laplace = state.grid.get_operator("laplace", bc=self.bc)
+        laplace = state.grid.make_operator("laplace", bc=self.bc)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float) -> np.ndarray:

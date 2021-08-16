@@ -119,16 +119,15 @@ class SwiftHohenbergPDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        shape = state.grid.shape
-        arr_type = nb.typeof(np.empty(shape, dtype=state.data.dtype))
+        arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
         rate = self.rate
         kc2 = self.kc2
         delta = self.delta
 
-        laplace = state.grid.get_operator("laplace", bc=self.bc)
-        laplace2 = state.grid.get_operator("laplace", bc=self.bc_lap)
+        laplace = state.grid.make_operator("laplace", bc=self.bc)
+        laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):

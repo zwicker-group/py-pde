@@ -353,7 +353,7 @@ def number(value: Union[Number, str]) -> Number:
     Result:
         Number: A complex number or a float if the imaginary part vanishes
     """
-    result = complex(value)
+    result = complex(value)  # type: ignore
     return result.real if result.imag == 0 else result
 
 
