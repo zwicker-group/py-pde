@@ -33,7 +33,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -70,7 +70,7 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -105,7 +105,7 @@ def make_gradient_squared(
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
         central (bool):
             Whether a central difference approximation is used for the gradient
@@ -158,7 +158,7 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -196,7 +196,7 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -244,7 +244,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -304,7 +304,7 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cylindrical.CylindricalSymGrid`):
             The grid for which the operator is created
 
     Returns:
