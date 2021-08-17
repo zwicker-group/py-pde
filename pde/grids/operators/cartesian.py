@@ -430,8 +430,9 @@ def _make_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
         else:
             assert out.shape == shape_out
 
-        for i in range(dim):
-            out[i] = ndimage.convolve1d(arr, [1, 0, -1], axis=i) * scaling[i]
+        with np.errstate(all="ignore"):  # can happen for ghost cells
+            for i in range(dim):
+                out[i] = ndimage.convolve1d(arr, [1, 0, -1], axis=i) * scaling[i]
 
     return gradient
 
@@ -782,8 +783,9 @@ def _make_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
         else:
             out[:] = 0
 
-        for i in range(len(data_shape)):
-            out += ndimage.convolve1d(arr[i], [1, 0, -1], axis=i) * scaling[i]
+        with np.errstate(all="ignore"):  # can happen for ghost cells
+            for i in range(len(data_shape)):
+                out += ndimage.convolve1d(arr[i], [1, 0, -1], axis=i) * scaling[i]
 
     return divergence
 
