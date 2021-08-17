@@ -196,11 +196,6 @@ class BCBase(metaclass=ABCMeta):
     homogeneous: bool
     """ bool: determines whether the boundary condition depends on space """
 
-    value_is_linked: bool
-    """ bool: flag that indicates whether the value associated with this
-    boundary condition is linked to :class:`~numpy.ndarray` managed by external
-    code. """
-
     _subclasses: Dict[str, BCBase] = {}  # all classes inheriting from this
     _conditions: Dict[str, BCBase] = {}  # mapping from all names to classes
 
@@ -244,102 +239,6 @@ class BCBase(metaclass=ABCMeta):
             for name in cls.names:
                 cls._conditions[name] = cls
 
-    @fill_in_docstring
-    def _parse_value(self, value: Union[float, np.ndarray, str]) -> np.ndarray:
-        """parses a boundary value
-
-        Warning:
-            {WARNING_EXEC}
-
-        Args:
-            value (array-like or str):
-                The value given as a array of tensorial character and optionally
-                dependent on space (along the boundary). Alternatively, a string
-                can specify a mathematical expression that can optionally depend
-                on the coordinates along the boundary. This expression is only
-                supported for scalar boundary conditions.
-
-        Returns:
-            :class:`~numpy.ndarray`: The value at the boundary
-        """
-        if isinstance(value, str):
-            # inhomogeneous value given by an expression
-            if self.rank != 0:
-                raise NotImplementedError(
-                    "Expressions for boundaries are only supported for scalar values."
-                )
-
-            from ...tools.expressions import ScalarExpression
-
-            # determine which coordinates are allowed to vary
-            axes_ids = list(range(self.axis)) + list(
-                range(self.axis + 1, self.grid.num_axes)
-            )
-
-            # parse the expression with the correct variables
-            bc_vars = [self.grid.axes[i] for i in axes_ids]
-            expr = ScalarExpression(value, self.grid.axes)
-
-            if axes_ids:
-                # extended boundary
-
-                # get the coordinates at each point of the boundary
-                bc_coords = np.meshgrid(
-                    *[self.grid.axes_coords[i] for i in axes_ids], indexing="ij"
-                )
-
-                # determine the value at each of these points. Note that we here
-                # iterate explicitly over all points because the expression might
-                # not depend on some of the variables, but we still want the array
-                # to contain a value at each boundary point
-                result = np.empty_like(bc_coords[0])
-                coords: Dict[str, float] = {name: 0 for name in self.grid.axes}
-                # set the coordinate of this BC
-                coords[self.grid.axes[self.axis]] = self.axis_coord
-                for idx in np.ndindex(*result.shape):
-                    for i, name in enumerate(bc_vars):
-                        coords[name] = bc_coords[i][idx]
-                    result[idx] = expr(**coords)
-
-            else:
-                # point boundary
-                result = np.array(expr(self.axis_coord))
-
-        elif np.isscalar(value):
-            # scalar value applied to all positions
-            result = np.broadcast_to(float(value), self._shape_tensor)
-
-        else:
-            # assume tensorial and/or inhomogeneous values
-            value = np.asarray(value, dtype=np.double)
-
-            if value.ndim == 0:
-                # value is a scalar
-                result = np.broadcast_to(value, self._shape_tensor)
-            elif value.shape == self._shape_tensor + self._shape_boundary:
-                # inhomogeneous field with all tensor components
-                result = value
-            elif value.shape == self._shape_tensor:
-                # homogeneous field with all tensor components
-                result = value
-            else:
-                raise ValueError(
-                    f"Dimensions {value.shape} of the value are incompatible with rank "
-                    f"{self.rank} and spatial dimensions {self._shape_boundary}."
-                )
-
-        # check consistency
-        if np.any(np.isnan(result)):
-            try:
-                logger = self._logger
-            except AttributeError:
-                # this can happen when _parse_value is called before the object
-                # is fully initialized
-                logger = logging.getLogger(self.__class__.__name__)
-            logger.warning("In valid values in %s", self)
-
-        return result  # type: ignore
-
     @property
     def axis_coord(self) -> float:
         """float: value of the coordinate that defines this boundary condition"""
@@ -366,31 +265,18 @@ class BCBase(metaclass=ABCMeta):
             "conditions."
         )
 
-    def __repr__(self):
-        if self.value_is_linked:
-            value_str = f", value=<linked: {self.value.ctypes.data}>"
-        elif np.array_equal(self.value, 0):
-            value_str = ""
-        else:
-            value_str = f", value={self.value!r}"
-        return (
-            f"{self.__class__.__name__}(axis={self.axis}, upper={self.upper}, "
-            f"rank={self.rank}{value_str})"
-        )
+    @abstractmethod
+    def _repr_value(self) -> List[str]:
+        pass
 
-    def __str__(self):
-        if hasattr(self, "names"):
-            if np.array_equal(self.value, 0):
-                return f'"{self.names[0]}"'
-            elif self.value_is_linked:
-                return (
-                    f'{{"type": "{self.names[0]}", '
-                    f'"value": <linked: {self.value.ctypes.data}>}}'
-                )
-            else:
-                return f'{{"type": "{self.names[0]}", "value": {self.value}}}'
-        else:
-            return self.__repr__()
+    def __repr__(self):
+        args = [f"axis={self.axis}", f"upper={self.upper}"]
+        if self.rank != 1:
+            args.append(f"rank={self.rank}")
+        args += self._repr_value()
+        return f"{self.__class__.__name__}({', '.join(args)})"
+
+    __str__ = __repr__
 
     def __eq__(self, other):
         """checks for equality neglecting the `upper` property"""
@@ -402,7 +288,6 @@ class BCBase(metaclass=ABCMeta):
             and self.axis == other.axis
             and self.homogeneous == other.homogeneous
             and self.rank == other.rank
-            and np.all(self.value == other.value)
         )
 
     def __ne__(self, other):
@@ -416,7 +301,6 @@ class BCBase(metaclass=ABCMeta):
         upper: bool,
         condition: str,
         rank: int = 0,
-        value=0,
         **kwargs,
     ) -> BCBase:
         r"""creates boundary from a given string identifier
@@ -434,8 +318,6 @@ class BCBase(metaclass=ABCMeta):
             rank (int):
                 The tensorial rank of the value associated with the boundary
                 condition.
-            value (float or str or array):
-                Sets the associated value
             \**kwargs:
                 Additional arguments passed to the constructor
         """
@@ -458,9 +340,7 @@ class BCBase(metaclass=ABCMeta):
             )
 
         # create the actual class
-        return boundary_class(  # type: ignore
-            grid=grid, axis=axis, upper=upper, rank=rank, value=value, **kwargs
-        )
+        return boundary_class(grid=grid, axis=axis, upper=upper, rank=rank, **kwargs)  # type: ignore
 
     @classmethod
     def from_dict(
@@ -747,12 +627,21 @@ class ExpressionBC(BCBase):
         signature = ["value", "dx"] + grid.axes
         self._expr = ScalarExpression(expression, signature=signature)
 
+    def _repr_value(self):
+        return [f'value="{self._expr.expression}"']
+
     def _cache_hash(self) -> int:
         """returns a value to determine when a cache needs to be updated"""
         expression = self._expr.expression
         return hash(
             (self.__class__.__name__, self.grid._cache_hash(), self.axis, expression)
         )
+
+    def __eq__(self, other):
+        """checks for equality neglecting the `upper` property"""
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return super().__eq__(other) and self._expr.expression == other._expr.expression
 
     def copy(
         self,
@@ -923,6 +812,11 @@ class ConstBCBase(BCBase):
 
     _value: np.ndarray
 
+    value_is_linked: bool
+    """ bool: flag that indicates whether the value associated with this
+    boundary condition is linked to :class:`~numpy.ndarray` managed by external
+    code. """
+
     @fill_in_docstring
     def __init__(
         self,
@@ -960,6 +854,12 @@ class ConstBCBase(BCBase):
         super().__init__(grid=grid, axis=axis, upper=upper, rank=rank)
         self.value = value  # type: ignore
 
+    def __eq__(self, other):
+        """checks for equality neglecting the `upper` property"""
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return super().__eq__(other) and np.array_equal(self.value, other.value)
+
     @property
     def value(self) -> np.ndarray:
         return self._value
@@ -992,6 +892,124 @@ class ConstBCBase(BCBase):
             )
 
         self.value_is_linked = False
+
+    def _repr_value(self):
+        if self.value_is_linked:
+            return [f"value=<linked: {self.value.ctypes.data}>"]
+        elif np.array_equal(self.value, 0):
+            return []
+        else:
+            return [f"value={self.value!r}"]
+
+    def __str__(self):
+        if hasattr(self, "names"):
+            if np.array_equal(self.value, 0):
+                return f'"{self.names[0]}"'
+            elif self.value_is_linked:
+                return (
+                    f'{{"type": "{self.names[0]}", '
+                    f'"value": <linked: {self.value.ctypes.data}>}}'
+                )
+            else:
+                return f'{{"type": "{self.names[0]}", "value": {self.value}}}'
+        else:
+            return self.__repr__()
+
+    @fill_in_docstring
+    def _parse_value(self, value: Union[float, np.ndarray, str]) -> np.ndarray:
+        """parses a boundary value
+
+        Warning:
+            {WARNING_EXEC}
+
+        Args:
+            value (array-like or str):
+                The value given as a array of tensorial character and optionally
+                dependent on space (along the boundary). Alternatively, a string
+                can specify a mathematical expression that can optionally depend
+                on the coordinates along the boundary. This expression is only
+                supported for scalar boundary conditions.
+
+        Returns:
+            :class:`~numpy.ndarray`: The value at the boundary
+        """
+        if isinstance(value, str):
+            # inhomogeneous value given by an expression
+            if self.rank != 0:
+                raise NotImplementedError(
+                    "Expressions for boundaries are only supported for scalar values."
+                )
+
+            from ...tools.expressions import ScalarExpression
+
+            # determine which coordinates are allowed to vary
+            axes_ids = list(range(self.axis)) + list(
+                range(self.axis + 1, self.grid.num_axes)
+            )
+
+            # parse the expression with the correct variables
+            bc_vars = [self.grid.axes[i] for i in axes_ids]
+            expr = ScalarExpression(value, self.grid.axes)
+
+            if axes_ids:
+                # extended boundary
+
+                # get the coordinates at each point of the boundary
+                bc_coords = np.meshgrid(
+                    *[self.grid.axes_coords[i] for i in axes_ids], indexing="ij"
+                )
+
+                # determine the value at each of these points. Note that we here
+                # iterate explicitly over all points because the expression might
+                # not depend on some of the variables, but we still want the array
+                # to contain a value at each boundary point
+                result = np.empty_like(bc_coords[0])
+                coords: Dict[str, float] = {name: 0 for name in self.grid.axes}
+                # set the coordinate of this BC
+                coords[self.grid.axes[self.axis]] = self.axis_coord
+                for idx in np.ndindex(*result.shape):
+                    for i, name in enumerate(bc_vars):
+                        coords[name] = bc_coords[i][idx]
+                    result[idx] = expr(**coords)
+
+            else:
+                # point boundary
+                result = np.array(expr(self.axis_coord))
+
+        elif np.isscalar(value):
+            # scalar value applied to all positions
+            result = np.broadcast_to(float(value), self._shape_tensor)
+
+        else:
+            # assume tensorial and/or inhomogeneous values
+            value = np.asarray(value, dtype=np.double)
+
+            if value.ndim == 0:
+                # value is a scalar
+                result = np.broadcast_to(value, self._shape_tensor)
+            elif value.shape == self._shape_tensor + self._shape_boundary:
+                # inhomogeneous field with all tensor components
+                result = value
+            elif value.shape == self._shape_tensor:
+                # homogeneous field with all tensor components
+                result = value
+            else:
+                raise ValueError(
+                    f"Dimensions {value.shape} of the value are incompatible with rank "
+                    f"{self.rank} and spatial dimensions {self._shape_boundary}."
+                )
+
+        # check consistency
+        if np.any(np.isnan(result)):
+            try:
+                logger = self._logger
+            except AttributeError:
+                # this can happen when _parse_value is called before the object
+                # is fully initialized
+                logger = logging.getLogger(self.__class__.__name__)
+            logger.warning("In valid values in %s", self)
+
+        return result  # type: ignore
 
     def link_value(self, value: np.ndarray):
         """link value of this boundary condition to external array"""
