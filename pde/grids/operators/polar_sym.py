@@ -52,8 +52,8 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply laplace operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
-            out[i] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr_2
-            out[i] += (arr[i + 1] - arr[i - 1]) / (2 * rs[i - 1] * dr)
+            out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr_2
+            out[i - 1] += (arr[i + 1] - arr[i - 1]) / (2 * rs[i - 1] * dr)
 
     return laplace  # type: ignore
 
@@ -83,8 +83,8 @@ def make_gradient(grid: PolarSymGrid) -> OperatorType:
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
-            out[0, i] = (arr[i + 1] - arr[i - 1]) * scale_r
-            out[1, i] = 0  # no angular dependence by definition
+            out[0, i - 1] = (arr[i + 1] - arr[i - 1]) * scale_r
+            out[1, i - 1] = 0  # no angular dependence by definition
 
     return gradient  # type: ignore
 
@@ -122,7 +122,7 @@ def make_gradient_squared(grid: PolarSymGrid, central: bool = True) -> OperatorT
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
-                out[i] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
+                out[i - 1] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
 
     else:
         # use forward and backward differences
@@ -133,7 +133,7 @@ def make_gradient_squared(grid: PolarSymGrid, central: bool = True) -> OperatorT
             """apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
                 term = (arr[i + 1] - arr[i]) ** 2 + (arr[i] - arr[i - 1]) ** 2
-                out[i] = term * scale
+                out[i - 1] = term * scale
 
     return gradient_squared  # type: ignore
 
@@ -165,7 +165,9 @@ def make_divergence(grid: PolarSymGrid) -> OperatorType:
         """apply divergence operator to array `arr`"""
         # inner radial boundary condition
         for i in range(1, dim_r + 1):  # iterate radial points
-            out[i] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r + arr[0, i] / rs[i - 1]
+            out[i - 1] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r + arr[0, i] / rs[
+                i - 1
+            ]
 
     return divergence  # type: ignore
 
@@ -201,10 +203,10 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
         out_φr, out_φφ = out[1, 0, :], out[1, 1, :]
 
         for i in range(1, dim_r + 1):  # iterate radial points
-            out_rr[i] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
-            out_rφ[i] = -arr_φ[i] / rs[i - 1]
-            out_φr[i] = (arr_φ[i + 1] - arr_φ[i - 1]) * scale_r
-            out_φφ[i] = arr_r[i] / rs[i - 1]
+            out_rr[i - 1] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
+            out_rφ[i - 1] = -arr_φ[i] / rs[i - 1]
+            out_φr[i - 1] = (arr_φ[i + 1] - arr_φ[i - 1]) * scale_r
+            out_φφ[i - 1] = arr_r[i] / rs[i - 1]
 
     return vector_gradient  # type: ignore
 
@@ -242,9 +244,9 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
         # iterate over inner points
         for i in range(1, dim_r + 1):
             term = (arr_rr[i] - arr_φφ[i]) / rs[i - 1]
-            out_r[i] = (arr_rr[i + 1] - arr_rr[i - 1]) * scale_r + term
+            out_r[i - 1] = (arr_rr[i + 1] - arr_rr[i - 1]) * scale_r + term
             term = (arr_rφ[i] + arr_φr[i]) / rs[i - 1]
-            out_φ[i] = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r + term
+            out_φ[i - 1] = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r + term
 
     return tensor_divergence  # type: ignore
 

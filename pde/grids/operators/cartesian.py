@@ -206,11 +206,11 @@ def _make_derivative(
             """calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
                 if method == "central":
-                    out[i] = (arr[i + 1] - arr[i - 1]) * 0.5 / dx
+                    out[i - 1] = (arr[i + 1] - arr[i - 1]) * 0.5 / dx
                 elif method == "forward":
-                    out[i] = (arr[i + 1] - arr[i]) / dx
+                    out[i - 1] = (arr[i + 1] - arr[i]) / dx
                 elif method == "backward":
-                    out[i] = (arr[i] - arr[i - 1]) / dx
+                    out[i - 1] = (arr[i] - arr[i - 1]) / dx
 
     elif dim == 2:
 
@@ -222,11 +222,11 @@ def _make_derivative(
                     arr_l = arr[i - di, j - dj]
                     arr_r = arr[i + di, j + dj]
                     if method == "central":
-                        out[i, j] = (arr_r - arr_l) * 0.5 / dx
+                        out[i - 1, j - 1] = (arr_r - arr_l) * 0.5 / dx
                     elif method == "forward":
-                        out[i, j] = (arr_r - arr[i, j]) / dx
+                        out[i - 1, j - 1] = (arr_r - arr[i, j]) / dx
                     elif method == "backward":
-                        out[i, j] = (arr[i, j] - arr_l) / dx
+                        out[i - 1, j - 1] = (arr[i, j] - arr_l) / dx
 
     elif dim == 3:
 
@@ -239,11 +239,11 @@ def _make_derivative(
                         arr_l = arr[i - di, j - dj, k - dk]
                         arr_r = arr[i + di, j + dj, k + dk]
                         if method == "central":
-                            out[i, j, k] = (arr_r - arr_l) / (2 * dx)
+                            out[i - 1, j - 1, k - 1] = (arr_r - arr_l) / (2 * dx)
                         elif method == "forward":
-                            out[i, j, k] = (arr_r - arr[i, j, k]) / dx
+                            out[i - 1, j - 1, k - 1] = (arr_r - arr[i, j, k]) / dx
                         elif method == "backward":
-                            out[i, j, k] = (arr[i, j, k] - arr_l) / dx
+                            out[i - 1, j - 1, k - 1] = (arr[i, j, k] - arr_l) / dx
 
     else:
         raise NotImplementedError(
@@ -272,8 +272,9 @@ def _make_laplace_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply laplace operator to array `arr`"""
         assert arr.shape == grid._shape_full
+        valid = (...,) + (slice(1, -1),) * grid.dim
         with np.errstate(all="ignore"):  # can happen for ghost cells
-            ndimage.laplace(scaling * arr, output=out)
+            out[:] = ndimage.laplace(scaling * arr)[valid]
 
     return laplace
 
@@ -295,7 +296,7 @@ def _make_laplace_numba_1d(grid: CartesianGridBase) -> OperatorType:
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply laplace operator to array `arr`"""
         for i in range(1, dim_x + 1):
-            out[i] = (arr[i - 1] - 2 * arr[i] + arr[i + 1]) * scale
+            out[i - 1] = (arr[i - 1] - 2 * arr[i] + arr[i + 1]) * scale
 
     return laplace  # type: ignore
 
@@ -323,7 +324,7 @@ def _make_laplace_numba_2d(grid: CartesianGridBase) -> OperatorType:
             for j in range(1, dim_y + 1):
                 lap_x = (arr[i - 1, j] - 2 * arr[i, j] + arr[i + 1, j]) * scale_x
                 lap_y = (arr[i, j - 1] - 2 * arr[i, j] + arr[i, j + 1]) * scale_y
-                out[i, j] = lap_x + lap_y
+                out[i - 1, j - 1] = lap_x + lap_y
 
     return laplace  # type: ignore
 
@@ -354,7 +355,7 @@ def _make_laplace_numba_3d(grid: CartesianGridBase) -> OperatorType:
                     lap_x = (arr[i - 1, j, k] - val_mid + arr[i + 1, j, k]) * scale_x
                     lap_y = (arr[i, j - 1, k] - val_mid + arr[i, j + 1, k]) * scale_y
                     lap_z = (arr[i, j, k - 1] - val_mid + arr[i, j, k + 1]) * scale_z
-                    out[i, j, k] = lap_x + lap_y + lap_z
+                    out[i - 1, j - 1, k - 1] = lap_x + lap_y + lap_z
 
     return laplace  # type: ignore
 
@@ -420,7 +421,7 @@ def _make_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
 
     scaling = 0.5 / grid.discretization
     dim = grid.dim
-    shape_out = (dim,) + grid._shape_full
+    shape_out = (dim,) + grid.shape
 
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
@@ -430,9 +431,10 @@ def _make_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
         else:
             assert out.shape == shape_out
 
+        valid = (...,) + (slice(1, -1),) * grid.dim
         with np.errstate(all="ignore"):  # can happen for ghost cells
             for i in range(dim):
-                out[i] = ndimage.convolve1d(arr, [1, 0, -1], axis=i) * scaling[i]
+                out[i] = ndimage.convolve1d(arr, [1, 0, -1], axis=i)[valid] * scaling[i]
 
     return gradient
 
@@ -454,7 +456,7 @@ def _make_gradient_numba_1d(grid: CartesianGridBase) -> OperatorType:
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
-            out[0, i] = (arr[i + 1] - arr[i - 1]) * scale
+            out[0, i - 1] = (arr[i + 1] - arr[i - 1]) * scale
 
     return gradient  # type: ignore
 
@@ -480,8 +482,8 @@ def _make_gradient_numba_2d(grid: CartesianGridBase) -> OperatorType:
         """apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
-                out[0, i, j] = (arr[i + 1, j] - arr[i - 1, j]) * scale_x
-                out[1, i, j] = (arr[i, j + 1] - arr[i, j - 1]) * scale_y
+                out[0, i - 1, j - 1] = (arr[i + 1, j] - arr[i - 1, j]) * scale_x
+                out[1, i - 1, j - 1] = (arr[i, j + 1] - arr[i, j - 1]) * scale_y
 
     return gradient  # type: ignore
 
@@ -508,9 +510,15 @@ def _make_gradient_numba_3d(grid: CartesianGridBase) -> OperatorType:
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 for k in range(1, dim_z + 1):
-                    out[0, i, j, k] = (arr[i + 1, j, k] - arr[i - 1, j, k]) * scale_x
-                    out[1, i, j, k] = (arr[i, j + 1, k] - arr[i, j - 1, k]) * scale_y
-                    out[2, i, j, k] = (arr[i, j, k + 1] - arr[i, j, k - 1]) * scale_z
+                    out[0, i - 1, j - 1, k - 1] = (
+                        arr[i + 1, j, k] - arr[i - 1, j, k]
+                    ) * scale_x
+                    out[1, i - 1, j - 1, k - 1] = (
+                        arr[i, j + 1, k] - arr[i, j - 1, k]
+                    ) * scale_y
+                    out[2, i - 1, j - 1, k - 1] = (
+                        arr[i, j, k + 1] - arr[i, j, k - 1]
+                    ) * scale_z
 
     return gradient  # type: ignore
 
@@ -586,7 +594,7 @@ def _make_gradient_squared_numba_1d(
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
             """apply squared gradient operator to array `arr`"""
             for i in range(1, dim_x + 1):
-                out[i] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
+                out[i - 1] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
 
     else:
         # use forward and backward differences
@@ -598,7 +606,7 @@ def _make_gradient_squared_numba_1d(
             for i in range(1, dim_x + 1):
                 diff_l = (arr[i + 1] - arr[i]) ** 2
                 diff_r = (arr[i] - arr[i - 1]) ** 2
-                out[i] = (diff_l + diff_r) * scale
+                out[i - 1] = (diff_l + diff_r) * scale
 
     return gradient_squared  # type: ignore
 
@@ -636,7 +644,7 @@ def _make_gradient_squared_numba_2d(
                 for j in range(1, dim_y + 1):
                     term_x = (arr[i + 1, j] - arr[i - 1, j]) ** 2 * scale_x
                     term_y = (arr[i, j + 1] - arr[i, j - 1]) ** 2 * scale_y
-                    out[i, j] = term_x + term_y
+                    out[i - 1, j - 1] = term_x + term_y
 
     else:
         # use forward and backward differences
@@ -655,7 +663,7 @@ def _make_gradient_squared_numba_2d(
                         (arr[i, j + 1] - arr[i, j]) ** 2
                         + (arr[i, j] - arr[i, j - 1]) ** 2
                     ) * scale_y
-                    out[i, j] = term_x + term_y
+                    out[i - 1, j - 1] = term_x + term_y
 
     return gradient_squared  # type: ignore
 
@@ -695,7 +703,7 @@ def _make_gradient_squared_numba_3d(
                         term_x = (arr[i + 1, j, k] - arr[i - 1, j, k]) ** 2 * scale_x
                         term_y = (arr[i, j + 1, k] - arr[i, j - 1, k]) ** 2 * scale_y
                         term_z = (arr[i, j, k + 1] - arr[i, j, k - 1]) ** 2 * scale_z
-                        out[i, j, k] = term_x + term_y + term_z
+                        out[i - 1, j - 1, k - 1] = term_x + term_y + term_z
 
     else:
         # use forward and backward differences
@@ -719,7 +727,7 @@ def _make_gradient_squared_numba_3d(
                             (arr[i, j, k + 1] - arr[i, j, k]) ** 2
                             + (arr[i, j, k] - arr[i, j, k - 1]) ** 2
                         ) * scale_z
-                        out[i, j, k] = term_x + term_y + term_z
+                        out[i - 1, j - 1, k - 1] = term_x + term_y + term_z
 
     return gradient_squared  # type: ignore
 
@@ -771,7 +779,7 @@ def _make_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     from scipy import ndimage
 
     data_shape = grid._shape_full
-    scaling = 0.5 / grid.discretization
+    scale = 0.5 / grid.discretization
 
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply divergence operator to array `arr`"""
@@ -779,13 +787,14 @@ def _make_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
 
         # need to initialize with zeros since data is added later
         if out is None:
-            out = np.zeros(grid._shape_full, dtype=arr.dtype)
+            out = np.zeros(grid.shape, dtype=arr.dtype)
         else:
             out[:] = 0
 
+        valid = (...,) + (slice(1, -1),) * grid.dim
         with np.errstate(all="ignore"):  # can happen for ghost cells
             for i in range(len(data_shape)):
-                out += ndimage.convolve1d(arr[i], [1, 0, -1], axis=i) * scaling[i]
+                out += ndimage.convolve1d(arr[i], [1, 0, -1], axis=i)[valid] * scale[i]
 
     return divergence
 
@@ -807,7 +816,7 @@ def _make_divergence_numba_1d(grid: CartesianGridBase) -> OperatorType:
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
-            out[i] = (arr[0, i + 1] - arr[0, i - 1]) * scale
+            out[i - 1] = (arr[0, i + 1] - arr[0, i - 1]) * scale
 
     return divergence  # type: ignore
 
@@ -835,7 +844,7 @@ def _make_divergence_numba_2d(grid: CartesianGridBase) -> OperatorType:
             for j in range(1, dim_y + 1):
                 d_x = (arr[0, i + 1, j] - arr[0, i - 1, j]) * scale_x
                 d_y = (arr[1, i, j + 1] - arr[1, i, j - 1]) * scale_y
-                out[i, j] = d_x + d_y
+                out[i - 1, j - 1] = d_x + d_y
 
     return divergence  # type: ignore
 
@@ -865,7 +874,7 @@ def _make_divergence_numba_3d(grid: CartesianGridBase) -> OperatorType:
                     d_x = (arr[0, i + 1, j, k] - arr[0, i - 1, j, k]) * scale_x
                     d_y = (arr[1, i, j + 1, k] - arr[1, i, j - 1, k]) * scale_y
                     d_z = (arr[2, i, j, k + 1] - arr[2, i, j, k - 1]) * scale_z
-                    out[i, j, k] = d_x + d_y + d_z
+                    out[i - 1, j - 1, k - 1] = d_x + d_y + d_z
 
     return divergence  # type: ignore
 

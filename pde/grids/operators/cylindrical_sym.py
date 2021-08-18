@@ -53,7 +53,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
             for j in range(1, dim_z + 1):  # iterate axial points
                 arr_z_l, arr_z_h = arr[i, j - 1], arr[i, j + 1]
                 arr_r_l, arr_r_h = arr[i - 1, j], arr[i + 1, j]
-                out[i, j] = (
+                out[i - 1, j - 1] = (
                     (arr_r_h - 2 * arr[i, j] + arr_r_l) * dr_2
                     + (arr_r_h - arr_r_l) / (2 * i - 1) * dr_2
                     + (arr_z_l - 2 * arr[i, j] + arr_z_h) * dz_2
@@ -88,9 +88,9 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
         """apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
-                out[0, i, j] = (arr[i + 1, j] - arr[i - 1, j]) * scale_r
-                out[1, i, j] = (arr[i, j + 1] - arr[i, j - 1]) * scale_z
-                out[2, i, j] = 0  # no phi dependence by definition
+                out[0, i - 1, j - 1] = (arr[i + 1, j] - arr[i - 1, j]) * scale_r
+                out[1, i - 1, j - 1] = (arr[i, j + 1] - arr[i, j - 1]) * scale_z
+                out[2, i - 1, j - 1] = 0  # no phi dependence by definition
 
     return gradient  # type: ignore
 
@@ -131,7 +131,7 @@ def make_gradient_squared(
                 for j in range(1, dim_z + 1):  # iterate axial points
                     term_r = (arr[i + 1, j] - arr[i - 1, j]) ** 2
                     term_z = (arr[i, j + 1] - arr[i, j - 1]) ** 2
-                    out[i, j] = term_r * scale_r + term_z * scale_z
+                    out[i - 1, j - 1] = term_r * scale_r + term_z * scale_z
 
     else:
         # use forward and backward differences
@@ -145,7 +145,7 @@ def make_gradient_squared(
                     arr_z_l, arr_c, arr_z_h = arr[i, j - 1], arr[i, j], arr[i, j + 1]
                     term_r = (arr[i + 1, j] - arr_c) ** 2 + (arr_c - arr[i - 1, j]) ** 2
                     term_z = (arr_z_h - arr_c) ** 2 + (arr_c - arr_z_l) ** 2
-                    out[i, j] = term_r * scale_r + term_z * scale_z
+                    out[i - 1, j - 1] = term_r * scale_r + term_z * scale_z
 
     return gradient_squared  # type: ignore
 
@@ -179,7 +179,7 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
 
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
-                out[i, j] = (
+                out[i - 1, j - 1] = (
                     arr_r[i, j] / rs[i - 1]
                     + (arr_r[i + 1, j] - arr_r[i - 1, j]) * scale_r
                     + (arr_z[i, j + 1] - arr_z[i, j - 1]) * scale_z
@@ -221,17 +221,17 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
 
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
-                out_rr[i, j] = (arr_r[i + 1, j] - arr_r[i - 1, j]) * scale_r
-                out_φr[i, j] = (arr_φ[i + 1, j] - arr_φ[i - 1, j]) * scale_r
-                out_zr[i, j] = (arr_z[i + 1, j] - arr_z[i - 1, j]) * scale_r
+                out_rr[i - 1, j - 1] = (arr_r[i + 1, j] - arr_r[i - 1, j]) * scale_r
+                out_φr[i - 1, j - 1] = (arr_φ[i + 1, j] - arr_φ[i - 1, j]) * scale_r
+                out_zr[i - 1, j - 1] = (arr_z[i + 1, j] - arr_z[i - 1, j]) * scale_r
 
-                out_rφ[i, j] = -arr_φ[i, j] / rs[i - 1]
-                out_φφ[i, j] = arr_r[i, j] / rs[i - 1]
-                out_zφ[i, j] = 0
+                out_rφ[i - 1, j - 1] = -arr_φ[i, j] / rs[i - 1]
+                out_φφ[i - 1, j - 1] = arr_r[i, j] / rs[i - 1]
+                out_zφ[i - 1, j - 1] = 0
 
-                out_rz[i, j] = (arr_r[i, j + 1] - arr_r[i, j - 1]) * scale_z
-                out_φz[i, j] = (arr_φ[i, j + 1] - arr_φ[i, j - 1]) * scale_z
-                out_zz[i, j] = (arr_z[i, j + 1] - arr_z[i, j - 1]) * scale_z
+                out_rz[i - 1, j - 1] = (arr_r[i, j + 1] - arr_r[i, j - 1]) * scale_z
+                out_φz[i - 1, j - 1] = (arr_φ[i, j + 1] - arr_φ[i, j - 1]) * scale_z
+                out_zz[i - 1, j - 1] = (arr_z[i, j + 1] - arr_z[i, j - 1]) * scale_z
 
     return vector_gradient  # type: ignore
 
@@ -271,7 +271,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
                 f_r_l, f_r_m, f_r_h = arr_r[i - 1, j], arr_r[i, j], arr_r[i + 1, j]
-                out_r[i, j] = (
+                out_r[i - 1, j - 1] = (
                     (arr_r[i, j + 1] - 2 * f_r_m + arr_r[i, j - 1]) * scale_z
                     - f_r_m / rs[i - 1] ** 2
                     + (f_r_h - f_r_l) * s1 / rs[i - 1]
@@ -279,7 +279,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
                 )
 
                 f_φ_l, f_φ_m, f_φ_h = arr_φ[i - 1, j], arr_φ[i, j], arr_φ[i + 1, j]
-                out_φ[i, j] = (
+                out_φ[i - 1, j - 1] = (
                     (arr_φ[i, j + 1] - 2 * f_φ_m + arr_φ[i, j - 1]) * scale_z
                     - f_φ_m / rs[i - 1] ** 2
                     + (f_φ_h - f_φ_l) * s1 / rs[i - 1]
@@ -287,7 +287,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
                 )
 
                 f_z_l, f_z_m, f_z_h = arr_z[i - 1, j], arr_z[i, j], arr_z[i + 1, j]
-                out_z[i, j] = (
+                out_z[i - 1, j - 1] = (
                     (arr_z[i, j + 1] - 2 * f_z_m + arr_z[i, j - 1]) * scale_z
                     + (f_z_h - f_z_l) * s1 / rs[i - 1]
                     + (f_z_h - 2 * f_z_m + f_z_l) * s2
@@ -329,19 +329,19 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
 
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
-                out_r[i, j] = (
+                out_r[i - 1, j - 1] = (
                     (arr_rz[i, j + 1] - arr_rz[i, j - 1]) * scale_z
                     + (arr_rr[i + 1, j] - arr_rr[i - 1, j]) * scale_r
                     + (arr_rr[i, j] - arr_φφ[i, j]) / rs[i - 1]
                 )
 
-                out_φ[i, j] = (
+                out_φ[i - 1, j - 1] = (
                     (arr_φz[i, j + 1] - arr_φz[i, j - 1]) * scale_z
                     + (arr_φr[i + 1, j] - arr_φr[i - 1, j]) * scale_r
                     + (arr_rφ[i, j] + arr_φr[i, j]) / rs[i - 1]
                 )
 
-                out_z[i, j] = (
+                out_z[i - 1, j - 1] = (
                     (arr_zz[i, j + 1] - arr_zz[i, j - 1]) * scale_z
                     + (arr_zr[i + 1, j] - arr_zr[i - 1, j]) * scale_r
                     + arr_zr[i, j] / rs[i - 1]
