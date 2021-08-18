@@ -619,7 +619,6 @@ class GridBase(metaclass=ABCMeta):
         )
 
     @cached_method()
-    @fill_in_docstring
     def make_operator_no_bc(
         self,
         operator: Union[str, Operator],

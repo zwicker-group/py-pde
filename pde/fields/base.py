@@ -1559,7 +1559,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def _apply_operator(
         self,
         operator: str,
-        bc: "BoundariesData",
+        bc: Optional["BoundariesData"],
         out: Optional[DataFieldBase] = None,
         *,
         label: str = None,
@@ -1572,7 +1572,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 An identifier determining the registered on the grid.
             bc:
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
+                {ARG_BOUNDARIES_OPTIONAL}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
             label (str, optional):
@@ -1597,9 +1597,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if label is not None:
                 out.label = label
 
-        # obtain and apply the operator
-        func = self.grid.make_operator(operator_info, bc=bc, **kwargs)
-        out.data[:] = func(self.data)
+        if bc is None:
+            # apply the operator without imposing boundary conditions
+            op_raw = self.grid.make_operator_no_bc(operator_info, **kwargs)
+            op_raw(self._data_all, out._data_all)
+        else:
+            # apply the operator with boundary conditions
+            op_with_bcs = self.grid.make_operator(operator_info, bc=bc, **kwargs)
+            out.data[:] = op_with_bcs(self.data)
+
         return out
 
     def smooth(
