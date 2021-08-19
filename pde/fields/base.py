@@ -1600,7 +1600,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if bc is None:
             # apply the operator without imposing boundary conditions
             op_raw = self.grid.make_operator_no_bc(operator_info, **kwargs)
-            op_raw(self._data_all, out._data_all)
+            op_raw(self._data_all, out.data)
         else:
             # apply the operator with boundary conditions
             op_with_bcs = self.grid.make_operator(operator_info, bc=bc, **kwargs)
