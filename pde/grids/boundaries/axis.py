@@ -9,6 +9,8 @@ non-periodic axes have more option, which are represented by
 :class:`~pde.grids.boundaries.axis.BoundaryPair`.
 """
 
+from __future__ import annotations
+
 from typing import Callable, Dict, Tuple, Union
 
 import numpy as np
@@ -16,7 +18,7 @@ from numba.extending import register_jitable
 
 from ...tools.typing import NumberOrArray
 from ..base import DomainError, GridBase
-from .local import BCBase, BCDataError, BoundaryData, _make_get_arr_1d
+from .local import BCBase, BCDataError, BoundaryData, _make_get_arr_1d, _PeriodicBC
 
 BoundaryPairData = Union[
     Dict[str, BoundaryData], BoundaryData, Tuple[BoundaryData, BoundaryData]
@@ -27,48 +29,13 @@ class BoundaryAxisBase:
     """base class for defining boundaries of a single axis in a grid"""
 
     grid: GridBase
-    """ :class:`~pde.grids.base.GridBase`:
-    The grid for which the boundaries are defined """
+    """:class:`~pde.grids.base.GridBase`: Grid for which the boundaries are defined """
     axis: int
-    """ int: The axis along which the boundaries are defined """
-
-
-class BoundaryPair(BoundaryAxisBase):
-    """represents the two boundaries of an axis along a single dimension"""
-
-    periodic = False
-
-    def __init__(self, low: BCBase, high: BCBase):
-        """
-        Args:
-            low (:class:`~pde.grids.boundaries.local.BCBase`):
-                Instance describing the lower boundary
-            high (:class:`~pde.grids.boundaries.local.BCBase`):
-                Instance describing the upper boundary
-        """
-        # check data consistency
-        assert low.grid == high.grid
-        assert low.axis == high.axis
-        assert low.rank == high.rank
-        assert high.upper and not low.upper
-
-        self.low = low
-        self.high = high
-        self.grid = low.grid
-        self.axis = low.axis
-
-    def __iter__(self):
-        yield self.low
-        yield self.high
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.low!r}, {self.high!r})"
-
-    def __str__(self):
-        if self.low == self.high:
-            return str(self.low)
-        else:
-            return f"({self.low}, {self.high})"
+    """int: The axis along which the boundaries are defined """
+    low: BCBase
+    """:class:`~pde.grids.boundaries.local.BCBase`: Boundary condition at lower end """
+    high: BCBase
+    """:class:`~pde.grids.boundaries.local.BCBase`: Boundary condition at upper end """
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -88,13 +55,9 @@ class BoundaryPair(BoundaryAxisBase):
             or self.high != other.high
         )
 
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        return hash((self.low._cache_hash(), self.high._cache_hash()))
-
-    def copy(self) -> "BoundaryPair":
-        """return a copy of itself, but with a reference to the same grid"""
-        return self.__class__(self.low.copy(), self.high.copy())
+    def __iter__(self):
+        yield self.low
+        yield self.high
 
     def __getitem__(self, index: Union[int, bool]) -> BCBase:
         """returns one of the sides"""
@@ -104,136 +67,6 @@ class BoundaryPair(BoundaryAxisBase):
             return self.high
         else:
             raise IndexError("Index can be either 0/False or 1/True")
-
-    def set_value(self, value=0):
-        """set the value of both boundary conditions
-
-        Args:
-            value (float or array):
-                Sets the value stored with the boundary conditions. The
-                interpretation of this value depends on the type of boundary
-                condition.
-        """
-        self.low.value = value
-        self.high.value = value
-
-    def scale_value(self, factor: float = 1):
-        """scales the value of the boundary condition with the given factor
-
-        Args:
-            value (float):
-                Scales the value associated with the boundary condition by the factor
-        """
-        self.low.value = factor * self.low.value  # type: ignore
-        self.high.value = factor * self.high.value  # type: ignore
-
-    @classmethod
-    def get_help(cls) -> str:
-        """Return information on how boundary conditions can be set"""
-        return (
-            "Boundary conditions for each side can be set using a tuple: "
-            f"(lower_bc, upper_bc). {BCBase.get_help()}"
-        )
-
-    @classmethod
-    def from_data(
-        cls, grid: GridBase, axis: int, data, rank: int = 0
-    ) -> "BoundaryPair":
-        """create boundary pair from some data
-
-        Args:
-            grid (:class:`~pde.grids.base.GridBase`):
-                The grid for which the boundary conditions are defined
-            axis (int):
-                The axis to which this boundary condition is associated
-            data (str or dict):
-                Data that describes the boundary pair
-            rank (int):
-                The tensorial rank of the value associated with the boundary
-                conditions.
-
-        Returns:
-            :class:`~pde.grids.boundaries.axis.BoundaryPair`:
-            the instance created from the data
-
-        Throws:
-            ValueError if `data` cannot be interpreted as a boundary pair
-        """
-        # handle the simple cases
-        if isinstance(data, dict):
-            if "low" in data or "high" in data:
-                # separate conditions for low and high
-                data_copy = data.copy()
-                low = BCBase.from_data(
-                    grid, axis, upper=False, data=data_copy.pop("low"), rank=rank
-                )
-                high = BCBase.from_data(
-                    grid, axis, upper=True, data=data_copy.pop("high"), rank=rank
-                )
-                if data_copy:
-                    raise BCDataError(f"Data items {data_copy.keys()} were not used.")
-            else:
-                # one condition for both sides
-                low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
-                high = BCBase.from_data(grid, axis, upper=True, data=data, rank=rank)
-
-        elif isinstance(data, (str, BCBase)):
-            # a type for both boundaries
-            low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
-            high = BCBase.from_data(grid, axis, upper=True, data=data, rank=rank)
-
-        else:
-            # the only remaining valid format is a list of conditions for the
-            # lower and upper boundary
-            try:
-                # try obtaining the length
-                data_len = len(data)
-            except TypeError:
-                # if len is not supported, the format must be wrong
-                raise BCDataError(
-                    f"Unsupported boundary format: `{data}`. " + cls.get_help()
-                )
-            else:
-                if data_len == 2:
-                    # assume that data is given for each boundary
-                    low = BCBase.from_data(
-                        grid, axis, upper=False, data=data[0], rank=rank
-                    )
-                    high = BCBase.from_data(
-                        grid, axis, upper=True, data=data[1], rank=rank
-                    )
-                else:
-                    # if the length is strange, the format must be wrong
-                    raise BCDataError(
-                        "Expected two conditions for the two sides of the axis, but "
-                        f"got `{data}`. " + cls.get_help()
-                    )
-
-        return cls(low, high)
-
-    def extract_component(self, *indices):
-        """extracts the boundary pair of the given index.
-
-        Args:
-            *indices:
-                One or two indices for vector or tensor fields, respectively
-        """
-        bc_sub_low = self.low.extract_component(*indices)
-        bc_sub_high = self.high.extract_component(*indices)
-        return self.__class__(bc_sub_low, bc_sub_high)
-
-    def check_value_rank(self, rank: int):
-        """check whether the values at the boundaries have the correct rank
-
-        Args:
-            rank (int): The rank of the value that is stored with this
-                boundary condition
-
-        Throws:
-            RuntimeError: if the value does not have rank `rank`
-        """
-        self.low.check_value_rank(rank)
-        self.high.check_value_rank(rank)
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         """sets the elements of the sparse representation of this condition
@@ -256,27 +89,6 @@ class BoundaryPair(BoundaryAxisBase):
         else:
             # the normal case of an interior point
             return 0, {axis_coord: 1}
-
-    def make_virtual_point_evaluators(self) -> Tuple[Callable, Callable]:
-        """returns two functions evaluating the value at virtual support points
-
-        Args:
-            size (int): Number of support points along the axis
-            dx (float): Discretization, i.e., distance between support points
-
-        Returns:
-            tuple: Two functions that each take a 1d array as an argument and
-            return the associated value at the virtual support point outside the
-            lower and upper boundary, respectively.
-        """
-        eval_low = self.low.make_virtual_point_evaluator()
-        eval_high = self.high.make_virtual_point_evaluator()
-        return (eval_low, eval_high)
-
-    @property
-    def differentiated(self) -> "BoundaryPair":
-        """BoundaryPair: differentiated version of this boundary condition"""
-        return self.__class__(self.low.differentiated, self.high.differentiated)
 
     def get_point_evaluator(
         self, fill: np.ndarray = None
@@ -329,6 +141,22 @@ class BoundaryPair(BoundaryAxisBase):
                 return fill
 
         return evaluate  # type: ignore
+
+    def make_virtual_point_evaluators(self) -> Tuple[Callable, Callable]:
+        """returns two functions evaluating the value at virtual support points
+
+        Args:
+            size (int): Number of support points along the axis
+            dx (float): Discretization, i.e., distance between support points
+
+        Returns:
+            tuple: Two functions that each take a 1d array as an argument and
+            return the associated value at the virtual support point outside the
+            lower and upper boundary, respectively.
+        """
+        eval_low = self.low.make_virtual_point_evaluator()
+        eval_high = self.high.make_virtual_point_evaluator()
+        return (eval_low, eval_high)
 
     def make_region_evaluator(
         self,
@@ -441,11 +269,163 @@ class BoundaryPair(BoundaryAxisBase):
         return ghost_cell_setter  # type: ignore
 
 
-class BoundaryPeriodic(BoundaryAxisBase):
+class BoundaryPair(BoundaryAxisBase):
+    """represents the two boundaries of an axis along a single dimension"""
+
+    periodic = False
+
+    def __init__(self, low: BCBase, high: BCBase):
+        """
+        Args:
+            low (:class:`~pde.grids.boundaries.local.BCBase`):
+                Instance describing the lower boundary
+            high (:class:`~pde.grids.boundaries.local.BCBase`):
+                Instance describing the upper boundary
+        """
+        # check data consistency
+        assert low.grid == high.grid
+        assert low.axis == high.axis
+        assert low.rank == high.rank
+        assert high.upper and not low.upper
+
+        self.low = low
+        self.high = high
+        self.grid = low.grid
+        self.axis = low.axis
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.low!r}, {self.high!r})"
+
+    def __str__(self):
+        if self.low == self.high:
+            return str(self.low)
+        else:
+            return f"({self.low}, {self.high})"
+
+    def _cache_hash(self) -> int:
+        """returns a value to determine when a cache needs to be updated"""
+        return hash((self.low._cache_hash(), self.high._cache_hash()))
+
+    def copy(self) -> BoundaryPair:
+        """return a copy of itself, but with a reference to the same grid"""
+        return self.__class__(self.low.copy(), self.high.copy())
+
+    @classmethod
+    def get_help(cls) -> str:
+        """Return information on how boundary conditions can be set"""
+        return (
+            "Boundary conditions for each side can be set using a tuple: "
+            f"(lower_bc, upper_bc). {BCBase.get_help()}"
+        )
+
+    @classmethod
+    def from_data(cls, grid: GridBase, axis: int, data, rank: int = 0) -> BoundaryPair:
+        """create boundary pair from some data
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            data (str or dict):
+                Data that describes the boundary pair
+            rank (int):
+                The tensorial rank of the value associated with the boundary
+                conditions.
+
+        Returns:
+            :class:`~pde.grids.boundaries.axis.BoundaryPair`:
+            the instance created from the data
+
+        Throws:
+            ValueError if `data` cannot be interpreted as a boundary pair
+        """
+        # handle the simple cases
+        if isinstance(data, dict):
+            if "low" in data or "high" in data:
+                # separate conditions for low and high
+                data_copy = data.copy()
+                low = BCBase.from_data(
+                    grid, axis, upper=False, data=data_copy.pop("low"), rank=rank
+                )
+                high = BCBase.from_data(
+                    grid, axis, upper=True, data=data_copy.pop("high"), rank=rank
+                )
+                if data_copy:
+                    raise BCDataError(f"Data items {data_copy.keys()} were not used.")
+            else:
+                # one condition for both sides
+                low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
+                high = BCBase.from_data(grid, axis, upper=True, data=data, rank=rank)
+
+        elif isinstance(data, (str, BCBase)):
+            # a type for both boundaries
+            low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
+            high = BCBase.from_data(grid, axis, upper=True, data=data, rank=rank)
+
+        else:
+            # the only remaining valid format is a list of conditions for the
+            # lower and upper boundary
+            try:
+                # try obtaining the length
+                data_len = len(data)
+            except TypeError:
+                # if len is not supported, the format must be wrong
+                raise BCDataError(
+                    f"Unsupported boundary format: `{data}`. " + cls.get_help()
+                )
+            else:
+                if data_len == 2:
+                    # assume that data is given for each boundary
+                    low = BCBase.from_data(
+                        grid, axis, upper=False, data=data[0], rank=rank
+                    )
+                    high = BCBase.from_data(
+                        grid, axis, upper=True, data=data[1], rank=rank
+                    )
+                else:
+                    # if the length is strange, the format must be wrong
+                    raise BCDataError(
+                        "Expected two conditions for the two sides of the axis, but "
+                        f"got `{data}`. " + cls.get_help()
+                    )
+
+        return cls(low, high)
+
+    def extract_component(self, *indices) -> BoundaryPair:
+        """extracts the boundary pair of the given index.
+
+        Args:
+            *indices:
+                One or two indices for vector or tensor fields, respectively
+        """
+        bc_sub_low = self.low.extract_component(*indices)
+        bc_sub_high = self.high.extract_component(*indices)
+        return self.__class__(bc_sub_low, bc_sub_high)
+
+    def check_value_rank(self, rank: int) -> None:
+        """check whether the values at the boundaries have the correct rank
+
+        Args:
+            rank (int): The rank of the value that is stored with this
+                boundary condition
+
+        Throws:
+            RuntimeError: if the value does not have rank `rank`
+        """
+        self.low.check_value_rank(rank)
+        self.high.check_value_rank(rank)
+
+    @property
+    def differentiated(self) -> BoundaryPair:
+        """BoundaryPair: differentiated version of this boundary condition"""
+        return self.__class__(self.low.differentiated, self.high.differentiated)
+
+
+class BoundaryPeriodic(BoundaryPair):
     """represent a periodic axis"""
 
     periodic = True
-    _scipy_border_mode = {"mode": "wrap"}
 
     def __init__(self, grid: GridBase, axis: int):
         """
@@ -457,9 +437,8 @@ class BoundaryPeriodic(BoundaryAxisBase):
         """
         self.grid = grid
         self.axis = axis
-
-    def __iter__(self):
-        return iter(())  # there are no sub-boundaries to iterate over
+        self.low = _PeriodicBC(grid=self.grid, axis=self.axis, upper=False)
+        self.high = _PeriodicBC(grid=self.grid, axis=self.axis, upper=True)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis})"
@@ -467,33 +446,15 @@ class BoundaryPeriodic(BoundaryAxisBase):
     def __str__(self):
         return '"periodic"'
 
-    def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-        return (
-            self.__class__ == other.__class__
-            and self.grid == other.grid
-            and self.axis == other.axis
-        )
-
-    def __ne__(self, other):
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-        return (
-            self.__class__ != other.__class__
-            or self.grid != other.grid
-            or self.axis != other.axis
-        )
-
     def _cache_hash(self) -> int:
         """returns a value to determine when a cache needs to be updated"""
         return hash((self.grid._cache_hash(), self.axis))
 
-    def copy(self) -> "BoundaryPeriodic":
+    def copy(self) -> BoundaryPeriodic:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(grid=self.grid, axis=self.axis)
 
-    def extract_component(self, *indices):
+    def extract_component(self, *indices) -> BoundaryPeriodic:
         """extracts the boundary pair of the given extract_component.
 
         Args:
@@ -502,237 +463,18 @@ class BoundaryPeriodic(BoundaryAxisBase):
         """
         return self
 
-    def check_value_rank(self, rank: int):
+    def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
 
         Args:
             rank (int): The rank of the value that is stored with this
                 boundary condition
         """
-        return True
-
-    def make_virtual_point_evaluators(self) -> Tuple[Callable, Callable]:
-        """returns two functions evaluating the value at virtual support points
-
-        Returns:
-            tuple: Two functions that each take a 1d array as an argument and
-            return the associated value at the virtual support point outside the
-            lower and upper boundary, respectively.
-        """
-        size = self.grid.shape[self.axis]
-
-        @register_jitable
-        def value_low(arr):
-            """evaluate the virtual point using the data array `arr`"""
-            return arr[size - 1]
-
-        @register_jitable
-        def value_high(arr):
-            """evaluate the virtual point using the data array `arr`"""
-            return arr[0]
-
-        return (value_low, value_high)
-
-    def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
-        """sets the elements of the sparse representation of this condition
-
-        Args:
-            idx (tuple):
-                The index of the point that must lie on the boundary condition
-
-        Returns:
-            float, dict: A constant value and a dictionary with indices and
-            factors that can be used to calculate this virtual point
-        """
-        axis_coord = idx[self.axis]
-        size = self.grid.shape[self.axis]
-        if axis_coord == -1:
-            # the virtual point on the lower side
-            return 0, {size - 1: 1}
-        elif axis_coord == size:
-            # the virtual point on the upper side
-            return 0, {0: 1}
-        else:
-            # the normal case of an interior point
-            return 0, {axis_coord: 1}
 
     @property
-    def differentiated(self) -> "BoundaryPeriodic":
-        """BoundaryPeriodic: differentiated boundary condition"""
+    def differentiated(self) -> BoundaryPeriodic:
+        """:class:`BoundaryPeriodic`: differentiated boundary condition"""
         return self
-
-    def get_point_evaluator(
-        self, fill: float = None
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], NumberOrArray]:
-        """return a function to evaluate values at a given point
-
-        The point can either be a point inside the domain or a virtual point
-        right outside the domain.
-
-        Args:
-            fill: This argument is ignored.
-
-        Returns:
-            function: A function taking a 1d array and an index as an argument,
-                returning the value of the array at this index.
-        """
-        size = self.grid.shape[self.axis]
-
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        @register_jitable
-        def evaluate(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
-            """evaluate values of the array `arr` at an index `idx`"""
-            arr_1d, i, _ = get_arr_1d(arr, idx)
-            # wrap around for periodic boundaries
-            return arr_1d[..., i % size]  # type: ignore
-
-        return evaluate  # type: ignore
-
-    def make_region_evaluator(
-        self,
-    ) -> Callable[
-        [np.ndarray, Tuple[int, ...]],
-        Tuple[NumberOrArray, NumberOrArray, NumberOrArray],
-    ]:
-        """return a function to evaluate values in a neighborhood of a point
-
-        Returns:
-            function: A function that can be called with the data array and a
-            tuple indicating around what point the region is evaluated. The
-            function returns the data values left of the point, at the point,
-            and right of the point along the axis associated with this boundary
-            condition. The function takes boundary conditions into account if
-            the point lies on the boundary.
-        """
-        size = self.grid.shape[self.axis]
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        @register_jitable
-        def region_evaluator(arr, idx: Tuple[int, ...]) -> Tuple[float, float, float]:
-            """compiled function return the values in the region"""
-            # extract the 1d array along axis
-            arr_1d, i, _ = get_arr_1d(arr, idx)
-
-            # determine the indices in the vicinity
-            im = size - 1 if i == 0 else i - 1
-            ip = 0 if i == size - 1 else i + 1
-
-            # return the values in the region around the point
-            return arr_1d[..., im], arr_1d[..., i], arr_1d[..., ip]
-
-        return region_evaluator  # type: ignore
-
-    def make_derivative_evaluator(
-        self, order: int = 1
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], NumberOrArray]:
-        """return a function to evaluate the derivative at a point
-
-        Args:
-            order (int): The order of the derivative
-
-        Returns:
-            function: A function that can be called with the data array and a tuple
-            indicating around what point the derivative is evaluated. The function
-            returns the central finite difference at the point. The function takes
-            boundary conditions into account if the point lies on the boundary.
-        """
-        size = self.grid.shape[self.axis]
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        if order == 1:
-            # first derivative
-            scale = 1 / (2 * self.grid.discretization[self.axis])
-
-            @register_jitable
-            def deriv_evaluator(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
-                """compiled function return the derivative at the pint"""
-                # extract the 1d array along axis
-                arr_1d, i, _ = get_arr_1d(arr, idx)
-
-                # determine the indices in the vicinity
-                im = size - 1 if i == 0 else i - 1
-                ip = 0 if i == size - 1 else i + 1
-
-                # return the central derivative
-                return (arr_1d[..., ip] - arr_1d[..., im]) * scale  # type: ignore
-
-        elif order == 2:
-            # second derivative
-            scale = 1 / self.grid.discretization[self.axis] ** 2
-
-            @register_jitable
-            def deriv_evaluator(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
-                """compiled function return the derivative at the pint"""
-                # extract the 1d array along axis
-                arr_1d, i, _ = get_arr_1d(arr, idx)
-
-                # determine the indices in the vicinity
-                im = size - 1 if i == 0 else i - 1
-                ip = 0 if i == size - 1 else i + 1
-
-                # return the second derivative
-                return (arr_1d[..., im] - 2 * arr_1d[..., i] + arr_1d[..., ip]) * scale  # type: ignore
-
-        else:
-            raise NotImplementedError(f"Derivative of oder {order} not implemented")
-
-        return deriv_evaluator  # type: ignore
-
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
-        """set the ghost cell values for all boundaries
-
-        Args:
-            data_all (:class:`~numpy.ndarray`):
-                The full field data including ghost points
-        """
-        offset = data_all.ndim - self.grid.num_axes  # additional data axes
-        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
-        idx_read = idx_write[:]
-
-        # set lower BC
-        idx_write[offset + self.axis] = 0  # type: ignore
-        idx_read[offset + self.axis] = -2  # type: ignore
-        data_all[tuple(idx_write)] = data_all[tuple(idx_read)]
-
-        # set upper BC
-        idx_write[offset + self.axis] = -1  # type: ignore
-        idx_read[offset + self.axis] = 1  # type: ignore
-        data_all[tuple(idx_write)] = data_all[tuple(idx_read)]
-
-    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
-        """return function that sets the ghost cells for this axis on a full array"""
-        # calculate the axis of this BC (counting from the back)
-        axis_back = self.grid.num_axes - self.axis
-
-        if axis_back == 1:
-
-            @register_jitable
-            def ghost_cell_setter(data_all: np.ndarray) -> None:
-                """helper function setting the conditions on all axes"""
-                data_all[..., 0] = data_all[..., -2]
-                data_all[..., -1] = data_all[..., 1]
-
-        elif axis_back == 2:
-
-            @register_jitable
-            def ghost_cell_setter(data_all: np.ndarray) -> None:
-                """helper function setting the conditions on all axes"""
-                data_all[..., 0, :] = data_all[..., -2, :]
-                data_all[..., -1, :] = data_all[..., 1, :]
-
-        elif axis_back == 3:
-
-            @register_jitable
-            def ghost_cell_setter(data_all: np.ndarray) -> None:
-                """helper function setting the conditions on all axes"""
-                data_all[..., 0, :, :] = data_all[..., -2, :, :]
-                data_all[..., -1, :, :] = data_all[..., 1, :, :]
-
-        else:
-            raise NotImplementedError("Grids with more than 3 axes are not supported")
-
-        return ghost_cell_setter  # type: ignore
 
 
 def get_boundary_axis(
@@ -752,7 +494,8 @@ def get_boundary_axis(
             conditions.
 
     Returns:
-        BoundaryAxisBase: The boundary condition for the axis
+        :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`:
+            Appropriate boundary condition for the axis
     """
     # handle special constructs that describe boundary conditions
     if data == "natural" or data == "auto_periodic_neumann":

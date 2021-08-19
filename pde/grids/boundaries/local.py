@@ -430,7 +430,7 @@ class BCBase(metaclass=ABCMeta):
                 f"Unsupported boundary format: `{data}`. " + cls.get_help()
             )
 
-    def check_value_rank(self, rank: int):
+    def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
 
         Args:
@@ -451,6 +451,10 @@ class BCBase(metaclass=ABCMeta):
 
     @abstractmethod
     def copy(self, upper: Optional[bool] = None, rank: int = None) -> BCBase:
+        pass
+
+    @abstractmethod
+    def extract_component(self, *indices):
         pass
 
     @abstractmethod
@@ -656,6 +660,15 @@ class ExpressionBC(BCBase):
             rank=self.rank if rank is None else rank,
             value=self._expr.expression,
         )
+
+    def extract_component(self, *indices):
+        """extracts the boundary conditions for the given component
+
+        Args:
+            *indices:
+                One or two indices for vector or tensor fields, respectively
+        """
+        raise NotImplementedError
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         raise NotImplementedError
@@ -1292,7 +1305,7 @@ class ConstBC1stOrderBase(ConstBCBase):
         idx_read = idx_write[:]
         idx_read[offset + self.axis] = index + 1  # type: ignore
 
-        if self.homogeneous:
+        if self.homogeneous and not np.isscalar(factor):
             # add dimension to const so it can be broadcasted to shape of data_all
             for _ in range(self.grid.num_axes - 1):
                 factor = factor[..., np.newaxis]
@@ -1300,6 +1313,46 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         # calculate the virtual points
         data_all[tuple(idx_write)] = const + factor * data_all[tuple(idx_read)]
+
+
+class _PeriodicBC(ConstBC1stOrderBase):
+    """represents one part of a boundary condition"""
+
+    def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
+        """return data suitable for calculating virtual points
+
+        Args:
+            compiled (bool):
+                Flag indicating whether a compiled version is required, which
+                automatically takes updated values into account when it is used
+                in numba-compiled code.
+
+        Returns:
+            :class:`BC1stOrderData`: the data structure associated with this
+            virtual point
+        """
+        index = 0 if self.upper else self.grid.shape[self.axis] - 1
+
+        if not compiled:
+            return (0.0, 1.0, index)
+        else:
+            const = np.array(0, np.double)
+            factor = np.array(1, np.double)
+
+            @register_jitable(inline="always")
+            def const_func():
+                return const
+
+            @register_jitable(inline="always")
+            def factor_func():
+                return factor
+
+            return (const_func, factor_func, index)
+
+    @property
+    def differentiated(self) -> BCBase:
+        """BCBase: differentiated version of this boundary condition"""
+        return self
 
 
 class DirichletBC(ConstBC1stOrderBase):

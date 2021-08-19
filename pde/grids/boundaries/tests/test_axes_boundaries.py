@@ -93,10 +93,6 @@ def test_bc_values():
     g = UnitGrid([5])
     bc = g.get_boundary_conditions([{"value": 2}, {"derivative": 3}])
     assert bc[0].low.value == 2 and bc[0].high.value == 3
-    bc.scale_value(5)
-    assert bc[0].low.value == 10 and bc[0].high.value == 15
-    bc.set_value(7)
-    assert bc[0].low.value == bc[0].high.value == 7
 
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
