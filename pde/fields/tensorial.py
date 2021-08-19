@@ -322,7 +322,7 @@ class Tensor2Field(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self, bc: "BoundariesData", out: Optional[VectorField] = None, **kwargs
+        self, bc: Optional[BoundariesData], out: Optional[VectorField] = None, **kwargs
     ) -> VectorField:
         r"""apply tensor divergence and return result as a field
 
