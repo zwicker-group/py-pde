@@ -52,8 +52,8 @@ def test_boundary_pair():
 
 def test_get_axis_boundaries():
     """test setting boundary conditions including periodic ones"""
-    g = UnitGrid([2])
     for data in ["value", "derivative", "periodic"]:
+        g = UnitGrid([2], periodic=(data == "periodic"))
         b = get_boundary_axis(g, 0, data)
         assert str(b) == '"' + data + '"'
 

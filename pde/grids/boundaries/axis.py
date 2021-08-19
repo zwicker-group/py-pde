@@ -17,7 +17,7 @@ import numpy as np
 from numba.extending import register_jitable
 
 from ...tools.typing import NumberOrArray
-from ..base import DomainError, GridBase
+from ..base import DomainError, GridBase, PeriodicityError
 from .local import BCBase, BCDataError, BoundaryData, _make_get_arr_1d, _PeriodicBC
 
 BoundaryPairData = Union[
@@ -67,6 +67,11 @@ class BoundaryAxisBase:
             return self.high
         else:
             raise IndexError("Index can be either 0/False or 1/True")
+
+    @property
+    def periodic(self) -> bool:
+        """bool: whether the axis is periodic"""
+        return self.grid.periodic[self.axis]
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         """sets the elements of the sparse representation of this condition
@@ -272,8 +277,6 @@ class BoundaryAxisBase:
 class BoundaryPair(BoundaryAxisBase):
     """represents the two boundaries of an axis along a single dimension"""
 
-    periodic = False
-
     def __init__(self, low: BCBase, high: BCBase):
         """
         Args:
@@ -292,6 +295,12 @@ class BoundaryPair(BoundaryAxisBase):
         self.high = high
         self.grid = low.grid
         self.axis = low.axis
+
+        # check consistency
+        if self.periodic:
+            raise PeriodicityError(
+                "Cannot impose non-periodic boundary condition on periodic axis"
+            )
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.low!r}, {self.high!r})"
@@ -425,8 +434,6 @@ class BoundaryPair(BoundaryAxisBase):
 class BoundaryPeriodic(BoundaryPair):
     """represent a periodic axis"""
 
-    periodic = True
-
     def __init__(self, grid: GridBase, axis: int):
         """
         Args:
@@ -439,6 +446,12 @@ class BoundaryPeriodic(BoundaryPair):
         self.axis = axis
         self.low = _PeriodicBC(grid=self.grid, axis=self.axis, upper=False)
         self.high = _PeriodicBC(grid=self.grid, axis=self.axis, upper=True)
+
+        # check consistency
+        if not self.periodic:
+            raise PeriodicityError(
+                "Cannot impose periodic boundary condition on non-periodic axis"
+            )
 
     def __repr__(self):
         return f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis})"

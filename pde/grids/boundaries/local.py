@@ -240,6 +240,11 @@ class BCBase(metaclass=ABCMeta):
                 cls._conditions[name] = cls
 
     @property
+    def periodic(self) -> bool:
+        """bool: whether the axis is periodic"""
+        return self.grid.periodic[self.axis]
+
+    @property
     def axis_coord(self) -> float:
         """float: value of the coordinate that defines this boundary condition"""
         if self.upper:

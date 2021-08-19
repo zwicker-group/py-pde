@@ -257,11 +257,11 @@ class GridBase(metaclass=ABCMeta):
         def set_valid(arr: np.ndarray, value: np.ndarray) -> None:
             """return valid part of the data (without ghost cells)"""
             if num_axes == 1:
-                arr[..., 1:-1] = value  # type: ignore
+                arr[..., 1:-1] = value
             elif num_axes == 2:
-                arr[..., 1:-1, 1:-1] = value  # type: ignore
+                arr[..., 1:-1, 1:-1] = value
             elif num_axes == 3:
-                arr[..., 1:-1, 1:-1, 1:-1] = value  # type: ignore
+                arr[..., 1:-1, 1:-1, 1:-1] = value
             else:
                 raise NotImplementedError
 
