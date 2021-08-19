@@ -249,6 +249,24 @@ class GridBase(metaclass=ABCMeta):
 
         return get_valid  # type: ignore
 
+    def _make_set_valid(self) -> Callable[[np.ndarray, np.ndarray], None]:
+        """callable: function to extract the valid part of a full data array"""
+        num_axes = self.num_axes
+
+        @register_jitable
+        def set_valid(arr: np.ndarray, value: np.ndarray) -> None:
+            """return valid part of the data (without ghost cells)"""
+            if num_axes == 1:
+                arr[..., 1:-1] = value
+            elif num_axes == 2:
+                arr[..., 1:-1, 1:-1] = value
+            elif num_axes == 3:
+                arr[..., 1:-1, 1:-1, 1:-1] = value
+            else:
+                raise NotImplementedError
+
+        return set_valid  # type: ignore
+
     @abstractproperty
     def state(self) -> Dict[str, Any]:
         pass
@@ -619,7 +637,6 @@ class GridBase(metaclass=ABCMeta):
         )
 
     @cached_method()
-    @fill_in_docstring
     def make_operator_no_bc(
         self,
         operator: Union[str, Operator],
@@ -627,17 +644,15 @@ class GridBase(metaclass=ABCMeta):
     ) -> OperatorType:
         """return a compiled function applying an operator without boundary conditions
 
-        A function that takes the discretized full data as an input and returns an array
-        to which the operator `operator` has been applied. This function optionally
-        supports a second argument, which provides allocated memory for the output.
-        All data arrays must include the ghost cells!
+        A function that takes the discretized full data as an input and an array of
+        valid data points to which the result of applying the operator is written.
 
         Note:
-            The resulting function does not check whether the ghost cells have been
-            supplied with sensible values. It is the responsibility of the user to set
-            the values of the ghost cells beforehand. Use this function only if you
-            absolutely know what you're doing. In all other cases, :meth:`make_operator`
-            is probably the better choice.
+            The resulting function does not check whether the ghost cells of the input
+            array have been supplied with sensible values. It is the responsibility of
+            the user to set the values of the ghost cells beforehand. Use this function
+            only if you absolutely know what you're doing. In all other cases,
+            :meth:`make_operator` is probably the better choice.
 
         Args:
             operator (str):
@@ -667,8 +682,8 @@ class GridBase(metaclass=ABCMeta):
         only takes the valid grid points and allocates memory for the ghost points
         internally to apply the boundary conditions specified as `bc`. Note that the
         function supports an optional argument `out`, which if given should provide
-        space for the full output array including ghost cells. The result of the
-        function is then a view into this supplied array returning the valid data.
+        space for the valid output array without the ghost cells. The result of the
+        operator is then written into this output array.
 
         Args:
             operator (str):
@@ -697,7 +712,7 @@ class GridBase(metaclass=ABCMeta):
 
         # calculate shapes of the full data
         shape_in_full = (self.dim,) * operator.rank_in + self._shape_full
-        shape_out_full = (self.dim,) * operator.rank_out + self._shape_full
+        shape_out = (self.dim,) * operator.rank_out + self.shape
 
         if backend == "numba":
             # create a compiled function to apply to the operator
@@ -707,7 +722,7 @@ class GridBase(metaclass=ABCMeta):
             if not is_jitted(operator_raw):
                 operator_raw = jit(operator_raw)
 
-            @jit_allocate_out(out_shape=shape_out_full)
+            @jit_allocate_out(out_shape=shape_out)
             def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
                 """applies operator to the data"""
                 # prepare input with boundary conditions
@@ -720,7 +735,7 @@ class GridBase(metaclass=ABCMeta):
                 operator_raw(arr_full, out)  # type: ignore
 
                 # return valid part of the output
-                return get_valid(out)  # type: ignore
+                return out  # type: ignore
 
         elif backend == "scipy":
             # create a numpy/scipy function to apply to the operator
@@ -734,13 +749,13 @@ class GridBase(metaclass=ABCMeta):
 
                 # apply operator
                 if out is None:
-                    out = np.empty(shape_out_full, dtype=arr.dtype)
+                    out = np.empty(shape_out, dtype=arr.dtype)
                 else:
-                    assert out.shape == shape_out_full
+                    assert out.shape == shape_out
                 operator_raw(arr_full, out)
 
                 # return valid part of the output
-                return out[(...,) + self._idx_valid]  # type: ignore
+                return out
 
         else:
             raise NotImplementedError(f"Undefined backend '{backend}'")

@@ -461,7 +461,7 @@ class VectorField(DataFieldBase):
         Args:
             bc:
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
+                {ARG_BOUNDARIES_OPTIONAL}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
             label (str, optional):
@@ -485,7 +485,7 @@ class VectorField(DataFieldBase):
         Args:
             bc:
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
+                {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
                 Optional vector field to which the result is written.
             label (str, optional):
@@ -513,7 +513,7 @@ class VectorField(DataFieldBase):
         Args:
             bc:
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
+                {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
                 Optional vector field to which the  result is written.
             label (str, optional):

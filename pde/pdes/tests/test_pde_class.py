@@ -139,7 +139,7 @@ def test_custom_operators():
 
     def make_op(state):
         def op(arr, out):
-            out[:] = arr
+            out[:] = arr[1:-1]  # copy valid part of the array
 
         return op
 

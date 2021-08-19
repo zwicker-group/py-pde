@@ -6,6 +6,8 @@ This module handles the boundaries of all axes of a grid. It only defines
 :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`.
 """
 
+from __future__ import annotations
+
 from typing import Callable, List, Sequence, Union
 
 import numpy as np
@@ -60,7 +62,7 @@ class Boundaries(list):
         return f"[{items}]"
 
     @classmethod
-    def from_data(cls, grid: GridBase, boundaries, rank: int = 0) -> "Boundaries":
+    def from_data(cls, grid: GridBase, boundaries, rank: int = 0) -> Boundaries:
         """
         Creates all boundaries from given data
 
@@ -138,7 +140,7 @@ class Boundaries(list):
         """returns a value to determine when a cache needs to be updated"""
         return hash(tuple(bc_ax._cache_hash() for bc_ax in self))
 
-    def check_value_rank(self, rank: int):
+    def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
 
         Args:
@@ -160,7 +162,7 @@ class Boundaries(list):
             f"to be set to 'periodic'. Otherwise, {BoundaryPair.get_help()}"
         )
 
-    def copy(self, value=None) -> "Boundaries":
+    def copy(self) -> Boundaries:
         """create a copy of the current boundaries
 
         Args:
@@ -171,10 +173,7 @@ class Boundaries(list):
             copy_grid (bool):
                 Whether the grid should also be copied
         """
-        result = self.__class__([bc.copy() for bc in self])
-        if value is not None:
-            result.set_value(value)
-        return result
+        return self.__class__([bc.copy() for bc in self])
 
     @property
     def periodic(self) -> List[bool]:
@@ -182,31 +181,7 @@ class Boundaries(list):
         are periodic according to the boundary conditions"""
         return self.grid.periodic
 
-    def set_value(self, value=0):
-        """set the value of all non-periodic boundaries
-
-        Args:
-            value (float or array):
-                Sets the value stored with the boundary conditions. The
-                interpretation of this value depends on the type of boundary
-                condition.
-        """
-        for b in self:
-            if not b.periodic:
-                b.set_value(value)
-
-    def scale_value(self, factor: float = 1):
-        """scales the value of the boundary condition with the given factor
-
-        Args:
-            value (float):
-                Scales the value associated with the boundary condition by the factor
-        """
-        for b in self:
-            if not b.periodic:
-                b.scale_value(factor)
-
-    def extract_component(self, *indices) -> "Boundaries":
+    def extract_component(self, *indices) -> Boundaries:
         """extracts the boundary conditions of the given component of the tensor.
 
         Args:
@@ -217,7 +192,7 @@ class Boundaries(list):
         return self.__class__(boundaries)
 
     @property
-    def differentiated(self) -> "Boundaries":
+    def differentiated(self) -> Boundaries:
         """Domain: with differentiated versions of all boundary conditions"""
         return self.__class__([b.differentiated for b in self])
 

@@ -118,7 +118,7 @@ def optimized_laplace_2d(bcs):
     """make laplace operator with flexible boundary conditions"""
     set_ghost_cells = bcs.make_ghost_cell_setter()
     apply_laplace = bcs.grid.make_operator_no_bc("laplace")
-    shape = bcs.grid._shape_full
+    shape = bcs.grid.shape
 
     @jit
     def laplace(arr):
@@ -207,7 +207,7 @@ def main():
                 # call once to pre-compile and test result
                 if method == "OPTIMIZED":
                     result = laplace(field._data_all)
-                    np.testing.assert_allclose(result[grid._idx_valid], expected.data)
+                    np.testing.assert_allclose(result, expected.data)
                     speed = estimate_computation_speed(laplace, field._data_all)
                 else:
                     np.testing.assert_allclose(laplace(field.data), expected.data)
