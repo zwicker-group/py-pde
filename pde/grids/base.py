@@ -249,6 +249,24 @@ class GridBase(metaclass=ABCMeta):
 
         return get_valid  # type: ignore
 
+    def _make_set_valid(self) -> Callable[[np.ndarray, np.ndarray], None]:
+        """callable: function to extract the valid part of a full data array"""
+        num_axes = self.num_axes
+
+        @register_jitable
+        def set_valid(arr: np.ndarray, value: np.ndarray) -> None:
+            """return valid part of the data (without ghost cells)"""
+            if num_axes == 1:
+                arr[..., 1:-1] = value  # type: ignore
+            elif num_axes == 2:
+                arr[..., 1:-1, 1:-1] = value  # type: ignore
+            elif num_axes == 3:
+                arr[..., 1:-1, 1:-1, 1:-1] = value  # type: ignore
+            else:
+                raise NotImplementedError
+
+        return set_valid  # type: ignore
+
     @abstractproperty
     def state(self) -> Dict[str, Any]:
         pass
