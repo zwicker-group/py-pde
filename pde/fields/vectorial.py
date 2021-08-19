@@ -454,7 +454,7 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self, bc: "BoundariesData", out: Optional[ScalarField] = None, **kwargs
+        self, bc: Optional[BoundariesData], out: Optional[ScalarField] = None, **kwargs
     ) -> ScalarField:
         """apply divergence operator and return result as a field
 
@@ -474,7 +474,10 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def gradient(
-        self, bc: "BoundariesData", out: Optional["Tensor2Field"] = None, **kwargs
+        self,
+        bc: Optional[BoundariesData],
+        out: Optional["Tensor2Field"] = None,
+        **kwargs,
     ) -> "Tensor2Field":
         r"""apply vector gradient operator and return result as a field
 
@@ -498,7 +501,7 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def laplace(
-        self, bc: "BoundariesData", out: Optional[VectorField] = None, **kwargs
+        self, bc: Optional[BoundariesData], out: Optional[VectorField] = None, **kwargs
     ) -> VectorField:
         r"""apply vector Laplace operator and return result as a field
 

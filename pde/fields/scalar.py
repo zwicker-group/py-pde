@@ -144,7 +144,10 @@ class ScalarField(DataFieldBase):
 
     @fill_in_docstring
     def laplace(
-        self, bc: "BoundariesData", out: Optional[ScalarField] = None, **kwargs
+        self,
+        bc: Optional[BoundariesData],
+        out: Optional[ScalarField] = None,
+        **kwargs,
     ) -> ScalarField:
         """apply Laplace operator and return result as a field
 
@@ -166,7 +169,10 @@ class ScalarField(DataFieldBase):
 
     @fill_in_docstring
     def gradient_squared(
-        self, bc: "BoundariesData", out: Optional[ScalarField] = None, **kwargs
+        self,
+        bc: Optional[BoundariesData],
+        out: Optional[ScalarField] = None,
+        **kwargs,
     ) -> ScalarField:
         r"""apply squared gradient operator and return result as a field
 
@@ -194,7 +200,10 @@ class ScalarField(DataFieldBase):
 
     @fill_in_docstring
     def gradient(
-        self, bc: "BoundariesData", out: Optional["VectorField"] = None, **kwargs
+        self,
+        bc: Optional[BoundariesData],
+        out: Optional["VectorField"] = None,
+        **kwargs,
     ) -> "VectorField":
         """apply gradient operator and return result as a field
 

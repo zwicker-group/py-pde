@@ -28,10 +28,6 @@ BoundaryPairData = Union[
 class BoundaryAxisBase:
     """base class for defining boundaries of a single axis in a grid"""
 
-    grid: GridBase
-    """:class:`~pde.grids.base.GridBase`: Grid for which the boundaries are defined """
-    axis: int
-    """int: The axis along which the boundaries are defined """
     low: BCBase
     """:class:`~pde.grids.boundaries.local.BCBase`: Boundary condition at lower end """
     high: BCBase
@@ -67,6 +63,16 @@ class BoundaryAxisBase:
             return self.high
         else:
             raise IndexError("Index can be either 0/False or 1/True")
+
+    @property
+    def grid(self) -> GridBase:
+        """:class:`~pde.grids.base.GridBase`: Underlying grid"""
+        return self.low.grid
+
+    @property
+    def axis(self) -> int:
+        """int: The axis along which the boundaries are defined"""
+        return self.low.axis
 
     @property
     def periodic(self) -> bool:
@@ -293,8 +299,6 @@ class BoundaryPair(BoundaryAxisBase):
 
         self.low = low
         self.high = high
-        self.grid = low.grid
-        self.axis = low.axis
 
         # check consistency
         if self.periodic:
@@ -442,10 +446,8 @@ class BoundaryPeriodic(BoundaryPair):
             axis (int):
                 The axis to which this boundary condition is associated
         """
-        self.grid = grid
-        self.axis = axis
-        self.low = _PeriodicBC(grid=self.grid, axis=self.axis, upper=False)
-        self.high = _PeriodicBC(grid=self.grid, axis=self.axis, upper=True)
+        self.low = _PeriodicBC(grid=grid, axis=axis, upper=False)
+        self.high = _PeriodicBC(grid=grid, axis=axis, upper=True)
 
         # check consistency
         if not self.periodic:
