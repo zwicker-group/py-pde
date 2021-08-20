@@ -1,5 +1,6 @@
 TODO
 ====
+* Add function listing all registered boundary conditions
 * Think about incremental test run
     - should break at first failure
     - should restart at last failure

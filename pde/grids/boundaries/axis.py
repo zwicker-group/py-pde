@@ -11,7 +11,7 @@ non-periodic axes have more option, which are represented by
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Tuple, Union
 
 import numpy as np
 from numba.extending import register_jitable
@@ -255,27 +255,30 @@ class BoundaryAxisBase:
 
         return deriv_evaluator  # type: ignore
 
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for all boundaries
 
         Args:
             data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
         """
-        self.low.set_ghost_cells(data_all)
-        self.high.set_ghost_cells(data_all)
+        self.low.set_ghost_cells(data_all, args=args)
+        self.high.set_ghost_cells(data_all, args=args)
 
-    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+    def make_ghost_cell_setter(self) -> Callable[[np.ndarray, Optional[Any]], None]:
         """return function that sets the ghost cells for this axis on a full array"""
 
         ghost_cell_setter_low = self.low.make_ghost_cell_setter()
         ghost_cell_setter_high = self.high.make_ghost_cell_setter()
 
         @register_jitable
-        def ghost_cell_setter(data_all: np.ndarray) -> None:
+        def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
             """helper function setting the conditions on all axes"""
-            ghost_cell_setter_low(data_all)
-            ghost_cell_setter_high(data_all)
+            ghost_cell_setter_low(data_all, args=args)  # type: ignore
+            ghost_cell_setter_high(data_all, args=args)  # type: ignore
 
         return ghost_cell_setter  # type: ignore
 

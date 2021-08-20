@@ -462,13 +462,11 @@ class BCBase(metaclass=ABCMeta):
     def extract_component(self, *indices):
         pass
 
-    @abstractmethod
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def make_virtual_point_evaluator(
@@ -476,11 +474,10 @@ class BCBase(metaclass=ABCMeta):
     ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
         pass
 
-    @abstractmethod
     def make_adjacent_evaluator(
         self,
     ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
-        pass
+        raise NotImplementedError
 
     @property
     def differentiated(self) -> BCBase:
@@ -488,7 +485,7 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
@@ -496,7 +493,7 @@ class BCBase(metaclass=ABCMeta):
                 The full field data including ghost points
         """
 
-    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+    def make_ghost_cell_setter(self) -> Callable[[np.ndarray, Optional[Any]], None]:
         """return function that sets the ghost cells for this boundary"""
         # get information of the virtual points (ghost cells)
         vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
@@ -506,9 +503,10 @@ class BCBase(metaclass=ABCMeta):
         if self.grid.num_axes == 1:  # 1d grid
 
             @register_jitable
-            def ghost_cell_setter(data_all: np.ndarray) -> None:
+            def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                 """helper function setting the conditions on all axes"""
-                data_all[..., vp_idx] = vp_value(data_all[..., 1:-1], (np_idx,))
+                data_valid = data_all[..., 1:-1]
+                data_all[..., vp_idx] = vp_value(data_valid, (np_idx,), args=args)  # type: ignore
 
         elif self.grid.num_axes == 2:  # 2d grid
 
@@ -516,20 +514,22 @@ class BCBase(metaclass=ABCMeta):
                 num_y = self.grid.shape[1]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1]
                     for j in range(num_y):
-                        val = vp_value(data_all[..., 1:-1, 1:-1], (np_idx, j))
+                        val = vp_value(data_valid, (np_idx, j), args=args)  # type: ignore
                         data_all[..., vp_idx, j + 1] = val
 
             elif self.axis == 1:
                 num_x = self.grid.shape[0]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1]
                     for i in range(num_x):
-                        val = vp_value(data_all[..., 1:-1, 1:-1], (i, np_idx))
+                        val = vp_value(data_valid, (i, np_idx), args=args)  # type: ignore
                         data_all[..., i + 1, vp_idx] = val
 
         elif self.grid.num_axes == 3:  # 3d grid
@@ -538,36 +538,36 @@ class BCBase(metaclass=ABCMeta):
                 num_y, num_z = self.grid.shape[1:]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
                     for j in range(num_y):
                         for k in range(num_z):
-                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
-                            val = vp_value(arr, (np_idx, j, k))
+                            val = vp_value(data_valid, (np_idx, j, k), args=args)  # type: ignore
                             data_all[..., vp_idx, j + 1, k + 1] = val
 
             elif self.axis == 1:
                 num_x, num_z = self.grid.shape[0], self.grid.shape[2]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
                         for k in range(num_z):
-                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
-                            val = vp_value(arr, (i, np_idx, k))
+                            val = vp_value(data_valid, (i, np_idx, k), args=args)  # type: ignore
                             data_all[..., i + 1, vp_idx, k + 1] = val
 
             elif self.axis == 2:
                 num_x, num_y = self.grid.shape[:2]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
                         for j in range(num_y):
-                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
-                            val = vp_value(arr, (i, j, np_idx))
+                            val = vp_value(data_valid, (i, j, np_idx), args=args)  # type: ignore
                             data_all[..., i + 1, j + 1, vp_idx] = val
 
         else:
@@ -686,12 +686,15 @@ class ExpressionBC(BCBase):
     ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
         raise NotImplementedError
 
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
             data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
         """
         dx = self.grid.discretization[self.axis]
 
@@ -730,7 +733,7 @@ class ExpressionBC(BCBase):
         assert dim <= 3
 
         @register_jitable(inline="always")
-        def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
+        def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
             """evaluate the virtual point at `idx`"""
             _, _, bc_idx = get_arr_1d(arr, idx)
             grid_value = arr[idx]
@@ -1200,7 +1203,9 @@ class ConstBC1stOrderBase(ConstBCBase):
         if self.homogeneous:
 
             @register_jitable(inline="always")
-            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
+            def virtual_point(
+                arr: np.ndarray, idx: Tuple[int, ...], args=None
+            ) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
                 return const() + factor() * arr_1d[..., index]  # type: ignore
@@ -1208,7 +1213,9 @@ class ConstBC1stOrderBase(ConstBCBase):
         else:
 
             @register_jitable(inline="always")
-            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
+            def virtual_point(
+                arr: np.ndarray, idx: Tuple[int, ...], args=None
+            ) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
                 return (  # type: ignore
@@ -1293,12 +1300,15 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
             data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
         """
         # calculate necessary constants
         const, factor, index = self.get_virtual_point_data()
@@ -1766,7 +1776,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
         if self.homogeneous:
 
             @register_jitable
-            def virtual_point(arr, idx: Tuple[int, ...]):
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None):
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
 
@@ -1779,7 +1789,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
         else:
 
             @register_jitable
-            def virtual_point(arr, idx: Tuple[int, ...]):
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None):
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
 
@@ -1871,12 +1881,15 @@ class ConstBC2ndOrderBase(ConstBCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
             data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
         """
         # calculate necessary constants
         data = self.get_virtual_point_data()
