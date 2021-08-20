@@ -290,7 +290,7 @@ class PDE(PDEBase):
                 self._logger.info(msg, bc, func, var)
 
                 try:
-                    ops[func] = state.grid.make_operator(func, bc=bc)
+                    ops[func] = state.grid.make_operator(func, bc=bc)  # type: ignore
                 except BCDataError:
                     # wrong data was supplied for the boundary condition
                     raise

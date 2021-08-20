@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numba as nb
 import numpy as np
@@ -39,7 +39,12 @@ from numba.extending import register_jitable
 
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import address_as_void_pointer
-from ...tools.typing import FloatNumerical
+from ...tools.typing import (
+    AdjacentEvaluator,
+    FloatNumerical,
+    GhostCellSetter,
+    VirtualPointEvaluator,
+)
 from ..base import GridBase
 
 BoundaryData = Union[Dict, str, "BCBase"]
@@ -196,8 +201,8 @@ class BCBase(metaclass=ABCMeta):
     homogeneous: bool
     """ bool: determines whether the boundary condition depends on space """
 
-    _subclasses: Dict[str, BCBase] = {}  # all classes inheriting from this
-    _conditions: Dict[str, BCBase] = {}  # mapping from all names to classes
+    _subclasses: Dict[str, Type[BCBase]] = {}  # all classes inheriting from this
+    _conditions: Dict[str, Type[BCBase]] = {}  # mapping from all names to classes
 
     def __init__(
         self,
@@ -462,25 +467,18 @@ class BCBase(metaclass=ABCMeta):
     def extract_component(self, *indices):
         pass
 
-    @abstractmethod
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
-    def make_virtual_point_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         pass
 
-    @abstractmethod
-    def make_adjacent_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
-        pass
+    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
+        raise NotImplementedError
 
     @property
     def differentiated(self) -> BCBase:
@@ -488,7 +486,7 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
@@ -496,7 +494,7 @@ class BCBase(metaclass=ABCMeta):
                 The full field data including ghost points
         """
 
-    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+    def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this boundary"""
         # get information of the virtual points (ghost cells)
         vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
@@ -506,9 +504,10 @@ class BCBase(metaclass=ABCMeta):
         if self.grid.num_axes == 1:  # 1d grid
 
             @register_jitable
-            def ghost_cell_setter(data_all: np.ndarray) -> None:
+            def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                 """helper function setting the conditions on all axes"""
-                data_all[..., vp_idx] = vp_value(data_all[..., 1:-1], (np_idx,))
+                data_valid = data_all[..., 1:-1]
+                data_all[..., vp_idx] = vp_value(data_valid, (np_idx,), args=args)
 
         elif self.grid.num_axes == 2:  # 2d grid
 
@@ -516,20 +515,22 @@ class BCBase(metaclass=ABCMeta):
                 num_y = self.grid.shape[1]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1]
                     for j in range(num_y):
-                        val = vp_value(data_all[..., 1:-1, 1:-1], (np_idx, j))
+                        val = vp_value(data_valid, (np_idx, j), args=args)
                         data_all[..., vp_idx, j + 1] = val
 
             elif self.axis == 1:
                 num_x = self.grid.shape[0]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1]
                     for i in range(num_x):
-                        val = vp_value(data_all[..., 1:-1, 1:-1], (i, np_idx))
+                        val = vp_value(data_valid, (i, np_idx), args=args)
                         data_all[..., i + 1, vp_idx] = val
 
         elif self.grid.num_axes == 3:  # 3d grid
@@ -538,36 +539,36 @@ class BCBase(metaclass=ABCMeta):
                 num_y, num_z = self.grid.shape[1:]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
                     for j in range(num_y):
                         for k in range(num_z):
-                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
-                            val = vp_value(arr, (np_idx, j, k))
+                            val = vp_value(data_valid, (np_idx, j, k), args=args)
                             data_all[..., vp_idx, j + 1, k + 1] = val
 
             elif self.axis == 1:
                 num_x, num_z = self.grid.shape[0], self.grid.shape[2]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
                         for k in range(num_z):
-                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
-                            val = vp_value(arr, (i, np_idx, k))
+                            val = vp_value(data_valid, (i, np_idx, k), args=args)
                             data_all[..., i + 1, vp_idx, k + 1] = val
 
             elif self.axis == 2:
                 num_x, num_y = self.grid.shape[:2]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray) -> None:
+                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
+                    data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
                         for j in range(num_y):
-                            arr = data_all[..., 1:-1, 1:-1, 1:-1]
-                            val = vp_value(arr, (i, j, np_idx))
+                            val = vp_value(data_valid, (i, j, np_idx), args=args)
                             data_all[..., i + 1, j + 1, vp_idx] = val
 
         else:
@@ -681,17 +682,18 @@ class ExpressionBC(BCBase):
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
         raise NotImplementedError
 
-    def make_adjacent_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
+    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         raise NotImplementedError
 
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
             data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
         """
         dx = self.grid.discretization[self.axis]
 
@@ -710,9 +712,7 @@ class ExpressionBC(BCBase):
         # calculate the virtual points
         data_all[tuple(idx_write)] = self._expr(values, dx, *coords)
 
-    def make_virtual_point_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
 
         Returns:
@@ -730,7 +730,7 @@ class ExpressionBC(BCBase):
         assert dim <= 3
 
         @register_jitable(inline="always")
-        def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
+        def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
             """evaluate the virtual point at `idx`"""
             _, _, bc_idx = get_arr_1d(arr, idx)
             grid_value = arr[idx]
@@ -1181,9 +1181,7 @@ class ConstBC1stOrderBase(ConstBCBase):
         else:
             return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
 
-    def make_virtual_point_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
 
         Returns:
@@ -1200,7 +1198,9 @@ class ConstBC1stOrderBase(ConstBCBase):
         if self.homogeneous:
 
             @register_jitable(inline="always")
-            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
+            def virtual_point(
+                arr: np.ndarray, idx: Tuple[int, ...], args=None
+            ) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
                 return const() + factor() * arr_1d[..., index]  # type: ignore
@@ -1208,7 +1208,9 @@ class ConstBC1stOrderBase(ConstBCBase):
         else:
 
             @register_jitable(inline="always")
-            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...]) -> float:
+            def virtual_point(
+                arr: np.ndarray, idx: Tuple[int, ...], args=None
+            ) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
                 return (  # type: ignore
@@ -1217,9 +1219,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         return virtual_point  # type: ignore
 
-    def make_adjacent_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
+    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         """returns a function evaluating the value adjacent to a given point
 
         Returns:
@@ -1293,12 +1293,15 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
             data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
         """
         # calculate necessary constants
         const, factor, index = self.get_virtual_point_data()
@@ -1741,9 +1744,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
                 + data[3][bc_idx] * arr_1d[..., data[4]]
             )
 
-    def make_virtual_point_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
 
         Returns:
@@ -1766,7 +1767,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
         if self.homogeneous:
 
             @register_jitable
-            def virtual_point(arr, idx: Tuple[int, ...]):
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None):
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
 
@@ -1779,7 +1780,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
         else:
 
             @register_jitable
-            def virtual_point(arr, idx: Tuple[int, ...]):
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None):
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
 
@@ -1791,9 +1792,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
 
         return virtual_point  # type: ignore
 
-    def make_adjacent_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
+    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         """returns a function evaluating the value adjacent to a given point
 
         Returns:
@@ -1834,7 +1833,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
             @register_jitable
             def adjacent_point(
                 arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
-            ):
+            ) -> float:
                 """evaluate the value adjacent to the current point"""
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
@@ -1843,7 +1842,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
                     data = (zeros, ones, i_point + i_dx, zeros, 0)
 
                 # calculate the values
-                return (
+                return (  # type: ignore
                     data[0]
                     + data[1] * arr_1d[..., data[2]]
                     + data[3] * arr_1d[..., data[4]]
@@ -1855,7 +1854,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
             @register_jitable
             def adjacent_point(
                 arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
-            ):
+            ) -> float:
                 """evaluate the value adjacent to the current point"""
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
@@ -1863,7 +1862,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
                 else:
                     data = (zeros, ones, i_point + i_dx, zeros, 0)
 
-                return (
+                return (  # type: ignore
                     data[0][bc_idx]
                     + data[1][bc_idx] * arr_1d[..., data[2]]
                     + data[3][bc_idx] * arr_1d[..., data[4]]
@@ -1871,12 +1870,15 @@ class ConstBC2ndOrderBase(ConstBCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
             data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
         """
         # calculate necessary constants
         data = self.get_virtual_point_data()
@@ -1968,3 +1970,25 @@ class CurvatureBC(ConstBC2ndOrderBase):
         else:
             i1, i2 = 0, 1
         return (value, f1, i1, f2, i2)
+
+
+def registered_boundary_condition_classes() -> Dict[str, Type[BCBase]]:
+    """returns all boundary condition classes that are currently defined
+
+    Returns:
+        dict: a dictionary with the names of the boundary condition classes
+    """
+    return {
+        cls_name: cls
+        for cls_name, cls in BCBase._subclasses.items()
+        if not ("Base" in cls_name or cls_name.startswith("_"))  # skip internal classes
+    }
+
+
+def registered_boundary_condition_names() -> Dict[str, Type[BCBase]]:
+    """returns all named boundary conditions that are currently defined
+
+    Returns:
+        dict: a dictionary with the names of the boundary conditions that can be used
+    """
+    return {cls_name: cls for cls_name, cls in BCBase._conditions.items()}

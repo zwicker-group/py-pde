@@ -8,11 +8,12 @@ This module handles the boundaries of all axes of a grid. It only defines
 
 from __future__ import annotations
 
-from typing import Callable, List, Sequence, Union
+from typing import List, Sequence, Union
 
 import numpy as np
 from numba.extending import register_jitable
 
+from ...tools.typing import GhostCellSetter
 from ..base import GridBase, PeriodicityError
 from .axis import BoundaryPair, BoundaryPairData, get_boundary_axis
 from .local import BCDataError
@@ -196,38 +197,42 @@ class Boundaries(list):
         """Domain: with differentiated versions of all boundary conditions"""
         return self.__class__([b.differentiated for b in self])
 
-    def set_ghost_cells(self, data_all: np.ndarray) -> None:
+    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cells for all boundaries
 
         Args:
             data_all (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
         """
         for b in self:
-            b.set_ghost_cells(data_all)
+            b.set_ghost_cells(data_all, args=args)
 
-    def make_ghost_cell_setter(self) -> Callable[[np.ndarray], None]:
+    def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells on a full array"""
         # get the setters for all axes
         ghost_cell_setters = [b.make_ghost_cell_setter() for b in self]
-        SetterType = Callable[[np.ndarray], None]
 
-        def chain(fs: Sequence[SetterType], inner: SetterType = None) -> SetterType:
+        def chain(
+            fs: Sequence[GhostCellSetter], inner: GhostCellSetter = None
+        ) -> GhostCellSetter:
             """helper function composing setters of all axes recursively"""
             first, rest = fs[0], fs[1:]
 
             if inner is None:
 
                 @register_jitable
-                def wrap(data_all: np.ndarray) -> None:
-                    first(data_all)
+                def wrap(data_all: np.ndarray, args=None) -> None:
+                    first(data_all, args=args)
 
             else:
 
                 @register_jitable
-                def wrap(data_all: np.ndarray) -> None:
-                    inner(data_all)  # type: ignore
-                    first(data_all)
+                def wrap(data_all: np.ndarray, args=None) -> None:
+                    inner(data_all, args=args)  # type: ignore
+                    first(data_all, args=args)
 
             if rest:
                 return chain(rest, wrap)

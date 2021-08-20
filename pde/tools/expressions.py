@@ -430,7 +430,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
     def __call__(self, *args, **kwargs) -> NumberOrArray:
         """return the value of the expression for the given values"""
-        return self._get_function_cached(single_arg=False)(*args, **kwargs)  # type: ignore
+        return self._get_function_cached(single_arg=False)(*args, **kwargs)
 
     @cached_method()
     def get_compiled(self, single_arg: bool = False) -> Callable[..., NumberOrArray]:
