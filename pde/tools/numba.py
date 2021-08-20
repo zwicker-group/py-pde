@@ -47,7 +47,7 @@ NUMBA_DEBUG = False  # enable additional debug information
 NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
 
 
-TFunc = TypeVar("TFunc")
+TFunc = TypeVar("TFunc", bound="Callable")
 
 
 def numba_environment() -> Dict[str, Any]:
@@ -168,7 +168,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
 
     # log some details
     logger = logging.getLogger(__name__)
-    name = function.__name__  # type: ignore
+    name = function.__name__
     if kwargs["nopython"]:  # standard case
         logger.info("Compile `%s` with parallel=%s", name, jit_kwargs["parallel"])
     else:  # this might imply numba falls back to object mode

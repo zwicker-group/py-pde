@@ -11,12 +11,12 @@ non-periodic axes have more option, which are represented by
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional, Tuple, Union
+from typing import Callable, Dict, Tuple, Union
 
 import numpy as np
 from numba.extending import register_jitable
 
-from ...tools.typing import NumberOrArray
+from ...tools.typing import GhostCellSetter, NumberOrArray, VirtualPointEvaluator
 from ..base import DomainError, GridBase, PeriodicityError
 from .local import BCBase, BCDataError, BoundaryData, _make_get_arr_1d, _PeriodicBC
 
@@ -153,7 +153,9 @@ class BoundaryAxisBase:
 
         return evaluate  # type: ignore
 
-    def make_virtual_point_evaluators(self) -> Tuple[Callable, Callable]:
+    def make_virtual_point_evaluators(
+        self,
+    ) -> Tuple[VirtualPointEvaluator, VirtualPointEvaluator]:
         """returns two functions evaluating the value at virtual support points
 
         Args:
@@ -268,7 +270,7 @@ class BoundaryAxisBase:
         self.low.set_ghost_cells(data_all, args=args)
         self.high.set_ghost_cells(data_all, args=args)
 
-    def make_ghost_cell_setter(self) -> Callable[[np.ndarray, Optional[Any]], None]:
+    def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this axis on a full array"""
 
         ghost_cell_setter_low = self.low.make_ghost_cell_setter()
@@ -277,8 +279,8 @@ class BoundaryAxisBase:
         @register_jitable
         def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
             """helper function setting the conditions on all axes"""
-            ghost_cell_setter_low(data_all, args=args)  # type: ignore
-            ghost_cell_setter_high(data_all, args=args)  # type: ignore
+            ghost_cell_setter_low(data_all, args=args)
+            ghost_cell_setter_high(data_all, args=args)
 
         return ghost_cell_setter  # type: ignore
 

@@ -39,7 +39,12 @@ from numba.extending import register_jitable
 
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import address_as_void_pointer
-from ...tools.typing import FloatNumerical
+from ...tools.typing import (
+    AdjacentEvaluator,
+    FloatNumerical,
+    GhostCellSetter,
+    VirtualPointEvaluator,
+)
 from ..base import GridBase
 
 BoundaryData = Union[Dict, str, "BCBase"]
@@ -469,14 +474,10 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def make_virtual_point_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         pass
 
-    def make_adjacent_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
+    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         raise NotImplementedError
 
     @property
@@ -493,7 +494,7 @@ class BCBase(metaclass=ABCMeta):
                 The full field data including ghost points
         """
 
-    def make_ghost_cell_setter(self) -> Callable[[np.ndarray, Optional[Any]], None]:
+    def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this boundary"""
         # get information of the virtual points (ghost cells)
         vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
@@ -506,7 +507,7 @@ class BCBase(metaclass=ABCMeta):
             def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                 """helper function setting the conditions on all axes"""
                 data_valid = data_all[..., 1:-1]
-                data_all[..., vp_idx] = vp_value(data_valid, (np_idx,), args=args)  # type: ignore
+                data_all[..., vp_idx] = vp_value(data_valid, (np_idx,), args=args)
 
         elif self.grid.num_axes == 2:  # 2d grid
 
@@ -518,7 +519,7 @@ class BCBase(metaclass=ABCMeta):
                     """helper function setting the conditions on all axes"""
                     data_valid = data_all[..., 1:-1, 1:-1]
                     for j in range(num_y):
-                        val = vp_value(data_valid, (np_idx, j), args=args)  # type: ignore
+                        val = vp_value(data_valid, (np_idx, j), args=args)
                         data_all[..., vp_idx, j + 1] = val
 
             elif self.axis == 1:
@@ -529,7 +530,7 @@ class BCBase(metaclass=ABCMeta):
                     """helper function setting the conditions on all axes"""
                     data_valid = data_all[..., 1:-1, 1:-1]
                     for i in range(num_x):
-                        val = vp_value(data_valid, (i, np_idx), args=args)  # type: ignore
+                        val = vp_value(data_valid, (i, np_idx), args=args)
                         data_all[..., i + 1, vp_idx] = val
 
         elif self.grid.num_axes == 3:  # 3d grid
@@ -543,7 +544,7 @@ class BCBase(metaclass=ABCMeta):
                     data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
                     for j in range(num_y):
                         for k in range(num_z):
-                            val = vp_value(data_valid, (np_idx, j, k), args=args)  # type: ignore
+                            val = vp_value(data_valid, (np_idx, j, k), args=args)
                             data_all[..., vp_idx, j + 1, k + 1] = val
 
             elif self.axis == 1:
@@ -555,7 +556,7 @@ class BCBase(metaclass=ABCMeta):
                     data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
                         for k in range(num_z):
-                            val = vp_value(data_valid, (i, np_idx, k), args=args)  # type: ignore
+                            val = vp_value(data_valid, (i, np_idx, k), args=args)
                             data_all[..., i + 1, vp_idx, k + 1] = val
 
             elif self.axis == 2:
@@ -567,7 +568,7 @@ class BCBase(metaclass=ABCMeta):
                     data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
                         for j in range(num_y):
-                            val = vp_value(data_valid, (i, j, np_idx), args=args)  # type: ignore
+                            val = vp_value(data_valid, (i, j, np_idx), args=args)
                             data_all[..., i + 1, j + 1, vp_idx] = val
 
         else:
@@ -681,9 +682,7 @@ class ExpressionBC(BCBase):
     def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
         raise NotImplementedError
 
-    def make_adjacent_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
+    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         raise NotImplementedError
 
     def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
@@ -713,9 +712,7 @@ class ExpressionBC(BCBase):
         # calculate the virtual points
         data_all[tuple(idx_write)] = self._expr(values, dx, *coords)
 
-    def make_virtual_point_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
 
         Returns:
@@ -1184,9 +1181,7 @@ class ConstBC1stOrderBase(ConstBCBase):
         else:
             return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
 
-    def make_virtual_point_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
 
         Returns:
@@ -1224,9 +1219,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         return virtual_point  # type: ignore
 
-    def make_adjacent_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
+    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         """returns a function evaluating the value adjacent to a given point
 
         Returns:
@@ -1751,9 +1744,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
                 + data[3][bc_idx] * arr_1d[..., data[4]]
             )
 
-    def make_virtual_point_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], FloatNumerical]:
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
 
         Returns:
@@ -1801,9 +1792,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
 
         return virtual_point  # type: ignore
 
-    def make_adjacent_evaluator(
-        self,
-    ) -> Callable[[np.ndarray, int, Tuple[int, ...]], FloatNumerical]:
+    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         """returns a function evaluating the value adjacent to a given point
 
         Returns:
@@ -1844,7 +1833,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
             @register_jitable
             def adjacent_point(
                 arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
-            ):
+            ) -> float:
                 """evaluate the value adjacent to the current point"""
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
@@ -1853,7 +1842,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
                     data = (zeros, ones, i_point + i_dx, zeros, 0)
 
                 # calculate the values
-                return (
+                return (  # type: ignore
                     data[0]
                     + data[1] * arr_1d[..., data[2]]
                     + data[3] * arr_1d[..., data[4]]
@@ -1865,7 +1854,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
             @register_jitable
             def adjacent_point(
                 arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
-            ):
+            ) -> float:
                 """evaluate the value adjacent to the current point"""
                 # determine the parameters for evaluating adjacent point
                 if i_point == i_bndry:
@@ -1873,7 +1862,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
                 else:
                     data = (zeros, ones, i_point + i_dx, zeros, 0)
 
-                return (
+                return (  # type: ignore
                     data[0][bc_idx]
                     + data[1][bc_idx] * arr_1d[..., data[2]]
                     + data[3][bc_idx] * arr_1d[..., data[4]]

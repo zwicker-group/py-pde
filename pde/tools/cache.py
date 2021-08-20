@@ -25,9 +25,11 @@ import functools
 import logging
 import numbers
 from hashlib import sha1
-from typing import Callable, Dict, Iterable, Optional
+from typing import Callable, Dict, Iterable, Optional, TypeVar
 
 import numpy as np
+
+TFunc = TypeVar("TFunc", bound="Callable")
 
 
 def objects_equal(a, b) -> bool:
@@ -513,7 +515,7 @@ class _class_cache:
 
         return clear_cache
 
-    def _get_wrapped_function(self, func: Callable) -> Callable:
+    def _get_wrapped_function(self, func: TFunc) -> TFunc:
         """return the wrapped method, which implements the cache"""
 
         if self.name is None:
@@ -573,7 +575,7 @@ class _class_cache:
         # initialize the logger
         wrapper._logger = logging.getLogger(__name__)  # type: ignore
 
-        return wrapper
+        return wrapper  # type: ignore
 
 
 class cached_property(_class_cache):
@@ -647,7 +649,7 @@ class cached_method(_class_cache):
     `property\_name` is the name of the property
     """
 
-    def __call__(self, method: Callable) -> Callable:
+    def __call__(self, method: TFunc) -> TFunc:
         """apply the cache decorator to the method"""
 
         wrapper = self._get_wrapped_function(method)

@@ -1475,7 +1475,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # TODO: use jit_allocated_out with pre-calculated shape
 
         @jit
-        def get_boundary_values(data: np.ndarray = None, out: np.ndarray = None):
+        def get_boundary_values(
+            data: np.ndarray = None, out: np.ndarray = None
+        ) -> NumberOrArray:
             """interpolate the field at the boundary
 
             Args:
@@ -1489,13 +1491,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Returns:
                 :class:`~numpy.ndarray`: The interpolated values on the boundary.
             """
-            res = interpolator(points, data)
+            res = interpolator(points, data)  # type: ignore
             if out is None:
                 return res
             else:
                 # the following just copies the data from res to out. It is a
                 # workaround for a bug in numba existing up to at least version 0.49
-                out[...] = res[()]
+                out[...] = res[()]  # type: ignore
                 return out
 
         return get_boundary_values  # type: ignore

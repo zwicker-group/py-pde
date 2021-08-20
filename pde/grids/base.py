@@ -37,7 +37,7 @@ from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, classproperty
 from ..tools.numba import jit, jit_allocate_out
-from ..tools.typing import FloatNumerical, NumberOrArray, OperatorType
+from ..tools.typing import CellVolume, FloatNumerical, NumberOrArray, OperatorType
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
@@ -47,7 +47,7 @@ PI_4 = 4 * np.pi
 PI_43 = 4 / 3 * np.pi
 
 
-class Operator(NamedTuple):
+class OperatorInfo(NamedTuple):
     """stores information about an operator"""
 
     factory: Callable[..., OperatorType]
@@ -123,7 +123,7 @@ class GridBase(metaclass=ABCMeta):
     """Base class for all grids defining common methods and interfaces"""
 
     _subclasses: Dict[str, "GridBase"] = {}  # all classes inheriting from this
-    _operators: Dict[str, Operator] = {}  # all operators defined for the grid
+    _operators: Dict[str, OperatorInfo] = {}  # all operators defined for the grid
 
     # properties that are defined in subclasses
     dim: int  # int: The spatial dimension in which the grid is embedded
@@ -589,7 +589,7 @@ class GridBase(metaclass=ABCMeta):
 
         def register_operator(factor_func_arg: Callable):
             """helper function to register the operator"""
-            cls._operators[name] = Operator(
+            cls._operators[name] = OperatorInfo(
                 factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out
             )
             return factor_func_arg
@@ -610,7 +610,7 @@ class GridBase(metaclass=ABCMeta):
             result |= set(anycls._operators.keys())  # type: ignore
         return result
 
-    def _get_operator_info(self, operator: Union[str, Operator]) -> Operator:
+    def _get_operator_info(self, operator: Union[str, OperatorInfo]) -> OperatorInfo:
         """return the operator defined on this grid
 
         Args:
@@ -620,9 +620,9 @@ class GridBase(metaclass=ABCMeta):
                 from the :attr:`~pde.grids.base.GridBase.operators` attribute.
 
         Returns:
-            :class:`~pde.grids.base.Operator`: information for the operator
+            :class:`~pde.grids.base.OperatorInfo`: information for the operator
         """
-        if isinstance(operator, Operator):
+        if isinstance(operator, OperatorInfo):
             return operator
 
         # obtain all parent classes, except `object`
@@ -641,7 +641,7 @@ class GridBase(metaclass=ABCMeta):
     @cached_method()
     def make_operator_no_bc(
         self,
-        operator: Union[str, Operator],
+        operator: Union[str, OperatorInfo],
         **kwargs,
     ) -> OperatorType:
         """return a compiled function applying an operator without boundary conditions
@@ -673,7 +673,7 @@ class GridBase(metaclass=ABCMeta):
     @fill_in_docstring
     def make_operator(
         self,
-        operator: Union[str, Operator],
+        operator: Union[str, OperatorInfo],
         bc: BoundariesData,
         **kwargs,
     ) -> Callable[[np.ndarray], np.ndarray]:
@@ -731,7 +731,7 @@ class GridBase(metaclass=ABCMeta):
                 arr_full = np.empty(shape_in_full, dtype=arr.dtype)
                 arr_valid = get_valid(arr_full)
                 arr_valid[:] = arr
-                set_ghost_cells(arr_full)  # type: ignore
+                set_ghost_cells(arr_full)
 
                 # apply operator
                 operator_raw(arr_full, out)  # type: ignore
@@ -766,7 +766,7 @@ class GridBase(metaclass=ABCMeta):
 
     def get_operator(
         self,
-        operator: Union[str, Operator],
+        operator: Union[str, OperatorInfo],
         bc: BoundariesData,
         **kwargs,
     ) -> Callable[[np.ndarray], np.ndarray]:
@@ -776,7 +776,7 @@ class GridBase(metaclass=ABCMeta):
             "`get_operator` is deprecated. Use `make_operator` instead",
             DeprecationWarning,
         )
-        return self.make_operator(operator, bc, **kwargs)  # type: ignore
+        return self.make_operator(operator, bc, **kwargs)
 
     def get_subgrid(self, indices: Sequence[int]) -> GridBase:
         """return a subgrid of only the specified axes"""
@@ -890,9 +890,7 @@ class GridBase(metaclass=ABCMeta):
         return normalize_point  # type: ignore
 
     @cached_method()
-    def make_cell_volume_compiled(
-        self, flat_index: bool = False
-    ) -> Callable[..., float]:
+    def make_cell_volume_compiled(self, flat_index: bool = False) -> CellVolume:
         """return a compiled function returning the volume of a grid cell
 
         Args:
