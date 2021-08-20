@@ -1017,8 +1017,8 @@ class GridBase(metaclass=ABCMeta):
                 """
                 # determine surrounding points and their weights
                 if cell_coords:
-                    c_lx, d_lx = divmod(point[0] - lo_x, 1.0)
-                    c_ly, d_ly = divmod(point[1] - lo_y, 1.0)
+                    c_lx, d_lx = divmod(point[0], 1.0)
+                    c_ly, d_ly = divmod(point[1], 1.0)
                 else:
                     c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
                     c_ly, d_ly = divmod((point[1] - lo_y) / dy - 0.5, 1.0)
@@ -1047,11 +1047,10 @@ class GridBase(metaclass=ABCMeta):
                         if inside_x or inside_y:
                             value += w * data_full[..., c_x + 1, c_y + 1]
                             weight += w
-                        # else: ignore points that are not inside any of the
-                        # axes, where we would have to do interpolation along
-                        # two axes. This would in principle be possible for
-                        # periodic boundary conditions, but this is tedious to
-                        # implement correctly.
+                        # else: ignore points that are not inside any of the axes, where
+                        # we would have to do interpolation along two axes. This would
+                        # in principle be possible for periodic boundary conditions, but
+                        # this is tedious to implement correctly.
 
                 if weight == 0:
                     if fill is None:
@@ -1105,7 +1104,7 @@ class GridBase(metaclass=ABCMeta):
                         c_x %= size_x
                         inside_x = True
                     else:
-                        inside_x = -1 < c_x < size_x
+                        inside_x = -1 <= c_x <= size_x
 
                     for j in range(2):
                         c_y = int(c_ly) + j
@@ -1113,7 +1112,7 @@ class GridBase(metaclass=ABCMeta):
                             c_y %= size_y
                             inside_y = True
                         else:
-                            inside_y = -1 < c_y < size_y
+                            inside_y = -1 <= c_y <= size_y
 
                         for k in range(2):
                             c_z = int(c_lz) + k
@@ -1121,17 +1120,16 @@ class GridBase(metaclass=ABCMeta):
                                 c_z %= size_z
                                 inside_z = True
                             else:
-                                inside_z = -1 < c_z < size_z
+                                inside_z = -1 <= c_z <= size_z
 
                             w = w_x[i] * w_y[j] * w_z[k]
                             if inside_x or inside_y or inside_z:
                                 value += w * data_full[..., c_x + 1, c_y + 1, c_z + 1]
                                 weight += w
-                            # else: ignore points that would need to be
-                            # interpolated along more than one axis.
-                            # Implementing this would in principle be possible
-                            # for periodic boundary conditions, but this is
-                            # tedious to do correctly.
+                            # else: ignore points that would need to be interpolated
+                            # along more than one axis. Implementing this would in
+                            # principle be possible for periodic boundary conditions,
+                            # but this is tedious to do correctly.
 
                 if weight == 0:
                     if fill is None:
