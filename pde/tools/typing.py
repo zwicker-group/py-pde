@@ -4,7 +4,7 @@ Provides support for mypy type checking of the package
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Any, Protocol, Sequence, Tuple, Union
+from typing import Any, Callable, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -15,28 +15,38 @@ FloatNumerical = Union[float, np.ndarray]
 ArrayLike = Union[NumberOrArray, Sequence[NumberOrArray], Sequence[Sequence[Any]]]
 
 
-class OperatorType(Protocol):
-    def __call__(self, arr: np.ndarray, out: np.ndarray) -> None:
-        pass
+try:
+    from typing import Protocol
 
+except ImportError:
+    # Protocol is not defined (likely because python version <= 3.7
+    OperatorType = Callable[[np.ndarray, np.ndarray], None]
+    AdjacentEvaluator = Callable[[np.ndarray, int, Tuple[int, ...]], float]
+    CellVolume = Callable[..., float]
+    GhostCellSetter = Callable[..., None]
+    VirtualPointEvaluator = Callable[..., float]
 
-class CellVolume(Protocol):
-    def __call__(self, *args: int) -> float:
-        pass
+else:
+    # Protocol is defined
 
+    class OperatorType(Protocol):  # type: ignore
+        def __call__(self, arr: np.ndarray, out: np.ndarray) -> None:
+            pass
 
-class GhostCellSetter(Protocol):
-    def __call__(self, data_all: np.ndarray, args=None) -> None:
-        pass
+    class AdjacentEvaluator(Protocol):  # type: ignore
+        def __call__(
+            self, arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
+        ) -> float:
+            pass
 
+    class CellVolume(Protocol):  # type: ignore
+        def __call__(self, *args: int) -> float:
+            pass
 
-class AdjacentEvaluator(Protocol):
-    def __call__(
-        self, arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
-    ) -> float:
-        pass
+    class GhostCellSetter(Protocol):  # type: ignore
+        def __call__(self, data_all: np.ndarray, args=None) -> None:
+            pass
 
-
-class VirtualPointEvaluator(Protocol):
-    def __call__(self, arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
-        pass
+    class VirtualPointEvaluator(Protocol):  # type: ignore
+        def __call__(self, arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
+            pass
