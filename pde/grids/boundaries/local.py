@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numba as nb
 import numpy as np
@@ -196,8 +196,8 @@ class BCBase(metaclass=ABCMeta):
     homogeneous: bool
     """ bool: determines whether the boundary condition depends on space """
 
-    _subclasses: Dict[str, BCBase] = {}  # all classes inheriting from this
-    _conditions: Dict[str, BCBase] = {}  # mapping from all names to classes
+    _subclasses: Dict[str, Type[BCBase]] = {}  # all classes inheriting from this
+    _conditions: Dict[str, Type[BCBase]] = {}  # mapping from all names to classes
 
     def __init__(
         self,
@@ -1981,3 +1981,25 @@ class CurvatureBC(ConstBC2ndOrderBase):
         else:
             i1, i2 = 0, 1
         return (value, f1, i1, f2, i2)
+
+
+def registered_boundary_condition_classes() -> Dict[str, Type[BCBase]]:
+    """returns all boundary condition classes that are currently defined
+
+    Returns:
+        dict: a dictionary with the names of the boundary condition classes
+    """
+    return {
+        cls_name: cls
+        for cls_name, cls in BCBase._subclasses.items()
+        if not ("Base" in cls_name or cls_name.startswith("_"))  # skip internal classes
+    }
+
+
+def registered_boundary_condition_names() -> Dict[str, Type[BCBase]]:
+    """returns all named boundary conditions that are currently defined
+
+    Returns:
+        dict: a dictionary with the names of the boundary conditions that can be used
+    """
+    return {cls_name: cls for cls_name, cls in BCBase._conditions.items()}

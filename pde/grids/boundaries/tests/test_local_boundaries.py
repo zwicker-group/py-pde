@@ -6,7 +6,12 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, ScalarField, UnitGrid
-from pde.grids.boundaries.local import BCBase, _get_arr_1d
+from pde.grids.boundaries.local import (
+    BCBase,
+    _get_arr_1d,
+    registered_boundary_condition_classes,
+    registered_boundary_condition_names,
+)
 
 
 def test_get_arr_1d():
@@ -341,3 +346,9 @@ def test_expression_bc_derivative(dim):
     np.testing.assert_allclose(result.data, 0.0)
     result = field.laplace(bc2)
     np.testing.assert_allclose(result.data, 0.0)
+
+
+def test_getting_registered_bcs():
+    """test the functions that return the registered BCs"""
+    assert isinstance(registered_boundary_condition_classes(), dict)
+    assert isinstance(registered_boundary_condition_names(), dict)

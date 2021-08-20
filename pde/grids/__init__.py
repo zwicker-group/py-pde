@@ -28,9 +28,9 @@ Inheritance structure of the classes:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-# import all operator modules to register the operators
-from . import operators
-from .base import DomainError, PeriodicityError, registered_operators
+from . import operators  # import all operator modules to register them
+from .base import registered_operators
+from .boundaries import *
 from .cartesian import CartesianGrid, UnitGrid
 from .cylindrical import CylindricalGrid, CylindricalSymGrid
 from .spherical import PolarGrid, PolarSymGrid, SphericalGrid, SphericalSymGrid
