@@ -1197,7 +1197,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         if self.homogeneous:
 
-            @register_jitable(inline="always")
+            @nb.jit
             def virtual_point(
                 arr: np.ndarray, idx: Tuple[int, ...], args=None
             ) -> float:
@@ -1207,7 +1207,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         else:
 
-            @register_jitable(inline="always")
+            @nb.jit
             def virtual_point(
                 arr: np.ndarray, idx: Tuple[int, ...], args=None
             ) -> float:
