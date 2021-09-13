@@ -114,6 +114,6 @@ def test_interactive_plotting():
     with get_memory_storage(field) as storage:
         for i in range(8):
             field.data = i
-            storage.append(field.data, i)
+            storage.append(field, i)
 
     plotting.plot_interactive(storage, viewer_args={"show": False, "close": True})
