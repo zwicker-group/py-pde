@@ -14,6 +14,8 @@ Functions for creating movies of simulation results
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+
+import pathlib
 from typing import Any, Dict
 
 from ..storage.base import StorageBase
@@ -54,15 +56,18 @@ class Movie:
         self.dpi = dpi
         self.kwargs = kwargs
 
-        # test whether ffmpeg is available
-        from matplotlib.animation import FFMpegWriter
-
-        if not FFMpegWriter.isAvailable():
+        # check whether ffmpeg is available
+        if not self.is_available():
             raise RuntimeError(
                 "FFMpegWriter is not available. This is most likely because a suitable "
                 "installation of FFMpeg was not found. See ffmpeg.org for how to "
                 "install it properly on your system."
             )
+
+        # check whether the path to which the movie is written is available
+        folder = pathlib.Path(self.filename).parent
+        if not folder.exists() or not folder.is_dir():
+            raise OSError(f"Folder `{folder}` does not exist")
 
         self._writer = None
 
