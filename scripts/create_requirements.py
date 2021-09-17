@@ -74,6 +74,9 @@ REQUIREMENTS = [
         for_tests=True,
     ),
     Requirement(
+        name="ipywidgets", version="7", usage="Jupyter notebook support", optional=True
+    ),
+    Requirement(
         name="napari",
         version="0.4",
         usage="Displaying images interactively",

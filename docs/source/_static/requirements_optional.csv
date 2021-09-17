@@ -1,5 +1,6 @@
 Package,Usage
 h5py,Storing data in the hierarchical file format
+ipywidgets,Jupyter notebook support
 napari,Displaying images interactively
 pandas,Handling tabular data
 pyfftw,Faster Fourier transforms

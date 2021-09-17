@@ -56,8 +56,8 @@ setup(
     extras_require={
         "hdf": ["h5py>=2.10"],
         "io": ["h5py>=2.10", "pandas>=1.2"],
-        "progress": ["tqdm>=4.45"],
-        "interactive": ["napari>=0.3"],
+        "progress": ["tqdm>=4.45", "ipywidgets>=7"],
+        "interactive": ["napari>=0.3", "ipywidgets>=7"],
     },
     classifiers=[
         "Development Status :: 4 - Beta",
