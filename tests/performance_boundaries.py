@@ -46,7 +46,7 @@ def main():
             laplace = grid.get_operator("laplace", bc=bcs)
             # call once to pre-compile and test result
             np.testing.assert_allclose(laplace(field.data), result)
-            # estimate the spped
+            # estimate the speed
             speed = estimate_computation_speed(laplace, field.data)
             print(f"{bc:>8s}:{int(speed):>9d}")
 
