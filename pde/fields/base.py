@@ -946,6 +946,22 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(grid, data=data, label=label)
 
     @classmethod
+    def get_class_by_rank(cls, rank: int) -> Type[DataFieldBase]:
+        """return a :class:`DataFieldBase` subclass describing a field with a given rank
+
+        Args:
+            rank (int): The rank of the tensor field
+        """
+        for field_cls in cls._subclasses.values():
+            if (
+                issubclass(field_cls, DataFieldBase)
+                and not isabstract(field_cls)
+                and field_cls.rank == rank
+            ):
+                return field_cls
+        raise RuntimeError(f"Could not find field class for rank {rank}")
+
+    @classmethod
     def from_state(
         cls, attributes: Dict[str, Any], data: np.ndarray = None
     ) -> DataFieldBase:
@@ -1600,7 +1616,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # get information about the operator
         operator_info = self.grid._get_operator_info(operator)
-        out_cls = _get_field_class_by_rank(operator_info.rank_out)
+        out_cls = self.get_class_by_rank(operator_info.rank_out)
 
         # prepare the output field
         if out is None:
@@ -2111,7 +2127,6 @@ def _get_field_class_by_rank(rank: int) -> Type[DataFieldBase]:
     Args:
         rank (int): The rank of the tensor field
     """
-    for cls in FieldBase._subclasses.values():
-        if issubclass(cls, DataFieldBase) and not isabstract(cls) and cls.rank == rank:
-            return cls
-    raise RuntimeError(f"Could not find field class for rank {rank}")
+    # deprecated on 2021-09-17
+    warnings.warn("Use DataFieldBase.get_class_by_rank instead.", DeprecationWarning)
+    return DataFieldBase.get_class_by_rank(rank)

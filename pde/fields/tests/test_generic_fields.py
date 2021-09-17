@@ -7,7 +7,7 @@ import pytest
 from scipy import ndimage
 
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
-from pde.fields.base import FieldBase, _get_field_class_by_rank
+from pde.fields.base import DataFieldBase, FieldBase
 from pde.grids import (
     CartesianGrid,
     CylindricalSymGrid,
@@ -476,8 +476,8 @@ def test_complex_operator(example_grid):
 
 def test_get_field_class_by_rank():
     """test _get_field_class_by_rank function"""
-    assert _get_field_class_by_rank(0) is ScalarField
-    assert _get_field_class_by_rank(1) is VectorField
-    assert _get_field_class_by_rank(2) is Tensor2Field
+    assert DataFieldBase.get_class_by_rank(0) is ScalarField
+    assert DataFieldBase.get_class_by_rank(1) is VectorField
+    assert DataFieldBase.get_class_by_rank(2) is Tensor2Field
     with pytest.raises(RuntimeError):
-        _get_field_class_by_rank(3)
+        DataFieldBase.get_class_by_rank(3)
