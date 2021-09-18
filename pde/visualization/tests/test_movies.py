@@ -53,3 +53,10 @@ def test_movie_scalar(tmp_path):
         pass  # can happen when ffmpeg is not installed
     else:
         assert path.stat().st_size > 0
+
+
+@pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
+def test_movie_wrong_path(tmp_path):
+    """test whether there is a useful error message when path doesn't exist"""
+    with pytest.raises(OSError):
+        movies.Movie(tmp_path / "unavailable" / "test.mov")
