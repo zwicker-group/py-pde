@@ -34,15 +34,6 @@ except ImportError:
         return isinstance(function, Dispatcher)
 
 
-# global settings for numba. These are currently global constants of this module, but
-# they will be replaced by the pde.config system. Until at least 2021-09-01, setting
-# these global variables will still affect the internal configuration, but after that
-# date the support will be removed in favor of the actual configuration system.
-NUMBA_PARALLEL = True  # enable parallel numba
-NUMBA_FASTMATH = True  # enable fastmath switch (ignores NaNs!)
-NUMBA_DEBUG = False  # enable additional debug information
-
-
 # numba version as a list of integers
 NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
 

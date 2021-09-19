@@ -31,9 +31,6 @@ TODO
 * Think about logger names (add `pde.` before class name)
 * Count the number of compilations and store it in the info field of the simulation
     - raise a warning when this number became too large in a simulation?
-* Think about interface for changing boundary values in numba
-    - We might need to support optional `bc` argument for operators
-    - Try using https://cffi.readthedocs.io/en/latest/overview.html#purely-for-performance-api-level-out-of-line 
 * Support 3d plots in plot (use for Laplace and Poisson eq) 
 * Add Glossary or something to development guide
     - e.g., state = attributes + data
