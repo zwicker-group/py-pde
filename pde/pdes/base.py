@@ -512,9 +512,8 @@ class PDEBase(metaclass=ABCMeta):
         final_state = controller.run(state, dt)
 
         if ret_info:
-            info = controller.info.copy()
-            info.pop("solver_class")  # remove redundant information
-            info["solver"] = solver.info.copy()
+            info = controller.diagnostics.copy()
+            info["controller"].pop("solver_class")  # remove redundant information
             return final_state, info
         else:
             return final_state

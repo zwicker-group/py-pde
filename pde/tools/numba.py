@@ -37,6 +37,9 @@ except ImportError:
 # numba version as a list of integers
 NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
 
+# global variable counting the number of compilations
+JIT_COUNT = 0
+
 
 TFunc = TypeVar("TFunc", bound="Callable")
 
@@ -164,6 +167,10 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
         logger.info("Compile `%s` with parallel=%s", name, jit_kwargs["parallel"])
     else:  # this might imply numba falls back to object mode
         logger.warning("Compile `%s` with nopython=False", name)
+
+    # increase the compilation counter by one
+    global JIT_COUNT
+    JIT_COUNT += 1
 
     return nb.jit(signature, **jit_kwargs)(function)  # type: ignore
 
