@@ -13,60 +13,34 @@ from .misc import module_available
 from .parameters import Parameter
 
 
-class ParameterModuleConstant:
-    """special parameter class to access module constants as configuration values"""
-
-    def __init__(
-        self, name: str, module_path: str, variable: str, description: str = ""
-    ):
-        """
-        Args:
-            name (str): The name of the parameter
-            module_path (str): The path of the module in which the constants is defined
-            variable: The name of the constant
-        """
-        self.name = name
-        self.module_path = module_path
-        self.variable = variable
-        self.description = description
-
-    def get(self):
-        """obtain the value of the constant"""
-        mod = importlib.import_module(self.module_path)
-        return getattr(mod, self.variable)
-
-
 # define default parameter values
-DEFAULT_CONFIG: List[Union[Parameter, ParameterModuleConstant]] = [
+DEFAULT_CONFIG: List[Parameter] = [
+    Parameter(
+        "numba.debug",
+        False,
+        bool,
+        "Determines whether numba used the debug mode for compilation. If enabled, "
+        "this emits extra information that might be useful for debugging.",
+    ),
+    Parameter(
+        "numba.fastmath",
+        True,
+        bool,
+        "Determines whether the fastmath flag is set during compilation. This affects "
+        "the precision of the mathematical calculations.",
+    ),
+    Parameter(
+        "numba.parallel",
+        True,
+        bool,
+        "Determines whether multiple cores are used in numba-compiled code.",
+    ),
     Parameter(
         "numba.parallel_threshold",
         256 ** 2,
         int,
         "Minimal number of support points before multithreading or multiprocessing is "
         "enabled in the numba compilations.",
-    ),
-    # The next items are for backward compatibility with previous mechanisms for
-    # setting parameters using global constants. This fix was introduced on 2021-02-04
-    # and will likely be removed around 2021-09-01.
-    ParameterModuleConstant(
-        "numba.parallel",
-        "pde.tools.numba",
-        "NUMBA_PARALLEL",
-        "Determines whether multiple cores are used in numba-compiled code.",
-    ),
-    ParameterModuleConstant(
-        "numba.fastmath",
-        "pde.tools.numba",
-        "NUMBA_FASTMATH",
-        "Determines whether the fastmath flag is set during compilation. This affects "
-        "the precision of the mathematical calculations.",
-    ),
-    ParameterModuleConstant(
-        "numba.debug",
-        "pde.tools.numba",
-        "NUMBA_DEBUG",
-        "Determines whether numba used the debug mode for compilation. If enabled, "
-        "this emits extra information that might be useful for debugging.",
     ),
 ]
 
@@ -101,8 +75,6 @@ class Config(collections.UserDict):
         parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
-        elif isinstance(parameter, ParameterModuleConstant):
-            return parameter.get()
         else:
             return parameter
 

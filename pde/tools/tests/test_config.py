@@ -70,28 +70,3 @@ def test_config_modes():
 
     c = Config({"new_value": "value"}, mode="locked")
     assert c["new_value"] == "value"
-
-
-def test_config_special_values():
-    """test typical config objects"""
-    from pde.tools.numba import NUMBA_PARALLEL
-
-    c = Config(mode="insert")
-    assert c["numba.parallel"] == NUMBA_PARALLEL
-    c["numba.parallel"] = not NUMBA_PARALLEL
-    assert c["numba.parallel"] != NUMBA_PARALLEL
-
-    c = Config(mode="update")
-    assert c["numba.parallel"] == NUMBA_PARALLEL
-    c["numba.parallel"] = not NUMBA_PARALLEL
-    assert c["numba.parallel"] != NUMBA_PARALLEL
-
-    c = Config(mode="locked")
-    assert c["numba.parallel"] == NUMBA_PARALLEL
-    with pytest.raises(RuntimeError):
-        c["numba.parallel"] = not NUMBA_PARALLEL
-
-    c = Config(mode="undefined")
-    assert c["numba.parallel"] == NUMBA_PARALLEL
-    with pytest.raises(ValueError):
-        c["numba.parallel"] = not NUMBA_PARALLEL
