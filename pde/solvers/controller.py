@@ -10,6 +10,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any, Dict, Tuple, TypeVar, Union  # @UnusedImport
 
+from ..tools import numba
 from ..trackers.base import (
     FinishedSimulation,
     TrackerCollection,
@@ -59,7 +60,7 @@ class Controller:
         self.t_range = t_range  # type: ignore
         self.trackers = TrackerCollection.from_data(tracker)
 
-        self.info: Dict[str, Any] = {"package_version": __version__}
+        self.info: Dict[str, Any] = {}
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
@@ -113,6 +114,7 @@ class Controller:
         self.info["solver_class"] = self.solver.__class__.__name__
         self.diagnostics: Dict[str, Any] = {
             "controller": self.info,
+            "package_version": __version__,
             "solver": self.solver.info,
         }
 
@@ -146,7 +148,12 @@ class Controller:
             return msg_level, msg
 
         # initialize the stepper
+        jit_count_init = numba.JIT_COUNT
         stepper = self.solver.make_stepper(state=state, dt=dt)
+        self.diagnostics["jit_count"] = {
+            "make_stepper": numba.JIT_COUNT - jit_count_init
+        }
+        jit_count_after_init = numba.JIT_COUNT
 
         # initialize profiling information
         solver_start = datetime.datetime.now()
@@ -216,6 +223,8 @@ class Controller:
         duration = datetime.datetime.now() - solver_start
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t
+        jit_count = numba.JIT_COUNT - jit_count_after_init
+        self.diagnostics["jit_count"]["simulation"] = jit_count
         self.trackers.finalize(info=self.diagnostics)
 
         # show information after a potential progress bar has been deleted to

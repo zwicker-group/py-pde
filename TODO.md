@@ -29,8 +29,6 @@ TODO
     - we could for instance have a flag on trackers, whether they are being handled a final time
     - an alternative would be to pass the final state to the `finalize` method 
 * Think about logger names (add `pde.` before class name)
-* Count the number of compilations and store it in the info field of the simulation
-    - raise a warning when this number became too large in a simulation?
 * Support 3d plots in plot (use for Laplace and Poisson eq) 
 * Add Glossary or something to development guide
     - e.g., state = attributes + data

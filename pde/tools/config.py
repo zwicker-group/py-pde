@@ -12,7 +12,6 @@ from typing import Any, Dict, List
 from .misc import module_available
 from .parameters import Parameter
 
-
 # define default parameter values
 DEFAULT_CONFIG: List[Parameter] = [
     Parameter(
