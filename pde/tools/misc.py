@@ -271,6 +271,9 @@ class hybridmethod:
         self.__doc__ = doc or fclass.__doc__
         # support use on abstract base classes
         self.__isabstractmethod__ = bool(getattr(fclass, "__isabstractmethod__", False))
+        # # support extracting information about the function for sphinx
+        if finstance:
+            self.__func__ = finstance
 
     def classmethod(self, fclass):
         return type(self)(fclass, self.finstance, None)
