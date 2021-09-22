@@ -710,6 +710,7 @@ class GridBase(metaclass=ABCMeta):
         operator_raw = operator.factory(self, **kwargs)
 
         # set the boundary conditions before applying this operator
+        print("BC_RANK", bc_rank)
         bcs = self.get_boundary_conditions(bc, rank=bc_rank)
 
         # calculate shapes of the full data
@@ -739,7 +740,7 @@ class GridBase(metaclass=ABCMeta):
                 # return valid part of the output
                 return out  # type: ignore
 
-        elif backend == "scipy":
+        elif backend in {"numpy", "scipy"}:
             # create a numpy/scipy function to apply to the operator
 
             def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:

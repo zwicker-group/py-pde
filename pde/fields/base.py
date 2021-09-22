@@ -1590,7 +1590,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def _apply_operator(
         self,
         operator: str,
-        bc: Optional["BoundariesData"],
+        bc: Optional[BoundariesData],
         out: Optional[DataFieldBase] = None,
         *,
         label: str = None,
