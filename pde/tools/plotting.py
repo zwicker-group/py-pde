@@ -36,8 +36,10 @@ if TYPE_CHECKING:
 
 def add_scaled_colorbar(
     axes_image: "matplotlib.cm.ScalarMappable",
+    ax=None,
     aspect: float = 20,
     pad_fraction: float = 0.5,
+    label: str = "",
     **kwargs,
 ):
     """add a vertical color bar to an image plot
@@ -53,18 +55,20 @@ def add_scaled_colorbar(
         axes_image (:class:`matplotlib.cm.ScalarMappable`):
             Mappable object, e.g., returned from :meth:`matplotlib.pyplot.imshow`
         ax (:class:`matplotlib.axes.Axes`):
-            The current figure axes from which space is taken for the colorbar
+            The current figure axes from which space is taken for the colorbar. If
+            omitted, the axes in which the `axes_image` is shown is taken.
         aspect (float):
             The target aspect ratio of the colorbar
         pad_fraction (float):
             Width of the gap between colorbar and image
+        label (str):
+            Set a label for the colorbar
         **kwargs:
             Additional parameters are passed to colorbar call
 
     Returns:
-        :class:`~matplotlib.colorbar.Colorbar`: the resulting Colorbar object
+        :class:`~matplotlib.colorbar.Colorbar`: The resulting Colorbar object
     """
-
     from mpl_toolkits import axes_grid1
 
     class _AxesXY(axes_grid1.axes_size._Base):
@@ -88,18 +92,24 @@ def add_scaled_colorbar(
             rel_size = max(rel_size_x, rel_size_y)
             return rel_size, abs_size
 
+    if ax is None:
+        ax = axes_image.axes
+
     # make space for the colorbar and generate its axes
-    divider = axes_grid1.make_axes_locatable(axes_image.axes)
-    width = _AxesXY(axes_image.axes, aspect=1.0 / aspect)
+    divider = axes_grid1.make_axes_locatable(ax)
+    width = _AxesXY(ax, aspect=1.0 / aspect)
     pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
     cax = divider.append_axes("right", size=width, pad=pad)
 
     # create the colorbar
-    cbar = axes_image.axes.figure.colorbar(axes_image, cax=cax, **kwargs)
+    cbar = ax.figure.colorbar(axes_image, cax=cax, **kwargs)
 
     # disable the offset that matplotlib sometimes shows
     cax.get_xaxis().get_major_formatter().set_useOffset(False)
     cax.get_yaxis().get_major_formatter().set_useOffset(False)
+
+    if label:
+        cbar.set_label(label)
     return cbar
 
 
@@ -172,11 +182,11 @@ class PlotReference:
 def plot_on_axes(wrapped=None, update_method=None):
     """decorator for a plot method or function that uses a single axes
 
-    This decorator adds typical options for creating plots that fill a single
-    axes. These options are available via keyword arguments. These options can
-    be described in the docstring, if the placeholder `{PLOT_ARGS}` is mentioned
-    in the docstring of the wrapped function or method. Note that the decorator
-    can be used on both functions and methods.
+    This decorator adds typical options for creating plots that fill a single axes.
+    These options are available via keyword arguments. To avoid redundancy in describing
+    these options in the docstring, the placeholder `{PLOT_ARGS}` can be added to the
+    docstring of the wrapped function or method and will be replaced by the appropriate
+    text. Note that the decorator can be used on both functions and methods.
 
     Example:
         The following example illustrates how this decorator can be used to
@@ -200,9 +210,8 @@ def plot_on_axes(wrapped=None, update_method=None):
             def make_plot(ax):
                 ax.plot(...)
 
-        When `update_method` is not supplied, the method can still be used for
-        plotting, but dynamic updating, e.g., by
-        :class:`pde.trackers.PlotTracker`, is not possible.
+        When `update_method` is absent, the method can still be used for plotting, but
+        dynamic updating, e.g., by :class:`pde.trackers.PlotTracker`, is not possible.
 
     Args:
         wrapped (callable):
@@ -359,11 +368,12 @@ def plot_on_axes(wrapped=None, update_method=None):
 def plot_on_figure(wrapped=None, update_method=None):
     """decorator for a plot method or function that fills an entire figure
 
-    This decorator adds typical options for creating plots that fill an
-    entire figure. These options are available via keyword arguments. These
-    options can be described in the docstring, if the placeholder `{PLOT_ARGS}`
-    is mentioned in the docstring of the wrapped function or method. Note that
-    the decorator can be used on both functions and methods.
+    This decorator adds typical options for creating plots that fill an entire figure.
+    This decorator adds typical options for creating plots that fill a single axes.
+    These options are available via keyword arguments. To avoid redundancy in describing
+    these options in the docstring, the placeholder `{PLOT_ARGS}` can be added to the
+    docstring of the wrapped function or method and will be replaced by the appropriate
+    text. Note that the decorator can be used on both functions and methods.
 
     Example:
         The following example illustrates how this decorator can be used to
