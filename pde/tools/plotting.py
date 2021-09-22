@@ -39,6 +39,7 @@ def add_scaled_colorbar(
     ax=None,
     aspect: float = 20,
     pad_fraction: float = 0.5,
+    label: str = "",
     **kwargs,
 ):
     """add a vertical color bar to an image plot
@@ -60,6 +61,8 @@ def add_scaled_colorbar(
             The target aspect ratio of the colorbar
         pad_fraction (float):
             Width of the gap between colorbar and image
+        label (str):
+            Set a label for the colorbar
         **kwargs:
             Additional parameters are passed to colorbar call
 
@@ -104,6 +107,9 @@ def add_scaled_colorbar(
     # disable the offset that matplotlib sometimes shows
     cax.get_xaxis().get_major_formatter().set_useOffset(False)
     cax.get_yaxis().get_major_formatter().set_useOffset(False)
+
+    if label:
+        cbar.set_label(label)
     return cbar
 
 
