@@ -53,6 +53,6 @@ def test_plot_colorbar(tmp_path):
 
     # compare the two results
     cmp = matplotlib.testing.compare.compare_images(
-        tmp_path / "img1.png", tmp_path / "img2.png", tol=0.1
+        str(tmp_path / "img1.png"), str(tmp_path / "img2.png"), tol=0.1
     )
     assert cmp is None
