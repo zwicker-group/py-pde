@@ -807,6 +807,10 @@ class TensorExpression(ExpressionBase):
         # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
         # work with numpy 1.18, so we have the work around using np.ndindex
 
+        # TODO: We should also support constants similar to ScalarExpressions. They
+        # could be written in separate lines and prepended to the actual code. However,
+        # we would need to make sure to print numpy arrays correctly.
+
         if variables:
             # the expression takes variables as input
 

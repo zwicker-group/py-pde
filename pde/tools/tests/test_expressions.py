@@ -4,6 +4,7 @@
 
 import logging
 
+import numba as nb
 import numpy as np
 import pytest
 
@@ -64,8 +65,9 @@ def test_const(caplog):
     with caplog.at_level(logging.WARNING):
         assert e() == field
     assert "field" in caplog.text
-    with pytest.raises(Exception):
-        e.get_compiled()()
+    if not nb.config.DISABLE_JIT:
+        with pytest.raises(Exception):
+            e.get_compiled()()
 
 
 def test_single_arg():
