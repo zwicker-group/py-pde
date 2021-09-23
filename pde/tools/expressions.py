@@ -44,11 +44,12 @@ import sympy
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
-from ..tools.misc import Number, classproperty, number, number_array
-from ..tools.typing import NumberOrArray
+from ..fields.base import FieldBase
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
+from .misc import Number, classproperty, number, number_array
 from .numba import convert_scalar, jit
+from .typing import NumberOrArray
 
 try:
     from numba.core.extending import overload
@@ -168,10 +169,11 @@ class ExpressionBase(metaclass=ABCMeta):
                 are allowed.
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
-                expression
+                expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
-                expression
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
         """
         try:
             self._sympy_expr = sympy.simplify(expression)
@@ -181,7 +183,15 @@ class ExpressionBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
         self.user_funcs = {} if user_funcs is None else user_funcs
         self.consts = {} if consts is None else consts
+
+        # check consistency of the arguments
         self._check_signature(signature)
+        for name, value in self.consts.items():
+            if isinstance(value, FieldBase):
+                self._logger.warning(
+                    f"Constant `{name}` is a field, but expressions usually require "
+                    f"numerical arrays. Did you mean to use `{name}.data`?"
+                )
 
     def __repr__(self):
         return (
@@ -487,7 +497,8 @@ class ScalarExpression(ExpressionBase):
                 expression
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
-                expression
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
             allow_indexed (bool):
                 Whether to allow indexing of variables. If enabled, array variables are
                 allowed to be indexed using square bracket notation.
@@ -663,7 +674,7 @@ class TensorExpression(ExpressionBase):
                 are allowed.
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
-                expression
+                expression.
         """
         from sympy.tensor.array.ndim_array import ImmutableNDimArray
 
@@ -795,6 +806,10 @@ class TensorExpression(ExpressionBase):
             ]
         # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
         # work with numpy 1.18, so we have the work around using np.ndindex
+
+        # TODO: We should also support constants similar to ScalarExpressions. They
+        # could be written in separate lines and prepended to the actual code. However,
+        # we would need to make sure to print numpy arrays correctly.
 
         if variables:
             # the expression takes variables as input
