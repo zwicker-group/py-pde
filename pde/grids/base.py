@@ -359,9 +359,14 @@ class GridBase(metaclass=ABCMeta):
         return "f8[" + ", ".join([":"] * self.num_axes) + "]"
 
     @cached_property()
+    def coordinate_arrays(self) -> Tuple[np.ndarray, ...]:
+        """tuple: for each axes: coordinate values for all cells"""
+        return tuple(np.meshgrid(*self.axes_coords, indexing="ij"))
+
+    @cached_property()
     def cell_coords(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: the coordinates of each cell"""
-        return np.moveaxis(np.meshgrid(*self.axes_coords, indexing="ij"), 0, -1)
+        """:class:`~numpy.ndarray`: coordinate values for all axes of each cell"""
+        return np.moveaxis(self.coordinate_arrays, 0, -1)
 
     @cached_property()
     def cell_volumes(self) -> np.ndarray:
@@ -710,6 +715,7 @@ class GridBase(metaclass=ABCMeta):
         operator_raw = operator.factory(self, **kwargs)
 
         # set the boundary conditions before applying this operator
+        print("BC_RANK", bc_rank)
         bcs = self.get_boundary_conditions(bc, rank=bc_rank)
 
         # calculate shapes of the full data
@@ -739,7 +745,7 @@ class GridBase(metaclass=ABCMeta):
                 # return valid part of the output
                 return out  # type: ignore
 
-        elif backend == "scipy":
+        elif backend in {"numpy", "scipy"}:
             # create a numpy/scipy function to apply to the operator
 
             def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:

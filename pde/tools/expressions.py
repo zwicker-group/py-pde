@@ -475,14 +475,13 @@ class ScalarExpression(ExpressionBase):
                 The expression, which is either a number or a string that sympy
                 can parse
             signature (list of str):
-                The signature defines which variables are expected in the
-                expression. This is typically a list of strings identifying
-                the variable names. Individual names can be specified as lists,
-                in which case any of these names can be used. The firstm item in
-                such a list is the definite name and if another name of the list
-                is used, the associated variable is renamed to the definite
-                name. If signature is `None`, all variables in `expressions`
-                are allowed.
+                The signature defines which variables are expected in the expression.
+                This is typically a list of strings identifying the variable names.
+                Individual names can be specified as lists, in which case any of these
+                names can be used. The first item in such a list is the definite name
+                and if another name of the list is used, the associated variable is
+                renamed to the definite name. If signature is `None`, all variables in
+                `expressions` are allowed.
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expression
@@ -490,9 +489,8 @@ class ScalarExpression(ExpressionBase):
                 A dictionary with user defined constants that can be used in the
                 expression
             allow_indexed (bool):
-                Whether to allow indexing of variables. If enabled, array
-                variables are allowed to be indexed using square bracket
-                notation.
+                Whether to allow indexing of variables. If enabled, array variables are
+                allowed to be indexed using square bracket notation.
         """
         self.allow_indexed = allow_indexed
 
