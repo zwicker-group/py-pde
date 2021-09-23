@@ -361,7 +361,7 @@ class GridBase(metaclass=ABCMeta):
     @cached_property()
     def coordinate_arrays(self) -> Tuple[np.ndarray, ...]:
         """tuple: for each axes: coordinate values for all cells"""
-        return np.meshgrid(*self.axes_coords, indexing="ij")
+        return tuple(np.meshgrid(*self.axes_coords, indexing="ij"))
 
     @cached_property()
     def cell_coords(self) -> np.ndarray:
