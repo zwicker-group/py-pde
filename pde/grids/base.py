@@ -359,9 +359,14 @@ class GridBase(metaclass=ABCMeta):
         return "f8[" + ", ".join([":"] * self.num_axes) + "]"
 
     @cached_property()
+    def coordinate_arrays(self) -> Tuple[np.ndarray, ...]:
+        """tuple: for each axes: coordinate values for all cells"""
+        return np.meshgrid(*self.axes_coords, indexing="ij")
+
+    @cached_property()
     def cell_coords(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: the coordinates of each cell"""
-        return np.moveaxis(np.meshgrid(*self.axes_coords, indexing="ij"), 0, -1)
+        """:class:`~numpy.ndarray`: coordinate values for all axes of each cell"""
+        return np.moveaxis(self.coordinate_arrays, 0, -1)
 
     @cached_property()
     def cell_volumes(self) -> np.ndarray:
