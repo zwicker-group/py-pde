@@ -96,13 +96,12 @@ class CahnHilliardPDE(PDEBase):
             the time to obtained an instance of :class:`~numpy.ndarray` giving
             the evolution rate.
         """
-        shape = state.grid.shape
-        arr_type = nb.typeof(np.empty(shape, dtype=state.data.dtype))
+        arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
         interface_width = self.interface_width
-        laplace_c = state.grid.get_operator("laplace", bc=self.bc_c)
-        laplace_mu = state.grid.get_operator("laplace", bc=self.bc_mu)
+        laplace_c = state.grid.make_operator("laplace", bc=self.bc_c)
+        laplace_mu = state.grid.make_operator("laplace", bc=self.bc_mu)
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):

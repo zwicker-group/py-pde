@@ -7,7 +7,7 @@ import pytest
 from scipy import ndimage
 
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
-from pde.fields.base import FieldBase
+from pde.fields.base import DataFieldBase, FieldBase
 from pde.grids import (
     CartesianGrid,
     CylindricalSymGrid,
@@ -472,3 +472,12 @@ def test_complex_operator(example_grid):
     c_lap = c.laplace("natural").data
     np.testing.assert_allclose(c_lap.real, r.laplace("natural").data)
     np.testing.assert_allclose(c_lap.imag, i.laplace("natural").data)
+
+
+def test_get_field_class_by_rank():
+    """test _get_field_class_by_rank function"""
+    assert DataFieldBase.get_class_by_rank(0) is ScalarField
+    assert DataFieldBase.get_class_by_rank(1) is VectorField
+    assert DataFieldBase.get_class_by_rank(2) is Tensor2Field
+    with pytest.raises(RuntimeError):
+        DataFieldBase.get_class_by_rank(3)

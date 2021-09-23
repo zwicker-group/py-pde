@@ -72,7 +72,7 @@ class PDEBase(metaclass=ABCMeta):
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._cache: Dict[str, Any] = {}
-        self.noise = noise
+        self.noise = np.asanyarray(noise)
         if rng is None:
             self.rng = np.random.default_rng()
         else:
@@ -87,7 +87,7 @@ class PDEBase(metaclass=ABCMeta):
         is `True` if `self.noise != 0`.
         """
         # check for self.noise, in case __init__ is not called in a subclass
-        return hasattr(self, "noise") and np.any(np.asarray(self.noise) != 0)  # type: ignore
+        return hasattr(self, "noise") and np.any(self.noise != 0)  # type: ignore
 
     def make_modify_after_step(self, state: FieldBase) -> Callable[[np.ndarray], float]:
         """returns a function that can be called to modify a state
@@ -152,7 +152,7 @@ class PDEBase(metaclass=ABCMeta):
 
         if check_implementation:
             # obtain and check result from the numpy implementation
-            res_numpy = self.evolution_rate(state.copy(), 0).data
+            res_numpy = self.evolution_rate(state.copy(), 0.0).data
             if not np.all(np.isfinite(res_numpy)):
                 self._logger.warning(
                     "The numpy implementation of the PDE returned non-finite values."
@@ -160,7 +160,7 @@ class PDEBase(metaclass=ABCMeta):
 
             # obtain and check result from the numba implementation
             test_state = state.copy()
-            res_numba = rhs(test_state.data, 0)
+            res_numba = rhs(test_state.data, 0.0)
             if not np.all(np.isfinite(res_numba)):
                 self._logger.warning(
                     "The numba implementation of the PDE returned non-finite values."
@@ -241,22 +241,20 @@ class PDEBase(metaclass=ABCMeta):
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE
         """
-        if self.noise:
-            if np.isscalar(self.noise):
+        if self.is_sde:
+            result = state.copy(label=label)
+
+            if np.isscalar(self.noise) or self.noise.size == 1:
                 # a single noise value is given for all fields
-                data = self.rng.normal(scale=self.noise, size=state.data.shape)
-                return state.copy(data=data, label=label)
+                result.data = self.rng.normal(scale=self.noise, size=state.data.shape)
 
             elif isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
-                fields = []
-                for f, n in zip(state, np.broadcast_to(self.noise, len(state))):
+                for f, n in zip(result, np.broadcast_to(self.noise, len(state))):  # type: ignore
                     if n == 0:
-                        data = 0
+                        f.data = 0
                     else:
-                        data = self.rng.normal(scale=n, size=f.data.shape)
-                    fields.append(f.copy(data=data))
-                return FieldCollection(fields, label=label)
+                        f.data = self.rng.normal(scale=n, size=f.data.shape)
 
             else:
                 # different noise strengths, but a single field
@@ -265,7 +263,11 @@ class PDEBase(metaclass=ABCMeta):
                 )
 
         else:
-            return state.copy(data=0, label=label)
+            # no noise
+            result = state.copy(label=label)
+            result.data[:] = 0
+
+        return result
 
     def _make_noise_realization_numba(
         self, state: FieldBase
@@ -280,17 +282,17 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             Function determining the right hand side of the PDE
         """
-        if self.noise:
+        if self.is_sde:
             data_shape = state.data.shape
 
-            if np.isscalar(self.noise):
+            if np.isscalar(self.noise) or self.noise.size == 1:
                 # a single noise value is given for all fields
-                noise_strength = float(self.noise)  # type: ignore
+                noise_strength = float(self.noise)
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
                     """helper function returning a noise realization"""
-                    return noise_strength * np.random.randn(*data_shape)  # type: ignore
+                    return noise_strength * np.random.randn(*data_shape)
 
             elif isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
@@ -306,7 +308,7 @@ class PDEBase(metaclass=ABCMeta):
                     for i in range(data_shape[0]):
                         # TODO: Avoid creating random numbers when noise_strengths == 0
                         out[i] *= noise_strengths[i]
-                    return out  # type: ignore
+                    return out
 
             else:
                 # different noise strengths, but a single field
@@ -510,9 +512,8 @@ class PDEBase(metaclass=ABCMeta):
         final_state = controller.run(state, dt)
 
         if ret_info:
-            info = controller.info.copy()
-            info.pop("solver_class")  # remove redundant information
-            info["solver"] = solver.info.copy()
+            info = controller.diagnostics.copy()
+            info["controller"].pop("solver_class")  # remove redundant information
             return final_state, info
         else:
             return final_state

@@ -245,8 +245,6 @@ class PlotTracker(TrackerBase):
     output to a file in mind.
     """
 
-    max_fps: float = 2  # maximal frames per second that are shown
-
     @fill_in_docstring
     def __init__(
         self,
@@ -256,6 +254,7 @@ class PlotTracker(TrackerBase):
         output_file: Optional[str] = None,
         movie: Union[str, Path, "Movie"] = None,
         show: bool = None,
+        max_fps: float = np.inf,
         plot_args: Dict[str, Any] = None,
     ):
         """
@@ -282,6 +281,12 @@ class PlotTracker(TrackerBase):
                 This option can slow down a simulation severely. For the default
                 value of `None`, the images are only shown if neither
                 `output_file` nor `movie` is set.
+            max_fps (float):
+                Determines the maximal rate (frames per second) at which the plots are
+                updated in real time during the simulation. Some plots are skipped if
+                the tracker receives data at a higher rate. A larger value (e.g.,
+                `np.inf`) can be used to ensure every frame is drawn, which might
+                penalizes the overall performance.
             plot_args (dict):
                 Extra arguments supplied to the plot call. For example, this can
                 be used to specify axes ranges when a single panel is shown. For
@@ -304,6 +309,7 @@ class PlotTracker(TrackerBase):
         super().__init__(interval=interval)
         self.title = title
         self.output_file = output_file
+        self.max_fps = max_fps
 
         self.plot_args = {} if plot_args is None else plot_args.copy()
         # make sure the plot is only create and not shown since the context
@@ -464,7 +470,14 @@ class LivePlotTracker(PlotTracker):
     name = "plot"
 
     @fill_in_docstring
-    def __init__(self, interval: IntervalData = "0:03", *, show: bool = True, **kwargs):
+    def __init__(
+        self,
+        interval: IntervalData = "0:03",
+        *,
+        show: bool = True,
+        max_fps: float = 2,
+        **kwargs,
+    ):
         """
         Args:
             interval:
@@ -485,10 +498,18 @@ class LivePlotTracker(PlotTracker):
                 Determines whether the plot is shown while the simulation is
                 running. If `False`, the files are created in the background.
                 This option can slow down a simulation severely.
+            max_fps (float):
+                Determines the maximal rate (frames per second) at which the plots are
+                updated. Some plots are skipped if the tracker receives data at a higher
+                rate. A larger value (e.g., `np.inf`) can be used to ensure every frame
+                is drawn, which might penalizes the overall performance.
             plot_args (dict):
-                Extra arguments supplied to the plot call
+                Extra arguments supplied to the plot call. For example, this can
+                be used to specify axes ranges when a single panel is shown. For
+                instance, the value `{'ax_style': {'ylim': (0, 1)}}` enforces
+                the y-axis to lie between 0 and 1.
         """
-        super().__init__(interval=interval, show=show, **kwargs)
+        super().__init__(interval=interval, show=show, max_fps=max_fps, **kwargs)
 
 
 class DataTracker(CallbackTracker):

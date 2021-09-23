@@ -92,7 +92,7 @@ A simple implementation for the Kuramoto–Sivashinsky equation could read
                     - state_lapacian
                     - 0.5 * state.gradient(bc='natural').to_scalar('squared_sum'))
 
-A slightly more advanced example would allow for class attributes that for
+A slightly more advanced example would allow for attributes that for
 instance define the boundary conditions and the diffusivity:
 
 .. code-block:: python
@@ -141,7 +141,7 @@ The equivalent call using the low-level interface is
 
 .. code-block:: python
     
-    apply_laplace = field.grid.get_operator('laplace', bc)
+    apply_laplace = field.grid.make_operator('laplace', bc)
     
     laplace_data = apply_laplace(field.data)
     
@@ -156,7 +156,7 @@ Similarly, a gradient operator can be defined
 .. code-block:: python
     
     grid = UnitGrid([6, 8])
-    apply_gradient = grid.get_operator('gradient', bc='natural')
+    apply_gradient = grid.make_operator('gradient', bc='natural')
     
     data = np.random.random((6, 8))
     gradient_data = apply_gradient(data)
@@ -167,7 +167,7 @@ defines a `grid` and the respective gradient operator.
 This operator is then applied to a random field and the resulting
 :class:`numpy.ndarray` represents the 2-dimensional vector field.
 
-The :code:`get_operator` method of the grids generally supports the following
+The :code:`make_operator` method of the grids generally supports the following
 differential operators: :code:`'laplacian'`, :code:`'gradient'`,
 :code:`'gradient_squared'`, :code:`'divergence'`, :code:`'vector_gradient'`,
 :code:`'vector_laplace'`, and :code:`'tensor_divergence'`.
@@ -232,7 +232,7 @@ The package also provides an implementation for an dot-operator:
     field1 = VectorField.random_normal(grid)
     field2 = VectorField.random_normal(grid)
     
-    dot_operator = field1.get_dot_operator()
+    dot_operator = field1.make_dot_operator()
     
     result = dot_operator(field1.data, field2.data)
     assert result.shape == (6, 8)
@@ -275,14 +275,14 @@ introduced above:
                 
         def _make_pde_rhs_numba(self, state):
             """ the numba-accelerated evolution equation """
-            # make class attributes locally available             
+            # make attributes locally available             
             diffusivity = self.diffusivity
     
             # create operators
-            laplace_u = state.grid.get_operator('laplace', bc=self.bc)
-            gradient_u = state.grid.get_operator('gradient', bc=self.bc)
-            laplace2_u = state.grid.get_operator('laplace', bc=self.bc_laplace)
-            dot = VectorField(state.grid).get_dot_operator()
+            laplace_u = state.grid.make_operator('laplace', bc=self.bc)
+            gradient_u = state.grid.make_operator('gradient', bc=self.bc)
+            laplace2_u = state.grid.make_operator('laplace', bc=self.bc_laplace)
+            dot = VectorField(state.grid).make_dot_operator()
     
             @jit
             def pde_rhs(state_data, t=0):
@@ -309,7 +309,7 @@ This is necessary, since :mod:`numba` freezes the values when compiling the
 function, so that in the example above the diffusivity cannot be altered without
 recompiling.
 In the next step, we create all operators that we need subsequently.
-Here, we use the boundary conditions defined by the class attributes, which
+Here, we use the boundary conditions defined by the attributes, which
 requires two different laplace operators, since their boundary conditions might
 differ.
 In the last step, we define the actual implementation of the evolution rate as
@@ -332,14 +332,14 @@ explicit loop:
                 
         def _make_pde_rhs_numba(self, state):
             """ the numba-accelerated evolution equation """
-            # make class attributes locally available             
+            # make attributes locally available             
             diffusivity = self.diffusivity
     
             # create operators
-            laplace_u = state.grid.get_operator('laplace', bc=self.bc)
-            gradient_u = state.grid.get_operator('gradient', bc=self.bc)
-            laplace2_u = state.grid.get_operator('laplace', bc=self.bc_laplace)
-            dot = VectorField(state.grid).get_dot_operator()
+            laplace_u = state.grid.make_operator('laplace', bc=self.bc)
+            gradient_u = state.grid.make_operator('gradient', bc=self.bc)
+            laplace2_u = state.grid.make_operator('laplace', bc=self.bc_laplace)
+            dot = VectorField(state.grid).make_dot_operator()
             dim = state.grid.dim
     
             @jit

@@ -209,7 +209,9 @@ class StorageBase(metaclass=ABCMeta):
                 )
 
         # create the field with the data of the given index
-        return self._field.copy(data=self.data[t_index])
+        field = self._field.copy()
+        field.data = self.data[t_index]
+        return field
 
     def __getitem__(self, key: Union[int, slice]) -> Union[FieldBase, List[FieldBase]]:
         """return field at given index or a list of fields for a slice"""

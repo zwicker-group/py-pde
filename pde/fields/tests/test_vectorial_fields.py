@@ -90,7 +90,7 @@ def test_divergence():
     np.testing.assert_allclose(s1.data, div, rtol=0.1, atol=0.1)
 
 
-def test_vector_gradient():
+def test_vector_gradient_field():
     """test the vector gradient operator"""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
@@ -100,17 +100,19 @@ def test_vector_gradient():
     t1 = v.gradient("periodic")
     assert t1.data.shape == (2, 2, 16, 16)
     d00 = -np.sin(x)
-    d10 = np.ones(grid.shape)
-    d01 = -d10.copy()
-    d10[:, 0] = d10[:, -1] = -7
-    d01[0, :] = d01[-1, :] = 7
+    d10 = -np.ones(grid.shape)
+    d01 = np.ones(grid.shape)
     d11 = np.cos(y)
     t2 = Tensor2Field(grid, np.array([[d00, d01], [d10, d11]]))
-    np.testing.assert_allclose(t1.data, t2.data, rtol=0.1, atol=0.1)
+    np.testing.assert_allclose(
+        t1.data[1:-1, 1:-1], t2.data[1:-1, 1:-1], rtol=0.1, atol=0.1
+    )
 
     v.gradient("natural", out=t1)
     assert t1.data.shape == (2, 2, 16, 16)
-    np.testing.assert_allclose(t1.data, t2.data, rtol=0.1, atol=0.1)
+    np.testing.assert_allclose(
+        t1.data[1:-1, 1:-1], t2.data[1:-1, 1:-1], rtol=0.1, atol=0.1
+    )
 
 
 def test_vector_laplace():
@@ -131,20 +133,17 @@ def test_vector_laplace():
 
 def test_vector_boundary_conditions():
     """test some boundary conditions of operators of vector fields"""
-    grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], 32, periodic=False)
-    v_x = np.sin(grid.cell_coords[..., 0])
-    v_y = grid.cell_coords[..., 1]
-    vf = VectorField(grid, np.array([v_x, v_y]))
+    grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], 32, periodic=[False, True])
+    vf = VectorField.from_expression(grid, ["sin(x)", "0"])
 
-    bc_x = [
-        {"type": "derivative", "value": [0, -1]},
-        {"type": "derivative", "value": [0, 1]},
-    ]
-    bc_y = [{"type": "value", "value": [0, 0]}, {"type": "value", "value": [1, 1]}]
-    tf = vf.gradient(bc=[bc_x, bc_y])
+    bc_x = [{"derivative": [-1, 0]}, {"derivative": [1, 0]}]
+    tf = vf.gradient(bc=[bc_x, "periodic"])
 
-    np.testing.assert_allclose(tf[0, 1].data[1:-1, :], 0)
-    np.testing.assert_allclose(tf[1, 1].data, 1)
+    res = ScalarField.from_expression(grid, "cos(x)")
+    np.testing.assert_allclose(tf[0, 0].data, res.data, atol=0.01, rtol=0.01)
+    np.testing.assert_allclose(tf[0, 1].data, 0)
+    np.testing.assert_allclose(tf[1, 0].data, 0)
+    np.testing.assert_allclose(tf[1, 1].data, 0)
 
 
 def test_outer_product():

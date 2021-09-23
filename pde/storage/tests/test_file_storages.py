@@ -27,8 +27,10 @@ def test_storage_persistence(compression, tmp_path):
 
         # first batch
         storage.start_writing(field, info={"b": 2})
-        storage.append(field.copy(data=np.arange(dim)), 0)
-        storage.append(field.copy(data=np.arange(dim, 2 * dim)))
+        field.data = np.arange(dim)
+        storage.append(field, 0)
+        field.data = np.arange(dim, 2 * dim)
+        storage.append(field)
         storage.end_writing()
 
         # read first batch
@@ -38,7 +40,8 @@ def test_storage_persistence(compression, tmp_path):
 
         # second batch
         storage.start_writing(field, info={"c": 3})
-        storage.append(field.copy(data=np.arange(2 * dim, 3 * dim)), 2)
+        field.data = np.arange(2 * dim, 3 * dim)
+        storage.append(field, 2)
         storage.end_writing()
 
         storage.close()

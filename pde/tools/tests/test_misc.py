@@ -46,15 +46,15 @@ def test_hybridmethod():
 
     class Test:
         @misc.hybridmethod
-        def meth(cls):  # @NoSelf
+        def method(cls):  # @NoSelf
             return "class"
 
-        @meth.instancemethod
-        def meth(self):
+        @method.instancemethod
+        def method(self):
             return "instance"
 
-    assert Test.meth() == "class"
-    assert Test().meth() == "instance"
+    assert Test.method() == "class"
+    assert Test().method() == "instance"
 
 
 def test_estimate_computation_speed():

@@ -39,7 +39,8 @@ def test_boundary_pair():
     assert bc1 != bc2 and bc1 is not bc2
 
     # miscellaneous methods
-    bc1.set_value(0)
+    data = {"low": {"value": 0}, "high": {"derivative": 0}}
+    bc1 = BoundaryPair.from_data(g, 0, data)
     b_lo, b_hi = bc1
     assert b_lo == BCBase.from_data(g, 0, False, {"value": 0})
     assert b_hi == BCBase.from_data(g, 0, True, {"derivative": 0})
@@ -51,14 +52,14 @@ def test_boundary_pair():
 
 def test_get_axis_boundaries():
     """test setting boundary conditions including periodic ones"""
-    g = UnitGrid([2])
     for data in ["value", "derivative", "periodic"]:
+        g = UnitGrid([2], periodic=(data == "periodic"))
         b = get_boundary_axis(g, 0, data)
         assert str(b) == '"' + data + '"'
 
         if data == "periodic":
             assert b.periodic
-            assert len(list(b)) == 0
+            assert len(list(b)) == 2
         else:
             assert not b.periodic
             assert len(list(b)) == 2

@@ -4,6 +4,8 @@ Defines a vectorial field over a grid
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Union
 
 import numba as nb
@@ -29,23 +31,14 @@ if TYPE_CHECKING:
 
 
 class VectorField(DataFieldBase):
-    """Single vector field on a grid
-
-    Attributes:
-        grid (:class:`~pde.grids.base.GridBase`):
-            The underlying grid defining the discretization
-        data (:class:`~numpy.ndarray`):
-            Vector components at the support points of the grid
-        label (str):
-            Name of the field
-    """
+    """Vector field discretized on a grid"""
 
     rank = 1
 
     @classmethod
     def from_scalars(
         cls, fields: List[ScalarField], *, label: str = None, dtype=None
-    ) -> "VectorField":
+    ) -> VectorField:
         """create a vector field from a list of ScalarFields
 
         Note that the data of the scalar fields is copied in the process
@@ -86,7 +79,7 @@ class VectorField(DataFieldBase):
         *,
         label: str = None,
         dtype=None,
-    ) -> "VectorField":
+    ) -> VectorField:
         """create a vector field on a grid from given expressions
 
         Warning:
@@ -147,12 +140,12 @@ class VectorField(DataFieldBase):
 
     def dot(
         self,
-        other: Union["VectorField", "Tensor2Field"],
-        out: Optional[Union[ScalarField, "VectorField"]] = None,
+        other: Union[VectorField, "Tensor2Field"],
+        out: Optional[Union[ScalarField, VectorField]] = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
-    ) -> Union[ScalarField, "VectorField"]:
+    ) -> Union[ScalarField, VectorField]:
         """calculate the dot product involving a vector field
 
         This supports the dot product between two vectors fields as well as the
@@ -249,7 +242,7 @@ class VectorField(DataFieldBase):
                     return out
 
             # build the outer function with the correct signature
-            if nb.config.DISABLE_JIT:
+            if nb.config.DISABLE_JIT:  # @UndefinedVariable
 
                 def dot(
                     a: np.ndarray, b: np.ndarray, out: np.ndarray = None
@@ -304,7 +297,7 @@ class VectorField(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("i...,i...->...", a, b)  # type: ignore
                     else:
-                        return np.einsum("i...,i...->...", a, b, out=out)  # type: ignore
+                        return np.einsum("i...,i...->...", a, b, out=out)
 
                 elif a.shape == b.shape[1:]:
                     # dot product between vector and tensor
@@ -314,7 +307,7 @@ class VectorField(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("i...,ij...->j...", a, b)  # type: ignore
                     else:
-                        return np.einsum("i...,ij...->j...", a, b, out=out)  # type: ignore
+                        return np.einsum("i...,ij...->j...", a, b, out=out)
 
                 else:
                     raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
@@ -337,7 +330,7 @@ class VectorField(DataFieldBase):
         return dot
 
     def outer_product(
-        self, other: "VectorField", out: "Tensor2Field" = None, *, label: str = None
+        self, other: VectorField, out: "Tensor2Field" = None, *, label: str = None
     ) -> "Tensor2Field":
         """calculate the outer product of this vector field with another
 
@@ -452,7 +445,7 @@ class VectorField(DataFieldBase):
                     # correctly and we thus had to use this work-around
                     return np.einsum("i...,j...->ij...", a, b)  # type: ignore
                 else:
-                    return np.einsum("i...,j...->ij...", a, b, out=out)  # type: ignore
+                    return np.einsum("i...,j...->ij...", a, b, out=out)
 
         else:
             raise ValueError(f"Undefined backend `{backend}")
@@ -461,18 +454,14 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self,
-        bc: "BoundariesData",
-        out: Optional[ScalarField] = None,
-        *,
-        label: str = "divergence",
+        self, bc: Optional[BoundariesData], out: Optional[ScalarField] = None, **kwargs
     ) -> ScalarField:
         """apply divergence operator and return result as a field
 
         Args:
             bc:
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
+                {ARG_BOUNDARIES_OPTIONAL}
             out (ScalarField, optional):
                 Optional scalar field to which the  result is written.
             label (str, optional):
@@ -481,16 +470,14 @@ class VectorField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
         """
-        divergence = self.grid.get_operator("divergence", bc=bc)
-        return self._apply_with_out(divergence, ScalarField, out=out, label=label)
+        return self._apply_operator("divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
     @fill_in_docstring
     def gradient(
         self,
-        bc: "BoundariesData",
+        bc: Optional[BoundariesData],
         out: Optional["Tensor2Field"] = None,
-        *,
-        label: str = "gradient",
+        **kwargs,
     ) -> "Tensor2Field":
         r"""apply vector gradient operator and return result as a field
 
@@ -498,34 +485,24 @@ class VectorField(DataFieldBase):
         specifies the derivatives of the vector field :math:`v_\alpha` with respect to
         all coordinates :math:`x_\beta`:
 
-        .. math::
-            t_{\alpha\beta} = \frac{\partial v_\alpha}{\partial x_\beta}
-
         Args:
             bc:
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-            out (Tensor2Field, optional):
-                Optional tensorial field to which the  result is written.
+                {ARG_BOUNDARIES_OPTIONAL}
+            out (VectorField, optional):
+                Optional vector field to which the result is written.
             label (str, optional):
                 Name of the returned field
 
         Returns:
             :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the operator
         """
-        from .tensorial import Tensor2Field  # @Reimport
-
-        vector_gradient = self.grid.get_operator("vector_gradient", bc=bc)
-        return self._apply_with_out(vector_gradient, Tensor2Field, out=out, label=label)
+        return self._apply_operator("vector_gradient", bc=bc, out=out, **kwargs)  # type: ignore
 
     @fill_in_docstring
     def laplace(
-        self,
-        bc: "BoundariesData",
-        out: Optional["VectorField"] = None,
-        *,
-        label: str = "vector laplacian",
-    ) -> "VectorField":
+        self, bc: Optional[BoundariesData], out: Optional[VectorField] = None, **kwargs
+    ) -> VectorField:
         r"""apply vector Laplace operator and return result as a field
 
         The vector Laplacian is a vector field :math:`L_\alpha` containing the second
@@ -539,7 +516,7 @@ class VectorField(DataFieldBase):
         Args:
             bc:
                 The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
+                {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
                 Optional vector field to which the  result is written.
             label (str, optional):
@@ -548,8 +525,7 @@ class VectorField(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        laplace = self.grid.get_operator("vector_laplace", bc=bc)
-        return self._apply_with_out(laplace, VectorField, out=out, label=label)
+        return self._apply_operator("vector_laplace", bc=bc, out=out, **kwargs)  # type: ignore
 
     @property
     def integral(self) -> np.ndarray:

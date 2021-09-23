@@ -46,19 +46,18 @@ class ScipySolver(SolverBase):
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other
-                information can be extracted
+                An example for the state from which the grid and other information can
+                be extracted.
             dt (float):
-                Initial time step for the simulation. If `None`, the solver will
-                choose a suitable initial value
+                Initial time step for the simulation. If `None`, the solver will choose
+                a suitable initial value.
 
         Returns:
             Function that can be called to advance the `state` from time
-            `t_start` to time `t_end`. The function call signature is
-            `(state: numpy.ndarray, t_start: float, t_end: float)`
+            `t_start` to time `t_end`.
         """
         if self.pde.is_sde:
-            raise RuntimeError("Cannot use scipy stepper with stochastic equation")
+            raise RuntimeError("Cannot use scipy stepper for a stochastic equation")
 
         from scipy import integrate
 
@@ -83,7 +82,7 @@ class ScipySolver(SolverBase):
             sol = integrate.solve_ivp(
                 rhs_helper,
                 t_span=(t_start, t_end),
-                y0=state.data.flat,
+                y0=np.ravel(state.data),
                 t_eval=[t_end],  # only store necessary
                 **self.solver_params,
             )

@@ -141,3 +141,7 @@ The details of the classes are explained below:
 
 from ..base import DomainError, PeriodicityError
 from .axes import Boundaries
+from .local import (
+    registered_boundary_condition_classes,
+    registered_boundary_condition_names,
+)

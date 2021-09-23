@@ -5,8 +5,14 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, ScalarField, SphericalSymGrid, Tensor2Field, VectorField
-from pde.grids.operators import spherical_sym as ops
+from pde import (
+    CartesianGrid,
+    ScalarField,
+    SphericalSymGrid,
+    Tensor2Field,
+    VectorField,
+    solve_poisson_equation,
+)
 
 
 def test_findiff_sph():
@@ -37,24 +43,21 @@ def test_conservative_laplace_sph():
         grid = SphericalSymGrid((r_min, r_max), 8)
         f = ScalarField.from_expression(grid, "cos(r)")
 
-        bcs = grid.get_boundary_conditions("natural")
-        lap1 = ops.make_laplace(bcs, conservative=True)
-        lap2 = ops.make_laplace(bcs, conservative=False)
-
-        np.testing.assert_allclose(lap1(f.data), lap2(f.data), rtol=0.5, atol=0.5)
-        np.testing.assert_allclose(f.apply(lap1).integral, 0, atol=1e-12)
+        res1 = f.laplace("natural", conservative=True)
+        res2 = f.laplace("natural", conservative=False)
+        np.testing.assert_allclose(res1.data, res2.data, rtol=0.5, atol=0.5)
+        np.testing.assert_allclose(res1.integral, 0, atol=1e-12)
 
 
 @pytest.mark.parametrize(
-    "make_op,field,rank",
+    "op_name,field",
     [
-        (ops.make_laplace, ScalarField, 0),
-        (ops.make_divergence, VectorField, 0),
-        (ops.make_gradient, ScalarField, 0),
-        (ops.make_tensor_divergence, Tensor2Field, 1),
+        ("laplace", ScalarField),
+        ("divergence", VectorField),
+        ("gradient", ScalarField),
     ],
 )
-def test_small_annulus(make_op, field, rank):
+def test_small_annulus_sph(op_name, field):
     """test whether a small annulus gives the same result as a sphere"""
     grids = [
         SphericalSymGrid((0, 1), 8),
@@ -63,17 +66,13 @@ def test_small_annulus(make_op, field, rank):
     ]
 
     f = field.random_uniform(grids[0])
+    if field is VectorField:
+        f.data[1] = 0
 
-    # remove angular components in higher ranked fields to express ops
-    if f.rank == 1:
-        f.data[1:, :] = 0
-    elif f.rank == 2:
-        f.data[:, 1:, :] = 0
+    res = [field(g, data=f.data)._apply_operator(op_name, "natural") for g in grids]
 
-    res = [make_op(g.get_boundary_conditions(rank=rank))(f.data) for g in grids]
-
-    np.testing.assert_almost_equal(res[0], res[1], decimal=5)
-    assert np.linalg.norm(res[0] - res[2]) > 1e-3
+    np.testing.assert_almost_equal(res[0].data, res[1].data, decimal=5)
+    assert np.linalg.norm(res[0].data - res[2].data) > 1e-3
 
 
 def test_grid_laplace():
@@ -107,50 +106,35 @@ def test_gradient_squared(r_inner):
     assert not np.array_equal(s2.data, s3.data)
 
 
-def test_grid_div_grad():
+def test_grid_div_grad_sph():
     """compare div grad to laplacian"""
     grid = SphericalSymGrid(2 * np.pi, 16)
-    r = grid.axes_coords[0]
-    arr = np.cos(r)
+    field = ScalarField.from_expression(grid, "cos(r)")
 
-    laplace = grid.get_operator("laplace", "derivative")
-    grad = grid.get_operator("gradient", "derivative")
-    div = grid.get_operator("divergence", "value")
-    a = laplace(arr)
-    b = div(grad(arr))
-    res = -2 * np.sin(r) / r - np.cos(r)
+    a = field.laplace("derivative")
+    b = field.gradient("derivative").divergence("value")
+    res = ScalarField.from_expression(grid, "-2 * sin(r) / r - cos(r)")
 
     # do not test the radial boundary points
-    np.testing.assert_allclose(a[1:-1], res[1:-1], rtol=0.1, atol=0.1)
-    np.testing.assert_allclose(b[1:-1], res[1:-1], rtol=0.1, atol=0.1)
+    np.testing.assert_allclose(a.data[1:-1], res.data[1:-1], rtol=0.1, atol=0.1)
+    np.testing.assert_allclose(b.data[1:-1], res.data[1:-1], rtol=0.1, atol=0.1)
 
 
 def test_poisson_solver_spherical():
     """test the poisson solver on Polar grids"""
-    grid = SphericalSymGrid(4, 8)
-    for bc_val in ["natural", {"value": 1}]:
-        bcs = grid.get_boundary_conditions(bc_val)
-        poisson = grid.get_operator("poisson_solver", bcs)
-        laplace = grid.get_operator("laplace", bcs)
-
-        d = np.random.random(grid.shape)
-        d -= ScalarField(grid, d).average  # balance the right hand side
-        np.testing.assert_allclose(laplace(poisson(d)), d, err_msg=f"bcs = {bc_val}")
-
-    grid = SphericalSymGrid([2, 4], 8)
-    for bc_val in ["natural", {"value": 1}]:
-        bcs = grid.get_boundary_conditions(bc_val)
-        poisson = grid.get_operator("poisson_solver", bcs)
-        laplace = grid.get_operator("laplace", bcs)
-
-        d = np.random.random(grid.shape)
-        d -= ScalarField(grid, d).average  # balance the right hand side
-        np.testing.assert_allclose(
-            laplace(poisson(d)), d, err_msg=f"bcs = {bc_val}", rtol=1e-6
-        )
+    for grid in [SphericalSymGrid(4, 8), SphericalSymGrid([2, 4], 8)]:
+        for bc_val in ["natural", {"value": 1}]:
+            bcs = grid.get_boundary_conditions(bc_val)
+            d = ScalarField.random_uniform(grid)
+            d -= d.average  # balance the right hand side
+            sol = solve_poisson_equation(d, bcs)
+            test = sol.laplace(bcs)
+            np.testing.assert_allclose(
+                test.data, d.data, err_msg=f"bcs={bc_val}, grid={grid}", rtol=1e-6
+            )
 
 
-def test_examples_scalar():
+def test_examples_scalar_sph():
     """compare derivatives of scalar fields for spherical grids"""
     grid = SphericalSymGrid(1, 32)
     sf = ScalarField.from_expression(grid, "r**3")
@@ -172,7 +156,7 @@ def test_examples_scalar():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-def test_examples_vector():
+def test_examples_vector_sph():
     """compare derivatives of vector fields for spherical grids"""
     grid = SphericalSymGrid(1, 32)
 
@@ -190,7 +174,7 @@ def test_examples_vector():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-def test_examples_tensor():
+def test_examples_tensor_sph():
     """compare derivatives of tensorial fields for spherical grids"""
     grid = SphericalSymGrid(1, 32)
     tf = Tensor2Field.from_expression(grid, [["r**3"] * 3] * 3)

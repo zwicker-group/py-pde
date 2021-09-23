@@ -90,6 +90,11 @@ DOCSTRING_REPLACEMENTS = {
         in a context where malicious input could occur.
         """,
 }
+DOCSTRING_REPLACEMENTS["ARG_BOUNDARIES_OPTIONAL"] = (
+    DOCSTRING_REPLACEMENTS["ARG_BOUNDARIES"]
+    + "If the special value `None` is given, no boundary conditions are enforced. The "
+    "user then needs to ensure that the ghost cells are set accordingly. "
+)
 DOCSTRING_REPLACEMENTS = {k: v[1:-1] for k, v in DOCSTRING_REPLACEMENTS.items()}
 
 

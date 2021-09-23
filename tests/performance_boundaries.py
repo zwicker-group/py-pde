@@ -12,7 +12,6 @@ sys.path.append(str(PACKAGE_PATH))
 import numpy as np
 
 from pde import ScalarField, UnitGrid
-from pde.grids.boundaries.axes import Boundaries
 from pde.tools.misc import estimate_computation_speed
 
 
@@ -22,28 +21,34 @@ def main():
 
     # Cartesian grid with different shapes and boundary conditions
     for size in [32, 512]:
-        grid = UnitGrid((size, size), periodic=False)
+        grid = UnitGrid([size, size], periodic=False)
         print(grid)
 
         field = ScalarField.random_normal(grid)
         bc_value = np.ones(size)
         result = field.laplace(bc={"value": 1}).data
 
-        for bc in ["scalar", "array", "linked"]:
+        for bc in ["scalar", "array", "function", "linked"]:
             if bc == "scalar":
                 bcs = {"value": 1}
             elif bc == "array":
                 bcs = {"value": bc_value}
             elif bc == "linked":
-                bcs = Boundaries.from_data(grid, {"value": bc_value}, rank=0)
+                bcs = grid.get_boundary_conditions({"value": bc_value})
                 for ax, upper in grid._iter_boundaries():
                     bcs[ax][upper].link_value(bc_value)
-            # result = field.laplace(bc=bcs).data
+            elif bc == "function":
+                bcs = grid.get_boundary_conditions({"virtual_point": "2 - value"})
+            else:
+                raise RuntimeError
+
+            # create the operator with these conditions
             laplace = grid.get_operator("laplace", bc=bcs)
             # call once to pre-compile and test result
             np.testing.assert_allclose(laplace(field.data), result)
+            # estimate the speed
             speed = estimate_computation_speed(laplace, field.data)
-            print(f"{bc:>6s}:{int(speed):>9d}")
+            print(f"{bc:>8s}:{int(speed):>9d}")
 
         print()
 

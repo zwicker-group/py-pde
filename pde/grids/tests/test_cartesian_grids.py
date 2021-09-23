@@ -345,7 +345,7 @@ def test_setting_boundary_conditions():
 
 
 def test_setting_domain_rect():
-    """test various versions of settings bcs for cartesian grids"""
+    """test various versions of settings bcs for Cartesian grids"""
     grid = UnitGrid([2, 2])
     grid.get_boundary_conditions(["derivative", "derivative"])
 

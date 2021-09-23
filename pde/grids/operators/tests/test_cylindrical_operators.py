@@ -11,21 +11,6 @@ from pde import (
     Tensor2Field,
     VectorField,
 )
-from pde.grids.operators import cylindrical_sym as ops
-
-
-def test_laplace_cyl():
-    """test the implementation of the laplace operator"""
-    for boundary_z in ["periodic", "derivative"]:
-        grid = CylindricalSymGrid(
-            4, (0, 5), (8, 16), periodic_z=(boundary_z == "periodic")
-        )
-        a_2d = np.random.uniform(0, 1, grid.shape)
-
-        bcs = grid.get_boundary_conditions(["derivative", boundary_z])
-        lap_2d = ops.make_laplace(bcs)
-        b_2d = lap_2d(a_2d)
-        assert b_2d.shape == grid.shape
 
 
 def test_laplacian_field_cyl():
@@ -53,14 +38,16 @@ def test_gradient_field_cyl():
 
 def test_divergence_field_cyl():
     """test the divergence operator"""
-    grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
-    r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
-    data = [np.cos(r) + np.sin(z) ** 2, np.cos(r) ** 2 + np.sin(z), np.zeros_like(r)]
-    v = VectorField(grid, data=data)
+    grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [16, 32], periodic_z=True)
+    v = VectorField.from_expression(grid, ["cos(r) + sin(z)**2", "z * cos(r)**2", 0])
     s = v.divergence(bc="natural")
-    assert s.data.shape == (8, 16)
-    res = np.cos(z) - np.sin(r) + (np.cos(r) + np.sin(z) ** 2) / r
-    np.testing.assert_allclose(s.data, res, rtol=0.1, atol=0.1)
+    assert s.data.shape == grid.shape
+    res = ScalarField.from_expression(
+        grid, "cos(r)**2 - sin(r) + (cos(r) + sin(z)**2) / r"
+    )
+    np.testing.assert_allclose(
+        s.data[1:-1, 1:-1], res.data[1:-1, 1:-1], rtol=0.1, atol=0.1
+    )
 
 
 def test_vector_gradient_divergence_field_cyl():
@@ -82,12 +69,6 @@ def test_findiff_cyl():
     _, r1, r2 = grid.axes_coords[0]
     np.testing.assert_array_equal(grid.discretization, np.full(2, 0.5))
     s = ScalarField(grid, [[1, 1], [2, 2], [4, 4]])
-
-    # test gradient
-    grad = s.gradient(bc=["value", "periodic"])
-    np.testing.assert_allclose(grad.data[0], [[1, 1], [3, 3], [-6, -6]])
-    grad = s.gradient(bc=["derivative", "periodic"])
-    np.testing.assert_allclose(grad.data[0], [[1, 1], [3, 3], [2, 2]])
 
     # test laplace
     lap = s.laplace(bc=[{"type": "value", "value": 3}, "periodic"])
@@ -114,7 +95,7 @@ def test_grid_laplace():
     np.testing.assert_allclose(b_2d_3.data, b_3d.data, rtol=0.2, atol=0.2)
 
 
-def test_gradient_squared():
+def test_gradient_squared_cyl():
     """compare gradient squared operator"""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], 64)
     field = ScalarField.random_harmonic(grid, modes=1)
@@ -126,22 +107,19 @@ def test_gradient_squared():
     assert not np.array_equal(s2.data, s3.data)
 
 
-def test_grid_div_grad():
+def test_grid_div_grad_cyl():
     """compare div grad to laplacian"""
     grid = CylindricalSymGrid(2 * np.pi, (0, 2 * np.pi), (16, 16), periodic_z=True)
-    r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
-    arr = np.cos(r) + np.sin(z)
+    field = ScalarField.from_expression(grid, "cos(r) + sin(z)")
 
     bcs = grid.get_boundary_conditions()
-    laplace = grid.get_operator("laplace", bcs)
-    grad = grid.get_operator("gradient", bcs)
-    div = grid.get_operator("divergence", bcs.differentiated)
-    a = laplace(arr)
-    b = div(grad(arr))
-    res = (-np.sin(r) / r - np.cos(r)) - np.sin(z)
+    a = field.laplace(bcs)
+    c = field.gradient(bcs)
+    b = c.divergence(bcs.differentiated)
+    res = ScalarField.from_expression(grid, "-sin(r)/r - cos(r) - sin(z)")
     # do not test the radial boundary points
-    np.testing.assert_allclose(a[1:-1], res[1:-1], rtol=0.1, atol=0.05)
-    np.testing.assert_allclose(b[1:-1], res[1:-1], rtol=0.1, atol=0.05)
+    np.testing.assert_allclose(a.data[1:-1], res.data[1:-1], rtol=0.1, atol=0.05)
+    np.testing.assert_allclose(b.data[1:-1], res.data[1:-1], rtol=0.1, atol=0.05)
 
 
 def test_examples_scalar_cyl():
@@ -162,9 +140,8 @@ def test_examples_scalar_cyl():
     expect = ScalarField.from_expression(
         grid, "r**6 * cos(z)**2 + 9 * r**4 * sin(z)**2"
     )
-    for c in [True, False]:
-        res = sf.gradient_squared(bcs, central=c)
-        np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+    res = sf.gradient_squared(bcs, central=True)
+    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # laplace
     bcs[0][1] = {"curvature": "6 * sin(z)"}  # adjust BC to fit laplacian better

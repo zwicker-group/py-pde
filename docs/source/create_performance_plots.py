@@ -23,7 +23,7 @@ from pde.tools.output import display_progress
 try:
     import cv2
 except ImportError:
-    print('Warning: OpenCV is not available and will not be used to compare')
+    print("Warning: OpenCV is not available and will thus not appear in the comparison")
     opencv_laplace = None
 else:
     opencv_laplace = functools.partial(
@@ -32,13 +32,13 @@ else:
 
 
 def time_function(func, arg, repeat=3):
-    """ estimates the computation speed of a function
-    
+    """estimates the computation speed of a function
+
     Args:
         func (callable): The function to test
         arg: The single argument on which the function will be estimate
         repeat (int): How often the function is tested
-        
+
     Returns:
         float: Estimated duration of calling the function a single time
     """
@@ -48,11 +48,11 @@ def time_function(func, arg, repeat=3):
 
 
 def get_performance_data(periodic=False):
-    """ obtain the data used in the performance plot
-    
+    """obtain the data used in the performance plot
+
     Args:
         periodic (bool): The boundary conditions of the underlying grid
-        
+
     Returns:
         dict: The durations of calculating the Laplacian on different grids
         using different methods
@@ -65,9 +65,9 @@ def get_performance_data(periodic=False):
         grid = UnitGrid([size] * 2, periodic=periodic)
         test_data = np.random.randn(*grid.shape)
 
-        for method in ["numba", "scipy"]:
-            op = grid.get_operator("laplace", bc="natural", method=method)
-            data[method] = time_function(op, test_data)
+        for backend in ["numba", "scipy"]:
+            op = grid.make_operator("laplace", bc="natural", backend=backend)
+            data[backend] = time_function(op, test_data)
 
         if opencv_laplace:
             data["opencv"] = time_function(opencv_laplace, test_data)
@@ -78,8 +78,8 @@ def get_performance_data(periodic=False):
 
 
 def plot_performance(performance_data, title=None):
-    """ plot the performance data
-    
+    """plot the performance data
+
     Args:
         performance_data: The data obtained from calling
             :func:`get_performance_data`.
@@ -113,7 +113,7 @@ def plot_performance(performance_data, title=None):
 
 
 def main():
-    """ run main scripts """
+    """run main scripts"""
     data = get_performance_data(periodic=False)
     plot_performance(data, title="2D Laplacian (reflecting BCs)")
     plt.savefig("performance_noflux.pdf", transparent=True)
