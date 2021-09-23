@@ -2,9 +2,12 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import logging
+
 import numpy as np
 import pytest
 
+from pde import ScalarField, UnitGrid
 from pde.tools.expressions import ScalarExpression, TensorExpression, parse_number
 
 
@@ -24,8 +27,9 @@ def test_parse_number():
         parse_number("foo")
 
 
-def test_const():
+def test_const(caplog):
     """test simple expressions"""
+    # test scalar expressions with constants
     for expr in [None, 1, "1", "a - a"]:
         e = ScalarExpression() if expr is None else ScalarExpression(expr)
         val = 0 if expr is None or expr == "a - a" else float(expr)
@@ -53,6 +57,15 @@ def test_const():
         ]:
             assert e is not f
             assert e._sympy_expr == f._sympy_expr
+
+    # test whether wrong constants are check for
+    field = ScalarField(UnitGrid([3]))
+    e = ScalarExpression("scalar_field", consts={"scalar_field": field})
+    with caplog.at_level(logging.WARNING):
+        assert e() == field
+    assert "field" in caplog.text
+    with pytest.raises(Exception):
+        e.get_compiled()()
 
 
 def test_single_arg():
