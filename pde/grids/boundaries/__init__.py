@@ -87,10 +87,8 @@ enforces periodic boundary conditions on the first axis, while the second one
 has standard Neumann conditions.
     
 Note:
-    Derivatives are given relative to the outward normal vector, such that
-    positive derivatives correspond to a function that increases across the
-    boundary, which corresponds to an inwards flux. Conversely, negative
-    derivatives are associated with effluxes. 
+    Derivatives are given relative to the outward normal vector, such that positive
+    derivatives correspond to a function that increases across the boundary. 
 
 
 Boundaries overview
@@ -103,11 +101,10 @@ The :mod:`~pde.grids.boundaries` package defines the following classes:
 * :class:`~pde.grids.boundaries.local.DirichletBC`:
   Imposing the value of a field at the boundary
 * :class:`~pde.grids.boundaries.local.NeumannBC`:
-  Imposing the derivative of a field in the outward normal direction at the
-  boundary
+  Imposing the derivative of a field in the outward normal direction at the boundary
 * :class:`~pde.grids.boundaries.local.MixedBC`:
-  Imposing the derivative of a field in the outward normal direction
-  proportional to its value at the boundary  
+  Imposing the derivative of a field in the outward normal direction proportional to its
+  value at the boundary  
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing the second derivative (curvature) of a field at the boundary
 
@@ -117,8 +114,7 @@ can be useful when dealing with vector and tensor fields.
 **Boundaries for an axis:**
 
 * :class:`~pde.grids.boundaries.axis.BoundaryPair`:
-  Uses the local boundary conditions to specify the two boundaries along an
-  axis.
+  Uses the local boundary conditions to specify the two boundaries along an axis
 * :class:`~pde.grids.boundaries.axis.BoundaryPeriodic`:
   Indicates that an axis has periodic boundary conditions
 

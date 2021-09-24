@@ -343,8 +343,7 @@ class BCBase(metaclass=ABCMeta):
             condition (str):
                 Identifies the boundary condition
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the field for this boundary condition
             \**kwargs:
                 Additional arguments passed to the constructor
         """
@@ -386,8 +385,7 @@ class BCBase(metaclass=ABCMeta):
             data (dict):
                 The dictionary defining the boundary condition
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the field for this boundary condition
         """
         data = data.copy()  # need to make a copy since we modify it below
 
@@ -428,8 +426,7 @@ class BCBase(metaclass=ABCMeta):
             data (str or dict):
                 Data that describes the boundary
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the field for this boundary condition
 
         Returns:
             :class:`~pde.grids.boundaries.local.BCBase`: the instance created
@@ -461,8 +458,8 @@ class BCBase(metaclass=ABCMeta):
         """check whether the values at the boundaries have the correct rank
 
         Args:
-            rank (tuple): The rank of the value that is stored with this
-                boundary condition
+            rank (int):
+                The tensorial rank of the field for this boundary condition
 
         Throws:
             RuntimeError: if the value does not have rank `rank`
@@ -636,7 +633,7 @@ class ExpressionBC(BCBase):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str):
                 An expression that determines the value of the boundary condition.
             target (str):
@@ -814,7 +811,7 @@ class ExpressionValueBC(ExpressionBC):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str):
                 An expression that determines the value of the boundary condition.
             target (str):
@@ -854,7 +851,7 @@ class ExpressionDerivativeBC(ExpressionBC):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str):
                 An expression that determines the value of the boundary condition.
             target (str):
@@ -899,7 +896,7 @@ class ConstBCBase(BCBase):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str or :class:`~numpy.ndarray`):
                 a value stored with the boundary condition. The interpretation
                 of this value depends on the type of boundary condition. If
@@ -1590,8 +1587,7 @@ class MixedBC(ConstBC1stOrderBase):
                 determines the direction of the local normal vector of the
                 boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str or array):
                 The parameter :math:`\gamma` quantifying the influence of the
                 field onto its normal derivative. If `value` is a single value

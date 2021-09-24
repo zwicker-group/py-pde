@@ -80,9 +80,7 @@ class Boundaries(list):
                 * dictionary specifying the type and values for all boundaries
                 * tuple pair specifying the low and high boundary individually
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                conditions.
-
+                The tensorial rank of the field for this boundary condition
         """
         # check whether this is already the correct class
         if isinstance(boundaries, Boundaries):
@@ -167,8 +165,8 @@ class Boundaries(list):
         """check whether the values at the boundaries have the correct rank
 
         Args:
-            rank (tuple): The rank of the value that is stored with this
-                boundary condition
+            rank (int):
+                The tensorial rank of the field for this boundary condition
 
         Throws:
             RuntimeError: if any value does not have rank `rank`

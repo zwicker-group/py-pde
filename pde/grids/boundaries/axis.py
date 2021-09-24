@@ -348,8 +348,7 @@ class BoundaryPair(BoundaryAxisBase):
             data (str or dict):
                 Data that describes the boundary pair
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                conditions.
+                The tensorial rank of the field for this boundary condition
 
         Returns:
             :class:`~pde.grids.boundaries.axis.BoundaryPair`:
@@ -425,8 +424,8 @@ class BoundaryPair(BoundaryAxisBase):
         """check whether the values at the boundaries have the correct rank
 
         Args:
-            rank (int): The rank of the value that is stored with this
-                boundary condition
+            rank (int):
+                The tensorial rank of the field for this boundary condition
 
         Throws:
             RuntimeError: if the value does not have rank `rank`
@@ -482,8 +481,8 @@ class BoundaryPeriodic(BoundaryPair):
         """check whether the values at the boundaries have the correct rank
 
         Args:
-            rank (int): The rank of the value that is stored with this
-                boundary condition
+            rank (int):
+                The tensorial rank of the field for this boundary condition
         """
 
 
@@ -500,8 +499,7 @@ def get_boundary_axis(
         data (str or tuple or dict):
             Data describing the boundary conditions for this axis
         rank (int):
-            The tensorial rank of the value associated with the boundary
-            conditions.
+            The tensorial rank of the field for this boundary condition
 
     Returns:
         :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`:
