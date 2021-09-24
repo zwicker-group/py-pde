@@ -1,7 +1,7 @@
 \documentclass[
 	superscriptaddress,
 	twocolumn,
-	aps, prl
+	aps, pre
 ]{revtex4-1}
 
 \usepackage{amsmath}
@@ -19,7 +19,7 @@
 
 \begin{document}
 
-\title{Boundary conditions in the finite difference python package `py-pde`}
+\title{Differential operators and boundary conditions in `py-pde`}
 \author{David Zwicker}
 \date{\today}
 
@@ -34,24 +34,57 @@ We also derive special versions of the Laplace operator that conserves the total
 
 
 \section{General considerations}
+The main objects in `py-pde` are fields that are expressed on discretized grids.
+The package provides many functions to manipulate these fields.
+Some functions (e.g., addition, multiplication, integrals) do only use the actual field values, while others (e.g., differential operators and interpolation) might require information on the behavior of the field at the boundary.
+This documents specifies details for how boundary conditions are handled.
+
+The simplest fields in `py-pde` are scalar fields, which associate a single value to each grid point.
+In the continuum, a scalar field $c(\vect r)$ often has the following boundary conditions:
+\begin{salign}
+	\text{value:} &&	c &= A
+\\
+	\text{normal derivative:} && n_\alpha \partial_\alpha c &= B
+\end{salign}
+where $n_\alpha$ is again the outward normal of the boundary.
+These two conditions are also often known as Dirichlet and Neumann boundary conditions, respectively.
+These options are implemented as \texttt{value} and \texttt{derivative} in `py-pde`.
+
+For a vector field $v_\alpha(\vect r)$, which associate a vector with each grid point, possible boundary conditions are
+\begin{salign}
+	\text{value:} && v_\alpha  &= A_\alpha
+\\
+	\text{normal component:} && n_\alpha v_\alpha  &= A
+\\
+	\text{normal derivative:} && n_\beta \partial_\beta v_\alpha &= B_\alpha
+\\
+	\text{normal comp. of normal deriv.:} && n_\alpha n_\beta \partial_\beta v_\alpha &= B
+\end{salign}
+There are now many more options, where the first two specify values (Dirichlet conditions) and the last two specify derivatives (Neumann conditions).
+Additionally, the conditions differ in that they either specify the full vector (conditions 1 and 3) or just the normal component (conditions 2 and 4).
+The latter choice obviously contains less information, but is sufficient for differential operators; see below.
+Conversely, specifying the full vector using the first or third condition is necessary for interpolating vector fields correctly.
+Note also that the Dirichlet conditionimposes the dot product between the normal vector and the vector field, which in a simple 1d system implies $v_1(x=x\L)=-A$ and $v_1(x=x\R)=A$ for the lower and upper boundary, respectively.
+Similarly, the Neumann condition evaluates the directional derivative of the vector field in the normal direction~$n_\beta$ of the boundary.
+
+
+\section{Boundary conditions for differential operators}
 We start with general considerations that are independent of the grid type.
 Here, we consider differential operators that act on fields defined in a domain~$\dom$.
 In particular, we discuss the boundary conditions that can be enforced with each type of operator.
 We here use a component notation with implicit Einstein summation to denote contractions explicitly.
 For instance, $\partial_\alpha v_\alpha$ denotes the divergence of a vector field $v_\alpha(\vect r)$ and $t_{\alpha\alpha}(\vect r)$ is the trace of a tensor field $t_{\alpha\beta}(\vect r)$.
 
-\subsection{Laplace operator and Vector Laplacian}
+\subsection{Laplace operator}
 The ordinary Laplace operator $\partial_\alpha^2 c$ is defined to act on scalar fields~$c(\vect r)$.
 Possible boundary conditions are
 \begin{salign}[eqn:bc_laplace]
 	\text{value:} &&	c &= A
 \\
-	\text{derivative:} && n_\alpha \partial_\alpha c &= B
+	\text{normal derivative:} && n_\alpha \partial_\alpha c &= B
 \end{salign}
-which are applied at positions $\vect r \in \bndry$.
-Consequently, either the value~$A$ of the field can be determined (Dirichlet condition $c(\vect r) = A$ at $\vect r \in \bndry$) or the derivative can be specified (Neumann condition $n_\alpha \partial_\alpha c = B$), where $n_\alpha$ is the outwards oriented normal vector at the boundary.
-The Vector Laplacian is a simple generalization of the ordinary Laplace operator, where it is applied to each component of a vector field.
-For instance, the derivative condition then reads $n_\beta \partial_\beta c_\alpha = B_\alpha$.
+applied at positions $\vect r \in \bndry$.
+Consequently, either the value~$A$ of the field (Dirichlet condition $c(\vect r) = A$ at $\vect r \in \bndry$) or the normal derivative (Neumann condition $n_\alpha \partial_\alpha c = B$) is specified, where $n_\alpha$ is the outwards oriented normal vector at the boundary.
 
 
 \subsection{Gradient operator}
@@ -67,13 +100,25 @@ where $n_\alpha$ is again the outward normal of the boundary.
 \subsection{Divergence operator}
 The divergence operator $\partial_\alpha v_\alpha$ acts on a vector field $v_\alpha(\vect r)$ with possible boundary conditions
 \begin{salign}[eqn:bc_divergence]
-	\text{value:} && n_\alpha v_\alpha  &= A
+	\text{normal component:} && n_\alpha v_\alpha  &= A
 \\
-	\text{derivative:} && n_\alpha n_\beta \partial_\alpha v_\beta &= B
+	\text{derivative:} && n_\alpha n_\beta \partial_\beta v_\alpha &= B
 \end{salign}
 Note that the Dirichlet condition in this case imposes the dot product between the normal vector and the vector field, which in a simple 1d system implies $v_1(x=x\L)=-A$ and $v_1(x=x\R)=A$ for the lower and upper boundary, respectively.
 Similarly, the Neumann condition evaluates the directional derivative of the vector field in the normal direction~$n_\beta$ of the boundary.
 This implies that the tangential components of the vector field do not affect the boundary condition.
+
+
+\subsection{Vector Laplacian}
+The Vector Laplacian is a simple generalization of the ordinary Laplace operator to a vector field $v_\alpha(\vect r)$.
+Possible boundary conditions are
+\begin{salign}[eqn:bc_vector_laplace]
+	\text{value:} &&	v_\alpha &= A_\alpha
+\\
+	\text{normal derivative:} && n_\beta \partial_\beta v_\alpha &= B_\alpha
+\end{salign}
+which are applied at positions $\vect r \in \bndry$.
+
 
 \subsection{Vector gradient operator}
 The vector gradient  operator $\partial_\beta v_\alpha$ acts on a vector field $v_\alpha(\vect r)$ and yields a tensorial field.
@@ -103,7 +148,7 @@ Currently not implemented are the following operators
 	\text{Curl:} &&
 		\epsilon_{\alpha\beta\gamma} \partial_\beta v_\gamma
 \\
-	\text{Material derivative:}&&
+	\text{Material derivative (Advection):}&&
 		w_\alpha \partial_\alpha v_\beta
 \end{align} 
 \end{subequations}
@@ -117,7 +162,7 @@ Currently not implemented are the following operators
 
 
 
-\section{Cartesian Grid}
+\section{Differential operators on Cartesian grids}
 We consider a linear domain of length $L$ discretized by $N$ support points.
 We place these points equidistantly at $x_n = (n+\frac12)\dx$ for $n=0,1,\ldots, N-1$ using the discretization $\dx=L/N$.
 Any function $y=f(x)$ is then represented by discretized values $y_n = f(x_n)$.
@@ -235,7 +280,7 @@ Coefficients for upper cartesian boundary
 \end{table}
 
 
-\section{Cylindrical Grid}
+\section{Differential operators on cylindrical grids}
 We here consider fields in $3$ dimensions that possess angular symmetry and thus only depend on the radial coordinate~$r$ and the axial coordinate~$z$.
 Clearly, the axial coordinate behaves exactly as the Cartesian ones described above, so we here only have to deal with the polar symmetry.
 Similar to Cartesian grids, we discretize the associated radial coordinate as $r_n = r_0 + (n + \frac12) \dr$, where $r_0$ is the inner radius, which often will be zero.
@@ -285,7 +330,7 @@ We obtain $y_n = y_{n-1} + b \dx$.
 
 
 
-\section{Spherical Grid}
+\section{Differential operators on spherical grid}
 We here consider fields that a spherically symmetric in $3$ dimensions and thus only depend on the radial coordinate~$r$.
 Similar to Cartesian grids, we discretize the radial coordinate as $r_n = (n + \frac12) \dr$.
 

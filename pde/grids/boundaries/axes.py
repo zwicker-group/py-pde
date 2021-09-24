@@ -94,14 +94,36 @@ class Boundaries(list):
         # convert natural boundary conditions if present
         if boundaries == "natural" or boundaries == "auto_periodic_neumann":
             # set the respective natural conditions for all axes
-            boundaries = [
-                "periodic" if periodic else "neumann" for periodic in grid.periodic
-            ]
+            boundaries = []
+            for periodic in grid.periodic:
+                if periodic:
+                    boundaries.append("periodic")
+                elif rank == 0:
+                    boundaries.append("neumann")
+                else:
+                    boundaries.append("neumann")
+
         elif boundaries == "auto_periodic_dirichlet":
             # set the respective natural conditions (with vanishing values) for all axes
-            boundaries = [
-                "periodic" if periodic else "dirichlet" for periodic in grid.periodic
-            ]
+            boundaries = []
+            for periodic in grid.periodic:
+                if periodic:
+                    boundaries.append("periodic")
+                elif rank == 0:
+                    boundaries.append("dirichlet")
+                else:
+                    boundaries.append("dirichlet")
+
+        elif boundaries == "auto_periodic_curvature":
+            # set the respective natural conditions (with vanishing curvature) for all axes
+            boundaries = []
+            for periodic in grid.periodic:
+                if periodic:
+                    boundaries.append("periodic")
+                elif rank == 0:
+                    boundaries.append("curvature")
+                else:
+                    boundaries.append("curvature")
 
         # create the list of BoundaryAxis objects
         bcs = None
@@ -191,11 +213,6 @@ class Boundaries(list):
         """
         boundaries = [boundary.extract_component(*indices) for boundary in self]
         return self.__class__(boundaries)
-
-    @property
-    def differentiated(self) -> Boundaries:
-        """Domain: with differentiated versions of all boundary conditions"""
-        return self.__class__([b.differentiated for b in self])
 
     def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
         """set the ghost cells for all boundaries

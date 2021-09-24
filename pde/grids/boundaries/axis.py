@@ -434,11 +434,6 @@ class BoundaryPair(BoundaryAxisBase):
         self.low.check_value_rank(rank)
         self.high.check_value_rank(rank)
 
-    @property
-    def differentiated(self) -> BoundaryPair:
-        """BoundaryPair: differentiated version of this boundary condition"""
-        return self.__class__(self.low.differentiated, self.high.differentiated)
-
 
 class BoundaryPeriodic(BoundaryPair):
     """represent a periodic axis"""
@@ -490,11 +485,6 @@ class BoundaryPeriodic(BoundaryPair):
             rank (int): The rank of the value that is stored with this
                 boundary condition
         """
-
-    @property
-    def differentiated(self) -> BoundaryPeriodic:
-        """:class:`BoundaryPeriodic`: differentiated boundary condition"""
-        return self
 
 
 def get_boundary_axis(
