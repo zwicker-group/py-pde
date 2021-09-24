@@ -1,5 +1,9 @@
 TODO
 ====
+* Allow setting boundary conditions for vector and tensor fields:
+	- For interpolation the actual field needs to be set
+	- For differential operators, the normal component might be sufficient
+		Provide separate function (a flag?) for setting only the normal component?
 * Think about incremental test run
     - should break at first failure
     - should restart at last failure

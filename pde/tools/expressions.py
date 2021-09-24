@@ -854,4 +854,4 @@ class TensorExpression(ExpressionBase):
         return jit(function)  # type: ignore
 
 
-__all__ = ["ExpressionBase", "ScalarExpression", "TensorExpression"]
+__all__ = ["ExpressionBase", "ScalarExpression", "TensorExpression", "parse_number"]
