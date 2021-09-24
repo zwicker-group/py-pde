@@ -7,9 +7,13 @@ This package contains classes for handling the boundary conditions of fields.
 Boundary conditions
 ^^^^^^^^^^^^^^^^^^^
 
-Since the :mod:`pde` package only supports orthogonal grids, boundary conditions
-need to be applied at the end of each axis. Consequently, methods expecting 
-boundary conditions typically receive a list of conditions for each axes:
+The mathematical details of boundary conditions for partial differential equations are
+treated in more detail in the
+:download:`documentation document </../methods/boundary_discretization/boundary_discretization.pdf>`.
+Since the :mod:`pde` package only supports orthogonal grids, boundary conditions need to
+be applied at the end of each axis.
+Consequently, methods expecting boundary conditions typically receive a list of
+conditions for each axes:
 
 .. code-block:: python
 
@@ -18,12 +22,12 @@ boundary conditions typically receive a list of conditions for each axes:
     
 If an axis is periodic (like the first one in the example above), the only valid
 boundary condition is 'periodic'. For non-periodic axes (e.g., the second axis),
-different boundary conditions can be specified for the lower and upper end of
-the axis, which is done using a tuple of two conditions. Typical choices 
-for individual conditions are Dirichlet conditions that enforce a value
-NUM (specified by `{'value': NUM}`) and Neumann conditions that enforce 
-the value DERIV for the derivative in the normal direction (specified by
-`{'derivative': DERIV}`). The specific choices for the example above could be
+different boundary conditions can be specified for the lower and upper end of the axis,
+which is done using a tuple of two conditions. Typical choices  for individual
+conditions are Dirichlet conditions that enforce a value NUM (specified by
+`{'value': NUM}`) and Neumann conditions that enforce  the value DERIV for the
+derivative in the normal direction (specified by `{'derivative': DERIV}`). The specific
+choices for the example above could be
 
 .. code-block:: python
     
