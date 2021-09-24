@@ -708,15 +708,11 @@ class GridBase(metaclass=ABCMeta):
         """
         backend = kwargs.get("backend", "numba")  # numba is the default backend
 
-        operator = self._get_operator_info(operator)
-        # determine the rank of the boundary condition of this operator
-        bc_rank = min(operator.rank_in, operator.rank_out)
         # instantiate the operator
+        operator = self._get_operator_info(operator)
         operator_raw = operator.factory(self, **kwargs)
-
         # set the boundary conditions before applying this operator
-        print("BC_RANK", bc_rank)
-        bcs = self.get_boundary_conditions(bc, rank=bc_rank)
+        bcs = self.get_boundary_conditions(bc, rank=operator.rank_in)
 
         # calculate shapes of the full data
         shape_in_full = (self.dim,) * operator.rank_in + self._shape_full

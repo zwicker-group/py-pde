@@ -348,8 +348,7 @@ class BoundaryPair(BoundaryAxisBase):
             data (str or dict):
                 Data that describes the boundary pair
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                conditions.
+                The tensorial rank of the field for this boundary condition
 
         Returns:
             :class:`~pde.grids.boundaries.axis.BoundaryPair`:
@@ -425,19 +424,14 @@ class BoundaryPair(BoundaryAxisBase):
         """check whether the values at the boundaries have the correct rank
 
         Args:
-            rank (int): The rank of the value that is stored with this
-                boundary condition
+            rank (int):
+                The tensorial rank of the field for this boundary condition
 
         Throws:
             RuntimeError: if the value does not have rank `rank`
         """
         self.low.check_value_rank(rank)
         self.high.check_value_rank(rank)
-
-    @property
-    def differentiated(self) -> BoundaryPair:
-        """BoundaryPair: differentiated version of this boundary condition"""
-        return self.__class__(self.low.differentiated, self.high.differentiated)
 
 
 class BoundaryPeriodic(BoundaryPair):
@@ -487,14 +481,9 @@ class BoundaryPeriodic(BoundaryPair):
         """check whether the values at the boundaries have the correct rank
 
         Args:
-            rank (int): The rank of the value that is stored with this
-                boundary condition
+            rank (int):
+                The tensorial rank of the field for this boundary condition
         """
-
-    @property
-    def differentiated(self) -> BoundaryPeriodic:
-        """:class:`BoundaryPeriodic`: differentiated boundary condition"""
-        return self
 
 
 def get_boundary_axis(
@@ -510,8 +499,7 @@ def get_boundary_axis(
         data (str or tuple or dict):
             Data describing the boundary conditions for this axis
         rank (int):
-            The tensorial rank of the value associated with the boundary
-            conditions.
+            The tensorial rank of the field for this boundary condition
 
     Returns:
         :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`:

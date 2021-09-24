@@ -93,7 +93,7 @@ def run_unit_tests(
     runslow: bool = False,
     parallel: bool = False,
     coverage: bool = False,
-    no_numba: bool = False,
+    nojit: bool = False,
     pattern: str = None,
 ) -> int:
     """run the unit tests
@@ -102,7 +102,7 @@ def run_unit_tests(
         runslow (bool): Whether to run the slow tests
         parallel (bool): Whether to use multiple processors
         coverage (bool): Whether to determine the test coverage
-        no_numba (bool): Whether to disable numba jit compilation
+        nojit (bool): Whether to disable numba jit compilation
         pattern (str): A pattern that determines which tests are ran
 
     Returns:
@@ -111,7 +111,7 @@ def run_unit_tests(
     # modify current environment
     env = os.environ.copy()
     env["MPLBACKEND"] = "agg"
-    if no_numba:
+    if nojit:
         env["NUMBA_DISABLE_JIT"] = "1"
     else:
         env["NUMBA_WARNINGS"] = "1"
@@ -212,7 +212,7 @@ def main() -> int:
         help="Use multiprocessing",
     )
     group.add_argument(
-        "--no_numba",
+        "--nojit",
         action="store_true",
         default=False,
         help="Do not use just-in-time compilation of numba",
@@ -249,7 +249,7 @@ def main() -> int:
             runslow=args.runslow,
             coverage=args.coverage,
             parallel=args.parallel,
-            no_numba=args.no_numba,
+            nojit=args.nojit,
             pattern=args.pattern,
         )
         retcodes.append(retcode)
