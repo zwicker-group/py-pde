@@ -52,6 +52,7 @@ def main():
     sp.check_call(
         [
             "sphinx-apidoc",
+            "--separate",
             "--maxdepth",
             "4",
             "--output-dir",
