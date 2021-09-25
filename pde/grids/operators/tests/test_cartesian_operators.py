@@ -312,7 +312,7 @@ def test_make_derivative(ndim, axis):
         res = field.copy()
         res.data[:] = 0
         field.set_ghost_cells(bcs)
-        diff(field._data_all, out=res.data)
+        diff(field._data_full, out=res.data)
         np.testing.assert_allclose(
             grad.data[axis], res.data, atol=0.1, rtol=0.1, err_msg=msg
         )

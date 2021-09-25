@@ -126,7 +126,7 @@ class Tensor2Field(DataFieldBase):
         data_all.shape = (dim, dim, *full_grid_shape)
 
         # set the result as the full data array
-        self._data_all = data_all
+        self._data_full = data_all
 
         # ensure that no copying happend
         assert np.may_share_memory(self.data, value)

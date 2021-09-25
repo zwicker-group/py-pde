@@ -106,11 +106,11 @@ class FieldCollection(FieldBase):
             # link the data of the original fields back to self._data
             for i, field in enumerate(self.fields):
                 field_shape = field.data.shape
-                field._data_flat = self._data_all[self._slices[i]]
+                field._data_flat = self._data_full[self._slices[i]]
 
                 # check whether the field data is based on our data field
                 assert field.data.shape == field_shape
-                assert np.may_share_memory(field._data_all, self._data_all)
+                assert np.may_share_memory(field._data_full, self._data_full)
 
         if labels is not None:
             self.labels = labels  # type: ignore

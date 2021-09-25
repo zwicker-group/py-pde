@@ -294,13 +294,13 @@ def test_expression_bc_setting(expr):
     f2.set_ghost_cells(bc2)
 
     f3 = field.copy()
-    bc1.make_ghost_cell_setter()(f3._data_all)
+    bc1.make_ghost_cell_setter()(f3._data_full)
     f4 = field.copy()
-    bc2.make_ghost_cell_setter()(f4._data_all)
+    bc2.make_ghost_cell_setter()(f4._data_full)
 
-    np.testing.assert_almost_equal(f1._data_all, f2._data_all)
-    np.testing.assert_almost_equal(f1._data_all, f3._data_all)
-    np.testing.assert_almost_equal(f1._data_all, f4._data_all)
+    np.testing.assert_almost_equal(f1._data_full, f2._data_full)
+    np.testing.assert_almost_equal(f1._data_full, f3._data_full)
+    np.testing.assert_almost_equal(f1._data_full, f4._data_full)
 
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
