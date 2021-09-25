@@ -103,10 +103,10 @@ def test_set_ghost_cells(dim, periodic):
     field = ScalarField.random_uniform(grid)
     bcs = grid.get_boundary_conditions("natural")
 
-    arr1 = field._data_all.copy()
+    arr1 = field._data_full.copy()
     bcs.set_ghost_cells(arr1)
 
-    arr2 = field._data_all.copy()
+    arr2 = field._data_full.copy()
     setter = bcs.make_ghost_cell_setter()
     setter(arr2)
 

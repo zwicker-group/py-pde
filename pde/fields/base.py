@@ -58,7 +58,7 @@ class FieldBase(metaclass=ABCMeta):
 
     _subclasses: Dict[str, Type[FieldBase]] = {}  # all classes inheriting from this
     _grid: GridBase  # the grid on which the field is defined
-    __data_all: np.ndarray  # the data on the grid including ghost points
+    __data_full: np.ndarray  # the data on the grid including ghost points
     _data_valid: np.ndarray  # the valid data without ghost points
     _label: Optional[str]
 
@@ -79,7 +79,7 @@ class FieldBase(metaclass=ABCMeta):
                 Name of the field
         """
         self._grid = grid
-        self._data_all = data
+        self._data_full = data
         self.label = label
         self._logger = logging.getLogger(self.__class__.__name__)
 
@@ -112,16 +112,16 @@ class FieldBase(metaclass=ABCMeta):
     @property
     def _idx_valid(self) -> Tuple[slice, ...]:
         """tuple: slices to extract valid data from full data"""
-        idx_comp = (slice(None),) * (self.__data_all.ndim - self.grid.num_axes)
+        idx_comp = (slice(None),) * (self.__data_full.ndim - self.grid.num_axes)
         return idx_comp + self.grid._idx_valid
 
     @property
-    def _data_all(self) -> np.ndarray:
+    def _data_full(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: the full data including ghost cells"""
-        return self.__data_all
+        return self.__data_full
 
-    @_data_all.setter
-    def _data_all(self, value: NumberOrArray) -> None:
+    @_data_full.setter
+    def _data_full(self, value: NumberOrArray) -> None:
         """set the full data including ghost cells
 
         Args:
@@ -134,46 +134,46 @@ class FieldBase(metaclass=ABCMeta):
 
         if np.isscalar(value):
             # supplied value is a scalar
-            self.__data_all[:] = value
+            self.__data_full[:] = value
 
         elif isinstance(value, np.ndarray):
             # check the shape of the supplied array
             if value.shape[-self.grid.num_axes :] != self.grid._shape_full:
                 raise ValueError(
-                    f"Supplied data has wrong shape: {value.shape} is not compatible with "
-                    f"{self.grid._shape_full}"
+                    f"Supplied data has wrong shape: {value.shape} is not compatible "
+                    f"with {self.grid._shape_full}"
                 )
             # actually set the data
-            self.__data_all = value
+            self.__data_full = value
 
         else:
             raise TypeError(f"Cannot set field values to {value}")
 
         # set reference to valid data
-        self._data_valid = self.__data_all[self._idx_valid]
+        self._data_valid = self.__data_full[self._idx_valid]
 
     @property
     def _data_flat(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: flat version of discretized data with ghost cells"""
         # flatten the first dimension of the internal data
         full_shape = tuple(s + 2 for s in self.grid.shape)
-        return self._data_all.reshape(-1, *full_shape)
+        return self._data_full.reshape(-1, *full_shape)
 
     @_data_flat.setter
     def _data_flat(self, value: np.ndarray) -> None:
         """set the full data including ghost cells from a flattened array"""
         # simply set the data -> this might need to be overwritten
-        self._data_all = value
+        self._data_full = value
 
     @property
     def writeable(self) -> bool:
         """bool: whether the field data can be changed or not"""
-        return not hasattr(self, "_data_all") or self._data_all.flags.writeable
+        return not hasattr(self, "_data_full") or self._data_full.flags.writeable
 
     @writeable.setter
     def writeable(self, value: bool) -> None:
         """set whether the field data can be changed or not"""
-        self._data_all.flags.writeable = value
+        self._data_full.flags.writeable = value
         self._data_valid.flags.writeable = value
 
     @property
@@ -682,7 +682,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if isinstance(data, self.__class__):
             # special case where a DataFieldBase is supplied
-            data_arr = number_array(data._data_all, dtype=dtype, copy=True)
+            data_arr = number_array(data._data_full, dtype=dtype, copy=True)
             super().__init__(grid, data=data_arr, label=label)
 
         elif with_ghost_cells:
@@ -716,7 +716,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             elif isinstance(data, DataFieldBase):
                 # copy the full data from the supplied field
                 grid.assert_grid_compatible(data.grid)
-                data_arr = number_array(data._data_all, dtype=dtype, copy=True)
+                data_arr = number_array(data._data_full, dtype=dtype, copy=True)
                 super().__init__(grid, data=data_arr, label=label)
 
             else:
@@ -1000,7 +1000,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         return self.__class__(
             self.grid,
-            data=np.array(self._data_all, dtype=dtype, copy=True),
+            data=np.array(self._data_full, dtype=dtype, copy=True),
             label=label,
             dtype=dtype,
             with_ghost_cells=True,
@@ -1179,7 +1179,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # use the full array and assume BCs are set via ghost points
             interpolate_single = grid.make_interpolator_full_compiled(fill=fill)
             # extract information about the data field
-            get_data_array = make_array_constructor(self._data_all)
+            get_data_array = make_array_constructor(self._data_full)
 
         else:
             # create an interpolator that sets the boundary conditions
@@ -1227,7 +1227,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             return out
 
         # store a reference to the data so it is not garbage collected too early
-        interpolator._data = self._data_all
+        interpolator._data = self._data_full
 
         return interpolator  # type: ignore
 
@@ -1531,7 +1531,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 conditions.
         """
         bcs = self.grid.get_boundary_conditions(bc, rank=self.rank)
-        bcs.set_ghost_cells(self._data_all, args=args)
+        bcs.set_ghost_cells(self._data_full, args=args)
 
     @abstractproperty
     def integral(self) -> NumberOrArray:
@@ -1631,7 +1631,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if bc is None:
             # apply the operator without imposing boundary conditions
             op_raw = self.grid.make_operator_no_bc(operator_info, **kwargs)
-            op_raw(self._data_all, out.data)
+            op_raw(self._data_full, out.data)
         else:
             # apply the operator with boundary conditions
             op_with_bcs = self.grid.make_operator(operator_info, bc=bc, **kwargs)

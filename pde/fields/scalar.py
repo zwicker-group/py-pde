@@ -106,7 +106,7 @@ class ScalarField(DataFieldBase):
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
         """set the data from a value from a collection"""
-        self._data_all = value[0]
+        self._data_full = value[0]
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """support unary numpy ufuncs, like np.sin, but also np.multiply"""

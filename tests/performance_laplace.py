@@ -206,9 +206,9 @@ def main():
 
                 # call once to pre-compile and test result
                 if method == "OPTIMIZED":
-                    result = laplace(field._data_all)
+                    result = laplace(field._data_full)
                     np.testing.assert_allclose(result, expected.data)
-                    speed = estimate_computation_speed(laplace, field._data_all)
+                    speed = estimate_computation_speed(laplace, field._data_full)
                 else:
                     np.testing.assert_allclose(laplace(field.data), expected.data)
                     speed = estimate_computation_speed(laplace, field.data)
