@@ -929,8 +929,7 @@ class GridBase(metaclass=ABCMeta):
 
         return get_cell_volume  # type: ignore
 
-    @fill_in_docstring
-    def make_interpolator_full_compiled(
+    def _make_interpolator_full_compiled(
         self, fill: Number = None, cell_coords: bool = False
     ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
         """return a compiled function for linear interpolation on the grid
@@ -1035,7 +1034,7 @@ class GridBase(metaclass=ABCMeta):
                         c_x %= size_x
                         inside_x = True
                     else:
-                        inside_x = -1 < c_x < size_x
+                        inside_x = -1 <= c_x <= size_x
 
                     for j in range(2):
                         c_y = int(c_ly) + j
@@ -1043,10 +1042,10 @@ class GridBase(metaclass=ABCMeta):
                             c_y %= size_y
                             inside_y = True
                         else:
-                            inside_y = -1 < c_y < size_y
+                            inside_y = -1 <= c_y <= size_y
 
                         w = w_x[i] * w_y[j]
-                        if inside_x or inside_y:
+                        if inside_x and inside_y:
                             value += w * data_full[..., c_x + 1, c_y + 1]
                             weight += w
                         # else: ignore points that are not inside any of the axes, where
@@ -1125,7 +1124,7 @@ class GridBase(metaclass=ABCMeta):
                                 inside_z = -1 <= c_z <= size_z
 
                             w = w_x[i] * w_y[j] * w_z[k]
-                            if inside_x or inside_y or inside_z:
+                            if inside_x and inside_y and inside_z:
                                 value += w * data_full[..., c_x + 1, c_y + 1, c_z + 1]
                                 weight += w
                             # else: ignore points that would need to be interpolated
@@ -1147,257 +1146,6 @@ class GridBase(metaclass=ABCMeta):
             )
 
         return interpolate_single  # type: ignore
-
-    @fill_in_docstring
-    def make_interpolator_compiled(
-        self,
-        bc: BoundariesData = "natural",
-        rank: int = 0,
-        fill: Number = None,
-    ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
-        """return a compiled function for linear interpolation on the grid
-
-        This interpolator respects boundary conditions and can thus interpolate
-        values in the whole grid volume. However, close to corners, the
-        interpolation might not be optimal, in particular for periodic grids.
-
-        Args:
-            bc:
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-            rank (int, optional):
-                The tensorial rank of the value associated with the boundary
-                condition.
-            fill (Number, optional):
-                Determines how values out of bounds are handled. If `None`, a
-                `ValueError` is raised when out-of-bounds points are requested.
-                Otherwise, the given value is returned.
-
-        Returns:
-            A function which returns interpolated values when called with
-            arbitrary positions within the space of the grid. The signature of
-            this function is (data, point), where `data` is the numpy array
-            containing the field data and position is denotes the position in
-            grid coordinates.
-        """
-        bcs = self.get_boundary_conditions(bc, rank=rank)
-
-        if self.num_axes == 1:
-            # specialize for 1-dimensional interpolation
-            size = self.shape[0]
-            lo = self.axes_bounds[0][0]
-            dx = self.discretization[0]
-            periodic = self.periodic[0]
-            ev = bcs[0].get_point_evaluator(fill=fill)
-
-            @jit
-            def interpolate_single(
-                data: np.ndarray, point: np.ndarray
-            ) -> NumberOrArray:
-                """obtain interpolated value of data at a point
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        A 1d array of values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
-
-                Returns:
-                    :class:`~numpy.ndarray`: The interpolated value at the point
-                """
-                c_l, d_l = divmod((point[0] - lo) / dx - 0.5, 1.0)
-                if periodic:
-                    c_li = int(c_l) % size
-                    c_hi = (c_li + 1) % size
-                else:
-                    if c_l < -1 or c_l > size - 1:
-                        if fill is None:
-                            raise DomainError("Point lies outside the grid")
-                        else:
-                            return fill
-                    c_li = int(c_l)
-                    c_hi = c_li + 1
-                return (1 - d_l) * ev(data, (c_li,)) + d_l * ev(data, (c_hi,))  # type: ignore
-
-        elif self.num_axes == 2:
-            # specialize for 2-dimensional interpolation
-            size_x, size_y = self.shape
-            lo_x, lo_y = np.array(self.axes_bounds)[:, 0]
-            dx, dy = self.discretization
-            periodic_x, periodic_y = self.periodic
-            ev_x = bcs[0].get_point_evaluator(fill=fill)
-            ev_y = bcs[1].get_point_evaluator(fill=fill)
-
-            @jit
-            def interpolate_single(
-                data: np.ndarray, point: np.ndarray
-            ) -> NumberOrArray:
-                """obtain interpolated value of data at a point
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        The values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
-
-                Returns:
-                    :class:`~numpy.ndarray`: The interpolated value at the point
-                """
-                # determine surrounding points and their weights
-                c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
-                c_ly, d_ly = divmod((point[1] - lo_y) / dy - 0.5, 1.0)
-                w_x = (1 - d_lx, d_lx)
-                w_y = (1 - d_ly, d_ly)
-
-                value = np.zeros(data.shape[:-2], dtype=data.dtype)
-                weight = 0
-                for i in range(2):
-                    c_x = int(c_lx) + i
-                    if periodic_x:
-                        c_x %= size_x
-                        inside_x = True
-                    else:
-                        inside_x = -1 < c_x < size_x
-
-                    for j in range(2):
-                        c_y = int(c_ly) + j
-                        if periodic_y:
-                            c_y %= size_y
-                            inside_y = True
-                        else:
-                            inside_y = -1 < c_y < size_y
-
-                        w = w_x[i] * w_y[j]
-                        if inside_x and inside_y:
-                            value += w * data[..., c_x, c_y]
-                            weight += w
-                        elif not inside_x and inside_y:
-                            value += w * ev_x(data, (c_x, c_y))
-                            weight += w
-                        elif inside_x and not inside_y:
-                            value += w * ev_y(data, (c_x, c_y))
-                            weight += w
-                        # else: ignore points that are not inside any of the
-                        # axes, where we would have to do interpolation along
-                        # two axes. This would in principle be possible for
-                        # periodic boundary conditions, but this is tedious to
-                        # implement correctly.
-
-                if weight == 0:
-                    if fill is None:
-                        raise DomainError("Point lies outside the grid")
-                    else:
-                        return fill
-
-                return value / weight
-
-        elif self.num_axes == 3:
-            # specialize for 3-dimensional interpolation
-            size_x, size_y, size_z = self.shape
-            lo_x, lo_y, lo_z = np.array(self.axes_bounds)[:, 0]
-            dx, dy, dz = self.discretization
-            periodic_x, periodic_y, periodic_z = self.periodic
-            ev_x = bcs[0].get_point_evaluator(fill=fill)
-            ev_y = bcs[1].get_point_evaluator(fill=fill)
-            ev_z = bcs[2].get_point_evaluator(fill=fill)
-
-            @jit
-            def interpolate_single(
-                data: np.ndarray, point: np.ndarray
-            ) -> NumberOrArray:
-                """obtain interpolated value of data at a point
-
-                Args:
-                    data (:class:`~numpy.ndarray`):
-                        The values at the grid points
-                    point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
-
-                Returns:
-                    :class:`~numpy.ndarray`: The interpolated value at the point
-                """
-                # determine surrounding points and their weights
-                c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
-                c_ly, d_ly = divmod((point[1] - lo_y) / dy - 0.5, 1.0)
-                c_lz, d_lz = divmod((point[2] - lo_z) / dz - 0.5, 1.0)
-                w_x = (1 - d_lx, d_lx)
-                w_y = (1 - d_ly, d_ly)
-                w_z = (1 - d_lz, d_lz)
-
-                value = np.zeros(data.shape[:-3], dtype=data.dtype)
-                weight = 0
-                for i in range(2):
-                    c_x = int(c_lx) + i
-                    if periodic_x:
-                        c_x %= size_x
-                        inside_x = True
-                    else:
-                        inside_x = -1 < c_x < size_x
-
-                    for j in range(2):
-                        c_y = int(c_ly) + j
-                        if periodic_y:
-                            c_y %= size_y
-                            inside_y = True
-                        else:
-                            inside_y = -1 < c_y < size_y
-
-                        for k in range(2):
-                            c_z = int(c_lz) + k
-                            if periodic_z:
-                                c_z %= size_z
-                                inside_z = True
-                            else:
-                                inside_z = -1 < c_z < size_z
-
-                            w = w_x[i] * w_y[j] * w_z[k]
-                            if inside_x and inside_y and inside_z:
-                                value += w * data[..., c_x, c_y, c_z]
-                                weight += w
-                            elif not inside_x and inside_y and inside_z:
-                                value += w * ev_x(data, (c_x, c_y, c_z))
-                                weight += w
-                            elif inside_x and not inside_y and inside_z:
-                                value += w * ev_y(data, (c_x, c_y, c_z))
-                                weight += w
-                            elif inside_x and inside_y and not inside_z:
-                                value += w * ev_z(data, (c_x, c_y, c_z))
-                                weight += w
-                            # else: ignore points that would need to be
-                            # interpolated along more than one axis.
-                            # Implementing this would in principle be possible
-                            # for periodic boundary conditions, but this is
-                            # tedious to do correctly.
-
-                if weight == 0:
-                    if fill is None:
-                        raise DomainError("Point lies outside the grid")
-                    else:
-                        return fill
-
-                return value / weight
-
-        else:
-            raise NotImplementedError(
-                f"Compiled interpolation not implemented for dimension {self.num_axes}"
-            )
-
-        return interpolate_single  # type: ignore
-
-    def make_add_interpolated_compiled(
-        self,
-    ) -> Callable[[np.ndarray, np.ndarray, NumberOrArray], None]:
-        """deprecated alias of method `make_inserter_compiled`"""
-        # this was deprecated on 2021-02-23
-        warnings.warn(
-            "`make_add_interpolated_compiled` is deprecated. Use "
-            "`make_inserter_compiled` instead",
-            DeprecationWarning,
-        )
-        return self.make_inserter_compiled()
 
     def make_inserter_compiled(
         self,

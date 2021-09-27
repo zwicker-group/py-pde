@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, UnitGrid
-from pde.grids.boundaries import Boundaries, DomainError, PeriodicityError
+from pde.grids.boundaries import Boundaries, PeriodicityError
 
 
 def _get_cartesian_grid(dim=2, periodic=True):
@@ -366,41 +366,6 @@ def test_setting_domain_rect():
         grid.get_boundary_conditions("derivative")
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions(["derivative", "periodic"])
-
-
-def test_interpolate_1d():
-    """test interpolation of 1d grid"""
-    grid = UnitGrid(2, periodic=False)
-    intp = grid.make_interpolator_compiled(bc={"type": "value", "value": 1})
-
-    assert intp(np.zeros(2), np.zeros(1)) == pytest.approx(1)
-    assert intp(np.zeros(2), np.ones(1)) == pytest.approx(0)
-    with pytest.raises(DomainError):
-        intp(np.zeros(2), np.array([-1]))
-    with pytest.raises(DomainError):
-        intp(np.zeros(2), np.array([3]))
-
-    grid_per = UnitGrid(2, periodic=True)
-    intp = grid_per.make_interpolator_compiled(bc="natural")
-    for pos in [-1, 0, 1, 2, 3]:
-        assert intp(np.arange(2), np.array([pos])) == pytest.approx(0.5)
-
-
-def test_interpolate_2d():
-    """test interpolation of 2d grid"""
-    grid = UnitGrid([2, 2], periodic=False)
-    intp = grid.make_interpolator_compiled(bc={"type": "value", "value": 1})
-
-    assert intp(np.zeros((2, 2)), np.array([0, 1])) == pytest.approx(1)
-
-
-def test_interpolate_3d():
-    """test interpolation of 3d grid"""
-    grid = UnitGrid([2, 2, 2], periodic=False)
-    intp = grid.make_interpolator_compiled(bc={"type": "value", "value": 1})
-
-    val = intp(np.zeros((2, 2, 2)), np.array([0, 1, 1]))
-    assert val == pytest.approx(1)
 
 
 @pytest.mark.parametrize("reflect", [True, False])
