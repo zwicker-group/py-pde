@@ -1161,8 +1161,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             arbitrary positions within the space of the grid.
         """
         grid = self.grid
-        grid_dim = len(grid.axes)
+        num_axes = self.grid.num_axes
         data_shape = self.data_shape
+        grid_shape = self.grid.shape
+        grid_shape_full = self.grid._shape_full
 
         # convert `fill` to dtype of data
         if fill is not None:
@@ -1173,8 +1175,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # use the full array and assume BCs are set via ghost points
         interpolate_single_nobc = grid._make_interpolator_full_compiled(fill=fill)
+        set_valid = grid._make_set_valid()
+
         # extract information about the data field
         get_data_array = make_array_constructor(self._data_full)
+        grid_shape_idx = self.data.ndim - num_axes
+
         # check boundary conditions
         if bc is None:
             set_ghost_cells = None
@@ -1182,10 +1188,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             bcs = self.grid.get_boundary_conditions(bc, rank=self.rank)
             set_ghost_cells = bcs.make_ghost_cell_setter()
 
-        dim_error_msg = f"Dimension of point does not match grid dimension {grid_dim}"
+        dim_error_msg = f"Dimension of point does not match axes count {num_axes}"
 
         @jit
-        def interpolator(point: np.ndarray, data_full: np.ndarray = None) -> np.ndarray:
+        def interpolator(point: np.ndarray, data: np.ndarray = None) -> np.ndarray:
             """return the interpolated value at the position `point`
 
             Args:
@@ -1204,13 +1210,26 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             """
             # check input
             point = np.atleast_1d(point)
-            if point.shape[-1] != grid_dim:
+            if point.shape[-1] != num_axes:
                 raise DimensionError(dim_error_msg)
             point_shape = point.shape[:-1]
 
-            # reconstruct data field from memory address
-            if data_full is None:
+            if data is None:
+                # reconstruct data field from memory address
                 data_full = get_data_array()
+
+            elif data.shape[grid_shape_idx:] == grid_shape:
+                # copy supplied valid data into allocate full data array
+
+                data_full = np.empty(data_shape + grid_shape_full, dtype=data.dtype)
+                set_valid(data_full, data)
+
+            elif data.shape[grid_shape_idx:] == grid_shape_full:
+                # use the supplied full array
+                data_full = data
+
+            else:
+                raise DimensionError(f"Invalid shape of data to interpolate")
 
             # set boundary conditions if requested
             if set_ghost_cells is not None:
@@ -1359,10 +1378,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # determine the points at which data needs to be calculated
         if isinstance(grid, CartesianGridBase):
-            # convert to a Cartesian grid
+            # convert Cartesian coordinates to coordinates in current grid
             points = self.grid.point_from_cartesian(grid.cell_coords)
 
-        elif self.grid.__class__ is grid.__class__:
+        elif (
+            self.grid.__class__ is grid.__class__
+            and self.grid.num_axes == grid.num_axes
+        ):
             # convert within the same grid class
             points = grid.cell_coords
 
@@ -1370,7 +1392,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # this type of interpolation is not supported
             grid_in = self.grid.__class__.__name__
             grid_out = grid.__class__.__name__
-            raise NotImplementedError(f"Cannot convert {grid_in} to {grid_out}")
+            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
 
         # interpolate the data to the grid
         data = self.interpolate(points, backend=backend, method=method, fill=fill)

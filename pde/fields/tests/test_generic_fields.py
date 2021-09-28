@@ -231,15 +231,24 @@ def test_writing_images(tmp_path):
 
 
 @pytest.mark.slow
-def test_interpolation_to_grid_fields():
+@pytest.mark.parametrize("ndim", [1, 2])
+def test_interpolation_to_grid_fields(ndim):
     """test whether data is interpolated correctly for different fields"""
-    grid = CartesianGrid([[0, 2 * np.pi]] * 2, 6)
-    grid2 = CartesianGrid([[0, 2 * np.pi]] * 2, 8)
-    vf = VectorField.from_expression(grid, ["sin(y)", "cos(x)"])
+    grid = CartesianGrid([[0, 2 * np.pi]] * ndim, 6)
+    grid2 = CartesianGrid([[0, 2 * np.pi]] * ndim, 8)
+    if ndim == 1:
+        vf = VectorField.from_expression(grid, ["cos(x)"])
+    elif ndim == 2:
+        vf = VectorField.from_expression(grid, ["sin(y)", "cos(x)"])
     sf = vf[0]  # test extraction of fields
     fc = FieldCollection([sf, vf])
 
     for f in [sf, vf, fc]:
+        # test self-interpolation
+        f0 = f.interpolate_to_grid(grid, backend="numba")
+        np.testing.assert_allclose(f.data, f0.data, atol=1e-15)
+
+        # test interpolation to finer grid and back
         f2 = f.interpolate_to_grid(grid2, backend="numba")
         f3 = f2.interpolate_to_grid(grid, backend="numba")
         np.testing.assert_allclose(f.data, f3.data, atol=0.2, rtol=0.2)

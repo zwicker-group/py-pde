@@ -311,6 +311,11 @@ def test_interpolation_mutable():
     intp = field.make_interpolator(backend="numba")
     np.testing.assert_allclose(intp(np.array([0.5]), data), 3)
 
+    # test overwriting field values
+    data = np.full_like(field.data, 4)
+    intp = field.make_interpolator(backend="numba")
+    np.testing.assert_allclose(intp(np.array([0.5]), data), 4)
+
 
 def test_boundary_interpolation_1d():
     """test boundary interpolation for 1d fields"""
