@@ -82,7 +82,7 @@ def test_findiff_cyl():
 
 def test_grid_laplace():
     """test the cylindrical implementation of the laplace operator"""
-    grid_cyl = CylindricalSymGrid(6, (0, 4), (4, 4))
+    grid_cyl = CylindricalSymGrid(7, (0, 4), (4, 4))
     grid_cart = CartesianGrid([[-5, 5], [-5, 5], [0, 4]], [10, 10, 4])
 
     a_2d = ScalarField.from_expression(grid_cyl, expression="exp(-5 * r) * cos(z / 3)")

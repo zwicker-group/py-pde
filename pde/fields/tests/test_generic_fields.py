@@ -43,16 +43,28 @@ def test_interpolation_natural(example_grid, field_class):
     """test some interpolation for natural boundary conditions"""
     msg = f"grid={example_grid}, field={field_class}"
     f = field_class.random_uniform(example_grid)
-    if isinstance(example_grid, CartesianGridBase):
-        p = example_grid.get_random_point(boundary_distance=0.5)
-    else:
-        p = example_grid.get_random_point(boundary_distance=1, avoid_center=True)
-    p = example_grid.point_from_cartesian(p)
+
+    def get_point():
+        if isinstance(example_grid, CartesianGridBase):
+            p = example_grid.get_random_point(boundary_distance=0.5)
+        else:
+            p = example_grid.get_random_point(boundary_distance=1, avoid_center=True)
+        return example_grid.point_from_cartesian(p)
+
+    # interpolate a single, random point
+    p = get_point()
     i1 = f.interpolate(p, backend="scipy", method="linear")
     i2 = f.interpolate(p, backend="numba", method="linear")
     np.testing.assert_almost_equal(i1, i2, err_msg=msg)
 
-    c = (1,) * len(example_grid.axes)  # specific cell
+    # multiple random points
+    ps = np.array([get_point() for _ in range(2)])
+    i1 = f.interpolate(ps, backend="scipy", method="linear")
+    i2 = f.interpolate(ps, backend="numba", method="linear")
+    np.testing.assert_almost_equal(i1, i2, err_msg=msg)
+
+    # interpolate at cell center
+    c = (1,) * len(example_grid.axes)
     p = f.grid.cell_coords[c]
     val = f.interpolate(p, backend="scipy", method="linear")
     np.testing.assert_allclose(val, f.data[(Ellipsis,) + c], err_msg=msg)

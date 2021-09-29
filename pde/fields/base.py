@@ -1137,20 +1137,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         return interpolator  # type: ignore
 
-    @fill_in_docstring
     def _make_interpolator_numba(
-        self, bc: Optional[BoundariesData] = "natural", fill: Number = None
+        self, fill: Number = None, **kwargs
     ) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return a compiled interpolator
 
-        This interpolator respects boundary conditions and can thus interpolate
-        values in the whole grid volume. However, close to corners, the
-        interpolation might not be optimal, in particular for periodic grids.
-
         Args:
-            bc:
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES_OPTIONAL}
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -1163,8 +1155,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid = self.grid
         num_axes = self.grid.num_axes
         data_shape = self.data_shape
-        grid_shape = self.grid.shape
-        grid_shape_full = self.grid._shape_full
 
         # convert `fill` to dtype of data
         if fill is not None:
@@ -1174,19 +1164,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
 
         # use the full array and assume BCs are set via ghost points
-        interpolate_single_nobc = grid._make_interpolator_full_compiled(fill=fill)
-        set_valid = grid._make_set_valid()
+        interpolate_single = grid._make_interpolator_compiled(fill=fill, **kwargs)
 
         # extract information about the data field
-        get_data_array = make_array_constructor(self._data_full)
-        grid_shape_idx = self.data.ndim - num_axes
-
-        # check boundary conditions
-        if bc is None:
-            set_ghost_cells = None
-        else:
-            bcs = self.grid.get_boundary_conditions(bc, rank=self.rank)
-            set_ghost_cells = bcs.make_ghost_cell_setter()
+        get_data_array = make_array_constructor(self.data)
 
         dim_error_msg = f"Dimension of point does not match axes count {num_axes}"
 
@@ -1203,7 +1184,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     field is used, which should be the default. However, this option can
                     be useful to interpolate other fields defined on the same grid
                     without recreating the interpolator. If a data array is supplied, it
-                    needs to be the full data, including ghost points.
+                    needs to be the valid data, without ghost points.
 
             Returns:
                 :class:`~numpy.ndarray`: The interpolated values at the points
@@ -1216,29 +1197,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             if data is None:
                 # reconstruct data field from memory address
-                data_full = get_data_array()
-
-            elif data.shape[grid_shape_idx:] == grid_shape:
-                # copy supplied valid data into allocate full data array
-
-                data_full = np.empty(data_shape + grid_shape_full, dtype=data.dtype)
-                set_valid(data_full, data)
-
-            elif data.shape[grid_shape_idx:] == grid_shape_full:
-                # use the supplied full array
-                data_full = data
-
-            else:
-                raise DimensionError(f"Invalid shape of data to interpolate")
-
-            # set boundary conditions if requested
-            if set_ghost_cells is not None:
-                set_ghost_cells(data_full)
+                data = get_data_array()
 
             # interpolate at every valid point
-            out = np.empty(data_shape + point_shape, dtype=data_full.dtype)
+            out = np.empty(data_shape + point_shape, dtype=data.dtype)
             for idx in np.ndindex(*point_shape):
-                out[(...,) + idx] = interpolate_single_nobc(data_full, point[idx])
+                out[(...,) + idx] = interpolate_single(data, point[idx])
 
             return out
 
@@ -1478,9 +1442,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: The discretized values on the boundary
         """
-        interpolator = self.make_interpolator(bc=bc)
-        points = self.grid._boundary_coordinates(axis, upper)
-        return interpolator(points)  # type: ignore
+        raise NotImplementedError
+        # this needs to be implemented by directly querying the boundary object
 
     @fill_in_docstring
     def make_get_boundary_values(
@@ -1500,42 +1463,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             callable: A function returning the values on the boundary. The function has
             the signature `(data_full=None, out=None)`, which allows specifying an input
             and an output :class:`~numpy.ndarray`. If `data_full` is omitted, the data
-            of the current field is used. Otherwise, the data including the ghots points
+            of the current field is used. Otherwise, the data including the ghost points
             needs to be supplied. The resulting interpolation is written to `out` if it
             is present. Otherwise, a new array is created.
         """
-        interpolator = self.make_interpolator(bc=bc)
-        points = self.grid._boundary_coordinates(axis, upper)
-
-        # TODO: use jit_allocated_out with pre-calculated shape
-
-        @jit
-        def get_boundary_values(
-            data_full: np.ndarray = None, out: np.ndarray = None
-        ) -> NumberOrArray:
-            """interpolate the field at the boundary
-
-            Args:
-                data_full (:class:`~numpy.ndarray`, optional):
-                    The data values that are used for interpolation (including ghost
-                    points). The data of the current field is used if `data = None`.
-                out (:class:`~numpy.ndarray`, optional):
-                    The array into which the interpolated results are written. A
-                    new array is created if `out = None`.
-
-            Returns:
-                :class:`~numpy.ndarray`: The interpolated values on the boundary.
-            """
-            res = interpolator(points, data_full)  # type: ignore
-            if out is None:
-                return res
-            else:
-                # the following just copies the data from res to out. It is a
-                # workaround for a bug in numba existing up to at least version 0.49
-                out[...] = res[()]  # type: ignore
-                return out
-
-        return get_boundary_values  # type: ignore
+        raise NotImplementedError
+        # this needs to be implemented by directly querying the boundary object
 
     @fill_in_docstring
     def set_ghost_cells(self, bc: BoundariesData, *, args=None) -> None:

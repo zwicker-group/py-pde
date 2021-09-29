@@ -20,21 +20,14 @@ def test_interpolation_singular():
     field = ScalarField(grid, data=3)
 
     # test constant boundary conditions
-    bc = [{"type": "value", "value": 1}, {"type": "value", "value": 5}]
     x = np.linspace(0, 1, 7).reshape((7, 1))
-    y = field.interpolate(x, backend="numba", bc=bc)
-    np.testing.assert_allclose(y, 1 + 4 * x.ravel())
+    y = field.interpolate(x, backend="numba")
+    np.testing.assert_allclose(y, 3)
 
-    # test derivative boundary conditions
-    bc = [{"type": "derivative", "value": -2}, {"type": "derivative", "value": 2}]
-    x = np.linspace(0, 1, 7).reshape((7, 1))
-    y = field.interpolate(x, backend="numba", bc=bc)
-    np.testing.assert_allclose(y, 2 + 2 * x.ravel())
-
-    # test boundary interpolation
-    for upper in [True, False]:
-        val = field.get_boundary_values(axis=0, upper=upper, bc=[{"value": 1}])
-        assert val == pytest.approx(1)
+    # # test boundary interpolation
+    # for upper in [True, False]:
+    #     val = field.get_boundary_values(axis=0, upper=upper, bc=[{"value": 1}])
+    #     assert val == pytest.approx(1)
 
 
 def test_simple_shapes(example_grid):
@@ -216,15 +209,6 @@ def test_from_expression():
     np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
 
 
-def test_interpolation_inhomogeneous_bc():
-    """test field interpolation with inhomogeneous boundary condition"""
-    sf = ScalarField(UnitGrid([3, 3], periodic=False))
-    x = 1 + np.random.random()
-    bc = ["natural", {"type": "value", "value": "x"}]
-    v = sf.interpolate([x, 0], backend="numba", bc=bc)
-    assert x == pytest.approx(v)
-
-
 @skipUnlessModule("matplotlib")
 def test_from_image(tmp_path):
     from matplotlib.pyplot import imsave
@@ -317,40 +301,40 @@ def test_interpolation_mutable():
     np.testing.assert_allclose(intp(np.array([0.5]), data), 4)
 
 
-def test_boundary_interpolation_1d():
-    """test boundary interpolation for 1d fields"""
-    grid = UnitGrid([5])
-    field = ScalarField(grid, np.arange(grid.shape[0]))
-
-    # test boundary interpolation
-    bndry_val = 0.25
-    for bndry in grid._iter_boundaries():
-        val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
-        np.testing.assert_allclose(val, bndry_val)
-
-        ev = field.make_get_boundary_values(*bndry, bc={"value": bndry_val})
-        out = ev()
-        np.testing.assert_allclose(out, bndry_val)
-        ev(data_full=field._data_full, out=out)
-        np.testing.assert_allclose(out, bndry_val)
-
-
-def test_boundary_interpolation_2d():
-    """test boundary interpolation for 2d fields"""
-    grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
-    field = ScalarField.random_normal(grid)
-
-    # test boundary interpolation
-    bndry_val = np.random.randn(3)
-    for bndry in grid._iter_boundaries():
-        val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
-        np.testing.assert_allclose(val, bndry_val)
-
-        ev = field.make_get_boundary_values(*bndry, bc={"value": bndry_val})
-        out = ev()
-        np.testing.assert_allclose(out, bndry_val)
-        ev(data_full=field._data_full, out=out)
-        np.testing.assert_allclose(out, bndry_val)
+# def test_boundary_interpolation_1d():
+#     """test boundary interpolation for 1d fields"""
+#     grid = UnitGrid([5])
+#     field = ScalarField(grid, np.arange(grid.shape[0]))
+#
+#     # test boundary interpolation
+#     bndry_val = 0.25
+#     for bndry in grid._iter_boundaries():
+#         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
+#         np.testing.assert_allclose(val, bndry_val)
+#
+#         ev = field.make_get_boundary_values(*bndry, bc={"value": bndry_val})
+#         out = ev()
+#         np.testing.assert_allclose(out, bndry_val)
+#         ev(data_full=field._data_full, out=out)
+#         np.testing.assert_allclose(out, bndry_val)
+#
+#
+# def test_boundary_interpolation_2d():
+#     """test boundary interpolation for 2d fields"""
+#     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
+#     field = ScalarField.random_normal(grid)
+#
+#     # test boundary interpolation
+#     bndry_val = np.random.randn(3)
+#     for bndry in grid._iter_boundaries():
+#         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
+#         np.testing.assert_allclose(val, bndry_val)
+#
+#         ev = field.make_get_boundary_values(*bndry, bc={"value": bndry_val})
+#         out = ev()
+#         np.testing.assert_allclose(out, bndry_val)
+#         ev(data_full=field._data_full, out=out)
+#         np.testing.assert_allclose(out, bndry_val)
 
 
 def test_numpy_ufuncs():

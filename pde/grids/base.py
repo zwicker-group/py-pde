@@ -929,7 +929,59 @@ class GridBase(metaclass=ABCMeta):
 
         return get_cell_volume  # type: ignore
 
-    def _make_interpolator_full_compiled(
+    def _make_interpolation_axis_data(
+        self, axis: int, *, cell_coords: bool = False
+    ) -> Callable[[float], Tuple[int, int, float, float]]:
+        """factory for obtaining interpolation information
+
+        Args:
+            axis (int):
+                The axis along which interpolation is performed
+            cell_coords (bool):
+                Flag indicating whether points are given in cell coordinates or actual
+                point coordinates.
+
+        Returns:
+            A function that is called with a coordinate value for the axis. The function
+            returns the indices of the neighboring support points as well as the
+            associated weights
+        """
+        # obtain information on how this axis is discretized
+        size = self.shape[axis]
+        periodic = self.periodic[axis]
+        lo = self.axes_bounds[axis][0]
+        dx = self.discretization[axis]
+
+        @register_jitable
+        def get_axis_data(coord: float) -> Tuple[int, int, float, float]:
+            """determines data for interpolating along one axis"""
+            if cell_coords:
+                c_l, d_l = divmod(coord, 1.0)
+            else:
+                c_l, d_l = divmod((coord - lo) / dx - 0.5, 1.0)
+
+            if periodic:  # periodic domain
+                c_li = int(c_l) % size  # left support point
+                c_hi = (c_li + 1) % size  # right support point
+            elif 0 <= c_l + d_l < size - 1:  # in bulk part of domain
+                c_li = int(c_l)  # left support point
+                c_hi = c_li + 1  # right support point
+            elif size - 1 <= c_l + d_l <= size - 0.5:  # close to upper boundary
+                c_li = c_hi = int(c_l)  # both support points close to boundary
+                # This branch also covers the special case, where size == 1 and data is
+                # evaluated at the only support point (c_l == d_l == 0.)
+            elif -0.5 <= c_l + d_l <= 0:  # close to lower boundary
+                c_li = c_hi = int(c_l) + 1  # both support points close to boundary
+            else:
+                return -42, -42, 0.0, 0.0  # indicates out of bounds
+
+            # determine the weights
+            w_l, w_h = 1 - d_l, d_l
+            return c_li, c_hi, w_l, w_h
+
+        return get_axis_data  # type: ignore
+
+    def _make_interpolator_compiled(
         self, fill: Number = None, cell_coords: bool = False
     ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
         """return a compiled function for linear interpolation on the grid
@@ -950,22 +1002,20 @@ class GridBase(metaclass=ABCMeta):
             containing the field data and position is denotes the position in
             grid coordinates.
         """
+
         if self.num_axes == 1:
             # specialize for 1-dimensional interpolation
-            size = self.shape[0]
-            lo = self.axes_bounds[0][0]
-            dx = self.discretization[0]
-            periodic = self.periodic[0]
+            data_x = self._make_interpolation_axis_data(0, cell_coords=cell_coords)
 
             @jit
             def interpolate_single(
-                data_full: np.ndarray, point: np.ndarray
+                data: np.ndarray, point: np.ndarray
             ) -> NumberOrArray:
                 """obtain interpolated value of data at a point
 
                 Args:
-                    data_full (:class:`~numpy.ndarray`):
-                        A 1d array of values at the grid points, including ghost points
+                    data (:class:`~numpy.ndarray`):
+                        A 1d array of valid values at the grid points
                     point (:class:`~numpy.ndarray`):
                         Coordinates of a single point in the grid coordinate
                         system
@@ -973,42 +1023,31 @@ class GridBase(metaclass=ABCMeta):
                 Returns:
                     :class:`~numpy.ndarray`: The interpolated value at the point
                 """
-                if cell_coords:
-                    c_l, d_l = divmod(point[0], 1.0)
-                else:
-                    c_l, d_l = divmod((point[0] - lo) / dx - 0.5, 1.0)
+                c_li, c_hi, w_l, w_h = data_x(point[0])
 
-                if periodic:
-                    c_li = int(c_l) % size
-                    c_hi = (c_li + 1) % size
-                else:
-                    if c_l < -1 or c_l > size - 1:
-                        if fill is None:
-                            raise DomainError("Point lies outside the grid")
-                        else:
-                            return fill
-                    c_li = int(c_l)
-                    c_hi = c_li + 1
-                term_li = (1 - d_l) * data_full[..., c_li + 1]
-                term_hi = d_l * data_full[..., c_hi + 1]
-                return term_li + term_hi  # type: ignore
+                if c_li == -42:  # out of bounds
+                    if fill is None:  # outside the domain
+                        raise DomainError("Point lies outside the grid domain")
+                    else:
+                        return fill
+
+                # do the linear interpolation
+                return w_l * data[..., c_li] + w_h * data[..., c_hi]  # type: ignore
 
         elif self.num_axes == 2:
             # specialize for 2-dimensional interpolation
-            size_x, size_y = self.shape
-            lo_x, lo_y = np.array(self.axes_bounds)[:, 0]
-            dx, dy = self.discretization
-            periodic_x, periodic_y = self.periodic
+            data_x = self._make_interpolation_axis_data(0, cell_coords=cell_coords)
+            data_y = self._make_interpolation_axis_data(1, cell_coords=cell_coords)
 
             @jit
             def interpolate_single(
-                data_full: np.ndarray, point: np.ndarray
+                data: np.ndarray, point: np.ndarray
             ) -> NumberOrArray:
                 """obtain interpolated value of data at a point
 
                 Args:
-                    data_full (:class:`~numpy.ndarray`):
-                        The values at the grid points, including ghost points
+                    data (:class:`~numpy.ndarray`):
+                        A 2d array of valid values at the grid points
                     point (:class:`~numpy.ndarray`):
                         Coordinates of a single point in the grid coordinate
                         system
@@ -1017,65 +1056,38 @@ class GridBase(metaclass=ABCMeta):
                     :class:`~numpy.ndarray`: The interpolated value at the point
                 """
                 # determine surrounding points and their weights
-                if cell_coords:
-                    c_lx, d_lx = divmod(point[0], 1.0)
-                    c_ly, d_ly = divmod(point[1], 1.0)
-                else:
-                    c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
-                    c_ly, d_ly = divmod((point[1] - lo_y) / dy - 0.5, 1.0)
-                w_x = (1 - d_lx, d_lx)
-                w_y = (1 - d_ly, d_ly)
+                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
+                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
 
-                value = np.zeros(data_full.shape[:-2], dtype=data_full.dtype)
-                weight = 0
-                for i in range(2):
-                    c_x = int(c_lx) + i
-                    at_boundary = False  # initially assume we're not at a boundary
-                    if periodic_x:
-                        c_x %= size_x
-                    elif c_x == -1 or c_x == size_x:
-                        at_boundary = True  # inside the boundary along x
-                    elif c_x < -1 or c_x > size_x:
-                        continue  # outside the domain
-
-                    for j in range(2):
-                        c_y = int(c_ly) + j
-                        if periodic_y:
-                            c_y %= size_y
-                        elif c_y == -1 or c_y == size_y:
-                            if at_boundary:
-                                continue  # skip because both points are at the boundary
-                        elif c_y < -1 or c_y > size_y:
-                            continue  # outside the domain
-
-                        w = w_x[i] * w_y[j]
-                        value += w * data_full[..., c_x + 1, c_y + 1]
-                        weight += w
-
-                if weight == 0:
-                    if fill is None:
-                        raise DomainError("Point lies outside the grid")
+                if c_xli == -42 or c_yli == -42:  # out of bounds
+                    if fill is None:  # outside the domain
+                        raise DomainError("Point lies outside the grid domain")
                     else:
                         return fill
 
-                return value / weight
+                # do the linear interpolation
+                return (  # type: ignore
+                    w_xl * w_yl * data[..., c_xli, c_yli]
+                    + w_xl * w_yh * data[..., c_xli, c_yhi]
+                    + w_xh * w_yl * data[..., c_xhi, c_yli]
+                    + w_xh * w_yh * data[..., c_xhi, c_yhi]
+                )
 
         elif self.num_axes == 3:
             # specialize for 3-dimensional interpolation
-            size_x, size_y, size_z = self.shape
-            lo_x, lo_y, lo_z = np.array(self.axes_bounds)[:, 0]
-            dx, dy, dz = self.discretization
-            periodic_x, periodic_y, periodic_z = self.periodic
+            data_x = self._make_interpolation_axis_data(0, cell_coords=cell_coords)
+            data_y = self._make_interpolation_axis_data(1, cell_coords=cell_coords)
+            data_z = self._make_interpolation_axis_data(2, cell_coords=cell_coords)
 
             @jit
             def interpolate_single(
-                data_full: np.ndarray, point: np.ndarray
+                data: np.ndarray, point: np.ndarray
             ) -> NumberOrArray:
                 """obtain interpolated value of data at a point
 
                 Args:
-                    data_full (:class:`~numpy.ndarray`):
-                        The values at the grid points, including ghost points
+                    data (:class:`~numpy.ndarray`):
+                        A 2d array of valid values at the grid points
                     point (:class:`~numpy.ndarray`):
                         Coordinates of a single point in the grid coordinate
                         system
@@ -1084,63 +1096,27 @@ class GridBase(metaclass=ABCMeta):
                     :class:`~numpy.ndarray`: The interpolated value at the point
                 """
                 # determine surrounding points and their weights
-                if cell_coords:
-                    c_lx, d_lx = divmod(point[0], 1.0)
-                    c_ly, d_ly = divmod(point[1], 1.0)
-                    c_lz, d_lz = divmod(point[2], 1.0)
-                else:
-                    c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
-                    c_ly, d_ly = divmod((point[1] - lo_y) / dy - 0.5, 1.0)
-                    c_lz, d_lz = divmod((point[2] - lo_z) / dz - 0.5, 1.0)
-                w_x = (1 - d_lx, d_lx)
-                w_y = (1 - d_ly, d_ly)
-                w_z = (1 - d_lz, d_lz)
+                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
+                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
+                c_zli, c_zhi, w_zl, w_zh = data_z(point[2])
 
-                value = np.zeros(data_full.shape[:-3], dtype=data_full.dtype)
-                weight = 0
-                for i in range(2):
-                    c_x = int(c_lx) + i
-                    at_boundary = False  # initially assume we're not at a boundary
-                    if periodic_x:
-                        c_x %= size_x
-                    elif c_x == -1 or c_x == size_x:
-                        at_boundary = True  # inside the boundary along x
-                    elif c_x < -1 or c_x > size_x:
-                        continue  # outside the domain
-
-                    for j in range(2):
-                        c_y = int(c_ly) + j
-                        if periodic_y:
-                            c_y %= size_y
-                        elif c_y == -1 or c_y == size_y:
-                            if at_boundary:
-                                continue  # skip because both points are at the boundary
-                            else:
-                                at_boundary = True
-                        elif c_y < -1 or c_y > size_y:
-                            continue  # outside the domain
-
-                        for k in range(2):
-                            c_z = int(c_lz) + k
-                            if periodic_z:
-                                c_z %= size_z
-                            elif c_z == -1 or c_z == size_z:
-                                if at_boundary:
-                                    continue  # skip because two points at the boundary
-                            elif c_z < -1 or c_z > size_z:
-                                continue  # outside the domain
-
-                            w = w_x[i] * w_y[j] * w_z[k]
-                            value += w * data_full[..., c_x + 1, c_y + 1, c_z + 1]
-                            weight += w
-
-                if weight == 0:
-                    if fill is None:
-                        raise DomainError("Point lies outside the grid")
+                if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
+                    if fill is None:  # outside the domain
+                        raise DomainError("Point lies outside the grid domain")
                     else:
                         return fill
 
-                return value / weight
+                # do the linear interpolation
+                return (  # type: ignore
+                    w_xl * w_yl * w_zl * data[..., c_xli, c_yli, c_zli]
+                    + w_xl * w_yl * w_zh * data[..., c_xli, c_yli, c_zhi]
+                    + w_xl * w_yh * w_zl * data[..., c_xli, c_yhi, c_zli]
+                    + w_xl * w_yh * w_zh * data[..., c_xli, c_yhi, c_zhi]
+                    + w_xh * w_yl * w_zl * data[..., c_xhi, c_yli, c_zli]
+                    + w_xh * w_yl * w_zh * data[..., c_xhi, c_yli, c_zhi]
+                    + w_xh * w_yh * w_zl * data[..., c_xhi, c_yhi, c_zli]
+                    + w_xh * w_yh * w_zh * data[..., c_xhi, c_yhi, c_zhi]
+                )
 
         else:
             raise NotImplementedError(
@@ -1164,10 +1140,7 @@ class GridBase(metaclass=ABCMeta):
 
         if self.num_axes == 1:
             # specialize for 1-dimensional interpolation
-            lo = self.axes_bounds[0][0]
-            dx = self.discretization[0]
-            size = self.shape[0]
-            periodic = bool(self.periodic[0])
+            data_x = self._make_interpolation_axis_data(0)
 
             @jit
             def insert(
@@ -1187,45 +1160,18 @@ class GridBase(metaclass=ABCMeta):
                         different discretizations and in particular grids with
                         non-uniform discretizations
                 """
-                # determine grid points neighboring the chosen point
-                c_l, d_l = divmod((point[0] - lo) / dx - 0.5, 1.0)
-                c_li = int(c_l)
-                c_hi = c_li + 1
+                c_li, c_hi, w_l, w_h = data_x(point[0])
 
-                if periodic:
-                    # handle periodic case separately
-                    c_li %= size
-                    c_hi %= size
-                    w_l = 1 - d_l  # weights of the low point
-                    w_h = d_l  # weights of the high point
-                    data[..., c_li] += w_l * amount / cell_volume(c_li)
-                    data[..., c_hi] += w_h * amount / cell_volume(c_hi)
+                if c_li == -42:  # out of bounds
+                    raise DomainError("Point lies outside the grid domain")
 
-                elif c_hi < 0 or c_li > size - 1:
-                    # both grid points outside the domain
-                    raise DomainError("Point lies outside grid")
-
-                elif c_li == -1:
-                    # the leftmost point is outside the grid
-                    data[..., c_hi] += amount / cell_volume(c_hi)
-
-                elif c_li == size - 1:
-                    # the rightmost point is outside the grid
-                    data[..., c_li] += amount / cell_volume(c_li)
-
-                else:
-                    # both points are interior
-                    w_l = 1 - d_l  # weights of the low point
-                    w_h = d_l  # weights of the high point
-                    data[..., c_li] += w_l * amount / cell_volume(c_li)
-                    data[..., c_hi] += w_h * amount / cell_volume(c_hi)
+                data[..., c_li] += w_l * amount / cell_volume(c_li)
+                data[..., c_hi] += w_h * amount / cell_volume(c_hi)
 
         elif self.num_axes == 2:
             # specialize for 2-dimensional interpolation
-            size_x, size_y = self.shape
-            lo_x, lo_y = np.array(self.axes_bounds)[:, 0]
-            dx, dy = self.discretization
-            periodic_x, periodic_y = self.periodic
+            data_x = self._make_interpolation_axis_data(0)
+            data_y = self._make_interpolation_axis_data(1)
 
             @jit
             def insert(
@@ -1246,55 +1192,27 @@ class GridBase(metaclass=ABCMeta):
                         non-uniform discretizations
                 """
                 # determine surrounding points and their weights
-                c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
-                c_ly, d_ly = divmod((point[1] - lo_y) / dy - 0.5, 1.0)
-                c_xi = int(c_lx)
-                c_yi = int(c_ly)
-                w_x = (1 - d_lx, d_lx)
-                w_y = (1 - d_ly, d_ly)
+                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
+                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
 
-                # determine the total weight
-                total_weight = 0
-                for i in range(2):
-                    c_x = c_xi + i
-                    if periodic_x:
-                        c_x %= size_x
-                    elif not (0 <= c_x < size_x):  # inside x?
-                        continue
-                    for j in range(2):
-                        c_y = c_yi + j
-                        if periodic_y:
-                            c_y %= size_y
-                        elif not (0 <= c_y < size_y):  # inside y?
-                            continue
-                        total_weight += w_x[i] * w_y[j]
+                if c_xli == -42 or c_yli == -42:  # out of bounds
+                    raise DomainError("Point lies outside the grid domain")
 
-                if total_weight == 0:
-                    raise DomainError("Point lies outside the grid")
+                cell_vol = cell_volume(c_xli, c_yli)
+                data[..., c_xli, c_yli] += w_xl * w_yl * amount / cell_vol
+                cell_vol = cell_volume(c_xli, c_yhi)
+                data[..., c_xli, c_yhi] += w_xl * w_yh * amount / cell_vol
 
-                # change the field with the correct weights
-                for i in range(2):
-                    c_x = c_xi + i
-                    if periodic_x:
-                        c_x %= size_x
-                    elif not (0 <= c_x < size_x):  # inside x?
-                        continue
-                    for j in range(2):
-                        c_y = c_yi + j
-                        if periodic_y:
-                            c_y %= size_y
-                        elif not (0 <= c_y < size_y):  # inside y?
-                            continue
-                        w = w_x[i] * w_y[j] / total_weight
-                        cell_vol = cell_volume(c_x, c_y)
-                        data[..., c_x, c_y] += w * amount / cell_vol
+                cell_vol = cell_volume(c_xhi, c_yli)
+                data[..., c_xhi, c_yli] += w_xh * w_yl * amount / cell_vol
+                cell_vol = cell_volume(c_xhi, c_yhi)
+                data[..., c_xhi, c_yhi] += w_xh * w_yh * amount / cell_vol
 
         elif self.num_axes == 3:
             # specialize for 3-dimensional interpolation
-            size_x, size_y, size_z = self.shape
-            lo_x, lo_y, lo_z = np.array(self.axes_bounds)[:, 0]
-            dx, dy, dz = self.discretization
-            periodic_x, periodic_y, periodic_z = self.periodic
+            data_x = self._make_interpolation_axis_data(0)
+            data_y = self._make_interpolation_axis_data(1)
+            data_z = self._make_interpolation_axis_data(2)
 
             @jit
             def insert(
@@ -1315,70 +1233,32 @@ class GridBase(metaclass=ABCMeta):
                         non-uniform discretizations
                 """
                 # determine surrounding points and their weights
-                c_lx, d_lx = divmod((point[0] - lo_x) / dx - 0.5, 1.0)
-                c_ly, d_ly = divmod((point[1] - lo_y) / dy - 0.5, 1.0)
-                c_lz, d_lz = divmod((point[2] - lo_z) / dz - 0.5, 1.0)
-                c_xi = int(c_lx)
-                c_yi = int(c_ly)
-                c_zi = int(c_lz)
-                w_x = (1 - d_lx, d_lx)
-                w_y = (1 - d_ly, d_ly)
-                w_z = (1 - d_lz, d_lz)
+                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
+                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
+                c_zli, c_zhi, w_zl, w_zh = data_z(point[2])
 
-                # determine the total weight
-                total_weight = 0
-                for i in range(2):
-                    c_x = c_xi + i
-                    if periodic_x:
-                        c_x %= size_x
-                    elif not (0 <= c_x < size_x):  # inside x?
-                        continue
+                if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
+                    raise DomainError("Point lies outside the grid domain")
 
-                    for j in range(2):
-                        c_y = c_yi + j
-                        if periodic_y:
-                            c_y %= size_y
-                        elif not (0 <= c_y < size_y):  # inside y?
-                            continue
+                cell_vol = cell_volume(c_xli, c_yli, c_zli)
+                data[..., c_xli, c_yli, c_zli] += w_xl * w_yl * w_zl * amount / cell_vol
+                cell_vol = cell_volume(c_xli, c_yli, c_zhi)
+                data[..., c_xli, c_yli, c_zhi] += w_xl * w_yl * w_zh * amount / cell_vol
 
-                        for k in range(2):
-                            c_z = c_zi + k
-                            if periodic_z:
-                                c_z %= size_z
-                            elif not (0 <= c_z < size_z):  # inside z?
-                                continue
+                cell_vol = cell_volume(c_xli, c_yhi, c_zli)
+                data[..., c_xli, c_yhi, c_zli] += w_xl * w_yh * w_zl * amount / cell_vol
+                cell_vol = cell_volume(c_xli, c_yhi, c_zhi)
+                data[..., c_xli, c_yhi, c_zhi] += w_xl * w_yh * w_zh * amount / cell_vol
 
-                            # only consider the points inside the grid
-                            total_weight += w_x[i] * w_y[j] * w_z[k]
+                cell_vol = cell_volume(c_xhi, c_yli, c_zli)
+                data[..., c_xhi, c_yli, c_zli] += w_xh * w_yl * w_zl * amount / cell_vol
+                cell_vol = cell_volume(c_xhi, c_yli, c_zhi)
+                data[..., c_xhi, c_yli, c_zhi] += w_xh * w_yl * w_zh * amount / cell_vol
 
-                if total_weight == 0:
-                    raise DomainError("Point lies outside the grid")
-
-                # change the field with the correct weights
-                for i in range(2):
-                    c_x = c_xi + i
-                    if periodic_x:
-                        c_x %= size_x
-                    elif not (0 <= c_x < size_x):  # inside x?
-                        continue
-
-                    for j in range(2):
-                        c_y = c_yi + j
-                        if periodic_y:
-                            c_y %= size_y
-                        elif not (0 <= c_y < size_y):  # inside y?
-                            continue
-
-                        for k in range(2):
-                            c_z = c_zi + k
-                            if periodic_z:
-                                c_z %= size_z
-                            elif not (0 <= c_z < size_z):  # inside z?
-                                continue
-
-                            w = w_x[i] * w_y[j] * w_z[k] / total_weight
-                            cell_vol = cell_volume(c_x, c_y, c_z)
-                            data[..., c_x, c_y, c_z] += w * amount / cell_vol
+                cell_vol = cell_volume(c_xhi, c_yhi, c_zli)
+                data[..., c_xhi, c_yhi, c_zli] += w_xh * w_yh * w_zl * amount / cell_vol
+                cell_vol = cell_volume(c_xhi, c_yhi, c_zhi)
+                data[..., c_xhi, c_yhi, c_zhi] += w_xh * w_yh * w_zh * amount / cell_vol
 
         else:
             raise NotImplementedError(
