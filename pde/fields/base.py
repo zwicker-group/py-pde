@@ -1167,7 +1167,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         interpolate_single = grid._make_interpolator_compiled(fill=fill, **kwargs)
 
         # extract information about the data field
-        get_data_array = make_array_constructor(self.data)
+        if kwargs.get("full_data", False):
+            get_data_array = make_array_constructor(self._data_full)
+        else:
+            get_data_array = make_array_constructor(self.data)
 
         dim_error_msg = f"Dimension of point does not match axes count {num_axes}"
 
@@ -1207,16 +1210,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             return out
 
         # store a reference to the data so it is not garbage collected too early
-        interpolator._data = self._data_full
+        interpolator._data = self.data
 
         return interpolator  # type: ignore
 
     @cached_method()
     def make_interpolator(
         self,
-        backend: str = "numba",
         method: str = "linear",
+        *,
         fill: Number = None,
+        backend: str = "numba",
         **kwargs,
     ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
@@ -1442,22 +1446,25 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: The discretized values on the boundary
         """
-        raise NotImplementedError
-        # this needs to be implemented by directly querying the boundary object
+        if bc is not None:
+            self.set_ghost_cells(bc=bc)
+        interpolator = self.make_interpolator(full_data=True)
+        points = self.grid._boundary_coordinates(axis, upper)
+        return interpolator(points)  # type: ignore
 
-    @fill_in_docstring
     def make_get_boundary_values(
-        self, axis: int, upper: bool, bc: Optional[BoundariesData] = "natural"
+        self, axis: int, upper: bool
     ) -> Callable[[Optional[np.ndarray], Optional[np.ndarray]], NumberOrArray]:
         """make a function calculating field values on the specified boundary
+
+        Note that this function does not enforce any boundary conditions but instead
+        assumes that the ghost cells have been set appropriately.
 
         Args:
             axis (int):
                 The axis perpendicular to the boundary
             upper (bool):
                 Whether the boundary is at the upper side of the axis
-            bc:
-                The boundary conditions applied to the field. {ARG_BOUNDARIES}
 
         Returns:
             callable: A function returning the values on the boundary. The function has
@@ -1467,8 +1474,36 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             needs to be supplied. The resulting interpolation is written to `out` if it
             is present. Otherwise, a new array is created.
         """
-        raise NotImplementedError
-        # this needs to be implemented by directly querying the boundary object
+        interpolator = self.make_interpolator(full_data=True)
+        points = self.grid._boundary_coordinates(axis, upper)
+
+        # TODO: use jit_allocated_out with pre-calculated shape
+
+        @jit
+        def get_boundary_values(
+            data_full: np.ndarray = None, out: np.ndarray = None
+        ) -> NumberOrArray:
+            """interpolate the field at the boundary
+            Args:
+                data_full (:class:`~numpy.ndarray`, optional):
+                    The data values that are used for interpolation (including ghost
+                    points). The data of the current field is used if `data = None`.
+                out (:class:`~numpy.ndarray`, optional):
+                    The array into which the interpolated results are written. A
+                    new array is created if `out = None`.
+            Returns:
+                :class:`~numpy.ndarray`: The interpolated values on the boundary.
+            """
+            res = interpolator(points, data_full)  # type: ignore
+            if out is None:
+                return res
+            else:
+                # the following just copies the data from res to out. It is a
+                # workaround for a bug in numba existing up to at least version 0.49
+                out[...] = res[()]  # type: ignore
+                return out
+
+        return get_boundary_values  # type: ignore
 
     @fill_in_docstring
     def set_ghost_cells(self, bc: BoundariesData, *, args=None) -> None:
