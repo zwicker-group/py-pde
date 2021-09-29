@@ -277,7 +277,11 @@ def test_interpolation_values(field_cls):
     c = f.grid.cell_coords[2, 2]
     np.testing.assert_allclose(intp(c), f.data[..., 2, 2])
 
-    with pytest.raises(ValueError):
+    intp = f.make_interpolator(backend="numba", full_data=True)
+    c = f.grid.cell_coords[2, 2]
+    np.testing.assert_allclose(intp(c, f._data_full), f.data[..., 2, 2])
+
+    with pytest.raises((ValueError, IndexError)):
         intp(np.array([100, -100]))
 
     res = f.make_interpolator(backend="numba", fill=45)(np.array([100, -100]))

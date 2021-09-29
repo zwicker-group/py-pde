@@ -930,13 +930,21 @@ class GridBase(metaclass=ABCMeta):
         return get_cell_volume  # type: ignore
 
     def _make_interpolation_axis_data(
-        self, axis: int, *, cell_coords: bool = False
+        self,
+        axis: int,
+        *,
+        full_data: bool = False,
+        cell_coords: bool = False,
     ) -> Callable[[float], Tuple[int, int, float, float]]:
         """factory for obtaining interpolation information
 
         Args:
             axis (int):
                 The axis along which interpolation is performed
+            full_data (bool):
+                Flag indicating that the interpolator should work on the full data array
+                that includes values for the grid points. If this is the case, the
+                boundaries are not checked and the coordinates are used as is.
             cell_coords (bool):
                 Flag indicating whether points are given in cell coordinates or actual
                 point coordinates.
@@ -960,7 +968,10 @@ class GridBase(metaclass=ABCMeta):
             else:
                 c_l, d_l = divmod((coord - lo) / dx - 0.5, 1.0)
 
-            if periodic:  # periodic domain
+            if full_data:
+                c_li = int(c_l) + 1  # left support point
+                c_hi = c_li + 1  # right support point
+            elif periodic:  # periodic domain
                 c_li = int(c_l) % size  # left support point
                 c_hi = (c_li + 1) % size  # right support point
             elif 0 <= c_l + d_l < size - 1:  # in bulk part of domain
@@ -977,12 +988,21 @@ class GridBase(metaclass=ABCMeta):
 
             # determine the weights
             w_l, w_h = 1 - d_l, d_l
+            # set small weights to zero. If this is not done, invalid data at the corner
+            # of the grid (where two rows of ghost cells intersect) could be accessed.
+            # If this random data is very large, e.g., 1e100, it contributes
+            # significantly, even if the weight is low, e.g., 1e-16.
+            if w_l < 1e-15:
+                w_l = 0
+            if w_h < 1e-15:
+                w_h = 0
+
             return c_li, c_hi, w_l, w_h
 
         return get_axis_data  # type: ignore
 
     def _make_interpolator_compiled(
-        self, fill: Number = None, cell_coords: bool = False
+        self, *, fill: Number = None, full_data: bool = False, cell_coords: bool = False
     ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
         """return a compiled function for linear interpolation on the grid
 
@@ -991,6 +1011,10 @@ class GridBase(metaclass=ABCMeta):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
+            full_data (bool):
+                Flag indicating that the interpolator should work on the full data array
+                that includes values for the grid points. If this is the case, the
+                boundaries are not checked and the coordinates are used as is.
             cell_coords (bool):
                 Flag indicating whether points are given in cell coordinates or actual
                 point coordinates.
@@ -1002,10 +1026,13 @@ class GridBase(metaclass=ABCMeta):
             containing the field data and position is denotes the position in
             grid coordinates.
         """
+        if full_data and fill is not None:
+            self._logger.warning("Interpolation of full data does not use `fill`.")
+        args = {"full_data": full_data, "cell_coords": cell_coords}
 
         if self.num_axes == 1:
             # specialize for 1-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, cell_coords=cell_coords)
+            data_x = self._make_interpolation_axis_data(0, **args)
 
             @jit
             def interpolate_single(
@@ -1036,8 +1063,8 @@ class GridBase(metaclass=ABCMeta):
 
         elif self.num_axes == 2:
             # specialize for 2-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, cell_coords=cell_coords)
-            data_y = self._make_interpolation_axis_data(1, cell_coords=cell_coords)
+            data_x = self._make_interpolation_axis_data(0, **args)
+            data_y = self._make_interpolation_axis_data(1, **args)
 
             @jit
             def interpolate_single(
@@ -1075,9 +1102,9 @@ class GridBase(metaclass=ABCMeta):
 
         elif self.num_axes == 3:
             # specialize for 3-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, cell_coords=cell_coords)
-            data_y = self._make_interpolation_axis_data(1, cell_coords=cell_coords)
-            data_z = self._make_interpolation_axis_data(2, cell_coords=cell_coords)
+            data_x = self._make_interpolation_axis_data(0, **args)
+            data_y = self._make_interpolation_axis_data(1, **args)
+            data_z = self._make_interpolation_axis_data(2, **args)
 
             @jit
             def interpolate_single(
@@ -1126,9 +1153,15 @@ class GridBase(metaclass=ABCMeta):
         return interpolate_single  # type: ignore
 
     def make_inserter_compiled(
-        self,
+        self, *, full_data: bool = False
     ) -> Callable[[np.ndarray, np.ndarray, NumberOrArray], None]:
         """return a compiled function to insert values at interpolated positions
+
+        Args:
+            full_data (bool):
+                Flag indicating that the interpolator should work on the full data array
+                that includes values for the grid points. If this is the case, the
+                boundaries are not checked and the coordinates are used as is.
 
         Returns:
             A function with signature (data, position, amount), where `data` is
@@ -1140,7 +1173,7 @@ class GridBase(metaclass=ABCMeta):
 
         if self.num_axes == 1:
             # specialize for 1-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0)
+            data_x = self._make_interpolation_axis_data(0, full_data=full_data)
 
             @jit
             def insert(
@@ -1170,8 +1203,8 @@ class GridBase(metaclass=ABCMeta):
 
         elif self.num_axes == 2:
             # specialize for 2-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0)
-            data_y = self._make_interpolation_axis_data(1)
+            data_x = self._make_interpolation_axis_data(0, full_data=full_data)
+            data_y = self._make_interpolation_axis_data(1, full_data=full_data)
 
             @jit
             def insert(
@@ -1210,9 +1243,9 @@ class GridBase(metaclass=ABCMeta):
 
         elif self.num_axes == 3:
             # specialize for 3-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0)
-            data_y = self._make_interpolation_axis_data(1)
-            data_z = self._make_interpolation_axis_data(2)
+            data_x = self._make_interpolation_axis_data(0, full_data=full_data)
+            data_y = self._make_interpolation_axis_data(1, full_data=full_data)
+            data_z = self._make_interpolation_axis_data(2, full_data=full_data)
 
             @jit
             def insert(
