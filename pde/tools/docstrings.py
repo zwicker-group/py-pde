@@ -1,6 +1,13 @@
 """
 Methods for automatic transformation of docstrings  
 
+.. autosummary::
+   :nosignatures:
+
+   get_text_block
+   replace_in_docstring
+   fill_in_docstring
+   
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
