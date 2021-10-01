@@ -1,12 +1,22 @@
 """
 Handles configuration variables of the package
 
+.. autosummary::
+   :nosignatures:
+
+   Config
+   get_package_versions
+   parse_version_str
+   check_package_version
+   environment
+   
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 import collections
 import importlib
 import sys
+import warnings
 from typing import Any, Dict, List
 
 from .misc import module_available
@@ -117,13 +127,58 @@ class Config(collections.UserDict):
         return f"{self.__class__.__name__}({repr(self.to_dict())})"
 
 
-def environment(dict_type=dict) -> Dict[str, Any]:
-    """obtain information about the compute environment
+def get_package_versions(
+    packages: List[str], *, na_str="not available"
+) -> Dict[str, str]:
+    """tries to load certain python packages and returns their version
 
     Args:
-        dict_type:
-            The type to create the returned dictionaries. The default is `dict`, but
-            :class:`collections.OrderedDict` is an alternative.
+        na_str (str): Text to return if package is not available
+
+    Returns:
+        dict: Dictionary with version for each package name
+    """
+    versions: Dict[str, str] = {}
+    for name in sorted(packages):
+        try:
+            module = importlib.import_module(name)
+        except ImportError:
+            versions[name] = na_str
+        else:
+            versions[name] = module.__version__  # type: ignore
+    return versions
+
+
+def parse_version_str(ver_str: str) -> List[int]:
+    """helper function converting a version string into a list of integers"""
+    result = []
+    for token in ver_str.split(".")[:3]:
+        try:
+            result.append(int(token))
+        except ValueError:
+            pass
+    return result
+
+
+def check_package_version(package_name: str, min_version: str):
+    """checks whether a package has a sufficient version"""
+
+    msg = f"`{package_name}` version {min_version} required for py-pde"
+    try:
+        # obtain version of the package
+        version = importlib.import_module(package_name).__version__  # type: ignore
+
+    except ImportError:
+        warnings.warn(f"{msg} (but none installed)")
+
+    else:
+        # check whether it is installed and works
+        if parse_version_str(version) < parse_version_str(min_version):
+            warnings.warn(f"{msg} (installed: {version})")
+
+
+def environment() -> Dict[str, Any]:
+    """obtain information about the compute environment
 
     Returns:
         dict: information about the python installation and packages
@@ -135,19 +190,7 @@ def environment(dict_type=dict) -> Dict[str, Any]:
     from .numba import numba_environment
     from .plotting import get_plotting_context
 
-    def get_package_versions(packages: List[str]) -> Dict[str, str]:
-        """tries to load certain python packages and returns their version"""
-        versions: Dict[str, str] = dict_type()
-        for name in sorted(packages):
-            try:
-                module = importlib.import_module(name)
-            except ImportError:
-                versions[name] = "not available"
-            else:
-                versions[name] = module.__version__  # type: ignore
-        return versions
-
-    result: Dict[str, Any] = dict_type()
+    result: Dict[str, Any] = {}
     result["package version"] = package_version
     result["python version"] = sys.version
     result["platform"] = sys.platform
