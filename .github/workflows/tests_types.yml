@@ -4,18 +4,18 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        pyversion: [3.7, 3.10]
 
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
       uses: actions/setup-python@v1
       with:
-        python-version: 3.8
+        python-version: ${{ matrix.pyversion }}
 
     - name: Install dependencies
       # install all requirements
