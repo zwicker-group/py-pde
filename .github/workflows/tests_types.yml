@@ -8,7 +8,7 @@ jobs:
     
     strategy:
       matrix:
-        pyversion: [3.7, 3.10]
+        pyversion: ['3.7', '3.10']
 
     steps:
     - uses: actions/checkout@v2
