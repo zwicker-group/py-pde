@@ -8,11 +8,7 @@ jobs:
     
     strategy:
       matrix:
-<<<<<<< Upstream, based on master
         pyversion: ['3.7', '3.10']
-=======
-        pyversion: [3.7, 3.10]
->>>>>>> 9b9590a Added python 3.10 to CI
 
     steps:
     - uses: actions/checkout@v2
