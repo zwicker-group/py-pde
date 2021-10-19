@@ -113,9 +113,16 @@ def np_heaviside(x1, x2):
     return heaviside_impl
 
 
-# special functions that we want to support in expressions but that are not defined by
-# sympy version 1.6
-SPECIAL_FUNCTIONS = {"Heaviside": lambda x: np.heaviside(x, 0.5)}
+try:
+    from sympy import Heaviside  # @UnusedImport
+
+except ImportError:
+    # special functions that we want to support in expressions but that are not defined
+    # by sympy version 1.6 or below
+    SPECIAL_FUNCTIONS = {"Heaviside": lambda x: np.heaviside(x, 0.5)}
+
+else:
+    SPECIAL_FUNCTIONS = {}
 
 
 class ListArrayPrinter(PythonCodePrinter):

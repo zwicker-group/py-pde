@@ -50,10 +50,6 @@ class FieldCollection(FieldBase):
             dtype (numpy dtype):
                 The data type of the field. All the numpy dtypes are supported. If
                 omitted, it will be determined from `data` automatically.
-
-        Warning:
-            If `data` is given and :code:`copy_fields == False`, the data in the
-            individual fields is overwritten by the associated `data`.
         """
         if isinstance(fields, FieldCollection):
             # support assigning a field collection for convenience
