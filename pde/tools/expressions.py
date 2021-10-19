@@ -96,33 +96,35 @@ def parse_number(
     return value
 
 
+def _heaviside_implemention(x1, x2=0.5):
+    """implementation of the Heaviside function used for numba and sympy
+
+    Args:
+        x1 (float): Argument of the function
+        x2 (float): Value returned when the argument is zero
+
+    Returns:
+        float: 0 if x1 is negative, 1 if x1 is positive, and x2 if x1 == 0
+    """
+    if np.isnan(x1):
+        return np.nan
+    elif x1 == 0:
+        return x2
+    elif x1 < 0:
+        return 0.0
+    else:
+        return 1.0
+
+
 @overload(np.heaviside)
 def np_heaviside(x1, x2):
     """numba implementation of the heaviside function"""
-
-    def heaviside_impl(x1, x2):
-        if np.isnan(x1):
-            return np.nan
-        elif x1 == 0:
-            return x2
-        elif x1 < 0:
-            return 0.0
-        else:
-            return 1.0
-
-    return heaviside_impl
+    return _heaviside_implemention
 
 
-try:
-    from sympy import Heaviside  # @UnusedImport
-
-except ImportError:
-    # special functions that we want to support in expressions but that are not defined
-    # by sympy version 1.6 or below
-    SPECIAL_FUNCTIONS = {"Heaviside": lambda x: np.heaviside(x, 0.5)}
-
-else:
-    SPECIAL_FUNCTIONS = {}
+# special functions that we want to support in expressions but that are not defined by
+# sympy version 1.6 or have a different signature than expected by numba/numpy
+SPECIAL_FUNCTIONS = {"Heaviside": _heaviside_implemention}
 
 
 class ListArrayPrinter(PythonCodePrinter):
