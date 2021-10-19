@@ -4,8 +4,9 @@ Defines a PDE class whose right hand side is given as a string
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 import re
-from collections import OrderedDict
 from typing import Any, Callable, Dict, Tuple
 
 import numpy as np
@@ -36,10 +37,10 @@ class PDE(PDEBase):
     @fill_in_docstring
     def __init__(
         self,
-        rhs: "OrderedDict[str, str]",
+        rhs: Dict[str, str],
         noise: ArrayLike = 0,
         bc: BoundariesData = "natural",
-        bc_ops: "OrderedDict[str, BoundariesData]" = None,
+        bc_ops: Dict[str, BoundariesData] = None,
         user_funcs: Dict[str, Any] = None,
         consts: Dict[str, Any] = None,
     ):
@@ -48,7 +49,7 @@ class PDE(PDEBase):
             {WARNING_EXEC}
 
         Args:
-            rhs (OrderedDict):
+            rhs (dict):
                 The expressions defining the evolution rate. The dictionary keys define
                 the name of the fields whose evolution is considered, while the values
                 specify their evolution rate as a string that can be parsed by
@@ -108,8 +109,8 @@ class PDE(PDEBase):
         super().__init__(noise=noise)
 
         # validate input
-        if not isinstance(rhs, OrderedDict):
-            rhs = OrderedDict(rhs)
+        if not isinstance(rhs, dict):
+            rhs = dict(rhs)
         if "t" in rhs:
             raise ValueError("Cannot name field `t` since it denotes time")
         reserved_symbols = set(rhs) & ScalarExpression._reserved_symbols
@@ -158,7 +159,7 @@ class PDE(PDEBase):
         if bc_ops is None:
             bcs = {"*:*": bc}
         else:
-            bcs = OrderedDict(bc_ops)
+            bcs = dict(bc_ops)
             if "*:*" in bcs and bc != "natural":
                 self._logger.warning("Two default boundary conditions.")
             bcs["*:*"] = bc  # append default boundary conditions
