@@ -63,8 +63,7 @@ def objects_equal(a, b) -> bool:
         return all(objects_equal(x, y) for x, y in zip(a, b))
 
     if isinstance(a, sparse.csr_matrix) and isinstance(b, sparse.csr_matrix):
-        return a.shape == b.shape and (a != b).nnz == 0
-
+        return a.shape == b.shape and (a != b).nnz == 0  # type: ignore
 
     # use direct comparison
     return a == b  # type: ignore
