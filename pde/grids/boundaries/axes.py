@@ -212,18 +212,18 @@ class Boundaries(list):
         boundaries = [boundary.extract_component(*indices) for boundary in self]
         return self.__class__(boundaries)
 
-    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cells for all boundaries
 
         Args:
-            data_all (:class:`~numpy.ndarray`):
+            data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
             args:
                 Additional arguments that might be supported by special boundary
                 conditions.
         """
         for b in self:
-            b.set_ghost_cells(data_all, args=args)
+            b.set_ghost_cells(data_full, args=args)
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells on a full array"""
@@ -239,15 +239,15 @@ class Boundaries(list):
             if inner is None:
 
                 @register_jitable
-                def wrap(data_all: np.ndarray, args=None) -> None:
-                    first(data_all, args=args)
+                def wrap(data_full: np.ndarray, args=None) -> None:
+                    first(data_full, args=args)
 
             else:
 
                 @register_jitable
-                def wrap(data_all: np.ndarray, args=None) -> None:
-                    inner(data_all, args=args)  # type: ignore
-                    first(data_all, args=args)
+                def wrap(data_full: np.ndarray, args=None) -> None:
+                    inner(data_full, args=args)  # type: ignore
+                    first(data_full, args=args)
 
             if rest:
                 return chain(rest, wrap)

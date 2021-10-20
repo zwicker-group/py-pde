@@ -18,6 +18,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    List,
     Optional,
     Tuple,
     Type,
@@ -1456,7 +1457,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @fill_in_docstring
     def get_boundary_values(
-        self, axis: int, upper: bool, bc: Optional[BoundariesData] = "natural"
+        self, axis: int, upper: bool, bc: Optional[BoundariesData] = None
     ) -> NumberOrArray:
         """get the field values directly on the specified boundary
 
@@ -1474,62 +1475,19 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if bc is not None:
             self.set_ghost_cells(bc=bc)
-        interpolator = self.make_interpolator(full_data=True)
-        points = self.grid._boundary_coordinates(axis, upper)
-        return interpolator(points)  # type: ignore
 
-    def make_get_boundary_values(
-        self, axis: int, upper: bool
-    ) -> Callable[[Optional[np.ndarray], Optional[np.ndarray]], NumberOrArray]:
-        """make a function calculating field values on the specified boundary
+        l_wall: List[Union[slice, int]] = [slice(1, -1)] * self.grid.num_axes
+        l_ghost = l_wall.copy()
+        if upper:
+            l_wall[axis] = -2
+            l_ghost[axis] = -1
+        else:
+            l_wall[axis] = 1
+            l_ghost[axis] = 0
+        i_wall = (...,) + tuple(l_wall)
+        i_ghost = (...,) + tuple(l_ghost)
 
-        Note that this function does not enforce any boundary conditions but instead
-        assumes that the ghost cells have been set appropriately.
-
-        Args:
-            axis (int):
-                The axis perpendicular to the boundary
-            upper (bool):
-                Whether the boundary is at the upper side of the axis
-
-        Returns:
-            callable: A function returning the values on the boundary. The function has
-            the signature `(data_full=None, out=None)`, which allows specifying an input
-            and an output :class:`~numpy.ndarray`. If `data_full` is omitted, the data
-            of the current field is used. Otherwise, the data including the ghost points
-            needs to be supplied. The resulting interpolation is written to `out` if it
-            is present. Otherwise, a new array is created.
-        """
-        interpolator = self.make_interpolator(full_data=True)
-        points = self.grid._boundary_coordinates(axis, upper)
-
-        # TODO: use jit_allocated_out with pre-calculated shape
-
-        @jit
-        def get_boundary_values(
-            data_full: np.ndarray = None, out: np.ndarray = None
-        ) -> NumberOrArray:
-            """interpolate the field at the boundary
-            Args:
-                data_full (:class:`~numpy.ndarray`, optional):
-                    The data values that are used for interpolation (including ghost
-                    points). The data of the current field is used if `data = None`.
-                out (:class:`~numpy.ndarray`, optional):
-                    The array into which the interpolated results are written. A
-                    new array is created if `out = None`.
-            Returns:
-                :class:`~numpy.ndarray`: The interpolated values on the boundary.
-            """
-            res = interpolator(points, data_full)  # type: ignore
-            if out is None:
-                return res
-            else:
-                # the following just copies the data from res to out. It is a
-                # workaround for a bug in numba existing up to at least version 0.49
-                out[...] = res[()]  # type: ignore
-                return out
-
-        return get_boundary_values  # type: ignore
+        return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2  # type: ignore
 
     @fill_in_docstring
     def set_ghost_cells(self, bc: BoundariesData, *, args=None) -> None:

@@ -495,7 +495,7 @@ class BCBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary"""
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
@@ -511,14 +511,14 @@ class BCBase(metaclass=ABCMeta):
         if self.grid.num_axes == 1:  # 1d grid
 
             @register_jitable
-            def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
+            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
                 """helper function setting the conditions on all axes"""
-                data_valid = data_all[..., 1:-1]
+                data_valid = data_full[..., 1:-1]
                 val = vp_value(data_valid, (np_idx,), args=args)
                 if normal:
-                    data_all[..., axis, vp_idx] = val
+                    data_full[..., axis, vp_idx] = val
                 else:
-                    data_all[..., vp_idx] = val
+                    data_full[..., vp_idx] = val
 
         elif self.grid.num_axes == 2:  # 2d grid
 
@@ -526,29 +526,29 @@ class BCBase(metaclass=ABCMeta):
                 num_y = self.grid.shape[1]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
-                    data_valid = data_all[..., 1:-1, 1:-1]
+                    data_valid = data_full[..., 1:-1, 1:-1]
                     for j in range(num_y):
                         val = vp_value(data_valid, (np_idx, j), args=args)
                         if normal:
-                            data_all[..., axis, vp_idx, j + 1] = val
+                            data_full[..., axis, vp_idx, j + 1] = val
                         else:
-                            data_all[..., vp_idx, j + 1] = val
+                            data_full[..., vp_idx, j + 1] = val
 
             elif self.axis == 1:
                 num_x = self.grid.shape[0]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
-                    data_valid = data_all[..., 1:-1, 1:-1]
+                    data_valid = data_full[..., 1:-1, 1:-1]
                     for i in range(num_x):
                         val = vp_value(data_valid, (i, np_idx), args=args)
                         if normal:
-                            data_all[..., axis, i + 1, vp_idx] = val
+                            data_full[..., axis, i + 1, vp_idx] = val
                         else:
-                            data_all[..., i + 1, vp_idx] = val
+                            data_full[..., i + 1, vp_idx] = val
 
         elif self.grid.num_axes == 3:  # 3d grid
 
@@ -556,46 +556,46 @@ class BCBase(metaclass=ABCMeta):
                 num_y, num_z = self.grid.shape[1:]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
-                    data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
+                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
                     for j in range(num_y):
                         for k in range(num_z):
                             val = vp_value(data_valid, (np_idx, j, k), args=args)
                             if normal:
-                                data_all[..., axis, vp_idx, j + 1, k + 1] = val
+                                data_full[..., axis, vp_idx, j + 1, k + 1] = val
                             else:
-                                data_all[..., vp_idx, j + 1, k + 1] = val
+                                data_full[..., vp_idx, j + 1, k + 1] = val
 
             elif self.axis == 1:
                 num_x, num_z = self.grid.shape[0], self.grid.shape[2]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
-                    data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
+                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
                         for k in range(num_z):
                             val = vp_value(data_valid, (i, np_idx, k), args=args)
                             if normal:
-                                data_all[..., axis, i + 1, vp_idx, k + 1] = val
+                                data_full[..., axis, i + 1, vp_idx, k + 1] = val
                             else:
-                                data_all[..., i + 1, vp_idx, k + 1] = val
+                                data_full[..., i + 1, vp_idx, k + 1] = val
 
             elif self.axis == 2:
                 num_x, num_y = self.grid.shape[:2]
 
                 @register_jitable
-                def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
                     """helper function setting the conditions on all axes"""
-                    data_valid = data_all[..., 1:-1, 1:-1, 1:-1]
+                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
                         for j in range(num_y):
                             val = vp_value(data_valid, (i, j, np_idx), args=args)
                             if normal:
-                                data_all[..., axis, i + 1, j + 1, vp_idx] = val
+                                data_full[..., axis, i + 1, j + 1, vp_idx] = val
                             else:
-                                data_all[..., i + 1, j + 1, vp_idx] = val
+                                data_full[..., i + 1, j + 1, vp_idx] = val
 
         else:
             raise NotImplementedError("Too many axes")
@@ -712,11 +712,11 @@ class ExpressionBC(BCBase):
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         raise NotImplementedError
 
-    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
-            data_all (:class:`~numpy.ndarray`):
+            data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
             args:
                 Additional arguments that might be supported by special boundary
@@ -725,7 +725,7 @@ class ExpressionBC(BCBase):
         dx = self.grid.discretization[self.axis]
 
         # prepare the array of slices to index bcs
-        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        offset = data_full.ndim - self.grid.num_axes  # additional data axes
         idx_offset = [slice(None)] * offset
         idx_valid = [slice(1, -1)] * self.grid.num_axes
         idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
@@ -739,12 +739,12 @@ class ExpressionBC(BCBase):
             idx_read[offset - 1] = self.axis
 
         # prepare the arguments
-        values = data_all[tuple(idx_read)]
+        values = data_full[tuple(idx_read)]
         coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
         coords = np.moveaxis(coords, -1, 0)  # point coordinates to first axis
 
         # calculate the virtual points
-        data_all[tuple(idx_write)] = self._expr(values, dx, *coords)
+        data_full[tuple(idx_write)] = self._expr(values, dx, *coords)
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
@@ -1339,11 +1339,11 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
-            data_all (:class:`~numpy.ndarray`):
+            data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
             args:
                 Additional arguments that might be supported by special boundary
@@ -1353,7 +1353,7 @@ class ConstBC1stOrderBase(ConstBCBase):
         const, factor, index = self.get_virtual_point_data()
 
         # prepare the array of slices to index bcs
-        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        offset = data_full.ndim - self.grid.num_axes  # additional data axes
         idx_offset = [slice(None)] * offset
         idx_valid = [slice(1, -1)] * self.grid.num_axes
         idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
@@ -1367,13 +1367,13 @@ class ConstBC1stOrderBase(ConstBCBase):
             idx_read[offset - 1] = self.axis
 
         if self.homogeneous and not np.isscalar(factor):
-            # add dimension to const so it can be broadcasted to shape of data_all
+            # add dimension to const so it can be broadcasted to shape of data_full
             for _ in range(self.grid.num_axes - 1):
                 factor = factor[..., np.newaxis]
                 const = const[..., np.newaxis]
 
         # calculate the virtual points
-        data_all[tuple(idx_write)] = const + factor * data_all[tuple(idx_read)]
+        data_full[tuple(idx_write)] = const + factor * data_full[tuple(idx_read)]
 
 
 class _PeriodicBC(ConstBC1stOrderBase):
@@ -1926,11 +1926,11 @@ class ConstBC2ndOrderBase(ConstBCBase):
 
         return adjacent_point  # type: ignore
 
-    def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
 
         Args:
-            data_all (:class:`~numpy.ndarray`):
+            data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
             args:
                 Additional arguments that might be supported by special boundary
@@ -1940,7 +1940,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
         data = self.get_virtual_point_data()
 
         # prepare the array of slices to index bcs
-        offset = data_all.ndim - self.grid.num_axes  # additional data axes
+        offset = data_full.ndim - self.grid.num_axes  # additional data axes
         idx_offset = [slice(None)] * offset
         idx_valid = [slice(1, -1)] * self.grid.num_axes
         idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
@@ -1956,7 +1956,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
             idx_1[offset - 1] = self.axis
             idx_2[offset - 1] = self.axis
 
-        # add dimension to const until it can be broadcasted to shape of data_all
+        # add dimension to const until it can be broadcasted to shape of data_full
         const, factor1, factor2 = data[0], data[1], data[3]
         while factor1.ndim < self.grid.num_axes:
             factor1 = factor1[..., np.newaxis]
@@ -1966,8 +1966,10 @@ class ConstBC2ndOrderBase(ConstBCBase):
             const = const[..., np.newaxis]
 
         # calculate the virtual points
-        data_all[tuple(idx_write)] = (
-            const + factor1 * data_all[tuple(idx_1)] + factor2 * data_all[tuple(idx_2)]
+        data_full[tuple(idx_write)] = (
+            const
+            + factor1 * data_full[tuple(idx_1)]
+            + factor2 * data_full[tuple(idx_2)]
         )
 
 
