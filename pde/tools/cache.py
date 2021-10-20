@@ -28,6 +28,7 @@ from hashlib import sha1
 from typing import Callable, Dict, Iterable, Optional, TypeVar
 
 import numpy as np
+from scipy import sparse
 
 TFunc = TypeVar("TFunc", bound="Callable")
 
@@ -60,6 +61,10 @@ def objects_equal(a, b) -> bool:
         if a.__class__ != b.__class__ or len(a) != len(b):
             return False
         return all(objects_equal(x, y) for x, y in zip(a, b))
+
+    if isinstance(a, sparse.csr_matrix) and isinstance(b, sparse.csr_matrix):
+        return a.shape == b.shape and (a != b).nnz == 0
+
 
     # use direct comparison
     return a == b  # type: ignore
