@@ -18,6 +18,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    List,
     Optional,
     Tuple,
     Type,
@@ -1475,18 +1476,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if bc is not None:
             self.set_ghost_cells(bc=bc)
 
-        i_wall = [slice(1, -1)] * self.grid.num_axes
-        i_ghost = i_wall.copy()
+        l_wall: List[Union[slice, int]] = [slice(1, -1)] * self.grid.num_axes
+        l_ghost = l_wall.copy()
         if upper:
-            i_wall[axis] = -2
-            i_ghost[axis] = -1
+            l_wall[axis] = -2
+            l_ghost[axis] = -1
         else:
-            i_wall[axis] = 1
-            i_ghost[axis] = 0
-        i_wall = (...,) + tuple(i_wall)
-        i_ghost = (...,) + tuple(i_ghost)
+            l_wall[axis] = 1
+            l_ghost[axis] = 0
+        i_wall = (...,) + tuple(l_wall)
+        i_ghost = (...,) + tuple(l_ghost)
 
-        return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2
+        return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2  # type: ignore
 
     @fill_in_docstring
     def set_ghost_cells(self, bc: BoundariesData, *, args=None) -> None:
