@@ -22,6 +22,7 @@ The details of the classes are explained below:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from .base import FieldBase
 from .collection import FieldCollection
 from .scalar import ScalarField
 from .tensorial import Tensor2Field

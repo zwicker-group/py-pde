@@ -212,10 +212,25 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def from_file(cls, filename: str) -> FieldBase:
-        """create field by reading file
+        """create field from data stored in a file
+
+        Field can be written to a file using :meth:`FieldBase.to_file`.
+
+        Example:
+            Write a field to a file and then read it back:
+
+            .. code-block:: python
+
+                field = pde.ScalarField(...)
+                field.write_to("test.hdf5")
+
+                field_copy = pde.FieldBase.from_file("test.hdf5")
 
         Args:
             filename (str): Path to the file being read
+
+        Returns:
+            :class:`FieldBase`: The field with the appropriate sub-class
         """
         import h5py
 
@@ -261,10 +276,21 @@ class FieldBase(metaclass=ABCMeta):
     def to_file(self, filename: str, **kwargs):
         r"""store field in a file
 
-        The extension of the filename determines what format is being used. If
-        it ends in `.h5` or `.hdf`, the Hierarchical Data Format is used. The
-        other supported format are images, where only the most typical formats
-        are supported.
+        The extension of the filename determines what format is being used. If it ends
+        in `.h5` or `.hdf`, the Hierarchical Data Format is used. The other supported
+        format are images, where only the most typical formats are supported.
+
+        To load the field back from the file, you may use :meth:`FieldBase.from_file`.
+
+        Example:
+            Write a field to a file and then read it back:
+
+            .. code-block:: python
+
+                field = pde.ScalarField(...)
+                field.write_to("test.hdf5")
+
+                field_copy = pde.FieldBase.from_file("test.hdf5")
 
         Args:
             filename (str):
