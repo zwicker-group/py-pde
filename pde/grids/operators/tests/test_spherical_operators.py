@@ -182,6 +182,6 @@ def test_examples_tensor_sph():
     tfd[0, 1] = tfd[1, 1] = tfd[1, 2] = tfd[2, 1] = tfd[2, 2] = 0
 
     # tensor divergence
-    res = tf.divergence([{"derivative": 0}, {"value": [1, 1, 1]}])
+    res = tf.divergence([{"derivative_normal": 0}, {"value_normal": [1, 1, 1]}])
     expect = VectorField.from_expression(grid, ["5 * r**2", "5 * r**2", "6 * r**2"])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)

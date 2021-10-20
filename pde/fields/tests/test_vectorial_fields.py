@@ -208,7 +208,8 @@ def test_boundary_interpolation_vector():
         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(val, bndry_val)
 
-        ev = field.make_get_boundary_values(*bndry, bc={"value": bndry_val})
+        # boundary conditions have already been enforced
+        ev = field.make_get_boundary_values(*bndry)
         np.testing.assert_allclose(ev(), bndry_val)
 
 
@@ -264,3 +265,19 @@ def test_complex_vectors():
         dot_op = v1.make_dot_operator(backend, conjugate=False)
         res = v1.dot(v2, conjugate=False)
         np.testing.assert_allclose(dot_op(v1.data, v2.data), res.data)
+
+
+def test_vector_bcs():
+    """test boundary conditions on vector fields"""
+    grid = UnitGrid([3, 3], periodic=False)
+    v = VectorField.from_expression(grid, ["x", "cos(y)"])
+
+    bc_x = {"value": [0, 1]}
+    bc_y = {"value": [2, 3]}
+    bcs = [bc_x, bc_y]
+
+    s1 = v.divergence(bcs, backend="scipy").data
+    div = grid.make_operator("divergence", bcs)
+    s2 = div(v.data)
+
+    np.testing.assert_allclose(s1, s2)

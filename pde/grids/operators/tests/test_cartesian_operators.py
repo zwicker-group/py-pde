@@ -158,7 +158,7 @@ def test_gradient_cart(ndim):
 def test_divergence_cart(ndim):
     """test different divergence operators"""
     for periodic in [True, False]:
-        bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic)
+        bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic, rank=1)
         field = VectorField.random_uniform(bcs.grid)
         res1 = field.divergence(bcs, backend="scipy").data
         res2 = field.divergence(bcs, backend="numba").data
@@ -180,7 +180,6 @@ def test_vector_gradient(ndim):
 def test_vector_laplace_cart(ndim):
     """test different vector laplace operators"""
     bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic="random", rank=1)
-    print(bcs)
     field = VectorField.random_uniform(bcs.grid)
     res1 = field.laplace(bcs, backend="scipy").data
     res2 = field.laplace(bcs, backend="numba").data
@@ -191,7 +190,7 @@ def test_vector_laplace_cart(ndim):
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_tensor_divergence_cart(ndim):
     """test different tensor divergence operators"""
-    bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic="random", rank=1)
+    bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic="random", rank=2)
     field = Tensor2Field.random_uniform(bcs.grid)
     res1 = field.divergence(bcs, backend="scipy").data
     res2 = field.divergence(bcs, backend="numba").data
@@ -208,7 +207,7 @@ def test_div_grad_const():
     for bc in [{"type": "derivative", "value": 0}, {"type": "value", "value": 3}]:
         bcs = grid.get_boundary_conditions(bc)
         lap = y.laplace(bcs)
-        divgrad = y.gradient(bcs).divergence(bcs.differentiated)
+        divgrad = y.gradient(bcs).divergence("auto_periodic_curvature")
         np.testing.assert_allclose(lap.data, np.zeros(32))
         np.testing.assert_allclose(divgrad.data, np.zeros(32))
 
@@ -227,7 +226,7 @@ def test_div_grad_linear():
     for bs in [b1, b2]:
         bcs = y.grid.get_boundary_conditions(bs)
         lap = y.laplace(bcs)
-        divgrad = y.gradient(bcs).divergence(bcs.differentiated)
+        divgrad = y.gradient(bcs).divergence("auto_periodic_curvature")
         np.testing.assert_allclose(lap.data, np.zeros(32), atol=1e-10)
         np.testing.assert_allclose(divgrad.data, np.zeros(32), atol=1e-10)
 
@@ -242,7 +241,7 @@ def test_div_grad_quadratic():
 
     bcs = grid.get_boundary_conditions({"type": "derivative", "value": 2})
     lap = y.laplace(bcs)
-    divgrad = y.gradient(bcs).divergence(bcs.differentiated)
+    divgrad = y.gradient(bcs).divergence("auto_periodic_curvature")
 
     np.testing.assert_allclose(lap.data, np.full(32, 2.0))
     np.testing.assert_allclose(divgrad.data, np.full(32, 2.0))
@@ -274,7 +273,7 @@ def test_rect_div_grad():
     bcs = grid.get_boundary_conditions("natural")
 
     a = field.laplace(bcs)
-    b = field.gradient(bcs).divergence(bcs.differentiated)
+    b = field.gradient(bcs).divergence("auto_periodic_curvature")
     np.testing.assert_allclose(a.data, -field.data, rtol=0.05, atol=0.01)
     np.testing.assert_allclose(b.data, -field.data, rtol=0.05, atol=0.01)
 
@@ -313,7 +312,7 @@ def test_make_derivative(ndim, axis):
         res = field.copy()
         res.data[:] = 0
         field.set_ghost_cells(bcs)
-        diff(field._data_all, out=res.data)
+        diff(field._data_full, out=res.data)
         np.testing.assert_allclose(
             grad.data[axis], res.data, atol=0.1, rtol=0.1, err_msg=msg
         )

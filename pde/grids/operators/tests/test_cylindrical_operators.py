@@ -82,7 +82,7 @@ def test_findiff_cyl():
 
 def test_grid_laplace():
     """test the cylindrical implementation of the laplace operator"""
-    grid_cyl = CylindricalSymGrid(6, (0, 4), (4, 4))
+    grid_cyl = CylindricalSymGrid(7, (0, 4), (4, 4))
     grid_cart = CartesianGrid([[-5, 5], [-5, 5], [0, 4]], [10, 10, 4])
 
     a_2d = ScalarField.from_expression(grid_cyl, expression="exp(-5 * r) * cos(z / 3)")
@@ -115,8 +115,9 @@ def test_grid_div_grad_cyl():
     bcs = grid.get_boundary_conditions()
     a = field.laplace(bcs)
     c = field.gradient(bcs)
-    b = c.divergence(bcs.differentiated)
+    b = c.divergence("auto_periodic_curvature")
     res = ScalarField.from_expression(grid, "-sin(r)/r - cos(r) - sin(z)")
+
     # do not test the radial boundary points
     np.testing.assert_allclose(a.data[1:-1], res.data[1:-1], rtol=0.1, atol=0.05)
     np.testing.assert_allclose(b.data[1:-1], res.data[1:-1], rtol=0.1, atol=0.05)
@@ -157,10 +158,9 @@ def test_examples_vector_cyl():
     e_φ = "r**2 * sin(z)"
     e_z = "r**4 * cos(z)"
     vf = VectorField.from_expression(grid, [e_r, e_z, e_φ])
-    bcs = [
-        ({"derivative": 0}, {"value": "r**3 * sin(z)"}),
-        ({"curvature": "-r**4  * cos(z)"}, {"curvature": "-r**4 * cos(z)"}),
-    ]
+    bc_r = ({"derivative_normal": 0}, {"value_normal": "r**3 * sin(z)"})
+    bc_z = {"curvature_normal": "-r**4 * cos(z)"}
+    bcs = [bc_r, bc_z]
 
     # divergence
     res = vf.divergence(bcs)
@@ -182,6 +182,7 @@ def test_examples_vector_cyl():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # vector gradient
+    bcs = [({"derivative": 0}, {"curvature": val_r_outer}), "periodic"]
     res = vf.gradient(bcs)
     expr = [
         ["3 * r**2 * sin(z)", "r**3 * cos(z)", "-r**2 * sin(z)"],
@@ -200,7 +201,7 @@ def test_examples_tensor_cyl():
     # tensor divergence
     rs, zs = grid.axes_coords
     val_r_outer = np.broadcast_to(6 * rs * np.sin(zs), (3, 32))
-    bcs = [({"derivative": 0}, {"curvature": val_r_outer}), "periodic"]
+    bcs = [({"derivative_normal": 0}, {"curvature_normal": val_r_outer}), "periodic"]
     res = tf.divergence(bcs)
     expect = VectorField.from_expression(
         grid,

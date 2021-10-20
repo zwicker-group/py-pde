@@ -17,14 +17,18 @@ The module currently supports different boundary conditions:
   proportional to its value at the boundary  
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing the second derivative (curvature) of a field at the boundary
-* :class:`~pde.grids.boundaries.local.ExtrapolateBC`:
-  Extrapolate boundary points linearly from the two points closest to the
-  boundary
+  
+There are also additional classes that impose boundary conditions only for the normal
+components of fields, which can be important for vector and tensor fields. The classes
+corresponding to the ones listed above are
+:class:`~pde.grids.boundaries.local.DirichletNormalBC`,
+:class:`~pde.grids.boundaries.local.NeumannNormalBC`,
+:class:`~pde.grids.boundaries.local.MixedNormalBC`, and
+:class:`~pde.grids.boundaries.local.CurvatureNormalBC`.
 
-Derivatives are given in the direction of the outward normal vector, such that
-positive derivatives correspond to a function that increases across the
-boundary, which corresponds to an inwards flux. Conversely, negative
-derivatives are associated with effluxes.
+Note that derivatives are generally given in the direction of the outward normal vector,
+such that positive derivatives correspond to a function that increases across the
+boundary.
 """
 
 from __future__ import annotations
@@ -114,9 +118,10 @@ def _make_get_arr_1d(
     """create function that extracts a 1d array at a given position
 
     Args:
-        dim (int): The dimension of the space, i.e., the number of axes in the
-            supplied data array
-        axis (int): The axis that is returned as the 1d array
+        dim (int):
+            The dimension of the space, i.e., the number of axes in the supplied array
+        axis (int):
+            The axis that is returned as the 1d array
 
     Returns:
         function: A numba compiled function that takes the full array `arr` and
@@ -198,6 +203,8 @@ class BCBase(metaclass=ABCMeta):
 
     names: List[str]
     """ list: identifiers used to specify the given boundary class """
+    normal: bool = False
+    """ bool: Flag indicating whether only the normal components are affected"""
     homogeneous: bool
     """ bool: determines whether the boundary condition depends on space """
 
@@ -209,6 +216,7 @@ class BCBase(metaclass=ABCMeta):
         grid: GridBase,
         axis: int,
         upper: bool,
+        *,
         rank: int = 0,
     ):
         """
@@ -222,14 +230,23 @@ class BCBase(metaclass=ABCMeta):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary condition.
+                The tensorial rank of the field for this boundary condition
         """
         self.grid = grid
         self.axis = axis
         self.upper = upper
         self.rank = rank
 
-        self._shape_tensor = (self.grid.dim,) * self.rank
+        # Get the shape of the values imposed at the boundary. These are the shape of
+        # the tensor field unless only the normal component is specified
+        if self.rank == 0:
+            self.normal = False
+        if self.normal:
+            self._shape_tensor = (self.grid.dim,) * (self.rank - 1)
+        else:
+            self._shape_tensor = (self.grid.dim,) * self.rank
+
+        # get the shape of the data at the boundary
         self._shape_boundary = (
             self.grid.shape[: self.axis] + self.grid.shape[self.axis + 1 :]
         )
@@ -326,8 +343,7 @@ class BCBase(metaclass=ABCMeta):
             condition (str):
                 Identifies the boundary condition
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the field for this boundary condition
             \**kwargs:
                 Additional arguments passed to the constructor
         """
@@ -369,8 +385,7 @@ class BCBase(metaclass=ABCMeta):
             data (dict):
                 The dictionary defining the boundary condition
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the field for this boundary condition
         """
         data = data.copy()  # need to make a copy since we modify it below
 
@@ -411,8 +426,7 @@ class BCBase(metaclass=ABCMeta):
             data (str or dict):
                 Data that describes the boundary
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the field for this boundary condition
 
         Returns:
             :class:`~pde.grids.boundaries.local.BCBase`: the instance created
@@ -444,8 +458,8 @@ class BCBase(metaclass=ABCMeta):
         """check whether the values at the boundaries have the correct rank
 
         Args:
-            rank (tuple): The rank of the value that is stored with this
-                boundary condition
+            rank (int):
+                The tensorial rank of the field for this boundary condition
 
         Throws:
             RuntimeError: if the value does not have rank `rank`
@@ -480,22 +494,15 @@ class BCBase(metaclass=ABCMeta):
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         raise NotImplementedError
 
-    @property
-    def differentiated(self) -> BCBase:
-        """BCBase: differentiated version of this boundary condition"""
-        raise NotImplementedError
-
     @abstractmethod
     def set_ghost_cells(self, data_all: np.ndarray, *, args=None) -> None:
-        """set the ghost cell values for this boundary
-
-        Args:
-            data_all (:class:`~numpy.ndarray`):
-                The full field data including ghost points
-        """
+        """set the ghost cell values for this boundary"""
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this boundary"""
+        normal = self.normal
+        axis = self.axis
+
         # get information of the virtual points (ghost cells)
         vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
         np_idx = self.grid.shape[self.axis] - 1 if self.upper else 0
@@ -507,7 +514,11 @@ class BCBase(metaclass=ABCMeta):
             def ghost_cell_setter(data_all: np.ndarray, args=None) -> None:
                 """helper function setting the conditions on all axes"""
                 data_valid = data_all[..., 1:-1]
-                data_all[..., vp_idx] = vp_value(data_valid, (np_idx,), args=args)
+                val = vp_value(data_valid, (np_idx,), args=args)
+                if normal:
+                    data_all[..., axis, vp_idx] = val
+                else:
+                    data_all[..., vp_idx] = val
 
         elif self.grid.num_axes == 2:  # 2d grid
 
@@ -520,7 +531,10 @@ class BCBase(metaclass=ABCMeta):
                     data_valid = data_all[..., 1:-1, 1:-1]
                     for j in range(num_y):
                         val = vp_value(data_valid, (np_idx, j), args=args)
-                        data_all[..., vp_idx, j + 1] = val
+                        if normal:
+                            data_all[..., axis, vp_idx, j + 1] = val
+                        else:
+                            data_all[..., vp_idx, j + 1] = val
 
             elif self.axis == 1:
                 num_x = self.grid.shape[0]
@@ -531,7 +545,10 @@ class BCBase(metaclass=ABCMeta):
                     data_valid = data_all[..., 1:-1, 1:-1]
                     for i in range(num_x):
                         val = vp_value(data_valid, (i, np_idx), args=args)
-                        data_all[..., i + 1, vp_idx] = val
+                        if normal:
+                            data_all[..., axis, i + 1, vp_idx] = val
+                        else:
+                            data_all[..., i + 1, vp_idx] = val
 
         elif self.grid.num_axes == 3:  # 3d grid
 
@@ -545,7 +562,10 @@ class BCBase(metaclass=ABCMeta):
                     for j in range(num_y):
                         for k in range(num_z):
                             val = vp_value(data_valid, (np_idx, j, k), args=args)
-                            data_all[..., vp_idx, j + 1, k + 1] = val
+                            if normal:
+                                data_all[..., axis, vp_idx, j + 1, k + 1] = val
+                            else:
+                                data_all[..., vp_idx, j + 1, k + 1] = val
 
             elif self.axis == 1:
                 num_x, num_z = self.grid.shape[0], self.grid.shape[2]
@@ -557,7 +577,10 @@ class BCBase(metaclass=ABCMeta):
                     for i in range(num_x):
                         for k in range(num_z):
                             val = vp_value(data_valid, (i, np_idx, k), args=args)
-                            data_all[..., i + 1, vp_idx, k + 1] = val
+                            if normal:
+                                data_all[..., axis, i + 1, vp_idx, k + 1] = val
+                            else:
+                                data_all[..., i + 1, vp_idx, k + 1] = val
 
             elif self.axis == 2:
                 num_x, num_y = self.grid.shape[:2]
@@ -569,7 +592,10 @@ class BCBase(metaclass=ABCMeta):
                     for i in range(num_x):
                         for j in range(num_y):
                             val = vp_value(data_valid, (i, j, np_idx), args=args)
-                            data_all[..., i + 1, j + 1, vp_idx] = val
+                            if normal:
+                                data_all[..., axis, i + 1, j + 1, vp_idx] = val
+                            else:
+                                data_all[..., i + 1, j + 1, vp_idx] = val
 
         else:
             raise NotImplementedError("Too many axes")
@@ -588,6 +614,7 @@ class ExpressionBC(BCBase):
         grid: GridBase,
         axis: int,
         upper: bool,
+        *,
         rank: int = 0,
         value: Union[float, str] = 0,
         target: str = "virtual_point",
@@ -606,14 +633,14 @@ class ExpressionBC(BCBase):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str):
                 An expression that determines the value of the boundary condition.
             target (str):
                 Selects which value is actually set. Possible choices include `value`,
                 `derivative`, and `virtual_point`.
         """
-        super().__init__(grid, axis, upper, rank)
+        super().__init__(grid, axis, upper, rank=rank)
 
         if self.rank != 0:
             raise NotImplementedError(
@@ -699,10 +726,17 @@ class ExpressionBC(BCBase):
 
         # prepare the array of slices to index bcs
         offset = data_all.ndim - self.grid.num_axes  # additional data axes
-        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
-        idx_write[offset + self.axis] = -1 if self.upper else 0  # type: ignore
+        idx_offset = [slice(None)] * offset
+        idx_valid = [slice(1, -1)] * self.grid.num_axes
+        idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
+        idx_write[offset + self.axis] = -1 if self.upper else 0
         idx_read = idx_write[:]
-        idx_read[offset + self.axis] = -2 if self.upper else 1  # type: ignore
+        idx_read[offset + self.axis] = -2 if self.upper else 1
+
+        if self.normal:
+            assert offset > 0
+            idx_write[offset - 1] = self.axis
+            idx_read[offset - 1] = self.axis
 
         # prepare the arguments
         values = data_all[tuple(idx_read)]
@@ -758,6 +792,7 @@ class ExpressionValueBC(ExpressionBC):
         grid: GridBase,
         axis: int,
         upper: bool,
+        *,
         rank: int = 0,
         value: Union[float, str] = 0,
         target: str = "value",
@@ -776,14 +811,14 @@ class ExpressionValueBC(ExpressionBC):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str):
                 An expression that determines the value of the boundary condition.
             target (str):
                 Selects which value is actually set. Possible choices include `value`,
                 `derivative`, and `virtual_point`.
         """
-        super().__init__(grid, axis, upper, rank, value, target)
+        super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
 
 
 class ExpressionDerivativeBC(ExpressionBC):
@@ -797,6 +832,7 @@ class ExpressionDerivativeBC(ExpressionBC):
         grid: GridBase,
         axis: int,
         upper: bool,
+        *,
         rank: int = 0,
         value: Union[float, str] = 0,
         target: str = "derivative",
@@ -815,14 +851,14 @@ class ExpressionDerivativeBC(ExpressionBC):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str):
                 An expression that determines the value of the boundary condition.
             target (str):
                 Selects which value is actually set. Possible choices include `value`,
                 `derivative`, and `virtual_point`.
         """
-        super().__init__(grid, axis, upper, rank, value, target)
+        super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
 
 
 class ConstBCBase(BCBase):
@@ -841,6 +877,7 @@ class ConstBCBase(BCBase):
         grid: GridBase,
         axis: int,
         upper: bool,
+        *,
         rank: int = 0,
         value: Union[float, np.ndarray, str] = 0,
     ):
@@ -859,7 +896,7 @@ class ConstBCBase(BCBase):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str or :class:`~numpy.ndarray`):
                 a value stored with the boundary condition. The interpretation
                 of this value depends on the type of boundary condition. If
@@ -869,7 +906,7 @@ class ConstBCBase(BCBase):
                 expression as a string, which then may depend on the axes names
                 of the respective grid.
         """
-        super().__init__(grid=grid, axis=axis, upper=upper, rank=rank)
+        super().__init__(grid, axis, upper, rank=rank)
         self.value = value  # type: ignore
 
     def __eq__(self, other):
@@ -953,7 +990,7 @@ class ConstBCBase(BCBase):
         """
         if isinstance(value, str):
             # inhomogeneous value given by an expression
-            if self.rank != 0:
+            if len(self._shape_tensor) > 0:
                 raise NotImplementedError(
                     "Expressions for boundaries are only supported for scalar values."
                 )
@@ -1013,8 +1050,9 @@ class ConstBCBase(BCBase):
                 result = value
             else:
                 raise ValueError(
-                    f"Dimensions {value.shape} of the value are incompatible with rank "
-                    f"{self.rank} and spatial dimensions {self._shape_boundary}."
+                    f"Dimensions {value.shape} of the given value are incompatible "
+                    f"with the expected shape {self._shape_tensor} of the boundary "
+                    f"value and its spatial dimensions {self._shape_boundary}."
                 )
 
         # check consistency
@@ -1190,6 +1228,8 @@ class ConstBC1stOrderBase(ConstBCBase):
             result is the data value at this point, which is calculated using
             the boundary condition.
         """
+        normal = self.normal
+        axis = self.axis
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
 
         # calculate necessary constants
@@ -1203,7 +1243,11 @@ class ConstBC1stOrderBase(ConstBCBase):
             ) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
-                return const() + factor() * arr_1d[..., index]  # type: ignore
+                if normal:
+                    val_field = arr_1d[..., axis, index]
+                else:
+                    val_field = arr_1d[..., index]
+                return const() + factor() * val_field  # type: ignore
 
         else:
 
@@ -1213,9 +1257,11 @@ class ConstBC1stOrderBase(ConstBCBase):
             ) -> float:
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-                return (  # type: ignore
-                    const()[bc_idx] + factor()[bc_idx] * arr_1d[..., index]
-                )
+                if normal:
+                    val_field = arr_1d[..., axis, index]
+                else:
+                    val_field = arr_1d[..., index]
+                return const()[bc_idx] + factor()[bc_idx] * val_field  # type: ignore
 
         return virtual_point  # type: ignore
 
@@ -1308,10 +1354,17 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         # prepare the array of slices to index bcs
         offset = data_all.ndim - self.grid.num_axes  # additional data axes
-        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
-        idx_write[offset + self.axis] = -1 if self.upper else 0  # type: ignore
+        idx_offset = [slice(None)] * offset
+        idx_valid = [slice(1, -1)] * self.grid.num_axes
+        idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
+        idx_write[offset + self.axis] = -1 if self.upper else 0
         idx_read = idx_write[:]
-        idx_read[offset + self.axis] = index + 1  # type: ignore
+        idx_read[offset + self.axis] = index + 1
+
+        if self.normal:
+            assert offset > 0
+            idx_write[offset - 1] = self.axis
+            idx_read[offset - 1] = self.axis
 
         if self.homogeneous and not np.isscalar(factor):
             # add dimension to const so it can be broadcasted to shape of data_all
@@ -1357,16 +1410,12 @@ class _PeriodicBC(ConstBC1stOrderBase):
 
             return (const_func, factor_func, index)
 
-    @property
-    def differentiated(self) -> BCBase:
-        """BCBase: differentiated version of this boundary condition"""
-        return self
-
 
 class DirichletBC(ConstBC1stOrderBase):
     """represents a boundary condition imposing the value"""
 
     names = ["value", "dirichlet"]  # identifiers for this boundary condition
+    normal = False
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
         """return data suitable for calculating virtual points
@@ -1415,16 +1464,12 @@ class DirichletBC(ConstBC1stOrderBase):
 
             return (const_func, factor_func, index)
 
-    @property
-    def differentiated(self) -> BCBase:
-        """BCBase: differentiated version of this boundary condition"""
-        return NeumannBC(
-            grid=self.grid,
-            axis=self.axis,
-            upper=self.upper,
-            rank=self.rank,
-            value=np.zeros_like(self.value),
-        )
+
+class DirichletNormalBC(DirichletBC):
+    """represents a boundary condition imposing the normal component of a value"""
+
+    names = ["normal_value", "normal_component", "value_normal", "dirichlet_normal"]
+    normal = True
 
 
 class NeumannBC(ConstBC1stOrderBase):
@@ -1432,6 +1477,7 @@ class NeumannBC(ConstBC1stOrderBase):
     normal direction of the boundary"""
 
     names = ["derivative", "neumann"]  # identifiers for this boundary condition
+    normal = False
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
         """return data suitable for calculating virtual points
@@ -1482,16 +1528,13 @@ class NeumannBC(ConstBC1stOrderBase):
 
             return (const_func, factor_func, index)
 
-    @property
-    def differentiated(self) -> BCBase:
-        """BCBase: differentiated version of this boundary condition"""
-        return CurvatureBC(
-            grid=self.grid,
-            axis=self.axis,
-            upper=self.upper,
-            rank=self.rank,
-            value=np.zeros_like(self.value),
-        )
+
+class NeumannNormalBC(NeumannBC):
+    """represents a boundary condition imposing the derivative in the outward
+    normal direction of the boundary only on the normal component of the tensor field"""
+
+    names = ["derivative_normal", "neumann_normal"]
+    normal = True
 
 
 class MixedBC(ConstBC1stOrderBase):
@@ -1520,12 +1563,14 @@ class MixedBC(ConstBC1stOrderBase):
     """
 
     names = ["mixed", "robin"]
+    normal = False
 
     def __init__(
         self,
         grid: GridBase,
         axis: int,
         upper: bool,
+        *,
         rank: int = 0,
         value: Union[float, np.ndarray, str] = 0,
         const: Union[float, np.ndarray, str] = 0,
@@ -1542,8 +1587,7 @@ class MixedBC(ConstBC1stOrderBase):
                 determines the direction of the local normal vector of the
                 boundary.
             rank (int):
-                The tensorial rank of the value associated with the boundary
-                condition.
+                The tensorial rank of the field for this boundary condition
             value (float or str or array):
                 The parameter :math:`\gamma` quantifying the influence of the
                 field onto its normal derivative. If `value` is a single value
@@ -1555,7 +1599,7 @@ class MixedBC(ConstBC1stOrderBase):
                 The parameter :math:`\beta` determining the constant term for
                 the boundary condition. Supports the same input as `value`.
         """
-        super().__init__(grid, axis, upper, rank, value)
+        super().__init__(grid, axis, upper, rank=rank, value=value)
         self.const = self._parse_value(const)
 
     def __eq__(self, other):
@@ -1663,6 +1707,14 @@ class MixedBC(ConstBC1stOrderBase):
         return (const_func, factor_func, index)
 
 
+class MixedNormalBC(MixedBC):
+    r"""represents a mixed (or Robin) boundary condition imposing a derivative
+    in the outward normal direction of the boundary only for the normal component"""
+
+    names = ["mixed_normal", "robin_normal"]
+    normal = True
+
+
 class ConstBC2ndOrderBase(ConstBCBase):
     """abstract base class for boundary conditions of 2nd order"""
 
@@ -1753,6 +1805,8 @@ class ConstBC2ndOrderBase(ConstBCBase):
             result is the data value at this point, which is calculated using
             the boundary condition.
         """
+        normal = self.normal
+        axis = self.axis
         size = self.grid.shape[self.axis]
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
 
@@ -1770,12 +1824,13 @@ class ConstBC2ndOrderBase(ConstBCBase):
             def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None):
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
-
-                return (
-                    data[0]
-                    + data[1] * arr_1d[..., data[2]]
-                    + data[3] * arr_1d[..., data[4]]
-                )
+                if normal:
+                    val1 = arr_1d[..., axis, data[2]]
+                    val2 = arr_1d[..., axis, data[4]]
+                else:
+                    val1 = arr_1d[..., data[2]]
+                    val2 = arr_1d[..., data[4]]
+                return data[0] + data[1] * val1 + data[3] * val2
 
         else:
 
@@ -1783,12 +1838,13 @@ class ConstBC2ndOrderBase(ConstBCBase):
             def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None):
                 """evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
-
-                return (
-                    data[0][bc_idx]
-                    + data[1][bc_idx] * arr_1d[..., data[2]]
-                    + data[3][bc_idx] * arr_1d[..., data[4]]
-                )
+                if normal:
+                    val1 = arr_1d[..., axis, data[2]]
+                    val2 = arr_1d[..., axis, data[4]]
+                else:
+                    val1 = arr_1d[..., data[2]]
+                    val2 = arr_1d[..., data[4]]
+                return data[0][bc_idx] + data[1][bc_idx] * val1 + data[3][bc_idx] * val2
 
         return virtual_point  # type: ignore
 
@@ -1885,12 +1941,20 @@ class ConstBC2ndOrderBase(ConstBCBase):
 
         # prepare the array of slices to index bcs
         offset = data_all.ndim - self.grid.num_axes  # additional data axes
-        idx_write = [slice(None)] * offset + [slice(1, -1)] * self.grid.num_axes
-        idx_write[offset + self.axis] = -1 if self.upper else 0  # type: ignore
+        idx_offset = [slice(None)] * offset
+        idx_valid = [slice(1, -1)] * self.grid.num_axes
+        idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
+        idx_write[offset + self.axis] = -1 if self.upper else 0
         idx_1 = idx_write[:]
-        idx_1[offset + self.axis] = data[2] + 1  # type: ignore
+        idx_1[offset + self.axis] = data[2] + 1
         idx_2 = idx_write[:]
-        idx_2[offset + self.axis] = data[4] + 1  # type: ignore
+        idx_2[offset + self.axis] = data[4] + 1
+
+        if self.normal:
+            assert offset > 0
+            idx_write[offset - 1] = self.axis
+            idx_1[offset - 1] = self.axis
+            idx_2[offset - 1] = self.axis
 
         # add dimension to const until it can be broadcasted to shape of data_all
         const, factor1, factor2 = data[0], data[1], data[3]
@@ -1907,44 +1971,12 @@ class ConstBC2ndOrderBase(ConstBCBase):
         )
 
 
-class ExtrapolateBC(ConstBC2ndOrderBase):
-    """represents a boundary condition that extrapolates the virtual point
-    using two points close to the boundary
-
-    This imposes a vanishing second derivative.
-    """
-
-    names = ["extrapolate", "extrapolation"]  # identifiers for this condition
-
-    def get_virtual_point_data(
-        self,
-    ) -> Tuple[np.ndarray, np.ndarray, int, np.ndarray, int]:
-        """return data suitable for calculating virtual points
-
-        Returns:
-            tuple: the data structure associated with this virtual point
-        """
-        size = self.grid.shape[self.axis]
-
-        if size < 2:
-            raise RuntimeError(
-                "Need at least 2 support points to use extrapolate boundary condition"
-            )
-
-        if self.upper:
-            i1 = size - 1
-            i2 = size - 2
-        else:
-            i1 = 0
-            i2 = 1
-        return (np.array(0.0), np.array(2.0), i1, np.array(-1.0), i2)
-
-
 class CurvatureBC(ConstBC2ndOrderBase):
-    """represents a boundary condition imposing the 2nd derivative at the
+    """represents a boundary condition imposing the 2nd normal derivative at the
     boundary"""
 
-    names = ["curvature", "second_derivative"]  # identifiers for this BC
+    names = ["curvature", "second_derivative", "extrapolate"]  # identifiers for this BC
+    normal = False
 
     def get_virtual_point_data(
         self,
@@ -1970,6 +2002,14 @@ class CurvatureBC(ConstBC2ndOrderBase):
         else:
             i1, i2 = 0, 1
         return (value, f1, i1, f2, i2)
+
+
+class CurvatureNormalBC(CurvatureBC):
+    """represents a boundary condition imposing the 2nd normal derivative at the
+    boundary only on the normal component of the tensor field"""
+
+    names = ["curvature_normal"]
+    normal = True
 
 
 def registered_boundary_condition_classes() -> Dict[str, Type[BCBase]]:

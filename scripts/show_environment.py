@@ -6,7 +6,6 @@ that occur with the package
 """
 
 import sys
-from collections import OrderedDict
 from pathlib import Path
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
@@ -14,7 +13,7 @@ sys.path.append(str(PACKAGE_PATH))
 
 from pde import environment
 
-env = environment(OrderedDict)
+env = environment()
 
 for category, data in env.items():
     if hasattr(data, "items"):

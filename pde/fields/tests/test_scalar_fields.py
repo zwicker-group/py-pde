@@ -20,21 +20,14 @@ def test_interpolation_singular():
     field = ScalarField(grid, data=3)
 
     # test constant boundary conditions
-    bc = [{"type": "value", "value": 1}, {"type": "value", "value": 5}]
     x = np.linspace(0, 1, 7).reshape((7, 1))
-    y = field.interpolate(x, backend="numba", bc=bc)
-    np.testing.assert_allclose(y, 1 + 4 * x.ravel())
+    y = field.interpolate(x, backend="numba")
+    np.testing.assert_allclose(y, 3)
 
-    # test derivative boundary conditions
-    bc = [{"type": "derivative", "value": -2}, {"type": "derivative", "value": 2}]
-    x = np.linspace(0, 1, 7).reshape((7, 1))
-    y = field.interpolate(x, backend="numba", bc=bc)
-    np.testing.assert_allclose(y, 2 + 2 * x.ravel())
-
-    # test boundary interpolation
-    for upper in [True, False]:
-        val = field.get_boundary_values(axis=0, upper=upper, bc=[{"value": 1}])
-        assert val == pytest.approx(1)
+    # # test boundary interpolation
+    # for upper in [True, False]:
+    #     val = field.get_boundary_values(axis=0, upper=upper, bc=[{"value": 1}])
+    #     assert val == pytest.approx(1)
 
 
 def test_simple_shapes(example_grid):
@@ -216,15 +209,6 @@ def test_from_expression():
     np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
 
 
-def test_interpolation_inhomogeneous_bc():
-    """test field interpolation with inhomogeneous boundary condition"""
-    sf = ScalarField(UnitGrid([3, 3], periodic=False))
-    x = 1 + np.random.random()
-    bc = ["natural", {"type": "value", "value": "x"}]
-    v = sf.interpolate([x, 0], backend="numba", bc=bc)
-    assert x == pytest.approx(v)
-
-
 @skipUnlessModule("matplotlib")
 def test_from_image(tmp_path):
     from matplotlib.pyplot import imsave
@@ -307,9 +291,14 @@ def test_interpolation_mutable():
         np.testing.assert_allclose(field.interpolate([0.5], backend=backend), 2)
 
     # test overwriting field values
-    data = np.full_like(field.data, 3)
+    data = np.full_like(field._data_full, 3)
     intp = field.make_interpolator(backend="numba")
     np.testing.assert_allclose(intp(np.array([0.5]), data), 3)
+
+    # test overwriting field values
+    data = np.full_like(field.data, 4)
+    intp = field.make_interpolator(backend="numba")
+    np.testing.assert_allclose(intp(np.array([0.5]), data), 4)
 
 
 def test_boundary_interpolation_1d():
@@ -323,10 +312,11 @@ def test_boundary_interpolation_1d():
         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(val, bndry_val)
 
-        ev = field.make_get_boundary_values(*bndry, bc={"value": bndry_val})
+        # boundary conditions have already been enforced
+        ev = field.make_get_boundary_values(*bndry)
         out = ev()
         np.testing.assert_allclose(out, bndry_val)
-        ev(data=field.data, out=out)
+        ev(data_full=field._data_full, out=out)
         np.testing.assert_allclose(out, bndry_val)
 
 
@@ -341,10 +331,11 @@ def test_boundary_interpolation_2d():
         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(val, bndry_val)
 
-        ev = field.make_get_boundary_values(*bndry, bc={"value": bndry_val})
+        # boundary conditions have already been enforced
+        ev = field.make_get_boundary_values(*bndry)
         out = ev()
         np.testing.assert_allclose(out, bndry_val)
-        ev(data=field.data, out=out)
+        ev(data_full=field._data_full, out=out)
         np.testing.assert_allclose(out, bndry_val)
 
 

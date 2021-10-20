@@ -43,16 +43,28 @@ def test_interpolation_natural(example_grid, field_class):
     """test some interpolation for natural boundary conditions"""
     msg = f"grid={example_grid}, field={field_class}"
     f = field_class.random_uniform(example_grid)
-    if isinstance(example_grid, CartesianGridBase):
-        p = example_grid.get_random_point(boundary_distance=0.5)
-    else:
-        p = example_grid.get_random_point(boundary_distance=1, avoid_center=True)
-    p = example_grid.point_from_cartesian(p)
+
+    def get_point():
+        if isinstance(example_grid, CartesianGridBase):
+            p = example_grid.get_random_point(boundary_distance=0.5)
+        else:
+            p = example_grid.get_random_point(boundary_distance=1, avoid_center=True)
+        return example_grid.point_from_cartesian(p)
+
+    # interpolate a single, random point
+    p = get_point()
     i1 = f.interpolate(p, backend="scipy", method="linear")
     i2 = f.interpolate(p, backend="numba", method="linear")
     np.testing.assert_almost_equal(i1, i2, err_msg=msg)
 
-    c = (1,) * len(example_grid.axes)  # specific cell
+    # multiple random points
+    ps = np.array([get_point() for _ in range(2)])
+    i1 = f.interpolate(ps, backend="scipy", method="linear")
+    i2 = f.interpolate(ps, backend="numba", method="linear")
+    np.testing.assert_almost_equal(i1, i2, err_msg=msg)
+
+    # interpolate at cell center
+    c = (1,) * len(example_grid.axes)
     p = f.grid.cell_coords[c]
     val = f.interpolate(p, backend="scipy", method="linear")
     np.testing.assert_allclose(val, f.data[(Ellipsis,) + c], err_msg=msg)
@@ -231,15 +243,24 @@ def test_writing_images(tmp_path):
 
 
 @pytest.mark.slow
-def test_interpolation_to_grid_fields():
+@pytest.mark.parametrize("ndim", [1, 2])
+def test_interpolation_to_grid_fields(ndim):
     """test whether data is interpolated correctly for different fields"""
-    grid = CartesianGrid([[0, 2 * np.pi]] * 2, 6)
-    grid2 = CartesianGrid([[0, 2 * np.pi]] * 2, 8)
-    vf = VectorField.from_expression(grid, ["sin(y)", "cos(x)"])
+    grid = CartesianGrid([[0, 2 * np.pi]] * ndim, 6)
+    grid2 = CartesianGrid([[0, 2 * np.pi]] * ndim, 8)
+    if ndim == 1:
+        vf = VectorField.from_expression(grid, ["cos(x)"])
+    elif ndim == 2:
+        vf = VectorField.from_expression(grid, ["sin(y)", "cos(x)"])
     sf = vf[0]  # test extraction of fields
     fc = FieldCollection([sf, vf])
 
     for f in [sf, vf, fc]:
+        # test self-interpolation
+        f0 = f.interpolate_to_grid(grid, backend="numba")
+        np.testing.assert_allclose(f.data, f0.data, atol=1e-15)
+
+        # test interpolation to finer grid and back
         f2 = f.interpolate_to_grid(grid2, backend="numba")
         f3 = f2.interpolate_to_grid(grid, backend="numba")
         np.testing.assert_allclose(f.data, f3.data, atol=0.2, rtol=0.2)
@@ -256,7 +277,11 @@ def test_interpolation_values(field_cls):
     c = f.grid.cell_coords[2, 2]
     np.testing.assert_allclose(intp(c), f.data[..., 2, 2])
 
-    with pytest.raises(ValueError):
+    intp = f.make_interpolator(backend="numba", full_data=True)
+    c = f.grid.cell_coords[2, 2]
+    np.testing.assert_allclose(intp(c, f._data_full), f.data[..., 2, 2])
+
+    with pytest.raises((ValueError, IndexError)):
         intp(np.array([100, -100]))
 
     res = f.make_interpolator(backend="numba", fill=45)(np.array([100, -100]))

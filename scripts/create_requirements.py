@@ -173,17 +173,46 @@ def write_requirements_csv(
                 writer.writerow([r.name, r.usage])
 
 
+def write_requirements_py(path: Path, requirements: List[Requirement]):
+    """write requirements check into a python module
+
+    Args:
+        path (:class:`Path`): The path where the requirements are written
+        requirements (list): The requirements to be written
+    """
+    print(f"Modify `{path}`")
+
+    # read user-created content of file
+    content = []
+    with open(path, "r") as fp:
+        for line in fp:
+            if "GENERATED CODE" in line:
+                content.append(line)
+                break
+            content.append(line)
+
+    # add generated code
+    for r in sorted(requirements, key=lambda r: r.name.lower()):
+        content.append(f'check_package_version("{r.name}", "{r.version}")\n')
+
+    # write content back to file
+    with open(path, "w") as fp:
+        fp.writelines(content)
+
+
 def main():
     """main function creating all the requirements"""
+    root = Path(PACKAGE_PATH)
+
     # write basic requirements
     write_requirements_txt(
-        Path(PACKAGE_PATH) / "requirements.txt",
+        root / "requirements.txt",
         [r for r in REQUIREMENTS if r.essential],
     )
 
     # write minimal requirements to tests folder
     write_requirements_txt(
-        Path(PACKAGE_PATH) / "tests" / "requirements_min.txt",
+        root / "tests" / "requirements_min.txt",
         [r for r in REQUIREMENTS if r.essential],
         rel="~=",
         comment="These are the minimal requirements used to test compatibility",
@@ -191,33 +220,35 @@ def main():
 
     # write requirements to docs folder
     write_requirements_txt(
-        Path(PACKAGE_PATH) / "docs" / "requirements.txt",
+        root / "docs" / "requirements.txt",
         [r for r in REQUIREMENTS if r.for_docs],
         ref_base=True,
     )
 
     # write requirements to docs folder
     write_requirements_txt(
-        Path(PACKAGE_PATH) / "tests" / "requirements.txt",
+        root / "tests" / "requirements.txt",
         [r for r in REQUIREMENTS if r.for_tests],
         ref_base=True,
     )
 
     # write requirements for documentation as CSV
     write_requirements_csv(
-        Path(PACKAGE_PATH) / "docs" / "source" / "_static" / "requirements_main.csv",
+        root / "docs" / "source" / "_static" / "requirements_main.csv",
         [r for r in REQUIREMENTS if r.essential],
     )
 
     # write requirements for documentation as CSV
     write_requirements_csv(
-        Path(PACKAGE_PATH)
-        / "docs"
-        / "source"
-        / "_static"
-        / "requirements_optional.csv",
+        root / "docs" / "source" / "_static" / "requirements_optional.csv",
         [r for r in REQUIREMENTS if r.optional],
         incl_version=False,
+    )
+
+    # write version.py
+    write_requirements_py(
+        root / "pde" / "version.py",
+        [r for r in REQUIREMENTS if r.essential],
     )
 
 

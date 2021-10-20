@@ -7,9 +7,13 @@ This package contains classes for handling the boundary conditions of fields.
 Boundary conditions
 ^^^^^^^^^^^^^^^^^^^
 
-Since the :mod:`pde` package only supports orthogonal grids, boundary conditions
-need to be applied at the end of each axis. Consequently, methods expecting 
-boundary conditions typically receive a list of conditions for each axes:
+The mathematical details of boundary conditions for partial differential equations are
+treated in more detail in the
+:download:`documentation document </../methods/boundary_discretization/boundary_discretization.pdf>`.
+Since the :mod:`pde` package only supports orthogonal grids, boundary conditions need to
+be applied at the end of each axis.
+Consequently, methods expecting boundary conditions typically receive a list of
+conditions for each axes:
 
 .. code-block:: python
 
@@ -18,12 +22,12 @@ boundary conditions typically receive a list of conditions for each axes:
     
 If an axis is periodic (like the first one in the example above), the only valid
 boundary condition is 'periodic'. For non-periodic axes (e.g., the second axis),
-different boundary conditions can be specified for the lower and upper end of
-the axis, which is done using a tuple of two conditions. Typical choices 
-for individual conditions are Dirichlet conditions that enforce a value
-NUM (specified by `{'value': NUM}`) and Neumann conditions that enforce 
-the value DERIV for the derivative in the normal direction (specified by
-`{'derivative': DERIV}`). The specific choices for the example above could be
+different boundary conditions can be specified for the lower and upper end of the axis,
+which is done using a tuple of two conditions. Typical choices  for individual
+conditions are Dirichlet conditions that enforce a value NUM (specified by
+`{'value': NUM}`) and Neumann conditions that enforce  the value DERIV for the
+derivative in the normal direction (specified by `{'derivative': DERIV}`). The specific
+choices for the example above could be
 
 .. code-block:: python
     
@@ -62,7 +66,7 @@ which enforces the condition :math:`\partial_n c + 2 c = 7` and
 :math:`\partial^2_n c = 2` onto the field :math:`c` on the lower and upper side
 of the axis, respectively.
 
-Beside the full specification of the boundary condtions, various short-hand
+Beside the full specification of the boundary conditions, various short-hand
 notations are supported. If both sides of an axis have the same boundary
 condition, only one needs to be specified (instead of the tuple). For instance,
 :code:`bc_y = {'value': 2}` imposes a value of `2` on both sides of the y-axis.
@@ -87,38 +91,34 @@ enforces periodic boundary conditions on the first axis, while the second one
 has standard Neumann conditions.
     
 Note:
-    Derivatives are given relative to the outward normal vector, such that
-    positive derivatives correspond to a function that increases across the
-    boundary, which corresponds to an inwards flux. Conversely, negative
-    derivatives are associated with effluxes. 
+    Derivatives are given relative to the outward normal vector, such that positive
+    derivatives correspond to a function that increases across the boundary. 
 
 
 Boundaries overview
 ^^^^^^^^^^^^^^^^^^^
 
-The :mod:`boundaries` package defines the following classes:
+The :mod:`~pde.grids.boundaries` package defines the following classes:
 
 **Local boundary conditions:**
 
 * :class:`~pde.grids.boundaries.local.DirichletBC`:
   Imposing the value of a field at the boundary
 * :class:`~pde.grids.boundaries.local.NeumannBC`:
-  Imposing the derivative of a field in the outward normal direction at the
-  boundary
+  Imposing the derivative of a field in the outward normal direction at the boundary
 * :class:`~pde.grids.boundaries.local.MixedBC`:
-  Imposing the derivative of a field in the outward normal direction
-  proportional to its value at the boundary  
+  Imposing the derivative of a field in the outward normal direction proportional to its
+  value at the boundary  
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing the second derivative (curvature) of a field at the boundary
-* :class:`~pde.grids.boundaries.local.ExtrapolateBC`:
-  Extrapolate boundary points linearly from the two points closest to the
-  boundary
+
+There are corresponding classes that only affect the normal component of a field, which
+can be useful when dealing with vector and tensor fields.
 
 **Boundaries for an axis:**
 
 * :class:`~pde.grids.boundaries.axis.BoundaryPair`:
-  Uses the local boundary conditions to specify the two boundaries along an
-  axis.
+  Uses the local boundary conditions to specify the two boundaries along an axis
 * :class:`~pde.grids.boundaries.axis.BoundaryPeriodic`:
   Indicates that an axis has periodic boundary conditions
 

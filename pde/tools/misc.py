@@ -1,10 +1,9 @@
 """
-Miscallenous python functions 
+Miscellaneous python functions 
 
 .. autosummary::
    :nosignatures:
 
-   environment
    module_available
    ensure_directory_exists
    preserve_scalars
@@ -28,7 +27,6 @@ import importlib
 import json
 import os
 import unittest
-import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Sequence, TypeVar, Union
 
@@ -37,28 +35,6 @@ import numpy as np
 from .typing import ArrayLike, Number
 
 TFunc = TypeVar("TFunc", bound=Callable[..., Any])
-
-
-def environment(dict_type=dict) -> Dict[str, Any]:
-    """obtain information about the compute environment
-
-    Args:
-        dict_type: The type to create the returned dictionaries. The default is
-            `dict`, but :class:`collections.OrderedDict` is an alternative.
-
-    Returns:
-        dict: information about the python installation and packages
-    """
-    # import functions moved on 2020-02-08
-    # using this path for import is deprecated
-    from .config import environment  # @UnusedImport
-
-    warnings.warn(
-        "Importing `environment` from `pde.tools.misc` is deprecated. Import it from "
-        "`pde` directly instead.",
-        DeprecationWarning,
-    )
-    return environment(dict_type)
 
 
 def module_available(module_name: str) -> bool:

@@ -12,7 +12,7 @@ from pde.visualization import movies
 
 
 @pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
-def test_movie(tmp_path):
+def test_movie_class(tmp_path):
     """test Movie class"""
     import matplotlib.pyplot as plt
 
@@ -34,21 +34,22 @@ def test_movie(tmp_path):
 
 
 @pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
-def test_movie_scalar(tmp_path):
+@pytest.mark.parametrize("movie_func", [movies.movie_scalar, movies.movie])
+def test_movie_scalar(movie_func, tmp_path):
     """test Movie class"""
 
     # create some data
-    state = ScalarField.random_uniform(UnitGrid([16, 16]))
-    pde = DiffusionPDE()
+    state = ScalarField.random_uniform(UnitGrid([4, 4]))
+    eq = DiffusionPDE()
     storage = MemoryStorage()
     tracker = storage.tracker(interval=1)
-    pde.solve(state, t_range=2, dt=1e-2, backend="numpy", tracker=tracker)
+    eq.solve(state, t_range=2, dt=1e-2, backend="numpy", tracker=tracker)
 
     # check creating the movie
     path = tmp_path / "test_movie.mov"
 
     try:
-        movies.movie_scalar(storage, filename=path, progress=False)
+        movie_func(storage, filename=path, progress=False)
     except RuntimeError:
         pass  # can happen when ffmpeg is not installed
     else:

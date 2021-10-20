@@ -44,11 +44,12 @@ import sympy
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
-from ..tools.misc import Number, classproperty, number, number_array
-from ..tools.typing import NumberOrArray
+from ..fields.base import FieldBase
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
+from .misc import Number, classproperty, number, number_array
 from .numba import convert_scalar, jit
+from .typing import NumberOrArray
 
 try:
     from numba.core.extending import overload
@@ -95,26 +96,35 @@ def parse_number(
     return value
 
 
+def _heaviside_implemention(x1, x2=0.5):
+    """implementation of the Heaviside function used for numba and sympy
+
+    Args:
+        x1 (float): Argument of the function
+        x2 (float): Value returned when the argument is zero
+
+    Returns:
+        float: 0 if x1 is negative, 1 if x1 is positive, and x2 if x1 == 0
+    """
+    if np.isnan(x1):
+        return np.nan
+    elif x1 == 0:
+        return x2
+    elif x1 < 0:
+        return 0.0
+    else:
+        return 1.0
+
+
 @overload(np.heaviside)
 def np_heaviside(x1, x2):
     """numba implementation of the heaviside function"""
-
-    def heaviside_impl(x1, x2):
-        if np.isnan(x1):
-            return np.nan
-        elif x1 == 0:
-            return x2
-        elif x1 < 0:
-            return 0.0
-        else:
-            return 1.0
-
-    return heaviside_impl
+    return _heaviside_implemention
 
 
 # special functions that we want to support in expressions but that are not defined by
-# sympy version 1.6
-SPECIAL_FUNCTIONS = {"Heaviside": lambda x: np.heaviside(x, 0.5)}
+# sympy version 1.6 or have a different signature than expected by numba/numpy
+SPECIAL_FUNCTIONS = {"Heaviside": _heaviside_implemention}
 
 
 class ListArrayPrinter(PythonCodePrinter):
@@ -168,10 +178,11 @@ class ExpressionBase(metaclass=ABCMeta):
                 are allowed.
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
-                expression
+                expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
-                expression
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
         """
         try:
             self._sympy_expr = sympy.simplify(expression)
@@ -181,7 +192,15 @@ class ExpressionBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
         self.user_funcs = {} if user_funcs is None else user_funcs
         self.consts = {} if consts is None else consts
+
+        # check consistency of the arguments
         self._check_signature(signature)
+        for name, value in self.consts.items():
+            if isinstance(value, FieldBase):
+                self._logger.warning(
+                    f"Constant `{name}` is a field, but expressions usually require "
+                    f"numerical arrays. Did you mean to use `{name}.data`?"
+                )
 
     def __repr__(self):
         return (
@@ -475,24 +494,23 @@ class ScalarExpression(ExpressionBase):
                 The expression, which is either a number or a string that sympy
                 can parse
             signature (list of str):
-                The signature defines which variables are expected in the
-                expression. This is typically a list of strings identifying
-                the variable names. Individual names can be specified as lists,
-                in which case any of these names can be used. The firstm item in
-                such a list is the definite name and if another name of the list
-                is used, the associated variable is renamed to the definite
-                name. If signature is `None`, all variables in `expressions`
-                are allowed.
+                The signature defines which variables are expected in the expression.
+                This is typically a list of strings identifying the variable names.
+                Individual names can be specified as lists, in which case any of these
+                names can be used. The first item in such a list is the definite name
+                and if another name of the list is used, the associated variable is
+                renamed to the definite name. If signature is `None`, all variables in
+                `expressions` are allowed.
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expression
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
-                expression
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
             allow_indexed (bool):
-                Whether to allow indexing of variables. If enabled, array
-                variables are allowed to be indexed using square bracket
-                notation.
+                Whether to allow indexing of variables. If enabled, array variables are
+                allowed to be indexed using square bracket notation.
         """
         self.allow_indexed = allow_indexed
 
@@ -665,7 +683,7 @@ class TensorExpression(ExpressionBase):
                 are allowed.
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
-                expression
+                expression.
         """
         from sympy.tensor.array.ndim_array import ImmutableNDimArray
 
@@ -798,6 +816,10 @@ class TensorExpression(ExpressionBase):
         # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
         # work with numpy 1.18, so we have the work around using np.ndindex
 
+        # TODO: We should also support constants similar to ScalarExpressions. They
+        # could be written in separate lines and prepended to the actual code. However,
+        # we would need to make sure to print numpy arrays correctly.
+
         if variables:
             # the expression takes variables as input
 
@@ -841,4 +863,4 @@ class TensorExpression(ExpressionBase):
         return jit(function)  # type: ignore
 
 
-__all__ = ["ExpressionBase", "ScalarExpression", "TensorExpression"]
+__all__ = ["ExpressionBase", "ScalarExpression", "TensorExpression", "parse_number"]
