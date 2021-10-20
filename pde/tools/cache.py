@@ -63,7 +63,7 @@ def objects_equal(a, b) -> bool:
         return all(objects_equal(x, y) for x, y in zip(a, b))
 
     if isinstance(a,csr_matrix):
-        return np.array_equal(b.todense(), a.todense())
+        return a.shape == b.shape and (a!=b).nnz==0 
 
 
     # use direct comparison
