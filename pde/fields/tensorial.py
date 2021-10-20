@@ -120,13 +120,13 @@ class Tensor2Field(DataFieldBase):
     def _data_flat(self, value):
         """set the data from a value from a collection"""
         # create a view and reshape it to disallow copying
-        data_all = value.view()
+        data_full = value.view()
         dim = self.grid.dim
         full_grid_shape = tuple(s + 2 for s in self.grid.shape)
-        data_all.shape = (dim, dim, *full_grid_shape)
+        data_full.shape = (dim, dim, *full_grid_shape)
 
         # set the result as the full data array
-        self._data_full = data_all
+        self._data_full = data_full
 
         # ensure that no copying happend
         assert np.may_share_memory(self.data, value)

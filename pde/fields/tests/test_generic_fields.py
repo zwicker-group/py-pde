@@ -21,7 +21,7 @@ from pde.tools.misc import skipUnlessModule
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
 def test_set_label(field_class):
-    """test some interpolation for natural boundary conditions"""
+    """test setting the field labels"""
     grid = UnitGrid([2])
     assert field_class(grid).label is None
     f = field_class(grid, label="a")

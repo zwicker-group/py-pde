@@ -44,7 +44,7 @@ else:
             pass
 
     class GhostCellSetter(Protocol):  # type: ignore
-        def __call__(self, data_all: np.ndarray, args=None) -> None:
+        def __call__(self, data_full: np.ndarray, args=None) -> None:
             pass
 
     class VirtualPointEvaluator(Protocol):  # type: ignore
