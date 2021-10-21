@@ -4,7 +4,7 @@ Contains the version information of the package
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from .tools.config import check_package_version
+from pde.tools.config import check_package_version
 
 __version__ = "0.16.5"
 
