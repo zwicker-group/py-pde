@@ -142,9 +142,22 @@ class StorageBase(metaclass=ABCMeta):
             if "field_attributes" in self.info:
                 attrs_serialized = self.info["field_attributes"]
                 attrs = FieldBase.unserialize_attributes(attrs_serialized)
-                self._grid = attrs["grid"]
+
+                # load the grid if possible
+                if "grid" in attrs:
+                    # load grid from only stored field
+                    self._grid = attrs["grid"]
+                elif "fields" in attrs:
+                    # load grid from first field of a collection
+                    self._grid = attrs["fields"][0]["grid"]
+                else:
+                    self._logger.warning(
+                        "`grid` attribute was not stored. Available attributes: "
+                        + ", ".join(sorted(attrs.keys()))
+                    )
+
             else:
-                self._logger.warning("`grid` attribute was not stored")
+                self._logger.warning("Field attributes are unavailable in info")
         return self._grid
 
     def _get_field(self, t_index: int) -> FieldBase:
