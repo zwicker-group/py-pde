@@ -366,8 +366,14 @@ class FieldCollection(FieldBase):
     def attributes(self) -> Dict[str, Any]:
         """dict: describes the state of the instance (without the data)"""
         results = super().attributes
-        del results["grid"]
+
+        # store the attributes of the individual fields in a separate attribute
         results["fields"] = [f.attributes for f in self.fields]
+
+        # the grid information does not need to be stored since it is included in the
+        # attributes of the individual fields
+        del results["grid"]
+
         return results
 
     @property
