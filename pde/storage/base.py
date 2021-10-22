@@ -256,8 +256,7 @@ class StorageBase(metaclass=ABCMeta):
                 {ARG_TRACKER_INTERVAL}
 
         Returns:
-            :class:`~pde.trackers.trackers.StorageTracker`
-            The tracker that fills the current storage
+            :class:`StorageTracker`: The tracker that fills the current storage
         """
         return StorageTracker(storage=self, interval=interval)
 
