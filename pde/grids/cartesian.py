@@ -266,7 +266,7 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """convert points given in Cartesian coordinates to this grid
 
         Args:
-            points (:class:`~numpy.ndarray`): Points in Cartesian coordinates.
+            coords (:class:`~numpy.ndarray`): Points in Cartesian coordinates.
 
         Returns:
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid

@@ -6,7 +6,7 @@ Base classes for trackers
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Sequence, Type, Union
 
 import numpy as np
 
@@ -106,7 +106,7 @@ class TrackerBase(metaclass=ABCMeta):
         pass
 
 
-TrackerCollectionDataType = Union[List[TrackerDataType], TrackerDataType, None]
+TrackerCollectionDataType = Union[Sequence[TrackerDataType], TrackerDataType, None]
 
 
 class TrackerCollection:
@@ -201,7 +201,7 @@ class TrackerCollection:
         """handle all trackers
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
             t (float):
                 The associated time

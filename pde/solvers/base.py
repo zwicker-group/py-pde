@@ -4,9 +4,11 @@ Package that contains base classes for solvers
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, List, Tuple  # @UnusedImport
+from typing import Any, Callable, Dict, List, Tuple, Type  # @UnusedImport
 
 import numba as nb
 import numpy as np
@@ -19,7 +21,7 @@ from ..tools.misc import classproperty
 class SolverBase(metaclass=ABCMeta):
     """base class for simulations"""
 
-    _subclasses: Dict[str, "SolverBase"] = {}  # all inheriting classes
+    _subclasses: Dict[str, Type[SolverBase]] = {}  # all inheriting classes
 
     def __init__(self, pde: PDEBase):
         """
@@ -40,11 +42,11 @@ class SolverBase(metaclass=ABCMeta):
         cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
             if cls.name in cls._subclasses:
-                logging.warn(f"Solver with name {cls.name} is already registered")
+                logging.warning(f"Solver with name {cls.name} is already registered")
             cls._subclasses[cls.name] = cls
 
     @classmethod
-    def from_name(cls, name: str, pde: PDEBase, **kwargs) -> "SolverBase":
+    def from_name(cls, name: str, pde: PDEBase, **kwargs) -> SolverBase:
         r"""create solver class based on its name
 
         Solver classes are automatically registered when they inherit from

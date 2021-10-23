@@ -272,7 +272,7 @@ class InteractivePlotTracker(TrackerBase):
         """initialize the tracker with information about the simulation
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.FieldBase`):
                 An example of the data that will be analyzed by the tracker
             info (dict):
                 Extra information from the simulation
@@ -292,7 +292,7 @@ class InteractivePlotTracker(TrackerBase):
         """handle data supplied to this tracker
 
         Args:
-            field (:class:`~pde.fields.FieldBase`):
+            state (:class:`~pde.fields.FieldBase`):
                 The current state of the simulation
             t (float):
                 The associated time

@@ -389,6 +389,8 @@ def make_poisson_solver(bcs: Boundaries, method: str = "auto") -> OperatorType:
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
             {ARG_BOUNDARIES_INSTANCE}
+        method (str):
+            The chosen method for implementing the operator
 
     Returns:
         A function that can be applied to an array of values

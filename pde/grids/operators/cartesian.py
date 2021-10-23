@@ -76,8 +76,8 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for laplace operator on a 2d Cartesian grid
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
-            The grid for which the operator is created
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
 
     Returns:
         tuple: A sparse matrix and a sparse vector that can be used to evaluate

@@ -420,12 +420,6 @@ class FieldCollection(FieldBase):
         """return a copy of the data, but not of the grid
 
         Args:
-            data (:class:`~numpy.ndarray`, str):
-                Data values at the support points of the grid that define the field.
-                Special values are "copy", copying the current data, "zeros",
-                initializing the copy with zeros, and "empty", just allocating memory
-                with unspecified values. If an actual array is supplied, it must not
-                include data on the ghost cells.
             label (str, optional):
                 Name of the returned field
             dtype (numpy dtype):
