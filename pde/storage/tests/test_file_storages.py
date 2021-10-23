@@ -36,47 +36,45 @@ def test_storage_persistence(collection, tmp_path):
 
     # write some data
     for write_mode in ["append", "truncate_once", "truncate"]:
-        storage = FileStorage(path, info={"a": 1}, write_mode=write_mode)
+        with FileStorage(path, info={"a": 1}, write_mode=write_mode) as writer:
 
-        # first batch
-        storage.start_writing(state, info={"b": 2})
-        scalar.data = np.arange(dim)
-        vector.data[:] = np.arange(dim)
-        storage.append(state, 0)
-        scalar.data = np.arange(dim, 2 * dim)
-        vector.data[:] = np.arange(dim, 2 * dim)
-        storage.append(state)
-        storage.end_writing()
+            # first batch
+            writer.start_writing(state, info={"b": 2})
+            scalar.data = np.arange(dim)
+            vector.data[:] = np.arange(dim)
+            writer.append(state, 0)
+            scalar.data = np.arange(dim, 2 * dim)
+            vector.data[:] = np.arange(dim, 2 * dim)
+            writer.append(state)
+            writer.end_writing()
 
-        # read first batch
-        np.testing.assert_array_equal(storage.times, np.arange(2))
-        assert_storage_content(storage, np.arange(10))
-        assert {"a": 1, "b": 2}.items() <= storage.info.items()
+            # read first batch
+            np.testing.assert_array_equal(writer.times, np.arange(2))
+            assert_storage_content(writer, np.arange(10))
+            assert {"a": 1, "b": 2}.items() <= writer.info.items()
 
-        # second batch
-        storage.start_writing(state, info={"c": 3})
-        scalar.data = np.arange(2 * dim, 3 * dim)
-        vector.data[:] = np.arange(2 * dim, 3 * dim)
-        storage.append(state, 2)
-        storage.end_writing()
-
-        storage.close()
+            # second batch
+            writer.start_writing(state, info={"c": 3})
+            scalar.data = np.arange(2 * dim, 3 * dim)
+            vector.data[:] = np.arange(2 * dim, 3 * dim)
+            writer.append(state, 2)
+            writer.end_writing()
 
         # read the data
-        reader = FileStorage(path)
-        if write_mode == "truncate":
-            np.testing.assert_array_equal(reader.times, np.array([2]))
-            assert_storage_content(reader, np.arange(10, 15))
-            assert reader.shape == (1, 2, 5) if collection else (1, 5)
-            info = {"c": 3}
-            assert info.items() <= storage.info.items()
+        with FileStorage(path) as reader:
+            if write_mode == "truncate":
+                np.testing.assert_array_equal(reader.times, np.array([2]))
+                assert_storage_content(reader, np.arange(10, 15))
+                assert reader.shape == (1, 2, 5) if collection else (1, 5)
+                info = {"c": 3}
+                assert info.items() <= reader.info.items()
 
-        else:
-            np.testing.assert_array_equal(reader.times, np.arange(3))
-            assert_storage_content(reader, np.arange(15))
-            assert reader.shape == (3, 2, 5) if collection else (3, 5)
-            info = {"a": 1, "b": 2, "c": 3}
-            assert info.items() <= storage.info.items()
+            else:
+                np.testing.assert_array_equal(reader.times, np.arange(3))
+                assert_storage_content(reader, np.arange(15))
+                assert reader.shape == (3, 2, 5) if collection else (3, 5)
+                info = {"a": 1, "b": 2, "c": 3}
+                assert info.items() <= reader.info.items()
 
 
 @skipUnlessModule("h5py")
