@@ -160,6 +160,45 @@ class StorageBase(metaclass=ABCMeta):
                 self._logger.warning("Field attributes are unavailable in info")
         return self._grid
 
+    def _init_field(self) -> None:
+        """initialize internal field variable"""
+        if self.grid is None:
+            raise RuntimeError(
+                "Could not load grid from data. Please set the `_grid` attribute "
+                "to the grid that has been used for the stored data"
+            )
+
+        if "field_attributes" in self.info:
+            # field type was stored in data
+            attrs_serialized = self.info["field_attributes"]
+            attrs = FieldBase.unserialize_attributes(attrs_serialized)
+            self._field = FieldBase.from_state(attrs)
+
+        else:
+            # try to determine field type automatically
+
+            # obtain data shape by removing the first axis (associated with the time
+            # series and the last axes (associated with the spatial dimensions). What is
+            # left should be the (local) data stored at each grid point for each time
+            # step. Note that self.data might be a list of arrays
+            local_shape = self.data[0].shape[: -self.grid.num_axes]
+            dim = self.grid.dim
+            if len(local_shape) == 0:  # rank 0
+                self._field = ScalarField(self.grid)
+            elif local_shape == (dim,):  # rank 1
+                self._field = VectorField(self.grid)
+            elif local_shape == (dim, dim):  # rank 2
+                self._field = Tensor2Field(self.grid)
+            else:
+                raise RuntimeError(
+                    "`field` attribute was not stored in file and the data shape "
+                    f"{local_shape} could not be interpreted automatically"
+                )
+            self._logger.warning(
+                "`field` attribute was not stored. We guessed that the data is of "
+                f"type {self._field.__class__.__name__}."
+            )
+
     def _get_field(self, t_index: int) -> FieldBase:
         """return the field corresponding to the given time index
 
@@ -181,47 +220,10 @@ class StorageBase(metaclass=ABCMeta):
             raise IndexError("Time index out of range")
 
         if self._field is None:
-            # we need to determine the field type
-
-            if self.grid is None:
-                raise RuntimeError(
-                    "Could not load grid from data. Please set the `_grid` attribute "
-                    "to the grid that has been used for the stored data"
-                )
-
-            if "field_attributes" in self.info:
-                # field type was stored in data
-                attrs_serialized = self.info["field_attributes"]
-                attrs = FieldBase.unserialize_attributes(attrs_serialized)
-                self._field = FieldBase.from_state(attrs)
-
-            else:
-                # try to determine field type automatically
-
-                # obtain data shape by removing the first axis (associated with
-                # the time series and the last axes (associated with the spatial
-                # dimensions). What is left should be the (local) data stored
-                # at each grid point for each time step. Note that self.data
-                # might be a list of arrays
-                local_shape = self.data[t_index].shape[: -self.grid.num_axes]
-                dim = self.grid.dim
-                if len(local_shape) == 0:  # rank 0
-                    self._field = ScalarField(self.grid)
-                elif local_shape == (dim,):  # rank 1
-                    self._field = VectorField(self.grid)
-                elif local_shape == (dim, dim):  # rank 2
-                    self._field = Tensor2Field(self.grid)
-                else:
-                    raise RuntimeError(
-                        "`field` attribute was not stored in file and the data shape "
-                        f"{local_shape} could not be interpreted automatically"
-                    )
-                self._logger.warning(
-                    "`field` attribute was not stored. We guessed that the data is of "
-                    f"type {self._field.__class__.__name__}."
-                )
+            self._init_field()
 
         # create the field with the data of the given index
+        assert self._field is not None
         field = self._field.copy()
         field.data = self.data[t_index]
         return field
@@ -309,9 +311,15 @@ class StorageBase(metaclass=ABCMeta):
         """
         from .memory import MemoryStorage  # @Reimport
 
+        if self._field is None:
+            self._init_field()
+
         # get the field to check its type
         if not isinstance(self._field, FieldCollection):
-            raise TypeError("Can only extract fields from `FieldCollection`")
+            raise TypeError(
+                "Can only extract fields from `FieldCollection`. Current storage "
+                f"stores `{self._field.__class__.__name__}`."
+            )
 
         # determine the field index
         if isinstance(field_id, str):

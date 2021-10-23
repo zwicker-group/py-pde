@@ -5,6 +5,8 @@ format (hdf).
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
@@ -99,6 +101,12 @@ class FileStorage(StorageBase):
             self._file.close()
             self._file = None
             self._data_length = None  # type: ignore
+
+    def __enter__(self) -> FileStorage:
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
 
     def _create_hdf_dataset(
         self, name: str, shape: Tuple[int, ...] = tuple(), dtype=np.double

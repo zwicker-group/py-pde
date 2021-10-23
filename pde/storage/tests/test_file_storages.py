@@ -5,68 +5,82 @@
 import numpy as np
 import pytest
 
+import pde
 from pde import DiffusionPDE, FileStorage, ScalarField, UnitGrid
 from pde.tools.misc import skipUnlessModule
 
 
 @skipUnlessModule("h5py")
-@pytest.mark.parametrize("compression", [True, False])
-def test_storage_persistence(compression, tmp_path):
+@pytest.mark.parametrize("collection", [True, False])
+def test_storage_persistence(collection, tmp_path):
     """test writing to persistent trackers"""
     dim = 5
     grid = UnitGrid([dim])
-    field = ScalarField(grid)
+    scalar = ScalarField(grid)
+    vector = pde.VectorField(grid)
+    if collection:
+        state = pde.FieldCollection([scalar, vector])
+    else:
+        state = scalar
 
-    path = tmp_path / f"test_storage_persistence_{compression}.hdf5"
+    def assert_storage_content(storage, expect):
+        """helper function testing storage content"""
+        if collection:
+            for i in range(2):
+                field_data = storage.extract_field(i).data
+                np.testing.assert_array_equal(np.ravel(field_data), expect)
+        else:
+            np.testing.assert_array_equal(np.ravel(storage.data), expect)
+
+    path = tmp_path / f"test_storage_persistence_{collection}.hdf5"
 
     # write some data
     for write_mode in ["append", "truncate_once", "truncate"]:
-        storage = FileStorage(
-            path, info={"a": 1}, write_mode=write_mode, compression=compression
-        )
+        with FileStorage(path, info={"a": 1}, write_mode=write_mode) as writer:
 
-        # first batch
-        storage.start_writing(field, info={"b": 2})
-        field.data = np.arange(dim)
-        storage.append(field, 0)
-        field.data = np.arange(dim, 2 * dim)
-        storage.append(field)
-        storage.end_writing()
+            # first batch
+            writer.start_writing(state, info={"b": 2})
+            scalar.data = np.arange(dim)
+            vector.data[:] = np.arange(dim)
+            writer.append(state, 0)
+            scalar.data = np.arange(dim, 2 * dim)
+            vector.data[:] = np.arange(dim, 2 * dim)
+            writer.append(state)
+            writer.end_writing()
 
-        # read first batch
-        np.testing.assert_array_equal(storage.times, np.arange(2))
-        np.testing.assert_array_equal(np.ravel(storage.data), np.arange(10))
-        assert {"a": 1, "b": 2}.items() <= storage.info.items()
+            # read first batch
+            np.testing.assert_array_equal(writer.times, np.arange(2))
+            assert_storage_content(writer, np.arange(10))
+            assert {"a": 1, "b": 2}.items() <= writer.info.items()
 
-        # second batch
-        storage.start_writing(field, info={"c": 3})
-        field.data = np.arange(2 * dim, 3 * dim)
-        storage.append(field, 2)
-        storage.end_writing()
-
-        storage.close()
+            # second batch
+            writer.start_writing(state, info={"c": 3})
+            scalar.data = np.arange(2 * dim, 3 * dim)
+            vector.data[:] = np.arange(2 * dim, 3 * dim)
+            writer.append(state, 2)
+            writer.end_writing()
 
         # read the data
-        storage = FileStorage(path)
-        if write_mode == "truncate":
-            np.testing.assert_array_equal(storage.times, np.array([2]))
-            np.testing.assert_array_equal(np.ravel(storage.data), np.arange(10, 15))
-            assert storage.shape == (1, 5)
-            info = {"c": 3}
-            assert info.items() <= storage.info.items()
-        else:
-            np.testing.assert_array_equal(storage.times, np.arange(0, 3))
-            np.testing.assert_array_equal(np.ravel(storage.data), np.arange(0, 15))
-            assert storage.shape == (3, 5)
-            info = {"a": 1, "b": 2, "c": 3}
-            assert info.items() <= storage.info.items()
+        with FileStorage(path) as reader:
+            if write_mode == "truncate":
+                np.testing.assert_array_equal(reader.times, np.array([2]))
+                assert_storage_content(reader, np.arange(10, 15))
+                assert reader.shape == (1, 2, 5) if collection else (1, 5)
+                info = {"c": 3}
+                assert info.items() <= reader.info.items()
+
+            else:
+                np.testing.assert_array_equal(reader.times, np.arange(3))
+                assert_storage_content(reader, np.arange(15))
+                assert reader.shape == (3, 2, 5) if collection else (3, 5)
+                info = {"a": 1, "b": 2, "c": 3}
+                assert info.items() <= reader.info.items()
 
 
 @skipUnlessModule("h5py")
 @pytest.mark.parametrize("compression", [True, False])
 def test_simulation_persistence(compression, tmp_path):
-    """test whether a tracker can accurately store information about
-    simulation"""
+    """test whether a tracker can accurately store information about simulation"""
     path = tmp_path / "test_simulation_persistence.hdf5"
     storage = FileStorage(path, compression=compression)
 
