@@ -22,7 +22,7 @@ import json
 import logging
 import numbers
 import re
-from abc import ABCMeta, abstractproperty
+from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import (  # @UnusedImport
     TYPE_CHECKING,
@@ -264,7 +264,8 @@ class ExpressionBase(metaclass=ABCMeta):
         """bool: whether the expression contains the imaginary unit I"""
         return sympy.I in self._sympy_expr.atoms()
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def shape(self) -> Tuple[int, ...]:
         pass
 

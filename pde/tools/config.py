@@ -133,6 +133,7 @@ def get_package_versions(
     """tries to load certain python packages and returns their version
 
     Args:
+        packages (list): The names of all packages
         na_str (str): Text to return if package is not available
 
     Returns:

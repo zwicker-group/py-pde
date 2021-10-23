@@ -13,7 +13,7 @@ import itertools
 import json
 import logging
 import warnings
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -269,7 +269,8 @@ class GridBase(metaclass=ABCMeta):
 
         return set_valid  # type: ignore
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def state(self) -> Dict[str, Any]:
         pass
 
@@ -434,7 +435,8 @@ class GridBase(metaclass=ABCMeta):
         shape = shape_bndry + (self.num_axes,)
         return np.stack(points, -1).reshape(shape)
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def volume(self) -> float:
         pass
 

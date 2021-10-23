@@ -184,16 +184,7 @@ class Boundaries(list):
         )
 
     def copy(self) -> Boundaries:
-        """create a copy of the current boundaries
-
-        Args:
-            value (float or array, optional):
-                If given, this changes the value stored with the boundary
-                conditions. The interpretation of this value depends on the type
-                of boundary condition.
-            copy_grid (bool):
-                Whether the grid should also be copied
-        """
+        """create a copy of the current boundaries"""
         return self.__class__([bc.copy() for bc in self])
 
     @property

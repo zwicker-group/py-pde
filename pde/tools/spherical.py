@@ -559,7 +559,7 @@ class PointsOnSphere:
         """write the point coordinates to a xyz file
 
         Args:
-            filename (str): location of the file where data is written
+            path (str): location of the file where data is written
             comment (str, optional): comment that is written to the second line
             symbol (str, optional): denotes the symbol used for the atoms
         """
@@ -610,7 +610,7 @@ def spherical_index_count(l: int) -> int:
     The returned value is one less than the maximal mode `k` required.
 
     Args:
-        degree (int): Maximal degree of the spherical harmonics
+        l (int): Maximal degree of the spherical harmonics
 
     Returns:
         int: The number of modes

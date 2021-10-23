@@ -33,6 +33,38 @@ class BoundaryAxisBase:
     high: BCBase
     """:class:`~pde.grids.boundaries.local.BCBase`: Boundary condition at upper end """
 
+    def __init__(self, low: BCBase, high: BCBase):
+        """
+        Args:
+            low (:class:`~pde.grids.boundaries.local.BCBase`):
+                Instance describing the lower boundary
+            high (:class:`~pde.grids.boundaries.local.BCBase`):
+                Instance describing the upper boundary
+        """
+        # check data consistency
+        assert low.grid == high.grid
+        assert low.axis == high.axis
+        assert low.rank == high.rank
+        assert high.upper and not low.upper
+
+        self.low = low
+        self.high = high
+
+        # check grid consistency
+        periodic_low = isinstance(low, _PeriodicBC)
+        periodic_high = isinstance(high, _PeriodicBC)
+
+        if periodic_low != periodic_high:
+            raise PeriodicityError("Both boundaries must have same periodicity")
+        if periodic_low and not self.periodic:
+            raise PeriodicityError(
+                "Cannot impose periodic boundary condition on non-periodic axis"
+            )
+        if not periodic_low and self.periodic:
+            raise PeriodicityError(
+                "Cannot impose non-periodic boundary condition on periodic axis"
+            )
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented
@@ -157,10 +189,6 @@ class BoundaryAxisBase:
         self,
     ) -> Tuple[VirtualPointEvaluator, VirtualPointEvaluator]:
         """returns two functions evaluating the value at virtual support points
-
-        Args:
-            size (int): Number of support points along the axis
-            dx (float): Discretization, i.e., distance between support points
 
         Returns:
             tuple: Two functions that each take a 1d array as an argument and
@@ -287,29 +315,6 @@ class BoundaryAxisBase:
 
 class BoundaryPair(BoundaryAxisBase):
     """represents the two boundaries of an axis along a single dimension"""
-
-    def __init__(self, low: BCBase, high: BCBase):
-        """
-        Args:
-            low (:class:`~pde.grids.boundaries.local.BCBase`):
-                Instance describing the lower boundary
-            high (:class:`~pde.grids.boundaries.local.BCBase`):
-                Instance describing the upper boundary
-        """
-        # check data consistency
-        assert low.grid == high.grid
-        assert low.axis == high.axis
-        assert low.rank == high.rank
-        assert high.upper and not low.upper
-
-        self.low = low
-        self.high = high
-
-        # check consistency
-        if self.periodic:
-            raise PeriodicityError(
-                "Cannot impose non-periodic boundary condition on periodic axis"
-            )
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self.low!r}, {self.high!r})"
@@ -445,14 +450,9 @@ class BoundaryPeriodic(BoundaryPair):
             axis (int):
                 The axis to which this boundary condition is associated
         """
-        self.low = _PeriodicBC(grid=grid, axis=axis, upper=False)
-        self.high = _PeriodicBC(grid=grid, axis=axis, upper=True)
-
-        # check consistency
-        if not self.periodic:
-            raise PeriodicityError(
-                "Cannot impose periodic boundary condition on non-periodic axis"
-            )
+        low = _PeriodicBC(grid=grid, axis=axis, upper=False)
+        high = _PeriodicBC(grid=grid, axis=axis, upper=True)
+        super().__init__(low, high)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis})"

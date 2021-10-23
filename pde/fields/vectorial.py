@@ -205,6 +205,8 @@ class VectorField(DataFieldBase):
             This function does not check types or dimensions.
 
         Args:
+            backend (str):
+                The backend (e.g., 'numba' or 'scipy') used for this operator.
             conjugate (bool):
                 Whether to use the complex conjugate for the second operand
 
@@ -368,6 +370,10 @@ class VectorField(DataFieldBase):
 
         Warning:
             This function does not check types or dimensions.
+
+        Args:
+            backend (str):
+                The backend (e.g., 'numba' or 'scipy') used for this operator.
 
         Returns:
             function that takes two instance of :class:`~numpy.ndarray`, which contain

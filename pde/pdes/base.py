@@ -18,6 +18,7 @@ from ..tools.typing import ArrayLike
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
+    from ..solvers.base import SolverBase
     from ..solvers.controller import TRangeType  # @UnusedImport
 
 
@@ -430,8 +431,8 @@ class PDEBase(metaclass=ABCMeta):
         state: FieldBase,
         t_range: "TRangeType",
         dt: float = None,
-        tracker: TrackerCollectionDataType = ["progress", "consistency"],
-        method: str = "auto",
+        tracker: TrackerCollectionDataType = ("progress", "consistency"),
+        method: Union[str, "SolverBase"] = "auto",
         ret_info: bool = False,
         **kwargs,
     ) -> Union[FieldBase, Tuple[FieldBase, Dict[str, Any]]]:
@@ -470,11 +471,10 @@ class PDEBase(metaclass=ABCMeta):
                 explained in detail. In particular, the interval at which the tracker is
                 evaluated can be chosen when creating a tracker object explicitly.
             method (:class:`~pde.solvers.base.SolverBase` or str):
-                Specifies a method for solving the differential equation. This
-                can either be an instance of
-                :class:`~pde.solvers.base.SolverBase` or a descriptive name
-                like 'explicit' or 'scipy'. The valid names are given by
-                :meth:`pde.solvers.base.SolverBase.registered_solvers`.
+                Specifies a method for solving the differential equation. This can
+                either be an instance of :class:`~pde.solvers.base.SolverBase` or a
+                descriptive name like 'explicit' or 'scipy'. The valid names are given
+                by :meth:`pde.solvers.base.SolverBase.registered_solvers`.
             ret_info (bool):
                 Flag determining whether diagnostic information about the solver
                 process should be returned.
@@ -497,11 +497,15 @@ class PDEBase(metaclass=ABCMeta):
         if callable(method):
             solver = method(pde=self, **kwargs)
             if not isinstance(solver, SolverBase):
-                self._logger.warn(
+                self._logger.warning(
                     "Solver is not an instance of `SolverBase`. Specified wrong method?"
                 )
-        else:
+
+        elif isinstance(method, str):
             solver = SolverBase.from_name(method, pde=self, **kwargs)
+
+        else:
+            raise TypeError(f"Method {method} is not supported")
 
         # create controller
         from ..solvers import Controller

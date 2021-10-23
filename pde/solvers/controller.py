@@ -39,7 +39,7 @@ class Controller:
         self,
         solver: SolverBase,
         t_range: TRangeType,
-        tracker: TrackerCollectionDataType = ["progress", "consistency"],
+        tracker: TrackerCollectionDataType = ("progress", "consistency"),
     ):
         """
         Args:

@@ -10,7 +10,7 @@ import functools
 import json
 import logging
 import warnings
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from pathlib import Path
 from typing import (
@@ -296,9 +296,6 @@ class FieldBase(metaclass=ABCMeta):
         Args:
             filename (str):
                 Path where the data is stored
-            metadata (dict):
-                A dictionary of additional information that is stored with the file.
-                Note that not all formats support metadata.
             \**kwargs:
                 Additional parameters may be supported for some formats
         """
@@ -1504,7 +1501,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         bcs = self.grid.get_boundary_conditions(bc, rank=self.rank)
         bcs.set_ghost_cells(self._data_full, args=args)
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def integral(self) -> NumberOrArray:
         pass
 

@@ -146,6 +146,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
     """apply nb.jit with predefined arguments
 
     Args:
+        function: The function which is jitted
         signature: Signature of the function to compile
         parallel (bool): Allow parallel compilation of the function
         **kwargs: Additional arguments to `nb.jit`
