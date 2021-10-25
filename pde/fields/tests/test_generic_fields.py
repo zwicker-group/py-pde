@@ -120,10 +120,10 @@ def test_arithmetics():
 
         # test division
         np.testing.assert_allclose((f1 / 2).data, 1)
-        with pytest.raises(TypeError):
-            np.testing.assert_allclose((2 / f1).data, 1)
+        f1.data = 4
+        np.testing.assert_allclose((2 / f1).data, 0.5)
         f1 /= 2
-        np.testing.assert_allclose(f1.data, 1)
+        np.testing.assert_allclose(f1.data, 2)
 
         # test power
         f1.data = 2
