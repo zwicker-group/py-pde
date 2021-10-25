@@ -357,11 +357,11 @@ class FieldBase(metaclass=ABCMeta):
         is_scalar = accept_scalar and isinstance(other, ScalarField)
         class_compatible = self.__class__ == other.__class__ or is_scalar
         if not class_compatible:
-            raise TypeError("Fields are incompatible")
+            raise TypeError(f"Fields {self} and {other} are incompatible")
 
         # check whether the associated grids are identical
         if not self.grid.compatible_with(other.grid):
-            raise ValueError("Grids incompatible")
+            raise ValueError(f"Grids {self.grid} and {other.grid} are incompatible")
 
     @property
     def dtype(self):
