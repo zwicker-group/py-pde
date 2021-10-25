@@ -582,6 +582,14 @@ class FieldBase(metaclass=ABCMeta):
         """divide field by value"""
         return self._binary_operation(other, np.true_divide, scalar_second=True)
 
+    def __rtruediv__(self, other) -> FieldBase:
+        """divide field by value"""
+
+        def rdivision(x, y, **kwargs):
+            return np.true_divide(y, x, **kwargs)
+
+        return self._binary_operation(other, rdivision, scalar_second=True)
+
     def __itruediv__(self: TField, other) -> TField:
         """divide field by value"""
         return self._binary_operation_inplace(other, np.true_divide, scalar_second=True)
