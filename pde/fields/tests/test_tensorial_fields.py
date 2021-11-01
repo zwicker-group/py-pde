@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid
+from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, PolarSymGrid
 from pde.fields.base import FieldBase
 
 
@@ -65,6 +65,19 @@ def test_tensors_basic():
     t2 = FieldBase.from_state(attrs, data=t1.data)
     assert t1 == t2
     assert t1.grid is not t2.grid
+
+
+@pytest.mark.parametrize("grid", [UnitGrid([1, 1]), PolarSymGrid(2, 1)])
+def test_tensors_transpose(grid):
+    """test transposing tensors"""
+
+    def broadcast(arr):
+        return np.asarray(arr)[(...,) + (np.newaxis,) * grid.num_axes]
+
+    field = Tensor2Field(grid, broadcast([[0, 1], [2, 3]]))
+    field_T = field.transpose(label="altered")
+    assert field_T.label == "altered"
+    np.testing.assert_allclose(field_T.data, broadcast([[0, 2], [1, 3]]))
 
 
 def test_tensor_symmetrize():

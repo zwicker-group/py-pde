@@ -360,7 +360,7 @@ class Tensor2Field(DataFieldBase):
         Returns:
             :class:`~pde.fields.tensorial.Tensor2Field`: transpose of the tensor field
         """
-        axes = (1, 0) + tuple(range(2, 2 + len(self.grid.shape)))
+        axes = (1, 0) + tuple(range(2, 2 + self.grid.num_axes))
         return Tensor2Field(self.grid, self.data.transpose(axes), label=label)
 
     def symmetrize(
