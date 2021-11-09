@@ -15,6 +15,8 @@ One aim is to allow easy management of inheritance of parameters.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Any, Dict, Sequence, Union
 
@@ -153,7 +155,7 @@ class Parameterized:
     """a mixin that manages the parameters of a class"""
 
     parameters_default: ParameterListType = []
-    _subclasses: Dict[str, "Parameterized"] = {}
+    _subclasses: Dict[str, Parameterized] = {}
 
     def __init__(self, parameters: Dict[str, Any] = None):
         """initialize the parameters of the object
