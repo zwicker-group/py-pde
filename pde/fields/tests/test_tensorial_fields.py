@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, PolarSymGrid
+from pde import CartesianGrid, PolarSymGrid, ScalarField, Tensor2Field, UnitGrid
 from pde.fields.base import FieldBase
 
 
