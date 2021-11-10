@@ -71,7 +71,13 @@ class ScipySolver(SolverBase):
 
         def rhs_helper(t: float, state_flat: np.ndarray) -> np.ndarray:
             """helper function to provide the correct call convention"""
-            return rhs(state_flat.reshape(shape), t).flat  # type: ignore
+            y = rhs(state_flat.reshape(shape), t).flat
+            if np.any(np.isnan(y)):
+                # this check is necessary, since solve_ivp does not deal correctly with
+                # NaN, which might result in odd error messages or even a stalled
+                # program
+                raise RuntimeError("Encountered Not-A-Number (NaN) in evolution")
+            return y  # type: ignore
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
             """use scipy.integrate.odeint to advance `state` from `t_start` to
