@@ -165,9 +165,8 @@ def make_divergence(grid: PolarSymGrid) -> OperatorType:
         """apply divergence operator to array `arr`"""
         # inner radial boundary condition
         for i in range(1, dim_r + 1):  # iterate radial points
-            out[i - 1] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r + arr[0, i] / rs[
-                i - 1
-            ]
+            out[i - 1] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r
+            out[i - 1] += arr[0, i] / rs[i - 1]
 
     return divergence  # type: ignore
 

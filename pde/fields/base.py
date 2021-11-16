@@ -156,9 +156,11 @@ class FieldBase(metaclass=ABCMeta):
     @property
     def _data_flat(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: flat version of discretized data with ghost cells"""
-        # flatten the first dimension of the internal data
-        full_shape = tuple(s + 2 for s in self.grid.shape)
-        return self._data_full.reshape(-1, *full_shape)
+        # flatten the first dimension of the internal data by creating a view and then
+        # setting the new shape. This disallows accidental copying of the data
+        data_flat = self._data_full.view()
+        data_flat.shape = (-1, *self.grid._shape_full)
+        return data_flat
 
     @_data_flat.setter
     def _data_flat(self, value: np.ndarray) -> None:
