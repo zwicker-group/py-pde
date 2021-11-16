@@ -723,7 +723,7 @@ class GridBase(metaclass=ABCMeta):
         if backend == "numba":
             # create a compiled function to apply to the operator
             set_ghost_cells = bcs.make_ghost_cell_setter()
-            get_valid = self._make_get_valid()
+            set_valid = self._make_set_valid()
 
             if not is_jitted(operator_raw):
                 operator_raw = jit(operator_raw)
@@ -733,8 +733,7 @@ class GridBase(metaclass=ABCMeta):
                 """applies operator to the data"""
                 # prepare input with boundary conditions
                 arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                arr_valid = get_valid(arr_full)
-                arr_valid[:] = arr
+                set_valid(arr_full, arr)
                 set_ghost_cells(arr_full)
 
                 # apply operator
