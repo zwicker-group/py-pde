@@ -123,6 +123,56 @@ class PDEBase(metaclass=ABCMeta):
         """create a compiled function for evaluating the right hand side"""
         raise NotImplementedError
 
+    def check_rhs_consistency(
+        self,
+        state: FieldBase,
+        t: float = 0,
+        *,
+        tol: float = 1e-7,
+        rhs_numba: Callable = None,
+    ):
+        """check the numba compiled right hand side versus the numpy variant
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                The state for which the evolution rates should be compared
+            t (float):
+                The associated time point
+            tol (float):
+                Acceptance tolerance. The check passes if the evolution rates differ by
+                less then this value
+            rhs_numba (callable):
+                The implementation of the numba variant that is to be checked. If
+                omitted, an implementation is obtained by calling
+                :meth:`PDEBase._make_pde_rhs_numba_cached`.
+        """
+        # obtain evolution rate from the numpy implementation
+        res_numpy = self.evolution_rate(state.copy(), t).data
+        if not np.all(np.isfinite(res_numpy)):
+            self._logger.warning(
+                "The numpy implementation of the PDE returned non-finite values."
+            )
+
+        # obtain evolution rate from the numba implementation
+        if rhs_numba is None:
+            rhs_numba = self._make_pde_rhs_numba_cached(state)
+        test_state = state.copy()
+        res_numba = rhs_numba(test_state.data, t)
+        if not np.all(np.isfinite(res_numba)):
+            self._logger.warning(
+                "The numba implementation of the PDE returned non-finite values."
+            )
+
+        # compare the two implementations
+        msg = (
+            "The numba compiled implementation of the right hand side is not "
+            "compatible with the numpy implementation. This check can be disabled "
+            "by setting the class attribute `check_implementation` to `False`."
+        )
+        np.testing.assert_allclose(
+            res_numba, res_numpy, err_msg=msg, rtol=tol, atol=tol, equal_nan=True
+        )
+
     def _make_pde_rhs_numba_cached(
         self, state: FieldBase
     ) -> Callable[[np.ndarray, float], np.ndarray]:
@@ -130,6 +180,11 @@ class PDEBase(metaclass=ABCMeta):
 
         This method implements caching and checking of the actual method, which is
         defined by overwriting the method `_make_pde_rhs_numba`.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
         """
         check_implementation = self.check_implementation
 
@@ -152,30 +207,8 @@ class PDEBase(metaclass=ABCMeta):
             rhs = self._make_pde_rhs_numba(state)
 
         if check_implementation:
-            # obtain and check result from the numpy implementation
-            res_numpy = self.evolution_rate(state.copy(), 0.0).data
-            if not np.all(np.isfinite(res_numpy)):
-                self._logger.warning(
-                    "The numpy implementation of the PDE returned non-finite values."
-                )
+            self.check_rhs_consistency(state, rhs_numba=rhs)
 
-            # obtain and check result from the numba implementation
-            test_state = state.copy()
-            res_numba = rhs(test_state.data, 0.0)
-            if not np.all(np.isfinite(res_numba)):
-                self._logger.warning(
-                    "The numba implementation of the PDE returned non-finite values."
-                )
-
-            # compare the two implementations
-            msg = (
-                "The numba compiled implementation of the right hand side is not "
-                "compatible with the numpy implementation. This check can be disabled "
-                "by setting the class attribute `check_implementation` to `False`."
-            )
-            np.testing.assert_allclose(
-                res_numba, res_numpy, err_msg=msg, rtol=1e-7, atol=1e-7, equal_nan=True
-            )
         return rhs  # type: ignore
 
     def make_pde_rhs(
@@ -185,11 +218,12 @@ class PDEBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other
-                information can be extracted
-            backend (str): Determines how the function is created. Accepted
-                values are 'python` and 'numba'. Alternatively, 'auto' lets the
-                code decide for the most optimal backend.
+                An example for the state from which the grid and other information can
+                be extracted.
+            backend (str):
+                Determines how the function is created. Accepted values are 'numpy`
+                and 'numba'. Alternatively, 'auto' lets the code decide for the most
+                optimal backend.
 
         Returns:
             Function determining the right hand side of the PDE
