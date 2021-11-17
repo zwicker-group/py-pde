@@ -493,7 +493,7 @@ class UnitGrid(CartesianGridBase):
             return np.zeros((0, self.dim))
         if cells.shape[-1] != self.dim:
             raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
-        return cells + 0.5
+        return cells + 0.5  # type: ignore
 
     def point_to_cell(self, points: np.ndarray) -> np.ndarray:
         """Determine cell(s) corresponding to given point(s)

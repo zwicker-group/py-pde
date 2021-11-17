@@ -299,7 +299,7 @@ class VectorField(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("i...,i...->...", a, b)  # type: ignore
                     else:
-                        return np.einsum("i...,i...->...", a, b, out=out)
+                        return np.einsum("i...,i...->...", a, b, out=out)  # type: ignore
 
                 elif a.shape == b.shape[1:]:
                     # dot product between vector and tensor
@@ -309,7 +309,7 @@ class VectorField(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("i...,ij...->j...", a, b)  # type: ignore
                     else:
-                        return np.einsum("i...,ij...->j...", a, b, out=out)
+                        return np.einsum("i...,ij...->j...", a, b, out=out)  # type: ignore
 
                 else:
                     raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
@@ -451,7 +451,7 @@ class VectorField(DataFieldBase):
                     # correctly and we thus had to use this work-around
                     return np.einsum("i...,j...->ij...", a, b)  # type: ignore
                 else:
-                    return np.einsum("i...,j...->ij...", a, b, out=out)
+                    return np.einsum("i...,j...->ij...", a, b, out=out)  # type: ignore
 
         else:
             raise ValueError(f"Undefined backend `{backend}")

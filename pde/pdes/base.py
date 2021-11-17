@@ -327,7 +327,7 @@ class PDEBase(metaclass=ABCMeta):
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
                     """helper function returning a noise realization"""
-                    return noise_strength * np.random.randn(*data_shape)
+                    return noise_strength * np.random.randn(*data_shape)  # type: ignore
 
             elif isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
@@ -343,7 +343,7 @@ class PDEBase(metaclass=ABCMeta):
                     for i in range(data_shape[0]):
                         # TODO: Avoid creating random numbers when noise_strengths == 0
                         out[i] *= noise_strengths[i]
-                    return out
+                    return out  # type: ignore
 
             else:
                 # different noise strengths, but a single field

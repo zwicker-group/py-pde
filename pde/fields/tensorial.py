@@ -288,7 +288,7 @@ class Tensor2Field(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("ij...,jk...->ik...", a, b)  # type: ignore
                     else:
-                        return np.einsum("ij...,jk...->ik...", a, b, out=out)
+                        return np.einsum("ij...,jk...->ik...", a, b, out=out)  # type: ignore
 
                 elif a.shape[1:] == b.shape:
                     # dot product between tensor and vector
@@ -298,7 +298,7 @@ class Tensor2Field(DataFieldBase):
                         # correctly and we thus had to use this work-around
                         return np.einsum("ij...,j...->i...", a, b)  # type: ignore
                     else:
-                        return np.einsum("ij...,j...->i...", a, b, out=out)
+                        return np.einsum("ij...,j...->i...", a, b, out=out)  # type: ignore
 
                 else:
                     raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
