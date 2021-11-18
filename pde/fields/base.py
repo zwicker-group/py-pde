@@ -1193,7 +1193,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # convert `fill` to dtype of data
         if fill is not None:
             if self.rank == 0:
-                fill = self.data.dtype.type(fill)
+                fill = self.data.dtype.type(fill)  # type: ignore
             else:
                 fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
 

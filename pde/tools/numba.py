@@ -420,7 +420,7 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
         """helper that reconstructs the array from the pointer and structural info"""
         data: np.ndarray = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
         if strides is not None:
-            data = np.lib.index_tricks.as_strided(data, shape, strides)  # type: ignore
+            data = np.lib.index_tricks.as_strided(data, shape, strides)
         return data
 
     return array_constructor  # type: ignore
