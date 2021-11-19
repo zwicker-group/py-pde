@@ -491,7 +491,8 @@ class PDEBase(metaclass=ABCMeta):
                 based on the stepper will be chosen. In particular, if
                 `method == 'auto'`, the :class:`~pde.solvers.ScipySolver` with an
                 automatic, adaptive time step is used. This is a flexible choice, but
-                might be slower than using a fixed time step.
+                might be slower than using a fixed time step, where the explicit solver
+                :class:`~pde.solvers.explicit.ExplicitSolver` is when `method == 'auto'`.
             tracker:
                 Defines a tracker that process the state of the simulation at specified
                 time intervals. A tracker is either an instance of
@@ -508,13 +509,18 @@ class PDEBase(metaclass=ABCMeta):
                 Specifies a method for solving the differential equation. This can
                 either be an instance of :class:`~pde.solvers.base.SolverBase` or a
                 descriptive name like 'explicit' or 'scipy'. The valid names are given
-                by :meth:`pde.solvers.base.SolverBase.registered_solvers`.
+                by :meth:`pde.solvers.base.SolverBase.registered_solvers`. The default
+                value 'auto' selects :class:`~pde.solvers.ScipySolver` if `dt` is not
+                specified and otherwise :class:`~pde.solvers.explicit.ExplicitSolver`.
             ret_info (bool):
                 Flag determining whether diagnostic information about the solver
                 process should be returned.
             **kwargs:
                 Additional keyword arguments are forwarded to the solver class chosen
-                with the `method` argument.
+                with the `method` argument. In particular, several `schemes` can be
+                selected for the :class:`~pde.solvers.explicit.ExplicitSolver` and the
+                additional arguments of :func:`scipy.integrate.solve_ivp` are accepted
+                for :class:`~pde.solvers.ScipySolver`. 
 
         Returns:
             :class:`~pde.fields.base.FieldBase`:

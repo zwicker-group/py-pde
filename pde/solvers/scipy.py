@@ -32,8 +32,7 @@ class ScipySolver(SolverBase):
                 'numpy` and 'numba'. Alternatively, 'auto' lets the code decide
                 for the most optimal backend.
             **kwargs:
-                All extra arguments are forwarded to
-                :func:`scipy.integrate.solve_ivp`.
+                All extra arguments are forwarded to :func:`scipy.integrate.solve_ivp`.
         """
         super().__init__(pde)
         self.backend = backend
