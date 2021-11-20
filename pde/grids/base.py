@@ -683,7 +683,7 @@ class GridBase(metaclass=ABCMeta):
         operator: Union[str, OperatorInfo],
         bc: BoundariesData,
         **kwargs,
-    ) -> Callable[[np.ndarray], np.ndarray]:
+    ) -> Callable[..., np.ndarray]:
         """return a compiled function applying an operator with boundary conditions
 
         The returned function takes the discretized data on the grid as an input and
@@ -692,7 +692,8 @@ class GridBase(metaclass=ABCMeta):
         internally to apply the boundary conditions specified as `bc`. Note that the
         function supports an optional argument `out`, which if given should provide
         space for the valid output array without the ghost cells. The result of the
-        operator is then written into this output array.
+        operator is then written into this output array. The function also accepts an
+        optional parameter `args`, which is forwarded to `set_ghost_cells`.
 
         Args:
             operator (str):
@@ -706,7 +707,8 @@ class GridBase(metaclass=ABCMeta):
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            callable: the function that applies the operator
+            callable: the function that applies the operator. This function has the
+            signature (arr: np.ndarray, out: np.ndarray = None, args=None).
         """
         backend = kwargs.get("backend", "numba")  # numba is the default backend
 
@@ -721,7 +723,7 @@ class GridBase(metaclass=ABCMeta):
         shape_out = (self.dim,) * operator.rank_out + self.shape
 
         if backend == "numba":
-            # create a compiled function to apply to the operator
+            # create a compiled function to apply the operator
             set_ghost_cells = bcs.make_ghost_cell_setter()
             set_valid = self._make_set_valid()
 
@@ -729,12 +731,14 @@ class GridBase(metaclass=ABCMeta):
                 operator_raw = jit(operator_raw)
 
             @jit_allocate_out(out_shape=shape_out)
-            def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+            def apply_op(
+                arr: np.ndarray, out: np.ndarray = None, args=None
+            ) -> np.ndarray:
                 """applies operator to the data"""
                 # prepare input with boundary conditions
                 arr_full = np.empty(shape_in_full, dtype=arr.dtype)
                 set_valid(arr_full, arr)
-                set_ghost_cells(arr_full)
+                set_ghost_cells(arr_full, args=args)
 
                 # apply operator
                 operator_raw(arr_full, out)  # type: ignore
@@ -743,20 +747,24 @@ class GridBase(metaclass=ABCMeta):
                 return out  # type: ignore
 
         elif backend in {"numpy", "scipy"}:
-            # create a numpy/scipy function to apply to the operator
+            # create a numpy/scipy function to apply the operator
 
-            def apply_op(arr: np.ndarray, out: np.ndarray = None) -> np.ndarray:
+            def apply_op(
+                arr: np.ndarray, out: np.ndarray = None, args=None
+            ) -> np.ndarray:
                 """set boundary conditions and apply operator"""
-                # prepare input with boundary conditions
-                arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                arr_full[(...,) + self._idx_valid] = arr
-                bcs.set_ghost_cells(arr_full)
-
-                # apply operator
+                # ensure result array is allocated
                 if out is None:
                     out = np.empty(shape_out, dtype=arr.dtype)
                 else:
                     assert out.shape == shape_out
+
+                # prepare input with boundary conditions
+                arr_full = np.empty(shape_in_full, dtype=arr.dtype)
+                arr_full[(...,) + self._idx_valid] = arr
+                bcs.set_ghost_cells(arr_full, args=args)
+
+                # apply operator
                 operator_raw(arr_full, out)
 
                 # return valid part of the output

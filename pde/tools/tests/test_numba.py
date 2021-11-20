@@ -22,7 +22,7 @@ def test_flat_idx():
 def test_jit_allocate_out_1arg():
     """test jit_allocate_out of functions with 1 argument"""
 
-    def f(arr, out):
+    def f(arr, out=None, args=None):
         out[:] = arr
         return out
 
@@ -35,7 +35,7 @@ def test_jit_allocate_out_1arg():
 def test_jit_allocate_out_2arg():
     """test jit_allocate_out of functions with 1 argument"""
 
-    def f(a, b, out):
+    def f(a, b, out=None, args=None):
         out[:] = a + b
         return out
 
