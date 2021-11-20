@@ -1,5 +1,5 @@
 """
-Solvers define how a pde is solved, i.e., advanced in time.
+Solvers define how a PDE is solved, i.e., how the initial state is advanced in time.
 
 .. autosummary::
    :nosignatures:
@@ -22,7 +22,7 @@ from .scipy import ScipySolver
 
 
 def registered_solvers() -> List[str]:
-    """returns all solvers that are registered in the package
+    """returns all solvers that are currently registered
 
     Returns:
         list of str: List with the names of the solvers

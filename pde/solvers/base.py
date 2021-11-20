@@ -19,7 +19,7 @@ from ..tools.misc import classproperty
 
 
 class SolverBase(metaclass=ABCMeta):
-    """base class for simulations"""
+    """base class for solvers"""
 
     _subclasses: Dict[str, Type[SolverBase]] = {}  # all inheriting classes
 

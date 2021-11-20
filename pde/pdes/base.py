@@ -520,7 +520,7 @@ class PDEBase(metaclass=ABCMeta):
                 with the `method` argument. In particular, several `schemes` can be
                 selected for the :class:`~pde.solvers.explicit.ExplicitSolver` and the
                 additional arguments of :func:`scipy.integrate.solve_ivp` are accepted
-                for :class:`~pde.solvers.ScipySolver`. 
+                for :class:`~pde.solvers.ScipySolver`.
 
         Returns:
             :class:`~pde.fields.base.FieldBase`:

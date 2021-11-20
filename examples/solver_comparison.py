@@ -22,15 +22,24 @@ print("Diagnostic information from first run:")
 print(controller1.diagnostics)
 print()
 
-# try the standard scipy solver
-solver2 = pde.ScipySolver(eq)
+# try an explicit solver with adaptive time steps
+solver2 = pde.ExplicitSolver(eq, scheme="runge-kutta", adaptive=True)
 controller2 = pde.Controller(solver2, t_range=1, tracker=None)
-sol2 = controller2.run(field)
-sol2.label = "scipy solver"
+sol2 = controller2.run(field, dt=1e-3)
+sol2.label = "explicit, adaptive solver"
 print("Diagnostic information from second run:")
 print(controller2.diagnostics)
 print()
 
+# try the standard scipy solver
+solver3 = pde.ScipySolver(eq)
+controller3 = pde.Controller(solver3, t_range=1, tracker=None)
+sol3 = controller3.run(field)
+sol3.label = "scipy solver"
+print("Diagnostic information from third run:")
+print(controller3.diagnostics)
+print()
+
 # plot both fields and give the deviation as the title
-title = f"Deviation: {((sol1 - sol2)**2).average:.2g}"
-pde.FieldCollection([sol1, sol2]).plot(title=title)
+title = f"Deviation: {((sol1 - sol2)**2).average:.2g}, {((sol1 - sol3)**2).average:.2g}"
+pde.FieldCollection([sol1, sol2, sol3]).plot(title=title)
