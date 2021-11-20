@@ -56,31 +56,6 @@ def test_solvers_simple_ode(scheme, adaptive):
         assert solver.info["steps"] == pytest.approx(20 / dt, abs=1)
 
 
-def test_compare_diffusion():
-    """test explicit solvers"""
-    grid = UnitGrid([16, 16], periodic=True)
-    field = ScalarField.random_colored(grid, -3)
-    field /= field.fluctuations  # normalize field
-    eq = DiffusionPDE()
-
-    # ground truth of simpler solver with low dt
-    c1 = Controller(ExplicitSolver(eq), t_range=0.1, tracker=None)
-    s1 = c1.run(field, dt=1e-5)
-
-    c2 = Controller(ExplicitSolver(eq, adaptive=True), t_range=0.1, tracker=None)
-    s2 = c2.run(field, dt=1e-4)
-    np.testing.assert_allclose(s1.data, s2.data, atol=0.1)
-
-    c3 = Controller(ExplicitSolver(eq, scheme="runge-kutta"), t_range=0.1, tracker=None)
-    s3 = c3.run(field, dt=1e-3)
-    np.testing.assert_allclose(s1.data, s3.data, atol=0.1)
-
-    solver = ExplicitSolver(eq, scheme="runge-kutta", adaptive=True, tolerance=1e-4)
-    c4 = Controller(solver, t_range=0.1, tracker=None)
-    s4 = c4.run(field, dt=1e-3)
-    np.testing.assert_allclose(s1.data, s4.data, atol=0.5)
-
-
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
 def test_stochastic_solvers(backend):
     """test simple version of the stochastic solver"""

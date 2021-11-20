@@ -167,7 +167,7 @@ def test_spherical_annulus():
 
 def test_spherical_to_cartesian():
     """test conversion of spherical grid to cartesian"""
-    expr_sph = "1 / (1 + r**2)"
+    expr_sph = "1. / (1 + r**2)"
     expr_cart = expr_sph.replace("r**2", "(x**2 + y**2 + z**2)")
 
     grid_sph = SphericalSymGrid(7, 16)

@@ -105,7 +105,7 @@ REQUIREMENTS = [
         for_tests=True,
     ),
     # for documentation only
-    Requirement(name="sphinx", version="4", for_docs=True),
+    Requirement(name="Sphinx", version="4", for_docs=True),
     Requirement(name="sphinx-autodoc-annotation", version="1.0", for_docs=True),
     Requirement(name="sphinx-gallery", version="0.6", for_docs=True),
     Requirement(name="sphinx-rtd-theme", version="0.4", for_docs=True),
