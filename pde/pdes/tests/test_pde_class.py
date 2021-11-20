@@ -42,6 +42,10 @@ def test_pde_wrong_input():
     with pytest.raises(RuntimeError):
         eq.evolution_rate(ScalarField.random_uniform(grid))
 
+    eq = PDE({"x": "x"})
+    with pytest.raises(ValueError):
+        eq.evolution_rate(ScalarField(grid))
+
 
 def test_pde_scalar():
     """test PDE with a single scalar field"""

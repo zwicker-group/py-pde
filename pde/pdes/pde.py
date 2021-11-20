@@ -217,6 +217,11 @@ class PDE(PDEBase):
             return cache  # this cache was already prepared
         cache = self._cache[backend] = {}  # clear cache, if there was any
 
+        # check whether PDE has variables with same names as grid axes
+        name_overlap = set(self.rhs) & set(state.grid.axes)
+        if name_overlap:
+            raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
+
         # check whether the state is compatible with the PDE
         num_fields = len(self.variables)
         self.diagnostics["num_fields"] = num_fields
