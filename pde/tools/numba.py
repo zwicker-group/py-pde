@@ -102,7 +102,7 @@ def numba_environment() -> Dict[str, Any]:
     }
 
 
-def _numba_get_signature(parallel: bool = False, **kwargs) -> Dict[str, Any]:
+def _get_jit_args(parallel: bool = False, **kwargs) -> Dict[str, Any]:
     """return arguments for the :func:`nb.jit` with default values
 
     Args:
@@ -159,7 +159,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
 
     # prepare the compilation arguments
     kwargs.setdefault("nopython", True)
-    jit_kwargs = _numba_get_signature(parallel=parallel, **kwargs)
+    jit_kwargs = _get_jit_args(parallel=parallel, **kwargs)
 
     # log some details
     logger = logging.getLogger(__name__)
@@ -214,20 +214,20 @@ def jit_allocate_out(
 
         if num_args == 1:
 
-            def f_arg1_with_allocated_out(arr, out=None):
+            def f_arg1_with_allocated_out(arr, out=None, args=None):
                 """helper function allocating output array"""
                 if out is None:
                     if out_shape is None:
                         out = np.empty_like(arr)
                     else:
                         out = np.empty(out_shape, dtype=arr.dtype)
-                return func(arr, out)
+                return func(arr, out, args=args)
 
             return f_arg1_with_allocated_out
 
         elif num_args == 2:
 
-            def f_arg2_with_allocated_out(a, b, out=None):
+            def f_arg2_with_allocated_out(a, b, out=None, args=None):
                 """helper function allocating output array"""
                 if out is None:
                     assert a.shape == b.shape
@@ -235,7 +235,7 @@ def jit_allocate_out(
                         out = np.empty_like(a)
                     else:
                         out = np.empty(out_shape, dtype=a.dtype)
-                return func(a, b, out)
+                return func(a, b, out, args=args)
 
             return f_arg2_with_allocated_out
 
@@ -244,9 +244,9 @@ def jit_allocate_out(
 
     else:
         # jitting is enabled => return specific compiled functions
-        jit_kwargs_outer = _numba_get_signature(nopython=True, parallel=False, **kwargs)
+        jit_kwargs_outer = _get_jit_args(nopython=True, parallel=False, **kwargs)
         # we need to cast `parallel` to bool since np.bool is not supported by jit
-        jit_kwargs_inner = _numba_get_signature(parallel=bool(parallel), **kwargs)
+        jit_kwargs_inner = _get_jit_args(parallel=bool(parallel), **kwargs)
         logging.getLogger(__name__).info(
             "Compile `%s` with %s", func.__name__, jit_kwargs_inner
         )
@@ -255,7 +255,7 @@ def jit_allocate_out(
 
             @nb.generated_jit(**jit_kwargs_outer)
             @wraps(func)
-            def wrapper(arr, out=None):
+            def wrapper(arr, out=None, args=None):
                 """wrapper deciding whether the underlying function is called
                 with or without `out`. This uses :func:`nb.generated_jit` to
                 compile different versions of the same function
@@ -263,10 +263,9 @@ def jit_allocate_out(
                 if isinstance(arr, nb.types.Number):
                     # simple scalar call -> do not need to allocate anything
                     raise RuntimeError(
-                        "Functions defined with an `out` keyword should not be called "
+                        "Functions defined with an `out` keyword must not be called "
                         "with scalar quantities."
                     )
-
                 if not isinstance(arr, nb.types.Array):
                     raise RuntimeError(
                         "Compiled functions need to be called with numpy arrays, not "
@@ -280,15 +279,16 @@ def jit_allocate_out(
 
                     if out_shape is None:
                         # we have to obtain the shape of `out` from `arr`
-                        def f_with_allocated_out(arr, out):
+                        def f_with_allocated_out(arr, out=None, args=None):
                             """helper function allocating output array"""
-                            return f_jit(arr, out=np.empty_like(arr))
+                            return f_jit(arr, out=np.empty_like(arr), args=args)
 
                     else:
                         # the shape of `out` is given by `out_shape`
-                        def f_with_allocated_out(arr, out):
+                        def f_with_allocated_out(arr, out=None, args=None):
                             """helper function allocating output array"""
-                            return f_jit(arr, out=np.empty(out_shape, dtype=arr.dtype))
+                            out_arr = np.empty(out_shape, dtype=arr.dtype)
+                            return f_jit(arr, out=out_arr, args=args)
 
                     return f_with_allocated_out
 
@@ -299,10 +299,10 @@ def jit_allocate_out(
 
                     else:
 
-                        def f_with_tested_out(arr, out):
+                        def f_with_tested_out(arr, out=None, args=None):
                             """helper function allocating output array"""
                             assert out.shape == out_shape
-                            return f_jit(arr, out)
+                            return f_jit(arr, out, args=args)
 
                         return f_with_tested_out
 
@@ -310,7 +310,7 @@ def jit_allocate_out(
 
             @nb.generated_jit(**jit_kwargs_outer)
             @wraps(func)
-            def wrapper(a, b, out=None):
+            def wrapper(a, b, out=None, args=None):
                 """wrapper deciding whether the underlying function is called
                 with or without `out`. This uses nb.generated_jit to compile
                 different versions of the same function."""
@@ -327,15 +327,16 @@ def jit_allocate_out(
 
                     if out_shape is None:
                         # we have to obtain the shape of `out` from `a`
-                        def f_with_allocated_out(a, b, out):
+                        def f_with_allocated_out(a, b, out=None, args=None):
                             """helper function allocating output array"""
-                            return f_jit(a, b, out=np.empty_like(a))
+                            return f_jit(a, b, out=np.empty_like(a), args=args)
 
                     else:
                         # the shape of `out` is given by `out_shape`
-                        def f_with_allocated_out(a, b, out):
+                        def f_with_allocated_out(a, b, out=None, args=None):
                             """helper function allocating output array"""
-                            return f_jit(a, b, out=np.empty(out_shape, dtype=a.dtype))
+                            out_arr = np.empty(out_shape, dtype=a.dtype)
+                            return f_jit(a, b, out=out_arr, args=args)
 
                     return f_with_allocated_out
 
