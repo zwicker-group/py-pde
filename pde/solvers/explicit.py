@@ -439,7 +439,9 @@ class ExplicitSolver(SolverBase):
         self.info["state_modifications"] = 0.0
 
         if self.pde.is_sde and self.adaptive:
-            self._logger.warning("Stochastic stepping cannot be adaptive")
+            self._logger.warning(
+                "Stochastic stepping cannot be adaptive. Using fixed time step instead."
+            )
 
         if self.adaptive and not self.pde.is_sde:
             # create stepper with adaptive dt

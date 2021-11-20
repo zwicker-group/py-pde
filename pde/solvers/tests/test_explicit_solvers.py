@@ -2,6 +2,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import logging
+
 import numpy as np
 import pytest
 
@@ -97,6 +99,20 @@ def test_stochastic_solvers(backend):
     np.testing.assert_allclose(s1.data, s2.data, rtol=1e-4, atol=1e-4)
     assert not solver1.info["stochastic"]
     assert solver2.info["stochastic"]
+
+
+def test_stochastic_adaptive_solver(caplog):
+    """test using an adaptive, stochastic solver"""
+    field = ScalarField.random_uniform(UnitGrid([16]), -1, 1)
+    eq = DiffusionPDE(noise=1e-6)
+
+    with caplog.at_level(logging.WARNING):
+        solver = ExplicitSolver(eq, backend="numpy", adaptive=True)
+
+    c = Controller(solver, t_range=1, tracker=None)
+    c.run(field, dt=1e-2)
+
+    assert "fixed" in caplog.text
 
 
 def test_unsupported_stochastic_solvers():
