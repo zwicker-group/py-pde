@@ -10,6 +10,9 @@ import re
 from typing import Any, Callable, Dict, Tuple
 
 import numpy as np
+from numba.typed import Dict as NumbaDict
+from sympy import Symbol
+from sympy.core.function import UndefinedFunction
 
 from ..fields import FieldCollection, VectorField
 from ..fields.base import DataFieldBase, FieldBase
@@ -161,7 +164,7 @@ class PDE(PDEBase):
         else:
             bcs = dict(bc_ops)
             if "*:*" in bcs and bc != "natural":
-                self._logger.warning("Two default boundary conditions.")
+                self._logger.warning("Found default BCs in `bcs` and `bc_ops`")
             bcs["*:*"] = bc  # append default boundary conditions
 
         self.bcs: Dict[str, Any] = {}
@@ -199,6 +202,137 @@ class PDE(PDEBase):
         """show the expressions of the PDE"""
         return {k: v.expression for k, v in self._rhs_expr.items()}
 
+    def _compile_rhs(self, state: FieldBase, backend: str = "numpy"):
+        """compile the functions determining the right hand sides of the PDEs
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                The field describing the state of the PDE
+            backend (str):
+                The backend for which the data is prepared
+        """
+        # obtain functions used in the expression
+        ops_general = {}
+
+        # create special operators if necessary
+        if "dot" in self.diagnostics["operators"]:  # type: ignore
+            # add dot product between two vector fields. This can for instance
+            # appear when two gradients of scalar fields need to be multiplied
+            ops_general["dot"] = VectorField(state.grid).make_dot_operator(backend)
+
+        if "inner" in self.diagnostics["operators"]:  # type: ignore
+            # synonym for dot product operator
+            ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
+
+        if "outer" in self.diagnostics["operators"]:  # type: ignore
+            # synonym for dot product operator
+            ops_general["outer"] = VectorField(state.grid).make_outer_prod_operator()
+
+        rhs_funcs = []
+        for var in self.variables:
+            # modify a copy of the expression
+            expr = self._rhs_expr[var].copy()
+            ops = ops_general.copy()
+
+            # obtain the (differential) operators
+            for func in self._operators[var]:
+                if func in ops:
+                    continue
+
+                # determine boundary conditions
+                for bc_key, bc in self.bcs.items():
+                    bc_var, bc_func = bc_key.split(":")
+                    var_match = bc_var == var or bc_var == "*"
+                    func_match = bc_func == func or bc_func == "*"
+                    if var_match and func_match:
+                        break  # found a matching boundary condition
+                else:
+                    raise RuntimeError(
+                        "Could not find suitable boundary condition for function "
+                        f"`{func}` applied in equation for `{var}`"
+                    )
+
+                # Tell the user what BC we chose for a given operator
+                msg = "Using boundary condition `%s` for operator `%s` in PDE for `%s`"
+                self._logger.info(msg, bc, func, var)
+
+                # create the function evaluating the operator
+                try:
+                    ops[func] = state.grid.make_operator(func, bc=bc)
+                except BCDataError:
+                    # wrong data was supplied for the boundary condition
+                    raise
+                except ValueError:
+                    # any other exception should signal that the operator is not defined,
+                    # so we (almost) silently assume that sympy defines the operator
+                    self._logger.info(
+                        "Assuming that sympy knows undefined operator `%s`", func
+                    )
+
+                # add `bc_args` as an argument to the call of the operators to be able
+                # to pass additional information, like time
+                expr._sympy_expr = expr._sympy_expr.replace(
+                    lambda expr: isinstance(expr.func, UndefinedFunction)
+                    and expr.name == func
+                    and not (
+                        isinstance(expr.args[-1], Symbol)
+                        and expr.args[-1].name == "bc_args"
+                    ),
+                    lambda expr: expr.func(
+                        *expr.args, Symbol("none"), Symbol("bc_args")
+                    ),
+                )
+
+            # obtain the function to calculate the right hand side
+            signature = self.variables + ("t", "none", "bc_args")
+
+            # check whether this function depends on additional input
+            if any(expr.depends_on(c) for c in state.grid.axes):
+                # expression has a spatial dependence, too
+
+                # extend the signature
+                signature += tuple(state.grid.axes)
+                # inject the spatial coordinates into the expression for the rhs
+                extra_args = tuple(  # @UnusedVariable
+                    state.grid.cell_coords[..., i] for i in range(state.grid.num_axes)
+                )
+
+            else:
+                # expression only depends on the actual variables
+                extra_args = tuple()  # @UnusedVariable
+
+            # check whether all variables are accounted for
+            extra_vars = set(expr.vars) - set(signature)
+            if extra_vars:
+                extra_vars_str = ", ".join(sorted(extra_vars))
+                raise RuntimeError(
+                    f"Undefined variable in expression: {extra_vars_str}"
+                )
+            expr.vars = signature
+
+            # prepare the actual function being called in the end
+            if backend == "numpy":
+                func = expr._get_function(single_arg=False, user_funcs=ops)
+
+            elif backend == "numba":
+                func_pure = expr._get_function(
+                    single_arg=False, user_funcs=ops, prepare_compilation=True
+                )
+                func = jit(func_pure)
+
+            else:
+                raise ValueError(f"Unsupported backend {backend}")
+
+            def rhs_func(*args) -> np.ndarray:
+                """wrapper that inserts the extra arguments and initialized bc_args"""
+                bc_args = NumbaDict()  # args for differential operators
+                bc_args["t"] = args[-1]
+                return func(*args, None, bc_args, *extra_args)
+
+            rhs_funcs.append(rhs_func)
+
+        return rhs_funcs
+
     def _prepare_cache(
         self, state: FieldBase, backend: str = "numpy"
     ) -> Dict[str, Any]:
@@ -210,6 +344,8 @@ class PDE(PDEBase):
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 The field describing the state of the PDE
+            backend (str):
+                The backend for which the data is prepared
         """
         # check the cache
         cache = self._cache.get(backend, {})
@@ -252,108 +388,8 @@ class PDE(PDEBase):
             for rhs in self._rhs_expr.values():
                 rhs.consts[name] = value
 
-        # obtain functions used in the expression
-        ops_general = {}
-
-        # create special operators if necessary
-        if "dot" in self.diagnostics["operators"]:  # type: ignore
-            # add dot product between two vector fields. This can for instance
-            # appear when two gradients of scalar fields need to be multiplied
-            ops_general["dot"] = VectorField(state.grid).make_dot_operator(backend)
-
-        if "inner" in self.diagnostics["operators"]:  # type: ignore
-            # synonym for dot product operator
-            ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
-
-        if "outer" in self.diagnostics["operators"]:  # type: ignore
-            # synonym for dot product operator
-            ops_general["outer"] = VectorField(state.grid).make_outer_prod_operator()
-
         # obtain the python functions for the rhs
-        rhs_funcs = []
-        for var in self.variables:
-            ops = ops_general.copy()
-
-            # obtain the (differential) operators
-            for func in self._operators[var]:
-                if func in ops:
-                    continue
-                # determine boundary conditions
-                for bc_key, bc in self.bcs.items():
-                    bc_var, bc_func = bc_key.split(":")
-                    var_match = bc_var == var or bc_var == "*"
-                    func_match = bc_func == func or bc_func == "*"
-                    if var_match and func_match:
-                        break  # found a matching boundary condition
-                else:
-                    raise RuntimeError(
-                        "Could not find suitable boundary condition for function "
-                        f"`{func}` applied in equation for `{var}`"
-                    )
-
-                # Tell the user what BC we chose for a given operator
-                msg = "Using boundary condition `%s` for operator `%s` in PDE for `%s`"
-                self._logger.info(msg, bc, func, var)
-
-                try:
-                    ops[func] = state.grid.make_operator(func, bc=bc)
-                except BCDataError:
-                    # wrong data was supplied for the boundary condition
-                    raise
-                except ValueError:
-                    # any other exception should signal that the operator is not defined,
-                    # so we (almost) silently assume that sympy defines the operator
-                    self._logger.info(
-                        "Assuming that sympy knows undefined operator `%s`", func
-                    )
-
-            # obtain the function to calculate the right hand side
-            expr = self._rhs_expr[var]
-            signature = self.variables + ("t",)
-
-            def _get_expr_func(signature: Tuple[str, ...]) -> Callable[..., np.ndarray]:
-                """helper function obtaining expression and checking the signature"""
-                extra_vars = set(expr.vars) - set(signature)
-                if extra_vars:
-                    extra_vars_str = ", ".join(sorted(extra_vars))
-                    raise RuntimeError(
-                        f"Undefined variable in expression: {extra_vars_str}"
-                    )
-                expr.vars = signature
-                if backend == "numpy":
-                    result = expr._get_function(single_arg=False, user_funcs=ops)
-                elif backend == "numba":
-                    result = expr._get_function(
-                        single_arg=False, user_funcs=ops, prepare_compilation=True
-                    )
-                else:
-                    raise ValueError(f"Unsupported backend {backend}")
-                return result  # type: ignore
-
-            if any(expr.depends_on(c) for c in state.grid.axes):
-                # expression has a spatial dependence, too
-
-                # determine and check the signature
-                inner_func = _get_expr_func(signature + tuple(state.grid.axes))
-                if backend == "numba":
-                    inner_func = jit(inner_func)
-
-                # inject the spatial coordinates into the expression for the rhs
-                coords_tuple = tuple(  # @UnusedVariable
-                    state.grid.cell_coords[..., i] for i in range(state.grid.num_axes)
-                )
-
-                def rhs_func(*args) -> np.ndarray:
-                    """wrapper that inserts the spatial variables"""
-                    return inner_func(*args, *coords_tuple)
-
-            else:
-                # expression only depends on the actual variables
-                rhs_func = _get_expr_func(signature)
-
-            rhs_funcs.append(rhs_func)
-
-        cache["rhs_funcs"] = rhs_funcs
+        cache["rhs_funcs"] = self._compile_rhs(state, backend)
 
         # add extra information for field collection
         if isinstance(state, FieldCollection):
@@ -513,3 +549,12 @@ class PDE(PDEBase):
 
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
+
+
+def _sympy_add_arg(sympy_expr, operator: str, arg_name):
+    return sympy_expr.replace(
+        lambda expr: isinstance(expr.func, UndefinedFunction)
+        and expr.name == operator
+        and not (isinstance(expr.args[-1], Symbol) and expr.args[-1].name == arg_name),
+        lambda expr: expr.func(*expr.args, Symbol(arg_name)),
+    )

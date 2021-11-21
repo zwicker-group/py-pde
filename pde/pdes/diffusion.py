@@ -70,7 +70,7 @@ class DiffusionPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField), "`state` must be ScalarField"
-        laplace = state.laplace(bc=self.bc, label="evolution rate")
+        laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
         return self.diffusivity * laplace  # type: ignore
 
     def _make_pde_rhs_numba(  # type: ignore
@@ -97,6 +97,6 @@ class DiffusionPDE(PDEBase):
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
             """compiled helper function evaluating right hand side"""
-            return diffusivity_value * laplace(state_data)
+            return diffusivity_value * laplace(state_data, args={"t": t})
 
         return pde_rhs  # type: ignore

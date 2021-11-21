@@ -94,7 +94,7 @@ class WavePDE(PDEBase):
         assert len(state) == 2, "`state` must contain two fields"
         u, v = state
         u_t = v.copy()
-        v_t = self.speed ** 2 * u.laplace(self.bc)  # type: ignore
+        v_t = self.speed ** 2 * u.laplace(self.bc, args={"t": t})  # type: ignore
         return FieldCollection([u_t, v_t])
 
     def _make_pde_rhs_numba(  # type: ignore
@@ -123,7 +123,7 @@ class WavePDE(PDEBase):
             """compiled helper function evaluating right hand side"""
             rate = np.empty_like(state_data)
             rate[0] = state_data[1]
-            rate[1][:] = laplace(state_data[0])
+            rate[1][:] = laplace(state_data[0], args={"t": t})
             rate[1] *= speed2
             return rate
 

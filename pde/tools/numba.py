@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
 import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
 from numba.extending import register_jitable
+from numba.typed import Dict as NumbaDict
 
 from .. import config
 from ..tools.misc import decorator_arguments
@@ -261,7 +262,6 @@ def jit_allocate_out(
                 compile different versions of the same function
                 """
                 if isinstance(arr, nb.types.Number):
-                    # simple scalar call -> do not need to allocate anything
                     raise RuntimeError(
                         "Functions defined with an `out` keyword must not be called "
                         "with scalar quantities."
@@ -438,6 +438,16 @@ def convert_scalar(arr):
         return lambda arr: arr[()]
     else:
         return lambda arr: arr
+
+
+def numba_dict(data: Dict[str, Any] = None) -> Optional[NumbaDict]:
+    """converts a python dictionary to a numba typed dictionary"""
+    if data is None:
+        return None
+    nb_dict = NumbaDict()
+    for k, v in data.items():
+        nb_dict[k] = v
+    return nb_dict
 
 
 def get_common_numba_dtype(*args):

@@ -15,6 +15,7 @@ representations using :mod:`sympy`.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
 
 import builtins
 import copy
@@ -559,6 +560,16 @@ class ScalarExpression(ExpressionBase):
             signature=signature,
             user_funcs=user_funcs,
             consts=consts,
+        )
+
+    def copy(self) -> ScalarExpression:
+        """return a copy of the current expression"""
+        return self.__class__(
+            self,
+            self.vars,
+            user_funcs=self.user_funcs,
+            consts=self.consts,
+            allow_indexed=self.allow_indexed,
         )
 
     @property
