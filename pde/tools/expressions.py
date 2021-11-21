@@ -564,13 +564,8 @@ class ScalarExpression(ExpressionBase):
 
     def copy(self) -> ScalarExpression:
         """return a copy of the current expression"""
-        return self.__class__(
-            self,
-            self.vars,
-            user_funcs=self.user_funcs,
-            consts=self.consts,
-            allow_indexed=self.allow_indexed,
-        )
+        # __init__ copies all relevant attributes
+        return self.__class__(self)
 
     @property
     def value(self) -> Number:

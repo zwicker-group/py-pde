@@ -103,14 +103,21 @@ The :mod:`~pde.grids.boundaries` package defines the following classes:
 **Local boundary conditions:**
 
 * :class:`~pde.grids.boundaries.local.DirichletBC`:
-  Imposing the value of a field at the boundary
+  Imposing a constant value of the field at the boundary
+* :class:`~pde.grids.boundaries.local.ExpressionValueBC`:
+  Imposing the value of the field at the boundary given by an expression
 * :class:`~pde.grids.boundaries.local.NeumannBC`:
-  Imposing the derivative of a field in the outward normal direction at the boundary
+  Imposing a constant derivative of the field in the outward normal direction at the
+  boundary
+* :class:`~pde.grids.boundaries.local.ExpressionDerivativeBC`:
+  Imposing the derivative of the field in the outward normal direction at the
+  boundary given by an expression
 * :class:`~pde.grids.boundaries.local.MixedBC`:
-  Imposing the derivative of a field in the outward normal direction proportional to its
-  value at the boundary  
+  Imposing the derivative of the field in the outward normal direction proportional to
+  its value at the boundary  
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
-  Imposing the second derivative (curvature) of a field at the boundary
+  Imposing a constant second derivative (curvature) of the field at the boundary
+  
 
 There are corresponding classes that only affect the normal component of a field, which
 can be useful when dealing with vector and tensor fields.

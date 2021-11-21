@@ -66,7 +66,7 @@ class WavePDE(PDEBase):
         """
         if v is None:
             v = ScalarField(u.grid)
-        return FieldCollection([u, v])
+        return FieldCollection([u, v], labels=["u", "v"])
 
     @property
     def expressions(self) -> Dict[str, str]:

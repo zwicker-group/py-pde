@@ -50,7 +50,16 @@ which may depend on the coordinates of all axes:
         
 Inhomogeneous values can also be specified by directly supplying an array, whose shape
 needs to be compatible with the boundary, i.e., it needs to have the same shape as the
-grid but with the dimension of the axis along which the boundary is specified removed. 
+grid but with the dimension of the axis along which the boundary is specified removed.
+
+There exist also special boundary conditions that impose a time-dependent value
+(:code:`bc='value_expression'`) of the field or its derivative
+(:code:`bc='derivative_expression'`). Beyond the spatial coordinates that are already
+supported for the constant conditiosn above, the expressions of these boundary
+conditions can depend on the time variable :code:`t`. Note that PDEs need to supply the
+current time when setting the boundary conditions, e.g., when applying the differential
+operators. The pre-defined PDEs and the general class :class:`~pde.pdes.pde.PDE` already
+support time-dependent boundary conditions.
 
 One important aspect about boundary conditions is that they need to respect the
 periodicity of the underlying grid.
