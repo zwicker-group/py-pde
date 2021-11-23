@@ -664,6 +664,18 @@ class ExpressionBC(BCBase):
         signature = ["value", "dx"] + grid.axes + ["t"]
         self._expr = ScalarExpression(expression, signature=signature)
 
+        # quickly check whether the expression was parsed correctly
+        test_value = np.zeros((self.grid.dim,) * self.rank)
+        dx = self.grid.discretization[self.axis]
+        coords = tuple(bounds[0] for bounds in grid.axes_bounds)
+        try:
+            self._expr(test_value, dx, *coords, t=0)
+        except Exception as err:
+            raise BCDataError(
+                f"Could not evaluate BC expression `{expression}` with signature "
+                f"{signature}.\nEncountered error: {err}"
+            )
+
     def _repr_value(self):
         return [f'value="{self._expr.expression}"']
 
