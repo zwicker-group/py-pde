@@ -320,7 +320,7 @@ class PDE(PDEBase):
         def rhs_func(*args) -> np.ndarray:
             """wrapper that inserts the extra arguments and initialized bc_args"""
             bc_args = NumbaDict()  # args for differential operators
-            bc_args["t"] = args[-1]
+            bc_args["t"] = args[-1]  # pass time to differential operators
             return func_inner(*args, None, bc_args, *extra_args)
 
         return rhs_func
@@ -565,12 +565,3 @@ class PDE(PDEBase):
 
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
-
-
-def _sympy_add_arg(sympy_expr, operator: str, arg_name):
-    return sympy_expr.replace(
-        lambda expr: isinstance(expr.func, UndefinedFunction)
-        and expr.name == operator
-        and not (isinstance(expr.args[-1], Symbol) and expr.args[-1].name == arg_name),
-        lambda expr: expr.func(*expr.args, Symbol(arg_name)),
-    )
