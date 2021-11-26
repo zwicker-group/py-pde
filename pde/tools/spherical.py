@@ -54,11 +54,6 @@ harmonics, where the order is always zero and the degree :math:`l` and the mode
    radius_from_volume
    volume_from_radius
    surface_from_radius
-   points_cartesian_to_spherical
-   points_spherical_to_cartesian
-   haversine_distance
-   get_spherical_polygon_area
-   PointsOnSphere
    spherical_index_k
    spherical_index_lm
    spherical_index_count

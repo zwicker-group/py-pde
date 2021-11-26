@@ -12,14 +12,13 @@ vanishes.
 
 import warnings
 from abc import ABCMeta
-from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, TypeVar, Union
 
 import numpy as np
 
 from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import plot_on_axes
-from ..tools.spherical import volume_from_radius
 from .base import DimensionError, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
 
@@ -27,8 +26,32 @@ if TYPE_CHECKING:
     from .boundaries.axes import Boundaries  # @UnusedImport
 
 
-PI_4 = 4 * np.pi
-PI_43 = 4 / 3 * np.pi
+π = np.pi
+PI_4 = 4 * π
+PI_43 = 4 / 3 * π
+
+
+TNumArr = TypeVar("TNumArr", float, np.ndarray)
+
+
+def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
+    """Return the volume of a sphere with a given radius
+
+    Args:
+        radius (float or :class:`~numpy.ndarray`): Radius of the sphere
+        dim (int): Dimension of the space
+
+    Returns:
+        float or :class:`~numpy.ndarray`: Volume of the sphere
+    """
+    if dim == 1:
+        return 2 * radius  # type: ignore
+    elif dim == 2:
+        return π * radius ** 2  # type: ignore
+    elif dim == 3:
+        return PI_43 * radius ** 3  # type: ignore
+    else:
+        raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
 
 class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals]
