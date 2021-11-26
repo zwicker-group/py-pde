@@ -465,7 +465,7 @@ class PDEBase(metaclass=ABCMeta):
         state: FieldBase,
         t_range: "TRangeType",
         dt: float = None,
-        tracker: TrackerCollectionDataType = ("progress", "consistency"),
+        tracker: TrackerCollectionDataType = "auto",
         method: Union[str, "SolverBase"] = "auto",
         ret_info: bool = False,
         **kwargs,
@@ -499,12 +499,12 @@ class PDEBase(metaclass=ABCMeta):
                 :class:`~pde.trackers.base.TrackerBase` or a string, which identifies a
                 tracker. All possible identifiers can be obtained by calling
                 :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be
-                specified as a list. The default value is `['progress', 'consistency']`,
-                which displays a progress bar and checks the state for consistency,
-                aborting the simulation when not-a-number values appear. More general
-                trackers are defined in :mod:`~pde.trackers`, where all options are
-                explained in detail. In particular, the interval at which the tracker is
-                evaluated can be chosen when creating a tracker object explicitly.
+                specified as a list. The default value `auto` checks the state for
+                consistency (tracker 'consistency') and displays a progress bar (tracker
+                'progress') when :mod:`tqdm` is installed. More general trackers are
+                defined in :mod:`~pde.trackers`, where all options are explained in
+                detail. In particular, the interval at which the tracker is evaluated
+                can be chosen when creating a tracker object explicitly.
             method (:class:`~pde.solvers.base.SolverBase` or str):
                 Specifies a method for solving the differential equation. This can
                 either be an instance of :class:`~pde.solvers.base.SolverBase` or a

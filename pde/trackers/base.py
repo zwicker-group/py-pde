@@ -12,6 +12,7 @@ import numpy as np
 
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
+from ..tools.misc import module_available
 from .intervals import IntervalData, get_interval
 
 InfoDict = Optional[Dict[str, Any]]
@@ -43,6 +44,7 @@ class TrackerBase(metaclass=ABCMeta):
         """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
         if hasattr(cls, "name"):
+            assert cls.name != "auto"
             cls._subclasses[cls.name] = cls
 
     @classmethod
@@ -155,6 +157,12 @@ class TrackerCollection:
             :class:`TrackerCollection`:
             An instance representing the tracker collection
         """
+        if data == "auto":
+            if module_available("tqdm"):
+                data = ("progress", "consistency")
+            else:
+                data = "consistency"
+
         if data is None:
             trackers: List[TrackerBase] = []
         elif isinstance(data, TrackerCollection):
