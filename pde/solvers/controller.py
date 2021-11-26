@@ -39,7 +39,7 @@ class Controller:
         self,
         solver: SolverBase,
         t_range: TRangeType,
-        tracker: TrackerCollectionDataType = ("progress", "consistency"),
+        tracker: TrackerCollectionDataType = "auto",
     ):
         """
         Args:
@@ -49,12 +49,17 @@ class Controller:
                 Sets the time range for which the simulation is run. If only a single
                 value `t_end` is given, the time range is assumed to be `[0, t_end]`.
             tracker:
-                Defines trackers that process the state of the simulation at fixed time
-                intervals. Multiple trackers can be specified as a list. The default
-                value 'auto' is converted to `['progress', 'consistency']` for normal
-                simulations. This thus displays a progress bar and checks the state for
-                consistency, aborting the simulation when not-a-number values appear. To
-                disable trackers, set the value to `None`.
+                Defines a tracker that process the state of the simulation at specified
+                time intervals. A tracker is either an instance of
+                :class:`~pde.trackers.base.TrackerBase` or a string, which identifies a
+                tracker. All possible identifiers can be obtained by calling
+                :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be
+                specified as a list. The default value `auto` checks the state for
+                consistency (tracker 'consistency') and displays a progress bar (tracker
+                'progress') when :mod:`tqdm` is installed. More general trackers are
+                defined in :mod:`~pde.trackers`, where all options are explained in
+                detail. In particular, the interval at which the tracker is evaluated
+                can be chosen when creating a tracker object explicitly.
         """
         self.solver = solver
         self.t_range = t_range  # type: ignore
