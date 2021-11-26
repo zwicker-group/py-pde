@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
-sys.path.append(str(PACKAGE_PATH))
+sys.path.insert(0, str(PACKAGE_PATH))
 
 import numba as nb
 import numpy as np
@@ -28,7 +28,7 @@ def custom_laplace_2d_periodic(shape, dx=1):
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel)
-    def laplace(arr, out=None):
+    def laplace(arr, out=None, args=None):
         """apply laplace operator to array `arr`"""
         for i in nb.prange(dim_x):
             im = dim_x - 1 if i == 0 else i - 1
@@ -63,7 +63,7 @@ def custom_laplace_2d_neumann(shape, dx=1):
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel)
-    def laplace(arr, out=None):
+    def laplace(arr, out=None, args=None):
         """apply laplace operator to array `arr`"""
         for i in nb.prange(dim_x):
             im = 0 if i == 0 else i - 1
@@ -101,7 +101,7 @@ def flexible_laplace_2d(bcs):
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
     @jit_allocate_out(parallel=parallel)
-    def laplace(arr, out=None):
+    def laplace(arr, out=None, args=None):
         """apply laplace operator to array `arr`"""
         for i in nb.prange(dim_x):
             for j in range(dim_y):

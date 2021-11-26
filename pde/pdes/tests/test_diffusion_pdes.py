@@ -3,8 +3,9 @@
 """
 
 import numpy as np
+import pytest
 
-from pde import CartesianGrid, DiffusionPDE, ScalarField, UnitGrid
+from pde import CartesianGrid, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
 
 
 def test_diffusion_single():
@@ -83,3 +84,17 @@ def test_diffusion_cached():
     np.testing.assert_allclose(c1a.data, c2a.data)
     assert not np.allclose(c1b.data, c2b.data)
     np.testing.assert_allclose(c1b.data, c2c.data)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_diffusion_time_dependent_bcs(backend):
+    """test PDE with time-dependent BCs"""
+    field = ScalarField(UnitGrid([3]))
+
+    eq = DiffusionPDE(bc={"value_expression": "Heaviside(t - 1.5)"})
+
+    storage = MemoryStorage()
+    eq.solve(field, t_range=10, dt=1e-2, backend=backend, tracker=storage.tracker(1))
+
+    np.testing.assert_allclose(storage[1].data, 0)
+    np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)

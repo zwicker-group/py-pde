@@ -8,6 +8,7 @@ import pytest
 from pde import CartesianGrid, ScalarField, UnitGrid
 from pde.grids.boundaries.local import (
     BCBase,
+    BCDataError,
     _get_arr_1d,
     registered_boundary_condition_classes,
     registered_boundary_condition_names,
@@ -281,7 +282,7 @@ def test_inhomogeneous_bcs_2d():
 
 @pytest.mark.parametrize("expr", ["1", "x + y**2"])
 def test_expression_bc_setting(expr):
-    """test the boundary conditions that calculate the virtual point directly"""
+    """test boundary conditions that use an expression"""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
     bc1 = grid.get_boundary_conditions({"value": expr})
     bc2 = grid.get_boundary_conditions({"virtual_point": f"2 * ({expr}) - value"})
@@ -305,7 +306,7 @@ def test_expression_bc_setting(expr):
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_operator(dim):
-    """test the boundary conditions that calculate the virtual point directly"""
+    """test boundary conditions that use an expression in an operator"""
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"value": 1})
     bc2 = grid.get_boundary_conditions({"virtual_point": f"2 - value"})
@@ -320,7 +321,7 @@ def test_expression_bc_operator(dim):
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_value(dim):
-    """test the boundary conditions that calculate the virtual point directly"""
+    """test boundary conditions that use an expression to calculate the value"""
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"value": 1})
     bc2 = grid.get_boundary_conditions({"value_expression": "1"})
@@ -335,7 +336,7 @@ def test_expression_bc_value(dim):
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_derivative(dim):
-    """test the boundary conditions that calculate the virtual point directly"""
+    """test boundary conditions that use an expression to calculate the derivative"""
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"derivative": 0})
     bc2 = grid.get_boundary_conditions({"derivative_expression": "0"})
@@ -346,6 +347,13 @@ def test_expression_bc_derivative(dim):
     np.testing.assert_allclose(result.data, 0.0)
     result = field.laplace(bc2)
     np.testing.assert_allclose(result.data, 0.0)
+
+
+def test_expression_invalid_args():
+    """test boundary conditions use an expression with invalid data"""
+    grid = CartesianGrid([[0, 1]], 4)
+    with pytest.raises(BCDataError):
+        grid.get_boundary_conditions({"derivative_expression": "heaviside(x)"})
 
 
 def test_getting_registered_bcs():

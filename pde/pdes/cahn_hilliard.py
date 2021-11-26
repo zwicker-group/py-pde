@@ -77,9 +77,9 @@ class CahnHilliardPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField), "`state` must be ScalarField"
-        c_laplace = state.laplace(bc=self.bc_c, label="evolution rate")
+        c_laplace = state.laplace(bc=self.bc_c, label="evolution rate", args={"t": t})
         result = state ** 3 - state - self.interface_width * c_laplace
-        return result.laplace(bc=self.bc_mu)  # type: ignore
+        return result.laplace(bc=self.bc_mu, args={"t": t})  # type: ignore
 
     def _make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
@@ -106,7 +106,11 @@ class CahnHilliardPDE(PDEBase):
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
             """compiled helper function evaluating right hand side"""
-            mu = state_data ** 3 - state_data - interface_width * laplace_c(state_data)
-            return laplace_mu(mu)
+            mu = (
+                state_data ** 3
+                - state_data
+                - interface_width * laplace_c(state_data, args={"t": t})
+            )
+            return laplace_mu(mu, args={"t": t})
 
         return pde_rhs  # type: ignore

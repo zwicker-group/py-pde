@@ -661,8 +661,20 @@ class ExpressionBC(BCBase):
         # parse this expression
         from pde.tools.expressions import ScalarExpression
 
-        signature = ["value", "dx"] + grid.axes
+        signature = ["value", "dx"] + grid.axes + ["t"]
         self._expr = ScalarExpression(expression, signature=signature)
+
+        # quickly check whether the expression was parsed correctly
+        test_value = np.zeros((self.grid.dim,) * self.rank)
+        dx = self.grid.discretization[self.axis]
+        coords = tuple(bounds[0] for bounds in grid.axes_bounds)
+        try:
+            self._expr(test_value, dx, *coords, t=0)
+        except Exception as err:
+            raise BCDataError(
+                f"Could not evaluate BC expression `{expression}` with signature "
+                f"{signature}.\nEncountered error: {err}"
+            )
 
     def _repr_value(self):
         return [f'value="{self._expr.expression}"']
@@ -743,8 +755,18 @@ class ExpressionBC(BCBase):
         coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
         coords = np.moveaxis(coords, -1, 0)  # point coordinates to first axis
 
+        if args is None:
+            if self._expr.depends_on("t"):
+                raise RuntimeError(
+                    "Require value for `t` for time-dependent BC. The value must be "
+                    "passed explicitly via `args` when calling a differential operator."
+                )
+            t = 0.0
+        else:
+            t = float(args["t"])
+
         # calculate the virtual points
-        data_full[tuple(idx_write)] = self._expr(values, dx, *coords)
+        data_full[tuple(idx_write)] = self._expr(values, dx, *coords, t)
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
@@ -757,24 +779,38 @@ class ExpressionBC(BCBase):
         """
         dx = self.grid.discretization[self.axis]
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
+        time_dependent = self._expr.depends_on("t")
         bc_coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
         bc_coords = np.moveaxis(bc_coords, -1, 0)  # point coordinates to first axis
         func = self._expr.get_compiled()
         dim = self.grid.dim
         assert dim <= 3
 
-        @register_jitable(inline="always")
+        @register_jitable
         def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
             """evaluate the virtual point at `idx`"""
             _, _, bc_idx = get_arr_1d(arr, idx)
             grid_value = arr[idx]
             coords = bc_coords[bc_idx]
+
+            # extract time for handling time-dependent BCs
+            if args is None:
+                if time_dependent:
+                    raise RuntimeError(
+                        "Require value for `t` for time-dependent BC. The value must "
+                        "be passed explicitly via `args` when calling a differential "
+                        "operator."
+                    )
+                t = 0.0
+            else:
+                t = float(args["t"])
+
             if dim == 1:
-                return func(grid_value, dx, coords[0])  # type: ignore
+                return func(grid_value, dx, coords[0], t)  # type: ignore
             elif dim == 2:
-                return func(grid_value, dx, coords[0], coords[1])  # type: ignore
+                return func(grid_value, dx, coords[0], coords[1], t)  # type: ignore
             elif dim == 3:
-                return func(grid_value, dx, coords[0], coords[1], coords[2])  # type: ignore
+                return func(grid_value, dx, coords[0], coords[1], coords[2], t)  # type: ignore
             else:
                 return np.nan  #  cheap way to signal a problem
 

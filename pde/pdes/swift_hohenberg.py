@@ -91,8 +91,8 @@ class SwiftHohenbergPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField), "`state` must be ScalarField"
-        state_laplace = state.laplace(bc=self.bc)
-        state_laplace2 = state_laplace.laplace(bc=self.bc_lap)
+        state_laplace = state.laplace(bc=self.bc, args={"t": t})
+        state_laplace2 = state_laplace.laplace(bc=self.bc_lap, args={"t": t})
 
         result = (
             (self.rate - self.kc2 ** 2) * state
@@ -132,8 +132,8 @@ class SwiftHohenbergPDE(PDEBase):
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
             """compiled helper function evaluating right hand side"""
-            state_laplace = laplace(state_data)
-            state_laplace2 = laplace2(state_laplace)
+            state_laplace = laplace(state_data, args={"t": t})
+            state_laplace2 = laplace2(state_laplace, args={"t": t})
 
             return (
                 (rate - kc2 ** 2) * state_data

@@ -68,7 +68,7 @@ class AllenCahnPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField), "`state` must be ScalarField"
-        laplace = state.laplace(bc=self.bc, label="evolution rate")
+        laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
         return self.interface_width * laplace - state ** 3 + state  # type: ignore
 
     def _make_pde_rhs_numba(  # type: ignore
@@ -95,6 +95,10 @@ class AllenCahnPDE(PDEBase):
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float) -> np.ndarray:
             """compiled helper function evaluating right hand side"""
-            return interface_width * laplace(state_data) - state_data ** 3 + state_data  # type: ignore
+            return (  # type: ignore
+                interface_width * laplace(state_data, args={"t": t})
+                - state_data ** 3
+                + state_data
+            )
 
         return pde_rhs  # type: ignore

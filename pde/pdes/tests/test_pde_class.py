@@ -5,7 +5,8 @@
 import numpy as np
 import pytest
 
-from pde import PDE, FieldCollection, ScalarField, SwiftHohenbergPDE, VectorField, grids
+from pde import PDE, MemoryStorage, SwiftHohenbergPDE, grids
+from pde.fields import FieldCollection, ScalarField, VectorField
 from pde.grids.boundaries.local import BCDataError
 
 
@@ -299,3 +300,17 @@ def test_pde_bcs_error(bc):
     for backend in ["numpy", "numba"]:
         with pytest.raises(BCDataError):
             eq.solve(field, t_range=1, dt=0.01, backend=backend, tracker=None)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_pde_time_dependent_bcs(backend):
+    """test PDE with time-dependent BCs"""
+    field = ScalarField(grids.UnitGrid([3]))
+
+    eq = PDE({"c": "laplace(c)"}, bc={"value_expression": "Heaviside(t - 1.5)"})
+
+    storage = MemoryStorage()
+    eq.solve(field, t_range=10, dt=1e-2, backend=backend, tracker=storage.tracker(1))
+
+    np.testing.assert_allclose(storage[1].data, 0)
+    np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)

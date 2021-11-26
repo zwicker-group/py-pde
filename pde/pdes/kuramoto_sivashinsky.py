@@ -84,11 +84,11 @@ class KuramotoSivashinskyPDE(PDEBase):
             Scalar field describing the evolution rate of the PDE
         """
         assert isinstance(state, ScalarField), "`state` must be ScalarField"
-        state_lap = state.laplace(bc=self.bc)
+        state_lap = state.laplace(bc=self.bc, args={"t": t})
         result = (
-            -self.nu * state_lap.laplace(bc=self.bc_lap)
+            -self.nu * state_lap.laplace(bc=self.bc_lap, args={"t": t})
             - state_lap
-            - 0.5 * state.gradient_squared(bc=self.bc)
+            - 0.5 * state.gradient_squared(bc=self.bc, args={"t": t})
         )
         result.label = "evolution rate"
         return result  # type: ignore
@@ -119,9 +119,9 @@ class KuramotoSivashinskyPDE(PDEBase):
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
             """compiled helper function evaluating right hand side"""
-            result = -laplace(state_data)
-            result += nu_value * laplace2(result)
-            result -= 0.5 * gradient_sq(state_data)
+            result = -laplace(state_data, args={"t": t})
+            result += nu_value * laplace2(result, args={"t": t})
+            result -= 0.5 * gradient_sq(state_data, args={"t": t})
             return result
 
         return pde_rhs  # type: ignore

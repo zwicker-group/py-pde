@@ -218,13 +218,25 @@ class Boundaries(list):
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells on a full array"""
-        # get the setters for all axes
-        ghost_cell_setters = [b.make_ghost_cell_setter() for b in self]
+        ghost_cell_setters = tuple(b.make_ghost_cell_setter() for b in self)
+
+        # TODO: use numba.literal_unroll
+        # # get the setters for all axes
+        #
+        # from pde.tools.numba import jit
+        #
+        # @jit
+        # def set_ghost_cells(data_full: np.ndarray, args=None) -> None:
+        #     for f in nb.literal_unroll(ghost_cell_setters):
+        #         f(data_full, args=args)
+        #
+        # return set_ghost_cells
 
         def chain(
             fs: Sequence[GhostCellSetter], inner: GhostCellSetter = None
         ) -> GhostCellSetter:
             """helper function composing setters of all axes recursively"""
+
             first, rest = fs[0], fs[1:]
 
             if inner is None:
