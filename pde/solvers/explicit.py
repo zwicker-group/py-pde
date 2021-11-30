@@ -28,7 +28,7 @@ class ExplicitSolver(SolverBase):
         scheme: str = "euler",
         backend: str = "auto",
         adaptive: bool = False,
-        tolerance: float = 1e-3,
+        tolerance: float = 1e-4,
     ):
         """
         Args:
