@@ -31,7 +31,7 @@ else:
     )
 
 
-def time_function(func, arg, repeat=1, use_out=False):
+def time_function(func, arg, repeat=3, use_out=False):
     """estimates the computation speed of a function
 
     Args:
@@ -98,10 +98,10 @@ def plot_performance(performance_data, title=None):
     plt.figure(figsize=[4, 3])
 
     PLOT_DATA = [
-        {"key": "scipy", "label": "scipy", "fmt": "C1.-"},
-        {"key": "opencv", "label": "opencv", "fmt": "C2.-"},
-        {"key": "numba", "label": "py-pde", "fmt": "C3.-"},
-        {"key": "numba_no_bc", "label": "py-pde (no BCs)", "fmt": "C3:"},
+        {"key": "scipy", "label": "scipy", "fmt": "C0.-"},
+        {"key": "opencv", "label": "opencv", "fmt": "C1.-"},
+        {"key": "numba", "label": "py-pde", "fmt": "C2.-"},
+        {"key": "numba_no_bc", "label": "py-pde (no BCs)", "fmt": "C2:"},
     ]
 
     sizes = np.array(sorted(performance_data.keys()))
