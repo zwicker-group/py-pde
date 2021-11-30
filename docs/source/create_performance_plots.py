@@ -16,7 +16,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pde import UnitGrid
+from pde import UnitGrid, ScalarField
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.output import display_progress
 
@@ -31,19 +31,25 @@ else:
     )
 
 
-def time_function(func, arg, repeat=3):
+def time_function(func, arg, repeat=1, use_out=False):
     """estimates the computation speed of a function
 
     Args:
         func (callable): The function to test
         arg: The single argument on which the function will be estimate
         repeat (int): How often the function is tested
+        use_out (bool): Whether to supply the `out` argument to the function
 
     Returns:
         float: Estimated duration of calling the function a single time
     """
-    number = int(estimate_computation_speed(func, arg))
-    func = functools.partial(func, arg)
+    if use_out:
+        out = np.empty(tuple(s - 2 for s in arg.shape))
+        number = int(estimate_computation_speed(func, arg, out))
+        func = functools.partial(func, arg, out)
+    else:
+        number = int(estimate_computation_speed(func, arg))
+        func = functools.partial(func, arg)
     return min(timeit.repeat(func, number=number, repeat=repeat)) / number
 
 
@@ -63,14 +69,18 @@ def get_performance_data(periodic=False):
     for size in display_progress(sizes):
         data = {}
         grid = UnitGrid([size] * 2, periodic=periodic)
-        test_data = np.random.randn(*grid.shape)
+        field = ScalarField.random_normal(grid)
+        field.set_ghost_cells(bc="natural")
 
         for backend in ["numba", "scipy"]:
             op = grid.make_operator("laplace", bc="natural", backend=backend)
-            data[backend] = time_function(op, test_data)
+            data[backend] = time_function(op, field.data)
+
+        op = grid.make_operator_no_bc("laplace", backend="numba")
+        data["numba_no_bc"] = time_function(op, field._data_full, use_out=True)
 
         if opencv_laplace:
-            data["opencv"] = time_function(opencv_laplace, test_data)
+            data["opencv"] = time_function(opencv_laplace, field.data)
 
         statistics[int(size)] = data
 
@@ -87,15 +97,19 @@ def plot_performance(performance_data, title=None):
     """
     plt.figure(figsize=[4, 3])
 
-    METHOD_LABELS = {"numba": "py-pde"}
+    PLOT_DATA = [
+        {"key": "scipy", "label": "scipy", "fmt": "C1.-"},
+        {"key": "opencv", "label": "opencv", "fmt": "C2.-"},
+        {"key": "numba", "label": "py-pde", "fmt": "C3.-"},
+        {"key": "numba_no_bc", "label": "py-pde (no BCs)", "fmt": "C3:"},
+    ]
 
     sizes = np.array(sorted(performance_data.keys()))
     grid_sizes = sizes ** 2
-    methods = sorted(performance_data[sizes[0]].keys(), reverse=True)
 
-    for method in methods:
-        data = np.array([performance_data[size][method] for size in sizes])
-        plt.loglog(grid_sizes, data, ".-", label=METHOD_LABELS.get(method, method))
+    for plot in PLOT_DATA:
+        data = np.array([performance_data[size][plot["key"]] for size in sizes])
+        plt.loglog(grid_sizes, data, plot["fmt"], label=plot["label"])
 
     plt.xlim(grid_sizes[0], grid_sizes[-1])
     plt.xlabel("Number of grid points")

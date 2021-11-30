@@ -672,7 +672,9 @@ class GridBase(metaclass=ABCMeta):
                 Specifies extra arguments influencing how the operator is created.
 
         Returns:
-            callable: the function that applies the operator
+            callable: the function that applies the operator. This function has the
+            signature (arr: np.ndarray, out: np.ndarray), so they `out` array need to be
+            supplied explicitly.
         """
         return self._get_operator_info(operator).factory(self, **kwargs)
 
