@@ -17,10 +17,12 @@ Tools for plotting and controlling plot output using context managers
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
 
 import contextlib
 import functools
 import logging
+import sys
 import warnings
 from typing import Type  # @UnusedImport
 from typing import TYPE_CHECKING, Any, Dict, Generator
@@ -35,7 +37,7 @@ if TYPE_CHECKING:
 
 
 def add_scaled_colorbar(
-    axes_image: "matplotlib.cm.ScalarMappable",
+    axes_image: matplotlib.cm.ScalarMappable,
     ax=None,
     aspect: float = 20,
     pad_fraction: float = 0.5,
@@ -759,37 +761,54 @@ def get_plotting_context(
         raise RuntimeError(f"Unknown plotting context `{context}`")
 
 
+def in_ipython() -> bool:
+    """try to detect whether we are in an ipython shell, e.g., a jupyter notebook"""
+    ipy_module = sys.modules.get("IPython")
+    if ipy_module:
+        return bool(ipy_module.get_ipython())  # type: ignore
+    else:
+        return False
+
+
 @contextlib.contextmanager
 def napari_viewer(
-    grid: "GridBase", close=False, **kwargs
-) -> Generator["napari.viewer.Viewer", None, None]:
+    grid: GridBase, run: bool = None, close: bool = False, **kwargs
+) -> Generator[napari.viewer.Viewer, None, None]:
     """creates an napari viewer for interactive plotting
 
     Args:
-        grid (:class:`pde.grids.base.GridBase`): The grid defining the space
-        close (bool): Whether to close the viewer immediately (e.g. for testing)
-        **kwargs: Extra arguments are passed to :class:`napari.Viewer`
+        grid (:class:`pde.grids.base.GridBase`):
+            The grid defining the space
+        run (bool):
+            Whether to run the event loop of napari.
+        close (bool):
+            Whether to close the viewer immediately (e.g. for testing)
+        **kwargs:
+            Extra arguments are passed to :class:`napari.Viewer`
     """
     import napari  # @Reimport
 
-    # parse and set viewer arguments
+    # initialize the viewer
     kwargs.setdefault("axis_labels", grid.axes)
     kwargs.setdefault("ndisplay", 3 if grid.num_axes >= 3 else 2)
+    viewer = napari.Viewer(**kwargs)
 
-    with napari.gui_qt() as app:  # create Qt GUI context
-        viewer = napari.Viewer(**kwargs)
+    # allow the calling code to add content to the viewer
+    yield viewer
 
-        yield viewer
+    # start the napari's event loop if requested or if we're not in ipython
+    if run is None:
+        run = not in_ipython()
+    if run:
+        napari.run()
 
-        if close:
-            from qtpy.QtCore import QTimer
-
-            viewer.close()
-            QTimer().singleShot(100, app.quit)
+    # close the viewer if requested
+    if close:
+        viewer.close()
 
 
 def napari_add_layers(
-    viewer: "napari.viewer.Viewer", layers_data: Dict[str, Dict[str, Any]]
+    viewer: napari.viewer.Viewer, layers_data: Dict[str, Dict[str, Any]]
 ):
     """adds layers to a `napari <http://napari.org/>`__ viewer
 
