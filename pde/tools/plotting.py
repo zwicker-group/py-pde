@@ -804,7 +804,8 @@ def napari_viewer(
 
     # close the viewer if requested
     if close:
-        viewer.close()
+        warnings.warn("Closing napari does not work reliably and is thus disabled")
+        # viewer.close()
 
 
 def napari_add_layers(
