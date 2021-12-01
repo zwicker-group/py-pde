@@ -16,7 +16,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pde import UnitGrid, ScalarField
+from pde import ScalarField, UnitGrid
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.output import display_progress
 

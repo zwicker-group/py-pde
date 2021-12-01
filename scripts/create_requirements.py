@@ -78,7 +78,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="napari",
-        version="0.4",
+        version="0.4.8",
         usage="Displaying images interactively",
         optional=True,
     ),
