@@ -48,7 +48,7 @@ class SmoothData1D:
 
     def __contains__(self, x: float) -> bool:
         """checks whether the value `x` is contain in the range of x-values"""
-        return self.x.min() <= x <= self.x.max()
+        return self.x.min() <= x <= self.x.max()  # type: ignore
 
     def __call__(self, xs):
         """return smoothed y values for the positions given in `xs`

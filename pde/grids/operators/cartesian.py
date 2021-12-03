@@ -253,6 +253,74 @@ def _make_derivative(
     return diff  # type: ignore
 
 
+def _make_derivative2(grid: CartesianGridBase, axis: int = 0) -> OperatorType:
+    """make a second-order derivative operator along a single axis
+
+    Args:
+        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+            The grid for which the operator is created
+        axis (int):
+            The axis along which the derivative will be taken
+
+    Returns:
+        A function that can be applied to an full array of values including those at
+        ghost cells. The result will be an array of the same shape containing the actual
+        derivatives at the valid (interior) grid points.
+    """
+    shape = grid.shape
+    dim = len(shape)
+    scale = 1 / grid.discretization[axis] ** 2
+
+    if axis == 0:
+        di, dj, dk = 1, 0, 0
+    elif axis == 1:
+        di, dj, dk = 0, 1, 0
+    elif axis == 2:
+        di, dj, dk = 0, 0, 1
+    else:
+        raise NotImplementedError(f"Derivative for {axis:d} dimensions")
+
+    if dim == 1:
+
+        @jit
+        def diff(arr: np.ndarray, out: np.ndarray) -> None:
+            """calculate derivative of 1d array `arr`"""
+            for i in range(1, shape[0] + 1):
+                out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * scale
+
+    elif dim == 2:
+
+        @jit
+        def diff(arr: np.ndarray, out: np.ndarray) -> None:
+            """calculate derivative of 2d array `arr`"""
+            for i in range(1, shape[0] + 1):
+                for j in range(1, shape[1] + 1):
+                    arr_l = arr[i - di, j - dj]
+                    arr_r = arr[i + di, j + dj]
+                    out[i - 1, j - 1] = (arr_r - 2 * arr[i, j] + arr_l) * scale
+
+    elif dim == 3:
+
+        @jit
+        def diff(arr: np.ndarray, out: np.ndarray) -> None:
+            """calculate derivative of 3d array `arr`"""
+            for i in range(1, shape[0] + 1):
+                for j in range(1, shape[1] + 1):
+                    for k in range(1, shape[2] + 1):
+                        arr_l = arr[i - di, j - dj, k - dk]
+                        arr_r = arr[i + di, j + dj, k + dk]
+                        out[i - 1, j - 1, k - 1] = (
+                            arr_r - 2 * arr[i, j, k] + arr_l
+                        ) * scale
+
+    else:
+        raise NotImplementedError(
+            f"Numba derivative operator not implemented for {dim:d} dimensions"
+        )
+
+    return diff  # type: ignore
+
+
 def _make_laplace_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     """make a laplace operator using the scipy module
 
