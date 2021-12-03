@@ -23,11 +23,13 @@ class SmoothData1D:
         """initialize with data
 
         Args:
-            x: List of x values
-            y: List of y values
-            sigma (float): The size of the smoothing window using units of `x`.
-                If it is not given, the average distance of x values multiplied
-                by `sigma_auto_scale` is used.
+            x:
+                List of x values
+            y:
+                List of y values
+            sigma (float):
+                The size of the smoothing window in units of `x`. If omitted, the
+                average distance of x values multiplied by `sigma_auto_scale` is used.
         """
         self.x = np.ravel(x)
         self.y = np.ravel(y)
@@ -43,6 +45,10 @@ class SmoothData1D:
     def bounds(self) -> Tuple[float, float]:
         """return minimal and maximal `x` values"""
         return float(self.x.min()), float(self.x.max())
+
+    def __contains__(self, x: float) -> bool:
+        """checks whether the value `x` is contain in the range of x-values"""
+        return self.x.min() <= x <= self.x.max()
 
     def __call__(self, xs):
         """return smoothed y values for the positions given in `xs`

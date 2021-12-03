@@ -21,3 +21,9 @@ def test_SmoothData1D():
 
     s = SmoothData1D(x, np.sin(x))
     np.testing.assert_allclose(s(xs), np.sin(xs), atol=0.1)
+
+    assert -0.1 not in s
+    assert x.min() in s
+    assert 0.5 in s
+    assert x.max() in s
+    assert 1.1 not in s
