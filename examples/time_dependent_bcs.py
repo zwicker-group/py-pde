@@ -1,8 +1,9 @@
 """
-Simple diffusion equation
-=========================
+Time-dependent boundary conditions
+==================================
 
-This example solves a simple diffusion equation in two dimensions.
+This example solves a simple diffusion equation in one dimensions with time-dependent
+boundary conditions.
 """
 
 from pde import PDE, CartesianGrid, MemoryStorage, ScalarField, plot_kymograph
