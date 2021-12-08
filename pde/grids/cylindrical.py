@@ -460,7 +460,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
 
     @fill_in_docstring
     def get_boundary_conditions(
-        self, bc: "BoundariesData" = "natural", rank: int = 0
+        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
     ) -> "Boundaries":
         """constructs boundary conditions from a flexible data format
 

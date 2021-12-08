@@ -33,8 +33,8 @@ def test_boundaries():
         assert bcs == bc2
         assert bcs is not bc2
 
-    b1 = Boundaries.from_data(UnitGrid([2, 2]), "natural")
-    b2 = Boundaries.from_data(UnitGrid([3, 3]), "natural")
+    b1 = Boundaries.from_data(UnitGrid([2, 2]), "auto_periodic_neumann")
+    b2 = Boundaries.from_data(UnitGrid([3, 3]), "auto_periodic_neumann")
     assert b1 != b2
 
 
@@ -61,7 +61,7 @@ def test_mixed_boundary_condition():
 @pytest.mark.parametrize(
     "cond,is_value",
     [
-        ("natural", False),
+        ("auto_periodic_neumann", False),
         ("auto_periodic_neumann", False),
         ("auto_periodic_dirichlet", True),
     ],
@@ -101,7 +101,7 @@ def test_set_ghost_cells(dim, periodic):
     """test setting values for ghost cells"""
     grid = UnitGrid([1] * dim, periodic=periodic)
     field = ScalarField.random_uniform(grid)
-    bcs = grid.get_boundary_conditions("natural")
+    bcs = grid.get_boundary_conditions("auto_periodic_neumann")
 
     arr1 = field._data_full.copy()
     bcs.set_ghost_cells(arr1)

@@ -18,7 +18,7 @@ def test_laplacian_field_cyl():
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     s = ScalarField(grid, data=np.cos(r) + np.sin(z))
-    s_lap = s.laplace(bc="natural")
+    s_lap = s.laplace(bc="auto_periodic_neumann")
     assert s_lap.data.shape == (8, 16)
     res = -np.cos(r) - np.sin(r) / r - np.sin(z)
     np.testing.assert_allclose(s_lap.data, res, rtol=0.1, atol=0.1)
@@ -29,7 +29,7 @@ def test_gradient_field_cyl():
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     s = ScalarField(grid, data=np.cos(r) + np.sin(z))
-    v = s.gradient(bc="natural")
+    v = s.gradient(bc="auto_periodic_neumann")
     assert v.data.shape == (3, 8, 16)
     np.testing.assert_allclose(v.data[0], -np.sin(r), rtol=0.1, atol=0.1)
     np.testing.assert_allclose(v.data[1], np.cos(z), rtol=0.1, atol=0.1)
@@ -40,7 +40,7 @@ def test_divergence_field_cyl():
     """test the divergence operator"""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [16, 32], periodic_z=True)
     v = VectorField.from_expression(grid, ["cos(r) + sin(z)**2", "z * cos(r)**2", 0])
-    s = v.divergence(bc="natural")
+    s = v.divergence(bc="auto_periodic_neumann")
     assert s.data.shape == grid.shape
     res = ScalarField.from_expression(
         grid, "cos(r)**2 - sin(r) + (cos(r) + sin(z)**2) / r"
@@ -56,9 +56,9 @@ def test_vector_gradient_divergence_field_cyl():
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(r) + np.sin(z) ** 2, np.cos(r) ** 2 + np.sin(z), np.zeros_like(r)]
     v = VectorField(grid, data=data)
-    t = v.gradient(bc="natural")
+    t = v.gradient(bc="auto_periodic_neumann")
     assert t.data.shape == (3, 3, 8, 16)
-    v = t.divergence(bc="natural")
+    v = t.divergence(bc="auto_periodic_neumann")
     assert v.data.shape == (3, 8, 16)
 
 
@@ -88,8 +88,8 @@ def test_grid_laplace():
     a_2d = ScalarField.from_expression(grid_cyl, expression="exp(-5 * r) * cos(z / 3)")
     a_3d = a_2d.interpolate_to_grid(grid_cart)
 
-    b_2d = a_2d.laplace("natural")
-    b_3d = a_3d.laplace("natural")
+    b_2d = a_2d.laplace("auto_periodic_neumann")
+    b_3d = a_3d.laplace("auto_periodic_neumann")
     b_2d_3 = b_2d.interpolate_to_grid(grid_cart)
 
     np.testing.assert_allclose(b_2d_3.data, b_3d.data, rtol=0.2, atol=0.2)
@@ -99,10 +99,10 @@ def test_gradient_squared_cyl():
     """compare gradient squared operator"""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], 64)
     field = ScalarField.random_harmonic(grid, modes=1)
-    s1 = field.gradient("natural").to_scalar("squared_sum")
-    s2 = field.gradient_squared("natural", central=True)
+    s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
+    s2 = field.gradient_squared("auto_periodic_neumann", central=True)
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.2, atol=0.2)
-    s3 = field.gradient_squared("natural", central=False)
+    s3 = field.gradient_squared("auto_periodic_neumann", central=False)
     np.testing.assert_allclose(s1.data, s3.data, rtol=0.2, atol=0.2)
     assert not np.array_equal(s2.data, s3.data)
 

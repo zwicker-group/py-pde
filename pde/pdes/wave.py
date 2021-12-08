@@ -36,7 +36,7 @@ class WavePDE(PDEBase):
     explicit_time_dependence = False
 
     @fill_in_docstring
-    def __init__(self, speed: float = 1, bc: BoundariesData = "natural"):
+    def __init__(self, speed: float = 1, bc: BoundariesData = "auto_periodic_neumann"):
         """
         Args:
             speed (float):

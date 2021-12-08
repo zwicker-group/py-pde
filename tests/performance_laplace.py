@@ -189,8 +189,8 @@ def main():
             grid = UnitGrid(shape, periodic=periodic)
             print(grid)
             field = ScalarField.random_normal(grid)
-            bcs = grid.get_boundary_conditions("natural", rank=0)
-            expected = field.laplace("natural")
+            bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
+            expected = field.laplace("auto_periodic_neumann")
 
             for method in ["CUSTOM", "FLEXIBLE", "OPTIMIZED", "numba", "scipy"]:
                 if method == "CUSTOM":

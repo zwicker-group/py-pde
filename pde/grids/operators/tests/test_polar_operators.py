@@ -41,7 +41,7 @@ def test_conservative_laplace_polar():
     grid = PolarSymGrid(1.5, 8)
     f = ScalarField.random_uniform(grid)
 
-    res = f.laplace("natural")
+    res = f.laplace("auto_periodic_neumann")
     np.testing.assert_allclose(res.integral, 0, atol=1e-12)
 
 
@@ -64,7 +64,10 @@ def test_small_annulus_polar(op_name, field):
 
     f = field.random_uniform(grids[0])
 
-    res = [field(g, data=f.data)._apply_operator(op_name, "natural") for g in grids]
+    res = [
+        field(g, data=f.data)._apply_operator(op_name, "auto_periodic_neumann")
+        for g in grids
+    ]
 
     np.testing.assert_almost_equal(res[0].data, res[1].data, decimal=5)
     assert np.linalg.norm(res[0].data - res[2].data) > 1e-3
@@ -78,8 +81,8 @@ def test_grid_laplace_polar():
     a_1d = ScalarField.from_expression(grid_sph, "cos(r)")
     a_2d = a_1d.interpolate_to_grid(grid_cart)
 
-    b_2d = a_2d.laplace("natural")
-    b_1d = a_1d.laplace("natural")
+    b_2d = a_2d.laplace("auto_periodic_neumann")
+    b_1d = a_1d.laplace("auto_periodic_neumann")
     b_1d_2 = b_1d.interpolate_to_grid(grid_cart)
 
     i = slice(1, -1)  # do not compare boundary points
@@ -91,10 +94,10 @@ def test_gradient_squared_polar(r_inner):
     """compare gradient squared operator"""
     grid = PolarSymGrid((r_inner, 4 * np.pi), 32)
     field = ScalarField.from_expression(grid, "cos(r)")
-    s1 = field.gradient("natural").to_scalar("squared_sum")
-    s2 = field.gradient_squared("natural", central=True)
+    s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
+    s2 = field.gradient_squared("auto_periodic_neumann", central=True)
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.1, atol=0.1)
-    s3 = field.gradient_squared("natural", central=False)
+    s3 = field.gradient_squared("auto_periodic_neumann", central=False)
     np.testing.assert_allclose(s1.data, s3.data, rtol=0.1, atol=0.1)
     assert not np.array_equal(s2.data, s3.data)
 
@@ -116,7 +119,7 @@ def test_grid_div_grad_polar():
 def test_poisson_solver_polar():
     """test the poisson solver on Polar grids"""
     for grid in [PolarSymGrid(4, 8), PolarSymGrid([2, 4], 8)]:
-        for bc_val in ["natural", {"value": 1}]:
+        for bc_val in ["auto_periodic_neumann", {"value": 1}]:
             bcs = grid.get_boundary_conditions(bc_val)
             d = ScalarField.random_uniform(grid)
             d -= d.average  # balance the right hand side

@@ -34,7 +34,7 @@ def test_simple_shapes(example_grid):
     """test simple scalar fields"""
     pf = ScalarField.random_uniform(example_grid)
     np.testing.assert_equal(pf.data.shape, example_grid.shape)
-    pf_lap = pf.laplace("natural")
+    pf_lap = pf.laplace("auto_periodic_neumann")
     np.testing.assert_equal(pf_lap.data.shape, example_grid.shape)
     assert isinstance(pf.integral, float)
 
@@ -89,11 +89,11 @@ def test_laplacian():
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     s = ScalarField.random_harmonic(grid, axis_combination=np.add, modes=1)
 
-    s_lap = s.laplace("natural")
+    s_lap = s.laplace("auto_periodic_neumann")
     assert s_lap.data.shape == (16, 16)
     np.testing.assert_allclose(s_lap.data, -s.data, rtol=0.1, atol=0.1)
 
-    s.laplace("natural", out=s_lap)
+    s.laplace("auto_periodic_neumann", out=s_lap)
     assert s_lap.data.shape == (16, 16)
     np.testing.assert_allclose(s_lap.data, -s.data, rtol=0.1, atol=0.1)
 
@@ -105,12 +105,12 @@ def test_gradient():
     data = np.cos(x) + np.sin(y)
 
     s = ScalarField(grid, data)
-    v = s.gradient("natural")
+    v = s.gradient("auto_periodic_neumann")
     assert v.data.shape == (2, 16, 16)
     np.testing.assert_allclose(v.data[0], -np.sin(x), rtol=0.1, atol=0.1)
     np.testing.assert_allclose(v.data[1], np.cos(y), rtol=0.1, atol=0.1)
 
-    s.gradient("natural", out=v)
+    s.gradient("auto_periodic_neumann", out=v)
     assert v.data.shape == (2, 16, 16)
     np.testing.assert_allclose(v.data[0], -np.sin(x), rtol=0.1, atol=0.1)
     np.testing.assert_allclose(v.data[1], np.cos(y), rtol=0.1, atol=0.1)
@@ -180,7 +180,7 @@ def test_random_harmonic():
     grid = _get_cartesian_grid(2)  # get random Cartesian grid
     x = ScalarField.random_harmonic(grid, modes=1)
     scaling = sum((2 * np.pi / L) ** 2 for L in grid.cuboid.size)
-    y = -x.laplace("natural") / scaling
+    y = -x.laplace("auto_periodic_neumann") / scaling
     np.testing.assert_allclose(x.data, y.data, rtol=1e-2, atol=1e-2)
 
 
@@ -430,7 +430,7 @@ def test_complex_methods():
 def test_complex_operators():
     """test differential operators for complex data type"""
     f = ScalarField(UnitGrid([2, 2]), 1j)
-    assert f.laplace("natural").magnitude == pytest.approx(0)
+    assert f.laplace("auto_periodic_neumann").magnitude == pytest.approx(0)
 
 
 def test_interpolation_after_free():

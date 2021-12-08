@@ -433,7 +433,7 @@ class ExplicitSolver(SolverBase):
         if dt is None:
             dt = 1e-3
             if not self.adaptive:
-                self._logger.warn(
+                self._logger.warning(
                     "Explicit stepper with a fixed time step did not receive any "
                     f"initial value for `dt`. Using dt={dt}, but specifying a value or "
                     "enabling adaptive stepping is advisable."

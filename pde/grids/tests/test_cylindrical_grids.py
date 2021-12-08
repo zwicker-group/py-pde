@@ -60,7 +60,7 @@ def test_cylindrical_to_cartesian():
 def test_setting_domain_cylindrical():
     """test various versions of settings bcs for cylindrical grids"""
     grid = CylindricalSymGrid(1, [0, 1], [2, 2], periodic_z=False)
-    grid.get_boundary_conditions("natural")
+    grid.get_boundary_conditions("auto_periodic_neumann")
     grid.get_boundary_conditions(["derivative", "derivative"])
     with pytest.raises(ValueError):
         grid.get_boundary_conditions(["derivative"])
@@ -70,7 +70,7 @@ def test_setting_domain_cylindrical():
         grid.get_boundary_conditions(["derivative", "periodic"])
 
     grid = CylindricalSymGrid(1, [0, 1], [2, 2], periodic_z=True)
-    grid.get_boundary_conditions("natural")
+    grid.get_boundary_conditions("auto_periodic_neumann")
     grid.get_boundary_conditions(["derivative", "periodic"])
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions(["derivative", "derivative"])
@@ -92,5 +92,5 @@ def test_setting_boundary_conditions():
     grid = CylindricalSymGrid(1, [0, 1], 3)
     b_inner = NeumannBC(grid, 0, upper=False)
 
-    assert grid.get_boundary_conditions("natural")[0].low == b_inner
+    assert grid.get_boundary_conditions("auto_periodic_neumann")[0].low == b_inner
     assert grid.get_boundary_conditions({"value": 2})[0].low != b_inner

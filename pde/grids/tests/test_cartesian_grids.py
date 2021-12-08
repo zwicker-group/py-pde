@@ -326,8 +326,8 @@ def test_setting_boundary_conditions():
     """test setting some boundary conditions"""
     grid = UnitGrid([3, 3], periodic=[True, False])
     for bc in [
-        grid.get_boundary_conditions("natural"),
-        grid.get_boundary_conditions(["natural", "derivative"]),
+        grid.get_boundary_conditions("auto_periodic_neumann"),
+        grid.get_boundary_conditions(["auto_periodic_neumann", "derivative"]),
     ]:
         assert isinstance(bc, Boundaries)
 
@@ -356,7 +356,7 @@ def test_setting_domain_rect():
         grid.get_boundary_conditions(["derivative"] * 3)
 
     grid = UnitGrid([2, 2], periodic=[True, False])
-    grid.get_boundary_conditions("natural")
+    grid.get_boundary_conditions("auto_periodic_neumann")
     grid.get_boundary_conditions(["periodic", "derivative"])
 
     # incompatible conditions

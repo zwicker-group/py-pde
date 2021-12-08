@@ -32,7 +32,9 @@ class AllenCahnPDE(PDEBase):
     interface_width: float
 
     @fill_in_docstring
-    def __init__(self, interface_width: float = 1, bc: BoundariesData = "natural"):
+    def __init__(
+        self, interface_width: float = 1, bc: BoundariesData = "auto_periodic_neumann"
+    ):
         """
         Args:
             interface_width (float):

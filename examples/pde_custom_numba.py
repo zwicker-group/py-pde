@@ -19,7 +19,7 @@ from pde import PDEBase, ScalarField, UnitGrid
 class KuramotoSivashinskyPDE(PDEBase):
     """Implementation of the normalized Kuramoto–Sivashinsky equation"""
 
-    def __init__(self, bc="natural"):
+    def __init__(self, bc="auto_periodic_neumann"):
         self.bc = bc
 
     def evolution_rate(self, state, t=0):
