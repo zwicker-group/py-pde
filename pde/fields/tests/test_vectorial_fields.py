@@ -80,12 +80,12 @@ def test_divergence():
     data = [np.cos(x) + y, np.sin(y) - x]
     v = VectorField(grid, data)
 
-    s1 = v.divergence("natural")
+    s1 = v.divergence("auto_periodic_neumann")
     assert s1.data.shape == (16, 16)
     div = np.cos(y) - np.sin(x)
     np.testing.assert_allclose(s1.data, div, rtol=0.1, atol=0.1)
 
-    v.divergence("natural", out=s1)
+    v.divergence("auto_periodic_neumann", out=s1)
     assert s1.data.shape == (16, 16)
     np.testing.assert_allclose(s1.data, div, rtol=0.1, atol=0.1)
 
@@ -108,7 +108,7 @@ def test_vector_gradient_field():
         t1.data[1:-1, 1:-1], t2.data[1:-1, 1:-1], rtol=0.1, atol=0.1
     )
 
-    v.gradient("natural", out=t1)
+    v.gradient("auto_periodic_neumann", out=t1)
     assert t1.data.shape == (2, 2, 16, 16)
     np.testing.assert_allclose(
         t1.data[1:-1, 1:-1], t2.data[1:-1, 1:-1], rtol=0.1, atol=0.1
@@ -121,7 +121,7 @@ def test_vector_laplace():
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(x) + np.sin(y), np.sin(y) - np.cos(x)]
     v = VectorField(grid, data)
-    vl = v.laplace("natural")
+    vl = v.laplace("auto_periodic_neumann")
     assert vl.data.shape == (2, 16, 16)
     np.testing.assert_allclose(
         vl.data[0, ...], -np.cos(x) - np.sin(y), rtol=0.1, atol=0.1

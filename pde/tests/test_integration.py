@@ -27,7 +27,9 @@ def test_inhomogeneous_bcs():
     # single coordinate
     grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], [32, 2], periodic=[True, False])
     state = ScalarField(grid)
-    pde = DiffusionPDE(bc=["natural", {"type": "value", "value": "sin(x)"}])
+    pde = DiffusionPDE(
+        bc=["auto_periodic_neumann", {"type": "value", "value": "sin(x)"}]
+    )
     sol = pde.solve(state, t_range=1e1, dt=1e-2, tracker=None)
     data = sol.get_line_data(extract="project_x")
     np.testing.assert_almost_equal(

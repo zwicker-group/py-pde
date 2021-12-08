@@ -478,7 +478,7 @@ class GridBase(metaclass=ABCMeta):
 
     @abstractmethod
     def get_boundary_conditions(
-        self, bc: BoundariesData = "natural", rank: int = 0
+        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
     ) -> Boundaries:
         pass
 

@@ -31,7 +31,10 @@ class DiffusionPDE(PDEBase):
 
     @fill_in_docstring
     def __init__(
-        self, diffusivity: float = 1, noise: float = 0, bc: BoundariesData = "natural"
+        self,
+        diffusivity: float = 1,
+        noise: float = 0,
+        bc: BoundariesData = "auto_periodic_neumann",
     ):
         """
         Args:

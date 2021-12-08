@@ -42,7 +42,7 @@ class PDE(PDEBase):
         self,
         rhs: Dict[str, str],
         noise: ArrayLike = 0,
-        bc: BoundariesData = "natural",
+        bc: BoundariesData = "auto_periodic_neumann",
         bc_ops: Dict[str, BoundariesData] = None,
         user_funcs: Dict[str, Any] = None,
         consts: Dict[str, Any] = None,
@@ -163,7 +163,7 @@ class PDE(PDEBase):
             bcs = {"*:*": bc}
         else:
             bcs = dict(bc_ops)
-            if "*:*" in bcs and bc != "natural":
+            if "*:*" in bcs and bc != "auto_periodic_neumann":
                 self._logger.warning("Found default BCs in `bcs` and `bc_ops`")
             bcs["*:*"] = bc  # append default boundary conditions
 
@@ -321,7 +321,7 @@ class PDE(PDEBase):
             """wrapper that inserts the extra arguments and initialized bc_args"""
             bc_args = NumbaDict()  # args for differential operators
             bc_args["t"] = args[-1]  # pass time to differential operators
-            return func_inner(*args, None, bc_args, *extra_args)
+            return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
 
         return rhs_func
 

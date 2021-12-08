@@ -31,8 +31,8 @@ choices for the example above could be
 
 .. code-block:: python
     
-    bc_x = 'periodic'
-    bc_y = ({'value': 2}, {'derivative': -1})
+    bc_x = "periodic"
+    bc_y = ({"value": 2}, {"derivative": -1})
 
 which enforces a value of `2` at the lower side of the y-axis and a derivative
 (in outward normal direction) of `-1` on the upper side. Instead of plain
@@ -43,7 +43,7 @@ the grid. An alternative boundary condition to the example above could thus read
 
 .. code-block:: python
     
-    bc_y = ({'value': 'y**2'}, {'derivative': '-sin(x)'})
+    bc_y = ({"value": "y**2"}, {"derivative": "-sin(x)"})
 
 
 Warning:
@@ -59,8 +59,8 @@ and the derivative of the field) and imposing a second derivative. An example is
 
 .. code-block:: python
     
-    bc_y = ({'type': 'mixed', 'value': 2, 'const': 7},
-            {'curvature': 2})
+    bc_y = ({"type": "mixed", "value": 2, "const": 7},
+            {"curvature": 2})
 
 which enforces the condition :math:`\partial_n c + 2 c = 7` and
 :math:`\partial^2_n c = 2` onto the field :math:`c` on the lower and upper side
@@ -76,16 +76,16 @@ be specified (instead of the list). For instance, the following example
 .. code-block:: python
 
     field = ScalarField(UnitGrid([16, 16], periodic=False))
-    field.laplace(bc={'value': 2})
+    field.laplace(bc={"value": 2})
 
-imposes a value of `2` on all sides of the grid. Finally, the special value
-'natural' imposes periodic boundary conditions for periodic axis and a vanishing
-derivative otherwise. For example, 
+imposes a value of `2` on all sides of the grid. Finally, the special values
+'auto_periodic_neumann' and 'auto_periodic_dirichlet' impose periodic boundary
+conditions for periodic axis and a vanishing derivative or value otherwise. For example, 
 
 .. code-block:: python
 
     field = ScalarField(UnitGrid([16, 16], periodic=[True, False]))
-    field.laplace(bc='natural')
+    field.laplace(bc="auto_periodic_neumann")
     
 enforces periodic boundary conditions on the first axis, while the second one
 has standard Neumann conditions.

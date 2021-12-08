@@ -41,7 +41,7 @@ def test_polar_grid():
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
 
-    a = grid.make_operator("laplace", "natural")(np.random.random(8))
+    a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
@@ -71,7 +71,7 @@ def test_polar_annulus():
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(2.125, 3.875, 8))
 
-    a = grid.make_operator("laplace", "natural")(np.random.random(8))
+    a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
@@ -117,7 +117,7 @@ def test_spherical_grid():
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
 
-    a = grid.make_operator("laplace", "natural")(np.random.random(8))
+    a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
@@ -147,7 +147,7 @@ def test_spherical_annulus():
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(2.125, 3.875, 8))
 
-    a = grid.make_operator("laplace", "natural")(np.random.random(8))
+    a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
@@ -185,7 +185,7 @@ def test_setting_boundary_conditions(grid_class):
     grid = grid_class([0, 1], 3)
     b_inner = NeumannBC(grid, 0, upper=False)
 
-    assert grid.get_boundary_conditions("natural")[0].low == b_inner
+    assert grid.get_boundary_conditions("auto_periodic_neumann")[0].low == b_inner
     assert grid.get_boundary_conditions({"value": 2})[0].low == b_inner
     bcs = grid.get_boundary_conditions(["value", "value"])
     assert bcs[0].low != b_inner

@@ -33,8 +33,8 @@ class CahnHilliardPDE(PDEBase):
     def __init__(
         self,
         interface_width: float = 1,
-        bc_c: BoundariesData = "natural",
-        bc_mu: BoundariesData = "natural",
+        bc_c: BoundariesData = "auto_periodic_neumann",
+        bc_mu: BoundariesData = "auto_periodic_neumann",
     ):
         """
         Args:

@@ -204,9 +204,13 @@ def test_pde_user_funcs():
     eq = PDE({"u": "get_x(gradient(u))"}, user_funcs={"get_x": lambda arr: arr[0]})
     field = ScalarField.random_colored(grids.UnitGrid([32, 32]))
     rhs = eq.evolution_rate(field)
-    np.testing.assert_allclose(rhs.data, field.gradient("natural").data[0])
+    np.testing.assert_allclose(
+        rhs.data, field.gradient("auto_periodic_neumann").data[0]
+    )
     f = eq._make_pde_rhs_numba(field)
-    np.testing.assert_allclose(f(field.data, 0), field.gradient("natural").data[0])
+    np.testing.assert_allclose(
+        f(field.data, 0), field.gradient("auto_periodic_neumann").data[0]
+    )
 
 
 def test_pde_complex():
@@ -274,7 +278,7 @@ def test_pde_consts():
         eq.evolution_rate(field)
 
 
-@pytest.mark.parametrize("bc", ["natural", {"value": 1}])
+@pytest.mark.parametrize("bc", ["auto_periodic_neumann", {"value": 1}])
 def test_pde_bcs(bc):
     """test PDE with boundary conditions"""
     eq = PDE({"u": "laplace(u)"}, bc=bc)

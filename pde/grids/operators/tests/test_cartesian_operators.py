@@ -30,7 +30,7 @@ def _get_random_grid_bcs(ndim: int, dx="random", periodic="random", rank=0):
 
     sizes = [(0, float(s * d)) for s, d in zip(shape, dx)]
     grid = CartesianGrid(sizes, shape, periodic=periodic)
-    return grid.get_boundary_conditions("natural", rank=rank)
+    return grid.get_boundary_conditions("auto_periodic_neumann", rank=rank)
 
 
 @pytest.mark.parametrize("periodic", [True, False])
@@ -42,10 +42,10 @@ def test_singular_dimensions_2d(periodic):
     g2b = UnitGrid([1, dim], periodic=periodic)
 
     field = ScalarField.random_uniform(g1)
-    expected = field.laplace("natural").data
+    expected = field.laplace("auto_periodic_neumann").data
     for g in [g2a, g2b]:
         f = ScalarField(g, data=field.data.reshape(g.shape))
-        res = f.laplace("natural").data.reshape(g1.shape)
+        res = f.laplace("auto_periodic_neumann").data.reshape(g1.shape)
         np.testing.assert_allclose(expected, res)
 
 
@@ -58,10 +58,10 @@ def test_singular_dimensions_3d(periodic):
     g3b = UnitGrid([1, 1, dim], periodic=periodic)
 
     field = ScalarField.random_uniform(g1)
-    expected = field.laplace("natural").data
+    expected = field.laplace("auto_periodic_neumann").data
     for g in [g3a, g3b]:
         f = ScalarField(g, data=field.data.reshape(g.shape))
-        res = f.laplace("natural").data.reshape(g1.shape)
+        res = f.laplace("auto_periodic_neumann").data.reshape(g1.shape)
         np.testing.assert_allclose(expected, res)
 
 
@@ -256,10 +256,10 @@ def test_gradient_squared_cart(dim):
         periodic=np.random.choice([False, True], dim),
     )
     field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add)
-    s1 = field.gradient("natural").to_scalar("squared_sum")
-    s2 = field.gradient_squared("natural", central=True)
+    s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
+    s2 = field.gradient_squared("auto_periodic_neumann", central=True)
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.1, atol=0.1)
-    s3 = field.gradient_squared("natural", central=False)
+    s3 = field.gradient_squared("auto_periodic_neumann", central=False)
     np.testing.assert_allclose(s1.data, s3.data, rtol=0.2, atol=0.2)
     assert not np.array_equal(s2.data, s3.data)
 
@@ -270,7 +270,7 @@ def test_rect_div_grad():
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     field = ScalarField(grid, data=np.cos(x) + np.sin(y))
 
-    bcs = grid.get_boundary_conditions("natural")
+    bcs = grid.get_boundary_conditions("auto_periodic_neumann")
 
     a = field.laplace(bcs)
     b = field.gradient(bcs).divergence("auto_periodic_curvature")
@@ -285,8 +285,8 @@ def test_degenerated_grid():
     f1 = ScalarField.random_uniform(g1)
     f2 = ScalarField(g2, f1.data.reshape(g2.shape))
 
-    res1 = f1.laplace("natural").data
-    res2 = f2.laplace("natural").data
+    res1 = f1.laplace("auto_periodic_neumann").data
+    res2 = f2.laplace("auto_periodic_neumann").data
     np.testing.assert_allclose(res1.flat, res2.flat)
 
 
@@ -304,7 +304,7 @@ def test_make_derivative(ndim, axis):
     grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
     field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add)
 
-    bcs = grid.get_boundary_conditions("natural")
+    bcs = grid.get_boundary_conditions("auto_periodic_neumann")
     grad = field.gradient(bcs)
     for method in ["central", "forward", "backward"]:
         msg = f"method={method}, periodic={periodic}"
@@ -325,7 +325,7 @@ def test_make_derivative2(ndim, axis):
     grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
     field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add)
 
-    bcs = grid.get_boundary_conditions("natural")
+    bcs = grid.get_boundary_conditions("auto_periodic_neumann")
     grad = field.gradient(bcs)[axis]
     grad2 = grad.gradient(bcs)[axis]
 

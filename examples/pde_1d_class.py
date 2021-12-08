@@ -23,8 +23,8 @@ class KortewegDeVriesPDE(PDEBase):
     def evolution_rate(self, state, t=0):
         """implement the python version of the evolution equation"""
         assert state.grid.dim == 1  # ensure the state is one-dimensional
-        grad_x = state.gradient("natural")[0]
-        return 6 * state * grad_x - grad_x.laplace("natural")
+        grad_x = state.gradient("auto_periodic_neumann")[0]
+        return 6 * state * grad_x - grad_x.laplace("auto_periodic_neumann")
 
 
 # initialize the equation and the space

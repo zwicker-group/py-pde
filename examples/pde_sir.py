@@ -23,7 +23,9 @@ from pde import FieldCollection, PDEBase, PlotTracker, ScalarField, UnitGrid
 class SIRPDE(PDEBase):
     """SIR-model with diffusive mobility"""
 
-    def __init__(self, beta=0.3, gamma=0.9, diffusivity=0.1, bc="natural"):
+    def __init__(
+        self, beta=0.3, gamma=0.9, diffusivity=0.1, bc="auto_periodic_neumann"
+    ):
         self.beta = beta  # transmission rate
         self.gamma = gamma  # recovery rate
         self.diffusivity = diffusivity  # spatial mobility

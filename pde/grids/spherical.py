@@ -437,7 +437,9 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
             return rs
 
     @fill_in_docstring
-    def get_boundary_conditions(self, bc="natural", rank: int = 0) -> "Boundaries":
+    def get_boundary_conditions(
+        self, bc="auto_periodic_neumann", rank: int = 0
+    ) -> "Boundaries":
         """constructs boundary conditions from a flexible data format.
 
         If the inner boundary condition for a grid without a hole is not specified, this
@@ -468,7 +470,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
             # a full boundary instance is given
             return bc
 
-        if bc == "natural" or bc == "auto_periodic_neumann":
+        if bc == "auto_periodic_neumann" or bc == "auto_periodic_neumann":
             # a simple value is given => use it for the outer boundary
             return Boundaries.from_data(self, "derivative", rank=rank)
         elif bc == "auto_periodic_dirichlet":

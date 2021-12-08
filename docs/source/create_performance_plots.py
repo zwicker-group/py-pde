@@ -70,10 +70,10 @@ def get_performance_data(periodic=False):
         data = {}
         grid = UnitGrid([size] * 2, periodic=periodic)
         field = ScalarField.random_normal(grid)
-        field.set_ghost_cells(bc="natural")
+        field.set_ghost_cells(bc="auto_periodic_neumann")
 
         for backend in ["numba", "scipy"]:
-            op = grid.make_operator("laplace", bc="natural", backend=backend)
+            op = grid.make_operator("laplace", bc="auto_periodic_neumann", backend=backend)
             data[backend] = time_function(op, field.data)
 
         op = grid.make_operator_no_bc("laplace", backend="numba")

@@ -37,7 +37,7 @@ class SwiftHohenbergPDE(PDEBase):
         rate: float = 0.1,
         kc2: float = 1.0,
         delta: float = 1.0,
-        bc: BoundariesData = "natural",
+        bc: BoundariesData = "auto_periodic_neumann",
         bc_lap: BoundariesData = None,
     ):
         r"""

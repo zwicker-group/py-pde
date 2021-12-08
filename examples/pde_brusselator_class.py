@@ -27,7 +27,7 @@ from pde import FieldCollection, PDEBase, PlotTracker, ScalarField, UnitGrid
 class BrusselatorPDE(PDEBase):
     """Brusselator with diffusive mobility"""
 
-    def __init__(self, a=1, b=3, diffusivity=[1, 0.1], bc="natural"):
+    def __init__(self, a=1, b=3, diffusivity=[1, 0.1], bc="auto_periodic_neumann"):
         self.a = a
         self.b = b
         self.diffusivity = diffusivity  # spatial mobility

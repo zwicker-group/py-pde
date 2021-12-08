@@ -494,9 +494,9 @@ def test_complex_operator(example_grid):
     assert c.is_complex
     assert np.iscomplexobj(c)
 
-    c_lap = c.laplace("natural").data
-    np.testing.assert_allclose(c_lap.real, r.laplace("natural").data)
-    np.testing.assert_allclose(c_lap.imag, i.laplace("natural").data)
+    c_lap = c.laplace("auto_periodic_neumann").data
+    np.testing.assert_allclose(c_lap.real, r.laplace("auto_periodic_neumann").data)
+    np.testing.assert_allclose(c_lap.imag, i.laplace("auto_periodic_neumann").data)
 
 
 def test_get_field_class_by_rank():

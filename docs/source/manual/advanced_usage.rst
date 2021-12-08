@@ -13,8 +13,8 @@ field to be `4` at the lower side and its derivative (in the outward direction) 
 
 .. code-block:: python
 
-    bc_lower = {'value': 4}
-    bc_upper = {'derivative': 2}
+    bc_lower = {"value": 4}
+    bc_upper = {"derivative": 2}
     bc = [bc_lower, bc_upper]
     
     grid = pde.UnitGrid([16])
@@ -70,12 +70,12 @@ can be used:
 
     grid = pde.UnitGrid([16, 16], periodic=[True, False])
     field = pde.ScalarField(grid)
-    bc = ['periodic', {'derivative': 0}]
+    bc = ["periodic", {"derivative": 0}]
     field.laplace(bc)
     
 For convenience, this typical situation can be described with the special boundary
 condition `natural`, e.g., calling the Laplace operator using 
-:code:`field.laplace('natural')` is identical to the example above.
+:code:`field.laplace("natural")` is identical to the example above.
 Alternatively, this condition can be called `auto_periodic_neumann` to stress that this
 chooses between periodic and Neumann boundary conditions automatically. Similarly, the
 special condition `auto_periodic_dirichlet` enforces periodic boundary conditions or
@@ -96,10 +96,11 @@ A simple implementation for the Kuramoto–Sivashinsky equation could read
         
         def evolution_rate(self, state, t=0):
             """ numpy implementation of the evolution equation """
-            state_lapacian = state.laplace(bc='natural')
-            return (- state_lapacian.laplace(bc='natural')
+            state_lapacian = state.laplace(bc="auto_periodic_neumann")
+            state_gradient = state.gradient(bc="auto_periodic_neumann")
+            return (- state_lapacian.laplace(bc="auto_periodic_neumann")
                     - state_lapacian
-                    - 0.5 * state.gradient(bc='natural').to_scalar('squared_sum'))
+                    - 0.5 * state_gradient.to_scalar("squared_sum"))
 
 A slightly more advanced example would allow for attributes that for
 instance define the boundary conditions and the diffusivity:
@@ -108,7 +109,7 @@ instance define the boundary conditions and the diffusivity:
 
     class KuramotoSivashinskyPDE(PDEBase):
         
-        def __init__(self, diffusivity=1, bc='natural', bc_laplace='natural'):
+        def __init__(self, diffusivity=1, bc="auto_periodic_neumann", bc_laplace="auto_periodic_neumann"):
             """ initialize the class with a diffusivity and boundary conditions
             for the actual field and its second derivative """
             self.diffusivity = diffusivity
@@ -150,7 +151,7 @@ The equivalent call using the low-level interface is
 
 .. code-block:: python
     
-    apply_laplace = field.grid.make_operator('laplace', bc)
+    apply_laplace = field.grid.make_operator("laplace", bc)
     
     laplace_data = apply_laplace(field.data)
     
@@ -165,7 +166,7 @@ Similarly, a gradient operator can be defined
 .. code-block:: python
     
     grid = UnitGrid([6, 8])
-    apply_gradient = grid.make_operator('gradient', bc='natural')
+    apply_gradient = grid.make_operator("gradient", bc="auto_periodic_neumann")
     
     data = np.random.random((6, 8))
     gradient_data = apply_gradient(data)
@@ -213,7 +214,7 @@ translated to code that does not use the full package:
 .. code-block:: python
     
     grid = UnitGrid([6, 8])
-    interpolate = grid.make_interpolator_compiled(bc='natural')
+    interpolate = grid.make_interpolator_compiled(bc="auto_periodic_neumann")
     
     data = np.random.random((6, 8))
     value = interpolate(data, np.array([3.5, 7.9]))
@@ -265,7 +266,7 @@ introduced above:
 
     class KuramotoSivashinskyPDE(PDEBase):
         
-        def __init__(self, diffusivity=1, bc='natural', bc_laplace='natural'):
+        def __init__(self, diffusivity=1, bc="auto_periodic_neumann", bc_laplace="auto_periodic_neumann"):
             """ initialize the class with a diffusivity and boundary conditions
             for the actual field and its second derivative """
             self.diffusivity = diffusivity
@@ -276,7 +277,7 @@ introduced above:
         def evolution_rate(self, state, t=0):
             """ numpy implementation of the evolution equation """
             state_lapacian = state.laplace(bc=self.bc)
-            state_gradient = state.gradient(bc='natural')
+            state_gradient = state.gradient(bc="auto_periodic_neumann")
             return (- state_lapacian.laplace(bc=self.bc_laplace)
                     - state_lapacian
                     - 0.5 * self.diffusivity * (state_gradient @ state_gradient))
@@ -288,9 +289,9 @@ introduced above:
             diffusivity = self.diffusivity
     
             # create operators
-            laplace_u = state.grid.make_operator('laplace', bc=self.bc)
-            gradient_u = state.grid.make_operator('gradient', bc=self.bc)
-            laplace2_u = state.grid.make_operator('laplace', bc=self.bc_laplace)
+            laplace_u = state.grid.make_operator("laplace", bc=self.bc)
+            gradient_u = state.grid.make_operator("gradient", bc=self.bc)
+            laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace)
             dot = VectorField(state.grid).make_dot_operator()
     
             @jit
@@ -345,9 +346,9 @@ explicit loop:
             diffusivity = self.diffusivity
     
             # create operators
-            laplace_u = state.grid.make_operator('laplace', bc=self.bc)
-            gradient_u = state.grid.make_operator('gradient', bc=self.bc)
-            laplace2_u = state.grid.make_operator('laplace', bc=self.bc_laplace)
+            laplace_u = state.grid.make_operator("laplace", bc=self.bc)
+            gradient_u = state.grid.make_operator("gradient", bc=self.bc)
+            laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace)
             dot = VectorField(state.grid).make_dot_operator()
             dim = state.grid.dim
     
