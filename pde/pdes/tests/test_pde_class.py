@@ -318,3 +318,21 @@ def test_pde_time_dependent_bcs(backend):
 
     np.testing.assert_allclose(storage[1].data, 0)
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_pde_integral(backend):
+    """test PDE with integral"""
+    grid = grids.UnitGrid([16])
+    field = ScalarField.random_uniform(grid)
+    eq = PDE({"c": "-integral(c)"})
+
+    # test rhs
+    rhs = eq.make_pde_rhs(field, backend=backend)
+    np.testing.assert_allclose(rhs(field.data, 0), -field.integral)
+
+    # test evolution
+    for method in ["scipy", "explicit"]:
+        res = eq.solve(field, t_range=1000, method=method, tracker=None)
+        assert res.integral == pytest.approx(0, abs=1e-2)
+        np.testing.assert_allclose(res.data, field.data - field.magnitude, atol=1e-3)

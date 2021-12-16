@@ -63,8 +63,9 @@ class PDE(PDEBase):
                 be specified with their full name, i.e., `laplace` for a scalar
                 Laplacian and `vector_laplace` for a Laplacian operating on a vector
                 field. Moreover, the dot product between two vector fields can be
-                denoted by using `dot(field1, field2)` in the expression, while an outer
-                product is calculated using `outer(field1, field2)`.
+                denoted by using `dot(field1, field2)` in the expression, an outer
+                product is calculated using `outer(field1, field2)`, and
+                `integral(field)` denotes an integral over a field.                 
             noise (float or :class:`~numpy.ndarray`):
                 Magnitude of additive Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
@@ -384,7 +385,7 @@ class PDE(PDEBase):
                 rhs.consts[name] = value
 
         # obtain functions used in the expression
-        ops_general = {}
+        ops_general: Dict[str, Callable] = {}
 
         # create special operators if necessary
         if "dot" in self.diagnostics["operators"]:  # type: ignore
@@ -393,12 +394,16 @@ class PDE(PDEBase):
             ops_general["dot"] = VectorField(state.grid).make_dot_operator(backend)
 
         if "inner" in self.diagnostics["operators"]:  # type: ignore
-            # synonym for dot product operator
+            # inner is a synonym for dot product operator
             ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
 
         if "outer" in self.diagnostics["operators"]:  # type: ignore
-            # synonym for dot product operator
+            # generate an operator that calculates an outer product
             ops_general["outer"] = VectorField(state.grid).make_outer_prod_operator()
+
+        if "integral" in self.diagnostics["operators"]:  # type: ignore
+            # add an operator that integrates a field
+            ops_general["integral"] = state.grid.make_integrator()
 
         # Create the right hand sides for all variables. It is important to do this in a
         # separate function, so the closures work reliably
