@@ -70,7 +70,8 @@ class ScipySolver(SolverBase):
 
         def rhs_helper(t: float, state_flat: np.ndarray) -> np.ndarray:
             """helper function to provide the correct call convention"""
-            y = rhs(state_flat.reshape(shape), t).flat
+            rhs_value = rhs(state_flat.reshape(shape), t)
+            y = np.broadcast_to(rhs_value, shape).flat
             if np.any(np.isnan(y)):
                 # this check is necessary, since solve_ivp does not deal correctly with
                 # NaN, which might result in odd error messages or even a stalled
