@@ -333,6 +333,6 @@ def test_pde_integral(backend):
 
     # test evolution
     for method in ["scipy", "explicit"]:
-        res = eq.solve(field, t_range=1000, method=method)
+        res = eq.solve(field, t_range=1000, method=method, tracker=None)
         assert res.integral == pytest.approx(0, abs=1e-2)
         np.testing.assert_allclose(res.data, field.data - field.magnitude, atol=1e-3)
