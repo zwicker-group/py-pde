@@ -23,7 +23,12 @@ from .scalar import ScalarField
 
 
 class FieldCollection(FieldBase):
-    """Collection of fields defined on the same grid"""
+    """Collection of fields defined on the same grid
+
+    Note that all fields in the same collection must have the same data type. This might
+    lead to upcasting, where for instance a combination of a real-valued and a
+    complex-valued field will be both stored as complex fields.
+    """
 
     def __init__(
         self,
@@ -384,6 +389,8 @@ class FieldCollection(FieldBase):
             if key == "fields":
                 fields = [f.attributes_serialized for f in self.fields]
                 results[key] = json.dumps(fields)
+            elif key == "dtype":
+                results[key] = json.dumps(value.str)
             else:
                 results[key] = json.dumps(value)
         return results
@@ -413,7 +420,6 @@ class FieldCollection(FieldBase):
     def copy(
         self: FieldCollection,
         *,
-        # data: Union[ArrayLike, str] = "copy",
         label: str = None,
         dtype=None,
     ) -> FieldCollection:

@@ -383,6 +383,7 @@ class FieldBase(metaclass=ABCMeta):
             "class": self.__class__.__name__,
             "grid": self.grid,
             "label": self.label,
+            "dtype": self.dtype,
         }
 
     @property
@@ -392,6 +393,8 @@ class FieldBase(metaclass=ABCMeta):
         for key, value in self.attributes.items():
             if key == "grid":
                 results[key] = value.state_serialized
+            elif key == "dtype":
+                results[key] = json.dumps(value.str)
             else:
                 results[key] = json.dumps(value)
         return results

@@ -167,6 +167,7 @@ class FileStorage(StorageBase):
                 self.info.update(info)
 
             self._data_shape = self.data.shape[1:]
+            self._dtype = self.data.dtype
             self._data_length = self.info.get("data_length")  # type: ignore
 
         elif mode == "appending":
@@ -192,12 +193,15 @@ class FileStorage(StorageBase):
                 for k, v in self._file.attrs.items():
                     self.info[k] = json.loads(v)
                 self._data_shape = self.data.shape[1:]
+                self._dtype = self.data.dtype
                 self._data_length = self.info.get("data_length", self.data.shape[0])
 
             else:
                 # create new datasets
                 self._times = self._create_hdf_dataset("times")
-                self._data = self._create_hdf_dataset("data", self.data_shape)
+                self._data = self._create_hdf_dataset(
+                    "data", self.data_shape, dtype=self._dtype
+                )
                 self._data_length = 0
 
             if info:
@@ -214,7 +218,9 @@ class FileStorage(StorageBase):
             self._logger.info(f"Open file `{self.filename}` for writing")
             self._file = h5py.File(self.filename, "w")
             self._times = self._create_hdf_dataset("times")
-            self._data = self._create_hdf_dataset("data", self.data_shape)
+            self._data = self._create_hdf_dataset(
+                "data", self.data_shape, dtype=self._dtype
+            )
             if info:
                 self.info.update(info)
             self._data_length = 0  # start writing from the beginning
@@ -267,7 +273,9 @@ class FileStorage(StorageBase):
 
             if "data" in self._file:
                 del self._file["data"]
-            self._data = self._create_hdf_dataset("data", self.data_shape)
+            self._data = self._create_hdf_dataset(
+                "data", self.data_shape, dtype=self.dtype
+            )
             self._data_length = 0  # start writing from start
 
         elif self.filename.is_file():
