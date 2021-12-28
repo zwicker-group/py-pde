@@ -179,3 +179,44 @@ def test_keep_opened(tmp_path):
 
     assert len(storage2) == 3
     np.testing.assert_allclose(storage2.times, np.arange(3))
+
+
+@skipUnlessModule("h5py")
+@pytest.mark.parametrize("dtype", [bool, float, complex])
+def test_write_types(dtype, tmp_path):
+    """test whether complex data can be written"""
+    path = tmp_path / "test_type_writing.hdf5"
+
+    grid = UnitGrid([32])
+    c = ScalarField.random_uniform(grid).copy(dtype=dtype)
+    if dtype == complex:
+        c += 1j * ScalarField.random_uniform(grid)
+
+    storage = FileStorage(path, keep_opened=False)
+    storage.start_writing(c)
+    assert len(storage) == 0
+    storage.append(c, 0)
+    assert storage._file_state == "closed"
+    assert len(storage) == 1
+    assert storage._file_state == "reading"
+    storage.append(c, 1)
+    assert len(storage) == 2
+    assert storage.dtype == np.dtype(dtype)
+
+    storage2 = FileStorage(path, write_mode="append")
+    assert storage.times == storage2.times
+    assert storage.data == storage2.data
+    storage.close()  # close the old storage to enable writing here
+    storage2.start_writing(c)
+    storage2.append(c, 2)
+    storage2.close()
+
+    assert len(storage2) == 3
+    np.testing.assert_allclose(storage2.times, np.arange(3))
+    assert storage2.dtype == np.dtype(dtype)
+
+    storage3 = FileStorage(path, write_mode="reading")
+    assert len(storage3) == 3
+    for field in storage3:
+        np.testing.assert_allclose(field.data, c.data)
+    assert storage3.dtype == np.dtype(dtype)

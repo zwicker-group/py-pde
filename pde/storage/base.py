@@ -62,6 +62,7 @@ class StorageBase(metaclass=ABCMeta):
         self.info = {} if info is None else info
         self.write_mode = write_mode
         self._data_shape: Optional[Tuple[int, ...]] = None
+        self._dtype: Optional[Tuple[int, ...]] = None
         self._grid: Optional[GridBase] = None
         self._field: Optional[FieldBase] = None
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -77,6 +78,18 @@ class StorageBase(metaclass=ABCMeta):
             raise RuntimeError("data_shape was not set")
         else:  # use the else clause to help typing
             return self._data_shape
+
+    @property
+    def dtype(self) -> Tuple[int, ...]:
+        """the current data type.
+
+        Raises:
+            RuntimeError: if data_type was not set
+        """
+        if self._dtype is None:
+            raise RuntimeError("dtype was not set")
+        else:  # use the else clause to help typing
+            return self._dtype
 
     @abstractmethod
     def _append_data(self, data: np.ndarray, time: float) -> None:
@@ -109,6 +122,7 @@ class StorageBase(metaclass=ABCMeta):
         """
         if clear_data_shape:
             self._data_shape = None
+            self._dtype = None
 
     def __len__(self):
         """return the number of stored items, i.e., time steps"""
@@ -184,11 +198,11 @@ class StorageBase(metaclass=ABCMeta):
             local_shape = self.data[0].shape[: -self.grid.num_axes]
             dim = self.grid.dim
             if len(local_shape) == 0:  # rank 0
-                self._field = ScalarField(self.grid)
+                self._field = ScalarField(self.grid, dtype=self.data[0].dtype)
             elif local_shape == (dim,):  # rank 1
-                self._field = VectorField(self.grid)
+                self._field = VectorField(self.grid, dtype=self.data[0].dtype)
             elif local_shape == (dim, dim):  # rank 2
-                self._field = Tensor2Field(self.grid)
+                self._field = Tensor2Field(self.grid, dtype=self.data[0].dtype)
             else:
                 raise RuntimeError(
                     "`field` attribute was not stored in file and the data shape "
@@ -274,10 +288,14 @@ class StorageBase(metaclass=ABCMeta):
         """
         if self.write_mode == "readonly":
             raise RuntimeError("Cannot write data in readonly mode")
+
         if self._data_shape is None:
             self._data_shape = field.data.shape
         elif self.data_shape != field.data.shape:
             raise ValueError("Data shape incompatible with stored data")
+
+        if self._dtype is None:
+            self._dtype = field.dtype
 
         self._grid = field.grid
         self._field = field.copy()

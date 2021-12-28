@@ -229,3 +229,29 @@ def test_storage_copy(tmp_path):
     s1 = MemoryStorage()
     s2 = s1.copy()
     assert len(s2) == 0
+
+
+@pytest.mark.parametrize("dtype", [bool, complex])
+def test_storage_types(dtype, tmp_path):
+    """test storing different types"""
+    grid = UnitGrid([32])
+    field = ScalarField.random_uniform(grid).copy(dtype=dtype)
+    if dtype == complex:
+        field += 1j * ScalarField.random_uniform(grid)
+
+    storage_classes = {"MemoryStorage": MemoryStorage}
+    if module_available("h5py"):
+        file_path = tmp_path / "test_storage_apply.hdf5"
+        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
+
+    for storage_cls in storage_classes.values():
+        s = storage_cls()
+        s.start_writing(field)
+        s.append(field, 0)
+        s.append(field, 1)
+        s.end_writing()
+
+        assert len(s) == 2
+        np.testing.assert_allclose(s.times, [0, 1])
+        np.testing.assert_equal(s[0].data, field.data)
+        np.testing.assert_equal(s[1].data, field.data)
