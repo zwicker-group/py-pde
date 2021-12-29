@@ -787,9 +787,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid: GridBase,
         vmin: float = 0,
         vmax: float = 1,
+        *,
         label: Optional[str] = None,
+        dtype=None,
         rng: np.random.Generator = None,
-    ):
+    ) -> DataFieldBase:
         """create field with uniform distributed random values
 
         These values are uncorrelated in space.
@@ -803,15 +805,28 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Largest random value
             label (str, optional):
                 Name of the field
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it defaults to `double` if both
+                `vmin` and `vmax` are real, otherwise it is `complex`.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
         if rng is None:
             rng = np.random.default_rng()
 
+        # determine the shape of the data array
         shape = (grid.dim,) * cls.rank + grid.shape
-        data = rng.uniform(vmin, vmax, size=shape)
-        return cls(grid, data=data, label=label)
+
+        if np.iscomplexobj(vmin) or np.iscomplexobj(vmax):
+            # create complex random numbers for the field
+            real_part = rng.uniform(np.real(vmin), np.real(vmax), size=shape)
+            imag_part = rng.uniform(np.imag(vmin), np.imag(vmax), size=shape)
+            data = real_part + 1j * imag_part
+        else:
+            # create real random numbers for the field
+            data = rng.uniform(vmin, vmax, size=shape)
+
+        return cls(grid, data=data, label=label, dtype=dtype)
 
     @classmethod
     def random_normal(
@@ -819,13 +834,20 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid: GridBase,
         mean: float = 0,
         std: float = 1,
+        *,
         scaling: str = "physical",
         label: Optional[str] = None,
+        dtype=None,
         rng: np.random.Generator = None,
-    ):
+    ) -> DataFieldBase:
         """create field with normal distributed random values
 
-        These values are uncorrelated in space.
+        These values are uncorrelated in space. A complex field is returned when either
+        `mean` or `std` is a complex number. In this case, the real and imaginary parts
+        of these arguments are used to determine the distribution of the real and
+        imaginary parts of the resulting field. Consequently,
+        :code:`ScalarField.random_normal(grid, 0, 1 + 1j)` creates a complex field where
+        the real and imaginary parts are chosen from a standard normal distribution.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -833,7 +855,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             mean (float):
                 Mean of the Gaussian distribution
             std (float):
-                Standard deviation of the Gaussian distribution
+                Standard deviation of the Gaussian distribution.
             scaling (str):
                 Determines how the values are scaled. Possible choices are
                 'none' (values are drawn from a normal distribution with
@@ -843,6 +865,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 larger volumes).
             label (str, optional):
                 Name of the field
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it defaults to `double` if both
+                `mean` and `std` are real, otherwise it is `complex`.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
@@ -850,15 +875,25 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             rng = np.random.default_rng()
 
         if scaling == "none":
-            noise_scale = std
+            scale = 1
         elif scaling == "physical":
-            noise_scale = std / np.sqrt(grid.cell_volumes)
+            scale = 1 / np.sqrt(grid.cell_volumes)
         else:
             raise ValueError(f"Unknown noise scaling {scaling}")
 
+        # determine the shape of the data array
         shape = (grid.dim,) * cls.rank + grid.shape
-        data = mean + noise_scale * rng.normal(size=shape)
-        return cls(grid, data=data, label=label)
+
+        if np.iscomplexobj(mean) or np.iscomplexobj(std):
+            # create complex random numbers for the field
+            real_part = np.real(mean) + np.real(std) * scale * rng.normal(size=shape)
+            imag_part = np.imag(mean) + np.imag(std) * scale * rng.normal(size=shape)
+            data = real_part + 1j * imag_part
+        else:
+            # create real random numbers for the field
+            data = mean + std * scale * rng.normal(size=shape)
+
+        return cls(grid, data=data, label=label, dtype=dtype)
 
     @classmethod
     def random_harmonic(
@@ -867,9 +902,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         modes: int = 3,
         harmonic=np.cos,
         axis_combination=np.multiply,
+        *,
         label: Optional[str] = None,
+        dtype=None,
         rng: np.random.Generator = None,
-    ):
+    ) -> DataFieldBase:
         r"""create a random field build from harmonics
 
         The resulting fields will be highly correlated in space and can thus
@@ -907,6 +944,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 respectively.
             label (str, optional):
                 Name of the field
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it defaults to `double`.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
@@ -930,7 +969,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # full dataset is product of values along axes
             data[index] = functools.reduce(axis_combination.outer, data_axis)
 
-        return cls(grid, data=data, label=label)
+        return cls(grid, data=data, label=label, dtype=dtype)
 
     @classmethod
     def random_colored(
@@ -938,9 +977,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         grid: GridBase,
         exponent: float = 0,
         scale: float = 1,
+        *,
         label: Optional[str] = None,
+        dtype=None,
         rng: np.random.Generator = None,
-    ):
+    ) -> DataFieldBase:
         r"""create a field of random values with colored noise
 
         The spatially correlated values obey
@@ -963,6 +1004,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Scaling factor :math:`\Gamma` determining noise strength
             label (str, optional):
                 Name of the field
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it defaults to `double`.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
@@ -980,7 +1023,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         for index in np.ndindex(*tensor_shape):
             data[index] = make_noise()
 
-        return cls(grid, data=data, label=label)
+        return cls(grid, data=data, label=label, dtype=dtype)
 
     @classmethod
     def get_class_by_rank(cls, rank: int) -> Type[DataFieldBase]:

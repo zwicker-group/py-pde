@@ -551,9 +551,9 @@ class VectorField(DataFieldBase):
                 Choose the method to use. Possible  choices are `norm`, `max`, `min`,
                 `squared_sum`, `norm_squared`, or an integer specifying which component
                 is returned (indexing starts at `0`). The default value `auto` picks the
-                method based on the dimension of the space: The first (and only)
-                component is returned for one-dimensional spaces, while the norm of the
-                vector is returned otherwise.
+                method automatically: The first (and only) component is returned for
+                real fields on one-dimensional spaces, while the norm of the vector is
+                returned otherwise.
             label (str, optional):
                 Name of the returned field
 
@@ -562,7 +562,10 @@ class VectorField(DataFieldBase):
             applying the operation
         """
         if scalar == "auto":
-            scalar = "norm" if self.grid.dim > 1 else 0
+            if self.grid.dim > 1 or np.iscomplexobj(self.data):
+                scalar = "norm"
+            else:
+                scalar = 0  # return the field unchanged
 
         if isinstance(scalar, int):
             data = self.data[scalar]

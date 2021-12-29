@@ -364,29 +364,33 @@ class ScalarField(DataFieldBase):
     def to_scalar(
         self, scalar: Union[str, Callable] = "auto", *, label: Optional[str] = None
     ) -> ScalarField:
-        """return a modified scalar field by applying `method`
+        """return a modified scalar field by applying method `scalar`
 
         Args:
             scalar (str or callable):
                 Determines the method used for obtaining the scalar. If this is a
                 callable, it is simply applied to self.data and a new scalar field with
-                this data is returned. Other alternatives are `abs`, `norm`, or
-                `norm_squared`. The default `auto` is to return a (unchanged) copy of
-                the field.
-            label (str, optional): Name of the returned field
+                this data is returned. Alternatively, pre-defined methods can be
+                selected using strings. Here, `abs` and `norm` denote the norm of each
+                entry of the field, while `norm_squared` returns the squared norm. The
+                default `auto` is to return a (unchanged) copy of a real field and the
+                norm of a complex field.
+            label (str, optional):
+                Name of the returned field
 
         Returns:
-            :class:`~pde.fields.scalar.ScalarField`: the scalar field after
-            applying the operation
+            :class:`~pde.fields.scalar.ScalarField`: Scalar field after applying the
+            operation
         """
         if callable(scalar):
             data = scalar(self.data)
         elif scalar == "auto":
-            data = self.data
-        elif scalar == "abs":
+            if np.iscomplexobj(self.data):
+                data = np.abs(self.data)
+            else:
+                data = self.data
+        elif scalar == "abs" or scalar == "norm":
             data = np.abs(self.data)
-        elif scalar == "norm":
-            data = np.sqrt(self.data * self.data.conjugate())
         elif scalar == "norm_squared":
             data = self.data * self.data.conjugate()
         else:
