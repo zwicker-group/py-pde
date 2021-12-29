@@ -39,8 +39,6 @@ TODO
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`
   - mimic this interface for plotting 3d droplets?
-* Think about implementing vector differential operators more generally based
-  on the scalar operators –> could this work for all grids?
 * Add tests:
     - update plotting of fields and field collections
 	- general Trackers
@@ -59,8 +57,6 @@ TODO
 
 LOW-PRIORITY (Future ideas)
 ===========================
-* Add adaptive Euler stepping
-* Think about 2nd order BCs for spherical coordinates
 * Think about hyperbolic equations:
     - Introducing "advection" operator that could either implement really simple
       Gudunov finite volume scheme or upwind finite difference scheme
@@ -88,11 +84,6 @@ LOW-PRIORITY (Future ideas)
 	- Also look into ipyparallel, pyop
     - this likely relies on BCs that are implemented on ghost cells
     - however, it is not clear how to define the value of ghost cells for divergence(vector_field)
-* Support more flexible boundary conditions
-    - Think about implementing vectorial boundary conditions without creating three
-    separate compiled functions
-    - Add tests for setting vectorial boundary conditions
-    - add gradient calculation to performance test 
 * Support CUDA/threading using numba?
     - could we partition the calculation of the rhs of PDE and just exchange the
       boundary/interface values between threads?
@@ -106,5 +97,3 @@ LOW-PRIORITY (Future ideas)
 * Provide class SymmmetricTensorField, which should be more efficient than the
 	full TensorField
 * Implement bipolar/bispherical coordinate systems	
-* Introduce project and slice methods for VectorFields:
-	- the component that is removed by reduction could be returned in a separate ScalarField

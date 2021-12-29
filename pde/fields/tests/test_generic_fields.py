@@ -361,6 +361,20 @@ def test_random_uniform():
         np.testing.assert_allclose(f.imag.data, 0)
 
 
+def test_random_uniform_types():
+    """test whether random uniform fields behave correctly for different types"""
+    grid = UnitGrid([8])
+    for dtype in [bool, int, float, complex]:
+        field = VectorField.random_uniform(grid, dtype=dtype)
+        assert field.dtype == np.dtype(dtype)
+        assert isinstance(field.data.flat[0].item(), dtype)
+
+    assert ScalarField.random_uniform(grid, 0, 1).dtype == np.dtype(float)
+    assert ScalarField.random_uniform(grid, vmin=0 + 0j).dtype == np.dtype(complex)
+    assert ScalarField.random_uniform(grid, vmax=1 + 0j).dtype == np.dtype(complex)
+    assert ScalarField.random_uniform(grid, 0 + 0j, 1 + 0j).dtype == np.dtype(complex)
+
+
 def test_random_normal():
     """test whether random normal fields behave correctly"""
     grid = UnitGrid([256, 256])
@@ -371,6 +385,28 @@ def test_random_normal():
             f = field_cls.random_normal(grid, mean=m, std=s, scaling=scaling)
             assert np.mean(f.average) == pytest.approx(m, rel=0.1, abs=0.1)
             assert np.std(f.data) == pytest.approx(s, rel=0.1, abs=0.1)
+
+
+def test_random_normal_types():
+    """test whether random normal fields behave correctly for different types"""
+    grid = UnitGrid([8])
+    for dtype in [bool, int, float, complex]:
+        field = VectorField.random_normal(grid, dtype=dtype)
+        assert field.dtype == np.dtype(dtype)
+        assert isinstance(field.data.flat[0].item(), dtype)
+
+    assert ScalarField.random_normal(grid, 0, 1).dtype == np.dtype(float)
+    assert ScalarField.random_normal(grid, mean=0 + 0j).dtype == np.dtype(complex)
+    assert ScalarField.random_normal(grid, std=1 + 0j).dtype == np.dtype(complex)
+    assert ScalarField.random_normal(grid, 0 + 0j, 1 + 0j).dtype == np.dtype(complex)
+
+    m = complex(np.random.random(), np.random.random())
+    s = complex(1 + np.random.random(), 1 + np.random.random())
+    grid = UnitGrid([256, 256])
+    field = field.random_normal(grid, m, s)
+    assert np.mean(field.average) == pytest.approx(m, rel=0.1, abs=0.1)
+    assert np.std(field.data.real) == pytest.approx(s.real, rel=0.1, abs=0.1)
+    assert np.std(field.data.imag) == pytest.approx(s.imag, rel=0.1, abs=0.1)
 
 
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])

@@ -343,19 +343,25 @@ class FieldCollection(FieldBase):
         grid: GridBase,
         vmin: float = 0,
         vmax: float = 1,
+        *,
         label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
     ) -> FieldCollection:
         """create scalar fields with random values between `vmin` and `vmax`
 
         Args:
-            num_fields (int): The number of fields to create
+            num_fields (int):
+                The number of fields to create
             grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which the fields are defined
-            vmin (float): Smallest random value
-            vmax (float): Largest random value
-            label (str, optional): Name of the field collection
-            labels (list of str, optional): Names of the individual fields
+            vmin (float):
+                Lower bound. Can be complex to create complex fields
+            vmax (float):
+                Upper bound. Can be complex to create complex fields
+            label (str, optional):
+                Name of the field collection
+            labels (list of str, optional):
+                Names of the individual fields
         """
         if labels is None:
             labels = [None] * num_fields  # type: ignore
