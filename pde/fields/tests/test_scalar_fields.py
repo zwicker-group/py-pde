@@ -228,6 +228,12 @@ def test_to_scalar():
     np.testing.assert_allclose(sf.to_scalar("norm_squared").data, sf.data ** 2)
     np.testing.assert_allclose(sf.to_scalar(lambda x: 2 * x).data, 2 * sf.data)
 
+    sf = ScalarField.random_uniform(UnitGrid([3, 3]), 0, 1 + 1j)
+    np.testing.assert_allclose(sf.to_scalar().data, np.abs(sf.data))
+    np.testing.assert_allclose(sf.to_scalar("abs").data, sf.to_scalar("norm").data)
+    np.testing.assert_allclose(sf.to_scalar("norm_squared").data, np.abs(sf.data) ** 2)
+    np.testing.assert_allclose(sf.to_scalar(np.angle).data, np.angle(sf.data))
+
     with pytest.raises(ValueError):
         sf.to_scalar("nonsense")
 
