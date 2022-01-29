@@ -824,7 +824,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
-            data = rng.uniform(vmin, vmax, size=shape)
+            data = rng.uniform(vmin, vmax, size=shape)  # type: ignore
 
         return cls(grid, data=data, label=label, dtype=dtype)
 
@@ -1239,7 +1239,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # convert `fill` to dtype of data
         if fill is not None:
             if self.rank == 0:
-                fill = self.data.dtype.type(fill)  # type: ignore
+                fill = self.data.dtype.type(fill)
             else:
                 fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
 
@@ -1769,7 +1769,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             scalar_data = abs(scalar_data)
 
         # extract the image data
-        data = self.grid.get_image_data(scalar_data, **kwargs)  # type: ignore
+        data = self.grid.get_image_data(scalar_data, **kwargs)
         data["title"] = self.label
 
         if transpose:

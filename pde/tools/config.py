@@ -146,7 +146,7 @@ def get_package_versions(
         except ImportError:
             versions[name] = na_str
         else:
-            versions[name] = module.__version__  # type: ignore
+            versions[name] = module.__version__
     return versions
 
 
@@ -167,7 +167,7 @@ def check_package_version(package_name: str, min_version: str):
     msg = f"`{package_name}` version {min_version} required for py-pde"
     try:
         # obtain version of the package
-        version = importlib.import_module(package_name).__version__  # type: ignore
+        version = importlib.import_module(package_name).__version__
 
     except ImportError:
         warnings.warn(f"{msg} (but none installed)")

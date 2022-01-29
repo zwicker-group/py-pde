@@ -615,8 +615,8 @@ class FieldCollection(FieldBase):
             {PLOT_ARGS}
             subplot_args (list):
                 Additional arguments for the specific subplots. Should be a list with a
-                dictionary of arguments for each subplot. Supplying an empty allows to
-                keep the default setting of specific subplots.
+                dictionary of arguments for each subplot. Supplying an empty dict allows
+                to keep the default setting of specific subplots.
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual plotting
                 function of all subplots.

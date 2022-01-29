@@ -103,7 +103,7 @@ def parse_duration(value: str) -> datetime.timedelta:
             and kw["seconds"].startswith("-")
         ):
             kw["microseconds"] = "-" + kw["microseconds"]
-        kw = {k: float(v) for k, v in kw.items() if v is not None}  # type: ignore
+        kw = {k: float(v) for k, v in kw.items() if v is not None}
         return days + sign * datetime.timedelta(**kw)  # type: ignore
     else:
         raise ValueError(f"The time duration {value} cannot be parsed.")

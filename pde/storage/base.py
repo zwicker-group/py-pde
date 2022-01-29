@@ -36,10 +36,9 @@ if TYPE_CHECKING:
 class StorageBase(metaclass=ABCMeta):
     """base class for storing time series of discretized fields
 
-    These classes store time series of subclasses of
-    :class:`~pde.fields.base.FieldBase`, i.e., they store the values of the
-    fields at particular time points. Iterating of the storage will return the
-    fields in order and indivdual time points can also be accessed.
+    These classes store time series of :class:`~pde.fields.base.FieldBase`, i.e., they
+    store the values of the fields at particular time points. Iterating of the storage
+    will return the fields in order and individual time points can also be accessed.
     """
 
     times: Sequence[float]  # :class:`~numpy.ndarray`): stored time points
@@ -216,8 +215,7 @@ class StorageBase(metaclass=ABCMeta):
     def _get_field(self, t_index: int) -> FieldBase:
         """return the field corresponding to the given time index
 
-        Load the data associated with a given index, i.e., with time
-        `self.times[t_index]`.
+        Load the data given an index, i.e., the data at time `self.times[t_index]`.
 
         Args:
             t_index (int):

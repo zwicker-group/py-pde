@@ -80,7 +80,7 @@ class SolverBase(metaclass=ABCMeta):
                 + ", ".join(solvers)
             )
 
-        return solver_class(pde, **kwargs)  # type: ignore
+        return solver_class(pde, **kwargs)
 
     @classproperty
     def registered_solvers(cls) -> List[str]:  # @NoSelf
