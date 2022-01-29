@@ -368,7 +368,7 @@ class ExplicitSolver(SolverBase):
                 # estimate the maximal error
                 error = 0.0
                 for i in range(state_data.size):
-                    error_local = abs(
+                    error_local: float = abs(
                         r1 * k1.flat[i]
                         + r3 * k3.flat[i]
                         + r4 * k4.flat[i]

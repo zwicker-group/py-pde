@@ -765,7 +765,7 @@ def in_ipython() -> bool:
     """try to detect whether we are in an ipython shell, e.g., a jupyter notebook"""
     ipy_module = sys.modules.get("IPython")
     if ipy_module:
-        return bool(ipy_module.get_ipython())  # type: ignore
+        return bool(ipy_module.get_ipython())
     else:
         return False
 

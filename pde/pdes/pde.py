@@ -157,7 +157,7 @@ class PDE(PDEBase):
         self.consts = consts
         self.explicit_time_dependence = explicit_time_dependence
         self.complex_valued = complex_valued
-        operators = frozenset().union(*self._operators.values())  # type: ignore
+        operators = frozenset().union(*self._operators.values())
 
         # setup boundary conditions
         if bc_ops is None:

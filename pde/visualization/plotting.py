@@ -558,6 +558,7 @@ def plot_magnitudes(
 
     # plot the data
     lines = []
+    times = np.asarray(storage.times)
     check_complex = True
     for d in data:
         kwargs["label"] = d["label"]
@@ -568,7 +569,7 @@ def plot_magnitudes(
             check_complex = False  # only warn once
 
         # actually plot the data
-        (l,) = ax.plot(storage.times, np.real(d["values"]), **kwargs)
+        (l,) = ax.plot(times, np.real(d["values"]), **kwargs)
         lines.append(l)
 
     ax.set_xlabel("Time")

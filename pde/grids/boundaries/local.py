@@ -366,7 +366,7 @@ class BCBase(metaclass=ABCMeta):
             )
 
         # create the actual class
-        return boundary_class(grid=grid, axis=axis, upper=upper, rank=rank, **kwargs)  # type: ignore
+        return boundary_class(grid=grid, axis=axis, upper=upper, rank=rank, **kwargs)
 
     @classmethod
     def from_dict(

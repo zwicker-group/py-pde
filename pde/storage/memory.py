@@ -4,6 +4,8 @@ Defines a class storing data in memory.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import List, Optional, Sequence
 
@@ -32,17 +34,15 @@ class MemoryStorage(StorageBase):
             data (list of :class:`~numpy.ndarray`):
                 The field data at the given times
             field_obj (:class:`~pde.fields.base.FieldBase`):
-                An instance of the field class that can store data for a single
-                time point.
+                An instance of the field class store data for a single time point.
             info (dict):
                 Supplies extra information that is stored in the storage
             write_mode (str):
-                Determines how new data is added to already existing data.
-                Possible values are: 'append' (data is always appended),
-                'truncate' (data is cleared every time this storage is used
-                for writing), or 'truncate_once' (data is cleared for the first
-                writing, but appended subsequently). Alternatively, specifying
-                'readonly' will disable writing completely.
+                Determines how new data is added to already existing data. Possible
+                values are: 'append' (data is always appended), 'truncate' (data is
+                cleared every time this storage is used for writing), or 'truncate_once'
+                (data is cleared for the first writing, but appended subsequently).
+                Alternatively, specifying 'readonly' will disable writing completely.
         """
         super().__init__(info=info, write_mode=write_mode)
         self.times: List[float] = [] if times is None else list(times)
@@ -69,7 +69,7 @@ class MemoryStorage(StorageBase):
         fields: Optional[Sequence[FieldBase]] = None,
         info: InfoDict = None,
         write_mode: str = "truncate_once",
-    ) -> "MemoryStorage":
+    ) -> MemoryStorage:
         """create MemoryStorage from a list of fields
 
         Args:
@@ -80,12 +80,11 @@ class MemoryStorage(StorageBase):
             info (dict):
                 Supplies extra information that is stored in the storage
             write_mode (str):
-                Determines how new data is added to already existing data.
-                Possible values are: 'append' (data is always appended),
-                'truncate' (data is cleared every time this storage is used
-                for writing), or 'truncate_once' (data is cleared for the first
-                writing, but appended subsequently). Alternatively, specifying
-                'readonly' will disable writing completely.
+                Determines how new data is added to already existing data. Possible
+                values are: 'append' (data is always appended), 'truncate' (data is
+                cleared every time this storage is used for writing), or 'truncate_once'
+                (data is cleared for the first writing, but appended subsequently).
+                Alternatively, specifying 'readonly' will disable writing completely.
         """
         if fields is None:
             field_obj = None
@@ -104,27 +103,33 @@ class MemoryStorage(StorageBase):
 
     @classmethod
     def from_collection(
-        cls, storages: Sequence["StorageBase"], label: str = None
-    ) -> "MemoryStorage":
+        cls,
+        storages: Sequence[StorageBase],
+        label: str = None,
+        *,
+        rtol: float = 1.0e-5,
+        atol: float = 1.0e-8,
+    ) -> MemoryStorage:
         """combine multiple memory storages into one
 
-        This method can be used to combine multiple time series of different
-        fields into a single representation. This requires that all time series
-        contain data at the same time points.
+        This method can be used to combine multiple time series of different fields into
+        a single representation. This requires that all time series contain data at the
+        same time points.
 
         Args:
             storages (list):
-                A collection of instances of
-                :class:`~pde.storage.base.StorageBase` whose data
-                will be concatenated into a single MemoryStorage
+                A collection of instances of :class:`~pde.storage.base.StorageBase`
+                whose data will be concatenated into a single MemoryStorage
             label (str, optional):
-                The label of the instances of
-                :class:`~pde.fields.FieldCollection` that
+                The label of the instances of :class:`~pde.fields.FieldCollection` that
                 represent the concatenated data
+            rtol (float):
+                Relative tolerance used when checking times for merging
+            atol (float):
+                Absolute tolerance used when checking times for merging
 
         Returns:
-            :class:`~pde.storage.memory.MemoryStorage`: Storage
-            containing all the data.
+            :class:`~pde.storage.memory.MemoryStorage`: Storage containing all the data.
         """
         if len(storages) == 0:
             return cls()
@@ -135,7 +140,7 @@ class MemoryStorage(StorageBase):
 
         # append data from further storages
         for storage in storages[1:]:
-            if not np.allclose(times, storage.times):
+            if not np.allclose(times, storage.times, rtol=rtol, atol=atol):
                 raise ValueError("Storages have incompatible times")
             for i, field in enumerate(storage):
                 data[i].append(field)
@@ -149,8 +154,8 @@ class MemoryStorage(StorageBase):
         """truncate the storage by removing all stored data.
 
         Args:
-            clear_data_shape (bool): Flag determining whether the data shape is
-                also deleted.
+            clear_data_shape (bool):
+                Flag determining whether the data shape is also deleted.
         """
         self.times = []
         self.data = []
@@ -161,8 +166,7 @@ class MemoryStorage(StorageBase):
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
-                An example of the data that will be written to extract the grid
-                and the data_shape
+                An instance of the field class store data for a single time point.
             info (dict):
                 Supplies extra information that is stored in the storage
         """
@@ -217,8 +221,7 @@ def get_memory_storage(field: FieldBase, info: InfoDict = None):
 
     Args:
         field (:class:`~pde.fields.FieldBase`):
-            An example of the data that will be written to extract the grid
-            and the data_shape
+            An instance of the field class store data for a single time point.
         info (dict):
             Supplies extra information that is stored in the storage
 
