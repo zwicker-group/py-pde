@@ -1922,7 +1922,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             add_scaled_colorbar(axes_image, ax=ax)
 
+        # store parameters of the plot that are necessary for updating 
         parameters = {"scalar": scalar, "transpose": transpose}
+        if "vmin" in kwargs:
+            parameters["vmin"] = kwargs["vmin"]
+        if "vmax" in kwargs:
+            parameters["vmax"] = kwargs["vmax"]
         return PlotReference(ax, axes_image, parameters)
 
     def _update_image_plot(self, reference: PlotReference) -> None:
@@ -1940,8 +1945,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         # update the axes image
         reference.element.set_data(data["data"].T)
+
         # adjust the colorbar limits
-        reference.element.set_clim(data["data"].min(), data["data"].max())
+        vmin = p["vmin"] if "vmin" in p else data["data"].min()
+        vmax = p["vmax"] if "vmax" in p else data["data"].max()
+        reference.element.set_clim(vmin, vmax)
 
     def _plot_vector(
         self,
