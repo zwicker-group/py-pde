@@ -130,7 +130,6 @@ if nb.config.DISABLE_JIT:
         else:
             return arr.flat[i]
 
-
 else:
     # compiled version that specializes correctly
     @nb.generated_jit(nopython=True)
@@ -370,7 +369,6 @@ if nb.config.DISABLE_JIT:
         import ctypes
 
         return ctypes.cast(addr, ctypes.c_void_p)
-
 
 else:
     # actually useful function that creates a numba pointer

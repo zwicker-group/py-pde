@@ -1922,7 +1922,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             add_scaled_colorbar(axes_image, ax=ax)
 
-        # store parameters of the plot that are necessary for updating 
+        # store parameters of the plot that are necessary for updating
         parameters = {"scalar": scalar, "transpose": transpose}
         if "vmin" in kwargs:
             parameters["vmin"] = kwargs["vmin"]
