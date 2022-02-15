@@ -225,7 +225,7 @@ napoleon_custom_sections = None
 intersphinx_mapping = {
     "https://docs.python.org/3/": None,
     "https://numpy.org/doc/stable": None,
-    "https://docs.scipy.org/doc/scipy/reference": None,
+    "https://docs.scipy.org/doc/scipy/": None,
     "https://docs.sympy.org/latest/": None,
     "https://matplotlib.org": None,
     "https://docs.h5py.org/en/latest": None,
