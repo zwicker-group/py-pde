@@ -70,7 +70,11 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Operato
         side
     """
     from scipy import sparse
-    from scipy.sparse.linalg.dsolve.linsolve import MatrixRankWarning
+
+    try:
+        from scipy.sparse.linalg import MatrixRankWarning
+    except ImportError:
+        from scipy.sparse.linalg.dsolve.linsolve import MatrixRankWarning
 
     if method not in {"auto", "scipy"}:
         raise ValueError(f"Method {method} is not available")
