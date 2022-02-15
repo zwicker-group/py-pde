@@ -14,8 +14,8 @@ Functions for creating movies of simulation results
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-
 import pathlib
+import warnings
 from typing import Any, Dict
 
 from ..storage.base import StorageBase
@@ -31,6 +31,16 @@ class Movie:
         Internally, this class uses :class:`matplotlib.animation.FFMpegWriter`.
         Note that the `ffmpeg` program needs to be installed in a system path,
         so that `matplotlib` can find it.
+        
+        
+    Warning:
+        The movie is only fully written after the :meth:`save` method has been called.
+        To aid with this, it is best practice to use a contextmanager:
+        
+        .. code-block:: python
+
+            with Movie("output.mp4") as movie:
+                movie.add_figure()
     """
 
     def __init__(
@@ -202,10 +212,12 @@ def movie_multiple(
 def movie(
     storage: StorageBase,
     filename: str,
+    *,
     progress: bool = True,
     dpi: float = 150,
     show_time: bool = True,
     plot_args: Dict[str, Any] = None,
+    movie_args: Dict[str, Any] = None,
 ) -> None:
     """produce a movie by simply plotting each frame
 
@@ -223,15 +235,29 @@ def movie(
             Whether to show the simulation time in the movie
         plot_args (dict):
             Additional arguments for the function plotting the state
+        movie_args (dict):
+            Additional arguments for :class:`~pde.visualization.movies.Movie`. For
+            example, this can be used to set the resolution (`dpi`), the framerate
+            (`framerate`), and the bitrate (`bitrate`).
     """
     if plot_args is None:
         plot_args = {}
+    if movie_args is None:
+        movie_args = {}
+
+    # use the dpi from movie_args if present
+    movie_args.setdefault("dpi", dpi)
+    if dpi != 150:
+        warnings.warn(
+            "Setting DPI using `dpi` argument is deprecated. Use `movie_args` instead.",
+            DeprecationWarning,
+        )
 
     # create the iterator over the data
     field_iter = display_progress(storage.items(), total=len(storage), enabled=progress)
 
     ref, fig = None, None
-    with Movie(filename=filename, dpi=dpi) as movie:
+    with Movie(filename=filename, **movie_args) as movie:
         # iterate over all frames
         for t, field in field_iter:
             if ref is None:
