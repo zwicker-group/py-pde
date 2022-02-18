@@ -835,7 +835,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         mean: float = 0,
         std: float = 1,
         *,
-        scaling: str = "physical",
+        scaling: str = "none",
         label: Optional[str] = None,
         dtype=None,
         rng: np.random.Generator = None,
@@ -857,12 +857,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             std (float):
                 Standard deviation of the Gaussian distribution.
             scaling (str):
-                Determines how the values are scaled. Possible choices are
-                'none' (values are drawn from a normal distribution with
-                given mean and standard deviation) or 'physical' (the variance
-                of the random number is scaled by the inverse volume of the grid
-                cell; this is useful for physical quantities, which vary less in
-                larger volumes).
+                Determines how the values are scaled. Possible choices are 'none'
+                (values are drawn from a normal distribution with given mean and
+                standard deviation) or 'physical' (the variance of the random number is
+                scaled by the inverse volume of the grid cell; this is for instance
+                useful for concentration fields, which vary less in larger volumes).
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
