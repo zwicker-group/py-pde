@@ -87,4 +87,6 @@ More information
 * [Full documentation on readthedocs](https://py-pde.readthedocs.io/)
   or as [a single PDF file](https://py-pde.readthedocs.io/_/downloads/en/latest/pdf/).
 * The [paper published in the Journal of Open Source Software](https://doi.org/10.21105/joss.02158)
+* [Practical tutorial on pattern formation in biological cells](https://github.com/zwicker-group/tutorial-pattern-formation-in-cells)
+
  
