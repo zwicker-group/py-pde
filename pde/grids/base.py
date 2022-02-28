@@ -237,7 +237,7 @@ class GridBase(metaclass=ABCMeta):
         """callable: function to extract the valid part of a full data array"""
         num_axes = self.num_axes
 
-        @register_jitable
+        @jit
         def get_valid(arr: np.ndarray) -> np.ndarray:
             """return valid part of the data (without ghost cells)"""
             if num_axes == 1:
@@ -255,7 +255,7 @@ class GridBase(metaclass=ABCMeta):
         """callable: function to extract the valid part of a full data array"""
         num_axes = self.num_axes
 
-        @register_jitable
+        @jit
         def set_valid(arr: np.ndarray, value: np.ndarray) -> None:
             """return valid part of the data (without ghost cells)"""
             if num_axes == 1:
@@ -632,13 +632,30 @@ class GridBase(metaclass=ABCMeta):
         if isinstance(operator, OperatorInfo):
             return operator
 
-        # obtain all parent classes, except `object`
+        # look for defined operators on all parent classes (except `object`)
         classes = inspect.getmro(self.__class__)[:-1]
         for cls in classes:
             if operator in cls._operators:  # type: ignore
                 return cls._operators[operator]  # type: ignore
 
-        # operator was not found
+        # deal with some special patterns that are often used
+        if operator.startswith("derivative_"):
+            # create a special operator that takes a first derivative along one axis
+            from .operators.cartesian import _make_derivative
+
+            axis_id = self.axes.index(operator[len("derivative_") :])
+            factory = functools.partial(_make_derivative, axis=axis_id)
+            return OperatorInfo(factory, rank_in=0, rank_out=0)
+
+        elif operator.startswith("derivative2_"):
+            # create a special operator that takes a second derivative along one axis
+            from .operators.cartesian import _make_derivative2
+
+            axis_id = self.axes.index(operator[len("derivative2_") :])
+            factory = functools.partial(_make_derivative2, axis=axis_id)
+            return OperatorInfo(factory, rank_in=0, rank_out=0)
+
+        # throw an informative error since operator was not found
         op_list = ", ".join(sorted(self.operators))
         raise ValueError(
             f"'{operator}' is not one of the defined operators ({op_list}). Custom "

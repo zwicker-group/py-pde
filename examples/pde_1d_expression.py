@@ -17,10 +17,7 @@ from math import pi
 from pde import PDE, CartesianGrid, MemoryStorage, ScalarField, plot_kymograph
 
 # initialize the equation and the space
-eq = PDE(
-    {"φ": "6 * φ * get_x(gradient(φ)) - laplace(get_x(gradient(φ)))"},
-    user_funcs={"get_x": lambda arr: arr[0]},
-)
+eq = PDE({"φ": "6 * φ * derivative_x(φ) - laplace(derivative_x(φ))"})
 grid = CartesianGrid([[0, 2 * pi]], [32], periodic=True)
 state = ScalarField.from_expression(grid, "sin(x)")
 

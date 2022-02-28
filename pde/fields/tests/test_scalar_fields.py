@@ -9,6 +9,7 @@ import pytest
 
 from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
+from pde.fields.vectorial import VectorField
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
 from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
 from pde.tools.misc import module_available, skipUnlessModule
@@ -464,3 +465,17 @@ def test_corner_interpolation():
     assert field.interpolate(np.array([0.0, 0.5])) == pytest.approx(0.0)
     assert field.interpolate(np.array([0.5, 0.0])) == pytest.approx(0.0)
     assert field.interpolate(np.array([0.0, 0.0])) == pytest.approx(0.0)
+
+
+def test_generic_operators(example_grid):
+    """test generic operators"""
+    sf = ScalarField.random_harmonic(example_grid)
+    sf_grad = sf.gradient("natural")
+    for axis_id, axis in enumerate(example_grid.axes):
+        # first derivatives
+        direction = np.zeros(example_grid.dim)
+        direction[axis_id] = 1
+        vf = VectorField.from_expression(example_grid, direction)
+        sf_deriv = sf._apply_operator(f"derivative_{axis}", bc="natural")
+        assert isinstance(sf_deriv, ScalarField)
+        np.testing.assert_allclose(sf_deriv.data, (vf @ sf_grad).data)

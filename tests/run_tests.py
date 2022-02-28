@@ -94,6 +94,7 @@ def run_unit_tests(
     parallel: bool = False,
     coverage: bool = False,
     nojit: bool = False,
+    early: bool = False,
     pattern: str = None,
 ) -> int:
     """run the unit tests
@@ -103,6 +104,7 @@ def run_unit_tests(
         parallel (bool): Whether to use multiple processors
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
+        early (bool): Whether to fail at the first test
         pattern (str): A pattern that determines which tests are ran
 
     Returns:
@@ -131,6 +133,10 @@ def run_unit_tests(
     # allow running slow tests?
     if runslow:
         args.append("--runslow")
+
+    # fail early if requested
+    if early:
+        args.append("--maxfail=1")
 
     # run tests using multiple cores?
     if parallel:
@@ -218,6 +224,12 @@ def main() -> int:
         help="Do not use just-in-time compilation of numba",
     )
     group.add_argument(
+        "--early",
+        action="store_true",
+        default=False,
+        help="Return at first failed test",
+    )
+    group.add_argument(
         "--pattern",
         metavar="PATTERN",
         type=str,
@@ -250,6 +262,7 @@ def main() -> int:
             coverage=args.coverage,
             parallel=args.parallel,
             nojit=args.nojit,
+            early=args.early,
             pattern=args.pattern,
         )
         retcodes.append(retcode)
