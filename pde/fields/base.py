@@ -1662,7 +1662,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             op_with_bcs = self.grid.make_operator(operator_info, bc=bc, **kwargs)
 
             # we need to convert the python dict into a numba dict for compilation
-            out.data[:] = op_with_bcs(self.data, args=numba_dict(args))
+            op_with_bcs(self.data, out=out.data, args=numba_dict(args))
 
         return out
 

@@ -206,7 +206,7 @@ def _make_derivative(
             """calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
                 if method == "central":
-                    out[i - 1] = (arr[i + 1] - arr[i - 1]) * 0.5 / dx
+                    out[i - 1] = (arr[i + 1] - arr[i - 1]) / (2 * dx)
                 elif method == "forward":
                     out[i - 1] = (arr[i + 1] - arr[i]) / dx
                 elif method == "backward":
@@ -222,7 +222,7 @@ def _make_derivative(
                     arr_l = arr[i - di, j - dj]
                     arr_r = arr[i + di, j + dj]
                     if method == "central":
-                        out[i - 1, j - 1] = (arr_r - arr_l) * 0.5 / dx
+                        out[i - 1, j - 1] = (arr_r - arr_l) / (2 * dx)
                     elif method == "forward":
                         out[i - 1, j - 1] = (arr_r - arr[i, j]) / dx
                     elif method == "backward":
