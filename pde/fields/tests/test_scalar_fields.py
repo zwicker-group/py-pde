@@ -10,6 +10,7 @@ import pytest
 from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
+from pde.grids.cartesian import CartesianGridBase
 from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
 from pde.tools.misc import module_available, skipUnlessModule
 
@@ -464,3 +465,28 @@ def test_corner_interpolation():
     assert field.interpolate(np.array([0.0, 0.5])) == pytest.approx(0.0)
     assert field.interpolate(np.array([0.5, 0.0])) == pytest.approx(0.0)
     assert field.interpolate(np.array([0.0, 0.0])) == pytest.approx(0.0)
+
+
+def test_generic_derivatives(example_grid):
+    """test generic derivatives operators"""
+    sf = ScalarField.random_uniform(example_grid, rng=np.random.default_rng(0))
+    sf_grad = sf.gradient("auto_periodic_neumann")
+    sf_lap = ScalarField(example_grid)
+
+    # iterate over all grid axes
+    for axis_id, axis in enumerate(example_grid.axes):
+        # test first derivatives
+        sf_deriv = sf._apply_operator(f"d_d{axis}", bc="auto_periodic_neumann")
+        assert isinstance(sf_deriv, ScalarField)
+        np.testing.assert_allclose(sf_deriv.data, sf_grad.data[axis_id])
+
+        # accumulate second derivatives for Laplacian
+        sf_lap += sf._apply_operator(f"d2_d{axis}2", bc="auto_periodic_neumann")
+
+    sf_laplace = sf.laplace("auto_periodic_neumann")
+    if isinstance(example_grid, CartesianGridBase):
+        # Laplacian is the sum of second derivatives in Cartesian coordinates
+        np.testing.assert_allclose(sf_lap.data, sf_laplace.data)
+    else:
+        # the two deviate in curvilinear coordinates
+        assert not np.allclose(sf_lap.data, sf_laplace.data)

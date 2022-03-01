@@ -12,7 +12,6 @@ import inspect
 import itertools
 import json
 import logging
-import warnings
 from abc import ABCMeta, abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -53,6 +52,7 @@ class OperatorInfo(NamedTuple):
     factory: Callable[..., OperatorType]
     rank_in: int
     rank_out: int
+    name: str = ""  # attach a unique name to help caching
 
 
 def _check_shape(shape) -> Tuple[int, ...]:
@@ -237,7 +237,7 @@ class GridBase(metaclass=ABCMeta):
         """callable: function to extract the valid part of a full data array"""
         num_axes = self.num_axes
 
-        @register_jitable
+        @jit
         def get_valid(arr: np.ndarray) -> np.ndarray:
             """return valid part of the data (without ghost cells)"""
             if num_axes == 1:
@@ -255,7 +255,7 @@ class GridBase(metaclass=ABCMeta):
         """callable: function to extract the valid part of a full data array"""
         num_axes = self.num_axes
 
-        @register_jitable
+        @jit
         def set_valid(arr: np.ndarray, value: np.ndarray) -> None:
             """return valid part of the data (without ghost cells)"""
             if num_axes == 1:
@@ -597,7 +597,7 @@ class GridBase(metaclass=ABCMeta):
         def register_operator(factor_func_arg: Callable):
             """helper function to register the operator"""
             cls._operators[name] = OperatorInfo(
-                factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out
+                factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
             )
             return factor_func_arg
 
@@ -631,14 +631,32 @@ class GridBase(metaclass=ABCMeta):
         """
         if isinstance(operator, OperatorInfo):
             return operator
+        assert isinstance(operator, str)
 
-        # obtain all parent classes, except `object`
+        # look for defined operators on all parent classes (except `object`)
         classes = inspect.getmro(self.__class__)[:-1]
         for cls in classes:
             if operator in cls._operators:  # type: ignore
                 return cls._operators[operator]  # type: ignore
 
-        # operator was not found
+        # deal with some special patterns that are often used
+        if operator.startswith("d_d"):
+            # create a special operator that takes a first derivative along one axis
+            from .operators.cartesian import _make_derivative
+
+            axis_id = self.axes.index(operator[len("d_d") :])
+            factory = functools.partial(_make_derivative, axis=axis_id)
+            return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
+
+        elif operator.startswith("d2_d") and operator.endswith("2"):
+            # create a special operator that takes a second derivative along one axis
+            from .operators.cartesian import _make_derivative2
+
+            axis_id = self.axes.index(operator[len("d2_d") : -1])
+            factory = functools.partial(_make_derivative2, axis=axis_id)
+            return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
+
+        # throw an informative error since operator was not found
         op_list = ", ".join(sorted(self.operators))
         raise ValueError(
             f"'{operator}' is not one of the defined operators ({op_list}). Custom "
@@ -776,20 +794,6 @@ class GridBase(metaclass=ABCMeta):
             raise NotImplementedError(f"Undefined backend '{backend}'")
 
         return apply_op  # type: ignore
-
-    def get_operator(
-        self,
-        operator: Union[str, OperatorInfo],
-        bc: BoundariesData,
-        **kwargs,
-    ) -> Callable[[np.ndarray], np.ndarray]:
-        """deprecated alias of method `make_operator`"""
-        # this was deprecated on 2021-08-05
-        warnings.warn(
-            "`get_operator` is deprecated. Use `make_operator` instead",
-            DeprecationWarning,
-        )
-        return self.make_operator(operator, bc, **kwargs)
 
     def get_subgrid(self, indices: Sequence[int]) -> GridBase:
         """return a subgrid of only the specified axes"""
