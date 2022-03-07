@@ -179,8 +179,14 @@ def test_indexed():
         e.derivatives
 
 
-def test_synonyms():
+def test_synonyms(caplog):
     """test using synonyms in expression"""
+    with caplog.at_level(logging.WARNING):
+        ScalarExpression("2 * a", [["a", "abs"]])
+    print(caplog.text)
+    s = caplog.text
+    assert "abs" in s
+
     e = ScalarExpression("2 * arbitrary", [["a", "arbitrary"]])
     assert e.depends_on("a")
     assert not e.depends_on("arbitrary")

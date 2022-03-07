@@ -117,15 +117,7 @@ class PDE(PDEBase):
             rhs = dict(rhs)
         if "t" in rhs:
             raise ValueError("Cannot name field `t` since it denotes time")
-        reserved_symbols = set(rhs) & ScalarExpression._reserved_symbols
-        if any(reserved_symbols):
-            if len(reserved_symbols) == 1:
-                name = reserved_symbols.pop()
-                raise ValueError(f"Cannot use reserved symbol `{name}` as field name")
-            else:
-                raise ValueError(
-                    f"Cannot use reserved symbols {reserved_symbols} as field names"
-                )
+        ScalarExpression.check_reserved_symbols(set(rhs))
         if consts is None:
             consts = {}
 

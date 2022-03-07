@@ -30,6 +30,7 @@ from typing import (  # @UnusedImport
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Mapping,
     Optional,
@@ -248,6 +249,31 @@ class ExpressionBase(metaclass=ABCMeta):
 
         return ExpressionBase._reserved_symbols_cache  # type: ignore
 
+    @classmethod
+    def check_reserved_symbols(
+        cls, symbols: Iterable[str], strict: bool = True
+    ) -> None:
+        """throws an error if reserved symbols are found
+
+        Args:
+            symbols (iterable):
+                A sequence or set of strings with symbols to check.
+            strict (bool):
+                Flag determining whether an exception is raised
+        """
+        symbol_set = {s.lower() for s in symbols}
+        reserved_symbols = symbol_set & ScalarExpression._reserved_symbols
+        if any(reserved_symbols):
+            if len(reserved_symbols) == 1:
+                name = reserved_symbols.pop()
+                msg = f"Cannot use reserved symbol `{name}` as field name"
+            else:
+                msg = f"Cannot use reserved symbols {reserved_symbols} as field names"
+            if strict:
+                raise ValueError(msg)
+            else:
+                logging.getLogger(cls.__name__).warning(msg)
+
     @property
     def _free_symbols(self) -> Set:
         """return symbols that appear in the expression and are not in self.consts"""
@@ -287,6 +313,15 @@ class ExpressionBase(metaclass=ABCMeta):
                 signature = list(sorted(args))
 
         self._logger.debug(f"Expression arguments: {args}")
+
+        # check whether signature contains reserved symbols
+        sig_elements = []
+        for sig in signature:
+            if isinstance(sig, str):
+                sig_elements.append(sig)
+            else:
+                sig_elements.extend(sig)
+        self.check_reserved_symbols(sig_elements, strict=False)
 
         # check whether variables are in signature
         self.vars: Any = []

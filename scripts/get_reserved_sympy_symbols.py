@@ -36,7 +36,7 @@ def get_reserved_sympy_symbols() -> List[str]:
 
         if free_count == 0:
             # sympy seemed to have recognized this symbols
-            forbidden.append(name)
+            forbidden.append(name.lower())
 
     return forbidden
 
