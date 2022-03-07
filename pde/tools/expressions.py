@@ -30,6 +30,7 @@ from typing import (  # @UnusedImport
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Mapping,
     Optional,
@@ -248,6 +249,31 @@ class ExpressionBase(metaclass=ABCMeta):
 
         return ExpressionBase._reserved_symbols_cache  # type: ignore
 
+    @classmethod
+    def check_reserved_symbols(
+        cls, symbols: Iterable[str], strict: bool = True
+    ) -> None:
+        """throws an error if reserved symbols are found
+
+        Args:
+            symbols (iterable):
+                A sequence or set of strings with symbols to check.
+            strict (bool):
+                Flag determining whether an exception is raised
+        """
+        symbol_set = {s.lower() for s in symbols}
+        reserved_symbols = symbol_set & ScalarExpression._reserved_symbols
+        if any(reserved_symbols):
+            if len(reserved_symbols) == 1:
+                name = reserved_symbols.pop()
+                msg = f"Cannot use reserved symbol `{name}` as field name"
+            else:
+                msg = f"Cannot use reserved symbols {reserved_symbols} as field names"
+            if strict:
+                raise ValueError(msg)
+            else:
+                logging.getLogger(cls.__name__).warning(msg)
+
     @property
     def _free_symbols(self) -> Set:
         """return symbols that appear in the expression and are not in self.consts"""
@@ -287,6 +313,15 @@ class ExpressionBase(metaclass=ABCMeta):
                 signature = list(sorted(args))
 
         self._logger.debug(f"Expression arguments: {args}")
+
+        # check whether signature contains reserved symbols
+        sig_elements = []
+        for sig in signature:
+            if isinstance(sig, str):
+                sig_elements.append(sig)
+            else:
+                sig_elements.extend(sig)
+        self.check_reserved_symbols(sig_elements, strict=False)
 
         # check whether variables are in signature
         self.vars: Any = []
@@ -605,7 +640,14 @@ class ScalarExpression(ExpressionBase):
         return super().__eq__(other) and self.allow_indexed == other.allow_indexed
 
     def _prepare_expression(self, expression: str) -> str:
-        """replace indexed variables, if allowed"""
+        """replace indexed variables, if allowed
+
+        Args:
+            expression (str):
+                An expression string that might contain variables that are indexed using
+                square brackets. If this is the case, they are rewritten using the
+                sympy object `IndexedBase`.
+        """
         if self.allow_indexed:
             return re.sub(r"(\w+)(\[\w+\])", r"IndexedBase(\1)\2", expression)
         else:
@@ -619,7 +661,7 @@ class ScalarExpression(ExpressionBase):
             isinstance(s, Indexed) and s.base.name == var for s in self._free_symbols
         )
 
-    def differentiate(self, var: str) -> "ScalarExpression":
+    def differentiate(self, var: str) -> ScalarExpression:
         """return the expression differentiated with respect to var"""
         if self.constant:
             # return empty expression
@@ -628,19 +670,26 @@ class ScalarExpression(ExpressionBase):
             )
         if self.allow_indexed:
             if self._var_indexed(var):
-                # TODO: implement this
                 raise NotImplementedError("Cannot differentiate with respect to vector")
 
-        var = self._prepare_expression(var)
+        # turn variable into sympy object and treat an indexed variable separately
+        var_expr = self._prepare_expression(var)
+        if "[" in var:
+            from sympy.parsing import sympy_parser
+
+            var_symbol = sympy_parser.parse_expr(var_expr)
+        else:
+            var_symbol = sympy.Symbol(var_expr)
+
         return ScalarExpression(
-            self._sympy_expr.diff(var),
+            self._sympy_expr.diff(var_symbol),
             signature=self.vars,
             allow_indexed=self.allow_indexed,
             user_funcs=self.user_funcs,
         )
 
     @cached_property()
-    def derivatives(self) -> "TensorExpression":
+    def derivatives(self) -> TensorExpression:
         """differentiate the expression with respect to all variables"""
         if self.constant:
             # return empty expression
@@ -654,7 +703,7 @@ class ScalarExpression(ExpressionBase):
                     "Cannot calculate gradient for expressions with indexed variables"
                 )
 
-        grad = sympy.Array([self._sympy_expr.diff(v) for v in self.vars])
+        grad = sympy.Array([self._sympy_expr.diff(sympy.Symbol(v)) for v in self.vars])
         return TensorExpression(
             sympy.simplify(grad), signature=self.vars, user_funcs=self.user_funcs
         )
@@ -770,16 +819,16 @@ class TensorExpression(ExpressionBase):
         else:
             raise TypeError("Only constant expressions have a defined value")
 
-    def differentiate(self, var: str) -> "TensorExpression":
+    def differentiate(self, var: str) -> TensorExpression:
         """return the expression differentiated with respect to var"""
         if self.constant:
             derivative = np.zeros(self.shape)
         else:
-            derivative = self._sympy_expr.diff(var)
+            derivative = self._sympy_expr.diff(sympy.Symbol(var))
         return TensorExpression(derivative, self.vars, user_funcs=self.user_funcs)
 
     @cached_property()
-    def derivatives(self) -> "TensorExpression":
+    def derivatives(self) -> TensorExpression:
         """differentiate the expression with respect to all variables"""
         shape = (len(self.vars),) + self.shape
 
