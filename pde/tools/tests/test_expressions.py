@@ -181,9 +181,9 @@ def test_indexed():
 
 def test_synonyms():
     """test using synonyms in expression"""
-    e = ScalarExpression("2 * all", [["a", "all"]])
+    e = ScalarExpression("2 * arbitrary", [["a", "arbitrary"]])
     assert e.depends_on("a")
-    assert not e.depends_on("all")
+    assert not e.depends_on("arbitrary")
 
 
 def test_tensor_expression():

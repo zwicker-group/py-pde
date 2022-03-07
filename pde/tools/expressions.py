@@ -605,7 +605,14 @@ class ScalarExpression(ExpressionBase):
         return super().__eq__(other) and self.allow_indexed == other.allow_indexed
 
     def _prepare_expression(self, expression: str) -> str:
-        """replace indexed variables, if allowed"""
+        """replace indexed variables, if allowed
+
+        Args:
+            expression (str):
+                An expression string that might contain variables that are indexed using
+                square brackets. If this is the case, they are rewritten using the
+                sympy object `IndexedBase`.
+        """
         if self.allow_indexed:
             return re.sub(r"(\w+)(\[\w+\])", r"IndexedBase(\1)\2", expression)
         else:
@@ -619,7 +626,7 @@ class ScalarExpression(ExpressionBase):
             isinstance(s, Indexed) and s.base.name == var for s in self._free_symbols
         )
 
-    def differentiate(self, var: str) -> "ScalarExpression":
+    def differentiate(self, var: str) -> ScalarExpression:
         """return the expression differentiated with respect to var"""
         if self.constant:
             # return empty expression
@@ -628,19 +635,26 @@ class ScalarExpression(ExpressionBase):
             )
         if self.allow_indexed:
             if self._var_indexed(var):
-                # TODO: implement this
                 raise NotImplementedError("Cannot differentiate with respect to vector")
 
-        var = self._prepare_expression(var)
+        # turn variable into sympy object and treat an indexed variable separately
+        var_expr = self._prepare_expression(var)
+        if "[" in var:
+            from sympy.parsing import sympy_parser
+
+            var_symbol = sympy_parser.parse_expr(var_expr)
+        else:
+            var_symbol = sympy.Symbol(var_expr)
+
         return ScalarExpression(
-            self._sympy_expr.diff(var),
+            self._sympy_expr.diff(var_symbol),
             signature=self.vars,
             allow_indexed=self.allow_indexed,
             user_funcs=self.user_funcs,
         )
 
     @cached_property()
-    def derivatives(self) -> "TensorExpression":
+    def derivatives(self) -> TensorExpression:
         """differentiate the expression with respect to all variables"""
         if self.constant:
             # return empty expression
@@ -654,7 +668,7 @@ class ScalarExpression(ExpressionBase):
                     "Cannot calculate gradient for expressions with indexed variables"
                 )
 
-        grad = sympy.Array([self._sympy_expr.diff(v) for v in self.vars])
+        grad = sympy.Array([self._sympy_expr.diff(sympy.Symbol(v)) for v in self.vars])
         return TensorExpression(
             sympy.simplify(grad), signature=self.vars, user_funcs=self.user_funcs
         )
@@ -770,16 +784,16 @@ class TensorExpression(ExpressionBase):
         else:
             raise TypeError("Only constant expressions have a defined value")
 
-    def differentiate(self, var: str) -> "TensorExpression":
+    def differentiate(self, var: str) -> TensorExpression:
         """return the expression differentiated with respect to var"""
         if self.constant:
             derivative = np.zeros(self.shape)
         else:
-            derivative = self._sympy_expr.diff(var)
+            derivative = self._sympy_expr.diff(sympy.Symbol(var))
         return TensorExpression(derivative, self.vars, user_funcs=self.user_funcs)
 
     @cached_property()
-    def derivatives(self) -> "TensorExpression":
+    def derivatives(self) -> TensorExpression:
         """differentiate the expression with respect to all variables"""
         shape = (len(self.vars),) + self.shape
 
