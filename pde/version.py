@@ -4,4 +4,4 @@ Contains the version information of the package
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-__version__ = "0.17.2"
+__version__ = "0.17.3"
