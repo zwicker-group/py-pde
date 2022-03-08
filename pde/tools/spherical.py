@@ -685,3 +685,13 @@ def spherical_harmonic_real_k(k: int, θ: float, φ: float) -> float:
         float: The value of the spherical harmonics
     """
     return spherical_harmonic_real(*spherical_index_lm(k), θ=θ, φ=φ)
+
+
+import warnings
+
+# deprecated the module on 2022-03-08. Scheduled for removal on 2022-09-08
+warnings.warn(
+    "The `spherical` module is deprecated. Some of the functions have been migrated to "
+    "the `droplets.tools.spherical` module of the `py-droplets` package",
+    DeprecationWarning,
+)

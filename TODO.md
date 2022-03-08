@@ -1,5 +1,6 @@
 TODO
 ====
+* Change default plotting such that axes are reused (using `plt.gca()`) instead of created by default
 * Think about incremental test run
     - should break at first failure
     - should restart at last failure

@@ -244,26 +244,27 @@ def plot_on_axes(wrapped=None, update_method=None):
         filename (str, optional):
             If given, the plot is written to the specified file.
         action (str):
-            Decides what to do with the figure. If the argument is set to `show`
-            :func:`matplotlib.pyplot.show` will be called to show the plot, if
-            the value is `create`, the figure will be created, but not shown,
-            and the value `close` closes the figure, after saving it to a file
-            when `filename` is given. The default value `auto` implies that the
-            plot is shown if it is not a nested plot call.
+            Decides what to do with the final figure. If the argument is set to
+            `show` :func:`matplotlib.pyplot.show` will be called to show the
+            plot. If the value is `none`, the figure will be created, but not
+            necessarily shown. The value `close` closes the figure, after saving
+            it to a file when `filename` is given. The default value `auto`
+            implies that the plot is shown if it is not a nested plot call.
         ax_style (dict):
             Dictionary with properties that will be changed on the axis
             after the plot has been drawn by calling
             :meth:`matplotlib.pyplot.setp`. A special item in this dictionary is
-            `use_offset`, which is flag that can be used to control whether offset are
-            shown along the axes of the plot.
+            `use_offset`, which is flag that can be used to control whether
+            offset are shown along the axes of the plot.
         fig_style (dict):
             Dictionary with properties that will be changed on the
             figure after the plot has been drawn by calling
             :meth:`matplotlib.pyplot.setp`. For instance, using
             fig_style={'dpi': 200} increases the resolution of the figure.
         ax (:class:`matplotlib.axes.Axes`):
-            Figure axes to be used for plotting. If `None`, a new figure with a single
-            axes is created.
+            Figure axes to be used for plotting. The special value "create"
+            creates a new figure, while "reuse" attempts to reuse an existing
+            figure, which is the default.
         """
         # Note on docstring: This docstring replaces the token {PLOT_ARGS} in
         # the wrapped function
@@ -294,7 +295,14 @@ def plot_on_axes(wrapped=None, update_method=None):
                         plt.close("all")  # close left over figures
                         auto_show_figure = True  # show this figure if action == 'auto'
                     fig, ax = plt.subplots()
+
+                elif ax == "reuse":
+                    # try to reuse an existing figure (or create a new one)
+                    ax = plt.gca()
+                    fig = ax.get_figure()
+
                 else:
+                    # assume an axes was given
                     fig = ax.get_figure()
 
                 # call the actual plotting function
@@ -322,7 +330,7 @@ def plot_on_axes(wrapped=None, update_method=None):
                     # circumstances determined above
                     action = "show"
                 else:
-                    action = "create"
+                    action = "none"
 
             if action == "show":
                 with warnings.catch_warnings():
@@ -332,7 +340,11 @@ def plot_on_axes(wrapped=None, update_method=None):
             elif action == "close":
                 plt.close(fig)
 
-            elif action != "create":
+            elif action == "create":
+                # deprecated on 2022-03-08. Scheduled for removal on 2022-09-08
+                warnings.warn("action `create` is called `none`", DeprecationWarning)
+
+            elif action != "none":
                 raise ValueError(f"Unknown action `{action}`")
 
         return reference
