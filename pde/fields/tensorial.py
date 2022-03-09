@@ -536,7 +536,7 @@ class Tensor2Field(DataFieldBase):
         axs = fig.subplots(nrows=dim, ncols=dim, squeeze=False)
 
         # plot all the elements onto the respective axes
-        kwargs.setdefault("action", "create")
+        kwargs.setdefault("action", "none")
         kwargs["kind"] = kind
         comps = self.grid.axes + self.grid.axes_symmetric
         references = [

@@ -31,12 +31,12 @@ class Movie:
         Internally, this class uses :class:`matplotlib.animation.FFMpegWriter`.
         Note that the `ffmpeg` program needs to be installed in a system path,
         so that `matplotlib` can find it.
-        
-        
+
+
     Warning:
         The movie is only fully written after the :meth:`save` method has been called.
         To aid with this, it is best practice to use a contextmanager:
-        
+
         .. code-block:: python
 
             with Movie("output.mp4") as movie:
@@ -262,7 +262,7 @@ def movie(
         for t, field in field_iter:
             if ref is None:
                 # create the actual figure in the first frame
-                ref = field.plot(action="create", **plot_args)
+                ref = field.plot(action="none", **plot_args)
                 # obtain the matplotlib figure from the returned reference
                 try:
                     fig = ref.ax.figure

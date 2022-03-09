@@ -63,7 +63,8 @@ class TrackerBase(metaclass=ABCMeta):
             try:
                 tracker_cls = cls._subclasses[data]
             except KeyError:
-                raise ValueError(f"Tracker `{data}` is not defined")
+                trackers = sorted(cls._subclasses.keys())
+                raise ValueError(f"Tracker `{data}` is not in {trackers}")
             return tracker_cls(**kwargs)
         else:
             raise ValueError(f"Unsupported tracker format: `{data}`.")
