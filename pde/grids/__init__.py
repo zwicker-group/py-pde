@@ -33,6 +33,6 @@ from .base import registered_operators
 from .boundaries import *
 from .cartesian import CartesianGrid, UnitGrid
 from .cylindrical import CylindricalGrid, CylindricalSymGrid
-from .spherical import PolarGrid, PolarSymGrid, SphericalGrid, SphericalSymGrid
+from .spherical import PolarSymGrid, SphericalSymGrid
 
 del operators  # remove the name from the namespace
