@@ -10,7 +10,6 @@ vanishes.
  
 """
 
-import warnings
 from abc import ABCMeta
 from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, TypeVar, Union
 
@@ -650,39 +649,3 @@ class SphericalSymGrid(SphericalSymGridBase):
         z = points[..., 0]
         x = np.zeros_like(z)
         return np.stack((x, x, z), axis=-1)
-
-
-class PolarGrid(PolarSymGrid):
-    """2-dimensional polar grid assuming angular symmetry
-
-    .. deprecated:: 0.14 (2021-05-21)
-        Use :class:`~pde.grids.spherical.PolarSymGrid` instead.
-    """
-
-    deprecated: bool = True
-
-    def __init__(self, *args, **kwargs):
-        """class deprecated since 2021-05-21"""
-        warnings.warn(
-            "PolarGrid is a deprecated class. Use PolarSymGrid instead",
-            DeprecationWarning,
-        )
-        super().__init__(*args, **kwargs)
-
-
-class SphericalGrid(SphericalSymGrid):
-    """3-dimensional spherical grid assuming spherical symmetry
-
-    .. deprecated:: 0.14 (2021-05-21)
-        Use :class:`~pde.grids.spherical.SphericalSymGrid` instead.
-    """
-
-    deprecated: bool = True
-
-    def __init__(self, *args, **kwargs):
-        """class deprecated since 2021-05-21"""
-        warnings.warn(
-            "PolarGrid is a deprecated class. Use SphericalSymGrid instead",
-            DeprecationWarning,
-        )
-        super().__init__(*args, **kwargs)
