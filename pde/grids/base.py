@@ -456,6 +456,57 @@ class GridBase(metaclass=ABCMeta):
     def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
         pass
 
+    def transform(
+        self, coordinates: np.ndarray, source: str, target: str
+    ) -> np.ndarray:
+        """converts coordinates from one coordinate system to another
+
+        Supported coordinate systems include
+
+        * `cartesian`: Cartesian coordinates where each point carries `dim` values
+        * `cell`: Grid coordinates based on indexing the discretization cells
+        * `grid`: Grid coordinates where each point carries `num_axes` values
+
+        Note:
+            Some conversion might involve projections if the coordinate system imposes
+            symmetries.
+
+        Args:
+            coordinates (:class:`~numpy.ndarray`): The coordinates to convert
+            source (str): The source coordinate system
+            target (str): The target coordinate system
+        """
+        if source == "cartesian":
+            # Cartesian coordinates given
+            if target == "cartesian":
+                return coordinates
+            elif target == "cell":
+                return self.point_to_cell(coordinates)
+            elif target == "grid":
+                return self.point_from_cartesian(coordinates)
+
+        elif source == "cell":
+            # Cell coordinates given
+            if target == "cartesian":
+                return self.cell_to_point(coordinates, cartesian=True)
+            elif target == "cell":
+                return coordinates
+            elif target == "grid":
+                return self.cell_to_point(coordinates, cartesian=False)
+
+        elif source == "grid":
+            # Cell coordinates given
+            if target == "cartesian":
+                return self.point_to_cartesian(coordinates)
+            elif target == "cell":
+                return self.point_to_cell(self.point_to_cartesian(coordinates))
+            elif target == "grid":
+                return coordinates
+
+        else:
+            raise ValueError(f"Unknown source coordinates `{source}`")
+        raise ValueError(f"Unknown target coordinates `{target}`")
+
     @abstractmethod
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray):
         pass

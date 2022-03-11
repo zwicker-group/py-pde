@@ -35,26 +35,16 @@ def test_discretize():
     np.testing.assert_allclose(x, x_expect)
 
 
-def test_serialization():
+@pytest.mark.parametrize("grid", iter_grids())
+def test_serialization(grid):
     """test whether grid can be serialized and copied"""
+    g = GridBase.from_state(grid.state_serialized)
+    assert grid == g
+    assert grid._cache_hash() == g._cache_hash()
 
-    def iter_grids():
-        """helper function iterating over different grids"""
-        for periodic in [True, False]:
-            yield grids.UnitGrid([3, 4], periodic=periodic)
-            yield grids.CartesianGrid([[0, 1], [-2, 3]], [4, 5], periodic=periodic)
-            yield grids.CylindricalSymGrid(3, [-1, 2], [5, 7], periodic_z=periodic)
-        yield grids.SphericalSymGrid(4, 6)
-        yield grids.PolarSymGrid(4, 5)
-
-    for grid in iter_grids():
-        g = GridBase.from_state(grid.state_serialized)
+    for g in (grid.copy(), copy(grid), deepcopy(grid)):
         assert grid == g
-        assert grid._cache_hash() == g._cache_hash()
-
-        for g in (grid.copy(), copy(grid), deepcopy(grid)):
-            assert grid == g
-            assert grid is not g
+        assert grid is not g
 
 
 def test_iter_mirror_points():
@@ -80,30 +70,38 @@ def test_iter_mirror_points():
         assert len(list(ps)) == num_expect
 
 
-def test_cell_to_point_conversion():
+@pytest.mark.parametrize("grid", iter_grids())
+def test_cell_to_point_conversion(grid):
     """test the conversion between cells and points"""
-    for grid in iter_grids():
-        c = grid.point_to_cell(grid.get_random_point())
-        c2 = grid.point_to_cell(grid.cell_to_point(c))
-        np.testing.assert_almost_equal(c, c2)
+    c = grid.point_to_cell(grid.get_random_point())
+    c2 = grid.point_to_cell(grid.cell_to_point(c))
+    np.testing.assert_almost_equal(c, c2)
 
-        p_emtpy = np.zeros((0, grid.dim))
-        assert grid.point_to_cell(p_emtpy).size == 0
-        c_emtpy = np.zeros((0, grid.num_axes))
-        assert grid.cell_to_point(c_emtpy).size == 0
+    p_emtpy = np.zeros((0, grid.dim))
+    assert grid.point_to_cell(p_emtpy).size == 0
+    c_emtpy = np.zeros((0, grid.num_axes))
+    assert grid.cell_to_point(c_emtpy).size == 0
+
+    p = grid.get_random_point(cartesian=True)
+    for source in ["cartesian", "cell", "grid"]:
+        p1 = grid.transform(p, "cartesian", source)
+        for target in ["cartesian", "grid"]:
+            p2 = grid.transform(p1, source, target)
+            p3 = grid.transform(p2, target, source)
+            np.testing.assert_allclose(p1, p3, err_msg=f"{source} -> {target}")
 
 
-def test_integration():
+@pytest.mark.parametrize("grid", iter_grids())
+def test_integration(grid):
     """test integration of fields"""
-    for grid in iter_grids():
-        arr = np.random.randn(*grid.shape)
-        res = grid.make_integrator()(arr)
-        assert np.isscalar(res)
-        assert res == pytest.approx(grid.integrate(arr))
-        if grid.num_axes == 1:
-            assert res == pytest.approx(grid.integrate(arr, axes=0))
-        else:
-            assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
+    arr = np.random.randn(*grid.shape)
+    res = grid.make_integrator()(arr)
+    assert np.isscalar(res)
+    assert res == pytest.approx(grid.integrate(arr))
+    if grid.num_axes == 1:
+        assert res == pytest.approx(grid.integrate(arr, axes=0))
+    else:
+        assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
 
 
 @skipUnlessModule("matplotlib")
@@ -119,19 +117,19 @@ def test_grid_plotting():
     grids.PolarSymGrid((2, 4), 8).plot()
 
 
-def test_operators():
+@pytest.mark.parametrize("grid", iter_grids())
+def test_operators(grid):
     """test operator mechanism"""
 
     def make_op(state):
         return lambda state: state
 
-    for grid in iter_grids():
-        assert "laplace" in grid.operators
-        with pytest.raises(ValueError):
-            grid.make_operator("not_existent", "auto_periodic_neumann")
-        grid.register_operator("noop", make_op)
-        assert "noop" in grid.operators
-        del grid._operators["noop"]  # reset original state
+    assert "laplace" in grid.operators
+    with pytest.raises(ValueError):
+        grid.make_operator("not_existent", "auto_periodic_neumann")
+    grid.register_operator("noop", make_op)
+    assert "noop" in grid.operators
+    del grid._operators["noop"]  # reset original state
 
 
 def test_registered_operators():
