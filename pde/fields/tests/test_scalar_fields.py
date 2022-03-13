@@ -129,22 +129,22 @@ def test_insert_scalar(example_grid):
     f = ScalarField(example_grid)
     a = np.random.random()
 
-    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
+    c = tuple(example_grid.get_random_point(coords="cell"))
     p = example_grid.cell_to_point(c, cartesian=False)
     f.insert(p, a)
     assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
 
-    f.insert(example_grid.get_random_point(cartesian=False), a)
+    f.insert(example_grid.get_random_point(coords="grid"), a)
     assert f.integral == pytest.approx(2 * a)
 
     f.data = 0  # reset
     insert = example_grid.make_inserter_compiled()
-    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
+    c = tuple(example_grid.get_random_point(coords="cell"))
     p = example_grid.cell_to_point(c, cartesian=False)
     insert(f.data, p, a)
     assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
 
-    insert(f.data, example_grid.get_random_point(cartesian=False), a)
+    insert(f.data, example_grid.get_random_point(coords="grid"), a)
     assert f.integral == pytest.approx(2 * a)
 
 
@@ -259,7 +259,7 @@ def test_projection(example_grid_nd, method):
 def test_slice(example_grid_nd):
     """test scalar slicing"""
     sf = ScalarField(example_grid_nd, 0.5)
-    p = example_grid_nd.get_random_point()
+    p = example_grid_nd.get_random_point(coords="grid")
     for i in range(example_grid_nd.num_axes):
         sf_slc = sf.slice({example_grid_nd.axes[i]: p[i]})
         np.testing.assert_allclose(sf_slc.data, 0.5)

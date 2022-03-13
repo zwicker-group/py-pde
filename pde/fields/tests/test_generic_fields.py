@@ -37,7 +37,6 @@ def test_set_label(field_class):
         field_class(grid, label=1)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
 def test_interpolation_natural(example_grid, field_class):
     """test some interpolation for natural boundary conditions"""
@@ -46,10 +45,11 @@ def test_interpolation_natural(example_grid, field_class):
 
     def get_point():
         if isinstance(example_grid, CartesianGridBase):
-            p = example_grid.get_random_point(boundary_distance=0.5)
+            return example_grid.get_random_point(boundary_distance=0.5, coords="grid")
         else:
-            p = example_grid.get_random_point(boundary_distance=1, avoid_center=True)
-        return example_grid.point_from_cartesian(p)
+            return example_grid.get_random_point(
+                boundary_distance=1, avoid_center=True, coords="grid"
+            )
 
     # interpolate a single, random point
     p = get_point()

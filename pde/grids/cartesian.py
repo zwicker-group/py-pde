@@ -6,6 +6,7 @@ Cartesian grids of arbitrary dimension.
 """
 
 import itertools
+import warnings
 from abc import ABCMeta
 from typing import List  # @UnusedImport
 from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
@@ -105,25 +106,32 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
     def get_random_point(
         self,
+        *,
         boundary_distance: float = 0,
-        cartesian: bool = True,
+        coords: str = "cartesian",
         rng: np.random.Generator = None,
+        cartesian: bool = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
         Args:
             boundary_distance (float): The minimal distance this point needs to
                 have from all boundaries.
-            cartesian (bool): Determines whether the point is returned in
-                Cartesian coordinates or grid coordinates. This does not have
-                any effect for Cartesian coordinate systems, but the argument is
-                retained to have a unified interface for all grids.
+            coords (str):
+                Determines the coordinate system in which the point is specified. Valid
+                values are `cartesian`, `cell`, and `grid`;
+                see :meth:`~pde.grids.base.GridBase.transform`.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
 
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
+        if cartesian is not None:
+            # deprecated on 2022-03-11
+            warnings.warn("Argument `cartesian` is deprecated. Use `coords` instead")
+            coords = "cartesian" if cartesian else "grid"
+
         if rng is None:
             rng = np.random.default_rng()
 
@@ -135,7 +143,14 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             cuboid = cuboid.buffer(-boundary_distance)
 
         # create random point
-        return cuboid.pos + rng.random(self.dim) * cuboid.size  # type: ignore
+        point = cuboid.pos + rng.random(self.dim) * cuboid.size  # type: ignore
+
+        if coords == "cartesian" or coords == "grid":
+            return point
+        elif coords == "cell":
+            return self.transform(point, "grid", "cell")
+        else:
+            raise ValueError(f"Unknown coordinate system `{coords}`")
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
         """return a line cut through the given data

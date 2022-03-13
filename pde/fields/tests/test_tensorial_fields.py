@@ -118,24 +118,24 @@ def test_insert_tensor(example_grid):
     f = Tensor2Field(example_grid)
     a = np.random.random(f.data_shape)
 
-    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
+    c = tuple(example_grid.get_random_point(coords="cell"))
     c_data = (Ellipsis,) + c
     p = example_grid.cell_to_point(c, cartesian=False)
     f.insert(p, a)
     np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
 
-    f.insert(example_grid.get_random_point(cartesian=False), a)
+    f.insert(example_grid.get_random_point(coords="grid"), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
     f.data = 0  # reset
     insert = example_grid.make_inserter_compiled()
-    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
+    c = tuple(example_grid.get_random_point(coords="cell"))
     c_data = (Ellipsis,) + c
     p = example_grid.cell_to_point(c, cartesian=False)
     insert(f.data, p, a)
     np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
 
-    insert(f.data, example_grid.get_random_point(cartesian=False), a)
+    insert(f.data, example_grid.get_random_point(coords="grid"), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
 

@@ -73,7 +73,7 @@ def test_iter_mirror_points():
 @pytest.mark.parametrize("grid", iter_grids())
 def test_cell_to_point_conversion(grid):
     """test the conversion between cells and points"""
-    c = grid.point_to_cell(grid.get_random_point())
+    c = grid.get_random_point(coords="cell")
     c2 = grid.point_to_cell(grid.cell_to_point(c))
     np.testing.assert_almost_equal(c, c2)
 
@@ -82,9 +82,9 @@ def test_cell_to_point_conversion(grid):
     c_emtpy = np.zeros((0, grid.num_axes))
     assert grid.cell_to_point(c_emtpy).size == 0
 
-    p = grid.get_random_point(cartesian=True)
+    p = grid.get_random_point(coords="grid")
     for source in ["cartesian", "cell", "grid"]:
-        p1 = grid.transform(p, "cartesian", source)
+        p1 = grid.transform(p, "grid", source)
         for target in ["cartesian", "grid"]:
             p2 = grid.transform(p1, source, target)
             p3 = grid.transform(p2, target, source)

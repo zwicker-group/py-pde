@@ -227,7 +227,7 @@ intersphinx_mapping = {
     "https://numpy.org/doc/stable": None,
     "https://docs.scipy.org/doc/scipy/": None,
     "https://docs.sympy.org/latest/": None,
-    "https://matplotlib.org": None,
+    "https://matplotlib.org/stable": None,
     "https://docs.h5py.org/en/latest": None,
     "https://napari.org/docs/dev": None,
 }

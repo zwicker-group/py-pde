@@ -35,10 +35,11 @@ def test_cylindrical_grid():
         c1 = grid.point_to_cell(grid.cell_to_point(c))
         np.testing.assert_almost_equal(c, c1, err_msg=msg)
 
-        assert grid.contains_point(grid.get_random_point())
-        ps = [grid.get_random_point() for _ in range(2)]
+        assert grid.contains_point(grid.get_random_point(coords="cartesian"))
+        ps = [grid.get_random_point(coords="cartesian") for _ in range(2)]
         assert all(grid.contains_point(ps))
-        assert grid.contains_point(grid.get_random_point(1.49))
+        ps = grid.get_random_point(coords="cartesian", boundary_distance=1.49)
+        assert grid.contains_point(ps)
         assert "laplace" in grid.operators
 
 

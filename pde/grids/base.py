@@ -543,7 +543,7 @@ class GridBase(metaclass=ABCMeta):
 
     @abstractmethod
     def get_random_point(
-        self, boundary_distance: float = 0, cartesian: bool = True
+        self, *, boundary_distance: float = 0, coords: str = "cartesian"
     ) -> np.ndarray:
         pass
 
