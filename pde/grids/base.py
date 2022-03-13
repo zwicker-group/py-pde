@@ -449,7 +449,7 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_to_cartesian(self, points: np.ndarray, **kwargs) -> np.ndarray:
         pass
 
     @abstractmethod

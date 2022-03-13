@@ -332,7 +332,9 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         r_vols = np.diff(areas).reshape(self.shape[0], 1)
         return (r_vols, dz)
 
-    def point_to_cartesian(self, points: np.ndarray, full: bool = False) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         Args:

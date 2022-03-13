@@ -4,10 +4,9 @@ periodicities, and the discretizations are defined by the underlying grid.
 
 We only consider regular, orthogonal grids, which are constructed from orthogonal
 coordinate systems with equidistant discretizations along each axis. The dimension of
-the space that the grid describes is given by the attribute :attr:`dim`. Points given in
-these coordinates can be mapped to coordinates in Cartesian space using the methods
-:meth:`point_to_cartesian` and its inverse. Moreover, points can be mapped to cell
-indices using the methods :meth:`point_to_cell`.
+the space that the grid describes is given by the attribute :attr:`dim`. Cartesian
+coordinates can be mapped to grid coordinates and the corresponding discretization cells
+using the method :meth:`transform`.
 
 .. autosummary::
    :nosignatures:

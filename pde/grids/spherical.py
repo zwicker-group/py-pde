@@ -609,7 +609,9 @@ class PolarSymGrid(SphericalSymGridBase):
     axes_symmetric = ["phi"]
     coordinate_constraints = [0, 1]  # axes not described explicitly
 
-    def point_to_cartesian(self, points: np.ndarray, full: bool = False) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         This function returns points along the y-coordinate, i.e, the x
@@ -672,7 +674,9 @@ class SphericalSymGrid(SphericalSymGridBase):
     axes_symmetric = ["theta", "phi"]
     coordinate_constraints = [0, 1, 2]  # axes not described explicitly
 
-    def point_to_cartesian(self, points: np.ndarray, full: bool = False) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         This function returns points along the z-coordinate, i.e, the x and y
