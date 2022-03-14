@@ -295,16 +295,17 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """return polar coordinates associated with the grid
 
         Args:
-            origin (:class:`~numpy.ndarray`): Coordinates of the origin at which the polar
-                coordinate system is anchored.
-            ret_angle (bool): Determines whether angles are returned alongside
-                the distance. If `False` only the distance to the origin is
-                returned for each support point of the grid.
-                If `True`, the distance and angles are returned. For a 1d system
-                system, the angle is defined as the sign of the difference
-                between the point and the origin, so that angles can either be
-                1 or -1. For 2d systems and 3d systems, polar coordinates and
-                spherical coordinates are used, respectively.
+            origin (:class:`~numpy.ndarray`):
+                Coordinates of the origin at which the polar coordinate system is
+                anchored.
+            ret_angle (bool):
+                Determines whether angles are returned alongside the distance. If `False`
+                only the distance to the origin is returned for each support point of the
+                grid. If `True`, the distance and angles are returned. For a 1d system
+                system, the angle is defined as the sign of the difference between the
+                point and the origin, so that angles can either be 1 or -1. For 2d
+                systems and 3d systems, polar coordinates and spherical coordinates are
+                used, respectively.
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
@@ -488,27 +489,6 @@ class UnitGrid(CartesianGridBase):
         """float: total volume of the grid"""
         return float(np.prod(self.shape))
 
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2.
-
-        In case of periodic boundary conditions, the shortest vector is returned
-
-        Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-            with periodic boundary conditions applied.
-        """
-        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        # correct the periodic dimensions
-        for i in range(self.num_axes):
-            if self.periodic[i]:
-                s = self.shape[i]
-                diff[..., i] = (diff[..., i] + s / 2) % s - s / 2
-        return diff  # type: ignore
-
     def to_cartesian(self) -> "CartesianGrid":
         """convert unit grid to CartesianGrid"""
         return CartesianGrid(
@@ -658,26 +638,6 @@ class CartesianGrid(CartesianGridBase):
     def volume(self) -> float:
         """float: total volume of the grid"""
         return float(self.cuboid.volume)
-
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2.
-
-        In case of periodic boundary conditions, the shortest vector is returned
-
-        Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-            with periodic  boundary conditions applied.
-        """
-        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        periodic = self.periodic
-        if any(periodic):
-            size = self.cuboid.size[periodic]
-            diff[..., periodic] = (diff[..., periodic] + size / 2) % size - size / 2
-        return diff  # type: ignore
 
     def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":
         """return a subgrid of only the specified axes

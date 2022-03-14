@@ -376,21 +376,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
         return np.linalg.norm(points, axis=-1, keepdims=True)  # type: ignore
 
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2.
-
-        In case of periodic boundary conditions, the shortest vector is returned
-
-        Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-                with periodic boundary conditions applied.
-        """
-        return np.atleast_1d(p2) - np.atleast_1d(p1)  # type: ignore
-
     def polar_coordinates_real(
         self, origin=None, *, ret_angle: bool = False, **kwargs
     ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:

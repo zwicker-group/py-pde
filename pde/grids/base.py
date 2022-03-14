@@ -648,9 +648,25 @@ class GridBase(metaclass=ABCMeta):
         warnings.warn("`point_to_cell` is deprecated. Use `transform` method instead")
         return self.transform(points, "cartesian", "points")
 
-    @abstractmethod
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray):
-        pass
+    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+        """return the vector pointing from p1 to p2.
+
+        In case of periodic boundary conditions, the shortest vector is returned
+
+        Args:
+            p1 (:class:`~numpy.ndarray`): First point(s)
+            p2 (:class:`~numpy.ndarray`): Second point(s)
+
+        Returns:
+            :class:`~numpy.ndarray`: The difference vectors between the points
+            with periodic  boundary conditions applied.
+        """
+        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
+        for i, periodic in enumerate(self.periodic):
+            if periodic:
+                size = self.axes_bounds[i][1] - self.axes_bounds[i][0]
+                diff[..., i] = (diff[..., i] + size / 2) % size - size / 2
+        return diff  # type: ignore
 
     @abstractmethod
     def polar_coordinates_real(

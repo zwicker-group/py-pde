@@ -379,25 +379,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         zs = points[..., 2]
         return np.stack((rs, zs), axis=-1)
 
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2.
-
-        In case of periodic boundary conditions, the shortest vector is returned
-
-        Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-            with periodic  boundary conditions applied.
-        """
-        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        if self._periodic_z:
-            size = self.length
-            diff[..., 1] = (diff[..., 1] + size / 2) % size - size / 2
-        return diff  # type: ignore
-
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
     ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
