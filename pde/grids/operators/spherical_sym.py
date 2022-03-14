@@ -56,7 +56,7 @@ def make_laplace(grid: SphericalSymGrid, conservative: bool = True) -> OperatorT
         rl = rs - dr / 2  # inner radii of spherical shells
         rh = rs + dr / 2  # outer radii
         assert np.isclose(rl[0], r_min) and np.isclose(rh[-1], r_max)
-        volumes = (rh ** 3 - rl ** 3) / 3  # volume of the spherical shells
+        volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
         factor_l = (rs - 0.5 * dr) ** 2 / (dr * volumes)
         factor_h = (rs + 0.5 * dr) ** 2 / (dr * volumes)
 
@@ -68,7 +68,7 @@ def make_laplace(grid: SphericalSymGrid, conservative: bool = True) -> OperatorT
                 out[i - 1] -= factor_l[i - 1] * (arr[i] - arr[i - 1])
 
     else:  # create an operator that is not conservative
-        dr2 = 1 / dr ** 2
+        dr2 = 1 / dr**2
 
         @jit
         def laplace(arr: np.ndarray, out: np.ndarray) -> None:
@@ -139,7 +139,7 @@ def make_gradient_squared(grid: SphericalSymGrid, central: bool = True) -> Opera
 
     if central:
         # use central differences
-        scale = 0.25 / dr ** 2
+        scale = 0.25 / dr**2
 
         @jit
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -149,7 +149,7 @@ def make_gradient_squared(grid: SphericalSymGrid, central: bool = True) -> Opera
 
     else:
         # use forward and backward differences
-        scale = 0.5 / dr ** 2
+        scale = 0.5 / dr**2
 
         @jit
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -344,7 +344,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     rl = r_min + dr * np.arange(dim_r)  # inner radii of spherical shells
     rh = rl + dr  # outer radii
     assert np.isclose(rh[-1], r_max)
-    volumes = (rh ** 3 - rl ** 3) / 3  # volume of the spherical shells
+    volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
 
     factor_l = (rs - 0.5 * dr) ** 2 / (dr * volumes)
     factor_h = (rs + 0.5 * dr) ** 2 / (dr * volumes)

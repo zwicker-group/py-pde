@@ -90,7 +90,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     vector = sparse.dok_matrix((dim_x * dim_y, 1))
 
     bc_x, bc_y = bcs
-    scale_x, scale_y = bcs.grid.discretization ** -2
+    scale_x, scale_y = bcs.grid.discretization**-2
 
     def i(x, y):
         """helper function for flattening the index
@@ -380,7 +380,7 @@ def _make_laplace_numba_2d(grid: CartesianGridBase) -> OperatorType:
         A function that can be applied to an array of values
     """
     dim_x, dim_y = grid.shape
-    scale_x, scale_y = grid.discretization ** -2
+    scale_x, scale_y = grid.discretization**-2
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
@@ -408,7 +408,7 @@ def _make_laplace_numba_3d(grid: CartesianGridBase) -> OperatorType:
         A function that can be applied to an array of values
     """
     dim_x, dim_y, dim_z = grid.shape
-    scale_x, scale_y, scale_z = grid.discretization ** -2
+    scale_x, scale_y, scale_z = grid.discretization**-2
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
@@ -703,7 +703,7 @@ def _make_gradient_squared_numba_2d(
 
     if central:
         # use central differences
-        scale_x, scale_y = 0.25 / grid.discretization ** 2
+        scale_x, scale_y = 0.25 / grid.discretization**2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -716,7 +716,7 @@ def _make_gradient_squared_numba_2d(
 
     else:
         # use forward and backward differences
-        scale_x, scale_y = 0.5 / grid.discretization ** 2
+        scale_x, scale_y = 0.5 / grid.discretization**2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -760,7 +760,7 @@ def _make_gradient_squared_numba_3d(
 
     if central:
         # use central differences
-        scale_x, scale_y, scale_z = 0.25 / grid.discretization ** 2
+        scale_x, scale_y, scale_z = 0.25 / grid.discretization**2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -775,7 +775,7 @@ def _make_gradient_squared_numba_3d(
 
     else:
         # use forward and backward differences
-        scale_x, scale_y, scale_z = 0.5 / grid.discretization ** 2
+        scale_x, scale_y, scale_z = 0.5 / grid.discretization**2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:

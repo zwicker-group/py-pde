@@ -28,7 +28,7 @@ def test_pde_poisson_solver_1d():
 
     res = solve_poisson_equation(field, bc=[{"value": 1}, {"derivative": 1}])
     xs = grid.axes_coords[0]
-    np.testing.assert_allclose(res.data, 1 + 0.5 * xs ** 2, rtol=1e-2)
+    np.testing.assert_allclose(res.data, 1 + 0.5 * xs**2, rtol=1e-2)
 
     # test inconsistent problem
     field.data = 1

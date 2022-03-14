@@ -25,8 +25,7 @@ import numbers
 import re
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import (  # @UnusedImport
-    TYPE_CHECKING,
+from typing import (
     Any,
     Callable,
     Dict,
@@ -37,12 +36,14 @@ from typing import (  # @UnusedImport
     Sequence,
     Set,
     Tuple,
+    Type,
     Union,
 )
 
 import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
 import sympy
+from sympy.core import basic
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
@@ -58,9 +59,6 @@ try:
 except ImportError:
     # assume older numba module structure
     from numba.extending import overload
-
-if TYPE_CHECKING:
-    from sympy.core import basic  # @UnusedImport
 
 
 @fill_in_docstring
@@ -145,7 +143,7 @@ class NumpyArrayPrinter(PythonCodePrinter):
         return f"array(broadcast_arrays({arrays}))"
 
 
-ExpressionType = Union[float, str, np.ndarray, "ExpressionBase"]
+ExpressionType = Union[float, str, np.ndarray, basic.Basic, "ExpressionBase"]
 
 
 class ExpressionBase(metaclass=ABCMeta):
@@ -154,7 +152,7 @@ class ExpressionBase(metaclass=ABCMeta):
     @fill_in_docstring
     def __init__(
         self,
-        expression: "basic.Basic",
+        expression: basic.Basic,
         signature: Sequence[Union[str, List[str]]] = None,
         *,
         user_funcs: Dict[str, Any] = None,
@@ -421,7 +419,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
         # initialize the printer that deals with numpy arrays correctly
         if prepare_compilation:
-            printer_class = ListArrayPrinter
+            printer_class: Type[PythonCodePrinter] = ListArrayPrinter
         else:
             printer_class = NumpyArrayPrinter
         printer = printer_class(

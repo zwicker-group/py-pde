@@ -580,7 +580,7 @@ class VectorField(DataFieldBase):
             data = np.min(self.data, axis=0)
 
         elif scalar == "squared_sum":
-            data = np.sum(self.data ** 2, axis=0)
+            data = np.sum(self.data**2, axis=0)
 
         elif scalar == "norm_squared":
             data = np.sum(self.data * self.data.conjugate(), axis=0)

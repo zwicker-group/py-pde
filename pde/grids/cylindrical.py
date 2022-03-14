@@ -149,14 +149,16 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     @property
     def volume(self) -> float:
         """float: total volume of the grid"""
-        return float(np.pi * self.radius ** 2 * self.length)
+        return float(np.pi * self.radius**2 * self.length)
 
     def get_random_point(
         self,
+        *,
         boundary_distance: float = 0,
-        cartesian: bool = True,
         avoid_center: bool = False,
+        coords: str = "cartesian",
         rng: np.random.Generator = None,
+        cartesian: bool = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -166,39 +168,52 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         Args:
             boundary_distance (float): The minimal distance this point needs to
                 have from all boundaries.
-            cartesian (bool): Determines whether the point is returned in
-                Cartesian coordinates or grid coordinates.
             avoid_center (bool): Determines whether the boundary distance
                 should also be kept from the center, i.e., whether points close
                 to the center are returned.
+            coords (str):
+                Determines the coordinate system in which the point is specified. Valid
+                values are `cartesian`, `cell`, and `grid`;
+                see :meth:`~pde.grids.base.GridBase.transform`.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
 
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
+        if cartesian is not None:
+            # deprecated on 2022-03-11
+            warnings.warn("Argument `cartesian` is deprecated. Use `coords` instead")
+            coords = "cartesian" if cartesian else "grid"
+
         if rng is None:
             rng = np.random.default_rng()
 
         # handle the boundary distance
         r_min = boundary_distance if avoid_center else 0
-        r_mag = self.radius - boundary_distance - r_min
+        r_max = self.radius - boundary_distance
         z_min, z_max = self.axes_bounds[1]
-
         if boundary_distance != 0:
             z_min += boundary_distance
             z_max -= boundary_distance
-            if r_mag <= 0 or z_max <= z_min:
+            if r_max <= r_min or z_max <= z_min:
                 raise RuntimeError("Random points would be too close to boundary")
 
         # create random point
-        r = r_mag * rng.random() + r_min
-        z = z_min + (z_max - z_min) * rng.random()
-        point = np.array([r, z])
-        if cartesian:
-            return self.point_to_cartesian(point)
+        r = np.sqrt(rng.uniform(r_min**2, r_max**2))
+        z = rng.uniform(z_min, z_max)
+        if coords == "cartesian":
+            φ = rng.uniform(0, 2 * np.pi)  # additional random angle
+            return self.point_to_cartesian(np.array([r, z, φ]), full=True)
+
+        elif coords == "cell":
+            return self.transform(np.array([r, z]), "grid", "cell")
+
+        elif coords == "grid":
+            return np.array([r, z])
+
         else:
-            return point
+            raise ValueError(f"Unknown coordinate system `{coords}`")
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
         """return a line cut for the cylindrical grid
@@ -272,20 +287,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             "label_y": self.axes[1],
         }
 
-    def contains_point(self, point: np.ndarray) -> np.ndarray:
-        """check whether the point is contained in the grid
-
-        Args:
-            point (:class:`~numpy.ndarray`): Coordinates of the point
-        """
-        point = np.atleast_1d(point)
-        assert point.shape[-1] == 3, f"Point must have 3 coordinates"
-
-        in_radius = np.hypot(point[..., 0], point[..., 1]) <= self.radius
-        bounds_z = self.axes_bounds[1]
-        in_z = (bounds_z[0] <= point[..., 2]) & (point[..., 2] <= bounds_z[1])
-        return in_radius & in_z  # type: ignore
-
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
@@ -313,27 +314,35 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         """:class:`~numpy.ndarray`: the volumes of all cells"""
         dr, dz = self.discretization
         rs = np.arange(self.shape[0] + 1) * dr
-        areas = np.pi * rs ** 2
+        areas = np.pi * rs**2
         r_vols = np.diff(areas).reshape(self.shape[0], 1)
         return (r_vols, dz)
 
-    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         Args:
-            points (:class:`~numpy.ndarray`):
-                Points given in the coordinates of the grid
+            points (:class:`~numpy.ndarray`): The grid coordinates of the points
+            full (bool): Flag indicating whether angular coordinates are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
         points = np.atleast_1d(points)
-        if points.shape[-1] != self.num_axes:
-            raise DimensionError(f"Array of shape {points.shape} cannot denote points")
 
-        x = points[..., 0]
-        y = np.zeros_like(x)
         z = points[..., 1]
+        if full:
+            if points.shape[-1] != self.dim:
+                raise DimensionError(f"Shape {points.shape} cannot denote full points")
+            x = points[..., 0] * np.cos(points[..., 2])
+            y = points[..., 0] * np.sin(points[..., 2])
+        else:
+            if points.shape[-1] != self.num_axes:
+                raise DimensionError(f"Shape {points.shape} cannot denote grid points")
+            x = points[..., 0]
+            y = np.zeros_like(x)
         return np.stack((x, y, z), axis=-1)
 
     def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
@@ -355,78 +364,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         rs = np.hypot(points[..., 0], points[..., 1])
         zs = points[..., 2]
         return np.stack((rs, zs), axis=-1)
-
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        """convert cell coordinates to real coordinates
-
-        This function returns points restricted to the x-z plane, i.e., the
-        y-coordinate will be zero.
-
-        Args:
-            cells (:class:`~numpy.ndarray`):
-                Indices of the cells whose center coordinates are requested.
-                This can be float values to indicate positions relative to the
-                cell center.
-            cartesian (bool):
-                Determines whether the point is returned in Cartesian
-                coordinates or grid coordinates.
-
-        Returns:
-            :class:`~numpy.ndarray`: The center points of the respective cells
-        """
-        cells = np.atleast_1d(cells)
-
-        if cells.size == 0:
-            return np.zeros((0, self.dim))
-        if cells.shape[-1] != self.num_axes:
-            raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
-
-        # convert from cells indices to grid coordinates
-        points = (cells + 0.5) * self.discretization
-        points[..., 1] += self.axes_bounds[1][0]
-        if cartesian:
-            return self.point_to_cartesian(points)
-        else:
-            return points  # type: ignore
-
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        """Determine cell(s) corresponding to given point(s)
-
-        This function respects periodic boundary conditions, but it does not
-        throw an error when coordinates lie outside the bcs (for
-        non-periodic axes).
-
-        Args:
-            points (:class:`~numpy.ndarray`): Real coordinates
-
-        Returns:
-            :class:`~numpy.ndarray`: The indices of the respective cells
-        """
-        points = self.point_from_cartesian(points)
-
-        # convert from grid coordinates to cells indices
-        points[..., 1] -= self.axes_bounds[1][0]
-        points /= self.discretization
-        return points.astype(np.intc)
-
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2.
-
-        In case of periodic boundary conditions, the shortest vector is returned
-
-        Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-            with periodic  boundary conditions applied.
-        """
-        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        if self._periodic_z:
-            size = self.length
-            diff[..., 1] = (diff[..., 1] + size / 2) % size - size / 2
-        return diff  # type: ignore
 
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
@@ -543,21 +480,3 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
 
         else:
             raise ValueError(f"Cannot get sub-grid for index {indices[0]}")
-
-
-class CylindricalGrid(CylindricalSymGrid):
-    r"""3-dimensional cylindrical grid assuming polar symmetry
-
-    .. deprecated:: 0.14 (2021-05-21)
-        Use  :class:`~pde.grids.cylindrical.CylindricalSymGrid` instead.
-    """
-
-    deprecated: bool = True
-
-    def __init__(self, *args, **kwargs):
-        """class deprecated since 2021-05-21"""
-        warnings.warn(
-            "CylindricalGrid is a deprecated class. Use CylindricalSymGrid instead",
-            DeprecationWarning,
-        )
-        super().__init__(*args, **kwargs)

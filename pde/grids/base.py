@@ -12,6 +12,7 @@ import inspect
 import itertools
 import json
 import logging
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -322,7 +323,7 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def compatible_with(self, other: GridBase) -> bool:
-        """tests whether this class is compatible with other grids.
+        """tests whether this grid is compatible with other grids.
 
         Grids are compatible when they cover the same area with the same
         discretization. The difference to equality is that compatible grids do
@@ -380,10 +381,30 @@ class GridBase(metaclass=ABCMeta):
         """bool: returns True if all cell volumes are the same"""
         return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
+    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+        """return the vector pointing from p1 to p2
+
+        In case of periodic boundary conditions, the shortest vector is returned.
+
+        Args:
+            p1 (:class:`~numpy.ndarray`): First point(s)
+            p2 (:class:`~numpy.ndarray`): Second point(s)
+
+        Returns:
+            :class:`~numpy.ndarray`: The difference vectors between the points
+            with periodic  boundary conditions applied.
+        """
+        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
+        for i, periodic in enumerate(self.periodic):
+            if periodic:
+                size = self.axes_bounds[i][1] - self.axes_bounds[i][0]
+                diff[..., i] = (diff[..., i] + size / 2) % size - size / 2
+        return diff  # type: ignore
+
     def distance_real(self, p1: np.ndarray, p2: np.ndarray) -> float:
         """Calculate the distance between two points given in real coordinates
 
-        This takes periodic boundary conditions into account if need be
+        This takes periodic boundary conditions into account if necessary.
 
         Args:
             p1 (:class:`~numpy.ndarray`): First position
@@ -441,68 +462,24 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        pass
-
-    @abstractmethod
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        pass
-
-    @abstractmethod
-    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         pass
 
     @abstractmethod
     def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
         pass
 
-    @abstractmethod
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray):
-        pass
-
-    @abstractmethod
-    def polar_coordinates_real(
-        self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
-        pass
-
-    @abstractmethod
-    def contains_point(self, point: np.ndarray) -> np.ndarray:
-        pass
-
-    @abstractmethod
-    def iter_mirror_points(
-        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
-    ) -> Generator:
-        pass
-
-    @abstractmethod
-    def get_boundary_conditions(
-        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
-    ) -> Boundaries:
-        pass
-
-    @abstractmethod
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def get_random_point(
-        self, boundary_distance: float = 0, cartesian: bool = True
+    def normalize_point(
+        self, point: np.ndarray, *, reflect: bool = False
     ) -> np.ndarray:
-        pass
-
-    def normalize_point(self, point: np.ndarray, reflect: bool = True) -> np.ndarray:
         """normalize coordinates by applying periodic boundary conditions
 
-        Here, the point is assumed to be specified by the physical values along
-        the non-symmetric axes of the grid. Normalizing points is useful to make sure
-        they lie within the domain of the  grid. This function respects periodic
-        boundary conditions and can also reflect points off the boundary.
+        Here, the point is assumed to be specified by the physical values along the
+        non-symmetric axes of the grid. Normalizing points is useful to make sure they
+        lie within the domain of the  grid. This function respects periodic boundary
+        conditions and can also reflect points off the boundary.
 
         Args:
             point (:class:`~numpy.ndarray`):
@@ -555,6 +532,198 @@ class GridBase(metaclass=ABCMeta):
                     point[..., i] = xmin[i] + np.abs(arg)
 
         return point
+
+    def _grid_to_cell(
+        self, grid_coords: np.ndarray, truncate: bool = True
+    ) -> np.ndarray:
+        """convert grid coordinates to cell coordinates
+
+        Args:
+            grid_coords (:class:`~numpy.ndarray`):
+                The grid coordinates to convert
+            truncate (bool):
+                Flag indicating whether the resulting cell coordinates are integers
+                marking what cell the point belongs to or whether fractional coordinates
+                are returned. The default is to return integers.
+
+        Returns:
+            :class:`~numpy.ndarray`: The cell coordinates
+        """
+        # convert from grid coordinates to cells indices
+        c_min = np.array(self.axes_bounds)[:, 0]
+        cells = (self.normalize_point(grid_coords) - c_min) / self.discretization
+        if truncate:
+            return cells.astype(np.intc)  # type: ignore
+        else:
+            return cells  # type: ignore
+
+    def transform(
+        self, coordinates: np.ndarray, source: str, target: str
+    ) -> np.ndarray:
+        """converts coordinates from one coordinate system to another
+
+        Supported coordinate systems include
+
+        * `cartesian`: Cartesian coordinates where each point carries `dim` values
+        * `cell`: Grid coordinates based on indexing the discretization cells
+        * `grid`: Grid coordinates where each point carries `num_axes` values
+
+        Note:
+            Some conversion might involve projections if the coordinate system imposes
+            symmetries. For instance, converting 3d Cartesian coordinates to grid
+            coordinates in a spherically symmetric  grid will only return the radius
+            from the origin. Conversely, converting these grid coordinates back to 3d
+            Cartesian coordinates will only return coordinates along a particular ray
+            originating at the origin.
+
+        Args:
+            coordinates (:class:`~numpy.ndarray`): The coordinates to convert
+            source (str): The source coordinate system
+            target (str): The target coordinate system
+
+        Returns:
+            :class:`~numpy.ndarray`: The transformed coordinates
+        """
+        if source == "cartesian":
+            # Cartesian coordinates given
+            cartesian = np.atleast_1d(coordinates)
+            if cartesian.shape[-1] != self.dim:
+                raise DimensionError(f"Require {self.dim} cartesian coordinates")
+
+            if target == "cartesian":
+                return coordinates
+
+            # convert Cartesian coordinates to grid coordinates
+            grid_coords = self.point_from_cartesian(cartesian)
+
+            if target == "grid":
+                return grid_coords
+            if target == "cell":
+                return self._grid_to_cell(grid_coords)
+
+        elif source == "cell":
+            # Cell coordinates given
+            cells = np.atleast_1d(coordinates)
+            if cells.shape[-1] != self.num_axes:
+                raise DimensionError(f"Require {self.num_axes} cell coordinates")
+
+            if target == "cell":
+                return coordinates
+
+            # convert cell coordinates to grid coordinates
+            c_min = np.array(self.axes_bounds)[:, 0]
+            grid_coords = c_min + (cells + 0.5) * self.discretization
+
+            if target == "grid":
+                return grid_coords
+            elif target == "cartesian":
+                return self.point_to_cartesian(grid_coords, full=False)
+
+        elif source == "grid":
+            # Grid coordinates given
+            grid_coords = np.atleast_1d(coordinates)
+            if grid_coords.shape[-1] != self.num_axes:
+                raise DimensionError(f"Require {self.num_axes} grid coordinates")
+
+            if target == "cartesian":
+                return self.point_to_cartesian(grid_coords, full=False)
+            elif target == "cell":
+                return self._grid_to_cell(grid_coords)
+            elif target == "grid":
+                return grid_coords
+
+        else:
+            raise ValueError(f"Unknown source coordinates `{source}`")
+        raise ValueError(f"Unknown target coordinates `{target}`")
+
+    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
+        """convert cell coordinates to real coordinates
+
+        Args:
+            cells (:class:`~numpy.ndarray`):
+                Indices of the cells whose center coordinates are requested.
+                This can be float values to indicate positions relative to the
+                cell center.
+            cartesian (bool):
+                Determines whether the point is returned in Cartesian
+                coordinates or grid coordinates.
+
+        Returns:
+            :class:`~numpy.ndarray`: The center points of the respective cells
+
+        Warning:
+            This method is deprecated since 2022-03-14 and will be removed soon.
+        """
+        # deprecated since 2022-03-14
+        warnings.warn("`cell_to_point` is deprecated. Use `transform` method instead")
+        if cartesian:
+            return self.transform(cells, "cell", "cartesian")
+        else:
+            return self.transform(cells, "cell", "grid")
+
+    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
+        """Determine cell(s) corresponding to given point(s)
+
+        Args:
+            points (:class:`~numpy.ndarray`): Real coordinates
+
+        Returns:
+            :class:`~numpy.ndarray`: The indices of the respective cells
+
+        Warning:
+            This method is deprecated since 2022-03-14 and will be removed soon.
+        """
+        # deprecated since 2022-03-14
+        warnings.warn("`point_to_cell` is deprecated. Use `transform` method instead")
+        return self.transform(points, "cartesian", "points")
+
+    @abstractmethod
+    def polar_coordinates_real(
+        self, origin: np.ndarray, *, ret_angle: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
+        pass
+
+    def contains_point(
+        self, points: np.ndarray, *, coords: str = "cartesian"
+    ) -> np.ndarray:
+        """check whether the point is contained in the grid
+
+        Args:
+            point (:class:`~numpy.ndarray`): Coordinates of the point
+            coords (str): The coordinate system in which the points are given
+
+        Returns:
+            :class:`~numpy.ndarray`: A boolean array indicating which points lie within
+            the grid
+        """
+        cell_coords = self.transform(points, source=coords, target="cell")
+        return np.all((0 <= cell_coords) & (cell_coords < self.shape), axis=-1)  # type: ignore
+
+    @abstractmethod
+    def iter_mirror_points(
+        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
+    ) -> Generator:
+        pass
+
+    @abstractmethod
+    def get_boundary_conditions(
+        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
+    ) -> Boundaries:
+        pass
+
+    @abstractmethod
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def get_random_point(
+        self, *, boundary_distance: float = 0, coords: str = "cartesian"
+    ) -> np.ndarray:
+        pass
 
     @classmethod
     def register_operator(
@@ -1059,8 +1228,7 @@ class GridBase(metaclass=ABCMeta):
                     data (:class:`~numpy.ndarray`):
                         A 1d array of valid values at the grid points
                     point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
+                        Coordinates of a single point in the grid coordinate system
 
                 Returns:
                     :class:`~numpy.ndarray`: The interpolated value at the point
@@ -1091,8 +1259,7 @@ class GridBase(metaclass=ABCMeta):
                     data (:class:`~numpy.ndarray`):
                         A 2d array of valid values at the grid points
                     point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
+                        Coordinates of a single point in the grid coordinate system
 
                 Returns:
                     :class:`~numpy.ndarray`: The interpolated value at the point
@@ -1131,8 +1298,7 @@ class GridBase(metaclass=ABCMeta):
                     data (:class:`~numpy.ndarray`):
                         A 2d array of valid values at the grid points
                     point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
+                        Coordinates of a single point in the grid coordinate system
 
                 Returns:
                     :class:`~numpy.ndarray`: The interpolated value at the point
@@ -1179,10 +1345,9 @@ class GridBase(metaclass=ABCMeta):
                 boundaries are not checked and the coordinates are used as is.
 
         Returns:
-            A function with signature (data, position, amount), where `data` is
-            the numpy array containing the field data, position is denotes the
-            position in grid coordinates, and `amount` is the  that is to be
-            added to the field.
+            A function with signature (data, position, amount), where `data` is the numpy
+            array containing the field data, position is denotes the position in grid
+            coordinates, and `amount` is the  that is to be added to the field.
         """
         cell_volume = self.make_cell_volume_compiled()
 

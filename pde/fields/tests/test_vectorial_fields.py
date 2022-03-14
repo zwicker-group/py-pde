@@ -172,7 +172,7 @@ def test_from_expressions():
     vf = VectorField.from_expression(grid, ["x**2", "x * y"])
     xs = grid.cell_coords[..., 0]
     ys = grid.cell_coords[..., 1]
-    np.testing.assert_allclose(vf.data[0], xs ** 2)
+    np.testing.assert_allclose(vf.data[0], xs**2)
     np.testing.assert_allclose(vf.data[1], xs * ys)
 
     # corner case
@@ -207,10 +207,6 @@ def test_boundary_interpolation_vector():
     for bndry in grid._iter_boundaries():
         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(val, bndry_val)
-        #
-        # # boundary conditions have already been enforced
-        # ev = field.make_get_boundary_values(*bndry)
-        # np.testing.assert_allclose(ev(), bndry_val)
 
 
 @pytest.mark.parametrize("transpose", [True, False])
@@ -230,6 +226,7 @@ def test_vector_plotting_2d(transpose):
 
 
 @skipUnlessModule("napari")
+@pytest.mark.interactive
 def test_interactive_vector_plotting():
     """test the interactive plotting"""
     grid = UnitGrid([3, 3])

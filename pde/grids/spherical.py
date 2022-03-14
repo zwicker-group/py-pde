@@ -10,6 +10,7 @@ vanishes.
  
 """
 
+import warnings
 from abc import ABCMeta
 from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, TypeVar, Union
 
@@ -46,9 +47,9 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     if dim == 1:
         return 2 * radius
     elif dim == 2:
-        return π * radius ** 2
+        return π * radius**2
     elif dim == 3:
-        return PI_43 * radius ** 3
+        return PI_43 * radius**3
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
@@ -160,65 +161,77 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         volumes_l = volume_from_radius(rs - 0.5 * dr, dim=self.dim)
         return ((volumes_h - volumes_l).reshape(self.shape[0]),)
 
-    def contains_point(self, point: np.ndarray) -> np.ndarray:
-        """check whether the point is contained in the grid
-
-        Args:
-            point (:class:`~numpy.ndarray`): Coordinates of the point
-        """
-        point = np.atleast_1d(point)
-        if point.shape[-1] != self.dim:
-            raise DimensionError("Dimension mismatch")
-        r = np.linalg.norm(point, axis=-1)
-
-        r_inner, r_outer = self.axes_bounds[0]
-        return r_inner <= r <= r_outer  # type: ignore
-
     def get_random_point(
         self,
+        *,
         boundary_distance: float = 0,
-        cartesian: bool = True,
         avoid_center: bool = False,
+        coords: str = "cartesian",
         rng: np.random.Generator = None,
+        cartesian: bool = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
-        Note that these points will be uniformly distributed on the radial axis,
-        which implies that they are not uniformly distributed in the volume.
+        Note that these points will be uniformly distributed in the volume, implying
+        they are not uniformly distributed on the radial axis.
 
         Args:
-            boundary_distance (float): The minimal distance this point needs to
-                have from all boundaries.
-            cartesian (bool): Determines whether the point is returned in
-                Cartesian coordinates or grid coordinates.
-            avoid_center (bool): Determines whether the boundary distance
-                should also be kept from the center, i.e., whether points close
-                to the center are returned.
+            boundary_distance (float):
+                The minimal distance this point needs to have from all boundaries.
+            avoid_center (bool):
+                Determines whether the boundary distance should also be kept from the
+                center, i.e., whether points close to the center are returned.
+            coords (str):
+                Determines the coordinate system in which the point is specified. Valid
+                values are `cartesian`, `cell`, and `grid`;
+                see :meth:`~pde.grids.base.GridBase.transform`.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
 
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
+        if cartesian is not None:
+            # deprecated on 2022-03-11
+            warnings.warn("Argument `cartesian` is deprecated. Use `coords` instead")
+            coords = "cartesian" if cartesian else "grid"
+
         if rng is None:
             rng = np.random.default_rng()
 
         # handle the boundary distance
         r_inner, r_outer = self.axes_bounds[0]
-        r_min = r_inner
-        if avoid_center:
-            r_min += boundary_distance
-        r_mag = r_outer - boundary_distance - r_min
-
-        if r_mag <= 0:
+        r_min = r_inner + boundary_distance if avoid_center else r_inner
+        r_max = r_outer - boundary_distance
+        if r_max <= r_min:
             raise RuntimeError("Random points would be too close to boundary")
 
-        # create random point
-        r = np.array([r_mag * rng.random() + r_min])
-        if cartesian:
-            return self.point_to_cartesian(r)
-        else:
+        # choose random radius scaled such that points are uniformly distributed
+        r = np.array(
+            [rng.uniform(r_min**self.dim, r_max**self.dim) ** (1 / self.dim)]
+        )
+        if coords == "cartesian":
+            # choose random angles for the already chosen radius
+            if self.dim == 2:
+                φ = rng.uniform(0, 2 * np.pi)
+                point = np.r_[r, φ]
+            elif self.dim == 3:
+                θ = np.arccos(rng.uniform(-1, 1))
+                φ = rng.uniform(0, 2 * np.pi)
+                point = np.r_[r, θ, φ]
+            else:
+                raise NotImplementedError(f"{self.dim} dimensions")
+
+            return self.point_to_cartesian(point, full=True)
+
+        elif coords == "cell":
+            return self.transform(r, "grid", "cell")
+
+        elif coords == "grid":
             return r
+
+        else:
+            raise ValueError(f"Unknown coordinate system `{coords}`")
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
         """return a line cut along the radial axis
@@ -348,65 +361,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         points = np.atleast_1d(points)
         assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
         return np.linalg.norm(points, axis=-1, keepdims=True)  # type: ignore
-
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        """convert cell coordinates to real coordinates
-
-        This function returns points restricted to the x-axis, i.e., the
-        y-coordinate will be zero.
-
-        Args:
-            cells (:class:`~numpy.ndarray`):
-                Indices of the cells whose center coordinates are requested.
-                This can be float values to indicate positions relative to the
-                cell center.
-            cartesian (bool):
-                Determines whether the point is returned in Cartesian
-                coordinates or grid coordinates.
-
-        Returns:
-            :class:`~numpy.ndarray`: The center points of the respective cells
-        """
-        cells = np.atleast_1d(cells)
-        assert cells.shape[-1] == self.num_axes, f"Require {self.num_axes} coordinates"
-
-        # convert from cells indices to grid coordinates
-        r_inner, _ = self.axes_bounds[0]
-        points = r_inner + (cells + 0.5) * self.discretization[0]
-        if cartesian:
-            return self.point_to_cartesian(points)
-        else:
-            return points  # type: ignore
-
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        """Determine cell(s) corresponding to given point(s)
-
-        Args:
-            points (:class:`~numpy.ndarray`): Real coordinates
-
-        Returns:
-            :class:`~numpy.ndarray`: The indices of the respective cells
-        """
-        # convert from grid coordinates to cells indices
-        r = self.point_from_cartesian(points)
-        r_inner, _ = self.axes_bounds[0]
-        cells = (r - r_inner) / self.discretization[0]
-        return cells.astype(np.intc)  # type: ignore
-
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2.
-
-        In case of periodic boundary conditions, the shortest vector is returned
-
-        Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-                with periodic boundary conditions applied.
-        """
-        return np.atleast_1d(p2) - np.atleast_1d(p1)  # type: ignore
 
     def polar_coordinates_real(
         self, origin=None, *, ret_angle: bool = False, **kwargs
@@ -582,21 +536,38 @@ class PolarSymGrid(SphericalSymGridBase):
     axes_symmetric = ["phi"]
     coordinate_constraints = [0, 1]  # axes not described explicitly
 
-    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         This function returns points along the y-coordinate, i.e, the x
         coordinates will be zero.
 
+        Args:
+            points (:class:`~numpy.ndarray`): The grid coordinates of the points
+            full (bool): Flag indicating whether angular coordinates are specified
+
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
         points = np.atleast_1d(points)
-        if points.shape[-1] != self.num_axes:
-            raise DimensionError(f"Shape {points.shape} cannot denote points")
 
-        y = points[..., 0]
-        x = np.zeros_like(y)
+        if full:
+            # angles are supplied
+            if points.shape[-1] != self.dim:
+                raise DimensionError(f"Shape {points.shape} cannot denote points")
+
+            x = points[..., 0] * np.cos(points[..., 1])
+            y = points[..., 0] * np.sin(points[..., 1])
+        else:
+            # angles are not supplied
+            if points.shape[-1] != self.num_axes:
+                raise DimensionError(f"Shape {points.shape} cannot denote points")
+
+            y = points[..., 0]
+            x = np.zeros_like(y)
+
         return np.stack((x, y), axis=-1)
 
 
@@ -630,22 +601,37 @@ class SphericalSymGrid(SphericalSymGridBase):
     axes_symmetric = ["theta", "phi"]
     coordinate_constraints = [0, 1, 2]  # axes not described explicitly
 
-    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         This function returns points along the z-coordinate, i.e, the x and y
         coordinates will be zero.
 
         Args:
-            points (:class:`~numpy.ndarray`):
-                Points given in the coordinates of the grid
+            points (:class:`~numpy.ndarray`): The grid coordinates of the points
+            full (bool): Flag indicating whether angular coordinates are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
         points = np.atleast_1d(points)
-        if points.shape[-1] != self.num_axes:
-            raise DimensionError(f"Shape {points.shape} cannot denote points")
-        z = points[..., 0]
-        x = np.zeros_like(z)
-        return np.stack((x, x, z), axis=-1)
+        if full:
+            # angles are supplied
+            if points.shape[-1] != self.dim:
+                raise DimensionError(f"Shape {points.shape} cannot denote points")
+
+            rsinθ = points[..., 0] * np.sin(points[..., 1])
+            x = rsinθ * np.cos(points[..., 2])
+            y = rsinθ * np.sin(points[..., 2])
+            z = points[..., 0] * np.cos(points[..., 1])
+
+        else:
+            # angles are not supplied
+            if points.shape[-1] != self.num_axes:
+                raise DimensionError(f"Shape {points.shape} cannot denote points")
+            z = points[..., 0]
+            x = y = np.zeros_like(z)
+
+        return np.stack((x, y, z), axis=-1)

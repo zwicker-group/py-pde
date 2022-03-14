@@ -6,6 +6,7 @@ Cartesian grids of arbitrary dimension.
 """
 
 import itertools
+import warnings
 from abc import ABCMeta
 from typing import List  # @UnusedImport
 from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
@@ -64,16 +65,6 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """size associated with each cell"""
         return tuple(self.discretization)
 
-    def contains_point(self, point: np.ndarray) -> np.ndarray:
-        """check whether the point is contained in the grid
-
-        Args:
-            point (:class:`~numpy.ndarray`): Coordinates of the point
-        """
-        if len(point) != self.dim:
-            raise DimensionError("Incompatible dimensions")
-        return self.cuboid.contains_point(point)
-
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
@@ -105,25 +96,32 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
 
     def get_random_point(
         self,
+        *,
         boundary_distance: float = 0,
-        cartesian: bool = True,
+        coords: str = "cartesian",
         rng: np.random.Generator = None,
+        cartesian: bool = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
         Args:
             boundary_distance (float): The minimal distance this point needs to
                 have from all boundaries.
-            cartesian (bool): Determines whether the point is returned in
-                Cartesian coordinates or grid coordinates. This does not have
-                any effect for Cartesian coordinate systems, but the argument is
-                retained to have a unified interface for all grids.
+            coords (str):
+                Determines the coordinate system in which the point is specified. Valid
+                values are `cartesian`, `cell`, and `grid`;
+                see :meth:`~pde.grids.base.GridBase.transform`.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
 
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
+        if cartesian is not None:
+            # deprecated on 2022-03-11
+            warnings.warn("Argument `cartesian` is deprecated. Use `coords` instead")
+            coords = "cartesian" if cartesian else "grid"
+
         if rng is None:
             rng = np.random.default_rng()
 
@@ -135,7 +133,14 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             cuboid = cuboid.buffer(-boundary_distance)
 
         # create random point
-        return cuboid.pos + rng.random(self.dim) * cuboid.size  # type: ignore
+        point = cuboid.pos + rng.random(self.dim) * cuboid.size
+
+        if coords == "cartesian" or coords == "grid":
+            return point  # type: ignore
+        elif coords == "cell":
+            return self.transform(point, "grid", "cell")
+        else:
+            raise ValueError(f"Unknown coordinate system `{coords}`")
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
         """return a line cut through the given data
@@ -249,7 +254,9 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             "label_y": self.axes[1],
         }
 
-    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         Args:
@@ -280,16 +287,17 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """return polar coordinates associated with the grid
 
         Args:
-            origin (:class:`~numpy.ndarray`): Coordinates of the origin at which the polar
-                coordinate system is anchored.
-            ret_angle (bool): Determines whether angles are returned alongside
-                the distance. If `False` only the distance to the origin is
-                returned for each support point of the grid.
-                If `True`, the distance and angles are returned. For a 1d system
-                system, the angle is defined as the sign of the difference
-                between the point and the origin, so that angles can either be
-                1 or -1. For 2d systems and 3d systems, polar coordinates and
-                spherical coordinates are used, respectively.
+            origin (:class:`~numpy.ndarray`):
+                Coordinates of the origin at which the polar coordinate system is
+                anchored.
+            ret_angle (bool):
+                Determines whether angles are returned alongside the distance. If `False`
+                only the distance to the origin is returned for each support point of the
+                grid. If `True`, the distance and angles are returned. For a 1d system
+                system, the angle is defined as the sign of the difference between the
+                point and the origin, so that angles can either be 1 or -1. For 2d
+                systems and 3d systems, polar coordinates and spherical coordinates are
+                used, respectively.
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
@@ -473,64 +481,6 @@ class UnitGrid(CartesianGridBase):
         """float: total volume of the grid"""
         return float(np.prod(self.shape))
 
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        """convert cell coordinates to real coordinates
-
-        Args:
-            cells (:class:`~numpy.ndarray`): Indices of the cells whose center
-                coordinates are requested. This can be float values to indicate
-                positions relative to the cell center.
-            cartesian (bool): Determines whether the point is returned in
-                Cartesian coordinates or grid coordinates. This does not have
-                any effect for Cartesian coordinate systems, but the argument is
-                retained to have a unified interface for all grids.
-
-        Returns:
-            :class:`~numpy.ndarray`: The center points of the respective cells
-        """
-        cells = np.asanyarray(cells, dtype=np.double)
-        if cells.size == 0:
-            return np.zeros((0, self.dim))
-        if cells.shape[-1] != self.dim:
-            raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
-        return cells + 0.5
-
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        """Determine cell(s) corresponding to given point(s)
-
-        This function respects periodic boundary conditions, but it does not
-        throw an error when coordinates lie outside the bcs (for
-        non-periodic axes).
-
-        Args:
-            points (:class:`~numpy.ndarray`): Real coordinates
-
-        Returns:
-            :class:`~numpy.ndarray`: The indices of the respective cells
-        """
-        return self.normalize_point(points, reflect=False).astype(np.intc)
-
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2.
-
-        In case of periodic boundary conditions, the shortest vector is returned
-
-        Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-            with periodic boundary conditions applied.
-        """
-        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        # correct the periodic dimensions
-        for i in range(self.num_axes):
-            if self.periodic[i]:
-                s = self.shape[i]
-                diff[..., i] = (diff[..., i] + s / 2) % s - s / 2
-        return diff  # type: ignore
-
     def to_cartesian(self) -> "CartesianGrid":
         """convert unit grid to CartesianGrid"""
         return CartesianGrid(
@@ -680,66 +630,6 @@ class CartesianGrid(CartesianGridBase):
     def volume(self) -> float:
         """float: total volume of the grid"""
         return float(self.cuboid.volume)
-
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        """convert cell coordinates to real coordinates
-
-        Args:
-            cells (:class:`~numpy.ndarray`): Indices of the cells whose center
-                coordinates are requested. This can be float values to indicate
-                positions relative to the cell center.
-            cartesian (bool): Determines whether the point is returned in
-                Cartesian coordinates or grid coordinates. This does not have
-                any effect for Cartesian coordinate systems, but the argument is
-                retained to have a unified interface for all grids.
-
-        Returns:
-            :class:`~numpy.ndarray`: The center points of the respective cells
-        """
-        cells = np.atleast_1d(cells)
-        if cells.size == 0:
-            return cells
-        elif cells.shape[-1] != self.dim:
-            raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
-        else:
-            return self.cuboid.pos + (cells + 0.5) * self.discretization  # type: ignore
-
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        """Determine cell(s) corresponding to given point(s)
-
-        This function respects periodic boundary conditions, but it does not
-        throw an error when coordinates lie outside the bcs (for
-        non-periodic axes).
-
-        Args:
-            points (:class:`~numpy.ndarray`): Real coordinates
-
-        Returns:
-            :class:`~numpy.ndarray`: The indices of the respective cells
-        """
-        points = self.normalize_point(points, reflect=False)
-        cell_coords = (points - self.cuboid.pos) / self.discretization
-        return cell_coords.astype(np.intc)  # type: ignore
-
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2.
-
-        In case of periodic boundary conditions, the shortest vector is returned
-
-        Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-            with periodic  boundary conditions applied.
-        """
-        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        periodic = self.periodic
-        if any(periodic):
-            size = self.cuboid.size[periodic]
-            diff[..., periodic] = (diff[..., periodic] + size / 2) % size - size / 2
-        return diff  # type: ignore
 
     def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":
         """return a subgrid of only the specified axes

@@ -9,16 +9,19 @@ from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorFiel
 from pde.fields.base import FieldBase
 from pde.tools.misc import skipUnlessModule
 
+from .fixtures import iter_grids
 
-def test_shapes_nfields(example_grid):
+
+@pytest.mark.parametrize("grid", iter_grids())
+def test_shapes_nfields(grid):
     """test single component field"""
     for num in [1, 3]:
-        fields = [ScalarField.random_uniform(example_grid) for _ in range(num)]
+        fields = [ScalarField.random_uniform(grid) for _ in range(num)]
         field = FieldCollection(fields)
-        data_shape = (num,) + example_grid.shape
+        data_shape = (num,) + grid.shape
         np.testing.assert_equal(field.data.shape, data_shape)
         for pf_single in field:
-            np.testing.assert_equal(pf_single.data.shape, example_grid.shape)
+            np.testing.assert_equal(pf_single.data.shape, grid.shape)
 
         field_c = field.copy()
         np.testing.assert_allclose(field.data, field_c.data)
@@ -171,6 +174,7 @@ def test_from_scalar_expressions():
 
 
 @skipUnlessModule("napari")
+@pytest.mark.interactive
 def test_interactive_collection_plotting():
     """test the interactive plotting"""
     grid = UnitGrid([3, 3])

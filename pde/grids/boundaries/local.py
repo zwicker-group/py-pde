@@ -2032,7 +2032,7 @@ class CurvatureBC(ConstBC2ndOrderBase):
                 "Need at least 2 support points to use curvature boundary condition"
             )
 
-        value = np.asarray(self.value * dx ** 2)
+        value = np.asarray(self.value * dx**2)
         f1 = np.full_like(value, 2.0)
         f2 = np.full_like(value, -1.0)
         if self.upper:

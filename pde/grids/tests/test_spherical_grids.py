@@ -36,7 +36,7 @@ def test_polar_grid():
     assert grid.discretization[0] == pytest.approx(0.5)
     assert not grid.uniform_cell_volumes
     np.testing.assert_array_equal(grid.discretization, np.array([0.5]))
-    assert grid.volume == pytest.approx(np.pi * 4 ** 2)
+    assert grid.volume == pytest.approx(np.pi * 4**2)
     assert grid.volume == pytest.approx(grid.integrate(1))
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
@@ -45,13 +45,9 @@ def test_polar_grid():
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    # random points
-    c = np.random.randint(8, size=(6, 1))
-    p = grid.cell_to_point(c)
-    np.testing.assert_array_equal(c, grid.point_to_cell(p))
-
-    assert grid.contains_point(grid.get_random_point())
-    assert grid.contains_point(grid.get_random_point(3.99))
+    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
+    p = grid.get_random_point(boundary_distance=3.99, coords="cartesian")
+    assert grid.contains_point(p)
     assert "laplace" in grid.operators
 
 
@@ -65,7 +61,7 @@ def test_polar_annulus():
     assert grid.discretization[0] == pytest.approx(0.25)
     assert not grid.uniform_cell_volumes
     np.testing.assert_array_equal(grid.discretization, np.array([0.25]))
-    assert grid.volume == pytest.approx(np.pi * (4 ** 2 - 2 ** 2))
+    assert grid.volume == pytest.approx(np.pi * (4**2 - 2**2))
     assert grid.volume == pytest.approx(grid.integrate(1))
     assert grid.radius == (2, 4)
 
@@ -75,13 +71,9 @@ def test_polar_annulus():
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    # random points
-    c = np.random.randint(8, size=(6, 1))
-    p = grid.cell_to_point(c)
-    np.testing.assert_array_equal(c, grid.point_to_cell(p))
-
-    assert grid.contains_point(grid.get_random_point())
-    assert grid.contains_point(grid.get_random_point(1.99))
+    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
+    p = grid.get_random_point(boundary_distance=1.99, coords="cartesian")
+    assert grid.contains_point(p)
 
     # test boundary points
     np.testing.assert_equal(grid._boundary_coordinates(0, False), np.array([2]))
@@ -90,7 +82,7 @@ def test_polar_annulus():
 
 def test_polar_to_cartesian():
     """test conversion of polar grid to Cartesian"""
-    expr_pol = "1 / (1 + r**2)"
+    expr_pol = "(1 + r**2) ** -2"
     expr_cart = expr_pol.replace("r**2", "(x**2 + y**2)")
 
     grid_pol = PolarSymGrid(7, 16)
@@ -112,7 +104,7 @@ def test_spherical_grid():
     assert grid.discretization[0] == pytest.approx(0.5)
     assert not grid.uniform_cell_volumes
     np.testing.assert_array_equal(grid.discretization, np.array([0.5]))
-    assert grid.volume == pytest.approx(4 / 3 * np.pi * 4 ** 3)
+    assert grid.volume == pytest.approx(4 / 3 * np.pi * 4**3)
     assert grid.volume == pytest.approx(grid.integrate(1))
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
@@ -121,13 +113,9 @@ def test_spherical_grid():
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    # random points
-    c = np.random.randint(8, size=(6, 1))
-    p = grid.cell_to_point(c)
-    np.testing.assert_array_equal(c, grid.point_to_cell(p))
-
-    assert grid.contains_point(grid.get_random_point())
-    assert grid.contains_point(grid.get_random_point(3.99))
+    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
+    p = grid.get_random_point(boundary_distance=3.99, coords="cartesian")
+    assert grid.contains_point(p)
     assert "laplace" in grid.operators
 
 
@@ -141,7 +129,7 @@ def test_spherical_annulus():
     assert grid.discretization[0] == pytest.approx(0.25)
     assert not grid.uniform_cell_volumes
     np.testing.assert_array_equal(grid.discretization, np.array([0.25]))
-    assert grid.volume == pytest.approx(4 / 3 * np.pi * (4 ** 3 - 2 ** 3))
+    assert grid.volume == pytest.approx(4 / 3 * np.pi * (4**3 - 2**3))
     assert grid.volume == pytest.approx(grid.integrate(1))
     assert grid.radius == (2, 4)
 
@@ -151,14 +139,9 @@ def test_spherical_annulus():
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    # random points
-    c = np.random.randint(8, size=(6, 1))
-    p = grid.cell_to_point(c)
-    assert all(grid.contains_point(r) for r in p)
-    np.testing.assert_array_equal(c, grid.point_to_cell(p))
-
-    assert grid.contains_point(grid.get_random_point())
-    assert grid.contains_point(grid.get_random_point(1.99))
+    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
+    p = grid.get_random_point(boundary_distance=1.99, coords="cartesian")
+    assert grid.contains_point(p)
 
     # test boundary points
     np.testing.assert_equal(grid._boundary_coordinates(0, False), np.array([2]))

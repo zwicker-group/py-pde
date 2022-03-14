@@ -27,38 +27,31 @@ def test_degenerated_grid():
         CartesianGrid([], 1)
 
 
-def test_generic_cartesian_grid():
+@pytest.mark.parametrize("dim", [1, 2, 3])
+def test_generic_cartesian_grid(dim):
     """test generic cartesian grid functions"""
-    for dim in (1, 2, 3):
-        periodic = random.choices([True, False], k=dim)
-        shape = np.random.randint(2, 8, size=dim)
-        a = np.random.random(dim)
-        b = a + np.random.random(dim)
+    periodic = random.choices([True, False], k=dim)
+    shape = np.random.randint(2, 8, size=dim)
+    a = np.random.random(dim)
+    b = a + np.random.random(dim)
 
-        cases = [
-            UnitGrid(shape, periodic=periodic),
-            CartesianGrid(np.c_[a, b], shape, periodic=periodic),
-        ]
-        for grid in cases:
-            assert grid.dim == dim
-            dim_axes = len(grid.axes) + len(grid.axes_symmetric)
-            assert dim_axes == dim
-            vol = np.prod(grid.discretization) * np.prod(shape)
-            assert grid.volume == pytest.approx(vol)
-            assert grid.uniform_cell_volumes
+    cases = [
+        UnitGrid(shape, periodic=periodic),
+        CartesianGrid(np.c_[a, b], shape, periodic=periodic),
+    ]
+    for grid in cases:
+        assert grid.dim == dim
+        dim_axes = len(grid.axes) + len(grid.axes_symmetric)
+        assert dim_axes == dim
+        vol = np.prod(grid.discretization) * np.prod(shape)
+        assert grid.volume == pytest.approx(vol)
+        assert grid.uniform_cell_volumes
 
-            # random points
-            points = [
-                [np.random.uniform(a[i], b[i]) for i in range(dim)] for _ in range(10)
-            ]
-            c = grid.point_to_cell(points)
-            p = grid.cell_to_point(c)
-            np.testing.assert_array_equal(c, grid.point_to_cell(p))
-
-            assert grid.contains_point(grid.get_random_point())
-            w = 0.499 * (b - a).min()
-            assert grid.contains_point(grid.get_random_point(w))
-            assert "laplace" in grid.operators
+        assert grid.contains_point(grid.get_random_point(coords="grid"))
+        w = 0.499 * (b - a).min()
+        p = grid.get_random_point(boundary_distance=w, coords="grid")
+        assert grid.contains_point(p)
+        assert "laplace" in grid.operators
 
 
 @pytest.mark.parametrize("periodic", [True, False])

@@ -1177,7 +1177,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data_flat = np.moveaxis(data_flat, 0, -1)
             new_shape = self.grid.shape + (-1,)
             data = data_flat.reshape(new_shape)
-            assert data.shape[-1] == self.grid.dim ** self.rank
+            assert data.shape[-1] == self.grid.dim**self.rank
             revert_shape = True
 
         # set the fill behavior
@@ -1426,7 +1426,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # determine the points at which data needs to be calculated
         if isinstance(grid, CartesianGridBase):
             # convert Cartesian coordinates to coordinates in current grid
-            points = self.grid.point_from_cartesian(grid.cell_coords)
+            points = self.grid.transform(grid.cell_coords, "cartesian", "grid")
 
         elif (
             self.grid.__class__ is grid.__class__

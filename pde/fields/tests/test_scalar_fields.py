@@ -14,6 +14,8 @@ from pde.grids.cartesian import CartesianGridBase
 from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
 from pde.tools.misc import module_available, skipUnlessModule
 
+from .fixtures import iter_grids
+
 
 def test_interpolation_singular():
     """test interpolation on singular dimensions"""
@@ -31,12 +33,13 @@ def test_interpolation_singular():
         assert val == pytest.approx(1)
 
 
-def test_simple_shapes(example_grid):
+@pytest.mark.parametrize("grid", iter_grids())
+def test_simple_shapes(grid):
     """test simple scalar fields"""
-    pf = ScalarField.random_uniform(example_grid)
-    np.testing.assert_equal(pf.data.shape, example_grid.shape)
+    pf = ScalarField.random_uniform(grid)
+    np.testing.assert_equal(pf.data.shape, grid.shape)
     pf_lap = pf.laplace("auto_periodic_neumann")
-    np.testing.assert_equal(pf_lap.data.shape, example_grid.shape)
+    np.testing.assert_equal(pf_lap.data.shape, grid.shape)
     assert isinstance(pf.integral, float)
 
     pf_c = pf.copy()
@@ -117,34 +120,36 @@ def test_gradient():
     np.testing.assert_allclose(v.data[1], np.cos(y), rtol=0.1, atol=0.1)
 
 
-def test_interpolation_to_grid(example_grid):
+@pytest.mark.parametrize("grid", iter_grids())
+def test_interpolation_to_grid(grid):
     """test whether data is interpolated correctly for different grids"""
-    sf = ScalarField.random_uniform(example_grid)
-    sf2 = sf.interpolate_to_grid(example_grid, backend="numba")
+    sf = ScalarField.random_uniform(grid)
+    sf2 = sf.interpolate_to_grid(grid, backend="numba")
     np.testing.assert_allclose(sf.data, sf2.data, rtol=1e-6)
 
 
-def test_insert_scalar(example_grid):
+@pytest.mark.parametrize("grid", iter_grids())
+def test_insert_scalar(grid):
     """test the `insert` method"""
-    f = ScalarField(example_grid)
+    f = ScalarField(grid)
     a = np.random.random()
 
-    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
-    p = example_grid.cell_to_point(c, cartesian=False)
+    c = tuple(grid.get_random_point(coords="cell"))
+    p = grid.transform(c, "cell", "grid")
     f.insert(p, a)
-    assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
+    assert f.data[c] == pytest.approx(a / grid.cell_volumes[c])
 
-    f.insert(example_grid.get_random_point(cartesian=False), a)
+    f.insert(grid.get_random_point(coords="grid"), a)
     assert f.integral == pytest.approx(2 * a)
 
     f.data = 0  # reset
-    insert = example_grid.make_inserter_compiled()
-    c = tuple(example_grid.point_to_cell(example_grid.get_random_point()))
-    p = example_grid.cell_to_point(c, cartesian=False)
+    insert = grid.make_inserter_compiled()
+    c = tuple(grid.get_random_point(coords="cell"))
+    p = grid.transform(c, "cell", "grid")
     insert(f.data, p, a)
-    assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
+    assert f.data[c] == pytest.approx(a / grid.cell_volumes[c])
 
-    insert(f.data, example_grid.get_random_point(cartesian=False), a)
+    insert(f.data, grid.get_random_point(coords="grid"), a)
     assert f.integral == pytest.approx(2 * a)
 
 
@@ -226,7 +231,7 @@ def test_to_scalar():
     """test conversion to scalar field"""
     sf = ScalarField.random_uniform(UnitGrid([3, 3]))
     np.testing.assert_allclose(sf.to_scalar().data, sf.data)
-    np.testing.assert_allclose(sf.to_scalar("norm_squared").data, sf.data ** 2)
+    np.testing.assert_allclose(sf.to_scalar("norm_squared").data, sf.data**2)
     np.testing.assert_allclose(sf.to_scalar(lambda x: 2 * x).data, 2 * sf.data)
 
     sf = ScalarField.random_uniform(UnitGrid([3, 3]), 0, 1 + 1j)
@@ -239,35 +244,37 @@ def test_to_scalar():
         sf.to_scalar("nonsense")
 
 
+@pytest.mark.parametrize("grid", (grid for grid in iter_grids() if grid.num_axes > 1))
 @pytest.mark.parametrize("method", ["integral", "average"])
-def test_projection(example_grid_nd, method):
+def test_projection(grid, method):
     """test scalar projection"""
-    sf = ScalarField.random_uniform(example_grid_nd)
-    for ax in example_grid_nd.axes:
+    sf = ScalarField.random_uniform(grid)
+    for ax in grid.axes:
         sp = sf.project(ax, method=method)
-        assert sp.grid.dim < example_grid_nd.dim
-        assert sp.grid.num_axes == example_grid_nd.num_axes - 1
+        assert sp.grid.dim < grid.dim
+        assert sp.grid.num_axes == grid.num_axes - 1
         if method == "integral":
             assert sp.integral == pytest.approx(sf.integral)
         elif method == "average":
             assert sp.average == pytest.approx(sf.average)
 
     with pytest.raises(ValueError):
-        sf.project(example_grid_nd.axes[0], method="nonsense")
+        sf.project(grid.axes[0], method="nonsense")
 
 
-def test_slice(example_grid_nd):
+@pytest.mark.parametrize("grid", (grid for grid in iter_grids() if grid.num_axes > 1))
+def test_slice(grid):
     """test scalar slicing"""
-    sf = ScalarField(example_grid_nd, 0.5)
-    p = example_grid_nd.get_random_point()
-    for i in range(example_grid_nd.num_axes):
-        sf_slc = sf.slice({example_grid_nd.axes[i]: p[i]})
+    sf = ScalarField(grid, 0.5)
+    p = grid.get_random_point(coords="grid")
+    for i in range(grid.num_axes):
+        sf_slc = sf.slice({grid.axes[i]: p[i]})
         np.testing.assert_allclose(sf_slc.data, 0.5)
-        assert sf_slc.grid.dim < example_grid_nd.dim
-        assert sf_slc.grid.num_axes == example_grid_nd.num_axes - 1
+        assert sf_slc.grid.dim < grid.dim
+        assert sf_slc.grid.num_axes == grid.num_axes - 1
 
     with pytest.raises(boundaries.DomainError):
-        sf.slice({example_grid_nd.axes[0]: -10})
+        sf.slice({grid.axes[0]: -10})
     with pytest.raises(ValueError):
         sf.slice({"q": 0})
 
@@ -318,13 +325,6 @@ def test_boundary_interpolation_1d():
     for bndry in grid._iter_boundaries():
         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(val, bndry_val)
-        #
-        # # boundary conditions have already been enforced
-        # ev = field.make_get_boundary_values(*bndry)
-        # out = ev()
-        # np.testing.assert_allclose(out, bndry_val)
-        # ev(data_full=field._data_full, out=out)
-        # np.testing.assert_allclose(out, bndry_val)
 
 
 def test_boundary_interpolation_2d():
@@ -337,13 +337,6 @@ def test_boundary_interpolation_2d():
     for bndry in grid._iter_boundaries():
         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(val, bndry_val)
-        #
-        # # boundary conditions have already been enforced
-        # ev = field.make_get_boundary_values(*bndry)
-        # out = ev()
-        # np.testing.assert_allclose(out, bndry_val)
-        # ev(data_full=field._data_full, out=out)
-        # np.testing.assert_allclose(out, bndry_val)
 
 
 def test_numpy_ufuncs():
@@ -382,6 +375,7 @@ def test_plotting_2d():
 
 
 @skipUnlessModule("napari")
+@pytest.mark.interactive
 def test_interactive_plotting():
     """test the interactive plotting"""
     grid = UnitGrid([3, 3])
@@ -467,14 +461,15 @@ def test_corner_interpolation():
     assert field.interpolate(np.array([0.0, 0.0])) == pytest.approx(0.0)
 
 
-def test_generic_derivatives(example_grid):
+@pytest.mark.parametrize("grid", iter_grids())
+def test_generic_derivatives(grid):
     """test generic derivatives operators"""
-    sf = ScalarField.random_uniform(example_grid, rng=np.random.default_rng(0))
+    sf = ScalarField.random_uniform(grid, rng=np.random.default_rng(0))
     sf_grad = sf.gradient("auto_periodic_neumann")
-    sf_lap = ScalarField(example_grid)
+    sf_lap = ScalarField(grid)
 
     # iterate over all grid axes
-    for axis_id, axis in enumerate(example_grid.axes):
+    for axis_id, axis in enumerate(grid.axes):
         # test first derivatives
         sf_deriv = sf._apply_operator(f"d_d{axis}", bc="auto_periodic_neumann")
         assert isinstance(sf_deriv, ScalarField)
@@ -484,7 +479,7 @@ def test_generic_derivatives(example_grid):
         sf_lap += sf._apply_operator(f"d2_d{axis}2", bc="auto_periodic_neumann")
 
     sf_laplace = sf.laplace("auto_periodic_neumann")
-    if isinstance(example_grid, CartesianGridBase):
+    if isinstance(grid, CartesianGridBase):
         # Laplacian is the sum of second derivatives in Cartesian coordinates
         np.testing.assert_allclose(sf_lap.data, sf_laplace.data)
     else:

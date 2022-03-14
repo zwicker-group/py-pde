@@ -6,12 +6,13 @@ A simple diffusion equation
 
 from typing import Callable
 
+import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit, nb
+from ..tools.numba import jit
 from .base import PDEBase, expr_prod
 
 

@@ -23,22 +23,18 @@ def test_cylindrical_grid():
         assert grid.discretization[1] == pytest.approx(1 / 3)
         np.testing.assert_array_equal(grid.discretization, np.array([0.5, 1 / 3]))
         assert not grid.uniform_cell_volumes
-        assert grid.volume == pytest.approx(np.pi * 4 ** 2 * 3)
+        assert grid.volume == pytest.approx(np.pi * 4**2 * 3)
         assert grid.volume == pytest.approx(grid.integrate(1))
 
         rs, zs = grid.axes_coords
         np.testing.assert_allclose(rs, np.linspace(0.25, 3.75, 8))
         np.testing.assert_allclose(zs, np.linspace(-1 + 1 / 6, 2 - 1 / 6, 9))
 
-        # random points
-        c = np.random.randint(8, size=(6, 2))
-        c1 = grid.point_to_cell(grid.cell_to_point(c))
-        np.testing.assert_almost_equal(c, c1, err_msg=msg)
-
-        assert grid.contains_point(grid.get_random_point())
-        ps = [grid.get_random_point() for _ in range(2)]
+        assert grid.contains_point(grid.get_random_point(coords="cartesian"))
+        ps = [grid.get_random_point(coords="cartesian") for _ in range(2)]
         assert all(grid.contains_point(ps))
-        assert grid.contains_point(grid.get_random_point(1.49))
+        ps = grid.get_random_point(coords="cartesian", boundary_distance=1.49)
+        assert grid.contains_point(ps)
         assert "laplace" in grid.operators
 
 

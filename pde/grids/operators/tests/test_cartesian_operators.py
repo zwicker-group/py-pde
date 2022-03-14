@@ -82,7 +82,7 @@ def test_laplace_2d():
         a = np.random.random(bcs.grid.shape)  # test data
 
         dx = np.mean(bcs.grid.discretization)
-        kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]]) / dx ** 2
+        kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]]) / dx**2
         res = ndimage.convolve(a, kernel, mode="wrap" if periodic else "reflect")
 
         field = ScalarField(bcs.grid, data=a)
@@ -237,7 +237,7 @@ def test_div_grad_quadratic():
     x = grid.axes_coords[0]
 
     # test simple quadratic
-    y = ScalarField(grid, x ** 2)
+    y = ScalarField(grid, x**2)
 
     bcs = grid.get_boundary_conditions({"type": "derivative", "value": 2})
     lap = y.laplace(bcs)
