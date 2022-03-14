@@ -8,6 +8,8 @@ import pytest
 from pde import CartesianGrid, PolarSymGrid, ScalarField, Tensor2Field, UnitGrid
 from pde.fields.base import FieldBase
 
+from .fixtures import iter_grids
+
 
 def test_tensors_basic():
     """test some tensor calculations"""
@@ -113,29 +115,30 @@ def test_tensor_symmetrize():
     np.testing.assert_allclose(t2.data, ts.data)
 
 
-def test_insert_tensor(example_grid):
+@pytest.mark.parametrize("grid", iter_grids())
+def test_insert_tensor(grid):
     """test the `insert` method"""
-    f = Tensor2Field(example_grid)
+    f = Tensor2Field(grid)
     a = np.random.random(f.data_shape)
 
-    c = tuple(example_grid.get_random_point(coords="cell"))
+    c = tuple(grid.get_random_point(coords="cell"))
     c_data = (Ellipsis,) + c
-    p = example_grid.transform(c, "cell", "grid")
+    p = grid.transform(c, "cell", "grid")
     f.insert(p, a)
-    np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
+    np.testing.assert_almost_equal(f.data[c_data], a / grid.cell_volumes[c])
 
-    f.insert(example_grid.get_random_point(coords="grid"), a)
+    f.insert(grid.get_random_point(coords="grid"), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
     f.data = 0  # reset
-    insert = example_grid.make_inserter_compiled()
-    c = tuple(example_grid.get_random_point(coords="cell"))
+    insert = grid.make_inserter_compiled()
+    c = tuple(grid.get_random_point(coords="cell"))
     c_data = (Ellipsis,) + c
-    p = example_grid.transform(c, "cell", "grid")
+    p = grid.transform(c, "cell", "grid")
     insert(f.data, p, a)
-    np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
+    np.testing.assert_almost_equal(f.data[c_data], a / grid.cell_volumes[c])
 
-    insert(f.data, example_grid.get_random_point(coords="grid"), a)
+    insert(f.data, grid.get_random_point(coords="grid"), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
 
