@@ -130,7 +130,7 @@ def test_insert_scalar(example_grid):
     a = np.random.random()
 
     c = tuple(example_grid.get_random_point(coords="cell"))
-    p = example_grid.cell_to_point(c, cartesian=False)
+    p = example_grid.transform(c, "cell", "grid")
     f.insert(p, a)
     assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
 
@@ -140,7 +140,7 @@ def test_insert_scalar(example_grid):
     f.data = 0  # reset
     insert = example_grid.make_inserter_compiled()
     c = tuple(example_grid.get_random_point(coords="cell"))
-    p = example_grid.cell_to_point(c, cartesian=False)
+    p = example_grid.transform(c, "cell", "grid")
     insert(f.data, p, a)
     assert f.data[c] == pytest.approx(a / example_grid.cell_volumes[c])
 

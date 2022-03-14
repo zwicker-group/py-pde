@@ -120,7 +120,7 @@ def test_insert_tensor(example_grid):
 
     c = tuple(example_grid.get_random_point(coords="cell"))
     c_data = (Ellipsis,) + c
-    p = example_grid.cell_to_point(c, cartesian=False)
+    p = example_grid.transform(c, "cell", "grid")
     f.insert(p, a)
     np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
 
@@ -131,7 +131,7 @@ def test_insert_tensor(example_grid):
     insert = example_grid.make_inserter_compiled()
     c = tuple(example_grid.get_random_point(coords="cell"))
     c_data = (Ellipsis,) + c
-    p = example_grid.cell_to_point(c, cartesian=False)
+    p = example_grid.transform(c, "cell", "grid")
     insert(f.data, p, a)
     np.testing.assert_almost_equal(f.data[c_data], a / example_grid.cell_volumes[c])
 

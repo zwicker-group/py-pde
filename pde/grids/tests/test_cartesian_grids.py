@@ -47,14 +47,6 @@ def test_generic_cartesian_grid(dim):
         assert grid.volume == pytest.approx(vol)
         assert grid.uniform_cell_volumes
 
-        # random points
-        points = [
-            [np.random.uniform(a[i], b[i]) for i in range(dim)] for _ in range(10)
-        ]
-        c = grid.point_to_cell(points)
-        p = grid.cell_to_point(c)
-        np.testing.assert_array_equal(c, grid.point_to_cell(p))
-
         assert grid.contains_point(grid.get_random_point(coords="grid"))
         w = 0.499 * (b - a).min()
         p = grid.get_random_point(boundary_distance=w, coords="grid")

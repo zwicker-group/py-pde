@@ -30,11 +30,6 @@ def test_cylindrical_grid():
         np.testing.assert_allclose(rs, np.linspace(0.25, 3.75, 8))
         np.testing.assert_allclose(zs, np.linspace(-1 + 1 / 6, 2 - 1 / 6, 9))
 
-        # random points
-        c = np.random.randint(8, size=(6, 2))
-        c1 = grid.point_to_cell(grid.cell_to_point(c))
-        np.testing.assert_almost_equal(c, c1, err_msg=msg)
-
         assert grid.contains_point(grid.get_random_point(coords="cartesian"))
         ps = [grid.get_random_point(coords="cartesian") for _ in range(2)]
         assert all(grid.contains_point(ps))

@@ -71,24 +71,24 @@ def test_iter_mirror_points():
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_cell_to_point_conversion(grid):
+def test_coordinate_conversion(grid):
     """test the conversion between cells and points"""
-    c = grid.get_random_point(coords="cell")
-    c2 = grid.point_to_cell(grid.cell_to_point(c))
-    np.testing.assert_almost_equal(c, c2)
-
-    p_emtpy = np.zeros((0, grid.dim))
-    assert grid.point_to_cell(p_emtpy).size == 0
-    c_emtpy = np.zeros((0, grid.num_axes))
-    assert grid.cell_to_point(c_emtpy).size == 0
+    p_empty = np.zeros((0, grid.dim))
+    c_empty = np.zeros((0, grid.num_axes))
 
     p = grid.get_random_point(coords="grid")
-    for source in ["cartesian", "cell", "grid"]:
-        p1 = grid.transform(p, "grid", source)
+    for coords in ["cartesian", "cell", "grid"]:
+        # test empty conversion
+        assert grid.transform(p_empty, "cartesian", coords).size == 0
+        assert grid.transform(c_empty, "grid", coords).size == 0
+        assert grid.transform(c_empty, "cell", coords).size == 0
+
+        # test full conversion
+        p1 = grid.transform(p, "grid", coords)
         for target in ["cartesian", "grid"]:
-            p2 = grid.transform(p1, source, target)
-            p3 = grid.transform(p2, target, source)
-            np.testing.assert_allclose(p1, p3, err_msg=f"{source} -> {target}")
+            p2 = grid.transform(p1, coords, target)
+            p3 = grid.transform(p2, target, coords)
+            np.testing.assert_allclose(p1, p3, err_msg=f"{coords} -> {target}")
 
 
 @pytest.mark.parametrize("grid", iter_grids())

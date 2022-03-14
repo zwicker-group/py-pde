@@ -45,11 +45,6 @@ def test_polar_grid():
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    # random points
-    c = np.random.randint(8, size=(6, 1))
-    p = grid.cell_to_point(c)
-    np.testing.assert_array_equal(c, grid.point_to_cell(p))
-
     assert grid.contains_point(grid.get_random_point(coords="cartesian"))
     p = grid.get_random_point(boundary_distance=3.99, coords="cartesian")
     assert grid.contains_point(p)
@@ -75,11 +70,6 @@ def test_polar_annulus():
     a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
-
-    # random points
-    c = np.random.randint(8, size=(6, 1))
-    p = grid.cell_to_point(c)
-    np.testing.assert_array_equal(c, grid.point_to_cell(p))
 
     assert grid.contains_point(grid.get_random_point(coords="cartesian"))
     p = grid.get_random_point(boundary_distance=1.99, coords="cartesian")
@@ -123,11 +113,6 @@ def test_spherical_grid():
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    # random points
-    c = np.random.randint(8, size=(6, 1))
-    p = grid.cell_to_point(c)
-    np.testing.assert_array_equal(c, grid.point_to_cell(p))
-
     assert grid.contains_point(grid.get_random_point(coords="cartesian"))
     p = grid.get_random_point(boundary_distance=3.99, coords="cartesian")
     assert grid.contains_point(p)
@@ -153,12 +138,6 @@ def test_spherical_annulus():
     a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
-
-    # random points
-    c = np.random.randint(8, size=(6, 1))
-    p = grid.cell_to_point(c)
-    assert all(grid.contains_point(r) for r in p)
-    np.testing.assert_array_equal(c, grid.point_to_cell(p))
 
     assert grid.contains_point(grid.get_random_point(coords="cartesian"))
     p = grid.get_random_point(boundary_distance=1.99, coords="cartesian")
