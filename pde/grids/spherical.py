@@ -376,50 +376,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
         return np.linalg.norm(points, axis=-1, keepdims=True)  # type: ignore
 
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        """convert cell coordinates to real coordinates
-
-        This function returns points restricted to the x-axis, i.e., the
-        y-coordinate will be zero.
-
-        Args:
-            cells (:class:`~numpy.ndarray`):
-                Indices of the cells whose center coordinates are requested.
-                This can be float values to indicate positions relative to the
-                cell center.
-            cartesian (bool):
-                Determines whether the point is returned in Cartesian
-                coordinates or grid coordinates.
-
-        Returns:
-            :class:`~numpy.ndarray`: The center points of the respective cells
-        """
-        cells = np.atleast_1d(cells)
-        assert cells.shape[-1] == self.num_axes, f"Require {self.num_axes} coordinates"
-
-        # convert from cells indices to grid coordinates
-        r_inner, _ = self.axes_bounds[0]
-        points = r_inner + (cells + 0.5) * self.discretization[0]
-        if cartesian:
-            return self.point_to_cartesian(points)
-        else:
-            return points  # type: ignore
-
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        """Determine cell(s) corresponding to given point(s)
-
-        Args:
-            points (:class:`~numpy.ndarray`): Real coordinates
-
-        Returns:
-            :class:`~numpy.ndarray`: The indices of the respective cells
-        """
-        # convert from grid coordinates to cells indices
-        r = self.point_from_cartesian(points)
-        r_inner, _ = self.axes_bounds[0]
-        cells = (r - r_inner) / self.discretization[0]
-        return cells.astype(np.intc)  # type: ignore
-
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
 

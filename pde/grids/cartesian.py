@@ -488,43 +488,6 @@ class UnitGrid(CartesianGridBase):
         """float: total volume of the grid"""
         return float(np.prod(self.shape))
 
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        """convert cell coordinates to real coordinates
-
-        Args:
-            cells (:class:`~numpy.ndarray`): Indices of the cells whose center
-                coordinates are requested. This can be float values to indicate
-                positions relative to the cell center.
-            cartesian (bool): Determines whether the point is returned in
-                Cartesian coordinates or grid coordinates. This does not have
-                any effect for Cartesian coordinate systems, but the argument is
-                retained to have a unified interface for all grids.
-
-        Returns:
-            :class:`~numpy.ndarray`: The center points of the respective cells
-        """
-        cells = np.asanyarray(cells, dtype=np.double)
-        if cells.size == 0:
-            return np.zeros((0, self.dim))
-        if cells.shape[-1] != self.dim:
-            raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
-        return cells + 0.5
-
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        """Determine cell(s) corresponding to given point(s)
-
-        This function respects periodic boundary conditions, but it does not
-        throw an error when coordinates lie outside the bcs (for
-        non-periodic axes).
-
-        Args:
-            points (:class:`~numpy.ndarray`): Real coordinates
-
-        Returns:
-            :class:`~numpy.ndarray`: The indices of the respective cells
-        """
-        return self.normalize_point(points, reflect=False).astype(np.intc)
-
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.
 
@@ -695,46 +658,6 @@ class CartesianGrid(CartesianGridBase):
     def volume(self) -> float:
         """float: total volume of the grid"""
         return float(self.cuboid.volume)
-
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        """convert cell coordinates to real coordinates
-
-        Args:
-            cells (:class:`~numpy.ndarray`): Indices of the cells whose center
-                coordinates are requested. This can be float values to indicate
-                positions relative to the cell center.
-            cartesian (bool): Determines whether the point is returned in
-                Cartesian coordinates or grid coordinates. This does not have
-                any effect for Cartesian coordinate systems, but the argument is
-                retained to have a unified interface for all grids.
-
-        Returns:
-            :class:`~numpy.ndarray`: The center points of the respective cells
-        """
-        cells = np.atleast_1d(cells)
-        if cells.size == 0:
-            return cells
-        elif cells.shape[-1] != self.dim:
-            raise DimensionError(f"Array of shape {cells.shape} cannot denote cells")
-        else:
-            return self.cuboid.pos + (cells + 0.5) * self.discretization  # type: ignore
-
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        """Determine cell(s) corresponding to given point(s)
-
-        This function respects periodic boundary conditions, but it does not
-        throw an error when coordinates lie outside the bcs (for
-        non-periodic axes).
-
-        Args:
-            points (:class:`~numpy.ndarray`): Real coordinates
-
-        Returns:
-            :class:`~numpy.ndarray`: The indices of the respective cells
-        """
-        points = self.normalize_point(points, reflect=False)
-        cell_coords = (points - self.cuboid.pos) / self.discretization
-        return cell_coords.astype(np.intc)  # type: ignore
 
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return the vector pointing from p1 to p2.

@@ -12,6 +12,7 @@ import inspect
 import itertools
 import json
 import logging
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -441,14 +442,6 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        pass
-
-    @abstractmethod
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        pass
-
-    @abstractmethod
     def point_to_cartesian(self, points: np.ndarray, **kwargs) -> np.ndarray:
         pass
 
@@ -456,98 +449,9 @@ class GridBase(metaclass=ABCMeta):
     def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
         pass
 
-    def transform(
-        self, coordinates: np.ndarray, source: str, target: str
+    def normalize_point(
+        self, point: np.ndarray, *, reflect: bool = False
     ) -> np.ndarray:
-        """converts coordinates from one coordinate system to another
-
-        Supported coordinate systems include
-
-        * `cartesian`: Cartesian coordinates where each point carries `dim` values
-        * `cell`: Grid coordinates based on indexing the discretization cells
-        * `grid`: Grid coordinates where each point carries `num_axes` values
-
-        Note:
-            Some conversion might involve projections if the coordinate system imposes
-            symmetries.
-
-        Args:
-            coordinates (:class:`~numpy.ndarray`): The coordinates to convert
-            source (str): The source coordinate system
-            target (str): The target coordinate system
-        """
-        if source == "cartesian":
-            # Cartesian coordinates given
-            if target == "cartesian":
-                return coordinates
-            elif target == "cell":
-                return self.point_to_cell(coordinates)
-            elif target == "grid":
-                return self.point_from_cartesian(coordinates)
-
-        elif source == "cell":
-            # Cell coordinates given
-            if target == "cartesian":
-                return self.cell_to_point(coordinates, cartesian=True)
-            elif target == "cell":
-                return coordinates
-            elif target == "grid":
-                return self.cell_to_point(coordinates, cartesian=False)
-
-        elif source == "grid":
-            # Cell coordinates given
-            if target == "cartesian":
-                return self.point_to_cartesian(coordinates)
-            elif target == "cell":
-                return self.point_to_cell(self.point_to_cartesian(coordinates))
-            elif target == "grid":
-                return coordinates
-
-        else:
-            raise ValueError(f"Unknown source coordinates `{source}`")
-        raise ValueError(f"Unknown target coordinates `{target}`")
-
-    @abstractmethod
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray):
-        pass
-
-    @abstractmethod
-    def polar_coordinates_real(
-        self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
-        pass
-
-    @abstractmethod
-    def contains_point(self, point: np.ndarray) -> np.ndarray:
-        pass
-
-    @abstractmethod
-    def iter_mirror_points(
-        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
-    ) -> Generator:
-        pass
-
-    @abstractmethod
-    def get_boundary_conditions(
-        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
-    ) -> Boundaries:
-        pass
-
-    @abstractmethod
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
-        pass
-
-    @abstractmethod
-    def get_random_point(
-        self, *, boundary_distance: float = 0, coords: str = "cartesian"
-    ) -> np.ndarray:
-        pass
-
-    def normalize_point(self, point: np.ndarray, reflect: bool = True) -> np.ndarray:
         """normalize coordinates by applying periodic boundary conditions
 
         Here, the point is assumed to be specified by the physical values along
@@ -606,6 +510,183 @@ class GridBase(metaclass=ABCMeta):
                     point[..., i] = xmin[i] + np.abs(arg)
 
         return point
+
+    def _grid_to_cell(
+        self, grid_coords: np.ndarray, truncate: bool = True
+    ) -> np.ndarray:
+        """convert grid coordinates to cell coordinates
+
+        Args:
+            grid_coords (:class:`~numpy.ndarray`):
+                The grid coordinates to convert
+            truncate (bool):
+                Flag indicating whether the resulting cell coordinates are integers
+                marking what cell the point belongs to or whether fractional coordinates
+                are returned. The default is to return integers.
+
+        Returns:
+            :class:`~numpy.ndarray`: The cell coordinates
+        """
+        # convert from grid coordinates to cells indices
+        c_min = np.array(self.axes_bounds)[:, 0]
+        cells = (self.normalize_point(grid_coords) - c_min) / self.discretization
+        if truncate:
+            return cells.astype(np.intc)  # type: ignore
+        else:
+            return cells
+
+    def transform(
+        self, coordinates: np.ndarray, source: str, target: str
+    ) -> np.ndarray:
+        """converts coordinates from one coordinate system to another
+
+        Supported coordinate systems include
+
+        * `cartesian`: Cartesian coordinates where each point carries `dim` values
+        * `cell`: Grid coordinates based on indexing the discretization cells
+        * `grid`: Grid coordinates where each point carries `num_axes` values
+
+        Note:
+            Some conversion might involve projections if the coordinate system imposes
+            symmetries.
+
+        Args:
+            coordinates (:class:`~numpy.ndarray`): The coordinates to convert
+            source (str): The source coordinate system
+            target (str): The target coordinate system
+
+        Returns:
+            :class:`~numpy.ndarray`: The transformed coordinates
+        """
+        if source == "cartesian":
+            # Cartesian coordinates given
+            cartesian = np.atleast_1d(coordinates)
+            if cartesian.shape[-1] != self.dim:
+                raise DimensionError(f"Require {self.dim} cartesian coordinates")
+
+            if target == "cartesian":
+                return coordinates
+
+            # convert Cartesian coordinates to grid coordinates
+            grid_coords = self.point_from_cartesian(cartesian)
+
+            if target == "grid":
+                return grid_coords
+            if target == "cell":
+                return self._grid_to_cell(grid_coords)
+
+        elif source == "cell":
+            # Cell coordinates given
+            cells = np.atleast_1d(coordinates)
+            if cells.shape[-1] != self.num_axes:
+                raise DimensionError(f"Require {self.num_axes} cell coordinates")
+
+            if target == "cell":
+                return coordinates
+
+            # convert cell coordinates to grid coordinates
+            c_min = np.array(self.axes_bounds)[:, 0]
+            grid_coords = c_min + (cells + 0.5) * self.discretization
+
+            if target == "grid":
+                return grid_coords
+            elif target == "cartesian":
+                return self.point_to_cartesian(grid_coords)
+
+        elif source == "grid":
+            # Cell coordinates given
+            grid_coords = np.atleast_1d(coordinates)
+            if grid_coords.shape[-1] != self.num_axes:
+                raise DimensionError(f"Require {self.num_axes} grid coordinates")
+
+            if target == "cartesian":
+                return self.point_to_cartesian(grid_coords)
+            elif target == "cell":
+                return self._grid_to_cell(grid_coords)
+            elif target == "grid":
+                return grid_coords
+
+        else:
+            raise ValueError(f"Unknown source coordinates `{source}`")
+        raise ValueError(f"Unknown target coordinates `{target}`")
+
+    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
+        """convert cell coordinates to real coordinates
+
+        This function returns points restricted to the x-axis, i.e., the
+        y-coordinate will be zero.
+
+        Args:
+            cells (:class:`~numpy.ndarray`):
+                Indices of the cells whose center coordinates are requested.
+                This can be float values to indicate positions relative to the
+                cell center.
+            cartesian (bool):
+                Determines whether the point is returned in Cartesian
+                coordinates or grid coordinates.
+
+        Returns:
+            :class:`~numpy.ndarray`: The center points of the respective cells
+        """
+        # deprecated since 2022-03-14
+        warnings.warn("`cell_to_point` is deprecated. Use `transform` method instead")
+        if cartesian:
+            return self.transform(cells, "cell", "cartesian")
+        else:
+            return self.transform(cells, "cell", "grid")
+
+    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
+        """Determine cell(s) corresponding to given point(s)
+
+        Args:
+            points (:class:`~numpy.ndarray`): Real coordinates
+
+        Returns:
+            :class:`~numpy.ndarray`: The indices of the respective cells
+        """
+        # deprecated since 2022-03-14
+        warnings.warn("`point_to_cell` is deprecated. Use `transform` method instead")
+        return self.transform(points, "cartesian", "points")
+
+    @abstractmethod
+    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray):
+        pass
+
+    @abstractmethod
+    def polar_coordinates_real(
+        self, origin: np.ndarray, *, ret_angle: bool = False
+    ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
+        pass
+
+    @abstractmethod
+    def contains_point(self, point: np.ndarray) -> np.ndarray:
+        pass
+
+    @abstractmethod
+    def iter_mirror_points(
+        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
+    ) -> Generator:
+        pass
+
+    @abstractmethod
+    def get_boundary_conditions(
+        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
+    ) -> Boundaries:
+        pass
+
+    @abstractmethod
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
+        pass
+
+    @abstractmethod
+    def get_random_point(
+        self, *, boundary_distance: float = 0, coords: str = "cartesian"
+    ) -> np.ndarray:
+        pass
 
     @classmethod
     def register_operator(
