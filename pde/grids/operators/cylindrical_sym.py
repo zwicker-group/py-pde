@@ -41,7 +41,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
     """
     # calculate preliminary quantities
     dim_r, dim_z = grid.shape
-    dr_2, dz_2 = 1 / grid.discretization ** 2
+    dr_2, dz_2 = 1 / grid.discretization**2
 
     # use processing for large enough arrays
     parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
@@ -122,7 +122,7 @@ def make_gradient_squared(
 
     if central:
         # use central differences
-        scale_r, scale_z = 0.25 / grid.discretization ** 2
+        scale_r, scale_z = 0.25 / grid.discretization**2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -135,7 +135,7 @@ def make_gradient_squared(
 
     else:
         # use forward and backward differences
-        scale_r, scale_z = 0.5 / grid.discretization ** 2
+        scale_r, scale_z = 0.5 / grid.discretization**2
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -255,8 +255,8 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
     dim_r, dim_z = grid.shape
     rs = grid.axes_coords[0]
     dr, dz = grid.discretization
-    s1, s2 = 1 / (2 * dr), 1 / dr ** 2
-    scale_z = 1 / (dz ** 2)
+    s1, s2 = 1 / (2 * dr), 1 / dr**2
+    scale_z = 1 / (dz**2)
 
     # use processing for large enough arrays
     parallel = dim_r * dim_z >= config["numba.parallel_threshold"]

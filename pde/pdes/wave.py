@@ -6,12 +6,13 @@ A simple diffusion equation
 
 from typing import Callable, Dict
 
+import numba as nb
 import numpy as np
 
 from ..fields import FieldCollection, ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit, nb
+from ..tools.numba import jit
 from .base import PDEBase, expr_prod
 
 
@@ -71,7 +72,7 @@ class WavePDE(PDEBase):
     @property
     def expressions(self) -> Dict[str, str]:
         """dict: the expressions of the right hand side of this PDE"""
-        return {"u": "v", "v": expr_prod(self.speed ** 2, "laplace(u)")}
+        return {"u": "v", "v": expr_prod(self.speed**2, "laplace(u)")}
 
     def evolution_rate(  # type: ignore
         self,
@@ -94,7 +95,7 @@ class WavePDE(PDEBase):
         assert len(state) == 2, "`state` must contain two fields"
         u, v = state
         u_t = v.copy()
-        v_t = self.speed ** 2 * u.laplace(self.bc, args={"t": t})  # type: ignore
+        v_t = self.speed**2 * u.laplace(self.bc, args={"t": t})  # type: ignore
         return FieldCollection([u_t, v_t])
 
     def _make_pde_rhs_numba(  # type: ignore
@@ -115,7 +116,7 @@ class WavePDE(PDEBase):
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
 
-        speed2 = self.speed ** 2
+        speed2 = self.speed**2
         laplace = state.grid.make_operator("laplace", bc=self.bc)
 
         @jit(signature)

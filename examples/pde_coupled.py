@@ -32,7 +32,7 @@ class FitzhughNagumoPDE(PDEBase):
     def evolution_rate(self, state, t=0):
         v, w = state  # membrane potential and recovery variable
 
-        v_t = v.laplace(bc=self.bc) + v - v ** 3 / 3 - w + self.stimulus
+        v_t = v.laplace(bc=self.bc) + v - v**3 / 3 - w + self.stimulus
         w_t = (v + self.a - self.b * w) / self.τ
 
         return FieldCollection([v_t, w_t])

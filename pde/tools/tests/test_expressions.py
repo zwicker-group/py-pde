@@ -21,7 +21,7 @@ def test_parse_number():
     assert parse_number("-1.4e-5") == pytest.approx(-1.4e-5)
     assert parse_number("sin(3.4)") == pytest.approx(np.sin(3.4))
     assert parse_number("sin(a)", {"a": 3}) == pytest.approx(np.sin(3))
-    assert parse_number("a**b", {"a": 3.2, "b": 4.5}) == pytest.approx(3.2 ** 4.5)
+    assert parse_number("a**b", {"a": 3.2, "b": 4.5}) == pytest.approx(3.2**4.5)
     assert parse_number("1 + 2 * I") == pytest.approx(1 + 2j)
     assert parse_number("a", {"a": 1 + 2j}) == pytest.approx(1 + 2j)
     with pytest.raises(TypeError):

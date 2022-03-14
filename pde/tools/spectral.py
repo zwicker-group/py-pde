@@ -81,7 +81,7 @@ def make_colored_noise(
             k = np.fft.rfftfreq(shape[i], dx[i])
         else:
             k = np.fft.fftfreq(shape[i], dx[i])
-        k2s = np.add.outer(k2s, k ** 2)
+        k2s = np.add.outer(k2s, k**2)
 
     # scaling of all modes with k != 0
     k2s.flat[0] = 1  # type: ignore

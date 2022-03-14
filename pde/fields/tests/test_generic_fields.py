@@ -131,14 +131,14 @@ def test_arithmetics():
 
         # test power
         f1.data = 2
-        np.testing.assert_allclose((f1 ** 3).data, 8)
+        np.testing.assert_allclose((f1**3).data, 8)
         f1 **= 3
         np.testing.assert_allclose(f1.data, 8)
 
         # test applying a function
         f1.data = 2
-        np.testing.assert_allclose(f1.apply(lambda x: x ** 3).data, 8)
-        f1.apply(lambda x: x ** 3, out=f1)
+        np.testing.assert_allclose(f1.apply(lambda x: x**3).data, 8)
+        f1.apply(lambda x: x**3, out=f1)
         np.testing.assert_allclose(f1.data, 8)
 
 

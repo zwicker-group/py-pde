@@ -30,7 +30,7 @@ def spectral_density(data, dx=1.0):
     k2s = 0
     for i in range(dim):
         k = fftpack.fftfreq(data.shape[i], dx[i])
-        k2s = np.add.outer(k2s, k ** 2)
+        k2s = np.add.outer(k2s, k**2)
 
     res = fftpack.fftn(data)
 

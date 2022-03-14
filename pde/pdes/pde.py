@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Dict, Tuple
 
+import numba as nb
 import numpy as np
 from numba.typed import Dict as NumbaDict
 from sympy import Symbol
@@ -20,7 +21,7 @@ from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit, nb
+from ..tools.numba import jit
 from ..tools.typing import ArrayLike
 
 

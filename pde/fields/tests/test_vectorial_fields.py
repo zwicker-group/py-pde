@@ -172,7 +172,7 @@ def test_from_expressions():
     vf = VectorField.from_expression(grid, ["x**2", "x * y"])
     xs = grid.cell_coords[..., 0]
     ys = grid.cell_coords[..., 1]
-    np.testing.assert_allclose(vf.data[0], xs ** 2)
+    np.testing.assert_allclose(vf.data[0], xs**2)
     np.testing.assert_allclose(vf.data[1], xs * ys)
 
     # corner case

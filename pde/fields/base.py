@@ -1177,7 +1177,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data_flat = np.moveaxis(data_flat, 0, -1)
             new_shape = self.grid.shape + (-1,)
             data = data_flat.reshape(new_shape)
-            assert data.shape[-1] == self.grid.dim ** self.rank
+            assert data.shape[-1] == self.grid.dim**self.rank
             revert_shape = True
 
         # set the fill behavior

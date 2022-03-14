@@ -2,11 +2,10 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import pytest
-
 import matplotlib.pyplot as plt
 import matplotlib.testing.compare
 import numpy as np
+import pytest
 
 from pde.tools.plotting import add_scaled_colorbar, plot_on_axes, plot_on_figure
 

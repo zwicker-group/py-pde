@@ -46,7 +46,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
     dim_r = grid.shape[0]
     dr = grid.discretization[0]
     rs = grid.axes_coords[0]
-    dr_2 = 1 / dr ** 2
+    dr_2 = 1 / dr**2
 
     @jit
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
@@ -116,7 +116,7 @@ def make_gradient_squared(grid: PolarSymGrid, central: bool = True) -> OperatorT
 
     if central:
         # use central differences
-        scale = 0.25 / dr ** 2
+        scale = 0.25 / dr**2
 
         @jit
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -126,7 +126,7 @@ def make_gradient_squared(grid: PolarSymGrid, central: bool = True) -> OperatorT
 
     else:
         # use forward and backward differences
-        scale = 0.5 / dr ** 2
+        scale = 0.5 / dr**2
 
         @jit
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
@@ -272,7 +272,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     dr = bcs.grid.discretization[0]
     rs = bcs.grid.axes_coords[0]
     r_min, _ = bcs.grid.axes_bounds[0]
-    scale = 1 / dr ** 2
+    scale = 1 / dr**2
 
     matrix = sparse.dok_matrix((dim_r, dim_r))
     vector = sparse.dok_matrix((dim_r, 1))

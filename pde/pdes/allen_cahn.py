@@ -6,12 +6,13 @@ A Allen-Cahn equation
 
 from typing import Callable  # @UnusedImport
 
+import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit, nb
+from ..tools.numba import jit
 from .base import PDEBase, expr_prod
 
 
@@ -71,7 +72,7 @@ class AllenCahnPDE(PDEBase):
         """
         assert isinstance(state, ScalarField), "`state` must be ScalarField"
         laplace = state.laplace(bc=self.bc, label="evolution rate", args={"t": t})
-        return self.interface_width * laplace - state ** 3 + state  # type: ignore
+        return self.interface_width * laplace - state**3 + state  # type: ignore
 
     def _make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
@@ -99,7 +100,7 @@ class AllenCahnPDE(PDEBase):
             """compiled helper function evaluating right hand side"""
             return (  # type: ignore
                 interface_width * laplace(state_data, args={"t": t})
-                - state_data ** 3
+                - state_data**3
                 + state_data
             )
 

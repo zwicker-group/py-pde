@@ -47,9 +47,9 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     if dim == 1:
         return 2 * radius
     elif dim == 2:
-        return π * radius ** 2
+        return π * radius**2
     elif dim == 3:
-        return PI_43 * radius ** 3
+        return PI_43 * radius**3
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
@@ -208,7 +208,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
         # choose random radius scaled such that points are uniformly distributed
         r = np.array(
-            [rng.uniform(r_min ** self.dim, r_max ** self.dim) ** (1 / self.dim)]
+            [rng.uniform(r_min**self.dim, r_max**self.dim) ** (1 / self.dim)]
         )
         if coords == "cartesian":
             # choose random angles for the already chosen radius

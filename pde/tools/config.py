@@ -46,7 +46,7 @@ DEFAULT_CONFIG: List[Parameter] = [
     ),
     Parameter(
         "numba.parallel_threshold",
-        256 ** 2,
+        256**2,
         int,
         "Minimal number of support points before multithreading or multiprocessing is "
         "enabled in the numba compilations.",

@@ -149,7 +149,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     @property
     def volume(self) -> float:
         """float: total volume of the grid"""
-        return float(np.pi * self.radius ** 2 * self.length)
+        return float(np.pi * self.radius**2 * self.length)
 
     def get_random_point(
         self,
@@ -200,7 +200,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
                 raise RuntimeError("Random points would be too close to boundary")
 
         # create random point
-        r = np.sqrt(rng.uniform(r_min ** 2, r_max ** 2))
+        r = np.sqrt(rng.uniform(r_min**2, r_max**2))
         z = rng.uniform(z_min, z_max)
         if coords == "cartesian":
             φ = rng.uniform(0, 2 * np.pi)  # additional random angle
@@ -314,7 +314,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         """:class:`~numpy.ndarray`: the volumes of all cells"""
         dr, dz = self.discretization
         rs = np.arange(self.shape[0] + 1) * dr
-        areas = np.pi * rs ** 2
+        areas = np.pi * rs**2
         r_vols = np.diff(areas).reshape(self.shape[0], 1)
         return (r_vols, dz)
 

@@ -83,7 +83,7 @@ class ImplicitSolver(SolverBase):
 
         rhs = self._make_pde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)
-        maxerror2 = self.maxerror ** 2
+        maxerror2 = self.maxerror**2
 
         # handle deterministic version of the pde
         def inner_stepper(

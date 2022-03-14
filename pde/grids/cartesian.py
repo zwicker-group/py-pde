@@ -133,10 +133,10 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             cuboid = cuboid.buffer(-boundary_distance)
 
         # create random point
-        point = cuboid.pos + rng.random(self.dim) * cuboid.size  # type: ignore
+        point = cuboid.pos + rng.random(self.dim) * cuboid.size
 
         if coords == "cartesian" or coords == "grid":
-            return point
+            return point  # type: ignore
         elif coords == "cell":
             return self.transform(point, "grid", "cell")
         else:
@@ -254,7 +254,9 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             "label_y": self.axes[1],
         }
 
-    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
         Args:

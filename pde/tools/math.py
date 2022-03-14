@@ -62,7 +62,7 @@ class SmoothData1D:
         xs = np.asanyarray(xs)
         shape = xs.shape
         xs = np.ravel(xs)
-        scale = 0.5 * self.sigma ** -2
+        scale = 0.5 * self.sigma**-2
 
         with np.errstate(under="ignore"):
             weight = np.exp(-scale * (self.x[:, None] - xs[None, :]) ** 2)

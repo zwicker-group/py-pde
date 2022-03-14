@@ -6,12 +6,13 @@ The Swift-Hohenberg equation
 
 from typing import Callable
 
+import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit, nb
+from ..tools.numba import jit
 from .base import PDEBase, expr_prod
 
 
@@ -95,11 +96,11 @@ class SwiftHohenbergPDE(PDEBase):
         state_laplace2 = state_laplace.laplace(bc=self.bc_lap, args={"t": t})
 
         result = (
-            (self.rate - self.kc2 ** 2) * state
+            (self.rate - self.kc2**2) * state
             - 2 * self.kc2 * state_laplace
             - state_laplace2
-            + self.delta * state ** 2
-            - state ** 3
+            + self.delta * state**2
+            - state**3
         )
         result.label = "evolution rate"
         return result  # type: ignore
@@ -136,11 +137,11 @@ class SwiftHohenbergPDE(PDEBase):
             state_laplace2 = laplace2(state_laplace, args={"t": t})
 
             return (
-                (rate - kc2 ** 2) * state_data
+                (rate - kc2**2) * state_data
                 - 2 * kc2 * state_laplace
                 - state_laplace2
-                + delta * state_data ** 2
-                - state_data ** 3
+                + delta * state_data**2
+                - state_data**3
             )
 
         return pde_rhs  # type: ignore

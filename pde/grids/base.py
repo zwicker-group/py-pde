@@ -462,7 +462,9 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def point_to_cartesian(self, points: np.ndarray, **kwargs) -> np.ndarray:
+    def point_to_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         pass
 
     @abstractmethod
@@ -553,7 +555,7 @@ class GridBase(metaclass=ABCMeta):
         if truncate:
             return cells.astype(np.intc)  # type: ignore
         else:
-            return cells
+            return cells  # type: ignore
 
     def transform(
         self, coordinates: np.ndarray, source: str, target: str
@@ -568,7 +570,11 @@ class GridBase(metaclass=ABCMeta):
 
         Note:
             Some conversion might involve projections if the coordinate system imposes
-            symmetries.
+            symmetries. For instance, converting 3d Cartesian coordinates to grid
+            coordinates in a spherically symmetric  grid will only return the radius
+            from the origin. Conversely, converting these grid coordinates back to 3d
+            Cartesian coordinates will only return coordinates along a particular ray
+            originating at the origin.
 
         Args:
             coordinates (:class:`~numpy.ndarray`): The coordinates to convert
@@ -611,7 +617,7 @@ class GridBase(metaclass=ABCMeta):
             if target == "grid":
                 return grid_coords
             elif target == "cartesian":
-                return self.point_to_cartesian(grid_coords)
+                return self.point_to_cartesian(grid_coords, full=False)
 
         elif source == "grid":
             # Grid coordinates given
@@ -620,7 +626,7 @@ class GridBase(metaclass=ABCMeta):
                 raise DimensionError(f"Require {self.num_axes} grid coordinates")
 
             if target == "cartesian":
-                return self.point_to_cartesian(grid_coords)
+                return self.point_to_cartesian(grid_coords, full=False)
             elif target == "cell":
                 return self._grid_to_cell(grid_coords)
             elif target == "grid":
@@ -633,9 +639,6 @@ class GridBase(metaclass=ABCMeta):
     def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
         """convert cell coordinates to real coordinates
 
-        This function returns points restricted to the x-axis, i.e., the
-        y-coordinate will be zero.
-
         Args:
             cells (:class:`~numpy.ndarray`):
                 Indices of the cells whose center coordinates are requested.
@@ -647,6 +650,9 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             :class:`~numpy.ndarray`: The center points of the respective cells
+
+        Warning:
+            This method is deprecated since 2022-03-14 and will be removed soon.
         """
         # deprecated since 2022-03-14
         warnings.warn("`cell_to_point` is deprecated. Use `transform` method instead")
@@ -663,6 +669,9 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             :class:`~numpy.ndarray`: The indices of the respective cells
+
+        Warning:
+            This method is deprecated since 2022-03-14 and will be removed soon.
         """
         # deprecated since 2022-03-14
         warnings.warn("`point_to_cell` is deprecated. Use `transform` method instead")
@@ -688,7 +697,7 @@ class GridBase(metaclass=ABCMeta):
             the grid
         """
         cell_coords = self.transform(points, source=coords, target="cell")
-        return np.all((0 <= cell_coords) & (cell_coords < self.shape), axis=-1)
+        return np.all((0 <= cell_coords) & (cell_coords < self.shape), axis=-1)  # type: ignore
 
     @abstractmethod
     def iter_mirror_points(
@@ -1219,8 +1228,7 @@ class GridBase(metaclass=ABCMeta):
                     data (:class:`~numpy.ndarray`):
                         A 1d array of valid values at the grid points
                     point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
+                        Coordinates of a single point in the grid coordinate system
 
                 Returns:
                     :class:`~numpy.ndarray`: The interpolated value at the point
@@ -1251,8 +1259,7 @@ class GridBase(metaclass=ABCMeta):
                     data (:class:`~numpy.ndarray`):
                         A 2d array of valid values at the grid points
                     point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
+                        Coordinates of a single point in the grid coordinate system
 
                 Returns:
                     :class:`~numpy.ndarray`: The interpolated value at the point
@@ -1291,8 +1298,7 @@ class GridBase(metaclass=ABCMeta):
                     data (:class:`~numpy.ndarray`):
                         A 2d array of valid values at the grid points
                     point (:class:`~numpy.ndarray`):
-                        Coordinates of a single point in the grid coordinate
-                        system
+                        Coordinates of a single point in the grid coordinate system
 
                 Returns:
                     :class:`~numpy.ndarray`: The interpolated value at the point
@@ -1339,10 +1345,9 @@ class GridBase(metaclass=ABCMeta):
                 boundaries are not checked and the coordinates are used as is.
 
         Returns:
-            A function with signature (data, position, amount), where `data` is
-            the numpy array containing the field data, position is denotes the
-            position in grid coordinates, and `amount` is the  that is to be
-            added to the field.
+            A function with signature (data, position, amount), where `data` is the numpy
+            array containing the field data, position is denotes the position in grid
+            coordinates, and `amount` is the  that is to be added to the field.
         """
         cell_volume = self.make_cell_volume_compiled()
 

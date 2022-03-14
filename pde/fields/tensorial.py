@@ -440,7 +440,7 @@ class Tensor2Field(DataFieldBase):
             data = np.max(self.data, axis=(0, 1))
 
         elif scalar == "squared_sum":
-            data = np.sum(self.data ** 2, axis=(0, 1))
+            data = np.sum(self.data**2, axis=(0, 1))
 
         elif scalar == "norm_squared":
             data = np.sum(self.data * self.data.conjugate(), axis=(0, 1))

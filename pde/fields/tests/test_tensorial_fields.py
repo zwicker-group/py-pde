@@ -220,7 +220,7 @@ def test_from_expressions():
     ys = grid.cell_coords[..., 1]
     np.testing.assert_allclose(tf.data[0, 1], 1)
     np.testing.assert_allclose(tf.data[0, 1], 1)
-    np.testing.assert_allclose(tf.data[1, 0], xs ** 2)
+    np.testing.assert_allclose(tf.data[1, 0], xs**2)
     np.testing.assert_allclose(tf.data[1, 1], xs * ys)
 
     # corner case

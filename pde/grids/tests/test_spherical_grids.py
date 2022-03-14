@@ -36,7 +36,7 @@ def test_polar_grid():
     assert grid.discretization[0] == pytest.approx(0.5)
     assert not grid.uniform_cell_volumes
     np.testing.assert_array_equal(grid.discretization, np.array([0.5]))
-    assert grid.volume == pytest.approx(np.pi * 4 ** 2)
+    assert grid.volume == pytest.approx(np.pi * 4**2)
     assert grid.volume == pytest.approx(grid.integrate(1))
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
@@ -61,7 +61,7 @@ def test_polar_annulus():
     assert grid.discretization[0] == pytest.approx(0.25)
     assert not grid.uniform_cell_volumes
     np.testing.assert_array_equal(grid.discretization, np.array([0.25]))
-    assert grid.volume == pytest.approx(np.pi * (4 ** 2 - 2 ** 2))
+    assert grid.volume == pytest.approx(np.pi * (4**2 - 2**2))
     assert grid.volume == pytest.approx(grid.integrate(1))
     assert grid.radius == (2, 4)
 
@@ -104,7 +104,7 @@ def test_spherical_grid():
     assert grid.discretization[0] == pytest.approx(0.5)
     assert not grid.uniform_cell_volumes
     np.testing.assert_array_equal(grid.discretization, np.array([0.5]))
-    assert grid.volume == pytest.approx(4 / 3 * np.pi * 4 ** 3)
+    assert grid.volume == pytest.approx(4 / 3 * np.pi * 4**3)
     assert grid.volume == pytest.approx(grid.integrate(1))
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
@@ -129,7 +129,7 @@ def test_spherical_annulus():
     assert grid.discretization[0] == pytest.approx(0.25)
     assert not grid.uniform_cell_volumes
     np.testing.assert_array_equal(grid.discretization, np.array([0.25]))
-    assert grid.volume == pytest.approx(4 / 3 * np.pi * (4 ** 3 - 2 ** 3))
+    assert grid.volume == pytest.approx(4 / 3 * np.pi * (4**3 - 2**3))
     assert grid.volume == pytest.approx(grid.integrate(1))
     assert grid.radius == (2, 4)
 

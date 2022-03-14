@@ -44,8 +44,8 @@ class BrusselatorPDE(PDEBase):
         u, v = state
         rhs = state.copy()
         d0, d1 = self.diffusivity
-        rhs[0] = d0 * u.laplace(self.bc) + self.a - (self.b + 1) * u + u ** 2 * v
-        rhs[1] = d1 * v.laplace(self.bc) + self.b * u - u ** 2 * v
+        rhs[0] = d0 * u.laplace(self.bc) + self.a - (self.b + 1) * u + u**2 * v
+        rhs[1] = d1 * v.laplace(self.bc) + self.b * u - u**2 * v
         return rhs
 
     def _make_pde_rhs_numba(self, state):
@@ -60,8 +60,8 @@ class BrusselatorPDE(PDEBase):
             v = state_data[1]
 
             rate = np.empty_like(state_data)
-            rate[0] = d0 * laplace(u) + a - (1 + b) * u + v * u ** 2
-            rate[1] = d1 * laplace(v) + b * u - v * u ** 2
+            rate[0] = d0 * laplace(u) + a - (1 + b) * u + v * u**2
+            rate[1] = d1 * laplace(v) + b * u - v * u**2
             return rate
 
         return pde_rhs

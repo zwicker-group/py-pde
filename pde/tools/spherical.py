@@ -143,9 +143,9 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     if dim == 1:
         return 2 * radius
     elif dim == 2:
-        return π * radius ** 2
+        return π * radius**2
     elif dim == 3:
-        return 4 * π / 3 * radius ** 3
+        return 4 * π / 3 * radius**3
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
@@ -167,12 +167,12 @@ def make_volume_from_radius_compiled(dim: int) -> Callable[[TNumArr], TNumArr]:
     elif dim == 2:
 
         def volume_from_radius(radius: TNumArr) -> TNumArr:
-            return π * radius ** 2
+            return π * radius**2
 
     elif dim == 3:
 
         def volume_from_radius(radius: TNumArr) -> TNumArr:
-            return 4 * π / 3 * radius ** 3
+            return 4 * π / 3 * radius**3
 
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
@@ -197,7 +197,7 @@ def surface_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     elif dim == 2:
         return 2 * π * radius
     elif dim == 3:
-        return 4 * π * radius ** 2
+        return 4 * π * radius**2
     else:
         raise NotImplementedError(
             f"Cannot calculate the surface area in {dim} dimensions"
@@ -264,7 +264,7 @@ def make_surface_from_radius_compiled(dim: int) -> Callable[[TNumArr], TNumArr]:
 
         @jit
         def surface_from_radius(radius: TNumArr) -> TNumArr:
-            return 4 * π * radius ** 2
+            return 4 * π * radius**2
 
     else:
         raise NotImplementedError(
@@ -392,7 +392,7 @@ def get_spherical_polygon_area(vertices: np.ndarray, radius: float = 1) -> float
             * np.tan(0.5 * (s - a_b_dist))
         )
         totalexcess += 4 * np.arctan(np.sqrt(arg))
-    return totalexcess * radius ** 2
+    return totalexcess * radius**2
 
 
 class PointsOnSphere:
@@ -441,7 +441,7 @@ class PointsOnSphere:
                 num_points = 18
             indices = np.arange(0, num_points) + 0.5
             φ = np.arccos(1 - 2 * indices / num_points)
-            θ = π * (1 + 5 ** 0.5) * indices
+            θ = π * (1 + 5**0.5) * indices
 
             # convert to Cartesian coordinates
             points = np.c_[np.cos(θ) * np.sin(φ), np.sin(θ) * np.sin(φ), np.cos(φ)]

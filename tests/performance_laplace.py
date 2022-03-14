@@ -23,7 +23,7 @@ config["numba.parallel"] = False
 
 def custom_laplace_2d_periodic(shape, dx=1):
     """make laplace operator with periodic boundary conditions"""
-    dx_2 = 1 / dx ** 2
+    dx_2 = 1 / dx**2
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
@@ -58,7 +58,7 @@ def custom_laplace_2d_periodic(shape, dx=1):
 
 def custom_laplace_2d_neumann(shape, dx=1):
     """make laplace operator with Neumann boundary conditions"""
-    dx_2 = 1 / dx ** 2
+    dx_2 = 1 / dx**2
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
 
@@ -92,7 +92,7 @@ def flexible_laplace_2d(bcs):
     """make laplace operator with flexible boundary conditions"""
     bc_x, bc_y = bcs
     dx = np.mean(bcs.grid.discretization)
-    dx_2 = 1 / dx ** 2
+    dx_2 = 1 / dx**2
     dim_x, dim_y = bcs.grid.shape
 
     region_x = bc_x.make_region_evaluator()
@@ -134,8 +134,8 @@ def optimized_laplace_2d(bcs):
 def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
     """make laplace operator with Neumann boundary conditions"""
     dim_r, dim_z = shape
-    dr_2 = 1 / dr ** 2
-    dz_2 = 1 / dz ** 2
+    dr_2 = 1 / dr**2
+    dz_2 = 1 / dz**2
 
     @jit
     def laplace(arr, out=None):

@@ -6,12 +6,13 @@ A Cahn-Hilliard equation
 
 from typing import Callable
 
+import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
-from ..tools.numba import jit, nb
+from ..tools.numba import jit
 from .base import PDEBase, expr_prod
 
 
@@ -78,7 +79,7 @@ class CahnHilliardPDE(PDEBase):
         """
         assert isinstance(state, ScalarField), "`state` must be ScalarField"
         c_laplace = state.laplace(bc=self.bc_c, label="evolution rate", args={"t": t})
-        result = state ** 3 - state - self.interface_width * c_laplace
+        result = state**3 - state - self.interface_width * c_laplace
         return result.laplace(bc=self.bc_mu, args={"t": t})  # type: ignore
 
     def _make_pde_rhs_numba(  # type: ignore
@@ -107,7 +108,7 @@ class CahnHilliardPDE(PDEBase):
         def pde_rhs(state_data: np.ndarray, t: float):
             """compiled helper function evaluating right hand side"""
             mu = (
-                state_data ** 3
+                state_data**3
                 - state_data
                 - interface_width * laplace_c(state_data, args={"t": t})
             )
