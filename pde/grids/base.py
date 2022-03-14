@@ -323,7 +323,7 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def compatible_with(self, other: GridBase) -> bool:
-        """tests whether this class is compatible with other grids.
+        """tests whether this grid is compatible with other grids.
 
         Grids are compatible when they cover the same area with the same
         discretization. The difference to equality is that compatible grids do
