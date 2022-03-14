@@ -230,6 +230,7 @@ def test_vector_plotting_2d(transpose):
 
 
 @skipUnlessModule("napari")
+@pytest.mark.interactive
 def test_interactive_vector_plotting():
     """test the interactive plotting"""
     grid = UnitGrid([3, 3])

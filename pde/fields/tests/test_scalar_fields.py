@@ -382,6 +382,7 @@ def test_plotting_2d():
 
 
 @skipUnlessModule("napari")
+@pytest.mark.interactive
 def test_interactive_plotting():
     """test the interactive plotting"""
     grid = UnitGrid([3, 3])

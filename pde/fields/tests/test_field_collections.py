@@ -171,6 +171,7 @@ def test_from_scalar_expressions():
 
 
 @skipUnlessModule("napari")
+@pytest.mark.interactive
 def test_interactive_collection_plotting():
     """test the interactive plotting"""
     grid = UnitGrid([3, 3])

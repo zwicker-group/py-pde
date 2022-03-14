@@ -287,20 +287,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             "label_y": self.axes[1],
         }
 
-    def contains_point(self, point: np.ndarray) -> np.ndarray:
-        """check whether the point is contained in the grid
-
-        Args:
-            point (:class:`~numpy.ndarray`): Coordinates of the point
-        """
-        point = np.atleast_1d(point)
-        assert point.shape[-1] == 3, f"Point must have 3 coordinates"
-
-        in_radius = np.hypot(point[..., 0], point[..., 1]) <= self.radius
-        bounds_z = self.axes_bounds[1]
-        in_z = (bounds_z[0] <= point[..., 2]) & (point[..., 2] <= bounds_z[1])
-        return in_radius & in_z  # type: ignore
-
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
@@ -494,21 +480,3 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
 
         else:
             raise ValueError(f"Cannot get sub-grid for index {indices[0]}")
-
-
-class CylindricalGrid(CylindricalSymGrid):
-    r"""3-dimensional cylindrical grid assuming polar symmetry
-
-    .. deprecated:: 0.14 (2021-05-21)
-        Use  :class:`~pde.grids.cylindrical.CylindricalSymGrid` instead.
-    """
-
-    deprecated: bool = True
-
-    def __init__(self, *args, **kwargs):
-        """class deprecated since 2021-05-21"""
-        warnings.warn(
-            "CylindricalGrid is a deprecated class. Use CylindricalSymGrid instead",
-            DeprecationWarning,
-        )
-        super().__init__(*args, **kwargs)

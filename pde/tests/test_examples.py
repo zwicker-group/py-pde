@@ -77,7 +77,7 @@ def test_jupyter_notebooks(path, tmp_path):
 
     # adjust python environment
     my_env = os.environ.copy()
-    my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env["PYTHONPATH"]
+    my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env.get("PYTHONPATH", "")
 
     outfile = tmp_path / os.path.basename(path)
     sp.check_call(

@@ -22,15 +22,6 @@ def test_intervals():
     assert ival.next(3) == pytest.approx(17)
 
 
-#         ival = trackers.RealtimeIntervals(duration=1e-2, dt_initial=10)
-#         times = [ival.next(0)]
-#         for i in range(50):
-#             time.sleep(1e-3)
-#             if i > times[-1]:
-#                 times.append(ival.next(i))
-#         .assertEqual(times, [10, 20])
-
-
 def test_interval_tstart():
     """test the t_start argument of intervals"""
     ival = ConstantIntervals(dt=2, t_start=7)

@@ -381,10 +381,30 @@ class GridBase(metaclass=ABCMeta):
         """bool: returns True if all cell volumes are the same"""
         return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
+    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+        """return the vector pointing from p1 to p2
+
+        In case of periodic boundary conditions, the shortest vector is returned.
+
+        Args:
+            p1 (:class:`~numpy.ndarray`): First point(s)
+            p2 (:class:`~numpy.ndarray`): Second point(s)
+
+        Returns:
+            :class:`~numpy.ndarray`: The difference vectors between the points
+            with periodic  boundary conditions applied.
+        """
+        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
+        for i, periodic in enumerate(self.periodic):
+            if periodic:
+                size = self.axes_bounds[i][1] - self.axes_bounds[i][0]
+                diff[..., i] = (diff[..., i] + size / 2) % size - size / 2
+        return diff  # type: ignore
+
     def distance_real(self, p1: np.ndarray, p2: np.ndarray) -> float:
         """Calculate the distance between two points given in real coordinates
 
-        This takes periodic boundary conditions into account if need be
+        This takes periodic boundary conditions into account if necessary.
 
         Args:
             p1 (:class:`~numpy.ndarray`): First position
@@ -454,10 +474,10 @@ class GridBase(metaclass=ABCMeta):
     ) -> np.ndarray:
         """normalize coordinates by applying periodic boundary conditions
 
-        Here, the point is assumed to be specified by the physical values along
-        the non-symmetric axes of the grid. Normalizing points is useful to make sure
-        they lie within the domain of the  grid. This function respects periodic
-        boundary conditions and can also reflect points off the boundary.
+        Here, the point is assumed to be specified by the physical values along the
+        non-symmetric axes of the grid. Normalizing points is useful to make sure they
+        lie within the domain of the  grid. This function respects periodic boundary
+        conditions and can also reflect points off the boundary.
 
         Args:
             point (:class:`~numpy.ndarray`):
@@ -594,7 +614,7 @@ class GridBase(metaclass=ABCMeta):
                 return self.point_to_cartesian(grid_coords)
 
         elif source == "grid":
-            # Cell coordinates given
+            # Grid coordinates given
             grid_coords = np.atleast_1d(coordinates)
             if grid_coords.shape[-1] != self.num_axes:
                 raise DimensionError(f"Require {self.num_axes} grid coordinates")
@@ -648,35 +668,27 @@ class GridBase(metaclass=ABCMeta):
         warnings.warn("`point_to_cell` is deprecated. Use `transform` method instead")
         return self.transform(points, "cartesian", "points")
 
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2.
-
-        In case of periodic boundary conditions, the shortest vector is returned
-
-        Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-            with periodic  boundary conditions applied.
-        """
-        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        for i, periodic in enumerate(self.periodic):
-            if periodic:
-                size = self.axes_bounds[i][1] - self.axes_bounds[i][0]
-                diff[..., i] = (diff[..., i] + size / 2) % size - size / 2
-        return diff  # type: ignore
-
     @abstractmethod
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
     ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
         pass
 
-    @abstractmethod
-    def contains_point(self, point: np.ndarray) -> np.ndarray:
-        pass
+    def contains_point(
+        self, points: np.ndarray, *, coords: str = "cartesian"
+    ) -> np.ndarray:
+        """check whether the point is contained in the grid
+
+        Args:
+            point (:class:`~numpy.ndarray`): Coordinates of the point
+            coords (str): The coordinate system in which the points are given
+
+        Returns:
+            :class:`~numpy.ndarray`: A boolean array indicating which points lie within
+            the grid
+        """
+        cell_coords = self.transform(points, source=coords, target="cell")
+        return np.all((0 <= cell_coords) & (cell_coords < self.shape), axis=-1)
 
     @abstractmethod
     def iter_mirror_points(

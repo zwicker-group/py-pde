@@ -2,6 +2,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import pytest
+
 from pde.fields import FieldCollection, ScalarField
 from pde.grids import UnitGrid
 from pde.storage import get_memory_storage
@@ -106,6 +108,7 @@ def test_kymograph_collection(tmp_path):
 
 
 @skipUnlessModule("napari")
+@pytest.mark.interactive
 def test_interactive_plotting():
     """test plot_interactive"""
 

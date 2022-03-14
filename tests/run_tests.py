@@ -91,6 +91,7 @@ def test_types(*, report: bool = False, verbose: bool = True) -> int:
 
 def run_unit_tests(
     runslow: bool = False,
+    runinteractive: bool = False,
     parallel: bool = False,
     coverage: bool = False,
     nojit: bool = False,
@@ -101,6 +102,7 @@ def run_unit_tests(
 
     Args:
         runslow (bool): Whether to run the slow tests
+        runinteractive (bool): Whether to run the interactive tests
         parallel (bool): Whether to use multiple processors
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
@@ -130,9 +132,11 @@ def run_unit_tests(
         "-rw",  # show summary of warnings raised during tests
     ]
 
-    # allow running slow tests?
+    # allow running slow and interactive tests?
     if runslow:
         args.append("--runslow")
+    if runinteractive:
+        args.append("--runinteractive")
 
     # fail early if requested
     if early:
@@ -206,6 +210,12 @@ def main() -> int:
         help="Also run slow unit tests",
     )
     group.add_argument(
+        "--runinteractive",
+        action="store_true",
+        default=False,
+        help="Also run interactive unit tests",
+    )
+    group.add_argument(
         "--coverage",
         action="store_true",
         default=False,
@@ -259,6 +269,7 @@ def main() -> int:
     if run_all or args.unit:
         retcode = run_unit_tests(
             runslow=args.runslow,
+            runinteractive=args.runinteractive,
             coverage=args.coverage,
             parallel=args.parallel,
             nojit=args.nojit,

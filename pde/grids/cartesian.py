@@ -65,16 +65,6 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """size associated with each cell"""
         return tuple(self.discretization)
 
-    def contains_point(self, point: np.ndarray) -> np.ndarray:
-        """check whether the point is contained in the grid
-
-        Args:
-            point (:class:`~numpy.ndarray`): Coordinates of the point
-        """
-        if len(point) != self.dim:
-            raise DimensionError("Incompatible dimensions")
-        return self.cuboid.contains_point(point)
-
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:

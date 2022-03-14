@@ -161,20 +161,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         volumes_l = volume_from_radius(rs - 0.5 * dr, dim=self.dim)
         return ((volumes_h - volumes_l).reshape(self.shape[0]),)
 
-    def contains_point(self, point: np.ndarray) -> np.ndarray:
-        """check whether the point is contained in the grid
-
-        Args:
-            point (:class:`~numpy.ndarray`): Coordinates of the point
-        """
-        point = np.atleast_1d(point)
-        if point.shape[-1] != self.dim:
-            raise DimensionError("Dimension mismatch")
-        r = np.linalg.norm(point, axis=-1)
-
-        r_inner, r_outer = self.axes_bounds[0]
-        return r_inner <= r <= r_outer  # type: ignore
-
     def get_random_point(
         self,
         *,
