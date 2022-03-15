@@ -682,7 +682,7 @@ class GridBase(metaclass=ABCMeta):
         """
         # deprecated since 2022-03-14
         warnings.warn("`point_to_cell` is deprecated. Use `transform` method instead")
-        return self.transform(points, "cartesian", "grid")
+        return self.transform(points, "cartesian", "cell")
 
     @abstractmethod
     def polar_coordinates_real(
