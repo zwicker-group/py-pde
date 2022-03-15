@@ -26,6 +26,24 @@ def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
         return max(retcodes, key=lambda retcode: abs(retcode))
 
 
+def show_config():
+    """show package configuration"""
+    from pde import environment
+
+    env = environment()
+
+    print(f"{'='*33} CONFIGURATION {'='*32}")
+    for category, data in env.items():
+        if hasattr(data, "items"):
+            print(f"\n{category}:")
+            for key, value in data.items():
+                print(f"    {key}: {value}")
+        else:
+            data_formatted = data.replace("\n", "\n    ")
+            print(f"{category}: {data_formatted}")
+    print("=" * 80)
+
+
 def test_codestyle(*, verbose: bool = True) -> int:
     """run the codestyle tests
 
@@ -92,7 +110,6 @@ def test_types(*, report: bool = False, verbose: bool = True) -> int:
 def run_unit_tests(
     runslow: bool = False,
     runinteractive: bool = False,
-    showconfig: bool = False,
     parallel: bool = False,
     coverage: bool = False,
     nojit: bool = False,
@@ -104,7 +121,6 @@ def run_unit_tests(
     Args:
         runslow (bool): Whether to run the slow tests
         runinteractive (bool): Whether to run the interactive tests
-        showconfig (bool): Whether to show the package configuration
         parallel (bool): Whether to use multiple processors
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
@@ -141,8 +157,6 @@ def run_unit_tests(
         args.append("--runslow")
     if runinteractive:
         args.append("--runinteractive")
-    if showconfig:
-        args.append("--showconfig")
 
     # fail early if requested
     if early:
@@ -266,7 +280,11 @@ def main() -> int:
 
     # parse the command line arguments
     args = parser.parse_args()
-    run_all = not (args.style or args.types or args.unit)
+    run_all = not (args.style or args.types or args.unit or args.showconfig)
+
+    # show the package configuration
+    if args.showconfig:
+        show_config()
 
     # run the requested tests
     retcodes = []
@@ -282,7 +300,6 @@ def main() -> int:
         retcode = run_unit_tests(
             runslow=args.runslow,
             runinteractive=args.runinteractive,
-            showconfig=args.showconfig,
             coverage=args.coverage,
             parallel=args.parallel,
             nojit=args.nojit,

@@ -28,6 +28,6 @@ jobs:
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
-        pip install pytest
+        pip install pytest==7.0.1
         cd tests
         python run_tests.py --unit --showconfig
