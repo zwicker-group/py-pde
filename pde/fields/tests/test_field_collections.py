@@ -7,9 +7,8 @@ import pytest
 
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.fields.base import FieldBase
+from pde.fields.tests.fixtures import iter_grids
 from pde.tools.misc import skipUnlessModule
-
-from .fixtures import iter_grids
 
 
 @pytest.mark.parametrize("grid", iter_grids())

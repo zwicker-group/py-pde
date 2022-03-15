@@ -114,6 +114,7 @@ def run_unit_tests(
     """
     # modify current environment
     env = os.environ.copy()
+    env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
     env["MPLBACKEND"] = "agg"
     if nojit:
         env["NUMBA_DISABLE_JIT"] = "1"
@@ -130,6 +131,7 @@ def run_unit_tests(
         "tests/pytest.ini",  # locate the configuration file
         "-rs",  # show summary of skipped tests
         "-rw",  # show summary of warnings raised during tests
+        "--import-mode=importlib",
     ]
 
     # allow running slow and interactive tests?
@@ -164,9 +166,13 @@ def run_unit_tests(
         )
 
     # specify the package to run
-    args.append(PACKAGE)
-
+    # args.append(PACKAGE)
+    print(PACKAGE_PATH)
+    print(args)
+    print(sys.path)
+    print(env["PYTHONPATH"])
     # actually run the test
+
     return sp.run(args, env=env, cwd=PACKAGE_PATH).returncode
 
 
