@@ -474,7 +474,7 @@ class GridBase(metaclass=ABCMeta):
     def normalize_point(
         self, point: np.ndarray, *, reflect: bool = False
     ) -> np.ndarray:
-        """normalize coordinates by applying periodic boundary conditions
+        """normalize grid coordinates by applying periodic boundary conditions
 
         Here, the point is assumed to be specified by the physical values along the
         non-symmetric axes of the grid. Normalizing points is useful to make sure they
@@ -534,7 +534,7 @@ class GridBase(metaclass=ABCMeta):
         return point
 
     def _grid_to_cell(
-        self, grid_coords: np.ndarray, truncate: bool = True
+        self, grid_coords: np.ndarray, *, truncate: bool = True, normalize: bool = False
     ) -> np.ndarray:
         """convert grid coordinates to cell coordinates
 
@@ -545,13 +545,20 @@ class GridBase(metaclass=ABCMeta):
                 Flag indicating whether the resulting cell coordinates are integers
                 marking what cell the point belongs to or whether fractional coordinates
                 are returned. The default is to return integers.
+            normalize (bool):
+                Flag indicating whether the points should be normalized
 
         Returns:
             :class:`~numpy.ndarray`: The cell coordinates
         """
+        if normalize:
+            coords = self.normalize_point(grid_coords)
+        else:
+            coords = np.atleast_1d(grid_coords)
+
         # convert from grid coordinates to cells indices
         c_min = np.array(self.axes_bounds)[:, 0]
-        cells = (self.normalize_point(grid_coords) - c_min) / self.discretization
+        cells = (coords - c_min) / self.discretization
         if truncate:
             return cells.astype(np.intc)  # type: ignore
         else:
@@ -599,7 +606,7 @@ class GridBase(metaclass=ABCMeta):
             if target == "grid":
                 return grid_coords
             if target == "cell":
-                return self._grid_to_cell(grid_coords)
+                return self._grid_to_cell(grid_coords, normalize=False)
 
         elif source == "cell":
             # Cell coordinates given
@@ -628,7 +635,7 @@ class GridBase(metaclass=ABCMeta):
             if target == "cartesian":
                 return self.point_to_cartesian(grid_coords, full=False)
             elif target == "cell":
-                return self._grid_to_cell(grid_coords)
+                return self._grid_to_cell(grid_coords, normalize=False)
             elif target == "grid":
                 return grid_coords
 
@@ -684,13 +691,15 @@ class GridBase(metaclass=ABCMeta):
         pass
 
     def contains_point(
-        self, points: np.ndarray, *, coords: str = "cartesian"
+        self, points: np.ndarray, *, coords: str = "cartesian", wrap: bool = True
     ) -> np.ndarray:
         """check whether the point is contained in the grid
 
         Args:
-            point (:class:`~numpy.ndarray`): Coordinates of the point
-            coords (str): The coordinate system in which the points are given
+            point (:class:`~numpy.ndarray`):
+                Coordinates of the point
+            coords (str):
+                The coordinate system in which the points are given
 
         Returns:
             :class:`~numpy.ndarray`: A boolean array indicating which points lie within
