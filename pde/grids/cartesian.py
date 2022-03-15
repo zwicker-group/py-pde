@@ -260,8 +260,8 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         """convert coordinates of a point to Cartesian coordinates
 
         Args:
-            points (:class:`~numpy.ndarray`):
-                Points given in the coordinates of \the grid
+            points (:class:`~numpy.ndarray`): Points given in grid coordinates
+            full (bool): Compatibility option not used in this method
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
