@@ -10,8 +10,8 @@ import pytest
 
 
 @pytest.fixture(scope="function", autouse=True)
-def suppressing():
-    """helper function adjusting message reporting for all tests"""
+def setup_and_teardown():
+    """helper function adjusting environment before and after tests"""
     # raise all underflow errors
     np.seterr(all="raise", under="ignore")
 
@@ -23,6 +23,7 @@ def suppressing():
 
 
 def pytest_addoption(parser):
+    """pytest hook to add command line options parsed by pytest"""
     parser.addoption(
         "--runslow", action="store_true", default=False, help="run slow tests"
     )
@@ -34,13 +35,10 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_configure(config):
-    config.addinivalue_line("markers", "slow: mark test as slow to run")
-
-
 def pytest_collection_modifyitems(config, items):
-    runslow = config.getoption("--runslow")
-    runinteractive = config.getoption("--runinteractive")
+    """pytest hook to filter a collection of tests"""
+    runslow = config.getoption("--runslow", default=False)
+    runinteractive = config.getoption("--runinteractive", default=False)
 
     skip_slow = pytest.mark.skip(reason="need --runslow option to run")
     skip_interactive = pytest.mark.skip(reason="need --runinteractive option to run")

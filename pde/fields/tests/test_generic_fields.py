@@ -8,6 +8,7 @@ from scipy import ndimage
 
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.fields.base import DataFieldBase, FieldBase
+from pde.fields.tests.fixtures import iter_grids
 from pde.grids import (
     CartesianGrid,
     CylindricalSymGrid,
@@ -17,8 +18,6 @@ from pde.grids import (
 )
 from pde.grids.cartesian import CartesianGridBase
 from pde.tools.misc import skipUnlessModule
-
-from .fixtures import iter_grids
 
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])

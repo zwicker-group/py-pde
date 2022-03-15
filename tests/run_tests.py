@@ -26,6 +26,27 @@ def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
         return max(retcodes, key=lambda retcode: abs(retcode))
 
 
+def show_config():
+    """show package configuration"""
+    from importlib.machinery import SourceFileLoader
+
+    # imports the package from the package path
+    pde = SourceFileLoader(PACKAGE, f"{PACKAGE_PATH/PACKAGE}/__init__.py").load_module()
+    # obtain the package environment
+    env = pde.environment()
+
+    print(f"{'='*33} CONFIGURATION {'='*32}")
+    for category, data in env.items():
+        if hasattr(data, "items"):
+            print(f"\n{category}:")
+            for key, value in data.items():
+                print(f"    {key}: {value}")
+        else:
+            data_formatted = data.replace("\n", "\n    ")
+            print(f"{category}: {data_formatted}")
+    print("=" * 80)
+
+
 def test_codestyle(*, verbose: bool = True) -> int:
     """run the codestyle tests
 
@@ -114,6 +135,7 @@ def run_unit_tests(
     """
     # modify current environment
     env = os.environ.copy()
+    env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
     env["MPLBACKEND"] = "agg"
     if nojit:
         env["NUMBA_DISABLE_JIT"] = "1"
@@ -130,6 +152,7 @@ def run_unit_tests(
         "tests/pytest.ini",  # locate the configuration file
         "-rs",  # show summary of skipped tests
         "-rw",  # show summary of warnings raised during tests
+        "--import-mode=importlib",
     ]
 
     # allow running slow and interactive tests?
@@ -216,6 +239,12 @@ def main() -> int:
         help="Also run interactive unit tests",
     )
     group.add_argument(
+        "--showconfig",
+        action="store_true",
+        default=False,
+        help="Show configuration before running tests",
+    )
+    group.add_argument(
         "--coverage",
         action="store_true",
         default=False,
@@ -254,7 +283,11 @@ def main() -> int:
 
     # parse the command line arguments
     args = parser.parse_args()
-    run_all = not (args.style or args.types or args.unit)
+    run_all = not (args.style or args.types or args.unit or args.showconfig)
+
+    # show the package configuration
+    if args.showconfig:
+        show_config()
 
     # run the requested tests
     retcodes = []

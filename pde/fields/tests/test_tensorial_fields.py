@@ -7,8 +7,7 @@ import pytest
 
 from pde import CartesianGrid, PolarSymGrid, ScalarField, Tensor2Field, UnitGrid
 from pde.fields.base import FieldBase
-
-from .fixtures import iter_grids
+from pde.fields.tests.fixtures import iter_grids
 
 
 def test_tensors_basic():

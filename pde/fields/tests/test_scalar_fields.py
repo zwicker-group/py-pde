@@ -9,12 +9,11 @@ import pytest
 
 from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
+from pde.fields.tests.fixtures import iter_grids
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
 from pde.grids.cartesian import CartesianGridBase
 from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
 from pde.tools.misc import module_available, skipUnlessModule
-
-from .fixtures import iter_grids
 
 
 def test_interpolation_singular():
