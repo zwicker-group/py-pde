@@ -92,6 +92,7 @@ def test_types(*, report: bool = False, verbose: bool = True) -> int:
 def run_unit_tests(
     runslow: bool = False,
     runinteractive: bool = False,
+    showconfig: bool = False,
     parallel: bool = False,
     coverage: bool = False,
     nojit: bool = False,
@@ -103,6 +104,7 @@ def run_unit_tests(
     Args:
         runslow (bool): Whether to run the slow tests
         runinteractive (bool): Whether to run the interactive tests
+        showconfig (bool): Whether to show the package configuration
         parallel (bool): Whether to use multiple processors
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
@@ -139,6 +141,8 @@ def run_unit_tests(
         args.append("--runslow")
     if runinteractive:
         args.append("--runinteractive")
+    if showconfig:
+        args.append("--showconfig")
 
     # fail early if requested
     if early:
@@ -166,13 +170,9 @@ def run_unit_tests(
         )
 
     # specify the package to run
-    # args.append(PACKAGE)
-    print(PACKAGE_PATH)
-    print(args)
-    print(sys.path)
-    print(env["PYTHONPATH"])
-    # actually run the test
+    args.append(PACKAGE)
 
+    # actually run the test
     return sp.run(args, env=env, cwd=PACKAGE_PATH).returncode
 
 
@@ -220,6 +220,12 @@ def main() -> int:
         action="store_true",
         default=False,
         help="Also run interactive unit tests",
+    )
+    group.add_argument(
+        "--showconfig",
+        action="store_true",
+        default=False,
+        help="Show configuration before running tests",
     )
     group.add_argument(
         "--coverage",
@@ -276,6 +282,7 @@ def main() -> int:
         retcode = run_unit_tests(
             runslow=args.runslow,
             runinteractive=args.runinteractive,
+            showconfig=args.showconfig,
             coverage=args.coverage,
             parallel=args.parallel,
             nojit=args.nojit,

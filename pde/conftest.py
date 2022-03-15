@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
+from pde import environment
+
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_and_teardown():
@@ -33,6 +35,30 @@ def pytest_addoption(parser):
         default=False,
         help="run interactive tests",
     )
+    parser.addoption(
+        "--showconfig",
+        action="store_true",
+        default=False,
+        help="show configuration at beginning of the test run",
+    )
+
+
+def pytest_sessionstart(session):
+    """pytest hook to display configuration at startup"""
+    if session.config.getoption("--showconfig", default=False):
+        terminal_reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+        capture_manager = session.config.pluginmanager.get_plugin("capturemanager")
+        with capture_manager.global_and_fixture_disabled():
+            terminal_reporter.write(f"{'='*33} CONFIGURATION {'='*32}\n")
+
+            for category, data in environment().items():
+                if hasattr(data, "items"):
+                    terminal_reporter.write(f"\n{category}:\n")
+                    for key, value in data.items():
+                        terminal_reporter.write(f"    {key}: {value}\n")
+                else:
+                    data_formatted = data.replace("\n", "\n    ")
+                    terminal_reporter.write(f"{category}: {data_formatted}\n")
 
 
 def pytest_collection_modifyitems(config, items):
