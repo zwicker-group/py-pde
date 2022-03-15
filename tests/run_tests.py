@@ -28,9 +28,12 @@ def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
 
 def show_config():
     """show package configuration"""
-    from pde import environment
+    from importlib.machinery import SourceFileLoader
 
-    env = environment()
+    # imports the package from the package path
+    pde = SourceFileLoader(PACKAGE, f"{PACKAGE_PATH/PACKAGE}/__init__.py").load_module()
+    # obtain the package environment
+    env = pde.environment()
 
     print(f"{'='*33} CONFIGURATION {'='*32}")
     for category, data in env.items():
