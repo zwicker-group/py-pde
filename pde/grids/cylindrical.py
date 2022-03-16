@@ -24,8 +24,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     r""" 3-dimensional cylindrical grid assuming polar symmetry 
     
     The polar symmetry implies that states only depend on the radial and axial
-    coordinates :math:`r` and :math:`z`, respectively. These are discretized
-    uniformly as
+    coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly as
     
     .. math::
         :nowrap:
@@ -41,19 +40,17 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
                 \quad \Delta z = \frac{z_\mathrm{max} - z_\mathrm{min}}{N_z}
         \end{align*}
     
-    where :math:`R` is the radius of the cylindrical grid,
-    :math:`z_\mathrm{min}` and :math:`z_\mathrm{max}` denote the respective
-    lower and upper bounds of the axial direction, so that
-    :math:`z_\mathrm{max} - z_\mathrm{min}` is the total height.
-    The two axes are discretized by :math:`N_r` and :math:`N_z` support points,
-    respectively.
+    where :math:`R` is the radius of the cylindrical grid, :math:`z_\mathrm{min}` and
+    :math:`z_\mathrm{max}` denote the respective lower and upper bounds of the axial
+    direction, so that :math:`z_\mathrm{max} - z_\mathrm{min}` is the total height. The
+    two axes are discretized by :math:`N_r` and :math:`N_z` support points, respectively.
     
     Warning:
-        The order of components in the vector and tensor fields defined on this grid
-        is different than in ordinary math. While it is common to use
-        :math:`(r, \phi, z)`, we here use the order :math:`(r, z, \phi)`. It might thus
-        be best to access components by name instead of index, e.g., use 
-        :code:`field['z']` instead of :code:`field[1]`.
+        The order of components in the vector and tensor fields defined on this grid is
+        different than in ordinary math. While it is common to use :math:`(r, \phi, z)`,
+        we here use the order :math:`(r, z, \phi)`. It might thus be best to access
+        components by name instead of index, e.g., use  :code:`field['z']` instead of
+        :code:`field[1]`.
     """
 
     dim = 3  # dimension of the described space
@@ -71,12 +68,15 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     ):
         """
         Args:
-            radius (float): The radius of the cylinder
-            bounds_z (tuple): The lower and upper bound of the z-axis
-            shape (tuple): The number of support points in r and z direction,
-                respectively.
-            periodic_z (bool): Determines whether the z-axis has periodic
-                boundary conditions.
+            radius (float):
+                The radius of the cylinder
+            bounds_z (tuple):
+                The lower and upper bound of the z-axis
+            shape (tuple):
+                The number of support points in r and z direction, respectively. The same
+                number is used for both if a single value is given.
+            periodic_z (bool):
+                Determines whether the z-axis has periodic boundary conditions.
         """
         super().__init__()
         shape_list = _check_shape(shape)

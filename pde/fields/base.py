@@ -783,7 +783,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_uniform(
-        cls,
+        cls: Type[TDataField],
         grid: GridBase,
         vmin: float = 0,
         vmax: float = 1,
@@ -791,7 +791,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         dtype=None,
         rng: np.random.Generator = None,
-    ) -> DataFieldBase:
+    ) -> TDataField:
         """create field with uniform distributed random values
 
         These values are uncorrelated in space.
@@ -830,7 +830,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_normal(
-        cls,
+        cls: Type[TDataField],
         grid: GridBase,
         mean: float = 0,
         std: float = 1,
@@ -839,7 +839,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         dtype=None,
         rng: np.random.Generator = None,
-    ) -> DataFieldBase:
+    ) -> TDataField:
         """create field with normal distributed random values
 
         These values are uncorrelated in space. A complex field is returned when either
@@ -896,7 +896,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_harmonic(
-        cls,
+        cls: Type[TDataField],
         grid: GridBase,
         modes: int = 3,
         harmonic=np.cos,
@@ -905,7 +905,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         dtype=None,
         rng: np.random.Generator = None,
-    ) -> DataFieldBase:
+    ) -> TDataField:
         r"""create a random field build from harmonics
 
         The resulting fields will be highly correlated in space and can thus
@@ -972,7 +972,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_colored(
-        cls,
+        cls: Type[TDataField],
         grid: GridBase,
         exponent: float = 0,
         scale: float = 1,
@@ -980,7 +980,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         dtype=None,
         rng: np.random.Generator = None,
-    ) -> DataFieldBase:
+    ) -> TDataField:
         r"""create a field of random values with colored noise
 
         The spatially correlated values obey
@@ -1042,8 +1042,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def from_state(
-        cls, attributes: Dict[str, Any], data: np.ndarray = None
-    ) -> DataFieldBase:
+        cls: Type[TDataField], attributes: Dict[str, Any], data: np.ndarray = None
+    ) -> TDataField:
         """create a field from given state.
 
         Args:
