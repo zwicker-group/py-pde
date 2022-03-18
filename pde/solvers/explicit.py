@@ -168,8 +168,6 @@ class ExplicitSolver(SolverBase):
             t = t_start
             steps = 0
             while t < t_end:
-                steps += 1
-
                 # single step with dt
                 rate = rhs_pde(state_data, t)
                 k1 = state_data + dt * rate
