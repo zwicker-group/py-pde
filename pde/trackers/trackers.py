@@ -817,8 +817,6 @@ class ConsistencyTracker(TrackerBase):
         if not np.all(np.isfinite(field.data)):
             raise StopIteration("Field was not finite")
 
-        self._last = field.data.copy()  # store data from last time step
-
 
 class MaterialConservationTracker(TrackerBase):
     """Tracking interrupting the simulation when material conservation is broken"""
