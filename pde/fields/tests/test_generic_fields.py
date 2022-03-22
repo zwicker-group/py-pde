@@ -16,7 +16,7 @@ from pde.grids import (
     SphericalSymGrid,
     UnitGrid,
 )
-from pde.grids.cartesian import CartesianGridBase
+from pde.grids.cartesian import CartesianGrid
 from pde.tools.misc import skipUnlessModule
 
 
@@ -46,7 +46,7 @@ def test_interpolation_natural(grid, field_class):
     f = field_class.random_uniform(grid)
 
     def get_point():
-        if isinstance(grid, CartesianGridBase):
+        if isinstance(grid, CartesianGrid):
             return grid.get_random_point(boundary_distance=0.5, coords="grid")
         else:
             return grid.get_random_point(
