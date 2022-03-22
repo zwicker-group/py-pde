@@ -26,13 +26,13 @@ if TYPE_CHECKING:
 class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
     r""" d-dimensional Cartesian grid with uniform discretization for each axis
     
-    The grids can be thought of as a collection of n-dimensional boxes, called
-    cells, of equal length in each dimension. The bounds then defined the total
-    volume covered by these cells, while the cell coordinates give the location
-    of the box centers. We index the boxes starting from 0 along each dimension.
-    Consequently, the cell :math:`i-\frac12` corresponds to the left edge of the 
-    covered interval and the index :math:`i+\frac12` corresponds to the right
-    edge, when the dimension is covered by d boxes.
+    The grids can be thought of as a collection of n-dimensional boxes, called cells, of
+    equal length in each dimension. The bounds then defined the total volume covered by
+    these cells, while the cell coordinates give the location of the box centers. We
+    index the boxes starting from 0 along each dimension. Consequently, the cell
+    :math:`i-\frac12` corresponds to the left edge of the  covered interval and the
+    index :math:`i+\frac12` corresponds to the right edge, when the dimension is covered
+    by d boxes.
     
     In particular, the discretization along dimension :math:`k` is defined as
 
@@ -44,9 +44,9 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
             \Delta x^{(k)} &= \frac{x^{(k)}_\mathrm{max} -
                                     x^{(k)}_\mathrm{min}}{N^{(k)}}
                                     
-    where :math:`N^{(k)}` is the number of cells along this dimension.
-    Consequently, the cells have dimension :math:`\Delta x^{(k)}` and cover the
-    interval :math:`[x^{(k)}_\mathrm{min}, x^{(k)}_\mathrm{max}]`.
+    where :math:`N^{(k)}` is the number of cells along this dimension. Consequently, 
+    cells have dimension :math:`\Delta x^{(k)}` and cover the interval
+    :math:`[x^{(k)}_\mathrm{min}, x^{(k)}_\mathrm{max}]`.
     """
 
     cuboid: Cuboid
@@ -147,7 +147,7 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         }
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> "CartesianGrid":  # type: ignore
+    def from_state(cls, state: Dict[str, Any]) -> CartesianGrid:  # type: ignore
         """create a field from a stored `state`.
 
         Args:
@@ -554,13 +554,13 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
 class UnitGrid(CartesianGrid):
     r"""d-dimensional Cartesian grid with unit discretization in all directions
 
-    The grids can be thought of as a collection of d-dimensional cells of unit
-    length. The `shape` parameter determines how many boxes there are in each
-    direction. The cells are enumerated starting with 0, so the last cell has
-    index :math:`n-1` if there are :math:`n` cells along a dimension. A given
-    cell :math:`i` extends from coordinates :math:`i` to :math:`i + 1`, so the
-    midpoint is at :math:`i + \frac12`, which is the cell coordinate. Taken
-    together, the cells covers the interval :math:`[0, n]` along this dimension.
+    The grids can be thought of as a collection of d-dimensional cells of unit length.
+    The `shape` parameter determines how many boxes there are in each direction. The
+    cells are enumerated starting with 0, so the last cell has index :math:`n-1` if
+    there are :math:`n` cells along a dimension. A given cell :math:`i` extends from
+    coordinates :math:`i` to :math:`i + 1`, so the midpoint is at :math:`i + \frac12`,
+    which is the cell coordinate. Taken together, the cells covers the interval
+    :math:`[0, n]` along this dimension.
     """
 
     def __init__(
@@ -592,7 +592,7 @@ class UnitGrid(CartesianGrid):
         return {"shape": self.shape, "periodic": self.periodic}
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> "UnitGrid":  # type: ignore
+    def from_state(cls, state: Dict[str, Any]) -> UnitGrid:  # type: ignore
         """create a field from a stored `state`.
 
         Args:
@@ -605,13 +605,8 @@ class UnitGrid(CartesianGrid):
             raise ValueError(f"State items {state_copy.keys()} were not used")
         return obj
 
-    @property
-    def volume(self) -> float:
-        """float: total volume of the grid"""
-        return float(np.prod(self.shape))
-
-    def to_cartesian(self) -> "CartesianGrid":
-        """convert unit grid to CartesianGrid"""
+    def to_cartesian(self) -> CartesianGrid:
+        """convert unit grid to :class:`CartesianGrid`"""
         return CartesianGrid(
             self.cuboid.bounds, shape=self.shape, periodic=self.periodic
         )
@@ -632,3 +627,7 @@ class UnitGrid(CartesianGrid):
         )
         subgrid.axes = [self.axes[i] for i in indices]
         return subgrid
+
+
+# temporarily define CartesianGridBase, but this is deprecated since 2022-03-22
+CartesianGridBase = CartesianGrid
