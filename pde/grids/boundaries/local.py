@@ -1415,6 +1415,30 @@ class ConstBC1stOrderBase(ConstBCBase):
 class _PeriodicBC(ConstBC1stOrderBase):
     """represents one part of a boundary condition"""
 
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        *,
+        flip_sign: bool = False,
+    ):
+        """
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+            flip_sign (bool):
+                Impose different signs on the two sides of the boundary
+        """
+        super().__init__(grid, axis, upper)
+        self.flip_sign = flip_sign
+
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
         """return data suitable for calculating virtual points
 
@@ -1429,12 +1453,13 @@ class _PeriodicBC(ConstBC1stOrderBase):
             virtual point
         """
         index = 0 if self.upper else self.grid.shape[self.axis] - 1
+        value = -1 if self.flip_sign else 1
 
         if not compiled:
-            return (0.0, 1.0, index)
+            return (0.0, value, index)
         else:
             const = np.array(0, np.double)
-            factor = np.array(1, np.double)
+            factor = np.array(value, np.double)
 
             @register_jitable(inline="always")
             def const_func():
