@@ -21,7 +21,8 @@ conditions for each axes:
     field.laplace(bc=[bc_x, bc_y])
     
 If an axis is periodic (like the first one in the example above), the only valid
-boundary condition is 'periodic'. For non-periodic axes (e.g., the second axis),
+boundary conditions are 'periodic' and its cousin 'anti-periodic', which imposes
+opposite signs on both sides. For non-periodic axes (e.g., the second axis),
 different boundary conditions can be specified for the lower and upper end of the axis,
 which is done using a tuple of two conditions. Typical choices  for individual
 conditions are Dirichlet conditions that enforce a value NUM (specified by

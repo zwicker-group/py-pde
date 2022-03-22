@@ -442,31 +442,45 @@ class BoundaryPair(BoundaryAxisBase):
 class BoundaryPeriodic(BoundaryPair):
     """represent a periodic axis"""
 
-    def __init__(self, grid: GridBase, axis: int):
+    def __init__(self, grid: GridBase, axis: int, flip_sign: bool = False):
         """
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid for which the boundary conditions are defined
             axis (int):
                 The axis to which this boundary condition is associated
+            flip_sign (bool):
+                Impose different signs on the two sides of the boundary
         """
-        low = _PeriodicBC(grid=grid, axis=axis, upper=False)
-        high = _PeriodicBC(grid=grid, axis=axis, upper=True)
+        low = _PeriodicBC(grid=grid, axis=axis, upper=False, flip_sign=flip_sign)
+        high = _PeriodicBC(grid=grid, axis=axis, upper=True, flip_sign=flip_sign)
         super().__init__(low, high)
 
+    @property
+    def flip_sign(self):
+        """bool: Whether different signs are imposed on the two sides of the boundary"""
+        return self.low.flip_sign
+
     def __repr__(self):
-        return f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis})"
+        res = f"{self.__class__.__name__}(grid={self.grid}, axis={self.axis}"
+        if self.flip_sign:
+            return res + ", flip_sign=True)"
+        else:
+            return res + ")"
 
     def __str__(self):
-        return '"periodic"'
+        if self.flip_sign:
+            return '"anti-periodic"'
+        else:
+            return '"periodic"'
 
     def _cache_hash(self) -> int:
         """returns a value to determine when a cache needs to be updated"""
-        return hash((self.grid._cache_hash(), self.axis))
+        return hash((self.grid._cache_hash(), self.axis, self.flip_sign))
 
     def copy(self) -> BoundaryPeriodic:
         """return a copy of itself, but with a reference to the same grid"""
-        return self.__class__(grid=self.grid, axis=self.axis)
+        return self.__class__(grid=self.grid, axis=self.axis, flip_sign=self.flip_sign)
 
     def extract_component(self, *indices) -> BoundaryPeriodic:
         """extracts the boundary pair of the given extract_component.
@@ -520,6 +534,9 @@ def get_boundary_axis(
     elif data == "periodic" or data == ("periodic", "periodic"):
         # initialize a periodic boundary condition
         return BoundaryPeriodic(grid, axis)
+    elif data == "anti-periodic" or data == ("anti-periodic", "anti-periodic"):
+        # initialize a anti-periodic boundary condition
+        return BoundaryPeriodic(grid, axis, flip_sign=True)
     elif isinstance(data, dict) and data.get("type") == "periodic":
         # initialize a periodic boundary condition
         return BoundaryPeriodic(grid, axis)
