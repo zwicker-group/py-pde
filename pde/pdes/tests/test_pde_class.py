@@ -336,3 +336,22 @@ def test_pde_integral(backend):
         res = eq.solve(field, t_range=1000, method=method, tracker=None)
         assert res.integral == pytest.approx(0, abs=1e-2)
         np.testing.assert_allclose(res.data, field.data - field.magnitude, atol=1e-3)
+
+
+def test_anti_periodic_bcs():
+    """test a simulation with anti-periodic BCs"""
+    grid = grids.CartesianGrid([[-10, 10]], 32, periodic=True)
+    field = ScalarField.random_uniform(grid, -1, 1)
+    field -= field.average
+
+    # test normal periodic BCs
+    eq1 = PDE({"c": "laplace(c) + c - c**3"}, bc="periodic")
+    res1 = eq1.solve(field, t_range=1e5, dt=1e-1)
+    assert np.allclose(np.abs(res1.data), 1)
+    assert res1.fluctuations == pytest.approx(0)
+
+    # test normal anti-periodic BCs
+    eq2 = PDE({"c": "laplace(c) + c - c**3"}, bc="anti-periodic")
+    res2 = eq2.solve(field, t_range=1e3, dt=1e-3)
+    assert np.all(np.abs(res2.data) <= 1)
+    assert res2.fluctuations > 0.1

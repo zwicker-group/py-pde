@@ -229,7 +229,7 @@ intersphinx_mapping = {
     "https://docs.sympy.org/latest/": None,
     "https://matplotlib.org/stable": None,
     "https://docs.h5py.org/en/latest": None,
-    "https://napari.org/docs/dev": None,
+    "https://napari.org/": None,
 }
 
 
