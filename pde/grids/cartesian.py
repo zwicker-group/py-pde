@@ -632,3 +632,7 @@ class UnitGrid(CartesianGrid):
         )
         subgrid.axes = [self.axes[i] for i in indices]
         return subgrid
+
+
+# temporarily define CartesianGridBase, but this is deprecated since 2022-03-22
+CartesianGridBase = CartesianGrid
