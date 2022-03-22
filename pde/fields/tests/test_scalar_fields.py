@@ -11,7 +11,7 @@ from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
 from pde.fields.tests.fixtures import iter_grids
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
-from pde.grids.cartesian import CartesianGridBase
+from pde.grids.cartesian import CartesianGrid
 from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
 from pde.tools.misc import module_available, skipUnlessModule
 
@@ -478,7 +478,7 @@ def test_generic_derivatives(grid):
         sf_lap += sf._apply_operator(f"d2_d{axis}2", bc="auto_periodic_neumann")
 
     sf_laplace = sf.laplace("auto_periodic_neumann")
-    if isinstance(grid, CartesianGridBase):
+    if isinstance(grid, CartesianGrid):
         # Laplacian is the sum of second derivatives in Cartesian coordinates
         np.testing.assert_allclose(sf_lap.data, sf_laplace.data)
     else:

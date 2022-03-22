@@ -26,7 +26,7 @@ from ... import config
 from ...tools.numba import jit
 from ...tools.typing import OperatorType
 from ..boundaries import Boundaries
-from ..cartesian import CartesianGridBase
+from ..cartesian import CartesianGrid
 from .common import make_general_poisson_solver, uniform_discretization
 
 
@@ -165,12 +165,12 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def _make_derivative(
-    grid: CartesianGridBase, axis: int = 0, method: str = "central"
+    grid: CartesianGrid, axis: int = 0, method: str = "central"
 ) -> OperatorType:
     """make a derivative operator along a single axis using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         axis (int):
             The axis along which the derivative will be taken
@@ -253,11 +253,11 @@ def _make_derivative(
     return diff  # type: ignore
 
 
-def _make_derivative2(grid: CartesianGridBase, axis: int = 0) -> OperatorType:
+def _make_derivative2(grid: CartesianGrid, axis: int = 0) -> OperatorType:
     """make a second-order derivative operator along a single axis
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         axis (int):
             The axis along which the derivative will be taken
@@ -321,13 +321,13 @@ def _make_derivative2(grid: CartesianGridBase, axis: int = 0) -> OperatorType:
     return diff  # type: ignore
 
 
-def _make_laplace_scipy_nd(grid: CartesianGridBase) -> OperatorType:
+def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:
     """make a laplace operator using the scipy module
 
     This only supports uniform discretizations.
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -347,11 +347,11 @@ def _make_laplace_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     return laplace
 
 
-def _make_laplace_numba_1d(grid: CartesianGridBase) -> OperatorType:
+def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
     """make a 1d laplace operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -369,11 +369,11 @@ def _make_laplace_numba_1d(grid: CartesianGridBase) -> OperatorType:
     return laplace  # type: ignore
 
 
-def _make_laplace_numba_2d(grid: CartesianGridBase) -> OperatorType:
+def _make_laplace_numba_2d(grid: CartesianGrid) -> OperatorType:
     """make a 2d laplace operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -397,11 +397,11 @@ def _make_laplace_numba_2d(grid: CartesianGridBase) -> OperatorType:
     return laplace  # type: ignore
 
 
-def _make_laplace_numba_3d(grid: CartesianGridBase) -> OperatorType:
+def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorType:
     """make a 3d laplace operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -428,12 +428,12 @@ def _make_laplace_numba_3d(grid: CartesianGridBase) -> OperatorType:
     return laplace  # type: ignore
 
 
-@CartesianGridBase.register_operator("laplace", rank_in=0, rank_out=0)
-def make_laplace(grid: CartesianGridBase, backend: str = "auto") -> OperatorType:
+@CartesianGrid.register_operator("laplace", rank_in=0, rank_out=0)
+def make_laplace(grid: CartesianGrid, backend: str = "auto") -> OperatorType:
     """make a laplace operator on a Cartesian grid
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the laplace operator. If backend='auto', a
@@ -475,11 +475,11 @@ def make_laplace(grid: CartesianGridBase, backend: str = "auto") -> OperatorType
     return laplace
 
 
-def _make_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
+def _make_gradient_scipy_nd(grid: CartesianGrid) -> OperatorType:
     """make a gradient operator using the scipy module
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -507,11 +507,11 @@ def _make_gradient_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     return gradient
 
 
-def _make_gradient_numba_1d(grid: CartesianGridBase) -> OperatorType:
+def _make_gradient_numba_1d(grid: CartesianGrid) -> OperatorType:
     """make a 1d gradient operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -529,11 +529,11 @@ def _make_gradient_numba_1d(grid: CartesianGridBase) -> OperatorType:
     return gradient  # type: ignore
 
 
-def _make_gradient_numba_2d(grid: CartesianGridBase) -> OperatorType:
+def _make_gradient_numba_2d(grid: CartesianGrid) -> OperatorType:
     """make a 2d gradient operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -556,11 +556,11 @@ def _make_gradient_numba_2d(grid: CartesianGridBase) -> OperatorType:
     return gradient  # type: ignore
 
 
-def _make_gradient_numba_3d(grid: CartesianGridBase) -> OperatorType:
+def _make_gradient_numba_3d(grid: CartesianGrid) -> OperatorType:
     """make a 3d gradient operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -591,12 +591,12 @@ def _make_gradient_numba_3d(grid: CartesianGridBase) -> OperatorType:
     return gradient  # type: ignore
 
 
-@CartesianGridBase.register_operator("gradient", rank_in=0, rank_out=1)
-def make_gradient(grid: CartesianGridBase, backend: str = "auto") -> OperatorType:
+@CartesianGrid.register_operator("gradient", rank_in=0, rank_out=1)
+def make_gradient(grid: CartesianGrid, backend: str = "auto") -> OperatorType:
     """make a gradient operator on a Cartesian grid
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the gradient operator.
@@ -636,12 +636,12 @@ def make_gradient(grid: CartesianGridBase, backend: str = "auto") -> OperatorTyp
 
 
 def _make_gradient_squared_numba_1d(
-    grid: CartesianGridBase, central: bool = True
+    grid: CartesianGrid, central: bool = True
 ) -> OperatorType:
     """make a 1d squared gradient operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         central (bool):
             Whether a central difference approximation is used for the gradient
@@ -680,12 +680,12 @@ def _make_gradient_squared_numba_1d(
 
 
 def _make_gradient_squared_numba_2d(
-    grid: CartesianGridBase, central: bool = True
+    grid: CartesianGrid, central: bool = True
 ) -> OperatorType:
     """make a 2d squared gradient operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         central (bool):
             Whether a central difference approximation is used for the gradient
@@ -737,12 +737,12 @@ def _make_gradient_squared_numba_2d(
 
 
 def _make_gradient_squared_numba_3d(
-    grid: CartesianGridBase, central: bool = True
+    grid: CartesianGrid, central: bool = True
 ) -> OperatorType:
     """make a 3d squared gradient operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         central (bool):
             Whether a central difference approximation is used for the gradient
@@ -800,14 +800,12 @@ def _make_gradient_squared_numba_3d(
     return gradient_squared  # type: ignore
 
 
-@CartesianGridBase.register_operator("gradient_squared", rank_in=0, rank_out=0)
-def make_gradient_squared(
-    grid: CartesianGridBase, central: bool = True
-) -> OperatorType:
+@CartesianGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
+def make_gradient_squared(grid: CartesianGrid, central: bool = True) -> OperatorType:
     """make a gradient operator on a Cartesian grid
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         central (bool):
             Whether a central difference approximation is used for the gradient
@@ -834,11 +832,11 @@ def make_gradient_squared(
     return gradient_squared
 
 
-def _make_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
+def _make_divergence_scipy_nd(grid: CartesianGrid) -> OperatorType:
     """make a divergence operator using the scipy module
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -867,11 +865,11 @@ def _make_divergence_scipy_nd(grid: CartesianGridBase) -> OperatorType:
     return divergence
 
 
-def _make_divergence_numba_1d(grid: CartesianGridBase) -> OperatorType:
+def _make_divergence_numba_1d(grid: CartesianGrid) -> OperatorType:
     """make a 1d divergence operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -889,11 +887,11 @@ def _make_divergence_numba_1d(grid: CartesianGridBase) -> OperatorType:
     return divergence  # type: ignore
 
 
-def _make_divergence_numba_2d(grid: CartesianGridBase) -> OperatorType:
+def _make_divergence_numba_2d(grid: CartesianGrid) -> OperatorType:
     """make a 2d divergence operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -917,11 +915,11 @@ def _make_divergence_numba_2d(grid: CartesianGridBase) -> OperatorType:
     return divergence  # type: ignore
 
 
-def _make_divergence_numba_3d(grid: CartesianGridBase) -> OperatorType:
+def _make_divergence_numba_3d(grid: CartesianGrid) -> OperatorType:
     """make a 3d divergence operator using numba compilation
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
 
     Returns:
@@ -947,12 +945,12 @@ def _make_divergence_numba_3d(grid: CartesianGridBase) -> OperatorType:
     return divergence  # type: ignore
 
 
-@CartesianGridBase.register_operator("divergence", rank_in=1, rank_out=0)
-def make_divergence(grid: CartesianGridBase, backend: str = "auto") -> OperatorType:
+@CartesianGrid.register_operator("divergence", rank_in=1, rank_out=0)
+def make_divergence(grid: CartesianGrid, backend: str = "auto") -> OperatorType:
     """make a divergence operator on a Cartesian grid
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the divergence operator.
@@ -992,14 +990,14 @@ def make_divergence(grid: CartesianGridBase, backend: str = "auto") -> OperatorT
 
 
 def _vectorize_operator(
-    make_operator: Callable, grid: CartesianGridBase, *, backend: str = "numba"
+    make_operator: Callable, grid: CartesianGrid, *, backend: str = "numba"
 ) -> OperatorType:
     """apply an operator to on all dimensions of a vector
 
     Args:
         make_operator (callable):
             The function that creates the basic operator
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the vector gradient operator.
@@ -1021,14 +1019,12 @@ def _vectorize_operator(
         return vectorized_operator
 
 
-@CartesianGridBase.register_operator("vector_gradient", rank_in=1, rank_out=2)
-def make_vector_gradient(
-    grid: CartesianGridBase, backend: str = "numba"
-) -> OperatorType:
+@CartesianGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
+def make_vector_gradient(grid: CartesianGrid, backend: str = "numba") -> OperatorType:
     """make a vector gradient operator on a Cartesian grid
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the vector gradient operator.
@@ -1039,14 +1035,12 @@ def make_vector_gradient(
     return _vectorize_operator(make_gradient, grid, backend=backend)
 
 
-@CartesianGridBase.register_operator("vector_laplace", rank_in=1, rank_out=1)
-def make_vector_laplace(
-    grid: CartesianGridBase, backend: str = "numba"
-) -> OperatorType:
+@CartesianGrid.register_operator("vector_laplace", rank_in=1, rank_out=1)
+def make_vector_laplace(grid: CartesianGrid, backend: str = "numba") -> OperatorType:
     """make a vector Laplacian on a Cartesian grid
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the vector laplace operator.
@@ -1057,14 +1051,12 @@ def make_vector_laplace(
     return _vectorize_operator(make_laplace, grid, backend=backend)
 
 
-@CartesianGridBase.register_operator("tensor_divergence", rank_in=2, rank_out=1)
-def make_tensor_divergence(
-    grid: CartesianGridBase, backend: str = "numba"
-) -> OperatorType:
+@CartesianGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
+def make_tensor_divergence(grid: CartesianGrid, backend: str = "numba") -> OperatorType:
     """make a tensor divergence operator on a Cartesian grid
 
     Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGridBase`):
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the tensor divergence operator.
@@ -1075,7 +1067,7 @@ def make_tensor_divergence(
     return _vectorize_operator(make_divergence, grid, backend=backend)
 
 
-@CartesianGridBase.register_operator("poisson_solver", rank_in=0, rank_out=0)
+@CartesianGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 def make_poisson_solver(bcs: Boundaries, method: str = "auto") -> OperatorType:
     """make a operator that solves Poisson's equation
 

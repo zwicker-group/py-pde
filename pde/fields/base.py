@@ -30,7 +30,7 @@ import numpy as np
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..grids.boundaries.axes import BoundariesData
-from ..grids.cartesian import CartesianGridBase
+from ..grids.cartesian import CartesianGrid
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
@@ -1424,7 +1424,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             )
 
         # determine the points at which data needs to be calculated
-        if isinstance(grid, CartesianGridBase):
+        if isinstance(grid, CartesianGrid):
             # convert Cartesian coordinates to coordinates in current grid
             points = self.grid.transform(grid.cell_coords, "cartesian", "grid")
 

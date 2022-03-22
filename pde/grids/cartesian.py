@@ -5,9 +5,10 @@ Cartesian grids of arbitrary dimension.
  
 """
 
+from __future__ import annotations
+
 import itertools
 import warnings
-from abc import ABCMeta
 from typing import List  # @UnusedImport
 from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
 
@@ -22,24 +23,84 @@ if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
 
 
-class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals]
-    """Base class for :class:`UnitGrid` and :class:`CartesianGrid`"""
+class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
+    r""" d-dimensional Cartesian grid with uniform discretization for each axis
+    
+    The grids can be thought of as a collection of n-dimensional boxes, called
+    cells, of equal length in each dimension. The bounds then defined the total
+    volume covered by these cells, while the cell coordinates give the location
+    of the box centers. We index the boxes starting from 0 along each dimension.
+    Consequently, the cell :math:`i-\frac12` corresponds to the left edge of the 
+    covered interval and the index :math:`i+\frac12` corresponds to the right
+    edge, when the dimension is covered by d boxes.
+    
+    In particular, the discretization along dimension :math:`k` is defined as
+
+    .. math::
+            x^{(k)}_i &= x^{(k)}_\mathrm{min} + \left(i + \frac12\right)
+                \Delta x^{(k)}
+            \quad \text{for} \quad i = 0, \ldots, N^{(k)} - 1
+        \\
+            \Delta x^{(k)} &= \frac{x^{(k)}_\mathrm{max} -
+                                    x^{(k)}_\mathrm{min}}{N^{(k)}}
+                                    
+    where :math:`N^{(k)}` is the number of cells along this dimension.
+    Consequently, the cells have dimension :math:`\Delta x^{(k)}` and cover the
+    interval :math:`[x^{(k)}_\mathrm{min}, x^{(k)}_\mathrm{max}]`.
+    """
 
     cuboid: Cuboid
 
     def __init__(
-        self, shape: Sequence[int], periodic: Union[Sequence[bool], bool] = False
+        self,
+        bounds: Sequence[Tuple[float, float]],
+        shape: Union[int, Sequence[int]],
+        periodic: Union[Sequence[bool], bool] = False,
     ):
         """
         Args:
+            bounds (list of tuple):
+                Give the coordinate range for each axis. This should be a tuple of two
+                number (lower and upper bound) for each axis. The length of `bounds`
+                thus determines the grid dimension.
             shape (list):
-                The number of support points for each axis. The dimension of the grid is
-                given by `len(shape)`.
+                The number of support points for each axis. The length of `shape` needs
+                to match the grid dimension.
             periodic (bool or list):
                 Specifies which axes possess periodic boundary conditions. This is
                 either a list of booleans defining periodicity for each individual axis
                 or a single boolean value specifying the same periodicity for all axes.
         """
+        bounds_arr = np.array(bounds, ndmin=1, dtype=np.double)
+        if bounds_arr.shape == (2,):
+            raise ValueError(
+                "`bounds with shape (2,) are ambiguous. Either use shape (1, 2) to set "
+                "up a 1d system with two bounds or shape (2, 1) for a 2d system with "
+                "only the upper bounds specified"
+            )
+
+        if bounds_arr.ndim == 1 or bounds_arr.shape[1] == 1:
+            # only set the upper bounds
+            bounds_arr = np.atleast_1d(np.squeeze(bounds_arr))
+            self.cuboid = Cuboid(np.zeros_like(bounds_arr), bounds_arr, mutable=False)
+
+        elif bounds_arr.ndim == 2 and bounds_arr.shape[1] == 2:
+            # upper and lower bounds of the grid are given
+            self.cuboid = Cuboid.from_bounds(bounds_arr, mutable=False)
+
+        else:
+            raise ValueError(
+                f"Do not know how to interpret shape {bounds_arr.shape} for bounds"
+            )
+
+        # handle the shape array
+        shape = _check_shape(shape)
+        if len(shape) == 1 and self.cuboid.dim > 1:
+            shape = (int(shape[0]),) * self.cuboid.dim
+        if self.cuboid.dim != len(shape):
+            raise DimensionError("Dimension of `bounds` and `shape` are not compatible")
+
+        # initialize the base class
         super().__init__()
         self._shape = _check_shape(shape)
         self.dim = len(self.shape)
@@ -59,6 +120,54 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
             self.axes = list("xyz"[: self.dim])
         else:
             self.axes = [chr(97 + i) for i in range(self.dim)]
+
+        # determine the coordinates
+        p1, p2 = self.cuboid.corners
+        axes_coords, discretization = [], []
+        for d in range(self.dim):
+            num = self.shape[d]
+            c, dc = np.linspace(p1[d], p2[d], num, endpoint=False, retstep=True)
+            if self.shape[d] == 1:
+                # correct for singular dimension
+                dc = p2[d] - p1[d]
+            c += dc / 2
+            axes_coords.append(c)
+            discretization.append(dc)
+        self._discretization = np.array(discretization)
+        self._axes_coords = tuple(axes_coords)
+        self._axes_bounds = tuple(self.cuboid.bounds)
+
+    @property
+    def state(self) -> Dict[str, Any]:
+        """dict: the state of the grid"""
+        return {
+            "bounds": self.axes_bounds,
+            "shape": self.shape,
+            "periodic": self.periodic,
+        }
+
+    @classmethod
+    def from_state(cls, state: Dict[str, Any]) -> "CartesianGrid":  # type: ignore
+        """create a field from a stored `state`.
+
+        Args:
+            state (dict):
+                The state from which the grid is reconstructed.
+        """
+        state_copy = state.copy()
+        obj = cls(
+            bounds=state_copy.pop("bounds"),
+            shape=state_copy.pop("shape"),
+            periodic=state_copy.pop("periodic"),
+        )
+        if state_copy:
+            raise ValueError(f"State items {state_copy.keys()} were not used")
+        return obj
+
+    @property
+    def volume(self) -> float:
+        """float: total volume of the grid"""
+        return float(self.cuboid.volume)
 
     @property
     def cell_volume_data(self):
@@ -423,8 +532,26 @@ class CartesianGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals
         # get boundary conditions
         return Boundaries.from_data(self, bc, rank=rank)
 
+    def get_subgrid(self, indices: Sequence[int]) -> CartesianGrid:
+        """return a subgrid of only the specified axes
 
-class UnitGrid(CartesianGridBase):
+        Args:
+            indices (list):
+                Indices indicating the axes that are retained in the subgrid
+
+        Returns:
+            :class:`CartesianGrid`: The subgrid
+        """
+        subgrid = self.__class__(
+            bounds=[self.axes_bounds[i] for i in indices],
+            shape=tuple(self.shape[i] for i in indices),
+            periodic=[self.periodic[i] for i in indices],
+        )
+        subgrid.axes = [self.axes[i] for i in indices]
+        return subgrid
+
+
+class UnitGrid(CartesianGrid):
     r"""d-dimensional Cartesian grid with unit discretization in all directions
 
     The grids can be thought of as a collection of d-dimensional cells of unit
@@ -449,7 +576,9 @@ class UnitGrid(CartesianGridBase):
                 either a list of booleans defining periodicity for each individual axis
                 or a single boolean value specifying the same periodicity for all axes.
         """
-        super().__init__(shape, periodic)
+        if isinstance(shape, int):
+            shape = [shape]
+        super().__init__([(0, s) for s in shape], shape, periodic)
         self.cuboid = Cuboid(np.zeros(self.dim), self.shape)
         self._discretization = np.ones(self.dim)
 
@@ -487,7 +616,7 @@ class UnitGrid(CartesianGridBase):
             self.cuboid.bounds, shape=self.shape, periodic=self.periodic
         )
 
-    def get_subgrid(self, indices: Sequence[int]) -> "UnitGrid":
+    def get_subgrid(self, indices: Sequence[int]) -> UnitGrid:
         """return a subgrid of only the specified axes
 
         Args:
@@ -499,151 +628,6 @@ class UnitGrid(CartesianGridBase):
         """
         subgrid = self.__class__(
             shape=[self.shape[i] for i in indices],
-            periodic=[self.periodic[i] for i in indices],
-        )
-        subgrid.axes = [self.axes[i] for i in indices]
-        return subgrid
-
-
-class CartesianGrid(CartesianGridBase):
-    r""" d-dimensional Cartesian grid with uniform discretization for each axis
-    
-    The grids can be thought of as a collection of n-dimensional boxes, called
-    cells, of equal length in each dimension. The bounds then defined the total
-    volume covered by these cells, while the cell coordinates give the location
-    of the box centers. We index the boxes starting from 0 along each dimension.
-    Consequently, the cell :math:`i-\frac12` corresponds to the left edge of the 
-    covered interval and the index :math:`i+\frac12` corresponds to the right
-    edge, when the dimension is covered by d boxes.
-    
-    In particular, the discretization along dimension :math:`k` is defined as
-
-    .. math::
-            x^{(k)}_i &= x^{(k)}_\mathrm{min} + \left(i + \frac12\right)
-                \Delta x^{(k)}
-            \quad \text{for} \quad i = 0, \ldots, N^{(k)} - 1
-        \\
-            \Delta x^{(k)} &= \frac{x^{(k)}_\mathrm{max} -
-                                    x^{(k)}_\mathrm{min}}{N^{(k)}}
-                                    
-    where :math:`N^{(k)}` is the number of cells along this dimension.
-    Consequently, the cells have dimension :math:`\Delta x^{(k)}` and cover the
-    interval :math:`[x^{(k)}_\mathrm{min}, x^{(k)}_\mathrm{max}]`.
-    """
-
-    def __init__(
-        self,
-        bounds: Sequence[Tuple[float, float]],
-        shape: Union[int, Sequence[int]],
-        periodic: Union[Sequence[bool], bool] = False,
-    ):
-        """
-        Args:
-            bounds (list of tuple):
-                Give the coordinate range for each axis. This should be a tuple of two
-                number (lower and upper bound) for each axis. The length of `bounds`
-                thus determines the grid dimension.
-            shape (list):
-                The number of support points for each axis. The length of `shape` needs
-                to match the grid dimension.
-            periodic (bool or list):
-                Specifies which axes possess periodic boundary conditions. This is
-                either a list of booleans defining periodicity for each individual axis
-                or a single boolean value specifying the same periodicity for all axes.
-        """
-        bounds_arr = np.array(bounds, ndmin=1, dtype=np.double)
-        if bounds_arr.shape == (2,):
-            raise ValueError(
-                "`bounds with shape (2,) are ambiguous. Either use shape (1, 2) to set "
-                "up a 1d system with two bounds or shape (2, 1) for a 2d system with "
-                "only the upper bounds specified"
-            )
-
-        if bounds_arr.ndim == 1 or bounds_arr.shape[1] == 1:
-            # only set the upper bounds
-            bounds_arr = np.atleast_1d(np.squeeze(bounds_arr))
-            self.cuboid = Cuboid(np.zeros_like(bounds_arr), bounds_arr, mutable=False)
-
-        elif bounds_arr.ndim == 2 and bounds_arr.shape[1] == 2:
-            # upper and lower bounds of the grid are given
-            self.cuboid = Cuboid.from_bounds(bounds_arr, mutable=False)
-
-        else:
-            raise ValueError(
-                f"Do not know how to interpret shape {bounds_arr.shape} for bounds"
-            )
-
-        # handle the shape array
-        shape = _check_shape(shape)
-        if len(shape) == 1 and self.cuboid.dim > 1:
-            shape = (int(shape[0]),) * self.cuboid.dim
-        if self.cuboid.dim != len(shape):
-            raise DimensionError("Dimension of `bounds` and `shape` are not compatible")
-
-        # initialize the base class
-        super().__init__(shape, periodic)
-
-        # determine the coordinates
-        p1, p2 = self.cuboid.corners
-        axes_coords, discretization = [], []
-        for d in range(self.dim):
-            num = self.shape[d]
-            c, dc = np.linspace(p1[d], p2[d], num, endpoint=False, retstep=True)
-            if self.shape[d] == 1:
-                # correct for singular dimension
-                dc = p2[d] - p1[d]
-            c += dc / 2
-            axes_coords.append(c)
-            discretization.append(dc)
-        self._discretization = np.array(discretization)
-        self._axes_coords = tuple(axes_coords)
-        self._axes_bounds = tuple(self.cuboid.bounds)
-
-    @property
-    def state(self) -> Dict[str, Any]:
-        """dict: the state of the grid"""
-        return {
-            "bounds": self.axes_bounds,
-            "shape": self.shape,
-            "periodic": self.periodic,
-        }
-
-    @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> "CartesianGrid":  # type: ignore
-        """create a field from a stored `state`.
-
-        Args:
-            state (dict):
-                The state from which the grid is reconstructed.
-        """
-        state_copy = state.copy()
-        obj = cls(
-            bounds=state_copy.pop("bounds"),
-            shape=state_copy.pop("shape"),
-            periodic=state_copy.pop("periodic"),
-        )
-        if state_copy:
-            raise ValueError(f"State items {state_copy.keys()} were not used")
-        return obj
-
-    @property
-    def volume(self) -> float:
-        """float: total volume of the grid"""
-        return float(self.cuboid.volume)
-
-    def get_subgrid(self, indices: Sequence[int]) -> "CartesianGrid":
-        """return a subgrid of only the specified axes
-
-        Args:
-            indices (list):
-                Indices indicating the axes that are retained in the subgrid
-
-        Returns:
-            :class:`CartesianGrid`: The subgrid
-        """
-        subgrid = self.__class__(
-            bounds=[self.axes_bounds[i] for i in indices],
-            shape=tuple(self.shape[i] for i in indices),
             periodic=[self.periodic[i] for i in indices],
         )
         subgrid.axes = [self.axes[i] for i in indices]
