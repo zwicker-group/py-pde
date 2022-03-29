@@ -13,12 +13,12 @@ import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
-from ..solvers.base import SolverBase
 from ..tools.numba import jit
 from ..tools.typing import ArrayLike
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
+    from ..solvers.base import SolverBase  # @UnusedImport
     from ..solvers.controller import TRangeType  # @UnusedImport
 
 
@@ -466,7 +466,7 @@ class PDEBase(metaclass=ABCMeta):
         t_range: "TRangeType",
         dt: float = None,
         tracker: TrackerCollectionDataType = "auto",
-        method: Union[str, SolverBase] = "auto",
+        method: Union[str, "SolverBase"] = "auto",
         ret_info: bool = False,
         **kwargs,
     ) -> Union[FieldBase, Tuple[FieldBase, Dict[str, Any]]]:
@@ -528,6 +528,8 @@ class PDEBase(metaclass=ABCMeta):
             tuple with the final state and a dictionary with additional
             information is returned.
         """
+        from ..solvers.base import SolverBase  # @Reimport
+
         if method == "auto":
             method = "scipy" if dt is None else "explicit"
 
