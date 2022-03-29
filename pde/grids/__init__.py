@@ -19,9 +19,8 @@ using the method :meth:`transform`.
    
 Inheritance structure of the classes:
 
-.. inheritance-diagram:: pde.grids.base pde.grids.cartesian
-        pde.grids.spherical.PolarSymGrid pde.grids.spherical.SphericalSymGrid
-        pde.grids.cylindrical.CylindricalSymGrid
+.. inheritance-diagram:: cartesian.UnitGrid cartesian.CartesianGrid
+        spherical.PolarSymGrid spherical.SphericalSymGrid cylindrical.CylindricalSymGrid
    :parts: 1
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
