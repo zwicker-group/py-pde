@@ -9,4 +9,4 @@ pyinstrument>=3
 pytest>=5.4
 pytest-cov>=2.8
 pytest-xdist>=1.30
-tqdm>=4.45
+tqdm>=4.60
