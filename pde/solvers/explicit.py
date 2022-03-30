@@ -151,7 +151,6 @@ class ExplicitSolver(SolverBase):
         # handle deterministic version of the pde using an adaptive stepper
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
         tolerance = self.tolerance
-        self.info["dt_last"] = dt
         self.info["stochastic"] = False
         self.info["adaptive"] = True
 
@@ -282,7 +281,6 @@ class ExplicitSolver(SolverBase):
         rhs = self._make_pde_rhs(state, backend=self.backend)
         self.info["stochastic"] = False
         self.info["adaptive"] = True
-        self.info["dt_last"] = dt
 
         # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step(state))
@@ -431,6 +429,7 @@ class ExplicitSolver(SolverBase):
         if self.adaptive and not self.pde.is_sde:
             # create stepper with adaptive steps
             self.info["dt_adaptive"] = True
+            self.info["dt_last"] = dt  # store the time step between calls
 
             if self.scheme == "euler":
                 adaptive_stepper = self._make_adaptive_euler_stepper(state, dt)
@@ -438,7 +437,7 @@ class ExplicitSolver(SolverBase):
                 adaptive_stepper = self._make_rkf_stepper(state, dt)
             else:
                 raise ValueError(
-                    f"Explicit adaptive scheme {self.scheme} is not supported"
+                    f"Explicit adaptive scheme `{self.scheme}` is not supported"
                 )
 
             if self.info["backend"] == "numba":
@@ -456,8 +455,6 @@ class ExplicitSolver(SolverBase):
                 self.info["state_modifications"] += modifications
                 return t_last
 
-            return wrapped_stepper
-
         else:
             # create stepper with fixed steps
             self.info["dt_adaptive"] = False
@@ -467,7 +464,7 @@ class ExplicitSolver(SolverBase):
             elif self.scheme in {"runge-kutta", "rk", "rk45"}:
                 fixed_stepper = self._make_rk45_stepper(state, dt)
             else:
-                raise ValueError(f"Explicit scheme {self.scheme} is not supported")
+                raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
 
             if self.info["backend"] == "numba":
                 fixed_stepper = jit(fixed_stepper)  # compile inner stepper
@@ -483,4 +480,4 @@ class ExplicitSolver(SolverBase):
                 self.info["state_modifications"] += modifications
                 return t_last
 
-            return wrapped_stepper
+        return wrapped_stepper

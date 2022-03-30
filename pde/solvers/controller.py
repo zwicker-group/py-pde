@@ -70,10 +70,19 @@ class Controller:
 
     @property
     def t_range(self) -> Tuple[float, float]:
+        """tuple: start and end time of the simulation"""
         return self._t_range
 
     @t_range.setter
     def t_range(self, value: TRangeType):
+        """set start and end time of the simulation
+
+        Args:
+            value (float or tuple):
+                Set the time range of the simulation. If a single number is given, it
+                specifies the final time and the start time is set to zero. If a tuple
+                of two numbers is given they are used as start and end time.
+        """
         # determine time range
         try:
             self._t_range: Tuple[float, float] = (0, float(value))  # type: ignore
@@ -89,18 +98,16 @@ class Controller:
         """run the simulation
 
         Diagnostic information about the solver procedure are available in the
-        `diagnostics` property of the instance after this function has been
-        called.
+        `diagnostics` property of the instance after this function has been called.
 
         Args:
             state:
-                The initial state of the simulation. This state will be copied
-                and thus not modified by the simulation. Instead, the final
-                state will be returned and trackers can be used to record
-                intermediate states.
+                The initial state of the simulation. This state will be copied and thus
+                not modified by the simulation. Instead, the final state will be
+                returned and trackers can be used to record intermediate states.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default
-                value based on the stepper will be chosen.
+                Time step of the chosen stepping scheme. If `None`, a default value
+                based on the stepper will be chosen.
 
         Returns:
             The state at the final time point.
