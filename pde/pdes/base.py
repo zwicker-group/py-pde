@@ -25,16 +25,16 @@ if TYPE_CHECKING:
 class PDEBase(metaclass=ABCMeta):
     """base class for solving partial differential equations
 
-    Custom PDEs can be implemented by specifying their evolution rate. In the
-    simple case of deterministic PDEs, the methods
-    :meth:`PDEBase.evolution_rate` and :meth:`PDEBase._make_pde_rhs_numba` need
-    to be overwritten for the `numpy` and `numba` backend, respectively.
+    Custom PDEs can be implemented by specifying their evolution rate. In the simple
+    case of deterministic PDEs, the methods :meth:`PDEBase.evolution_rate` and
+    :meth:`PDEBase._make_pde_rhs_numba` need to be overwritten for the `numpy` and
+    `numba` backend, respectively.
     """
 
     check_implementation: bool = True
-    """ bool: Flag determining whether (some) numba-compiled functions should be
-    checked against their numpy counter-parts. This can help with implementing a
-    correct compiled version for a PDE class. """
+    """ bool: Flag determining whether (some) numba-compiled functions should be checked
+    against their numpy counter-parts. This can help with implementing a correct
+    compiled version for a PDE class. """
 
     cache_rhs: bool = False
     """ bool: Flag indicating whether the right hand side of the equation should be
@@ -45,8 +45,8 @@ class PDEBase(metaclass=ABCMeta):
     """
 
     explicit_time_dependence: Optional[bool] = None
-    """ bool: Flag indicating whether the right hand side of the PDE has an
-    explicit time dependence. """
+    """ bool: Flag indicating whether the right hand side of the PDE has an explicit
+    time dependence. """
 
     complex_valued: bool = False
     """ bool: Flag indicating whether the right hand side is a complex-valued PDE, which
@@ -68,8 +68,8 @@ class PDEBase(metaclass=ABCMeta):
         Note:
             If more complicated noise structures are required, the methods
             :meth:`PDEBase.noise_realization` and
-            :meth:`PDEBase._make_noise_realization_numba` need to be overwritten
-            for the `numpy` and `numba` backend, respectively.
+            :meth:`PDEBase._make_noise_realization_numba` need to be overwritten for the
+            `numpy` and `numba` backend, respectively.
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._cache: Dict[str, Any] = {}
@@ -84,8 +84,8 @@ class PDEBase(metaclass=ABCMeta):
         """flag indicating whether this is a stochastic differential equation
 
         The :class:`BasePDF` class supports additive Gaussian white noise, whose
-        magnitude is controlled by the `noise` property. In this case, `is_sde`
-        is `True` if `self.noise != 0`.
+        magnitude is controlled by the `noise` property. In this case, `is_sde` is
+        `True` if `self.noise != 0`.
         """
         # check for self.noise, in case __init__ is not called in a subclass
         return hasattr(self, "noise") and np.any(self.noise != 0)  # type: ignore
@@ -93,9 +93,8 @@ class PDEBase(metaclass=ABCMeta):
     def make_modify_after_step(self, state: FieldBase) -> Callable[[np.ndarray], float]:
         """returns a function that can be called to modify a state
 
-        This function is applied to the state after each integration step when
-        an explicit stepper is used. The default behavior is to not change the
-        state.
+        This function is applied to the state after each integration step when an
+        explicit stepper is used. The default behavior is to not change the state.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -103,8 +102,8 @@ class PDEBase(metaclass=ABCMeta):
                 be extracted
 
         Returns:
-            Function that can be applied to a state to modify it and which
-            returns a measure for the corrections applied to the state
+            Function that can be applied to a state to modify it and which returns a
+            measure for the corrections applied to the state
         """
 
         def modify_after_step(state_data: np.ndarray) -> float:
@@ -226,7 +225,7 @@ class PDEBase(metaclass=ABCMeta):
                 optimal backend.
 
         Returns:
-            Function determining the right hand side of the PDE
+            callable: Function determining the right hand side of the PDE
         """
         if backend == "auto":
             try:
@@ -367,8 +366,8 @@ class PDEBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other
-                information can be extracted
+                An example for the state from which the grid and other information can
+                be extracted
 
         Returns:
             Function determining the right hand side of the PDE
@@ -417,15 +416,15 @@ class PDEBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other
-                information can be extracted
+                An example for the state from which the grid and other information can
+                be extracted
             backend (str): Determines how the function is created. Accepted
-                values are 'python` and 'numba'. Alternatively, 'auto' lets the
-                code decide for the most optimal backend.
+                values are 'python` and 'numba'. Alternatively, 'auto' lets the code
+                decide for the most optimal backend.
 
         Returns:
-            Function determining the deterministic part of the right hand side
-            of the PDE together with a noise realization.
+            Function determining the deterministic part of the right hand side of the
+            PDE together with a noise realization.
         """
         if backend == "auto":
             try:
@@ -472,10 +471,9 @@ class PDEBase(metaclass=ABCMeta):
     ) -> Union[FieldBase, Tuple[FieldBase, Dict[str, Any]]]:
         """convenience method for solving the partial differential equation
 
-        The method constructs a suitable solver
-        (:class:`~pde.solvers.base.SolverBase`) and controller
-        (:class:`~pde.controller.Controller`) to advance the state over the
-        temporal range specified by `t_range`. To obtain full flexibility, it is
+        The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)
+        and controller (:class:`~pde.controller.Controller`) to advance the state over
+        the temporal range specified by `t_range`. To obtain full flexibility, it is
         advisable to construct these classes explicitly.
 
         Args:
@@ -524,9 +522,8 @@ class PDEBase(metaclass=ABCMeta):
 
         Returns:
             :class:`~pde.fields.base.FieldBase`:
-            The state at the final time point. In the case `ret_info == True`, a
-            tuple with the final state and a dictionary with additional
-            information is returned.
+            The state at the final time point. If `ret_info == True`, a tuple with the
+            final state and a dictionary with additional information is returned.
         """
         from ..solvers.base import SolverBase  # @Reimport
 
