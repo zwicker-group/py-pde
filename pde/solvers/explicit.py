@@ -125,7 +125,7 @@ class ExplicitSolver(SolverBase):
 
     def _make_adaptive_euler_stepper(
         self, state: FieldBase, dt: float
-    ) -> Callable[[FieldBase, float, float], float]:
+    ) -> Callable[[np.ndarray, float, float, float], Tuple[float, float, int, float]]:
         """make an adaptive Euler stepper
 
         Args:
@@ -159,7 +159,7 @@ class ExplicitSolver(SolverBase):
         dt_min_err = f"Time step below {dt_min}"
         dt_max = self.dt_max
 
-        def inner_stepper(
+        def stepper(
             state_data: np.ndarray, t_start: float, t_end: float, dt_init: float
         ) -> Tuple[float, float, int, float]:
             """compiled inner loop for speed"""
@@ -190,7 +190,7 @@ class ExplicitSolver(SolverBase):
                     modifications += modify_after_step(state_data)
 
                 # adjust the time step
-                if error == 0:
+                if error < 1e-8:
                     dt *= 4.0  # maximal increase in dt
                 else:
                     dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
@@ -200,19 +200,6 @@ class ExplicitSolver(SolverBase):
                     raise RuntimeError(dt_min_err)
 
             return t, dt, steps, modifications
-
-        if self.info["backend"] == "numba":
-            inner_stepper = jit(inner_stepper)  # compile inner stepper
-
-        def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """use Euler stepping to advance `state` from `t_start` to `t_end`"""
-            t_last, dt, steps, modifications = inner_stepper(
-                state.data, t_start, t_end, dt_init=self.info["dt_last"]
-            )
-            self.info["dt_last"] = dt
-            self.info["steps"] += steps
-            self.info["state_modifications"] += modifications
-            return t_last
 
         self._logger.info(f"Initialized adaptive Euler stepper with dt_0={dt}")
         return stepper
@@ -272,7 +259,7 @@ class ExplicitSolver(SolverBase):
 
     def _make_rkf_stepper(
         self, state: FieldBase, dt: float
-    ) -> Callable[[FieldBase, float, float], float]:
+    ) -> Callable[[np.ndarray, float, float, float], Tuple[float, float, int, float]]:
         """make an adaptive stepper using the explicit Runge-Kutta-Fehlberg method
 
         Args:
@@ -342,7 +329,7 @@ class ExplicitSolver(SolverBase):
         c4 = 2197 / 4104
         c5 = -1 / 5
 
-        def inner_stepper(
+        def stepper(
             state_data: np.ndarray, t_start: float, t_end: float, dt_init: float
         ) -> Tuple[float, float, int, float]:
             """compiled inner loop for speed"""
@@ -385,7 +372,7 @@ class ExplicitSolver(SolverBase):
                     modifications += modify_after_step(state_data)
 
                 # adjust the time step
-                if error == 0:
+                if error < 1e-8:
                     dt *= 4.0  # maximal increase in dt
                 else:
                     dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
@@ -396,21 +383,8 @@ class ExplicitSolver(SolverBase):
 
             return t, dt, steps, modifications
 
-        if self.info["backend"] == "numba":
-            inner_stepper = jit(inner_stepper)  # compile inner stepper
-
-        def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """use Euler stepping to advance `state` from `t_start` to `t_end`"""
-            t_last, dt, steps, modifications = inner_stepper(
-                state.data, t_start, t_end, dt_init=self.info["dt_last"]
-            )
-            self.info["dt_last"] = dt
-            self.info["steps"] += steps
-            self.info["state_modifications"] += modifications
-            return t_last
-
         self._logger.info(
-            f"Initialized Runge-Kutta-Fehlberg stepper with initial dt={dt}"
+            f"Initialized adaptive Runge-Kutta-Fehlberg stepper with initial dt={dt}"
         )
         return stepper
 
@@ -450,11 +424,12 @@ class ExplicitSolver(SolverBase):
 
         if self.pde.is_sde and self.adaptive:
             self._logger.warning(
-                "Stochastic stepping cannot be adaptive. Using fixed time step instead."
+                "Adaptive stochastic stepping is not implemented. Using a fixed time "
+                "step instead."
             )
 
         if self.adaptive and not self.pde.is_sde:
-            # create stepper with adaptive dt
+            # create stepper with adaptive steps
             self.info["dt_adaptive"] = True
 
             if self.scheme == "euler":
@@ -466,29 +441,46 @@ class ExplicitSolver(SolverBase):
                     f"Explicit adaptive scheme {self.scheme} is not supported"
                 )
 
-            return adaptive_stepper
-
-        else:
-            # create stepper with fixed dt
-            self.info["dt_adaptive"] = False
-
-            if self.scheme == "euler":
-                inner_stepper = self._make_fixed_euler_stepper(state, dt)
-            elif self.scheme in {"runge-kutta", "rk", "rk45"}:
-                inner_stepper = self._make_rk45_stepper(state, dt)
-            else:
-                raise ValueError(f"Explicit scheme {self.scheme} is not supported")
-
             if self.info["backend"] == "numba":
-                inner_stepper = jit(inner_stepper)  # compile inner stepper
+                adaptive_stepper = jit(adaptive_stepper)  # compile inner stepper
 
-            def fixed_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-                """advance `state` from `t_start` to `t_end` using fixed dt"""
-                # calculate number of steps (which is at least 1)
-                steps = max(1, int(np.ceil((t_end - t_start) / dt)))
-                t_last, modifications = inner_stepper(state.data, t_start, steps)
+            def wrapped_stepper(
+                state: FieldBase, t_start: float, t_end: float
+            ) -> float:
+                """advance `state` from `t_start` to `t_end` using adaptive steps"""
+                t_last, dt, steps, modifications = adaptive_stepper(
+                    state.data, t_start, t_end, self.info["dt_last"]
+                )
+                self.info["dt_last"] = dt
                 self.info["steps"] += steps
                 self.info["state_modifications"] += modifications
                 return t_last
 
-            return fixed_stepper
+            return wrapped_stepper
+
+        else:
+            # create stepper with fixed steps
+            self.info["dt_adaptive"] = False
+
+            if self.scheme == "euler":
+                fixed_stepper = self._make_fixed_euler_stepper(state, dt)
+            elif self.scheme in {"runge-kutta", "rk", "rk45"}:
+                fixed_stepper = self._make_rk45_stepper(state, dt)
+            else:
+                raise ValueError(f"Explicit scheme {self.scheme} is not supported")
+
+            if self.info["backend"] == "numba":
+                fixed_stepper = jit(fixed_stepper)  # compile inner stepper
+
+            def wrapped_stepper(
+                state: FieldBase, t_start: float, t_end: float
+            ) -> float:
+                """advance `state` from `t_start` to `t_end` using fixed steps"""
+                # calculate number of steps (which is at least 1)
+                steps = max(1, int(np.ceil((t_end - t_start) / dt)))
+                t_last, modifications = fixed_stepper(state.data, t_start, steps)
+                self.info["steps"] += steps
+                self.info["state_modifications"] += modifications
+                return t_last
+
+            return wrapped_stepper
