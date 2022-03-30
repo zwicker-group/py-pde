@@ -126,7 +126,7 @@ class ExplicitSolver(SolverBase):
     def _make_adaptive_euler_stepper(
         self, state: FieldBase, dt: float
     ) -> Callable[[FieldBase, float, float], float]:
-        """make a simple adaptive Euler stepper
+        """make an adaptive Euler stepper
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -190,7 +190,10 @@ class ExplicitSolver(SolverBase):
                     modifications += modify_after_step(state_data)
 
                 # adjust the time step
-                dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
+                if error == 0:
+                    dt *= 4.0  # maximal increase in dt
+                else:
+                    dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
                 if dt > dt_max:
                     dt = dt_max
                 elif dt < dt_min:
@@ -238,7 +241,7 @@ class ExplicitSolver(SolverBase):
 
         rhs = self._make_pde_rhs(state, backend=self.backend)
         self.info["stochastic"] = False
-        self.info["adaptive"] = self.adaptive
+        self.info["adaptive"] = False
 
         # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step(state))
@@ -270,7 +273,7 @@ class ExplicitSolver(SolverBase):
     def _make_rkf_stepper(
         self, state: FieldBase, dt: float
     ) -> Callable[[FieldBase, float, float], float]:
-        """make a simple stepper for the explicit Runge-Kutta-Fehlberg method
+        """make an adaptive stepper using the explicit Runge-Kutta-Fehlberg method
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -291,7 +294,7 @@ class ExplicitSolver(SolverBase):
 
         rhs = self._make_pde_rhs(state, backend=self.backend)
         self.info["stochastic"] = False
-        self.info["adaptive"] = self.adaptive
+        self.info["adaptive"] = True
         self.info["dt_last"] = dt
 
         # obtain post-step action function
@@ -382,7 +385,10 @@ class ExplicitSolver(SolverBase):
                     modifications += modify_after_step(state_data)
 
                 # adjust the time step
-                dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
+                if error == 0:
+                    dt *= 4.0  # maximal increase in dt
+                else:
+                    dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
                 if dt > dt_max:
                     dt = dt_max
                 elif dt < dt_min:
