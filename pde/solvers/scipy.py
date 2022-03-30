@@ -89,7 +89,7 @@ class ScipySolver(SolverBase):
                 rhs_helper,
                 t_span=(t_start, t_end),
                 y0=np.ravel(state.data),
-                t_eval=[t_end],  # only store necessary
+                t_eval=[t_end],  # only store necessary data of the final time point
                 **self.solver_params,
             )
             self.info["steps"] += sol.nfev

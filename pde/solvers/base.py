@@ -50,9 +50,8 @@ class SolverBase(metaclass=ABCMeta):
         r"""create solver class based on its name
 
         Solver classes are automatically registered when they inherit from
-        :class:`SolverBase`. Note that this also requires that the respective
-        python module containing the solver has been loaded before it is
-        attempted to be used.
+        :class:`SolverBase`. Note that this also requires that the respective python
+        module containing the solver has been loaded before it is attempted to be used.
 
         Args:
             name (str):
@@ -94,23 +93,21 @@ class SolverBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other
-                information can be extracted
-                The instance describing the pde that needs to be solved
+                An example for the state from which the grid and other information can
+                be extracted.
             backend (str):
-                Determines how the function is created. Accepted  values are
-                'numpy` and 'numba'. Alternatively, 'auto' lets the code decide
-                for the most optimal backend.
+                Determines how the function is created. Accepted  values are 'numpy` and
+                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
+                backend.
 
         Raises:
-            RuntimeError: when a stochastic partial differential equation is
-            encountered but `allow_stochastic == False`.
+            RuntimeError: when a stochastic partial differential equation is encountered
+            but `allow_stochastic == False`.
 
         Returns:
-            A function that is called with data given by a
-            :class:`~numpy.ndarray` and a time. The function returns the
-            deterministic evolution rate and (if applicable) a realization of
-            the associated noise.
+            A function that is called with data given by a :class:`~numpy.ndarray` and a
+            time. The function returns the deterministic evolution rate and (if
+            applicable) a realization of the associated noise.
         """
         if self.pde.is_sde:
             raise RuntimeError(
@@ -135,23 +132,21 @@ class SolverBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other
-                information can be extracted
-                The instance describing the pde that needs to be solved
+                An example for the state from which the grid and other information can
+                be extracted.
             backend (str):
-                Determines how the function is created. Accepted  values are
-                'numpy` and 'numba'. Alternatively, 'auto' lets the code decide
-                for the most optimal backend.
+                Determines how the function is created. Accepted  values are 'numpy` and
+                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
+                backend.
 
         Raises:
-            RuntimeError: when a stochastic partial differential equation is
-            encountered but `allow_stochastic == False`.
+            RuntimeError: when a stochastic partial differential equation is encountered
+            but `allow_stochastic == False`.
 
         Returns:
-            A function that is called with data given by a
-            :class:`~numpy.ndarray` and a time. The function returns the
-            deterministic evolution rate and (if applicable) a realization of
-            the associated noise.
+            A function that is called with data given by a :class:`~numpy.ndarray` and a
+            time. The function returns the deterministic evolution rate and (if
+            applicable) a realization of the associated noise.
         """
         rhs = self.pde.make_sde_rhs(state, backend=backend)
 
