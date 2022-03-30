@@ -14,7 +14,6 @@ def test_cylindrical_grid():
     for periodic in [True, False]:
         grid = CylindricalSymGrid(4, (-1, 2), (8, 9), periodic_z=periodic)
 
-        msg = str(grid)
         assert grid.dim == 3
         assert grid.numba_type == "f8[:, :]"
         assert grid.shape == (8, 9)

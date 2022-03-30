@@ -16,7 +16,6 @@ from pde.grids import (
     SphericalSymGrid,
     UnitGrid,
 )
-from pde.grids.cartesian import CartesianGrid
 from pde.tools.misc import skipUnlessModule
 
 

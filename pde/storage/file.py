@@ -105,7 +105,7 @@ class FileStorage(StorageBase):
     def __enter__(self) -> FileStorage:
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, exc_type, exc_value, exc_traceback):
         self.close()
 
     def _create_hdf_dataset(

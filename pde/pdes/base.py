@@ -18,7 +18,7 @@ from ..tools.typing import ArrayLike
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
-    from ..solvers.base import SolverBase
+    from ..solvers.base import SolverBase  # @UnusedImport
     from ..solvers.controller import TRangeType  # @UnusedImport
 
 
@@ -528,7 +528,7 @@ class PDEBase(metaclass=ABCMeta):
             tuple with the final state and a dictionary with additional
             information is returned.
         """
-        from ..solvers.base import SolverBase
+        from ..solvers.base import SolverBase  # @Reimport
 
         if method == "auto":
             method = "scipy" if dt is None else "explicit"
