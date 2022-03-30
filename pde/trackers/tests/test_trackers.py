@@ -26,12 +26,12 @@ def test_plot_tracker(tmp_path):
 
     grid = UnitGrid([4, 4])
     state = ScalarField.random_uniform(grid)
-    pde = DiffusionPDE()
+    eq = DiffusionPDE()
     tracker = trackers.PlotTracker(
         output_file=output_file, title=get_title, interval=0.1, show=False
     )
 
-    pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
+    eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
 
     assert output_file.stat().st_size > 0
 
@@ -43,10 +43,10 @@ def test_plot_movie_tracker(tmp_path):
 
     grid = UnitGrid([4, 4])
     state = ScalarField.random_uniform(grid)
-    pde = DiffusionPDE()
+    eq = DiffusionPDE()
     tracker = trackers.PlotTracker(movie=output_file, interval=0.1, show=False)
 
-    pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
+    eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
 
     assert output_file.stat().st_size > 0
 
@@ -92,8 +92,8 @@ def test_trackers():
 
     grid = UnitGrid([16, 16])
     state = ScalarField.random_uniform(grid, 0.2, 0.3)
-    pde = DiffusionPDE()
-    pde.solve(state, t_range=1, dt=0.005, tracker=tracker_list)
+    eq = DiffusionPDE()
+    eq.solve(state, t_range=1, dt=0.005, tracker=tracker_list)
 
     devnull.close()
 
@@ -116,11 +116,11 @@ def test_callback_tracker():
 
     grid = UnitGrid([4, 4])
     state = ScalarField.random_uniform(grid, 0.2, 0.3)
-    pde = DiffusionPDE()
+    eq = DiffusionPDE()
     data_tracker = trackers.DataTracker(get_mean_data, interval=0.1)
     callback_tracker = trackers.CallbackTracker(store_mean_data, interval=0.1)
     tracker_list = [data_tracker, callback_tracker]
-    pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker_list, backend="numpy")
+    eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker_list, backend="numpy")
 
     np.testing.assert_array_equal(data, data_tracker.data)
 
@@ -134,10 +134,10 @@ def test_callback_tracker():
 
     grid = UnitGrid([4, 4])
     state = ScalarField.random_uniform(grid, 0.2, 0.3)
-    pde = DiffusionPDE()
+    eq = DiffusionPDE()
     data_tracker = trackers.DataTracker(get_time, interval=0.1)
     tracker_list = [trackers.CallbackTracker(store_time, interval=0.1), data_tracker]
-    pde.solve(state, t_range=0.5, dt=0.005, tracker=tracker_list, backend="numpy")
+    eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker_list, backend="numpy")
 
     ts = np.arange(0, 0.55, 0.1)
     np.testing.assert_allclose(data, ts, atol=1e-2)
@@ -166,20 +166,20 @@ def test_data_tracker(tmp_path):
 def test_steady_state_tracker():
     """test the SteadyStateTracker"""
     storage = MemoryStorage()
-    c0 = ScalarField.random_uniform(UnitGrid([5]))
-    pde = DiffusionPDE()
+    c0 = ScalarField.from_expression(UnitGrid([5]), "sin(x)")
+    eq = DiffusionPDE()
     tracker = trackers.SteadyStateTracker(atol=1e-2, rtol=1e-2, progress=True)
-    pde.solve(c0, 1e3, dt=0.1, tracker=[tracker, storage.tracker(interval=1e2)])
-    assert len(storage) < 9  # finished early
+    eq.solve(c0, 1e4, dt=0.1, tracker=[tracker, storage.tracker(interval=1e2)])
+    assert len(storage) < 20  # finished early
 
 
 def test_small_tracker_dt():
     """test the case where the dt of the tracker is smaller than the dt
     of the simulation"""
     storage = MemoryStorage()
-    pde = DiffusionPDE()
+    eq = DiffusionPDE()
     c0 = ScalarField.random_uniform(UnitGrid([4, 4]), 0.1, 0.2)
-    pde.solve(
+    eq.solve(
         c0, 1e-2, dt=1e-3, method="explicit", tracker=storage.tracker(interval=1e-4)
     )
     assert len(storage) == 11

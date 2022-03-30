@@ -98,7 +98,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="tqdm",
-        version="4.45",
+        version="4.60",
         usage="Display progress bars during calculations",
         optional=True,
         for_docs=True,
