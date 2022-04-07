@@ -57,8 +57,18 @@ class ScalarField(DataFieldBase):
 
         expr = ScalarExpression(expression=expression, signature=grid.axes)
         points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
+
+        try:
+            # try evaluating the expression using a vectorized call
+            data = expr(**points)
+        except ValueError:
+            # if this fails, evaluate expression point-wise
+            data = np.empty(grid.shape)
+            for cells in np.ndindex(grid.shape):
+                data[cells] = expr(grid.cell_coords[cells])
+
         return cls(  # lgtm [py/call-to-non-callable]
-            grid=grid, data=expr(**points), label=label, dtype=dtype
+            grid=grid, data=data, label=label, dtype=dtype
         )
 
     @classmethod
