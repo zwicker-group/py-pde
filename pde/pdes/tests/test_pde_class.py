@@ -341,7 +341,7 @@ def test_pde_integral(backend):
 def test_anti_periodic_bcs():
     """test a simulation with anti-periodic BCs"""
     grid = grids.CartesianGrid([[-10, 10]], 32, periodic=True)
-    field = ScalarField.random_uniform(grid, -1, 1)
+    field = ScalarField.from_expression(grid, "0.01 * x**2")
     field -= field.average
 
     # test normal periodic BCs
