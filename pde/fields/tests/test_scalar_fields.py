@@ -483,3 +483,12 @@ def test_generic_derivatives(grid):
     else:
         # the two deviate in curvilinear coordinates
         assert not np.allclose(sf_lap.data, sf_laplace.data)
+
+
+def test_piecewise_expressions():
+    """test special expressions for creating fields"""
+    grid = CartesianGrid([[0, 4]], 32)
+    field = ScalarField.from_expression(grid, "Piecewise((x**2, x>2), (1+x, x<=2))")
+    x = grid.axes_coords[0]
+    field_data = np.piecewise(x, [x > 2, x <= 2], [lambda x: x**2, lambda x: 1 + x])
+    np.testing.assert_allclose(field.data, field_data)

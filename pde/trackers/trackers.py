@@ -705,7 +705,7 @@ class SteadyStateTracker(TrackerBase):
                     # advance progress bar to 100%
                     self._progress_bar.n = self._pbar_offset - np.log10(self.atol)
                     try:
-                        self._progress_bar.disp(bar_style='success', check_delay=False)
+                        self._progress_bar.disp(bar_style="success", check_delay=False)
                     except (TypeError, AttributeError):
                         self._progress_bar.close()
                 raise FinishedSimulation("Reached stationary state")
