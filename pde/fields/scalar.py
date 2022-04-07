@@ -64,7 +64,7 @@ class ScalarField(DataFieldBase):
         except ValueError:
             # if this fails, evaluate expression point-wise
             data = np.empty(grid.shape)
-            for cells in np.ndindex(grid.shape):
+            for cells in np.ndindex(*grid.shape):
                 data[cells] = expr(grid.cell_coords[cells])
 
         return cls(  # lgtm [py/call-to-non-callable]
