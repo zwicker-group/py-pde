@@ -114,9 +114,7 @@ class VectorField(DataFieldBase):
         # evaluate all vector components at all points
         data = []
         for expression in expressions:
-            expr = ScalarExpression(
-                expression=expression, signature=grid.axes, dtype=dtype
-            )
+            expr = ScalarExpression(expression=expression, signature=grid.axes)
             values = np.broadcast_to(expr(**points), grid.shape)
             data.append(values)
 
