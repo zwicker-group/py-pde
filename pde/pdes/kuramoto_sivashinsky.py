@@ -37,6 +37,7 @@ class KuramotoSivashinskyPDE(PDEBase):
     def __init__(
         self,
         nu: float = 1,
+        *,
         noise: float = 0,
         bc: BoundariesData = "auto_periodic_neumann",
         bc_lap: BoundariesData = None,

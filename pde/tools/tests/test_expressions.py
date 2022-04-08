@@ -8,8 +8,8 @@ import numba as nb
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid
-from pde.tools.expressions import ScalarExpression, TensorExpression, parse_number
+from pde import ScalarField, UnitGrid, VectorField
+from pde.tools.expressions import *
 
 
 def test_parse_number():
@@ -305,3 +305,15 @@ def test_expression_consts():
     assert not expr.constant
     np.testing.assert_allclose(expr(np.array([2, 3])), np.array([3, 5]))
     np.testing.assert_allclose(expr.get_compiled()(np.array([2, 3])), np.array([3, 5]))
+
+
+def test_evaluate_func():
+    """test the evaluate function"""
+    grid = UnitGrid([2, 4])
+    field = ScalarField.from_expression(grid, "x")
+
+    res1 = evaluate("laplace(a)", {"a": field})
+    res2 = field.laplace("natural")
+    np.testing.assert_almost_equal(res1.data, res2.data)
+
+    assert isinstance(evaluate("gradient(a)", {"a": field}), VectorField)

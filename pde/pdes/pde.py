@@ -42,6 +42,7 @@ class PDE(PDEBase):
     def __init__(
         self,
         rhs: Dict[str, str],
+        *,
         noise: ArrayLike = 0,
         bc: BoundariesData = "auto_periodic_neumann",
         bc_ops: Dict[str, BoundariesData] = None,

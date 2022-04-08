@@ -38,6 +38,7 @@ class KPZInterfacePDE(PDEBase):
         self,
         nu: float = 0.5,
         lmbda: float = 1,
+        *,
         noise: float = 0,
         bc: BoundariesData = "auto_periodic_neumann",
     ):
