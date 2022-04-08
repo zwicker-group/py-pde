@@ -690,11 +690,19 @@ def plot_kymograph(
         raise RuntimeError("Storage is empty")
     line_data_args: Dict[str, Any] = {"scalar": scalar, "extract": extract}
 
-    if field_index is not None:
-        if storage.has_collection:
-            line_data_args["index"] = field_index
+    if storage.has_collection:
+        # there are many fields in the storage
+        if field_index is None:
+            _logger.warning(
+                "Showing first field since argument `field_index` is missing. Use "
+                "`plot_kymographs` to show kymographs of multiple fields."
+            )
         else:
-            _logger.warning("`field_index` should only be set for FieldCollections")
+            line_data_args["index"] = field_index
+
+    elif field_index is not None and field_index != 0:
+        # there is only one field in the storage, but a field_index > 0 is given
+        _logger.warning("`field_index` should only be set for FieldCollections")
 
     # prepare the image data for one kymograph
     image = []
