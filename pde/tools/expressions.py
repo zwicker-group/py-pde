@@ -11,6 +11,7 @@ representations using :mod:`sympy`.
    parse_number
    ScalarExpression
    TensorExpression
+   evaluate
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
@@ -47,7 +48,9 @@ from sympy.core import basic
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
-from ..fields.base import FieldBase
+from ..fields.base import DataFieldBase, FieldBase
+from ..grids.boundaries.axes import BoundariesData
+from ..grids.boundaries.local import BCDataError
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .misc import Number, classproperty, number, number_array
@@ -917,4 +920,191 @@ class TensorExpression(ExpressionBase):
         return jit(function)  # type: ignore
 
 
-__all__ = ["ExpressionBase", "ScalarExpression", "TensorExpression", "parse_number"]
+def evaluate(
+    expression: str,
+    fields: Dict[str, DataFieldBase],
+    *,
+    bc: BoundariesData = "auto_periodic_neumann",
+    bc_ops: Dict[str, BoundariesData] = None,
+    user_funcs: Dict[str, Any] = None,
+    consts: Dict[str, Any] = None,
+    label: str = None,
+) -> DataFieldBase:
+    """evaluate an expression involving fields
+
+    Args:
+        expression (str):
+            The expression, which is parsed by :mod:`sympy`. The expression may contain
+            variables (i.e., fields and spatial coordinates of the grid), standard local
+            mathematical operators defined by sympy, and the operators defined in the
+            :mod:`pde` package. Note that operators need to be specified with their full
+            name, i.e., `laplace` for a scalar Laplacian and `vector_laplace` for a
+            Laplacian operating on a vector field. Moreover, the dot product between
+            two vector fields can be denoted by using `dot(field1, field2)` in the
+            expression, an outer product is calculated using `outer(field1, field2)`,
+            and `integral(field)` denotes an integral over a field.
+        fields (dict):
+            Dictionary of the fields involved in the expression.
+        bc:
+            Boundary conditions for the operators used in the expression. The conditions
+            here are applied to all operators that do not have a specialized condition
+            given in `bc_ops`.
+            {ARG_BOUNDARIES}
+        bc_ops (dict):
+            Special boundary conditions for some operators. The keys in this dictionary
+            specify the operator to which the boundary condition will be applied.
+        user_funcs (dict, optional):
+            A dictionary with user defined functions that can be used in the expressions
+            in `rhs`.
+        consts (dict, optional):
+            A dictionary with user defined constants that can be used in the expression.
+            These can be either scalar numbers or fields defined on the same grid as the
+            actual simulation.
+        label (str):
+            Name of the field that is returned
+
+    Returns:
+        :class:`pde.fields.base.DataFieldBase`: The resulting field
+    """
+    from sympy.core.function import AppliedUndef
+
+    from ..fields import VectorField
+
+    logger = logging.getLogger("evaluate")
+
+    # validate input
+    if consts is None:
+        consts = {}
+
+    # turn the expression strings into sympy expressions
+    expr = ScalarExpression(expression, user_funcs=user_funcs, consts=consts)
+
+    # determine undefined functions in the expression
+    operators = {
+        func.__class__.__name__
+        for func in expr._sympy_expr.atoms(AppliedUndef)
+        if func.__class__.__name__ not in expr.user_funcs
+    }
+
+    # setup boundary conditions
+    if bc_ops is None:
+        bcs: Dict[str, Any] = {"*": bc}
+    else:
+        bcs = dict(bc_ops)
+        if "*" in bcs and bc != "auto_periodic_neumann":
+            logger.warning("Found default BCs in `bcs` and `bc_ops`")
+        bcs["*"] = bc  # append default boundary conditions
+
+    # check whether all fields have the same grid
+    grid = None
+    for field in fields.values():
+        if grid is None:
+            grid = field.grid
+        else:
+            field.grid.assert_grid_compatible(grid)
+    if grid is None:
+        raise ValueError("No fields given")
+
+    # prepare the differential operators
+
+    # check whether PDE has variables with same names as grid axes
+    name_overlap = set(fields) & set(grid.axes)
+    if name_overlap:
+        raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
+
+    # obtain the (differential) operators
+    backend = "numpy"
+    ops: Dict[str, Callable] = {}
+    for func in operators:
+        if func == "dot":
+            # add dot product between two vector fields. This can for instance
+            # appear when two gradients of scalar fields need to be multiplied
+            ops[func] = VectorField(grid).make_dot_operator(backend)
+
+        elif func == "inner":
+            # inner is a synonym for dot product operator
+            ops[func] = VectorField(grid).make_dot_operator(backend)
+
+        elif func == "outer":
+            # generate an operator that calculates an outer product
+            ops[func] = VectorField(grid).make_outer_prod_operator()
+
+        elif func == "integral":
+            # add an operator that integrates a field
+            ops[func] = grid.make_integrator()
+
+        else:
+            # determine boundary conditions for this operator and variable
+            for bc_key, bc in bcs.items():
+                if bc_key == func or bc_key == "*":
+                    break  # found a matching boundary condition
+            else:
+                raise RuntimeError(
+                    f"Could not find suitable boundary condition for function `{func}`"
+                )
+
+            # Tell the user what BC we chose for a given operator
+            logger.info("Using BC `%s` for operator `%s` in expression", bc, func)
+
+            # create the function evaluating the operator
+            try:
+                ops[func] = grid.make_operator(func, bc=bc)
+            except BCDataError:
+                # wrong data was supplied for the boundary condition
+                raise
+            except ValueError:
+                # any other exception should signal that the operator is not defined, so
+                # we (almost) silently assume that sympy defines the operator
+                logger.info("Assuming that sympy knows undefined operator `%s`", func)
+
+    # obtain the function to calculate the right hand side
+    signature = tuple(fields.keys()) + ("none", "bc_args")
+
+    # check whether this function depends on additional input
+    if any(expr.depends_on(c) for c in grid.axes):
+        # expression has a spatial dependence, too
+
+        # extend the signature
+        signature += tuple(grid.axes)
+        # inject the spatial coordinates into the expression for the rhs
+        extra_args = tuple(  # @UnusedVariable
+            grid.cell_coords[..., i] for i in range(grid.num_axes)
+        )
+
+    else:
+        # expression only depends on the actual variables
+        extra_args = tuple()  # @UnusedVariable
+
+    # check whether all variables are accounted for
+    extra_vars = set(expr.vars) - set(signature)
+    if extra_vars:
+        extra_vars_str = ", ".join(sorted(extra_vars))
+        raise RuntimeError(f"Undefined variable in expression: {extra_vars_str}")
+    expr.vars = signature
+
+    logger.info("Expression has signature %s", signature)
+
+    # prepare the actual function being called in the end
+    if backend == "numpy":
+        func = expr._get_function(single_arg=False, user_funcs=ops)
+    else:
+        raise ValueError(f"Unsupported backend {backend}")
+
+    # extract input field data and calculate result
+    field_data = [field.data for field in fields.values()]
+    result_data = func(*field_data, None, {}, *extra_args)
+
+    # turn result field
+    result_rank = result_data.ndim - grid.num_axes
+    result_cls = DataFieldBase.get_class_by_rank(result_rank)
+    dtype = complex if expr.complex else float
+    return result_cls(grid, result_data, label=label, dtype=dtype)
+
+
+__all__ = [
+    "ExpressionBase",
+    "ScalarExpression",
+    "TensorExpression",
+    "parse_number",
+    "evaluate",
+]
