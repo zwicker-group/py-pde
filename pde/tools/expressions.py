@@ -920,6 +920,7 @@ class TensorExpression(ExpressionBase):
         return jit(function)  # type: ignore
 
 
+@fill_in_docstring
 def evaluate(
     expression: str,
     fields: Dict[str, DataFieldBase],
@@ -1016,22 +1017,14 @@ def evaluate(
     backend = "numpy"
     ops: Dict[str, Callable] = {}
     for func in operators:
-        if func == "dot":
+        if func == "dot" or func == "inner":
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
-            ops[func] = VectorField(grid).make_dot_operator(backend)
-
-        elif func == "inner":
-            # inner is a synonym for dot product operator
             ops[func] = VectorField(grid).make_dot_operator(backend)
 
         elif func == "outer":
             # generate an operator that calculates an outer product
             ops[func] = VectorField(grid).make_outer_prod_operator()
-
-        elif func == "integral":
-            # add an operator that integrates a field
-            ops[func] = grid.make_integrator()
 
         else:
             # determine boundary conditions for this operator and variable

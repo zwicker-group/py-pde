@@ -8,7 +8,7 @@ import numba as nb
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid, VectorField
+from pde import ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.tools.expressions import *
 
 
@@ -307,13 +307,31 @@ def test_expression_consts():
     np.testing.assert_allclose(expr.get_compiled()(np.array([2, 3])), np.array([3, 5]))
 
 
-def test_evaluate_func():
-    """test the evaluate function"""
+def test_evaluate_func_scalar():
+    """test the evaluate function with scalar fields"""
     grid = UnitGrid([2, 4])
     field = ScalarField.from_expression(grid, "x")
 
     res1 = evaluate("laplace(a)", {"a": field})
     res2 = field.laplace("natural")
     np.testing.assert_almost_equal(res1.data, res2.data)
+
+    res = evaluate("a - x", {"a": field})
+    np.testing.assert_almost_equal(res.data, 0)
+
+
+def test_evaluate_func_vector():
+    """test the evaluate function with vector fields"""
+    grid = UnitGrid([3])
+    field = ScalarField.from_expression(grid, "x")
+    vec = VectorField.from_expression(grid, ["x"])
+
+    res = evaluate("inner(v, v)", {"v": vec})
+    assert isinstance(res, ScalarField)
+    np.testing.assert_almost_equal(res.data, grid.axes_coords[0] ** 2)
+
+    res = evaluate("outer(v, v)", {"v": vec})
+    assert isinstance(res, Tensor2Field)
+    np.testing.assert_almost_equal(res.data, [[grid.axes_coords[0] ** 2]])
 
     assert isinstance(evaluate("gradient(a)", {"a": field}), VectorField)
