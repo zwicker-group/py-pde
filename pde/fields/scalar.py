@@ -43,10 +43,11 @@ class ScalarField(DataFieldBase):
             grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             expression (str):
-                Mathematical expression for the scalar value as a function of
-                the position on the grid. The expression may contain standard
-                mathematical functions and it may depend on the axes labels of
-                the grid.
+                Mathematical expression for the scalar value as a function of the
+                position on the grid. The expression may contain standard mathematical
+                functions and it may depend on the axes labels of the grid.
+                More information can be found in the
+                :ref:`expression documentation <documentation-expressions>`.
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):

@@ -89,11 +89,12 @@ class VectorField(DataFieldBase):
             grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             expressions (list of str):
-                A list of mathematical expression, one for each component of the
-                vector field. The expressions determine the values as a function
-                of the position on the grid. The expressions may contain
-                standard mathematical functions and they may depend on the axes
-                labels of the grid.
+                A list of mathematical expression, one for each component of the vector
+                field. The expressions determine the values as a function of the
+                position on the grid. The expressions may contain standard mathematical
+                functions and they may depend on the axes labels of the grid.
+                More information can be found in the
+                :ref:`expression documentation <documentation-expressions>`.
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):

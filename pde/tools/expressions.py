@@ -941,6 +941,9 @@ def evaluate(
 ) -> DataFieldBase:
     """evaluate an expression involving fields
 
+    Warning:
+        {WARNING_EXEC}
+
     Args:
         expression (str):
             The expression, which is parsed by :mod:`sympy`. The expression may contain

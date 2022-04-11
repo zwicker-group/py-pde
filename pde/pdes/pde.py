@@ -68,6 +68,8 @@ class PDE(PDEBase):
                 denoted by using `dot(field1, field2)` in the expression, an outer
                 product is calculated using `outer(field1, field2)`, and
                 `integral(field)` denotes an integral over a field.
+                More information can be found in the
+                :ref:`expression documentation <documentation-expressions>`.
             noise (float or :class:`~numpy.ndarray`):
                 Magnitude of additive Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
