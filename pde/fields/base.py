@@ -769,6 +769,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         result = f"{class_name}(grid={self.grid!r}, data={self.data}"
         if self.label:
             result += f', label="{self.label}"'
+        if self.dtype != np.double:
+            result += f', dtype="{self.dtype}"'
         return result + ")"
 
     def __str__(self) -> str:

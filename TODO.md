@@ -7,10 +7,8 @@ TODO
 * Think about a way to save information about how the right hand side of the PDE
     - this should be forwarded to solver to store with the diagnostics
     - this could for instance store whether a staggered grid was used
-* Allow creating ScalarFields from data points and from a python function 
 * Indicate periodic boundary by dashed/dotted axes in image plot?
     - use ax.spines['top'].set_linestyle((0, (5, 10)))
-* Add support for dtype=np.single
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
     - Improve this display by adding a progress bar and support displaying extra text
@@ -22,7 +20,6 @@ TODO
 * Think about logger names (add `pde.` before class name)
 * Add Glossary or something to development guide
     - e.g., state = attributes + data
-* Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable
 * Extend methods `get_image_data` to allow different cuts, visualizations
