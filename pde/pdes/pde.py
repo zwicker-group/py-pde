@@ -22,7 +22,7 @@ from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike
+from ..tools.typing import ArrayLike, NumberOrArray
 
 
 class PDE(PDEBase):
@@ -46,8 +46,8 @@ class PDE(PDEBase):
         noise: ArrayLike = 0,
         bc: BoundariesData = "auto_periodic_neumann",
         bc_ops: Dict[str, BoundariesData] = None,
-        user_funcs: Dict[str, Any] = None,
-        consts: Dict[str, Any] = None,
+        user_funcs: Dict[str, Callable] = None,
+        consts: Dict[str, NumberOrArray] = None,
     ):
         r"""
         Warning:
@@ -128,7 +128,8 @@ class PDE(PDEBase):
         explicit_time_dependence = False
         complex_valued = False
         for var, rhs_str in rhs.items():
-            consts_d = {name: None for name in consts}
+            # create placeholder dictionary of constants that will be specified later
+            consts_d: Dict[str, NumberOrArray] = {name: 0 for name in consts}
             rhs_expr = ScalarExpression(rhs_str, user_funcs=user_funcs, consts=consts_d)
 
             if rhs_expr.depends_on("t"):

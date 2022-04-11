@@ -158,8 +158,8 @@ class ExpressionBase(metaclass=ABCMeta):
         expression: basic.Basic,
         signature: Sequence[Union[str, List[str]]] = None,
         *,
-        user_funcs: Dict[str, Any] = None,
-        consts: Dict[str, Any] = None,
+        user_funcs: Dict[str, Callable] = None,
+        consts: Dict[str, NumberOrArray] = None,
     ):
         """
         Warning:
@@ -519,8 +519,8 @@ class ScalarExpression(ExpressionBase):
         expression: ExpressionType = 0,
         signature: Optional[Sequence[Union[str, List[str]]]] = None,
         *,
-        user_funcs: Optional[Dict[str, Any]] = None,
-        consts: Optional[Dict[str, Any]] = None,
+        user_funcs: Optional[Dict[str, Callable]] = None,
+        consts: Optional[Dict[str, NumberOrArray]] = None,
         allow_indexed: bool = False,
     ):
         """
@@ -719,7 +719,8 @@ class TensorExpression(ExpressionBase):
         expression: ExpressionType,
         signature: Optional[Sequence[Union[str, List[str]]]] = None,
         *,
-        user_funcs: Optional[Dict[str, Any]] = None,
+        user_funcs: Optional[Dict[str, Callable]] = None,
+        consts: Optional[Dict[str, NumberOrArray]] = None,
     ):
         """
         Warning:
@@ -741,6 +742,10 @@ class TensorExpression(ExpressionBase):
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expression.
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
         """
         from sympy.tensor.array.ndim_array import ImmutableNDimArray
 
@@ -771,7 +776,10 @@ class TensorExpression(ExpressionBase):
             sympy_expr = sympy.Array(sympy_parser.parse_expr(expression))
 
         super().__init__(
-            expression=sympy_expr, signature=signature, user_funcs=user_funcs
+            expression=sympy_expr,
+            signature=signature,
+            user_funcs=user_funcs,
+            consts=consts,
         )
 
     def __repr__(self):
@@ -927,8 +935,8 @@ def evaluate(
     *,
     bc: BoundariesData = "auto_periodic_neumann",
     bc_ops: Dict[str, BoundariesData] = None,
-    user_funcs: Dict[str, Any] = None,
-    consts: Dict[str, Any] = None,
+    user_funcs: Dict[str, Callable] = None,
+    consts: Dict[str, NumberOrArray] = None,
     label: str = None,
 ) -> DataFieldBase:
     """evaluate an expression involving fields
@@ -942,8 +950,9 @@ def evaluate(
             name, i.e., `laplace` for a scalar Laplacian and `vector_laplace` for a
             Laplacian operating on a vector field. Moreover, the dot product between
             two vector fields can be denoted by using `dot(field1, field2)` in the
-            expression, an outer product is calculated using `outer(field1, field2)`,
-            and `integral(field)` denotes an integral over a field.
+            expression, and `outer(field1, field2)` calculates an outer product.
+            More information can be found in the
+            :ref:`expression documentation <documentation-expressions>`.
         fields (dict):
             Dictionary of the fields involved in the expression.
         bc:
@@ -962,10 +971,11 @@ def evaluate(
             These can be either scalar numbers or fields defined on the same grid as the
             actual simulation.
         label (str):
-            Name of the field that is returned
+            Name of the field that is returned.
 
     Returns:
-        :class:`pde.fields.base.DataFieldBase`: The resulting field
+        :class:`pde.fields.base.DataFieldBase`: The resulting field. The rank of the
+        returned field (and thus the precise class) is determined automatically.
     """
     from sympy.core.function import AppliedUndef
 
@@ -1083,7 +1093,7 @@ def evaluate(
     func = expr._get_function(single_arg=False, user_funcs=ops)
     result_data = func(*field_data, None, {}, *extra_args)
 
-    # turn result field
+    # turn result into a proper field
     result_rank = result_data.ndim - grid.num_axes
     result_cls = DataFieldBase.get_class_by_rank(result_rank)
     dtype = complex if expr.complex else float
