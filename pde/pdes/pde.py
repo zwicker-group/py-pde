@@ -22,7 +22,7 @@ from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike
+from ..tools.typing import ArrayLike, NumberOrArray
 
 
 class PDE(PDEBase):
@@ -42,11 +42,12 @@ class PDE(PDEBase):
     def __init__(
         self,
         rhs: Dict[str, str],
+        *,
         noise: ArrayLike = 0,
         bc: BoundariesData = "auto_periodic_neumann",
         bc_ops: Dict[str, BoundariesData] = None,
-        user_funcs: Dict[str, Any] = None,
-        consts: Dict[str, Any] = None,
+        user_funcs: Dict[str, Callable] = None,
+        consts: Dict[str, NumberOrArray] = None,
     ):
         r"""
         Warning:
@@ -67,6 +68,8 @@ class PDE(PDEBase):
                 denoted by using `dot(field1, field2)` in the expression, an outer
                 product is calculated using `outer(field1, field2)`, and
                 `integral(field)` denotes an integral over a field.
+                More information can be found in the
+                :ref:`expression documentation <documentation-expressions>`.
             noise (float or :class:`~numpy.ndarray`):
                 Magnitude of additive Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
@@ -127,7 +130,8 @@ class PDE(PDEBase):
         explicit_time_dependence = False
         complex_valued = False
         for var, rhs_str in rhs.items():
-            consts_d = {name: None for name in consts}
+            # create placeholder dictionary of constants that will be specified later
+            consts_d: Dict[str, NumberOrArray] = {name: 0 for name in consts}
             rhs_expr = ScalarExpression(rhs_str, user_funcs=user_funcs, consts=consts_d)
 
             if rhs_expr.depends_on("t"):
@@ -392,7 +396,8 @@ class PDE(PDEBase):
 
         if "outer" in self.diagnostics["operators"]:  # type: ignore
             # generate an operator that calculates an outer product
-            ops_general["outer"] = VectorField(state.grid).make_outer_prod_operator()
+            vec_field = VectorField(state.grid)
+            ops_general["outer"] = vec_field.make_outer_prod_operator(backend)
 
         if "integral" in self.diagnostics["operators"]:  # type: ignore
             # add an operator that integrates a field

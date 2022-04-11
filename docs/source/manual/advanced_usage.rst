@@ -83,6 +83,50 @@ Dirichlet boundary condition (vanishing value), depending on the periodicity of 
 underlying grid. 
 
 
+.. _documentation-expressions:
+
+Expressions
+"""""""""""
+Expressions are strings that describe mathematical expressions. They can be used in
+several places, most prominently in defining PDEs using :class:`~pde.pdes.pde.PDE`,
+in creating fields using :meth:`~pde.fields.scalar.ScalarField.from_expression`, and in
+defining boundary conditions; see section above.
+Expressions are parsed using :mod:`sympy`, so  the expected syntax is defined by this
+python package. While we describe some common use cases below, it might be best to test
+the abilities using the :func:`~pde.tools.expressions.evaluate` function.  
+
+ 
+.. warning::
+    To interpret arbitrary expressions, the package uses :func:`exec`. It
+    should therefore not be used in a context where malicious input could occur.
+    
+    
+Simple expressions can contain many standard mathematical functions, e.g.,
+:code:`sin(a) + b**2` is a valid expression. :class:`~pde.pdes.pde.PDE` and 
+:func:`~pde.tools.expressions.evaluate` furthermore accept differential operators
+defined in this package. Note that operators need to be specified with their full name,
+i.e., `laplace` for a scalar Laplacian and `vector_laplace` for a Laplacian operating on
+a vector field. Moreover, the dot product between two vector fields can be denoted by
+using :code:`dot(field1, field2)` in the expression, and :code:`outer(field1, field2)`
+calculates an outer product. In this case, boundary conditons for the operators can be
+specified using the `bc` argument, in which case the same boundary conditions are
+applied to all operators. The additional argument `bc_ops` provides a more fine-grained
+control, where conditions for each individual operator can be specified.
+
+Field expressions can also directly depend on spatial coordinates. For instance, if a
+field is defined on a two-dimensional Cartesian grid, the variables :code:`x` and
+:code:`y` denote the local coordinates. Moreover, expressions for equations in
+:class:`~pde.pdes.pde.PDE` can explicitely depend on time, which is denoted by the
+variable :code:`t`.
+
+Expressions also support user-defined functions via the `user_funcs` argument, which is
+a dictionary that maps the name of a function to an actual implementation. Finally,
+constants can be defined using the `consts` argument. Constants can either be individual
+numbers or spatially extended data, which provide values for each grid point. Note that
+in the latter case only the actual grid data should be supplied, i.e., the `data`
+attribute of a potential field class. 
+
+
 Custom PDE classes
 """"""""""""""""""
 To implement a new PDE in a way that all of the machinery of `py-pde` can be

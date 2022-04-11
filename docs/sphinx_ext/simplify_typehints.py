@@ -96,21 +96,22 @@ REPLACEMENTS = [
 REPLACEMENTS_REGEX = {
     # remove full package path and only leave the module/class identifier
     "pde\.(\w+\.)*": "",
+    "typing\.": "",
 }
 
 
 def process_signature(
     app, what: str, name: str, obj, options, signature, return_annotation
 ):
-    """ Process signature by applying replacement rules """
+    """Process signature by applying replacement rules"""
 
     def process(sig_obj):
-        """ process the signature object """
+        """process the signature object"""
         if sig_obj is not None:
-            for key, value in REPLACEMENTS:
-                sig_obj = sig_obj.replace(key, value)
             for key, value in REPLACEMENTS_REGEX.items():
                 sig_obj = re.sub(key, value, sig_obj)
+            for key, value in REPLACEMENTS:
+                sig_obj = sig_obj.replace(key, value)
         return sig_obj
 
     signature = process(signature)
@@ -120,5 +121,5 @@ def process_signature(
 
 
 def setup(app):
-    """ set up hooks for this sphinx plugin """
+    """set up hooks for this sphinx plugin"""
     app.connect("autodoc-process-signature", process_signature)

@@ -7,36 +7,21 @@ TODO
 * Think about a way to save information about how the right hand side of the PDE
     - this should be forwarded to solver to store with the diagnostics
     - this could for instance store whether a staggered grid was used
-* Automatically register derivative with respect to a single axis
-    - pattern: d_*(field), e.g., d_x(field)
-    - second derivatives, too? d2_*(field)
-    - can we support this for all grids or just for Cartesian grids?
-    - should also apply to vectors and tensors
-    - would need a new method that generates the respective operators
-* Allow creating ScalarFields from data points and from a python function 
 * Indicate periodic boundary by dashed/dotted axes in image plot?
     - use ax.spines['top'].set_linestyle((0, (5, 10)))
-* Add support for dtype=np.single
-    - Add general support for dtype in classmethods (e.g. to create random fields)
 * Improve interactive plotting:
     - allow displaying time somewhere (statusbar or extra widget)
     - Improve this display by adding a progress bar and support displaying extra text
     - allow displaying data from storage in n-d manner
-* Add documentation entry for how to build expressions
-    - Improved documentation on how to set boundary conditions
-* Implement Gray Scott Model of Reaction Diffusion
 * Plot tracker:
     - plot final state in the live view (finalize does not get the final state yet)
     - we could for instance have a flag on trackers, whether they are being handled a final time
     - an alternative would be to pass the final state to the `finalize` method 
 * Think about logger names (add `pde.` before class name)
-* Support 3d plots in plot (use for Laplace and Poisson eq) 
 * Add Glossary or something to development guide
     - e.g., state = attributes + data
-* Improve cell_volume and cell_volume_data of grids to be more useful
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable
-* Fix progress bar when starting from non-zero t_start?
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`
   - mimic this interface for plotting 3d droplets?
@@ -45,15 +30,6 @@ TODO
 	- general Trackers
 	- Different intervals for trackers
 	- Interpolating using boundary conditions
-* Think about better interface to convert between different coordinate systems:
-	- we have global Cartesian coordinates, grid coordinates, and cell indices
-	- all functions dealing with points or returning points should be able to
-	  handle all coordinate types?!
-	- what is the best interface?
-	- can we just add an option coords='cells', coords='cartesian', coords='grid'
-	  to methods that return points (or accept points)
-	- there should also be a method `convert_coords(from, to)`
-
 
 
 LOW-PRIORITY (Future ideas)

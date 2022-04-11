@@ -52,7 +52,7 @@ class PDEBase(metaclass=ABCMeta):
     """ bool: Flag indicating whether the right hand side is a complex-valued PDE, which
     requires all involved variables to be of complex type """
 
-    def __init__(self, noise: ArrayLike = 0, rng: np.random.Generator = None):
+    def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator = None):
         """
         Args:
             noise (float or :class:`~numpy.ndarray`):

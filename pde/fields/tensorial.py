@@ -53,6 +53,8 @@ class Tensor2Field(DataFieldBase):
                 tensor field. The expressions determine the values as a function of the
                 position on the grid. The expressions may contain standard mathematical
                 functions and they may depend on the axes labels of the grid.
+                More information can be found in the
+                :ref:`expression documentation <documentation-expressions>`.
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
