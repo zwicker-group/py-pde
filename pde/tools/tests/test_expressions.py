@@ -10,6 +10,7 @@ import pytest
 
 from pde import ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.tools.expressions import *
+from pde.tools.expressions import BCDataError
 
 
 def test_parse_number():
@@ -335,3 +336,25 @@ def test_evaluate_func_vector():
     np.testing.assert_almost_equal(res.data, [[grid.axes_coords[0] ** 2]])
 
     assert isinstance(evaluate("gradient(a)", {"a": field}), VectorField)
+
+
+def test_evaluate_func_invalid():
+    """test the evaluate function with invalid data"""
+    grid = UnitGrid([3])
+    field = ScalarField.from_expression(grid, "x")
+
+    with pytest.raises(ValueError):
+        evaluate("x", {})
+
+    with pytest.raises(ValueError):
+        evaluate("x", {"x": field})
+
+    field2 = ScalarField.from_expression(UnitGrid([4]), "x")
+    with pytest.raises(ValueError):
+        evaluate("a + b", {"a": field, "b": field2})
+
+    with pytest.raises(BCDataError):
+        evaluate("laplace(a)", {"a": field}, bc=RuntimeError)
+
+    with pytest.raises(RuntimeError):
+        evaluate("a + b", {"a": field})

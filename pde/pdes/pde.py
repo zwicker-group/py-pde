@@ -393,7 +393,8 @@ class PDE(PDEBase):
 
         if "outer" in self.diagnostics["operators"]:  # type: ignore
             # generate an operator that calculates an outer product
-            ops_general["outer"] = VectorField(state.grid).make_outer_prod_operator()
+            vec_field = VectorField(state.grid)
+            ops_general["outer"] = vec_field.make_outer_prod_operator(backend)
 
         if "integral" in self.diagnostics["operators"]:  # type: ignore
             # add an operator that integrates a field

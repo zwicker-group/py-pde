@@ -1014,17 +1014,16 @@ def evaluate(
         raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
 
     # obtain the (differential) operators
-    backend = "numpy"
     ops: Dict[str, Callable] = {}
     for func in operators:
         if func == "dot" or func == "inner":
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
-            ops[func] = VectorField(grid).make_dot_operator(backend)
+            ops[func] = VectorField(grid).make_dot_operator(backend="numpy")
 
         elif func == "outer":
             # generate an operator that calculates an outer product
-            ops[func] = VectorField(grid).make_outer_prod_operator()
+            ops[func] = VectorField(grid).make_outer_prod_operator(backend="numpy")
 
         else:
             # determine boundary conditions for this operator and variable
@@ -1077,14 +1076,11 @@ def evaluate(
 
     logger.info("Expression has signature %s", signature)
 
-    # prepare the actual function being called in the end
-    if backend == "numpy":
-        func = expr._get_function(single_arg=False, user_funcs=ops)
-    else:
-        raise ValueError(f"Unsupported backend {backend}")
-
     # extract input field data and calculate result
     field_data = [field.data for field in fields.values()]
+
+    # calculate the result of the expression
+    func = expr._get_function(single_arg=False, user_funcs=ops)
     result_data = func(*field_data, None, {}, *extra_args)
 
     # turn result field
