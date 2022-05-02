@@ -320,6 +320,15 @@ def test_evaluate_func_scalar():
     res = evaluate("a - x", {"a": field})
     np.testing.assert_almost_equal(res.data, 0)
 
+    field_c = ScalarField.from_expression(grid, "1 + 1j")
+    res = evaluate("c", {"c": field_c})
+    assert res.dtype == "complex"
+    np.testing.assert_almost_equal(res.data, field_c.data)
+
+    res = evaluate("abs(a)**2", {"a": field_c})
+    assert res.dtype == "float"
+    np.testing.assert_allclose(res.data, 2)
+
 
 def test_evaluate_func_vector():
     """test the evaluate function with vector fields"""

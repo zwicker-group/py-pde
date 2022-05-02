@@ -241,7 +241,7 @@ if tags.has("exclude_gallery"):
     print("Example gallery will be excluded...")
     toc_filter_exclude = ["gallery"]
 else:
-    print("NORMAL DOC")
+    print("Example gallery will be included...")
     toc_filter_exclude = []
 
 

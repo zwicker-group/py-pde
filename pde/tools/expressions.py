@@ -1099,8 +1099,7 @@ def evaluate(
     # turn result into a proper field
     result_rank = result_data.ndim - grid.num_axes
     result_cls = DataFieldBase.get_class_by_rank(result_rank)
-    dtype = complex if expr.complex else float
-    return result_cls(grid, result_data, label=label, dtype=dtype)
+    return result_cls(grid, result_data, label=label)
 
 
 __all__ = [
