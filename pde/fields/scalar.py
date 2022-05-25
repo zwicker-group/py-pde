@@ -79,14 +79,15 @@ class ScalarField(DataFieldBase):
         """create a scalar field from an image
 
         Args:
-            path (:class:`Path` or str): The path to the image
-            bounds (tuple, optional): Gives the coordinate range for each axis.
-                This should be two tuples of two numbers each, which mark the
-                lower and upper bound for each axis.
-            periodic (bool or list): Specifies which axes possess periodic
-                boundary conditions. This is either a list of booleans defining
-                periodicity for each individual axis or a single boolean value
-                specifying the same periodicity for all axes.
+            path (:class:`Path` or str):
+                The path to the image file
+            bounds (tuple, optional):
+                Gives the coordinate range for each axis. This should be two tuples of
+                two numbers each, which mark the lower and upper bound for each axis.
+            periodic (bool or list):
+                Specifies which axes possess periodic boundary conditions. This is
+                either a list of booleans defining periodicity for each individual axis
+                or a single boolean value specifying the same periodicity for all axes.
             label (str, optional):
                 Name of the field
         """
