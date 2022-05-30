@@ -2,8 +2,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-
 import numpy as np
+import pytest
 
 from pde.tools.math import SmoothData1D
 
@@ -27,3 +27,8 @@ def test_SmoothData1D():
     assert 0.5 in s
     assert x.max() in s
     assert 1.1 not in s
+
+    x = np.arange(3)
+    y = [0, 1, np.nan]
+    s = SmoothData1D(x, y)
+    assert s(0.5) == pytest.approx(0.5)

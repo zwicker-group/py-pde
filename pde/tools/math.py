@@ -36,6 +36,12 @@ class SmoothData1D:
         if self.x.shape != self.y.shape:
             raise ValueError("`x` and `y` must have equal number of elements")
 
+        # only take finite values
+        idx = np.isfinite(self.y)
+        if not np.all(idx):
+            self.x = self.x[idx]
+            self.y = self.y[idx]
+
         if sigma is None:
             self.sigma = float(self.sigma_auto_scale * self.x.ptp() / len(self.x))
         else:
