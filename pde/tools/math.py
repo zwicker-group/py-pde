@@ -70,8 +70,12 @@ class SmoothData1D:
         xs = np.ravel(xs)
         scale = 0.5 * self.sigma**-2
 
+        # determine the weights of all input points
         with np.errstate(under="ignore"):
             weight = np.exp(-scale * (self.x[:, None] - xs[None, :]) ** 2)
-            weight /= weight.sum(axis=0)
-        result = np.dot(self.y, weight)
+            weight_sum = weight.sum(axis=0)
+            i = weight_sum > 0
+            weight[..., i] /= weight_sum[i]
+
+        result = self.y @ weight
         return result.reshape(shape)
