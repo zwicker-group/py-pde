@@ -178,7 +178,10 @@ class ExplicitSolver(SolverBase):
                 # calculate maximal error
                 error = 0.0
                 for i in range(state_data.size):
-                    error = max(error, abs(k1.flat[i] - k2.flat[i]))
+                    # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
+                    # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
+                    # we thus need to use the following order:
+                    error = max(abs(k1.flat[i] - k2.flat[i]), error)
                 error *= dt  # error estimate should be independent of magnitude of dt
 
                 # do the step if the error is sufficiently small

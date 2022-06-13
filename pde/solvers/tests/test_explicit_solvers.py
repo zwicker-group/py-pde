@@ -8,6 +8,7 @@ import numpy as np
 import pytest
 
 from pde import PDE, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
+from pde.pdes import PDEBase
 from pde.solvers import Controller, ExplicitSolver
 
 
@@ -99,3 +100,34 @@ def test_unsupported_stochastic_solvers():
         eq.solve(field, 1, method="explicit", scheme="runge-kutta", tracker=None)
     with pytest.raises(RuntimeError):
         eq.solve(field, 1, method="scipy", scheme="runge-kutta", tracker=None)
+
+
+def test_adaptive_solver_nan():
+    """test whether the adaptive solver can treat nans"""
+
+    class MockPDE(PDEBase):
+        """simple PDE which returns NaN every 5 evaluations"""
+
+        evaluations = 0
+
+        def evolution_rate(self, state, t):
+            MockPDE.evaluations += 1
+            if MockPDE.evaluations % 5 == 1:
+                return ScalarField(state.grid, data=np.nan)
+            else:
+                return state.copy()
+
+    field = ScalarField(UnitGrid([2]))
+    eq = MockPDE()
+    sol, info = eq.solve(
+        field,
+        1,
+        dt=0.1,
+        method="explicit",
+        backend="numpy",
+        adaptive=True,
+        ret_info=True,
+    )
+
+    np.testing.assert_allclose(sol.data, 0)
+    assert info["solver"]["dt_last"] > 0.1
