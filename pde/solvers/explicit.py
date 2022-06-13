@@ -190,9 +190,16 @@ class ExplicitSolver(SolverBase):
 
                 # adjust the time step
                 if error < 1e-8:
-                    dt *= 4.0  # maximal increase in dt
+                    # error was very small => maximal increase in dt
+                    dt *= 4.0
+                elif np.isnan(error):
+                    # state contained NaN => decrease time step strongly
+                    dt *= 0.25
                 else:
+                    # otherwise, adjust time step according to error
                     dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
+
+                # limit time step to permissible bracket
                 if dt > dt_max:
                     dt = dt_max
                 elif dt < dt_min:
