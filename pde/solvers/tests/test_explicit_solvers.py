@@ -102,8 +102,10 @@ def test_unsupported_stochastic_solvers():
         eq.solve(field, 1, method="scipy", scheme="runge-kutta", tracker=None)
 
 
-def test_adaptive_solver_nan():
+@pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
+def test_adaptive_solver_nan(scheme):
     """test whether the adaptive solver can treat nans"""
+    frequency = 5 if scheme == "euler" else 20
 
     class MockPDE(PDEBase):
         """simple PDE which returns NaN every 5 evaluations"""
@@ -112,7 +114,7 @@ def test_adaptive_solver_nan():
 
         def evolution_rate(self, state, t):
             MockPDE.evaluations += 1
-            if MockPDE.evaluations % 5 == 1:
+            if MockPDE.evaluations % frequency == 1:
                 return ScalarField(state.grid, data=np.nan)
             else:
                 return state.copy()
@@ -124,6 +126,7 @@ def test_adaptive_solver_nan():
         1,
         dt=0.1,
         method="explicit",
+        scheme=scheme,
         backend="numpy",
         adaptive=True,
         ret_info=True,
