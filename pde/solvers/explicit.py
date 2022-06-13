@@ -371,7 +371,10 @@ class ExplicitSolver(SolverBase):
                         + r5 * k5.flat[i]
                         + r6 * k6.flat[i]
                     )
-                    error = max(error, error_local)  # type: ignore
+                    # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
+                    # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
+                    # we thus need to use the following order:
+                    error = max(error_local, error)  # type: ignore
 
                 # do the step if the error is sufficiently small
                 if error <= tolerance:
@@ -381,9 +384,16 @@ class ExplicitSolver(SolverBase):
 
                 # adjust the time step
                 if error < 1e-8:
-                    dt *= 4.0  # maximal increase in dt
+                    # error was very small => maximal increase in dt
+                    dt *= 4.0
+                elif np.isnan(error):
+                    # state contained NaN => decrease time step strongly
+                    dt *= 0.25
                 else:
+                    # otherwise, adjust time step according to error
                     dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
+
+                # limit time step to permissible bracket
                 if dt > dt_max:
                     dt = dt_max
                 elif dt < dt_min:
