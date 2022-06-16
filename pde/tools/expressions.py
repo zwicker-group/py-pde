@@ -121,7 +121,7 @@ def _heaviside_implemention(x1, x2=0.5):
 
 @overload(np.heaviside)
 def np_heaviside(x1, x2):
-    """numba implementation of the heaviside function"""
+    """numba implementation of the Heaviside function"""
     return _heaviside_implemention
 
 

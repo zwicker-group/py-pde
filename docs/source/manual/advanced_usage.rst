@@ -115,9 +115,11 @@ control, where conditions for each individual operator can be specified.
 
 Field expressions can also directly depend on spatial coordinates. For instance, if a
 field is defined on a two-dimensional Cartesian grid, the variables :code:`x` and
-:code:`y` denote the local coordinates. Moreover, expressions for equations in
-:class:`~pde.pdes.pde.PDE` can explicitely depend on time, which is denoted by the
-variable :code:`t`.
+:code:`y` denote the local coordinates. To initialize a step profile in the
+:math:`x`-direction, one can use either :code:`(x > 5)` or :code:`heaviside(x - 5, 0.5)`,
+where the second argument denotes the returned value in case the first argument is `0`.
+Finally, expressions for equations in :class:`~pde.pdes.pde.PDE` can explicitely depend
+on time, which is denoted by the variable :code:`t`.
 
 Expressions also support user-defined functions via the `user_funcs` argument, which is
 a dictionary that maps the name of a function to an actual implementation. Finally,
