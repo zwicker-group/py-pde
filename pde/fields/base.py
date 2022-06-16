@@ -992,9 +992,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 \Gamma^2 |\boldsymbol k|^\nu \delta_{ij}
                 \delta(\boldsymbol k - \boldsymbol k’)
 
-        in spectral space. The special case :math:`\nu = 0` corresponds to white
-        noise. Note that the components of vector or tensor fields are
-        uncorrelated.
+        in spectral space, where :math:`\boldsymbol k` is the wave vector. The special
+        case :math:`\nu = 0` corresponds to white noise. Note that the components of
+        vector or tensor fields are uncorrelated.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
