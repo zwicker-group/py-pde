@@ -1,6 +1,6 @@
 """
 Base classes
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
@@ -485,12 +485,13 @@ class PDEBase(metaclass=ABCMeta):
                 and final time of the simulation. If only a single value is given, it is
                 interpreted as `t_end` and the time range is assumed to be `(0, t_end)`.
             dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen. In particular, if
-                `method == 'auto'`, the :class:`~pde.solvers.ScipySolver` with an
-                automatic, adaptive time step is used. This is a flexible choice, but
-                might be slower than using a fixed time step, where the explicit solver
-                :class:`~pde.solvers.explicit.ExplicitSolver` is when `method == 'auto'`.
+                Time step of the chosen stepping scheme. If `None`, a default
+                value based on the stepper will be chosen. In particular, if
+                `method == 'auto'`, the :class:`~pde.solvers.ScipySolver` with
+                an automatic, adaptive time step provided by scipy is used.
+                This is a flexible choice, but might be slower than using a
+                fixed time step, where the explicit solver
+                :class:`~pde.solvers.explicit.ExplicitSolver` is set.
             tracker:
                 Defines a tracker that process the state of the simulation at specified
                 time intervals. A tracker is either an instance of
@@ -504,12 +505,17 @@ class PDEBase(metaclass=ABCMeta):
                 detail. In particular, the interval at which the tracker is evaluated
                 can be chosen when creating a tracker object explicitly.
             method (:class:`~pde.solvers.base.SolverBase` or str):
-                Specifies a method for solving the differential equation. This can
-                either be an instance of :class:`~pde.solvers.base.SolverBase` or a
-                descriptive name like 'explicit' or 'scipy'. The valid names are given
-                by :meth:`pde.solvers.base.SolverBase.registered_solvers`. The default
-                value 'auto' selects :class:`~pde.solvers.ScipySolver` if `dt` is not
-                specified and otherwise :class:`~pde.solvers.explicit.ExplicitSolver`.
+                Specifies a method for solving the differential equation. This
+                can either be an instance of
+                :class:`~pde.solvers.base.SolverBase` or a descriptive name
+                like 'explicit' or 'scipy'. The valid names are given by
+                :meth:`pde.solvers.base.SolverBase.registered_solvers`. The
+                default value 'auto' selects :class:`~pde.solvers.ScipySolver`
+                if `dt` is not specified. Otherwise
+                :class:`~pde.solvers.explicit.ExplicitSolver` is chosen. Note
+                that the latter class provide also a built-in adaptive stepper
+                that is faster but might then be less accurate than the one
+                provided by :class:`~pde.solvers.ScipySolver`.
             ret_info (bool):
                 Flag determining whether diagnostic information about the solver
                 process should be returned.
