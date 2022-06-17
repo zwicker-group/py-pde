@@ -38,8 +38,41 @@ except ImportError:
 # numba version as a list of integers
 NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
 
+
+class Counter:
+    """helper class for implementing JIT_COUNT
+
+    We cannot use a simple integer for this, since integers are immutable, so if one
+    imports JIT_COUNT from this module it would always stay at the fixed value it had
+    when it was first imported. The workaround would be to import the symbol every time
+    the counter is read, but this is error-prone. Instead, we implement a thin wrapper
+    class around an int, which only supports reading and incrementing the value. Since
+    this object is now mutable it can be used easily. A disadvantage is that the object
+    needs to be converted to int before it can be used in most expressions.
+    """
+
+    def __init__(self, value: int = 0):
+        self._counter = value
+
+    def __eq__(self, other):
+        return self._counter == other
+
+    def __int__(self):
+        return self._counter
+
+    def __iadd__(self, value):
+        self._counter += value
+        return self
+
+    def increment(self):
+        self._counter += 1
+
+    def __repr__(self):
+        return str(self._counter)
+
+
 # global variable counting the number of compilations
-JIT_COUNT = 0
+JIT_COUNT = Counter()
 
 
 TFunc = TypeVar("TFunc", bound="Callable")
@@ -170,8 +203,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
         logger.warning("Compile `%s` with nopython=False", name)
 
     # increase the compilation counter by one
-    global JIT_COUNT
-    JIT_COUNT += 1
+    JIT_COUNT.increment()
 
     return nb.jit(signature, **jit_kwargs)(function)  # type: ignore
 

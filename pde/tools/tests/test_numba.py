@@ -4,7 +4,7 @@
 
 import numpy as np
 
-from pde.tools.numba import flat_idx, jit_allocate_out, numba_environment
+from pde.tools.numba import Counter, flat_idx, jit_allocate_out, numba_environment
 
 
 def test_environment():
@@ -45,3 +45,21 @@ def test_jit_allocate_out_2arg():
     g = jit_allocate_out(out_shape=a.shape, num_args=2)(f)
     np.testing.assert_equal(g(a, b), c)
     np.testing.assert_equal(jit_allocate_out(num_args=2)(f)(a, b), c)
+
+
+def test_counter():
+    """test Counter implementation"""
+    c1 = Counter()
+    assert int(c1) is 0
+    assert c1 == 0
+    assert str(c1) == "0"
+
+    c1.increment()
+    assert int(c1) is 1
+
+    c1 += 2
+    assert int(c1) is 3
+
+    c2 = Counter(3)
+    assert c1 is not c2
+    assert c1 == c2
