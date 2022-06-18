@@ -10,7 +10,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any, Dict, Tuple, TypeVar, Union  # @UnusedImport
 
-from ..tools import numba
+from ..tools.numba import JIT_COUNT
 from ..trackers.base import (
     FinishedSimulation,
     TrackerCollection,
@@ -160,12 +160,12 @@ class Controller:
             return msg_level, msg
 
         # initialize the stepper
-        jit_count_init = numba.JIT_COUNT
+        jit_count_init = int(JIT_COUNT)
         stepper = self.solver.make_stepper(state=state, dt=dt)
         self.diagnostics["jit_count"] = {
-            "make_stepper": numba.JIT_COUNT - jit_count_init
+            "make_stepper": int(JIT_COUNT) - jit_count_init
         }
-        jit_count_after_init = numba.JIT_COUNT
+        jit_count_after_init = int(JIT_COUNT)
 
         # initialize profiling information
         solver_start = datetime.datetime.now()
@@ -235,7 +235,7 @@ class Controller:
         duration = datetime.datetime.now() - solver_start
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t
-        jit_count = numba.JIT_COUNT - jit_count_after_init
+        jit_count = int(JIT_COUNT) - jit_count_after_init
         self.diagnostics["jit_count"]["simulation"] = jit_count
         self.trackers.finalize(info=self.diagnostics)
 
