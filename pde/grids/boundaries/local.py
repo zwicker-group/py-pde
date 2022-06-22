@@ -698,6 +698,8 @@ class ExpressionBC(BCBase):
                 return f"∂{field_name}/∂{axis_name} = {expression}   @ {axis_name}={self.axis_coord}"
             else:
                 return f"-∂{field_name}/∂{axis_name} = {expression}   @ {axis_name}={self.axis_coord}"
+        else:
+            raise NotImplementedError(f"Unsupported target `{target}`")
 
     def _cache_hash(self) -> int:
         """returns a value to determine when a cache needs to be updated"""
