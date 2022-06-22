@@ -274,6 +274,10 @@ class BCBase(metaclass=ABCMeta):
         else:
             return self.grid.axes_bounds[self.axis][0]
 
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        raise NotImplementedError
+
     @classmethod
     def get_help(cls) -> str:
         """Return information on how boundary conditions can be set"""
@@ -649,6 +653,7 @@ class ExpressionBC(BCBase):
         self._logger = logging.getLogger(self.__class__.__name__)
 
         # determine the full expression for setting the value of the virtual point
+        self._input = {"target": target, "expression": value}
         if target == "virtual_point":
             expression = value
         elif target == "value":
@@ -677,7 +682,22 @@ class ExpressionBC(BCBase):
             )
 
     def _repr_value(self):
-        return [f'value="{self._expr.expression}"']
+        return [f'{self._input["target"]}="{self._input["expression"]}"']
+
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        axis_name = self.grid.axes[self.axis]
+        target = self._input["target"]
+        expression = self._input["expression"]
+        if target == "virtual_point":
+            return f"{field_name} = {expression}   @ virtual point"
+        elif target == "value":
+            return f"{field_name} = {expression}   @ {axis_name}={self.axis_coord}"
+        elif target == "derivative":
+            if self.upper:
+                return f"∂{field_name}/∂{axis_name} = {expression}   @ {axis_name}={self.axis_coord}"
+            else:
+                return f"-∂{field_name}/∂{axis_name} = {expression}   @ {axis_name}={self.axis_coord}"
 
     def _cache_hash(self) -> int:
         """returns a value to determine when a cache needs to be updated"""
@@ -1439,6 +1459,19 @@ class _PeriodicBC(ConstBC1stOrderBase):
         super().__init__(grid, axis, upper)
         self.flip_sign = flip_sign
 
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        if self.upper:
+            other_coord = self.grid.axes_bounds[self.axis][0]
+        else:
+            other_coord = self.grid.axes_bounds[self.axis][1]
+
+        axis_name = self.grid.axes[self.axis]
+        if self.flip_sign:
+            return f"{field_name}({axis_name}={self.axis_coord}) = -{field_name}({axis_name}={other_coord})"
+        else:
+            return f"{field_name}({axis_name}={self.axis_coord}) = {field_name}({axis_name}={other_coord})"
+
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
         """return data suitable for calculating virtual points
 
@@ -1477,6 +1510,11 @@ class DirichletBC(ConstBC1stOrderBase):
 
     names = ["value", "dirichlet"]  # identifiers for this boundary condition
     normal = False
+
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        axis_name = self.grid.axes[self.axis]
+        return f"{field_name} = {self.value}   @ {axis_name}={self.axis_coord}"
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
         """return data suitable for calculating virtual points
@@ -1539,6 +1577,14 @@ class NeumannBC(ConstBC1stOrderBase):
 
     names = ["derivative", "neumann"]  # identifiers for this boundary condition
     normal = False
+
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        axis_name = self.grid.axes[self.axis]
+        if self.upper:
+            return f"∂{field_name}/∂{axis_name} = {self.value}   @ {axis_name}={self.axis_coord}"
+        else:
+            return f"-∂{field_name}/∂{axis_name} = {self.value}   @ {axis_name}={self.axis_coord}"
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
         """return data suitable for calculating virtual points
@@ -1692,6 +1738,14 @@ class MixedBC(ConstBC1stOrderBase):
         if self.value_is_linked:
             obj.link_value(self.value)
         return obj
+
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        axis_name = self.grid.axes[self.axis]
+        if self.upper:
+            return f"∂{field_name}/∂{axis_name} + {self.value} * {field_name} = {self.const}   @ {axis_name}={self.axis_coord}"
+        else:
+            return f"-∂{field_name}/∂{axis_name} + {self.value} * {field_name} = {self.const}   @ {axis_name}={self.axis_coord}"
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
         """return data suitable for calculating virtual points
@@ -2040,6 +2094,14 @@ class CurvatureBC(ConstBC2ndOrderBase):
 
     names = ["curvature", "second_derivative", "extrapolate"]  # identifiers for this BC
     normal = False
+
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        axis_name = self.grid.axes[self.axis]
+        if self.upper:
+            return f"∂²{field_name}/∂{axis_name}² = {self.value}   @ {axis_name}={self.axis_coord}"
+        else:
+            return f"-∂²{field_name}/∂{axis_name}² = {self.value}   @ {axis_name}={self.axis_coord}"
 
     def get_virtual_point_data(
         self,

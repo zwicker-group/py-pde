@@ -72,6 +72,7 @@ def test_individual_boundaries():
 
         assert isinstance(str(bc), str)
         assert isinstance(repr(bc), str)
+        assert "field" in bc.get_mathematical_representation("field")
         assert bc.rank == 0
         assert bc.homogeneous
         bc.check_value_rank(0)
@@ -92,6 +93,7 @@ def test_individual_boundaries_multidimensional():
 
     assert isinstance(str(bc), str)
     assert isinstance(repr(bc), str)
+    assert "field" in bc.get_mathematical_representation("field")
     assert bc.rank == 1
     assert bc.homogeneous
     assert bc.axis_coord == 2
@@ -310,6 +312,7 @@ def test_expression_bc_operator(dim):
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"value": 1})
     bc2 = grid.get_boundary_conditions({"virtual_point": f"2 - value"})
+    assert "field" in bc2.get_mathematical_representation("field")
 
     field = ScalarField(grid, 1)
 
@@ -325,6 +328,7 @@ def test_expression_bc_value(dim):
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"value": 1})
     bc2 = grid.get_boundary_conditions({"value_expression": "1"})
+    assert "field" in bc2.get_mathematical_representation("field")
 
     field = ScalarField(grid, 1)
 
@@ -340,6 +344,7 @@ def test_expression_bc_derivative(dim):
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"derivative": 0})
     bc2 = grid.get_boundary_conditions({"derivative_expression": "0"})
+    assert "field" in bc2.get_mathematical_representation("field")
 
     field = ScalarField(grid, 1)
 
