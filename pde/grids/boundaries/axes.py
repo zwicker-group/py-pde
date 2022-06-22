@@ -193,6 +193,18 @@ class Boundaries(list):
         are periodic according to the boundary conditions"""
         return self.grid.periodic
 
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        result = []
+        for b in self:
+            try:
+                result.extend(b.get_mathematical_representation(field_name))
+            except NotImplementedError:
+                axis_name = self.grid.axes[b.axis]
+                result.append(f"Representation not implemented for axis {axis_name}")
+
+        return "\n".join(result)
+
     def extract_component(self, *indices) -> Boundaries:
         """extracts the boundary conditions of the given component of the tensor.
 

@@ -56,6 +56,8 @@ def test_get_axis_boundaries():
         g = UnitGrid([2], periodic=("periodic" in data))
         b = get_boundary_axis(g, 0, data)
         assert str(b) == '"' + data + '"'
+        b1, b2 = b.get_mathematical_representation("field")
+        assert "field" in b1 and "field" in b2
 
         if "periodic" in data:
             assert b.periodic

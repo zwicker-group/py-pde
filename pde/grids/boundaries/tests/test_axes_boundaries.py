@@ -25,6 +25,8 @@ def test_boundaries():
         assert bcs.grid.num_axes == 2
         assert bcs[0] == bc_x
         assert bcs[1] == bc_y
+        assert "field" in bcs.get_mathematical_representation("field")
+
         assert bcs == Boundaries.from_data(g, [bc_x, bc_y])
         if bx == by:
             assert bcs == Boundaries.from_data(g, bx)
