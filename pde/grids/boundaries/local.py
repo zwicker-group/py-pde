@@ -10,11 +10,10 @@ The module currently supports different boundary conditions:
 * :class:`~pde.grids.boundaries.local.DirichletBC`:
   Imposing the value of a field at the boundary
 * :class:`~pde.grids.boundaries.local.NeumannBC`:
-  Imposing the derivative of a field in the outward normal direction at the
-  boundary
+  Imposing the derivative of a field in the outward normal direction at the boundary
 * :class:`~pde.grids.boundaries.local.MixedBC`:
-  Imposing the derivative of a field in the outward normal direction
-  proportional to its value at the boundary  
+  Imposing the derivative of a field in the outward normal direction proportional to its
+  value at the boundary  
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing the second derivative (curvature) of a field at the boundary
   
@@ -25,6 +24,21 @@ corresponding to the ones listed above are
 :class:`~pde.grids.boundaries.local.NeumannNormalBC`,
 :class:`~pde.grids.boundaries.local.MixedNormalBC`, and
 :class:`~pde.grids.boundaries.local.CurvatureNormalBC`.
+
+Finally, there are more specialized classes, which offer greater flexibility, but might
+also require a slightly deeper understanding for proper use:
+
+* :class:`~pde.grids.boundaries.local.ExpressionValueBC`:
+  Imposing the value of a field at the boundary based on a mathematical expression
+* :class:`~pde.grids.boundaries.local.NeumannBC`:
+  Imposing the derivative of a field in the outward normal direction at the boundary
+  based on a mathematical expression
+* :class:`~pde.grids.boundaries.local.UserBC`:
+  Allows full control for setting virtual points, values, or derivatives. The boundary
+  conditions are never enforced automatically. It is thus the user's responsibility to
+  ensure virtual points are set correctly before operators are applied. To set boundary
+  conditions a dictionary :code:`{"user": value}` must be supplied as argument `args` to
+  :meth:`set_ghost_cells` or the numba equivalent.
 
 Note that derivatives are generally given in the direction of the outward normal vector,
 such that positive derivatives correspond to a function that increases across the
@@ -397,21 +411,19 @@ class BCBase(metaclass=ABCMeta):
         if "type" in data.keys():
             # type is given (optionally with a value)
             b_type = data.pop("type")
-            b_value = data.pop("value", 0)
+            return cls.from_str(grid, axis, upper, condition=b_type, rank=rank, **data)
 
         elif len(data) == 1:
             # only a single items is given
             b_type, b_value = data.popitem()
+            return cls.from_str(
+                grid, axis, upper, condition=b_type, rank=rank, value=b_value, **data
+            )
 
         else:
             raise BCDataError(
                 f"Boundary conditions `{str(list(data.keys()))}` are not supported."
             )
-
-        # initialize the boundary class with all remaining values forwarded
-        return cls.from_str(
-            grid, axis, upper, condition=b_type, rank=rank, value=b_value, **data
-        )
 
     @classmethod
     def from_data(
@@ -481,9 +493,14 @@ class BCBase(metaclass=ABCMeta):
     def copy(self, upper: Optional[bool] = None, rank: int = None) -> BCBase:
         pass
 
-    @abstractmethod
     def extract_component(self, *indices):
-        pass
+        """extracts the boundary conditions for the given component
+
+        Args:
+            *indices:
+                One or two indices for vector or tensor fields, respectively
+        """
+        raise NotImplementedError
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         raise NotImplementedError
@@ -607,6 +624,302 @@ class BCBase(metaclass=ABCMeta):
         return ghost_cell_setter  # type: ignore
 
 
+class UserBC(BCBase):
+    """represents a boundary whose virtual point are set by the user.
+
+    Warning:
+        Boundary conditions will only be set when a dictionary :code:`{"user": value}` is
+        supplied as argument `args` to :meth:`set_ghost_cells` or the numba equivalent.
+        This implies that the boundary conditions are never enforced automatically,
+        e.g., when evaluating an operator. It is thus the user's responsibility to
+        ensure virtual points are set correctly before operators are applied.
+    """
+
+    names = ["user"]
+
+    @fill_in_docstring
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        *,
+        rank: int = 0,
+        target: str = "virtual_point",
+    ):
+        """
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid for which the boundary conditions are defined
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the field for this boundary condition
+            target (str):
+                Selects which value is actually set. Possible choices include `value`,
+                `derivative`, and `virtual_point`.
+        """
+        super().__init__(grid, axis, upper, rank=rank)
+        self.target = target
+
+    def _repr_value(self):
+        return [f'target="{self.target}"']
+
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        axis_name = self.grid.axes[self.axis]
+        if self.target == "virtual_point":
+            return f"{field_name} = user-controlled   @ virtual point"
+        elif self.target == "value":
+            return f"{field_name} = user-controlled   @ {axis_name}={self.axis_coord}"
+        elif self.target == "derivative":
+            if self.upper:
+                return f"∂{field_name}/∂{axis_name} = user-controlled   @ {axis_name}={self.axis_coord}"
+            else:
+                return f"-∂{field_name}/∂{axis_name} = user-controlled   @ {axis_name}={self.axis_coord}"
+        else:
+            raise NotImplementedError(f"Unsupported target `{self.target}`")
+
+    def _cache_hash(self) -> int:
+        """returns a value to determine when a cache needs to be updated"""
+        return hash(
+            (self.__class__.__name__, self.grid._cache_hash(), self.axis, self.target)
+        )
+
+    def __eq__(self, other):
+        """checks for equality neglecting the `upper` property"""
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return super().__eq__(other) and self.target == other.target
+
+    def copy(
+        self,
+        upper: Optional[bool] = None,
+        rank: int = None,
+    ) -> UserBC:
+        """return a copy of itself, but with a reference to the same grid"""
+        return self.__class__(
+            grid=self.grid,
+            axis=self.axis,
+            upper=self.upper if upper is None else upper,
+            rank=self.rank if rank is None else rank,
+            target=self.target,
+        )
+
+    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+        """set the ghost cell values for this boundary
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+            values  (:class:`~numpy.ndarray`):
+                The values determining the values of the ghost cell. The interpretation
+                of this values is determined by `self.target`.
+        """
+        if args is None or "user" not in args:
+            # usual case where set_ghost_cells is called automatically. In our case,
+            # won't do anything since we expect the user to call the function manually
+            # with the user data provided as the argument.
+            return
+
+        # prepare the array of slices to index bcs
+        offset = data_full.ndim - self.grid.num_axes  # additional data axes
+        idx_offset = [slice(None)] * offset
+        idx_valid = [slice(1, -1)] * self.grid.num_axes
+        idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
+        idx_write[offset + self.axis] = -1 if self.upper else 0
+        idx_read = idx_write[:]
+        idx_read[offset + self.axis] = -2 if self.upper else 1
+
+        # if self.normal:
+        #     assert offset > 0
+        #     idx_write[offset - 1] = self.axis
+        #     idx_read[offset - 1] = self.axis
+
+        # get values right next to the boundary
+        bndry_values = data_full[tuple(idx_read)]
+
+        # calculate the virtual points
+        if self.target == "virtual_point":
+            data_full[tuple(idx_write)] = args["user"]
+        elif self.target == "value":
+            data_full[tuple(idx_write)] = 2 * args["user"] - bndry_values
+        elif self.target == "derivative":
+            dx = self.grid.discretization[self.axis]
+            data_full[tuple(idx_write)] = dx * args["user"] + bndry_values
+        else:
+            raise NotImplementedError(f"Unsupported target `{self.target}`")
+
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
+        """returns a function evaluating the value at the virtual support point
+
+        Returns:
+            function: A function that takes the data array and an index marking
+            the current point, which is assumed to be a virtual point. The
+            result is the data value at this point, which is calculated using
+            the boundary condition.
+        """
+        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
+        bndry_shape = tuple(
+            s for axis, s in enumerate(self.grid.shape) if axis != self.axis
+        )
+
+        if self.target == "virtual_point":
+
+            @register_jitable
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args) -> float:
+                """evaluate the virtual point at `idx`"""
+                _, _, bc_idx = get_arr_1d(arr, idx)
+                return np.broadcast_to(args, bndry_shape)[bc_idx]  # type: ignore
+
+        elif self.target == "value":
+
+            @register_jitable
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args) -> float:
+                """evaluate the virtual point at `idx`"""
+                _, _, bc_idx = get_arr_1d(arr, idx)
+                value = np.broadcast_to(args, bndry_shape)[bc_idx]
+                return 2 * value - arr[idx]  # type: ignore
+
+        elif self.target == "derivative":
+            dx = self.grid.discretization[self.axis]
+
+            @register_jitable
+            def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args) -> float:
+                """evaluate the virtual point at `idx`"""
+                _, _, bc_idx = get_arr_1d(arr, idx)
+                value = np.broadcast_to(args, bndry_shape)[bc_idx]
+                return dx * value + arr[idx]  # type: ignore
+
+        return virtual_point  # type: ignore
+
+    def make_ghost_cell_setter(self) -> GhostCellSetter:
+        """return function that sets the ghost cells for this boundary"""
+        normal = self.normal
+        axis = self.axis
+
+        # get information of the virtual points (ghost cells)
+        vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
+        np_idx = self.grid.shape[self.axis] - 1 if self.upper else 0
+        vp_value = self.make_virtual_point_evaluator()
+
+        if self.grid.num_axes == 1:  # 1d grid
+
+            @register_jitable
+            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                """helper function setting the conditions on all axes"""
+                if args is None or "user" not in args:
+                    return
+
+                data_valid = data_full[..., 1:-1]
+                val = vp_value(data_valid, (np_idx,), args=args["user"])
+                if normal:
+                    data_full[..., axis, vp_idx] = val
+                else:
+                    data_full[..., vp_idx] = val
+
+        elif self.grid.num_axes == 2:  # 2d grid
+
+            if self.axis == 0:
+                num_y = self.grid.shape[1]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    """helper function setting the conditions on all axes"""
+                    if args is None or "user" not in args:
+                        return
+                    value = args["user"]
+                    data_valid = data_full[..., 1:-1, 1:-1]
+                    for j in range(num_y):
+                        val = vp_value(data_valid, (np_idx, j), args=value)
+                        if normal:
+                            data_full[..., axis, vp_idx, j + 1] = val
+                        else:
+                            data_full[..., vp_idx, j + 1] = val
+
+            elif self.axis == 1:
+                num_x = self.grid.shape[0]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    """helper function setting the conditions on all axes"""
+                    if args is None or "user" not in args:
+                        return
+                    value = args["user"]
+                    data_valid = data_full[..., 1:-1, 1:-1]
+                    for i in range(num_x):
+                        val = vp_value(data_valid, (i, np_idx), args=value)
+                        if normal:
+                            data_full[..., axis, i + 1, vp_idx] = val
+                        else:
+                            data_full[..., i + 1, vp_idx] = val
+
+        elif self.grid.num_axes == 3:  # 3d grid
+
+            if self.axis == 0:
+                num_y, num_z = self.grid.shape[1:]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    """helper function setting the conditions on all axes"""
+                    if args is None or "user" not in args:
+                        return
+                    value = args["user"]
+                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
+                    for j in range(num_y):
+                        for k in range(num_z):
+                            val = vp_value(data_valid, (np_idx, j, k), args=value)
+                            if normal:
+                                data_full[..., axis, vp_idx, j + 1, k + 1] = val
+                            else:
+                                data_full[..., vp_idx, j + 1, k + 1] = val
+
+            elif self.axis == 1:
+                num_x, num_z = self.grid.shape[0], self.grid.shape[2]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    """helper function setting the conditions on all axes"""
+                    if args is None or "user" not in args:
+                        return
+                    value = args["user"]
+                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
+                    for i in range(num_x):
+                        for k in range(num_z):
+                            val = vp_value(data_valid, (i, np_idx, k), args=value)
+                            if normal:
+                                data_full[..., axis, i + 1, vp_idx, k + 1] = val
+                            else:
+                                data_full[..., i + 1, vp_idx, k + 1] = val
+
+            elif self.axis == 2:
+                num_x, num_y = self.grid.shape[:2]
+
+                @register_jitable
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    """helper function setting the conditions on all axes"""
+                    if args is None or "user" not in args:
+                        return
+                    value = args["user"]
+                    data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
+                    for i in range(num_x):
+                        for j in range(num_y):
+                            val = vp_value(data_valid, (i, j, np_idx), args=value)
+                            if normal:
+                                data_full[..., axis, i + 1, j + 1, vp_idx] = val
+                            else:
+                                data_full[..., i + 1, j + 1, vp_idx] = val
+
+        else:
+            raise NotImplementedError("Too many axes")
+
+        return ghost_cell_setter  # type: ignore
+
+
 class ExpressionBC(BCBase):
     """represents a boundary whose virtual point is calculated from an expression"""
 
@@ -650,10 +963,9 @@ class ExpressionBC(BCBase):
             raise NotImplementedError(
                 "Expression boundary conditions only work for scalar conditions"
             )
-        self._logger = logging.getLogger(self.__class__.__name__)
 
         # determine the full expression for setting the value of the virtual point
-        self._input = {"target": target, "expression": value}
+        self._input: Dict[str, Any] = {"expression": value, "target": target}
         if target == "virtual_point":
             expression = value
         elif target == "value":
@@ -703,16 +1015,14 @@ class ExpressionBC(BCBase):
 
     def _cache_hash(self) -> int:
         """returns a value to determine when a cache needs to be updated"""
-        expression = self._expr.expression
-        return hash(
-            (self.__class__.__name__, self.grid._cache_hash(), self.axis, expression)
-        )
+        data = (self.__class__.__name__, self.grid._cache_hash(), self.axis)
+        return hash(data + tuple(self._input.values()))
 
     def __eq__(self, other):
         """checks for equality neglecting the `upper` property"""
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return super().__eq__(other) and self._expr.expression == other._expr.expression
+        return super().__eq__(other) and self._input == other._input
 
     def copy(
         self,
@@ -725,17 +1035,9 @@ class ExpressionBC(BCBase):
             axis=self.axis,
             upper=self.upper if upper is None else upper,
             rank=self.rank if rank is None else rank,
-            value=self._expr.expression,
+            value=self._input["expression"],
+            target=self._input["target"],
         )
-
-    def extract_component(self, *indices):
-        """extracts the boundary conditions for the given component
-
-        Args:
-            *indices:
-                One or two indices for vector or tensor fields, respectively
-        """
-        raise NotImplementedError
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         raise NotImplementedError
