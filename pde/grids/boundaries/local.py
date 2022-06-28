@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
+from numbers import Number
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numba as nb
@@ -683,6 +684,8 @@ class UserBC(BCBase):
             return
 
         if any(t in args for t in ["virtual_point", "value", "derivative"]):
+            # ghost cells will only be set if any of the above keys were supplied
+
             # prepare the array of slices to index bcs
             offset = data_full.ndim - self.grid.num_axes  # additional data axes
             idx_offset = [slice(None)] * offset
@@ -723,24 +726,50 @@ class UserBC(BCBase):
         """
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
         dx = self.grid.discretization[self.axis]
-        bndry_shape = tuple(
-            s for axis, s in enumerate(self.grid.shape) if axis != self.axis
-        )
+
+        @nb.generated_jit(nopython=True)
+        def extract_value(values, arr: np.ndarray, idx: Tuple[int, ...]):
+            """helper function that extracts the correct value from supplied ones"""
+            if isinstance(values, (nb.types.Number, Number)):
+                # scalar was supplied => simply return it
+                def impl(values, arr: np.ndarray, idx: Tuple[int, ...]):
+                    return values
+
+            elif isinstance(arr, (nb.types.Array, np.ndarray)):
+                # array was supplied => extract value at current position
+
+                def impl(values, arr: np.ndarray, idx: Tuple[int, ...]):
+                    _, _, bc_idx = get_arr_1d(arr, idx)
+                    return values[bc_idx]
+
+            else:
+                raise TypeError("Either a scalar or an array must be supplied")
+
+            if nb.config.DISABLE_JIT:
+                print("VALUES", values.__class__)
+                return impl(values, arr, idx)
+            else:
+                return impl
 
         @register_jitable
-        def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args) -> float:
+        def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args):
             """evaluate the virtual point at `idx`"""
-            _, _, bc_idx = get_arr_1d(arr, idx)
             if "virtual_point" in args:
-                return np.broadcast_to(args["virtual_point"], bndry_shape)[bc_idx]  # type: ignore
+                # set the virtual point directly
+                return extract_value(args["virtual_point"], arr, idx)
+
             elif "value" in args:
-                value = np.broadcast_to(args["value"], bndry_shape)[bc_idx]
-                return 2 * value - arr[idx]  # type: ignore
+                # set the value at the boundary
+                value = extract_value(args["value"], arr, idx)
+                return 2 * value - arr[idx]
+
             elif "derivative" in args:
-                value = np.broadcast_to(args["derivative"], bndry_shape)[bc_idx]
-                return dx * value + arr[idx]  # type: ignore
+                # set the outward derivative at the boundary
+                value = extract_value(args["derivative"], arr, idx)
+                return dx * value + arr[idx]
+
             else:
-                # no-op for the default csae where BCs are not set by user
+                # no-op for the default case where BCs are not set by user
                 return np.nan
 
         return virtual_point  # type: ignore
@@ -753,9 +782,10 @@ class UserBC(BCBase):
         def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
             """helper function setting the conditions on all axes"""
             if args is None:
-                return
+                return  # no-op when no specific arguments are given
 
             if "virtual_point" in args or "value" in args or "derivative" in args:
+                # ghost cells will only be set if any of the above keys were supplied
                 ghost_cell_setter_inner(data_full, args=args)
             # else: no-op for the default case where BCs are not set by user
 
