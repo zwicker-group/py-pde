@@ -378,6 +378,9 @@ def jit_allocate_out(
         else:
             raise NotImplementedError("Only 1 or 2 arguments are supported")
 
+        # increase the compilation counter by one
+        JIT_COUNT.increment()
+
         return wrapper  # type: ignore
 
 

@@ -4,7 +4,13 @@
 
 import numpy as np
 
-from pde.tools.numba import Counter, flat_idx, jit_allocate_out, numba_environment
+from pde.tools.numba import (
+    JIT_COUNT,
+    Counter,
+    flat_idx,
+    jit_allocate_out,
+    numba_environment,
+)
 
 
 def test_environment():
@@ -26,10 +32,12 @@ def test_jit_allocate_out_1arg():
         out[:] = arr
         return out
 
+    jit_count = int(JIT_COUNT)
     a = np.linspace(0, 1, 3)
     g = jit_allocate_out(out_shape=a.shape)(f)
     np.testing.assert_equal(g(a), a)
     np.testing.assert_equal(jit_allocate_out(f)(a), a)
+    assert int(JIT_COUNT) == jit_count + 2
 
 
 def test_jit_allocate_out_2arg():
@@ -39,12 +47,14 @@ def test_jit_allocate_out_2arg():
         out[:] = a + b
         return out
 
+    jit_count = int(JIT_COUNT)
     a = np.linspace(0, 1, 3)
     b = np.linspace(1, 2, 3)
     c = np.linspace(1, 3, 3)
     g = jit_allocate_out(out_shape=a.shape, num_args=2)(f)
     np.testing.assert_equal(g(a, b), c)
     np.testing.assert_equal(jit_allocate_out(num_args=2)(f)(a, b), c)
+    assert int(JIT_COUNT) == jit_count + 2
 
 
 def test_counter():
