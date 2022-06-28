@@ -373,7 +373,7 @@ def test_user_bcs_numpy(dim, target):
     """test setting user BCs"""
     value = np.arange(3) if dim == 2 else 1
     grid = UnitGrid([3] * dim)
-    bcs = grid.get_boundary_conditions({"type": "user", "target": target})
+    bcs = grid.get_boundary_conditions({"type": "user"})
 
     # use normal method to set BCs
     f1 = ScalarField(grid)
@@ -391,7 +391,7 @@ def test_user_bcs_numpy(dim, target):
     f2._data_full = 0
 
     # test whether calling setter with user data works properly
-    bcs.set_ghost_cells(f2._data_full, args={"user": value})
+    bcs.set_ghost_cells(f2._data_full, args={target: value})
 
     np.testing.assert_allclose(f1._data_full, f2._data_full)
 
@@ -407,7 +407,7 @@ def test_user_bcs_numba(dim, target):
     elif dim == 3:
         value = np.arange(9).reshape(3, 3)
     grid = UnitGrid([3] * dim)
-    bcs = grid.get_boundary_conditions({"type": "user", "target": target})
+    bcs = grid.get_boundary_conditions({"type": "user"})
 
     # use normal method to set BCs
     f1 = ScalarField(grid)
@@ -426,5 +426,5 @@ def test_user_bcs_numba(dim, target):
     f2._data_full = 0
 
     # test whether calling setter with user data works properly
-    setter(f2._data_full, args={"user": value})
+    setter(f2._data_full, args={target: value})
     np.testing.assert_allclose(f1._data_full, f2._data_full)
