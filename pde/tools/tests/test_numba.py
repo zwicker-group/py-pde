@@ -2,6 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import numba as nb
 import numpy as np
 
 from pde.tools.numba import (
@@ -37,7 +38,10 @@ def test_jit_allocate_out_1arg():
     g = jit_allocate_out(out_shape=a.shape)(f)
     np.testing.assert_equal(g(a), a)
     np.testing.assert_equal(jit_allocate_out(f)(a), a)
-    assert int(JIT_COUNT) == jit_count + 2
+    if nb.config.DISABLE_JIT:
+        assert int(JIT_COUNT) == jit_count
+    else:
+        assert int(JIT_COUNT) == jit_count + 2
 
 
 def test_jit_allocate_out_2arg():
@@ -54,7 +58,10 @@ def test_jit_allocate_out_2arg():
     g = jit_allocate_out(out_shape=a.shape, num_args=2)(f)
     np.testing.assert_equal(g(a, b), c)
     np.testing.assert_equal(jit_allocate_out(num_args=2)(f)(a, b), c)
-    assert int(JIT_COUNT) == jit_count + 2
+    if nb.config.DISABLE_JIT:
+        assert int(JIT_COUNT) == jit_count
+    else:
+        assert int(JIT_COUNT) == jit_count + 2
 
 
 def test_counter():
