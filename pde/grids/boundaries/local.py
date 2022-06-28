@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
+from numbers import Number
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 import numba as nb
@@ -729,12 +730,12 @@ class UserBC(BCBase):
         @nb.generated_jit(nopython=True)
         def extract_value(values, arr: np.ndarray, idx: Tuple[int, ...]):
             """helper function that extracts the correct value from supplied ones"""
-            if isinstance(values, nb.types.Number):
+            if isinstance(values, (nb.types.Number, Number)):
                 # scalar was supplied => simply return it
                 def impl(values, arr: np.ndarray, idx: Tuple[int, ...]):
                     return values
 
-            elif isinstance(arr, nb.types.Array):
+            elif isinstance(arr, (nb.types.Array, np.ndarray)):
                 # array was supplied => extract value at current position
 
                 def impl(values, arr: np.ndarray, idx: Tuple[int, ...]):
@@ -743,7 +744,12 @@ class UserBC(BCBase):
 
             else:
                 raise TypeError("Either a scalar or an array must be supplied")
-            return impl
+
+            if nb.config.DISABLE_JIT:
+                print("VALUES", values.__class__)
+                return impl(values, arr, idx)
+            else:
+                return impl
 
         @register_jitable
         def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args):
