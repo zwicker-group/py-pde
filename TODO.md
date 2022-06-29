@@ -41,7 +41,6 @@ LOW-PRIORITY (Future ideas)
         https://en.wikipedia.org/wiki/Lax–Wendroff_method (Richtmyer or MacCormack)
 * Think about implementing Helmholtz solver
     - generally useful to discuss eigenvalues of laplace operator?
-* Add method showing the boundary condition as a mathematical equation
 * Consider using @numba.overload decorator instead of generated jit to support
 	out=None idiom
 * Ensure that stochastic simulations on a single core can be resumed from any
