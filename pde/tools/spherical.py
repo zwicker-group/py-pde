@@ -530,7 +530,8 @@ class PointsOnSphere:
         elif self.dim == 2:
             # use arc length on unit circle to calculate distances
             def metric(a, b):
-                return np.arccos(a @ b)
+                # np.clip is necessary to be tolerant toward numerical inaccuracies
+                return np.arccos(np.clip(a @ b, -1, 1))
 
         elif self.dim == 3:
             # calculate distances on sphere using haversine definition
