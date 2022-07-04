@@ -306,10 +306,10 @@ def make_tensor_divergence(grid: SphericalSymGrid, safe: bool = True) -> Operato
         # iterate over inner points
         for i in range(1, dim_r + 1):
             deriv_r = (arr_rr[i + 1] - arr_rr[i - 1]) * scale_r
-            out_r[i - 1] = deriv_r + 2 * arr_rr[i] / rs[i - 1]
+            out_r[i - 1] = deriv_r + (2 * arr_rr[i] - arr_θθ[i] - arr_φφ[i]) / rs[i - 1]
 
             deriv_r = (arr_θr[i + 1] - arr_θr[i - 1]) * scale_r
-            out_θ[i - 1] = deriv_r + 2 * arr_θr[i] / rs[i - 1]
+            out_θ[i - 1] = deriv_r + (2 * arr_θr[i] + arr_rθ[i]) / rs[i - 1]
 
             deriv_r = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r
             out_φ[i - 1] = deriv_r + (2 * arr_φr[i] + arr_rφ[i]) / rs[i - 1]
