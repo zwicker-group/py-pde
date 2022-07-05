@@ -49,8 +49,8 @@ class VectorField(DataFieldBase):
             label (str, optional):
                 Name of the returned field
             dtype (numpy dtype):
-                The data type of the field. All the numpy dtypes are supported. If
-                omitted, it will be determined from `data` automatically.
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically.
 
         Returns:
             :class:`VectorField`: the resulting vector field
@@ -98,8 +98,8 @@ class VectorField(DataFieldBase):
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
-                The data type of the field. All the numpy dtypes are supported. If
-                omitted, it will be determined from `data` automatically.
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically.
         """
         from ..tools.expressions import ScalarExpression
 
@@ -461,7 +461,10 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self, bc: Optional[BoundariesData], out: Optional[ScalarField] = None, **kwargs
+        self,
+        bc: Optional[BoundariesData],
+        out: Optional[ScalarField] = None,
+        **kwargs,
     ) -> ScalarField:
         """apply divergence operator and return result as a field
 
@@ -473,11 +476,15 @@ class VectorField(DataFieldBase):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
+            **kwargs:
+                Additional arguments affecting how the operator behaves. For instance,
+                the argument `normal_bcs` can be used to control whether boundary
+                conditions only specify normal components or not.
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
         """
-        return self._apply_operator("divergence", bc=bc, out=out, **kwargs)  # type: ignore
+        return self._apply_operator("divergence", bc=bc, out=out, **kwargs)
 
     @fill_in_docstring
     def gradient(
@@ -490,16 +497,21 @@ class VectorField(DataFieldBase):
 
         The vector gradient field is a tensor field :math:`t_{\alpha\beta}` that
         specifies the derivatives of the vector field :math:`v_\alpha` with respect to
-        all coordinates :math:`x_\beta`:
+        all coordinates :math:`x_\beta`.
 
         Args:
             bc:
-                The boundary conditions applied to the field.
+                The boundary conditions applied to the field. Boundary conditions need
+                to determine all components of the vector field.
                 {ARG_BOUNDARIES_OPTIONAL}
             out (VectorField, optional):
                 Optional vector field to which the result is written.
             label (str, optional):
                 Name of the returned field
+            **kwargs:
+                Additional arguments affecting how the operator behaves. For instance,
+                the argument `normal_bcs` can be used to control whether boundary
+                conditions only specify normal components or not.
 
         Returns:
             :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the operator
@@ -528,11 +540,15 @@ class VectorField(DataFieldBase):
                 Optional vector field to which the  result is written.
             label (str, optional):
                 Name of the returned field
+            **kwargs:
+                Additional arguments affecting how the operator behaves. For instance,
+                the argument `normal_bcs` can be used to control whether boundary
+                conditions only specify normal components or not.
 
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        return self._apply_operator("vector_laplace", bc=bc, out=out, **kwargs)  # type: ignore
+        return self._apply_operator("vector_laplace", bc=bc, out=out, **kwargs)
 
     @property
     def integral(self) -> np.ndarray:
