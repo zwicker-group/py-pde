@@ -196,7 +196,11 @@ def make_divergence(grid: SphericalSymGrid, safe: bool = True) -> OperatorType:
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply divergence operator to array `arr`"""
         if safe:
+            # the θ-component of the vector field are required to be zero. If this was
+            # not the case the scale field resulting from the divergence would contain
+            # components that cannot be expressed in spherically symmetric coordinates
             assert np.all(arr[1, 1:-1] == 0)
+
         arr_r = arr[0, :]
         for i in range(1, dim_r + 1):  # iterate radial points
             out[i - 1] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r + fs[i - 1] * arr_r[i]
@@ -237,6 +241,9 @@ def make_vector_gradient(grid: SphericalSymGrid, safe: bool = True) -> OperatorT
     def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector gradient operator to array `arr`"""
         if safe:
+            # the θ- and φ-components are required to be zero. If this was not the case
+            # the tensor field resulting from the gradient would contain components that
+            # cannot be expressed in spherically symmetric coordinates
             assert np.all(arr[1:, 1:-1] == 0)
 
         # assign aliases
@@ -297,6 +304,9 @@ def make_tensor_divergence(grid: SphericalSymGrid, safe: bool = True) -> Operato
 
         # check inputs
         if safe:
+            # the following components are required to be zero. If this was not the case
+            # the vector resulting from the divergence might contain components that
+            # cannot be expressed in spherically symmetric coordinates
             assert np.all(arr_rθ[1:-1] == 0)
             assert np.all(arr_θθ[1:-1] == 0)
             assert np.all(arr_φφ[1:-1] == 0)
