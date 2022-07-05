@@ -39,6 +39,12 @@ The package provides many functions to manipulate these fields.
 Some functions (e.g., addition, multiplication, integrals) do only use the actual field values, while others (e.g., differential operators and interpolation) might require information on the behavior of the field at the boundary.
 This documents specifies details for how boundary conditions are handled.
 
+Generally, boundary conditions are imposed using so-called ghost cells (or virtual points), which specify the value of the fields one support point beyond the boundary.
+The idea is that the values of the ghost cells are set such that the boundary condition between the ghost cell and the first real cell is imposed exactly.
+While this is quite straight-forward for scalar fields, fields of higher rank (i.e., vector and tensor fields) require more care.
+To see problems that can arise, consider a vector field $v_\alpha$ with two components, so that the field has a normal and a tangential component at each boundary point.
+How many components need to be specified of the ghost cell? The answer depends on the operator that will be applied to the field: All components need to be specified if the vector field is to be interpolated, while only the normal components are specified for differential operators.
+
 The simplest fields in `py-pde` are scalar fields, which associate a single value to each grid point.
 In the continuum, a scalar field $c(\vect r)$ often has the following boundary conditions:
 \begin{salign}
@@ -131,18 +137,18 @@ This operator can be though of as a gradient applied to each component of $v_\al
 
 \subsection{Tensor divergence operator}
 The vector gradient  operator $\partial_\beta t_{\alpha\beta}$ acts on a tensor field $t_{\alpha\beta}(\vect r)$ and yields a vector field.
-This operator can be though of as a divergence applied along the $\beta$-direction to each $\alpha$-component.
+%This operator can be though of as a divergence applied along the $\beta$-direction to each $\alpha$-component.
 The boundary conditions thus are applied to each component,
 \begin{subequations}
 \begin{align}
-	\text{value:} &&	n_\beta t_{\alpha\beta} &= A_\alpha
+	\text{value:} &&	t_{\alpha\beta} n_\beta  &= A_\alpha
 \\
 	\text{derivative:} &&\partial_\beta t_{\alpha\beta}&= B_\alpha
 \end{align}
 \end{subequations}
 
 \subsection{Operators not implemented}
-Currently not implemented are the following operators
+The following operators are not yet implemented, but might be useful in the future:
 \begin{subequations}
 \begin{align}
 	\text{Curl:} &&

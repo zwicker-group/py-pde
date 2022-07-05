@@ -188,3 +188,19 @@ def test_examples_tensor_sph():
     res = tf.divergence([{"derivative_normal": 0}, {"value_normal": [1, 1, 1]}])
     expect = VectorField.from_expression(grid, ["5 * r**2", "5 * r**2", "6 * r**2"])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+
+def test_tensor_sph_edge_case():
+    """test edge case, where safe=False is required to calculate tensor divergence"""
+    grid = SphericalSymGrid(1, 16)
+    vf = VectorField.from_expression(grid, ["r**2", 0, 0])
+    vf_grad = vf.gradient({"derivative": 2})
+    strain = vf_grad + vf_grad.transpose()
+
+    with pytest.raises(AssertionError):
+        strain.divergence("value")
+
+    bcs = [{"value": 0}, {"derivative": [[4, 0, 0], [0, 0, 0], [0, 0, 0]]}]
+    strain_div = strain.divergence(bcs, safe=False)
+    np.testing.assert_allclose(strain_div.data[0], 8)
+    np.testing.assert_allclose(strain_div.data[1:], 0)

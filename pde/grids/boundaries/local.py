@@ -272,7 +272,7 @@ class BCBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """register all subclassess to reconstruct them later"""
+        """register all subclasses to reconstruct them later"""
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "names"):
@@ -746,7 +746,6 @@ class UserBC(BCBase):
                 raise TypeError("Either a scalar or an array must be supplied")
 
             if nb.config.DISABLE_JIT:
-                print("VALUES", values.__class__)
                 return impl(values, arr, idx)
             else:
                 return impl
