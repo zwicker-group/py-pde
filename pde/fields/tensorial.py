@@ -78,7 +78,9 @@ class Tensor2Field(DataFieldBase):
         points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
 
         # evaluate all vector components at all points
-        data = [[None] * grid.dim for _ in range(grid.dim)]
+        data: List[List[Optional[np.ndarray]]] = [
+            [None] * grid.dim for _ in range(grid.dim)
+        ]
         for i in range(grid.dim):
             for j in range(grid.dim):
                 expr = ScalarExpression(expressions[i][j], signature=grid.axes)

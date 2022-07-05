@@ -374,7 +374,7 @@ class GridBase(metaclass=ABCMeta):
     def cell_volumes(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: volume of each cell"""
         vols = functools.reduce(np.outer, self.cell_volume_data)
-        return np.broadcast_to(vols, self.shape)  # type: ignore
+        return np.broadcast_to(vols, self.shape)
 
     @cached_property()
     def uniform_cell_volumes(self) -> bool:
@@ -454,7 +454,7 @@ class GridBase(metaclass=ABCMeta):
         # assemble into array
         shape_bndry = tuple(self.shape[i] for i in range(self.num_axes) if i != axis)
         shape = shape_bndry + (self.num_axes,)
-        return np.stack(points, -1).reshape(shape)
+        return np.stack(points, -1).reshape(shape)  # type: ignore
 
     @property
     @abstractmethod
@@ -1098,7 +1098,7 @@ class GridBase(metaclass=ABCMeta):
         """
         if all(np.isscalar(d) for d in self.cell_volume_data):
             # all cells have the same volume
-            cell_volume = np.product(self.cell_volume_data)
+            cell_volume = np.product(self.cell_volume_data)  # type: ignore
 
             @jit
             def get_cell_volume(*args) -> float:
@@ -1502,7 +1502,7 @@ class GridBase(metaclass=ABCMeta):
 
         if self.uniform_cell_volumes:
             # all cells have the same volume
-            cell_volume = np.product(self.cell_volume_data)
+            cell_volume = np.product(self.cell_volume_data)  # type: ignore
 
             @jit
             def integrate(arr: np.ndarray) -> Number:
