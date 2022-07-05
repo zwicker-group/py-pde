@@ -51,8 +51,8 @@ class ScalarField(DataFieldBase):
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
-                The data type of the field. All the numpy dtypes are supported. If
-                omitted, it will be determined from `data` automatically.
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically.
         """
         from ..tools.expressions import ScalarExpression
 

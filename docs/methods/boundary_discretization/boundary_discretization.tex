@@ -43,8 +43,10 @@ Generally, boundary conditions are imposed using so-called ghost cells (or virtu
 The idea is that the values of the ghost cells are set such that the boundary condition between the ghost cell and the first real cell is imposed exactly.
 While this is quite straight-forward for scalar fields, fields of higher rank (i.e., vector and tensor fields) require more care.
 To see problems that can arise, consider a vector field $v_\alpha$ with two components, so that the field has a normal and a tangential component at each boundary point.
-How many components need to be specified of the ghost cell? The answer depends on the operator that will be applied to the field: All components need to be specified if the vector field is to be interpolated, while only the normal components are specified for differential operators.
+How many components need to be specified of the ghost cell? The answer depends on the operator that will be applied to the field: Only the normal components need to be specified to calculate the divergence of the vector field, while all components are required to calculate the gradient tensor or to interpolate the vector field.
+Generally, normal boundary conditions are sufficient when the applied operator reduces the rank of the field, e.g., turns a vector field into a scalar field.
 
+\subsection{Scalar fields}
 The simplest fields in `py-pde` are scalar fields, which associate a single value to each grid point.
 In the continuum, a scalar field $c(\vect r)$ often has the following boundary conditions:
 \begin{salign}
@@ -52,10 +54,11 @@ In the continuum, a scalar field $c(\vect r)$ often has the following boundary c
 \\
 	\text{normal derivative:} && n_\alpha \partial_\alpha c &= B
 \end{salign}
-where $n_\alpha$ is again the outward normal of the boundary.
+where $n_\alpha$ is the outward normal of the boundary.
 These two conditions are also often known as Dirichlet and Neumann boundary conditions, respectively.
 These options are implemented as \texttt{value} and \texttt{derivative} in `py-pde`.
 
+\subsection{Vector fields fields}
 For a vector field $v_\alpha(\vect r)$, which associate a vector with each grid point, possible boundary conditions are
 \begin{salign}
 	\text{value:} && v_\alpha  &= A_\alpha
@@ -68,9 +71,9 @@ For a vector field $v_\alpha(\vect r)$, which associate a vector with each grid 
 \end{salign}
 There are now many more options, where the first two specify values (Dirichlet conditions) and the last two specify derivatives (Neumann conditions).
 Additionally, the conditions differ in that they either specify the full vector (conditions 1 and 3) or just the normal component (conditions 2 and 4).
-The latter choice obviously contains less information, but is sufficient for differential operators; see below.
+The latter choice obviously contains less information, but is sufficient for differential operators that reduce the field rank (e.g., divergence).
 Conversely, specifying the full vector using the first or third condition is necessary for interpolating vector fields correctly.
-Note also that the Dirichlet conditionimposes the dot product between the normal vector and the vector field, which in a simple 1d system implies $v_1(x=x\L)=-A$ and $v_1(x=x\R)=A$ for the lower and upper boundary, respectively.
+Note also that the Dirichlet condition imposes the dot product between the normal vector and the vector field, which in a simple 1d system implies $v_1(x=x\L)=-A$ and $v_1(x=x\R)=A$ for the lower and upper boundary, respectively.
 Similarly, the Neumann condition evaluates the directional derivative of the vector field in the normal direction~$n_\beta$ of the boundary.
 
 
@@ -79,7 +82,7 @@ We start with general considerations that are independent of the grid type.
 Here, we consider differential operators that act on fields defined in a domain~$\dom$.
 In particular, we discuss the boundary conditions that can be enforced with each type of operator.
 We here use a component notation with implicit Einstein summation to denote contractions explicitly.
-For instance, $\partial_\alpha v_\alpha$ denotes the divergence of a vector field $v_\alpha(\vect r)$ and $t_{\alpha\alpha}(\vect r)$ is the trace of a tensor field $t_{\alpha\beta}(\vect r)$.
+For instance, $\partial_\alpha v_\alpha$ denotes the divergence of a vector field $v_\alpha(\vect r)$, and $t_{\alpha\alpha}(\vect r)$ is the trace of a tensor field $t_{\alpha\beta}(\vect r)$.
 
 \subsection{Laplace operator}
 The ordinary Laplace operator $\partial_\alpha^2 c$ is defined to act on scalar fields~$c(\vect r)$.

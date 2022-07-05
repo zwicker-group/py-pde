@@ -179,6 +179,6 @@ def test_examples_tensor_polar():
     tf = Tensor2Field.from_expression(grid, [["r**3"] * 2] * 2)
 
     # tensor divergence
-    res = tf.divergence([{"derivative_normal": 0}, {"value_normal": [1, 1]}])
+    res = tf.divergence([{"derivative": 0}, {"value": [1, 1]}])
     expect = VectorField.from_expression(grid, ["3 * r**2", "5 * r**2"])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)

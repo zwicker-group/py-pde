@@ -58,8 +58,8 @@ class Tensor2Field(DataFieldBase):
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
-                The data type of the field. All the numpy dtypes are supported. If
-                omitted, it will be determined from `data` automatically.
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically.
         """
         from ..tools.expressions import ScalarExpression
 
@@ -342,6 +342,10 @@ class Tensor2Field(DataFieldBase):
                 Optional scalar field to which the  result is written.
             label (str, optional):
                 Name of the returned field
+            **kwargs:
+                Additional arguments affecting how the operator behaves. For instance,
+                the argument `normal_bcs` can be used to control whether boundary
+                conditions only specify normal components or not.
 
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
