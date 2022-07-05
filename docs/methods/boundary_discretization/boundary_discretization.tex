@@ -131,18 +131,18 @@ This operator can be though of as a gradient applied to each component of $v_\al
 
 \subsection{Tensor divergence operator}
 The vector gradient  operator $\partial_\beta t_{\alpha\beta}$ acts on a tensor field $t_{\alpha\beta}(\vect r)$ and yields a vector field.
-This operator can be though of as a divergence applied along the $\beta$-direction to each $\alpha$-component.
+%This operator can be though of as a divergence applied along the $\beta$-direction to each $\alpha$-component.
 The boundary conditions thus are applied to each component,
 \begin{subequations}
 \begin{align}
-	\text{value:} &&	n_\beta t_{\alpha\beta} &= A_\alpha
+	\text{value:} &&	t_{\alpha\beta} n_\beta  &= A_\alpha
 \\
 	\text{derivative:} &&\partial_\beta t_{\alpha\beta}&= B_\alpha
 \end{align}
 \end{subequations}
 
 \subsection{Operators not implemented}
-Currently not implemented are the following operators
+The following operators are not yet implemented, but might be useful in the future:
 \begin{subequations}
 \begin{align}
 	\text{Curl:} &&

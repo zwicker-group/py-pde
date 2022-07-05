@@ -194,11 +194,13 @@ def test_tensor_sph_edge_case():
     """test edge case, where safe=False is required to calculate tensor divergence"""
     grid = SphericalSymGrid(1, 16)
     vf = VectorField.from_expression(grid, ["r**2", 0, 0])
-    vf_grad = vf.gradient("curvature")
+    vf_grad = vf.gradient({"derivative": 2})
     strain = vf_grad + vf_grad.transpose()
 
     with pytest.raises(AssertionError):
-        strain.divergence("curvature")
+        strain.divergence("value")
 
-    strain_div = strain.divergence("curvature", safe=False)
-    np.testing.assert_allclose(strain_div.data[2:-2], 8)
+    bcs = [{"value": 0}, {"derivative": [[4, 0, 0], [0, 0, 0], [0, 0, 0]]}]
+    strain_div = strain.divergence(bcs, safe=False)
+    np.testing.assert_allclose(strain_div.data[0], 8)
+    np.testing.assert_allclose(strain_div.data[1:], 0)
