@@ -146,10 +146,10 @@ def replace_in_docstring(
         docstring = f.__doc__
 
     # replace the token with the correct indentation
-    f.__doc__ = re.sub(  # type: ignore
+    f.__doc__ = re.sub(
         f"^([ \t]*){token}",
         repl,
-        docstring,
+        docstring,  # type: ignore
         flags=re.MULTILINE,
     )
 
@@ -170,10 +170,10 @@ def fill_in_docstring(f: TFunc) -> TFunc:
             return tw.fill(textwrap.dedent(value))
 
         token = "{" + name + "}"
-        f.__doc__ = re.sub(  # type: ignore
+        f.__doc__ = re.sub(
             f"^([ \t]*){token}",
             repl,
-            f.__doc__,
+            f.__doc__,  # type: ignore
             flags=re.MULTILINE,
         )
     return f

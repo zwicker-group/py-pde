@@ -1007,7 +1007,8 @@ class ExpressionBC(BCBase):
             elif dim == 3:
                 return func(grid_value, dx, coords[0], coords[1], coords[2], t)  # type: ignore
             else:
-                return np.nan  #  cheap way to signal a problem
+                # cheap way to signal a problem
+                return np.nan  # type: ignore
 
         return virtual_point  # type: ignore
 
@@ -1264,7 +1265,7 @@ class ConstBCBase(BCBase):
 
         elif np.isscalar(value):
             # scalar value applied to all positions
-            result = np.broadcast_to(float(value), self._shape_tensor)
+            result = np.broadcast_to(float(value), self._shape_tensor)  # type: ignore
 
         else:
             # assume tensorial and/or inhomogeneous values
@@ -1296,7 +1297,7 @@ class ConstBCBase(BCBase):
                 logger = logging.getLogger(self.__class__.__name__)
             logger.warning("In valid values in %s", self)
 
-        return result  # type: ignore
+        return result
 
     def link_value(self, value: np.ndarray):
         """link value of this boundary condition to external array"""
@@ -1937,7 +1938,7 @@ class MixedBC(ConstBC1stOrderBase):
         """
         # calculate values assuming finite factor
         dx = self.grid.discretization[self.axis]
-        with np.errstate(invalid="ignore"):
+        with np.errstate(invalid="ignore"):  # type: ignore
             const = np.asarray(2 * dx * self.const / (2 + dx * self.value))
             factor = np.asarray((2 - dx * self.value) / (2 + dx * self.value))
 

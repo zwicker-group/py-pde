@@ -379,7 +379,7 @@ class PDE(PDEBase):
                 raise TypeError(f"Constant has unsupported type {value.__class__}")
 
             for rhs in self._rhs_expr.values():
-                rhs.consts[name] = value
+                rhs.consts[name] = value  # type: ignore
 
         # obtain functions used in the expression
         ops_general: Dict[str, Callable] = {}

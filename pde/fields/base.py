@@ -374,7 +374,7 @@ class FieldBase(metaclass=ABCMeta):
     @property
     def is_complex(self) -> bool:
         """bool: whether the field contains real or complex data"""
-        return np.iscomplexobj(self.data)  # type: ignore
+        return np.iscomplexobj(self.data)
 
     @property
     def attributes(self) -> Dict[str, Any]:
@@ -826,7 +826,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
-            data = rng.uniform(vmin, vmax, size=shape)  # type: ignore
+            data = rng.uniform(vmin, vmax, size=shape)
 
         return cls(grid, data=data, label=label, dtype=dtype)
 
@@ -1242,7 +1242,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if self.rank == 0:
                 fill = self.data.dtype.type(fill)
             else:
-                fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
+                fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)  # type: ignore
 
         # use the full array and assume BCs are set via ghost points
         interpolate_single = grid._make_interpolator_compiled(fill=fill, **kwargs)
@@ -1471,7 +1471,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 non-uniform discretizations.
         """
         point = np.atleast_1d(point)
-        amount = np.broadcast_to(amount, self.data_shape)
+        amount = np.broadcast_to(amount, self.data_shape)  # type: ignore
         grid = self.grid
         grid_dim = len(grid.axes)
 
