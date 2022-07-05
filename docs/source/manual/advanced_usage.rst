@@ -4,7 +4,7 @@ Advanced usage
 Boundary conditions
 """""""""""""""""""
 A crucial aspect of partial differential equations are boundary conditions, which need
-to be specified at the domain boundaries. For th simple domains contained in `py-pde`,
+to be specified at the domain boundaries. For the simple domains contained in `py-pde`,
 all boundaries are orthogonal to one of the axes in the domain, so boundary conditions
 need to be applied to both sides of each axis. Here, the lower side of an axis can have
 a differnt condition than the upper side. For instance, one can enforce the value of a
@@ -28,7 +28,10 @@ condition.
 For instance, to enforce a value of `3` on both side, one could simply use
 :code:`bc = {'value': 3}`.
 Vectorial boundary conditions, e.g., to calculate the vector gradient or tensor
-divergence, can have vectorial values for the boundary condition. 
+divergence, can have vectorial values for the boundary condition.
+Generally, only the normal components at a boundary need to be specified if an operator
+reduces the rank of a field, e.g., for divergences. Otherwise, e.g., for gradients and
+Laplacians, the full field needs to be specified at the boundary.  
 
 Boundary values that depend on space can be set by specifying a mathematical expression,
 which may depend on the coordinates of all axes:

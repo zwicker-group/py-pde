@@ -461,10 +461,7 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self,
-        bc: Optional[BoundariesData],
-        out: Optional[ScalarField] = None,
-        **kwargs,
+        self, bc: Optional[BoundariesData], out: Optional[ScalarField] = None, **kwargs
     ) -> ScalarField:
         """apply divergence operator and return result as a field
 
@@ -484,7 +481,7 @@ class VectorField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
         """
-        return self._apply_operator("divergence", bc=bc, out=out, **kwargs)
+        return self._apply_operator("divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
     @fill_in_docstring
     def gradient(
@@ -548,7 +545,7 @@ class VectorField(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        return self._apply_operator("vector_laplace", bc=bc, out=out, **kwargs)
+        return self._apply_operator("vector_laplace", bc=bc, out=out, **kwargs)  # type: ignore
 
     @property
     def integral(self) -> np.ndarray:
