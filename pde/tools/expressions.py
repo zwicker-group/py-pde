@@ -22,6 +22,7 @@ import builtins
 import copy
 import json
 import logging
+import math
 import numbers
 import re
 from abc import ABCMeta, abstractmethod
@@ -110,7 +111,7 @@ def _heaviside_implemention(x1, x2=0.5):
         float: 0 if x1 is negative, 1 if x1 is positive, and x2 if x1 == 0
     """
     if np.isnan(x1):
-        return np.nan
+        return math.nan
     elif x1 == 0:
         return x2
     elif x1 < 0:

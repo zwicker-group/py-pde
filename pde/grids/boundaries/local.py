@@ -43,6 +43,7 @@ boundary.
 from __future__ import annotations
 
 import logging
+import math
 from abc import ABCMeta, abstractmethod
 from numbers import Number
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
@@ -836,7 +837,7 @@ class UserBC(BCBase):
 
             else:
                 # no-op for the default case where BCs are not set by user
-                return np.nan
+                return math.nan
 
         return virtual_point  # type: ignore
 
@@ -1079,7 +1080,7 @@ class ExpressionBC(BCBase):
                 return func(grid_value, dx, coords[0], coords[1], coords[2], t)  # type: ignore
             else:
                 # cheap way to signal a problem
-                return np.nan  # type: ignore
+                return math.nan
 
         return virtual_point  # type: ignore
 
