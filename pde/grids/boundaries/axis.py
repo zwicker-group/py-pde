@@ -349,7 +349,9 @@ class BoundaryPair(BoundaryAxisBase):
         )
 
     @classmethod
-    def from_data(cls, grid: GridBase, axis: int, data, rank: int = 0) -> BoundaryPair:
+    def from_data(
+        cls, grid: GridBase, axis: int, data, rank: int = 0, normal: bool = False
+    ) -> BoundaryPair:
         """create boundary pair from some data
 
         Args:
@@ -361,6 +363,9 @@ class BoundaryPair(BoundaryAxisBase):
                 Data that describes the boundary pair
             rank (int):
                 The tensorial rank of the field for this boundary condition
+            normal (bool):
+                Flag indicating whether the condition is only applied in the normal
+                direction.
 
         Returns:
             :class:`~pde.grids.boundaries.axis.BoundaryPair`:
@@ -374,23 +379,33 @@ class BoundaryPair(BoundaryAxisBase):
             if "low" in data or "high" in data:
                 # separate conditions for low and high
                 data_copy = data.copy()
+                d_low = data_copy.pop("low")
                 low = BCBase.from_data(
-                    grid, axis, upper=False, data=data_copy.pop("low"), rank=rank
+                    grid, axis, upper=False, data=d_low, rank=rank, normal=normal
                 )
+                d_high = data_copy.pop("high")
                 high = BCBase.from_data(
-                    grid, axis, upper=True, data=data_copy.pop("high"), rank=rank
+                    grid, axis, upper=True, data=d_high, rank=rank, normal=normal
                 )
                 if data_copy:
                     raise BCDataError(f"Data items {data_copy.keys()} were not used.")
             else:
                 # one condition for both sides
-                low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
-                high = BCBase.from_data(grid, axis, upper=True, data=data, rank=rank)
+                low = BCBase.from_data(
+                    grid, axis, upper=False, data=data, rank=rank, normal=normal
+                )
+                high = BCBase.from_data(
+                    grid, axis, upper=True, data=data, rank=rank, normal=normal
+                )
 
         elif isinstance(data, (str, BCBase)):
             # a type for both boundaries
-            low = BCBase.from_data(grid, axis, upper=False, data=data, rank=rank)
-            high = BCBase.from_data(grid, axis, upper=True, data=data, rank=rank)
+            low = BCBase.from_data(
+                grid, axis, upper=False, data=data, rank=rank, normal=normal
+            )
+            high = BCBase.from_data(
+                grid, axis, upper=True, data=data, rank=rank, normal=normal
+            )
 
         else:
             # the only remaining valid format is a list of conditions for the
@@ -407,10 +422,10 @@ class BoundaryPair(BoundaryAxisBase):
                 if data_len == 2:
                     # assume that data is given for each boundary
                     low = BCBase.from_data(
-                        grid, axis, upper=False, data=data[0], rank=rank
+                        grid, axis, upper=False, data=data[0], rank=rank, normal=normal
                     )
                     high = BCBase.from_data(
-                        grid, axis, upper=True, data=data[1], rank=rank
+                        grid, axis, upper=True, data=data[1], rank=rank, normal=normal
                     )
                 else:
                     # if the length is strange, the format must be wrong
@@ -508,7 +523,7 @@ class BoundaryPeriodic(BoundaryPair):
 
 
 def get_boundary_axis(
-    grid: GridBase, axis: int, data, rank: int = 0
+    grid: GridBase, axis: int, data, rank: int = 0, normal: bool = False
 ) -> BoundaryAxisBase:
     """return object representing the boundary condition for a single axis
 
@@ -521,6 +536,9 @@ def get_boundary_axis(
             Data describing the boundary conditions for this axis
         rank (int):
             The tensorial rank of the field for this boundary condition
+        normal (bool):
+            Flag indicating whether the condition is only applied in the normal
+            direction.
 
     Returns:
         :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`:
@@ -549,4 +567,4 @@ def get_boundary_axis(
         return BoundaryPeriodic(grid, axis)
     else:
         # initialize independent boundary conditions for the two sides
-        return BoundaryPair.from_data(grid, axis, data, rank=rank)
+        return BoundaryPair.from_data(grid, axis, data, rank=rank, normal=normal)

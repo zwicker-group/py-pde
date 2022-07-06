@@ -341,7 +341,8 @@ def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:
         """apply laplace operator to array `arr`"""
         assert arr.shape == grid._shape_full
         valid = (...,) + (slice(1, -1),) * grid.dim
-        with np.errstate(all="ignore"):  # can happen for ghost cells
+        with np.errstate(all="ignore"):  # type: ignore
+            # some errors can happen for ghost cells
             out[:] = ndimage.laplace(scaling * arr)[valid]
 
     return laplace
@@ -500,7 +501,8 @@ def _make_gradient_scipy_nd(grid: CartesianGrid) -> OperatorType:
             assert out.shape == shape_out
 
         valid = (...,) + (slice(1, -1),) * grid.dim
-        with np.errstate(all="ignore"):  # can happen for ghost cells
+        with np.errstate(all="ignore"):  # type: ignore
+            # some errors can happen for ghost cells
             for i in range(dim):
                 out[i] = ndimage.convolve1d(arr, [1, 0, -1], axis=i)[valid] * scaling[i]
 
@@ -858,7 +860,8 @@ def _make_divergence_scipy_nd(grid: CartesianGrid) -> OperatorType:
             out[:] = 0
 
         valid = (...,) + (slice(1, -1),) * grid.dim
-        with np.errstate(all="ignore"):  # can happen for ghost cells
+        with np.errstate(all="ignore"):  # type: ignore
+            # some errors can happen for ghost cells
             for i in range(len(data_shape)):
                 out += ndimage.convolve1d(arr[i], [1, 0, -1], axis=i)[valid] * scale[i]
 
