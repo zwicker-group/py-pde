@@ -66,9 +66,17 @@ class Parameter:
             # check whether the default value is of the correct type
             converted_value = cls(default_value)
             if isinstance(converted_value, np.ndarray):
+                # numpy arrays are checked for each individual value
                 valid_default = np.allclose(converted_value, default_value)
+
             else:
-                valid_default = converted_value == default_value
+                # other values are compared directly. Note that we also check identity
+                # to capture the case where the value is `math.nan`, where the direct
+                # comparison (nan == nan) would evaluate to False
+                valid_default = (
+                    converted_value is default_value or converted_value == default_value
+                )
+
             if not valid_default:
                 logging.warning(
                     "Default value `%s` does not seem to be of type `%s`",

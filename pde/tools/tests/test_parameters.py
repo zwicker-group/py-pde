@@ -4,6 +4,7 @@
 
 import itertools
 import logging
+import math
 import pickle
 
 import numpy as np
@@ -152,12 +153,12 @@ def test_hidden_parameter():
 
 def test_convert_default_values(caplog):
     """test how default values are handled"""
+    caplog.set_level(logging.WARNING)
 
     class Test1(Parameterized):
         parameters_default = [Parameter("a", 1, float)]
 
-    with caplog.at_level(logging.WARNING):
-        t1 = Test1()
+    t1 = Test1()
     assert "Default value" not in caplog.text
     assert isinstance(t1.parameters["a"], float)
 
@@ -173,10 +174,21 @@ def test_convert_default_values(caplog):
     t3 = Test3()
     np.testing.assert_equal(t3.parameters["a"], np.arange(3))
 
+    caplog.clear()
+
     class Test4(Parameterized):
         parameters_default = [Parameter("a", 1, str)]
 
-    with caplog.at_level(logging.WARNING):
-        t4 = Test4()
+    t4 = Test4()
+    assert len(caplog.records) == 1
     assert "Default value" in caplog.text
     np.testing.assert_equal(t4.parameters["a"], "1")
+
+    caplog.clear()
+
+    class Test5(Parameterized):
+        parameters_default = [Parameter("a", math.nan, float)]
+
+    t5 = Test5()
+    assert len(caplog.records) == 0
+    assert t5.parameters["a"] is math.nan
