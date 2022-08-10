@@ -18,7 +18,7 @@ One aim is to allow easy management of inheritance of parameters.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Sequence, Union, Type
+from typing import Any, Dict, Sequence, Type, Union
 
 import numpy as np
 
