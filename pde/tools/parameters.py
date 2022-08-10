@@ -18,7 +18,7 @@ One aim is to allow easy management of inheritance of parameters.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, Sequence, Type, Union
 
 import numpy as np
 
@@ -163,7 +163,7 @@ class Parameterized:
     """a mixin that manages the parameters of a class"""
 
     parameters_default: ParameterListType = []
-    _subclasses: Dict[str, Parameterized] = {}
+    _subclasses: Dict[str, Type[Parameterized]] = {}
 
     def __init__(self, parameters: Dict[str, Any] = None):
         """initialize the parameters of the object
@@ -198,7 +198,8 @@ class Parameterized:
 
         # register the subclasses
         super().__init_subclass__(**kwargs)
-        cls._subclasses[cls.__name__] = cls
+        if cls is not Parameterized:
+            cls._subclasses[cls.__name__] = cls
 
     @classmethod
     def get_parameters(
