@@ -25,9 +25,10 @@ from .scalar import ScalarField
 class FieldCollection(FieldBase):
     """Collection of fields defined on the same grid
 
-    Note that all fields in the same collection must have the same data type. This might
-    lead to upcasting, where for instance a combination of a real-valued and a
-    complex-valued field will be both stored as complex fields.
+    Note:
+        All fields in a collection must have the same data type. This might lead to
+        up-casting, where for instance a combination of a real-valued and a
+        complex-valued field will be both stored as complex fields.
     """
 
     def __init__(
@@ -46,7 +47,11 @@ class FieldCollection(FieldBase):
             copy_fields (bool):
                 Flag determining whether the individual fields given in `fields` are
                 copied. Note that fields are always copied if some of the supplied
-                fields are identical.
+                fields are identical. If fields are copied the original fields will be
+                left untouched. Conversely, if `copy_fields == False`, the original
+                fields are modified so their data points to the collection. It is thus
+                basically impossible to have fields that are linked to multiple
+                collections at the same time.
             label (str):
                 Label of the field collection
             labels (list of str):
