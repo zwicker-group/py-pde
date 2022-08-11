@@ -20,18 +20,15 @@ from __future__ import annotations
 
 import builtins
 import copy
-import json
 import logging
 import math
 import numbers
 import re
 from abc import ABCMeta, abstractmethod
-from pathlib import Path
 from typing import (
     Any,
     Callable,
     Dict,
-    Iterable,
     List,
     Mapping,
     Optional,
@@ -54,7 +51,7 @@ from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
-from .misc import Number, classproperty, number, number_array
+from .misc import Number, number, number_array
 from .numba import convert_scalar, jit
 from .typing import NumberOrArray
 
