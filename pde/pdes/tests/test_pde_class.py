@@ -19,16 +19,17 @@ def iter_grids():
     yield grids.PolarSymGrid(2, 2)
 
 
-def test_pde_wrong_input():
-    """test some wrong input"""
+def test_pde_critical_input():
+    """test some wrong input and edge cases"""
+    # test whether reserved symbols can be used as variables
+    grid = grids.UnitGrid([4])
+    eq = PDE({"E": 1})
+    res = eq.solve(ScalarField(grid), t_range=2)
+    np.testing.assert_allclose(res.data, 2)
+
     with pytest.raises(ValueError):
         PDE({"t": 1})
-    with pytest.raises(ValueError):
-        PDE({"E": 1})
-    with pytest.raises(ValueError):
-        PDE({"E": 1, "t": 0})
 
-    grid = grids.UnitGrid([4])
     eq = PDE({"u": 1})
     assert eq.expressions == {"u": "1.0"}
     with pytest.raises(ValueError):

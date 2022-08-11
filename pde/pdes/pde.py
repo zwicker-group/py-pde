@@ -121,7 +121,6 @@ class PDE(PDEBase):
             rhs = dict(rhs)
         if "t" in rhs:
             raise ValueError("Cannot name field `t` since it denotes time")
-        ScalarExpression.check_reserved_symbols(set(rhs))
         if consts is None:
             consts = {}
 
@@ -132,7 +131,12 @@ class PDE(PDEBase):
         for var, rhs_str in rhs.items():
             # create placeholder dictionary of constants that will be specified later
             consts_d: Dict[str, NumberOrArray] = {name: 0 for name in consts}
-            rhs_expr = ScalarExpression(rhs_str, user_funcs=user_funcs, consts=consts_d)
+            rhs_expr = ScalarExpression(
+                rhs_str,
+                user_funcs=user_funcs,
+                consts=consts_d,
+                explicit_symbols=rhs.keys(),
+            )
 
             if rhs_expr.depends_on("t"):
                 explicit_time_dependence = True
