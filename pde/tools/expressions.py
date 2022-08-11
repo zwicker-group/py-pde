@@ -147,6 +147,42 @@ class NumpyArrayPrinter(PythonCodePrinter):
         return f"array(broadcast_arrays({arrays}))"
 
 
+def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.Basic:
+    """parse an expression using sympy with extra guards
+
+    Args:
+        expression (str):
+            The expression to be parsed
+        symbols:
+            (nested) collection of symbols explicitly treated as symbols by sympy
+        functions:
+            (nested) collection of symbols explicitly treated as functions by sympy
+
+    Returns:
+        :class:`sympy.core.basic.Basic`: The sympy expression
+    """
+    # parse the expression using sympy
+    from sympy.parsing import sympy_parser
+
+    # collect all symbols that are likely present and should thus be interpreted as
+    # symbols by sympy. If we omit defining `local_dict`, many expressions will be
+    # parsed as objects inherent to sympy , which breaks our expressions.
+    local_dict = {}
+
+    def fill_locals(element, sympy_cls):
+        """recursive function for obtaining all symbols"""
+        if isinstance(element, str):
+            local_dict[element] = sympy_cls(element)
+        elif hasattr(element, "__iter__"):
+            for el in element:
+                fill_locals(el, sympy_cls)
+
+    fill_locals(symbols, sympy_cls=sympy.Symbol)
+    fill_locals(functions, sympy_cls=sympy.Function)
+
+    return sympy_parser.parse_expr(expression, local_dict=local_dict)  # type: ignore
+
+
 ExpressionType = Union[float, str, np.ndarray, basic.Basic, "ExpressionBase"]
 
 
@@ -582,11 +618,9 @@ class ScalarExpression(ExpressionBase):
         elif bool(expression):
             # parse expression as a string
             expression = self._prepare_expression(str(expression))
-
-            # parse the expression using sympy
-            from sympy.parsing import sympy_parser
-
-            sympy_expr = sympy_parser.parse_expr(expression)
+            sympy_expr = parse_expr_guarded(
+                expression, symbols=[signature, consts], functions=user_funcs
+            )
 
         else:
             # expression is empty, False or None => set it to zero
@@ -769,12 +803,10 @@ class TensorExpression(ExpressionBase):
 
         else:
             # parse expression as a string
-            expression = str(expression)
-
-            # parse the expression using sympy
-            from sympy.parsing import sympy_parser
-
-            sympy_expr = sympy.Array(sympy_parser.parse_expr(expression))
+            sympy_expr_raw = parse_expr_guarded(
+                str(expression), symbols=[signature, consts], functions=user_funcs
+            )
+            sympy_expr = sympy.Array(sympy_expr_raw)
 
         super().__init__(
             expression=sympy_expr,

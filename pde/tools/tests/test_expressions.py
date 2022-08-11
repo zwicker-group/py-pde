@@ -10,7 +10,7 @@ import pytest
 
 from pde import ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.tools.expressions import *
-from pde.tools.expressions import BCDataError
+from pde.tools.expressions import BCDataError, parse_expr_guarded
 
 
 def test_parse_number():
@@ -27,6 +27,20 @@ def test_parse_number():
     assert parse_number("a", {"a": 1 + 2j}) == pytest.approx(1 + 2j)
     with pytest.raises(TypeError):
         parse_number("foo")
+
+
+def test_parse_expr_guarded():
+    """test parse_expr_guarded function"""
+    peg = parse_expr_guarded
+    assert peg("1") == 1
+    assert peg("1 + 1") == 2
+    assert peg("a + 1").subs("a", 1) == 2
+    with pytest.raises(TypeError):
+        peg("field + 1")
+    assert peg("field + 1", symbols=["field"]).subs("field", 1) == 2
+    assert peg("field + 1", symbols=[None, ["field"]]).subs("field", 1) == 2
+    assert peg("field + 1", symbols=["field", "a"]).subs("field", 1) == 2
+    assert peg("field + 1", symbols={"field": 1, "a": 2}).subs("field", 1) == 2
 
 
 def test_const(caplog):

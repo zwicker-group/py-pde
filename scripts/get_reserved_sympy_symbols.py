@@ -6,6 +6,7 @@ expressions in py-pde.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import inspect
 import json
 from pathlib import Path
 from typing import List
@@ -16,13 +17,10 @@ from sympy.parsing import sympy_parser
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 
 
-MANUAL_ADDITIONS = {"field"}
-
-
 def get_reserved_sympy_symbols() -> List[str]:
     """return a list of reserved sympy symbols"""
     # test all public objects in sympy
-    forbidden = MANUAL_ADDITIONS.copy()
+    forbidden = set()
     for name in dir(sympy):
         if name.startswith("_"):
             continue  # private names are not forbidden
@@ -31,6 +29,11 @@ def get_reserved_sympy_symbols() -> List[str]:
             expr = sympy_parser.parse_expr(name)
         except Exception:
             continue  # skip symbols that cannot be parsed
+
+        # some expressions directly return functions and cannot be used as variables
+        if inspect.isfunction(expr):
+            forbidden.add(expr.__name__.lower())
+            continue
 
         try:
             free_count = len(expr.free_symbols)
