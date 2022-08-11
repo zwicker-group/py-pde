@@ -213,6 +213,38 @@ class FieldCollection(FieldBase):
         return self.fields == other.fields
 
     @classmethod
+    def from_dict(
+        cls,
+        fields: Dict[str, DataFieldBase],
+        *,
+        copy_fields: bool = False,
+        label: Optional[str] = None,
+        dtype=None,
+    ) -> FieldCollection:
+        """create a field collection from a dictionary of fields
+
+        Args:
+            fields (dict):
+                Dictionary of fields where keys determine field labels
+            copy_fields (bool):
+                Flag determining whether the individual fields given in `fields` are
+                copied. Note that fields are always copied if some of the supplied
+                fields are identical.
+            label (str):
+                Label of the field collection
+            dtype (numpy dtype):
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
+        """
+        return cls(
+            list(fields.values()),
+            copy_fields=copy_fields,
+            label=label,
+            labels=list(fields.keys()),
+            dtype=dtype,
+        )
+
+    @classmethod
     def from_state(
         cls, attributes: Dict[str, Any], data: np.ndarray = None
     ) -> FieldCollection:
