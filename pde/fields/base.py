@@ -823,7 +823,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # create complex random numbers for the field
             real_part = rng.uniform(np.real(vmin), np.real(vmax), size=shape)
             imag_part = rng.uniform(np.imag(vmin), np.imag(vmax), size=shape)
-            data = real_part + 1j * imag_part
+            data: np.ndarray = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
             data = rng.uniform(vmin, vmax, size=shape)
@@ -889,7 +889,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # create complex random numbers for the field
             real_part = np.real(mean) + np.real(std) * scale * rng.normal(size=shape)
             imag_part = np.imag(mean) + np.imag(std) * scale * rng.normal(size=shape)
-            data = real_part + 1j * imag_part
+            data: np.ndarray = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
             data = mean + std * scale * rng.normal(size=shape)
