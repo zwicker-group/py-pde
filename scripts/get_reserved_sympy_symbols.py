@@ -16,10 +16,13 @@ from sympy.parsing import sympy_parser
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 
 
+MANUAL_ADDITIONS = {"field"}
+
+
 def get_reserved_sympy_symbols() -> List[str]:
     """return a list of reserved sympy symbols"""
     # test all public objects in sympy
-    forbidden = []
+    forbidden = MANUAL_ADDITIONS.copy()
     for name in dir(sympy):
         if name.startswith("_"):
             continue  # private names are not forbidden
@@ -36,9 +39,9 @@ def get_reserved_sympy_symbols() -> List[str]:
 
         if free_count == 0:
             # sympy seemed to have recognized this symbols
-            forbidden.append(name.lower())
+            forbidden.add(name.lower())
 
-    return forbidden
+    return sorted(forbidden)
 
 
 def write_reserved_sympy_symbols(path: str = None):
