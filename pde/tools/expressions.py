@@ -266,52 +266,6 @@ class ExpressionBase(metaclass=ABCMeta):
         else:
             return diff == 0
 
-    @classproperty
-    def _reserved_symbols(self) -> Set[str]:
-        """set: reserved sympy symbols that should not be used in expressions"""
-        try:
-            # try returning a cached version of the list
-            return ExpressionBase._reserved_symbols_cache  # type: ignore
-
-        except AttributeError:
-            # the cache was not present => load list from resources
-            module_path = Path(__file__).resolve().parent
-            resource_path = module_path / "resources" / "reserved_sympy_symbols.json"
-
-            try:
-                with open(resource_path) as f:
-                    ExpressionBase._reserved_symbols_cache = set(json.load(f))  # type: ignore
-            except (IOError, OSError):
-                # cannot read the file, so return a minimal list
-                ExpressionBase._reserved_symbols_cache = {"E", "I", "pi"}  # type: ignore
-
-        return ExpressionBase._reserved_symbols_cache  # type: ignore
-
-    @classmethod
-    def check_reserved_symbols(
-        cls, symbols: Iterable[str], strict: bool = True
-    ) -> None:
-        """throws an error if reserved symbols are found
-
-        Args:
-            symbols (iterable):
-                A sequence or set of strings with symbols to check.
-            strict (bool):
-                Flag determining whether an exception is raised
-        """
-        symbol_set = {s.lower() for s in symbols}
-        reserved_symbols = symbol_set & ScalarExpression._reserved_symbols
-        if any(reserved_symbols):
-            if len(reserved_symbols) == 1:
-                name = reserved_symbols.pop()
-                msg = f"Cannot use reserved symbol `{name}` as field name"
-            else:
-                msg = f"Cannot use reserved symbols {reserved_symbols} as field names"
-            if strict:
-                raise ValueError(msg)
-            else:
-                logging.getLogger(cls.__name__).warning(msg)
-
     @property
     def _free_symbols(self) -> Set:
         """return symbols that appear in the expression and are not in self.consts"""
@@ -351,15 +305,6 @@ class ExpressionBase(metaclass=ABCMeta):
                 signature = list(sorted(args))
 
         self._logger.debug(f"Expression arguments: {args}")
-
-        # check whether signature contains reserved symbols
-        sig_elements = []
-        for sig in signature:
-            if isinstance(sig, str):
-                sig_elements.append(sig)
-            else:
-                sig_elements.extend(sig)
-        self.check_reserved_symbols(sig_elements, strict=False)
 
         # check whether variables are in signature
         self.vars: Any = []
@@ -558,6 +503,7 @@ class ScalarExpression(ExpressionBase):
         *,
         user_funcs: Optional[Dict[str, Callable]] = None,
         consts: Optional[Dict[str, NumberOrArray]] = None,
+        explicit_symbols: Sequence[str] = None,
         allow_indexed: bool = False,
     ):
         """
@@ -583,6 +529,8 @@ class ScalarExpression(ExpressionBase):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
                 :class:`~numpy.ndarray`.
+            explicit_symbols (list of str):
+                List of symbols that need to be interpreted as general sympy symbols
             allow_indexed (bool):
                 Whether to allow indexing of variables. If enabled, array variables are
                 allowed to be indexed using square bracket notation.
@@ -619,7 +567,9 @@ class ScalarExpression(ExpressionBase):
             # parse expression as a string
             expression = self._prepare_expression(str(expression))
             sympy_expr = parse_expr_guarded(
-                expression, symbols=[signature, consts], functions=user_funcs
+                expression,
+                symbols=[signature, consts, explicit_symbols],
+                functions=user_funcs,
             )
 
         else:
@@ -756,6 +706,7 @@ class TensorExpression(ExpressionBase):
         *,
         user_funcs: Optional[Dict[str, Callable]] = None,
         consts: Optional[Dict[str, NumberOrArray]] = None,
+        explicit_symbols: Sequence[str] = None,
     ):
         """
         Warning:
@@ -781,6 +732,8 @@ class TensorExpression(ExpressionBase):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
                 :class:`~numpy.ndarray`.
+            explicit_symbols (list of str):
+                List of symbols that need to be interpreted as general sympy symbols
         """
         from sympy.tensor.array.ndim_array import ImmutableNDimArray
 
@@ -804,7 +757,9 @@ class TensorExpression(ExpressionBase):
         else:
             # parse expression as a string
             sympy_expr_raw = parse_expr_guarded(
-                str(expression), symbols=[signature, consts], functions=user_funcs
+                str(expression),
+                symbols=[signature, consts, explicit_symbols],
+                functions=user_funcs,
             )
             sympy_expr = sympy.Array(sympy_expr_raw)
 

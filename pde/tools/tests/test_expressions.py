@@ -196,10 +196,6 @@ def test_indexed():
 
 def test_synonyms(caplog):
     """test using synonyms in expression"""
-    with caplog.at_level(logging.WARNING):
-        ScalarExpression("2 * a", [["a", "abs"]])
-    assert "abs" in caplog.text
-
     e = ScalarExpression("2 * arbitrary", [["a", "arbitrary"]])
     assert e.depends_on("a")
     assert not e.depends_on("arbitrary")
