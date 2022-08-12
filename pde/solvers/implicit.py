@@ -80,6 +80,7 @@ class ImplicitSolver(SolverBase):
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
+        self.info["dt_adaptive"] = False
 
         rhs = self._make_pde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)

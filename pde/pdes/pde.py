@@ -135,7 +135,7 @@ class PDE(PDEBase):
                 rhs_str,
                 user_funcs=user_funcs,
                 consts=consts_d,
-                explicit_symbols=rhs.keys(),
+                explicit_symbols=rhs.keys(),  # type: ignore
             )
 
             if rhs_expr.depends_on("t"):
