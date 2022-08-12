@@ -30,6 +30,7 @@ def test_solvers_simple_example(scheme, adaptive):
         assert solver.info["steps"] != pytest.approx(10 / dt, abs=1)
     else:
         assert solver.info["steps"] == pytest.approx(10 / dt, abs=1)
+    assert solver.info["dt_adaptive"] == adaptive
 
 
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
@@ -55,6 +56,7 @@ def test_solvers_simple_ode(scheme, adaptive):
         assert solver.info["steps"] < 20 / dt
     else:
         assert solver.info["steps"] == pytest.approx(20 / dt, abs=1)
+    assert solver.info["dt_adaptive"] == adaptive
 
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
@@ -76,6 +78,9 @@ def test_stochastic_solvers(backend):
     assert not solver1.info["stochastic"]
     assert solver2.info["stochastic"]
 
+    assert not solver1.info["dt_adaptive"]
+    assert not solver2.info["dt_adaptive"]
+
 
 def test_stochastic_adaptive_solver(caplog):
     """test using an adaptive, stochastic solver"""
@@ -88,7 +93,9 @@ def test_stochastic_adaptive_solver(caplog):
     c = Controller(solver, t_range=1, tracker=None)
     c.run(field, dt=1e-2)
 
+    # check whether it falls back to fixed time step and emits warning
     assert "fixed" in caplog.text
+    assert not solver.info["dt_adaptive"]
 
 
 def test_unsupported_stochastic_solvers():
@@ -134,3 +141,4 @@ def test_adaptive_solver_nan(scheme):
 
     np.testing.assert_allclose(sol.data, 0)
     assert info["solver"]["dt_last"] > 0.1
+    assert info["solver"]["dt_adaptive"]

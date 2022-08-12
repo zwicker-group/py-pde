@@ -72,6 +72,8 @@ class ExplicitSolver(SolverBase):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, steps: int)`
         """
+        self.info["dt_adaptive"] = False
+
         # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step(state))
 
@@ -118,7 +120,6 @@ class ExplicitSolver(SolverBase):
                 return t + dt, modifications
 
             self.info["stochastic"] = False
-            self.info["adaptive"] = False
             self._logger.info(f"Initialized explicit Euler stepper with dt=%g", dt)
 
         return stepper
@@ -152,7 +153,7 @@ class ExplicitSolver(SolverBase):
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
         tolerance = self.tolerance
         self.info["stochastic"] = False
-        self.info["adaptive"] = True
+        self.info["dt_adaptive"] = True
 
         dt_min = self.dt_min
         dt_min_err = f"Time step below {dt_min}"
@@ -237,7 +238,7 @@ class ExplicitSolver(SolverBase):
 
         rhs = self._make_pde_rhs(state, backend=self.backend)
         self.info["stochastic"] = False
-        self.info["adaptive"] = False
+        self.info["dt_adaptive"] = False
 
         # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step(state))
@@ -290,7 +291,7 @@ class ExplicitSolver(SolverBase):
 
         rhs = self._make_pde_rhs(state, backend=self.backend)
         self.info["stochastic"] = False
-        self.info["adaptive"] = True
+        self.info["dt_adaptive"] = True
 
         # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step(state))
@@ -448,7 +449,6 @@ class ExplicitSolver(SolverBase):
 
         if self.adaptive and not self.pde.is_sde:
             # create stepper with adaptive steps
-            self.info["dt_adaptive"] = True
             self.info["dt_last"] = dt  # store the time step between calls
 
             if self.scheme == "euler":
@@ -477,8 +477,6 @@ class ExplicitSolver(SolverBase):
 
         else:
             # create stepper with fixed steps
-            self.info["dt_adaptive"] = False
-
             if self.scheme == "euler":
                 fixed_stepper = self._make_fixed_euler_stepper(state, dt)
             elif self.scheme in {"runge-kutta", "rk", "rk45"}:

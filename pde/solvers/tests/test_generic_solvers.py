@@ -19,6 +19,7 @@ def test_solver_registration():
     """test solver registration"""
     solvers = registered_solvers()
     assert "explicit" in solvers
+    assert "implicit" in solvers
     assert "scipy" in solvers
 
 
