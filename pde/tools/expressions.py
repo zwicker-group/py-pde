@@ -1082,6 +1082,8 @@ def evaluate(
     result_data = func(*field_data, None, {}, *extra_args)
 
     # turn result into a proper field
+    if np.isscalar(result_data):
+        result_data = np.broadcast_to(result_data, grid.shape)
     result_rank = result_data.ndim - grid.num_axes
     result_cls = DataFieldBase.get_class_by_rank(result_rank)
     return result_cls(grid, result_data, label=label)

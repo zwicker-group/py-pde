@@ -339,6 +339,11 @@ def test_evaluate_func_scalar():
     assert res.dtype == "float"
     np.testing.assert_allclose(res.data, 2)
 
+    # edge case
+    res = evaluate("sin", {"a": field_c}, consts={"sin": 3.14})
+    assert res.dtype == "float"
+    np.testing.assert_allclose(res.data, 3.14)
+
 
 def test_evaluate_func_vector():
     """test the evaluate function with vector fields"""
