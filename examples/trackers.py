@@ -18,7 +18,7 @@ trackers = [
     storage.tracker(interval=1),  # store data every simulation time unit
     pde.PlotTracker(show=True),  # show images during simulation
     # print some output every 5 real seconds:
-    pde.PrintTracker(interval=pde.RealtimeIntervals(duration=5)),
+    pde.PrintTracker(interval=pde.RealtimeInterrupts(duration=5)),
 ]
 
 eq = pde.DiffusionPDE(0.1)  # define the PDE

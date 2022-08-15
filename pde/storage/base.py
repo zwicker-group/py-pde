@@ -4,6 +4,8 @@ Base classes for storing data
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 import logging
 from abc import ABCMeta, abstractmethod
 from inspect import signature
@@ -27,7 +29,7 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
 from ..trackers.base import InfoDict, TrackerBase
-from ..trackers.intervals import IntervalData, IntervalType
+from ..trackers.interrupts import IntervalData, InterruptsBase
 
 if TYPE_CHECKING:
     from .memory import MemoryStorage  # @UnusedImport
@@ -261,7 +263,7 @@ class StorageBase(metaclass=ABCMeta):
 
     @fill_in_docstring
     def tracker(
-        self, interval: Union[int, float, IntervalType] = 1
+        self, interval: Union[int, float, InterruptsBase] = 1
     ) -> "StorageTracker":
         """create object that can be used as a tracker to fill this storage
 
@@ -397,8 +399,8 @@ class StorageBase(metaclass=ABCMeta):
         )
 
     def apply(
-        self, func: Callable, out: "StorageBase" = None, *, progress: bool = False
-    ) -> "StorageBase":
+        self, func: Callable, out: StorageBase = None, *, progress: bool = False
+    ) -> StorageBase:
         """applies function to each field in a storage
 
         Args:
@@ -456,9 +458,7 @@ class StorageBase(metaclass=ABCMeta):
 
         return out
 
-    def copy(
-        self, out: "StorageBase" = None, *, progress: bool = False
-    ) -> "StorageBase":
+    def copy(self, out: StorageBase = None, *, progress: bool = False) -> StorageBase:
         """copies all fields in a storage to a new one
 
         Args:

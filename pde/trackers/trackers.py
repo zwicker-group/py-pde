@@ -39,7 +39,7 @@ from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
 from ..tools.typing import Real
 from .base import FinishedSimulation, InfoDict, TrackerBase
-from .intervals import IntervalData, RealtimeIntervals
+from .interrupts import IntervalData, RealtimeInterrupts
 
 if TYPE_CHECKING:
     import pandas  # @UnusedImport
@@ -111,7 +111,7 @@ class ProgressTracker(TrackerBase):
         """
         if interval is None:
             # print every second by default
-            interval = RealtimeIntervals(duration=1)
+            interval = RealtimeInterrupts(duration=1)
 
         super().__init__(interval=interval)
         self.ndigits = ndigits
@@ -461,10 +461,10 @@ class PlotTracker(TrackerBase):
 class LivePlotTracker(PlotTracker):
     """PlotTracker with defaults for live plotting
 
-    The only difference to :class:`PlotTracker` are the changed default values,
-    where output is by default shown on screen and the `interval` is set
-    something more suitable for interactive plotting. In particular, this
-    tracker can be enabled by simply listing 'plot' as a tracker.
+    The only difference to :class:`PlotTracker` are the changed default values, where
+    output is by default shown on screen and the `interval` is set something more
+    suitable for interactive plotting. In particular, this tracker can be enabled by
+    simply listing 'plot' as a tracker.
     """
 
     name = "plot"
@@ -629,7 +629,7 @@ class DataTracker(CallbackTracker):
 
 
 class SteadyStateTracker(TrackerBase):
-    """Tracker interrupting the simulation once steady state is reached
+    """Tracker aborting the simulation once steady state is reached
 
     Steady state is obtained when the state does not change anymore. This is the case
     when the derivative is close to zero. Concretely, the current state `cur` is
@@ -668,7 +668,7 @@ class SteadyStateTracker(TrackerBase):
                 graphically during the simulation
         """
         if interval is None:
-            interval = RealtimeIntervals(duration=1)
+            interval = RealtimeInterrupts(duration=1)
         super().__init__(interval=interval)
         self.atol = atol
         self.rtol = rtol
@@ -696,8 +696,8 @@ class SteadyStateTracker(TrackerBase):
             # Note that atol and rtol are scaled with dt to make test independent of dt.
             finite = np.isfinite(field.data)  # ignore infinite and nan data
             diff = np.abs(self._last_data[finite] - field.data[finite])
-            diff_abs = diff - self.rtol * self.interval.dt * np.abs(field.data[finite])
-            diff_abs_max = np.max(diff_abs) / self.interval.dt
+            diff_abs = diff - self.rtol * self.interrupt.dt * np.abs(field.data[finite])
+            diff_abs_max = np.max(diff_abs) / self.interrupt.dt
 
             if diff_abs_max <= self.atol:
                 # simulation has converged
@@ -802,7 +802,7 @@ class ConsistencyTracker(TrackerBase):
                 every (real) second.
         """
         if interval is None:
-            interval = RealtimeIntervals(duration=1)
+            interval = RealtimeInterrupts(duration=1)
         super().__init__(interval=interval)
 
     def handle(self, field: FieldBase, t: float) -> None:

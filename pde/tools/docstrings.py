@@ -41,7 +41,7 @@ DOCSTRING_REPLACEMENTS = {
         numbers are interpreted as durations measured in the simulation time
         variable. Alternatively, a string using the format 'hh:mm:ss' can be
         used to give durations in real time. Finally, instances of the classes
-        defined in :mod:`~pde.trackers.intervals` can be given for more control.
+        defined in :mod:`~pde.trackers.interrupts` can be given for more control.
         """,
     "ARG_PLOT_QUANTITIES": """
         A 2d list of quantities that are shown in a rectangular arrangement.

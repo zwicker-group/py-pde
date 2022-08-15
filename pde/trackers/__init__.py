@@ -1,5 +1,5 @@
 """
-Classes for tracking simulation results in controlled intervals
+Classes for tracking simulation results in controlled interrupts
 
 Trackers are classes that periodically receive the state of the simulation to analyze,
 store, or output it. The trackers defined in this module are:
@@ -30,15 +30,19 @@ in-place. Moreover, trackers can interrupt the simulation by raising the special
 exception :class:`StopIteration`.
 
 
-For each tracker, the interval at which it is called can be decided using one
-of the following classes:
+For each tracker, the time intervals at which it is called can be decided using one
+of the following classes, which determine when the simulation will be interrupted:
 
 .. autosummary::
    :nosignatures:
-
-   ~intervals.ConstantIntervals
-   ~intervals.LogarithmicIntervals
-   ~intervals.RealtimeIntervals
+   
+   ~interrupts.FixedInterrupts
+   ~interrupts.ConstantInterrupts
+   ~interrupts.LogarithmicInterrupts
+   ~interrupts.RealtimeInterrupts
+   
+In particular, interrupts can be specified conveniently using
+:func:`~interrupts.interval_to_interrupts`.
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -46,5 +50,11 @@ of the following classes:
 
 from .base import get_named_trackers
 from .interactive import InteractivePlotTracker
-from .intervals import ConstantIntervals, LogarithmicIntervals, RealtimeIntervals
+from .interrupts import (
+    ConstantInterrupts,
+    FixedInterrupts,
+    LogarithmicInterrupts,
+    RealtimeInterrupts,
+    interval_to_interrupts,
+)
 from .trackers import *

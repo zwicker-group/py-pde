@@ -4,6 +4,8 @@ Base classes for trackers
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, List, Optional, Sequence, Type, Union
@@ -13,7 +15,7 @@ import numpy as np
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
-from .intervals import IntervalData, get_interval
+from .interrupts import IntervalData, interval_to_interrupts
 
 InfoDict = Optional[Dict[str, Any]]
 TrackerDataType = Union["TrackerBase", str]
@@ -28,7 +30,7 @@ class FinishedSimulation(StopIteration):
 class TrackerBase(metaclass=ABCMeta):
     """base class for implementing trackers"""
 
-    _subclasses: Dict[str, Type["TrackerBase"]] = {}  # all inheriting classes
+    _subclasses: Dict[str, Type[TrackerBase]] = {}  # all inheriting classes
 
     @fill_in_docstring
     def __init__(self, interval: IntervalData = 1):
@@ -37,7 +39,7 @@ class TrackerBase(metaclass=ABCMeta):
             interval:
                 {ARG_TRACKER_INTERVAL}
         """
-        self.interval = get_interval(interval)
+        self.interrupt = interval_to_interrupts(interval)
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
@@ -48,7 +50,7 @@ class TrackerBase(metaclass=ABCMeta):
             cls._subclasses[cls.name] = cls
 
     @classmethod
-    def from_data(cls, data: TrackerDataType, **kwargs) -> "TrackerBase":
+    def from_data(cls, data: TrackerDataType, **kwargs) -> TrackerBase:
         """create tracker class from given data
 
         Args:
@@ -85,7 +87,7 @@ class TrackerBase(metaclass=ABCMeta):
             t_start = info.get("solver", {}).get("t_start", 0)
         else:
             t_start = 0
-        return self.interval._initialize(t_start)
+        return self.interrupt.initialize(t_start)
 
     @abstractmethod
     def handle(self, field: FieldBase, t: float) -> None:
@@ -235,7 +237,7 @@ class TrackerCollection:
                     stop_iteration_err = err
 
                 # calculate next event (may skip some if too close)
-                self.tracker_action_times[i] = self.trackers[i].interval.next(t)
+                self.tracker_action_times[i] = self.trackers[i].interrupt.next(t)
 
         if stop_iteration_err is not None:
             raise stop_iteration_err
