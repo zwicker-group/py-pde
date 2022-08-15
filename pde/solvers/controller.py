@@ -50,7 +50,7 @@ class Controller:
                 value `t_end` is given, the time range is assumed to be `[0, t_end]`.
             tracker:
                 Defines a tracker that process the state of the simulation at specified
-                time intervals. A tracker is either an instance of
+                times. A tracker is either an instance of
                 :class:`~pde.trackers.base.TrackerBase` or a string, which identifies a
                 tracker. All possible identifiers can be obtained by calling
                 :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be

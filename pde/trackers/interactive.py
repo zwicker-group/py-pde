@@ -16,7 +16,7 @@ from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import napari_add_layers
 from .base import InfoDict, TrackerBase
-from .intervals import IntervalData
+from .interrupts import IntervalData
 
 
 def napari_process(
