@@ -48,7 +48,23 @@ if TYPE_CHECKING:
 
 
 class CallbackTracker(TrackerBase):
-    """Tracker calling a function periodically"""
+    """Tracker calling a function periodically
+    
+    Example:
+        The callback tracker can be used to check for conditions during the simulation:    
+    
+        .. code-block:: python
+
+            def check_simulation(state, time):
+                if state.integral < 0:
+                    raise StopIteration
+                    
+            tracker = CallbackTracker(check_simulation, interval="0:10")
+            
+        Adding :code:`tracker` to the simulation will perform a check every 10 real time
+        seconds. If the integral of the entire state falls below zero, the simulation
+        will be aborted.
+    """
 
     @fill_in_docstring
     def __init__(self, func: Callable, interval: IntervalData = 1):
