@@ -21,6 +21,7 @@ The trackers defined in this module are:
 """
 
 import inspect
+import math
 import os.path
 import sys
 import time
@@ -49,18 +50,18 @@ if TYPE_CHECKING:
 
 class CallbackTracker(TrackerBase):
     """Tracker calling a function periodically
-    
+
     Example:
-        The callback tracker can be used to check for conditions during the simulation:    
-    
+        The callback tracker can be used to check for conditions during the simulation:
+
         .. code-block:: python
 
             def check_simulation(state, time):
                 if state.integral < 0:
                     raise StopIteration
-                    
+
             tracker = CallbackTracker(check_simulation, interval="0:10")
-            
+
         Adding :code:`tracker` to the simulation will perform a check every 10 real time
         seconds. If the integral of the entire state falls below zero, the simulation
         will be aborted.
@@ -190,8 +191,8 @@ class ProgressTracker(TrackerBase):
 
         # limit progress bar to 100%
         controller_info = {} if info is None else info.get("controller", {})
-        t_final = controller_info.get("t_final", -np.inf)
-        t_end = controller_info.get("t_end", -np.inf)
+        t_final = controller_info.get("t_final", -math.inf)
+        t_end = controller_info.get("t_end", -math.inf)
         if t_final >= t_end and self.progress_bar.total:
             self.progress_bar.n = self.progress_bar.total
             self.progress_bar.refresh()
@@ -270,7 +271,7 @@ class PlotTracker(TrackerBase):
         output_file: Optional[str] = None,
         movie: Union[str, Path, "Movie"] = None,
         show: bool = None,
-        max_fps: float = np.inf,
+        max_fps: float = math.inf,
         plot_args: Dict[str, Any] = None,
     ):
         """
@@ -301,7 +302,7 @@ class PlotTracker(TrackerBase):
                 Determines the maximal rate (frames per second) at which the plots are
                 updated in real time during the simulation. Some plots are skipped if
                 the tracker receives data at a higher rate. A larger value (e.g.,
-                `np.inf`) can be used to ensure every frame is drawn, which might
+                `math.inf`) can be used to ensure every frame is drawn, which might
                 penalizes the overall performance.
             plot_args (dict):
                 Extra arguments supplied to the plot call. For example, this can
@@ -517,8 +518,8 @@ class LivePlotTracker(PlotTracker):
             max_fps (float):
                 Determines the maximal rate (frames per second) at which the plots are
                 updated. Some plots are skipped if the tracker receives data at a higher
-                rate. A larger value (e.g., `np.inf`) can be used to ensure every frame
-                is drawn, which might penalizes the overall performance.
+                rate. A larger value (e.g., `math.inf`) can be used to ensure every
+                frame is drawn, which might penalizes the overall performance.
             plot_args (dict):
                 Extra arguments supplied to the plot call. For example, this can
                 be used to specify axes ranges when a single panel is shown. For

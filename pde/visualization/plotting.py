@@ -14,6 +14,7 @@ Functions and classes for plotting simulation data
 """
 
 import logging
+import math
 import time
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
@@ -211,7 +212,7 @@ class ScalarFieldPlot:
         for quantity_row in quantities:
             for quantity in quantity_row:
                 if quantity.get("scale", "automatic") == "automatic":
-                    vmin, vmax = +np.inf, -np.inf
+                    vmin, vmax = +math.inf, -math.inf
                     for data in storage:
                         field = extract_field(data, quantity.get("source"))
                         img = field.get_image_data()

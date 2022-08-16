@@ -29,7 +29,7 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
 from ..trackers.base import InfoDict, TrackerBase
-from ..trackers.interrupts import IntervalData, InterruptsBase
+from ..trackers.interrupts import InterruptsBase, IntervalData
 
 if TYPE_CHECKING:
     from .memory import MemoryStorage  # @UnusedImport
