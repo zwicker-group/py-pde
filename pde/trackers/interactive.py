@@ -69,7 +69,7 @@ def napari_process(
 
         # add time if given
         if t_initial is not None:
-            from qtpy.QtWidgets import QLabel
+            from qtpy.QtWidgets import QLabel  # type: ignore
 
             label = QLabel()
             label.setText(f"Time: {t_initial}")

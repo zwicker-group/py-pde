@@ -47,9 +47,9 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     if dim == 1:
         return 2 * radius
     elif dim == 2:
-        return π * radius**2
+        return π * radius**2  # type: ignore
     elif dim == 3:
-        return PI_43 * radius**3
+        return PI_43 * radius**3  # type: ignore
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
