@@ -120,21 +120,6 @@ class PeriodicityError(RuntimeError):
     pass
 
 
-def subdivide(num: int, chunks: int) -> List[int]:
-    r"""subdivide `num` intervals in `chunk` chunks
-
-    Args:
-        num (int): Number of intervals
-        chunks (int): Number of chunks
-
-    Returns:
-        list: The number of intervals per chunk
-    """
-    if chunks > num:
-        raise RuntimeError("Cannot divide in more chunks than support points ")
-    return np.diff(np.linspace(0, num, chunks + 1).astype(int))
-
-
 class GridBase(metaclass=ABCMeta):
     """Base class for all grids defining common methods and interfaces"""
 
@@ -201,6 +186,15 @@ class GridBase(metaclass=ABCMeta):
             raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
         grid_cls = cls._subclasses[class_name]
         return grid_cls.from_state(state)
+
+    @classmethod
+    def from_bounds(
+        cls,
+        bounds: Sequence[Tuple[float, float]],
+        shape: Sequence[int],
+        periodic: Sequence[bool],
+    ) -> GridBase:
+        raise NotImplementedError
 
     @property
     def axes_bounds(self) -> Tuple[Tuple[float, float], ...]:

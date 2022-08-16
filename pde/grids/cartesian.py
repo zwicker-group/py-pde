@@ -146,29 +146,6 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         self._axes_coords = tuple(axes_coords)
         self._axes_bounds = tuple(self.cuboid.bounds)
 
-    @classmethod
-    def from_bounds(
-        cls, bounds, shape, periodic: Union[List[bool], bool] = False
-    ) -> CartesianGrid:
-        """
-        Args:
-            bounds (tuple):
-                Give the coordinate range for each axis. This should be a tuple of two
-                number (lower and upper bound) for each axis. The length of `bounds`
-                thus determines the grid dimension.
-            shape (tuple):
-                The number of support points for each axis. The length of `shape` needs
-                to match the grid dimension.
-            periodic (bool or list):
-                Specifies which axes possess periodic boundary conditions. This is
-                either a list of booleans defining periodicity for each individual axis
-                or a single boolean value specifying the same periodicity for all axes.
-
-        Returns:
-            :class:`CartesianGrid` representing the region chosen by bounds
-        """
-        return CartesianGrid(bounds, shape, periodic)
-
     @property
     def state(self) -> Dict[str, Any]:
         """dict: the state of the grid"""
@@ -195,6 +172,32 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         if state_copy:
             raise ValueError(f"State items {state_copy.keys()} were not used")
         return obj
+
+    @classmethod
+    def from_bounds(
+        cls,
+        bounds: Sequence[Tuple[float, float]],
+        shape: Sequence[int],
+        periodic: Sequence[bool],
+    ) -> CartesianGrid:
+        """
+        Args:
+            bounds (tuple):
+                Give the coordinate range for each axis. This should be a tuple of two
+                number (lower and upper bound) for each axis. The length of `bounds`
+                thus determines the grid dimension.
+            shape (tuple):
+                The number of support points for each axis. The length of `shape` needs
+                to match the grid dimension.
+            periodic (bool or list):
+                Specifies which axes possess periodic boundary conditions. This is
+                either a list of booleans defining periodicity for each individual axis
+                or a single boolean value specifying the same periodicity for all axes.
+
+        Returns:
+            :class:`CartesianGrid` representing the region chosen by bounds
+        """
+        return CartesianGrid(bounds, shape, periodic)
 
     @property
     def volume(self) -> float:

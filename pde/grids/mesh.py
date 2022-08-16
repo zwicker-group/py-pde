@@ -2,12 +2,27 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import List, Tuple
+from typing import Any, List, Tuple
 
 import numpy as np
 
-from .base import GridBase, subdivide
 from ..tools.cache import cached_property
+from .base import GridBase
+
+
+def _subdivide(num: int, chunks: int) -> np.ndarray:
+    r"""subdivide `num` intervals in `chunk` chunks
+
+    Args:
+        num (int): Number of intervals
+        chunks (int): Number of chunks
+
+    Returns:
+        list: The number of intervals per chunk
+    """
+    if chunks > num:
+        raise RuntimeError("Cannot divide in more chunks than support points ")
+    return np.diff(np.linspace(0, num, chunks + 1).astype(int))
 
 
 def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> List[GridBase]:
@@ -35,7 +50,7 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> List[GridBa
 
     subgrids = []
     start = 0
-    for size in subdivide(grid.shape[axis], chunks):
+    for size in _subdivide(grid.shape[axis], chunks):
         # determine new sub region
         end = start + size
         shape = replace_in_axis(grid.shape, size)
@@ -94,13 +109,12 @@ class GridMesh:
                 length `grid.num_axes` or a single integer. In the latter case,
                 the same subdivision is assumed for each axes.
         """
-        decomposition = np.broadcast_to(decomposition, (grid.num_axes,))
-        decomposition = decomposition.astype(int)
+        decomp_arr = np.broadcast_to(decomposition, (grid.num_axes,)).astype(int)
 
-        subgrids = np.empty(decomposition, dtype=object)
+        subgrids = np.empty(decomp_arr, dtype=object)
         subgrids.flat[0] = grid  # seed the initial grid at the top-left
-        idx_set = [0] * subgrids.ndim  # indices to extract all grids
-        for axis, chunks in enumerate(decomposition):
+        idx_set: List[Any] = [0] * subgrids.ndim  # indices to extract all grids
+        for axis, chunks in enumerate(decomp_arr):
             # iterate over all grids that have been determined already
             for idx, subgrid in np.ndenumerate(subgrids[tuple(idx_set)]):
                 i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)
@@ -118,7 +132,7 @@ class GridMesh:
         # create indices for each axis
         indices_1d = []
         for axis in range(self.num_axes):
-            grid_ids = [0] * self.num_axes
+            grid_ids: List[Any] = [0] * self.num_axes
             grid_ids[axis] = slice(None, None)
             data, last = [], 0
             for grid in self.subgrids[grid_ids]:

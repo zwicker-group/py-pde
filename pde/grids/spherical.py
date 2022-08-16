@@ -49,9 +49,9 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     if dim == 1:
         return 2 * radius
     elif dim == 2:
-        return π * radius**2
+        return π * radius**2  # type: ignore
     elif dim == 3:
-        return PI_43 * radius**3
+        return PI_43 * radius**3  # type: ignore
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
@@ -114,12 +114,31 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         self._axes_bounds = ((r_inner, r_outer),)
         self._discretization = np.array((dr,))
 
+    @property
+    def state(self) -> Dict[str, Any]:
+        """state: the state of the grid"""
+        return {"radius": self.radius, "shape": self.shape}
+
     @classmethod
-    def from_bounds(
+    def from_state(cls, state: Dict[str, Any]) -> SphericalSymGridBase:  # type: ignore
+        """create a field from a stored `state`.
+
+        Args:
+            state (dict):
+                The state from which the grid is reconstructed.
+        """
+        state_copy = state.copy()
+        obj = cls(radius=state_copy.pop("radius"), shape=state_copy.pop("shape"))
+        if state_copy:
+            raise ValueError(f"State items {state_copy.keys()} were not used")
+        return obj
+
+    @classmethod
+    def from_bounds(  # type: ignore
         cls,
         bounds: Tuple[Tuple[float, float]],
         shape: Tuple[int],
-        periodic: Tuple[bool] = (False,),
+        periodic: Tuple[bool],
     ) -> SphericalSymGridBase:
         """
         Args:
@@ -137,28 +156,9 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         return cls(bounds[0], shape)
 
     @property
-    def state(self) -> Dict[str, Any]:
-        """state: the state of the grid"""
-        return {"radius": self.radius, "shape": self.shape}
-
-    @property
     def has_hole(self) -> bool:
         """returns whether the inner radius is larger than zero"""
         return self.axes_bounds[0][0] > 0
-
-    @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> SphericalSymGridBase:  # type: ignore
-        """create a field from a stored `state`.
-
-        Args:
-            state (dict):
-                The state from which the grid is reconstructed.
-        """
-        state_copy = state.copy()
-        obj = cls(radius=state_copy.pop("radius"), shape=state_copy.pop("shape"))
-        if state_copy:
-            raise ValueError(f"State items {state_copy.keys()} were not used")
-        return obj
 
     @property
     def radius(self) -> Union[float, Tuple[float, float]]:
