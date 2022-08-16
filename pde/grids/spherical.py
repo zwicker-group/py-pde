@@ -75,6 +75,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
     periodic = [False]  # the radial axis is not periodic
     num_axes = 1  # the number of independent axes
 
+    boundary_names = {"inner": (0, False), "outer": (0, True)}
+
     def __init__(
         self, radius: Union[float, Tuple[float, float]], shape: Union[Tuple[int], int]
     ):

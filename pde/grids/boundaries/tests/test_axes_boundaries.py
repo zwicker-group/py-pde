@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 
 from pde import ScalarField, UnitGrid
-from pde.grids.boundaries.axes import Boundaries
+from pde.grids.base import PeriodicityError
+from pde.grids.boundaries.axes import BCDataError, Boundaries
 from pde.grids.boundaries.axis import BoundaryPair, BoundaryPeriodic, get_boundary_axis
 
 
@@ -16,16 +17,20 @@ def test_boundaries():
     """test setting boundaries for multiple systems"""
     b = ["periodic", "value", {"type": "derivative", "value": 1}]
     for bx, by in itertools.product(b, b):
-        g = UnitGrid([2, 2], periodic=[b == "periodic" for b in (bx, by)])
+        periodic = [b == "periodic" for b in (bx, by)]
+        g = UnitGrid([2, 2], periodic=periodic)
 
         bcs = Boundaries.from_data(g, [bx, by])
         bc_x = get_boundary_axis(g, 0, bx)
         bc_y = get_boundary_axis(g, 1, by)
 
         assert bcs.grid.num_axes == 2
+        assert bcs.periodic == periodic
         assert bcs[0] == bc_x
         assert bcs[1] == bc_y
         assert "field" in bcs.get_mathematical_representation("field")
+        assert isinstance(str(bcs), str)
+        assert isinstance(repr(bcs), str)
 
         assert bcs == Boundaries.from_data(g, [bc_x, bc_y])
         if bx == by:
@@ -38,6 +43,28 @@ def test_boundaries():
     b1 = Boundaries.from_data(UnitGrid([2, 2]), "auto_periodic_neumann")
     b2 = Boundaries.from_data(UnitGrid([3, 3]), "auto_periodic_neumann")
     assert b1 != b2
+
+
+def test_boundaries_edge_cases():
+    """test treatment of invalid data"""
+    grid = UnitGrid([3, 3])
+    bcs = grid.get_boundary_conditions("auto_periodic_neumann")
+    with pytest.raises(BCDataError):
+        Boundaries([])
+    with pytest.raises(BCDataError):
+        Boundaries([bcs[0]])
+    with pytest.raises(BCDataError):
+        Boundaries([bcs[0], bcs[0]])
+
+    assert bcs == Boundaries([bcs[0], bcs[1]])
+    bc0 = get_boundary_axis(grid.copy(), 0, "auto_periodic_neumann")
+    assert bcs == Boundaries([bc0, bcs[1]])
+    bc0 = get_boundary_axis(UnitGrid([4, 3]), 0, "auto_periodic_neumann")
+    with pytest.raises(BCDataError):
+        Boundaries([bc0, bcs[1]])
+    bc0 = get_boundary_axis(UnitGrid([3, 3], periodic=True), 0, "auto_periodic_neumann")
+    with pytest.raises(BCDataError):
+        Boundaries([bc0, bcs[1]])
 
 
 def test_boundary_specifications():
@@ -117,3 +144,42 @@ def test_set_ghost_cells(dim, periodic):
         idx = [slice(1, -1)] * dim
         idx[n] = slice(None)
         np.testing.assert_allclose(arr1[tuple(idx)], arr2[tuple(idx)])
+
+
+def test_setting_specific_bcs():
+    """test the interface of setting specific conditions"""
+    grid = UnitGrid([4, 4], periodic=[False, True])
+    bcs = grid.get_boundary_conditions("auto_periodic_neumann")
+
+    # test non-periodic axis
+    assert str(bcs[0]) == '"derivative"'
+    assert str(bcs["x"]) == '"derivative"'
+    bcs["x"] = "value"
+    assert str(bcs["x"]) == '"value"'
+    bcs["left"] = "derivative"
+    assert str(bcs["left"]) == '"derivative"'
+    assert str(bcs["right"]) == '"value"'
+    bcs["right"] = "derivative"
+    assert str(bcs["x"]) == '"derivative"'
+    with pytest.raises(PeriodicityError):
+        bcs["x"] = "periodic"
+
+    # test periodic axis
+    assert str(bcs[1]) == '"periodic"'
+    assert str(bcs["y"]) == '"periodic"'
+    assert str(bcs["top"]) == '"periodic"'
+    bcs["y"] = "periodic"
+    with pytest.raises(PeriodicityError):
+        bcs["y"] = "value"
+    with pytest.raises(PeriodicityError):
+        bcs["top"] = "value"
+
+    # test wrong input
+    with pytest.raises(KeyError):
+        bcs["nonsense"]
+    with pytest.raises(TypeError):
+        bcs[None]
+    with pytest.raises(KeyError):
+        bcs["nonsense"] = None
+
+    # test different ranks

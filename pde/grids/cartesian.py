@@ -51,6 +51,15 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
 
     cuboid: Cuboid
 
+    boundary_names = {  # name all the boundaries
+        "left": (0, False),
+        "right": (0, True),
+        "bottom": (1, False),
+        "top": (1, True),
+        "back": (2, False),
+        "front": (2, True),
+    }
+
     def __init__(
         self,
         bounds: Sequence[Tuple[float, float]],

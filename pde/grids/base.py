@@ -127,16 +127,24 @@ class GridBase(metaclass=ABCMeta):
     _operators: Dict[str, OperatorInfo] = {}  # all operators defined for the grid
 
     # properties that are defined in subclasses
-    dim: int  # int: The spatial dimension in which the grid is embedded
-    axes: List[str]  # list: Name of all axes that are described by the grid
+    dim: int
+    """int: The spatial dimension in which the grid is embedded"""
+    axes: List[str]
+    """list: Names of all axes that are described by the grid"""
     axes_symmetric: List[str] = []
-    """ list: The names of the additional axes that the fields do not depend on,
+    """list: The names of the additional axes that the fields do not depend on,
     e.g. along which they are constant. """
 
+    boundary_names: Dict[str, Tuple[int, bool]] = {}
+    """dict: Names of boundaries to select them conveniently"""
     cell_volume_data: Sequence[FloatNumerical]
-    coordinate_constraints: List[int] = []  # axes not described explicitly
+    """list: Information about the size of discretization cells"""
+    coordinate_constraints: List[int] = []
+    """list: axes that not described explicitly"""
     num_axes: int
+    """int: Number of axes that are *not* assumed symmetrically"""
     periodic: List[bool]
+    """list: Flags that describe which axes are periodic"""
 
     # mandatory, immutable, private attributes
     _axes_bounds: Tuple[Tuple[float, float], ...]

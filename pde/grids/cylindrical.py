@@ -58,6 +58,12 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     axes = ["r", "z"]  # name of the actual axes
     axes_symmetric = ["phi"]
     coordinate_constraints = [0, 1]  # constraint Cartesian coordinates
+    boundary_names = {  # name all the boundaries
+        "inner": (0, False),
+        "outer": (0, True),
+        "bottom": (1, False),
+        "top": (1, True),
+    }
 
     def __init__(
         self,

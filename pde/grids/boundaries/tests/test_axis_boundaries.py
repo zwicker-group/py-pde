@@ -26,6 +26,8 @@ def test_boundary_pair():
         if bl == bh:
             assert bc == BoundaryPair.from_data(g, 0, bl)
         assert list(bc) == [blo, bho]
+        assert isinstance(str(bc), str)
+        assert isinstance(repr(bc), str)
 
         bc.check_value_rank(0)
         with pytest.raises(RuntimeError):
