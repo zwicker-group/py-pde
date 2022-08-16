@@ -7,6 +7,7 @@ Base classes for trackers
 from __future__ import annotations
 
 import logging
+import math
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, List, Optional, Sequence, Type, Union
 
@@ -141,7 +142,7 @@ class TrackerCollection:
 
         # do not check trackers before everything was initialized
         self.tracker_action_times = []
-        self.time_next_action = np.inf
+        self.time_next_action = math.inf
 
     def __len__(self) -> int:
         """returns the number of trackers in the collection"""
@@ -204,7 +205,7 @@ class TrackerCollection:
             # determine next time to check trackers
             self.time_next_action = min(self.tracker_action_times)
         else:
-            self.time_next_action = np.inf
+            self.time_next_action = math.inf
 
         return self.time_next_action
 

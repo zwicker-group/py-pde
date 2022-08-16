@@ -86,7 +86,7 @@ class FixedInterrupts(InterruptsBase):
 
             # fetch the next entry that is after the current time `t`
             self._index += 1
-            t_next = self.interrupts[self._index]  # fetch next time point
+            t_next: float = self.interrupts[self._index]  # fetch next time point
             while t_next < t:  # ensure time point lies in the future
                 self._index += 1
                 t_next = self.interrupts[self._index]
@@ -96,7 +96,7 @@ class FixedInterrupts(InterruptsBase):
 
         except IndexError:
             # iterator has been exhausted -> never break again
-            return np.inf
+            return math.inf
 
 
 class ConstantInterrupts(InterruptsBase):
