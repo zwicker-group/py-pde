@@ -25,8 +25,7 @@ class Boundaries(list):
     """class that bundles all boundary conditions for all axes"""
 
     grid: GridBase
-    """ :class:`~pde.grids.base.GridBase`:
-    The grid for which the boundaries are defined """
+    """:class:`~pde.grids.base.GridBase`: grid for which boundaries are defined """
 
     def __init__(self, boundaries):
         """initialize with a list of boundaries"""
@@ -197,6 +196,62 @@ class Boundaries(list):
         """:class:`~numpy.ndarray`: a boolean array indicating which dimensions
         are periodic according to the boundary conditions"""
         return self.grid.periodic
+
+    def __getitem__(self, index):
+        """extract specific boundary conditions
+
+        Args:
+            index (int or str):
+                Index can either be a number or an axes name, indicating the axes of
+                which conditions are returned. Alternatively, `index` can be a named
+                boundary whose conditions will then be returned
+        """
+        if isinstance(index, str):
+            # assume that the index is a known identifier
+            if index in self.grid.boundary_names:
+                axis, upper = self.grid.boundary_names[index]
+                return self[axis][upper]
+            elif index in self.grid.axes:
+                return self[self.grid.axes.index(index)]
+            else:
+                raise KeyError(index)
+        else:
+            # handle all other cases, in particular integer indices
+            return super().__getitem__(index)
+
+    def __setitem__(self, index, data) -> None:
+        """set specific boundary conditions
+
+        Args:
+            index (int or str):
+                Index can either be a number or an axes name, indicating the axes of
+                which conditions are returned. Alternatively, `index` can be a named
+                boundary whose conditions will then be returned
+            data:
+                Data describing the boundary conditions for this axis or side
+        """
+        if isinstance(index, str):
+            # assume that the index is a known identifier
+            if index in self.grid.boundary_names:
+                # set a specific boundary side
+                axis, upper = self.grid.boundary_names[index]
+                self[axis][upper] = data
+
+            elif index in self.grid.axes:
+                # set both sides of the boundary condition
+                axis = self.grid.axes.index(index)
+                self[axis] = get_boundary_axis(
+                    grid=self.grid,
+                    axis=axis,
+                    data=data,
+                    rank=self[axis].rank,
+                )
+            else:
+                raise KeyError(index)
+
+        else:
+            # handle all other cases, in particular integer indices
+            return super().__setitem__(index, data)
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """return mathematical representation of the boundary condition"""

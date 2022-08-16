@@ -60,7 +60,7 @@ from ...tools.typing import (
     GhostCellSetter,
     VirtualPointEvaluator,
 )
-from ..base import GridBase
+from ..base import GridBase, PeriodicityError
 
 BoundaryData = Union[Dict, str, "BCBase"]
 
@@ -280,8 +280,10 @@ class BCBase(metaclass=ABCMeta):
 
     @property
     def periodic(self) -> bool:
-        """bool: whether the axis is periodic"""
-        return self.grid.periodic[self.axis]
+        """bool: whether the boundary condition is periodic"""
+        # we determine the periodicity of the boundary condition from the condition
+        # itself so we can check for consistency against the grid periodicity
+        return isinstance(self, _PeriodicBC)
 
     @property
     def axis_coord(self) -> float:
@@ -337,7 +339,7 @@ class BCBase(metaclass=ABCMeta):
         return []
 
     def __repr__(self):
-        args = [f"axis={self.axis}", f"upper={self.upper}"]
+        args = [f"grid={self.grid}", f"axis={self.axis}", f"upper={self.upper}"]
         if self.rank != 0:
             args.append(f"rank={self.rank}")
         if self.normal:
@@ -345,7 +347,14 @@ class BCBase(metaclass=ABCMeta):
         args += self._repr_value()
         return f"{self.__class__.__name__}({', '.join(args)})"
 
-    __str__ = __repr__
+    def __str__(self):
+        args = [f"axis={self.axis}", "upper" if self.upper else "lower"]
+        if self.rank != 0:
+            args.append(f"rank={self.rank}")
+        if self.normal:
+            args.append(f"normal=True")
+        args += self._repr_value()
+        return f"{self.__class__.__name__}({', '.join(args)})"
 
     def __eq__(self, other):
         """checks for equality neglecting the `upper` property"""
@@ -395,16 +404,6 @@ class BCBase(metaclass=ABCMeta):
             \**kwargs:
                 Additional arguments passed to the constructor
         """
-        # raise warning to mention problem with legacy code (bug fixed 2021-01-18)
-        if condition == "no-flux":
-            raise BCDataError(
-                "Specifying the boundary condition 'no-flux' is no longer supported "
-                "since it introduced a bug when specifying flux conditions. To impose "
-                "no flux conditions, please decide whether you need to impose a "
-                "vanishing derivative or a value of zero and specify this condition "
-                "explicitly."
-            )
-
         # extract the class
         try:
             boundary_class = cls._conditions[condition]
@@ -521,17 +520,17 @@ class BCBase(metaclass=ABCMeta):
                 and data.rank == rank
                 and data.normal == normal
             )
-            return data.copy(upper=upper)
+            bc = data.copy(upper=upper)
 
         elif isinstance(data, dict):
             # create from dictionary
-            return cls.from_dict(
+            bc = cls.from_dict(
                 grid, axis, upper=upper, data=data, rank=rank, normal=normal
             )
 
         elif isinstance(data, str):
             # create a specific condition given by a string
-            return cls.from_str(
+            bc = cls.from_str(
                 grid, axis, upper=upper, condition=data, rank=rank, normal=normal
             )
 
@@ -539,6 +538,11 @@ class BCBase(metaclass=ABCMeta):
             raise BCDataError(
                 f"Unsupported boundary format: `{data}`. " + cls.get_help()
             )
+
+        # check consistency
+        if bc.periodic != grid.periodic[axis]:
+            raise PeriodicityError("Periodicity of conditions must match grid")
+        return bc
 
     def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
@@ -1722,6 +1726,9 @@ class _PeriodicBC(ConstBC1stOrderBase):
         """
         super().__init__(grid, axis, upper)
         self.flip_sign = flip_sign
+
+    def __str__(self):
+        return '"periodic"'
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """return mathematical representation of the boundary condition"""

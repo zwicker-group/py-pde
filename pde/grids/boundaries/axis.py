@@ -11,14 +11,14 @@ non-periodic axes have more option, which are represented by
 
 from __future__ import annotations
 
-from typing import Callable, Dict, Tuple, Union
+from typing import Dict, Tuple, Union
 
 import numpy as np
 from numba.extending import register_jitable
 
-from ...tools.typing import GhostCellSetter, NumberOrArray, VirtualPointEvaluator
-from ..base import DomainError, GridBase, PeriodicityError
-from .local import BCBase, BCDataError, BoundaryData, _make_get_arr_1d, _PeriodicBC
+from ...tools.typing import GhostCellSetter
+from ..base import GridBase, PeriodicityError
+from .local import BCBase, BCDataError, BoundaryData, _PeriodicBC
 
 BoundaryPairData = Union[
     Dict[str, BoundaryData], BoundaryData, Tuple[BoundaryData, BoundaryData]
@@ -47,23 +47,16 @@ class BoundaryAxisBase:
         assert low.rank == high.rank
         assert high.upper and not low.upper
 
+        # check consistency with the grid
+        if not (
+            low.grid.periodic[low.axis]
+            == isinstance(low, _PeriodicBC)
+            == isinstance(high, _PeriodicBC)
+        ):
+            raise PeriodicityError("Periodicity of conditions must match grid")
+
         self.low = low
         self.high = high
-
-        # check grid consistency
-        periodic_low = isinstance(low, _PeriodicBC)
-        periodic_high = isinstance(high, _PeriodicBC)
-
-        if periodic_low != periodic_high:
-            raise PeriodicityError("Both boundaries must have same periodicity")
-        if periodic_low and not self.periodic:
-            raise PeriodicityError(
-                "Cannot impose periodic boundary condition on non-periodic axis"
-            )
-        if not periodic_low and self.periodic:
-            raise PeriodicityError(
-                "Cannot impose non-periodic boundary condition on periodic axis"
-            )
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -87,14 +80,35 @@ class BoundaryAxisBase:
         yield self.low
         yield self.high
 
-    def __getitem__(self, index: Union[int, bool]) -> BCBase:
+    def __getitem__(self, index) -> BCBase:
         """returns one of the sides"""
         if index == 0 or index is False:
             return self.low
         elif index == 1 or index is True:
             return self.high
         else:
-            raise IndexError("Index can be either 0/False or 1/True")
+            raise IndexError("Index must be 0/False or 1/True")
+
+    def __setitem__(self, index, data) -> None:
+        """set one of the sides"""
+        # determine which side was selected
+        upper = {0: False, False: False, 1: True, True: True}[index]
+
+        # create the appropriate boundary condition
+        bc = BCBase.from_data(
+            self.grid,
+            self.axis,
+            upper=upper,
+            data=data,
+            rank=self[upper].rank,
+            normal=self[upper].normal,
+        )
+
+        # set the data
+        if upper:
+            self.high = bc
+        else:
+            self.low = bc
 
     @property
     def grid(self) -> GridBase:
@@ -110,6 +124,12 @@ class BoundaryAxisBase:
     def periodic(self) -> bool:
         """bool: whether the axis is periodic"""
         return self.grid.periodic[self.axis]
+
+    @property
+    def rank(self) -> int:
+        """int: rank of the associated boundary condition"""
+        assert self.low.rank == self.high.rank
+        return self.low.rank
 
     def get_mathematical_representation(self, field_name: str = "C") -> Tuple[str, str]:
         """return mathematical representation of the boundary condition"""
@@ -139,158 +159,6 @@ class BoundaryAxisBase:
         else:
             # the normal case of an interior point
             return 0, {axis_coord: 1}
-
-    def get_point_evaluator(
-        self, fill: np.ndarray = None
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], NumberOrArray]:
-        """return a function to evaluate values at a given point
-
-        The point can either be a point inside the domain or a virtual point
-        right outside the domain
-
-        Args:
-            fill (:class:`~numpy.ndarray`, optional):
-                Determines how values out of bounds are handled. If `None`, a
-                `DomainError` is raised when out-of-bounds points are requested.
-                Otherwise, the given value is returned.
-
-        Returns:
-            function: A function taking a 1d array and an index as an argument,
-                returning the value of the array at this index.
-        """
-        size = self.low.grid.shape[self.low.axis]
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-
-        eval_low = self.low.make_virtual_point_evaluator()
-        eval_high = self.high.make_virtual_point_evaluator()
-
-        @register_jitable
-        def evaluate(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
-            """evaluate values of the 1d array `arr_1d` at an index `i`"""
-            arr_1d, i, _ = get_arr_1d(arr, idx)
-
-            if i == -1:
-                # virtual point on the lower side of the axis
-                return eval_low(arr, idx)
-
-            elif i == size:
-                # virtual point on the upper side of the axis
-                return eval_high(arr, idx)
-
-            elif 0 <= i < size:
-                # inner point of the axis
-                return arr_1d[..., i]  # type: ignore
-
-            elif fill is None:
-                # point is outside the domain and no fill value is specified
-                raise DomainError("Point index lies outside bounds")
-
-            else:
-                # Point is outside the domain, but fill value is specified. Note
-                # that fill value needs to be given with the correct shape.
-                return fill
-
-        return evaluate  # type: ignore
-
-    def make_virtual_point_evaluators(
-        self,
-    ) -> Tuple[VirtualPointEvaluator, VirtualPointEvaluator]:
-        """returns two functions evaluating the value at virtual support points
-
-        Returns:
-            tuple: Two functions that each take a 1d array as an argument and
-            return the associated value at the virtual support point outside the
-            lower and upper boundary, respectively.
-        """
-        eval_low = self.low.make_virtual_point_evaluator()
-        eval_high = self.high.make_virtual_point_evaluator()
-        return (eval_low, eval_high)
-
-    def make_region_evaluator(
-        self,
-    ) -> Callable[
-        [np.ndarray, Tuple[int, ...]],
-        Tuple[NumberOrArray, NumberOrArray, NumberOrArray],
-    ]:
-        """return a function to evaluate values in a neighborhood of a point
-
-        Returns:
-            function: A function that can be called with the data array and a
-            tuple indicating around what point the region is evaluated. The
-            function returns the data values left of the point, at the point,
-            and right of the point along the axis associated with this boundary
-            condition. The function takes boundary conditions into account if
-            the point lies on the boundary.
-        """
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-        ap_low = self.low.make_adjacent_evaluator()
-        ap_high = self.high.make_adjacent_evaluator()
-
-        @register_jitable
-        def region_evaluator(
-            arr: np.ndarray, idx: Tuple[int, ...]
-        ) -> Tuple[NumberOrArray, NumberOrArray, NumberOrArray]:
-            """compiled function return the values in the region"""
-            # extract the 1d array along axis
-            arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
-            return (
-                ap_low(arr_1d, i_point, bc_idx),
-                arr_1d[..., i_point],
-                ap_high(arr_1d, i_point, bc_idx),
-            )
-
-        return region_evaluator  # type: ignore
-
-    def make_derivative_evaluator(
-        self, order: int = 1
-    ) -> Callable[[np.ndarray, Tuple[int, ...]], NumberOrArray]:
-        """return a function to evaluate the derivative at a point
-
-        Args:
-            order (int): The order of the derivative
-
-        Returns:
-            function: A function that can be called with the data array and a tuple
-            indicating around what point the derivative is evaluated. The function
-            returns the central finite difference at the point. The function takes
-            boundary conditions into account if the point lies on the boundary.
-        """
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
-        ap_low = self.low.make_adjacent_evaluator()
-        ap_high = self.high.make_adjacent_evaluator()
-
-        if order == 1:
-            # first derivative
-            scale = 1 / (2 * self.grid.discretization[self.axis])
-
-            @register_jitable
-            def deriv_evaluator(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
-                """compiled function return the derivative at the pint"""
-                # extract the 1d array along axis
-                arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
-                val_low = ap_low(arr_1d, i_point, bc_idx)
-                val_high = ap_high(arr_1d, i_point, bc_idx)
-                # return the central derivative
-                return (val_high - val_low) * scale  # type: ignore
-
-        elif order == 2:
-            # second derivative
-            scale = 1 / self.grid.discretization[self.axis] ** 2
-
-            @register_jitable
-            def deriv_evaluator(arr: np.ndarray, idx: Tuple[int, ...]) -> NumberOrArray:
-                """compiled function return the derivative at the pint"""
-                # extract the 1d array along axis
-                arr_1d, i_point, bc_idx = get_arr_1d(arr, idx)
-                val_low = ap_low(arr_1d, i_point, bc_idx)
-                val_high = ap_high(arr_1d, i_point, bc_idx)
-                # return the central derivative
-                return (val_low - 2 * arr_1d[..., i_point] + val_high) * scale  # type: ignore
-
-        else:
-            raise NotImplementedError(f"Derivative of oder {order} not implemented")
-
-        return deriv_evaluator  # type: ignore
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for all boundaries
@@ -555,16 +423,21 @@ def get_boundary_axis(
     # handle different types of data that specify boundary conditions
     if isinstance(data, BoundaryAxisBase):
         # boundary is already an the correct format
-        return data
+        bcs = data
     elif data == "periodic" or data == ("periodic", "periodic"):
         # initialize a periodic boundary condition
-        return BoundaryPeriodic(grid, axis)
+        bcs = BoundaryPeriodic(grid, axis)
     elif data == "anti-periodic" or data == ("anti-periodic", "anti-periodic"):
         # initialize a anti-periodic boundary condition
-        return BoundaryPeriodic(grid, axis, flip_sign=True)
+        bcs = BoundaryPeriodic(grid, axis, flip_sign=True)
     elif isinstance(data, dict) and data.get("type") == "periodic":
         # initialize a periodic boundary condition
-        return BoundaryPeriodic(grid, axis)
+        bcs = BoundaryPeriodic(grid, axis)
     else:
         # initialize independent boundary conditions for the two sides
-        return BoundaryPair.from_data(grid, axis, data, rank=rank, normal=normal)
+        bcs = BoundaryPair.from_data(grid, axis, data, rank=rank, normal=normal)
+
+    # check consistency
+    if bcs.periodic != grid.periodic[axis]:
+        raise PeriodicityError("Periodicity of conditions must match grid")
+    return bcs
