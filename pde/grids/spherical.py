@@ -112,6 +112,25 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         self._axes_bounds = ((r_inner, r_outer),)
         self._discretization = np.array((dr,))
 
+    @classmethod
+    def from_bounds(cls, bounds: Tuple[Tuple[float, float]],
+                    shape: Tuple[int],
+                    periodic: Tuple[bool] = (False,)) -> "SphericalGridBase":
+        """ 
+        Args:
+            bounds (tuple): Give the coordinate range for the radial axis.
+            shape (tuple): The number of support points for the radial axis
+            periodic (bool or list): Not used
+                
+        Returns:
+            SphericalGridBase representing the region chosen by bounds 
+        """
+        if len(bounds) != 1:
+            raise ValueError('`bounds` must be given as ((r_min, r_max),). '
+                             f'Got {bounds} instead')
+        return cls(bounds[0], shape)
+                
+                  
     @property
     def state(self) -> Dict[str, Any]:
         """state: the state of the grid"""
