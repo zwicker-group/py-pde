@@ -126,7 +126,11 @@ class VectorField(DataFieldBase):
 
     def __getitem__(self, key: Union[int, str]) -> ScalarField:
         """extract a component of the VectorField"""
-        return ScalarField(self.grid, self.data[self.grid.get_axis_index(key)])
+        return ScalarField(
+            self.grid,
+            data=self._data_full[self.grid.get_axis_index(key)],
+            with_ghost_cells=True,
+        )
 
     def __setitem__(
         self, key: Union[int, str], value: Union[NumberOrArray, ScalarField]

@@ -104,15 +104,19 @@ class Tensor2Field(DataFieldBase):
         return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
 
     def __getitem__(self, key: Tuple[Union[int, str], Union[int, str]]) -> ScalarField:
-        """extract a component of the VectorField"""
-        return ScalarField(self.grid, self.data[self._get_axes_index(key)])
+        """extract a single component of the tensor field as a scalar field"""
+        return ScalarField(
+            self.grid,
+            data=self._data_full[self._get_axes_index(key)],
+            with_ghost_cells=True,
+        )
 
     def __setitem__(
         self,
         key: Tuple[Union[int, str], Union[int, str]],
         value: Union[NumberOrArray, ScalarField],
     ):
-        """set a component of the VectorField"""
+        """set a single component of the tensor field"""
         idx = self._get_axes_index(key)
         if isinstance(value, ScalarField):
             self.grid.assert_grid_compatible(value.grid)
