@@ -546,10 +546,7 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
 
     @fill_in_docstring
     def get_boundary_conditions(
-        self,
-        bc: "BoundariesData" = "auto_periodic_neumann",
-        rank: int = 0,
-        normal: bool = False,
+        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
     ) -> "Boundaries":
         """constructs boundary conditions from a flexible data format
 
@@ -559,9 +556,6 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
                 {ARG_BOUNDARIES}
             rank (int):
                 The tensorial rank of the value associated with the boundary conditions.
-            normal (bool):
-                Flag indicating whether the condition is only applied in the normal
-                direction.
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -571,7 +565,7 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         from .boundaries import Boundaries  # @Reimport
 
         # get boundary conditions
-        return Boundaries.from_data(self, bc, rank=rank, normal=normal)
+        return Boundaries.from_data(self, bc, rank=rank)
 
     def get_subgrid(self, indices: Sequence[int]) -> CartesianGrid:
         """return a subgrid of only the specified axes

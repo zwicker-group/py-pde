@@ -733,10 +733,7 @@ class GridBase(metaclass=ABCMeta):
 
     @abstractmethod
     def get_boundary_conditions(
-        self,
-        bc: "BoundariesData" = "auto_periodic_neumann",
-        rank: int = 0,
-        normal: bool = False,
+        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
     ) -> Boundaries:
         pass
 
@@ -897,12 +894,7 @@ class GridBase(metaclass=ABCMeta):
     @cached_method()
     @fill_in_docstring
     def make_operator(
-        self,
-        operator: Union[str, OperatorInfo],
-        bc: BoundariesData,
-        *,
-        normal_bcs: bool = None,
-        **kwargs,
+        self, operator: Union[str, OperatorInfo], bc: BoundariesData, **kwargs
     ) -> Callable[..., np.ndarray]:
         """return a compiled function applying an operator with boundary conditions
 
@@ -923,12 +915,6 @@ class GridBase(metaclass=ABCMeta):
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
-            normal_bcs (bool):
-                Flag indicating whether the condition is only applied in the normal
-                direction. This value normally determined automatically from the
-                properties of the operator. Here, normal=True is assumed if the operator
-                reduced the rank of the field, so that the output has lower rank than
-                the input.
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
 
@@ -943,11 +929,7 @@ class GridBase(metaclass=ABCMeta):
         operator_raw = operator.factory(self, **kwargs)
 
         # set the boundary conditions before applying this operator
-        if normal_bcs is None:
-            # determine whether it is sufficient to apply the boundary condition in the
-            # normal direction
-            normal_bcs = operator.rank_in > operator.rank_out
-        bcs = self.get_boundary_conditions(bc, rank=operator.rank_in, normal=normal_bcs)
+        bcs = self.get_boundary_conditions(bc, rank=operator.rank_in)
 
         # calculate shapes of the full data
         shape_in_full = (self.dim,) * operator.rank_in + self._shape_full

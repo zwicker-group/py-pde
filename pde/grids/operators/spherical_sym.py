@@ -304,32 +304,108 @@ def make_tensor_divergence(grid: SphericalSymGrid, safe: bool = True) -> Operato
 
         # check inputs
         if safe:
-            # the following components are required to be zero. If this was not the case
-            # the vector resulting from the divergence might contain components that
-            # cannot be expressed in spherically symmetric coordinates
+            # the following conditions need to be met. Otherwise, the vector resulting
+            # from the divergence might contain components that cannot be expressed in
+            # spherically symmetric coordinates
             assert np.all(arr_rθ[1:-1] == 0)
-            assert np.all(arr_θθ[1:-1] == 0)
-            assert np.all(arr_φφ[1:-1] == 0)
-            assert np.all(arr_φθ[1:-1] == 0)
-            assert np.all(arr_θφ[1:-1] == 0)
-            c = 0  # safety has been checked -> ignore these terms
-        else:
-            c = 1  # safety is not guaranteed -> use terms below
+            assert np.all(arr_θθ[1:-1] == arr_φφ[1:-1])
+            assert np.all(arr_φθ[1:-1] == -arr_θφ[1:-1])
 
         # iterate over inner points
         for i in range(1, dim_r + 1):
             deriv_r = (arr_rr[i + 1] - arr_rr[i - 1]) * scale_r
-            out_r[i - 1] = (
-                deriv_r + (2 * arr_rr[i] - c * arr_θθ[i] - c * arr_φφ[i]) / rs[i - 1]
-            )
+            out_r[i - 1] = deriv_r + 2 * (arr_rr[i] - arr_φφ[i]) / rs[i - 1]
 
             deriv_r = (arr_θr[i + 1] - arr_θr[i - 1]) * scale_r
-            out_θ[i - 1] = deriv_r + (2 * arr_θr[i] + c * arr_rθ[i]) / rs[i - 1]
+            out_θ[i - 1] = deriv_r + 2 * arr_θr[i] / rs[i - 1]
 
             deriv_r = (arr_φr[i + 1] - arr_φr[i - 1]) * scale_r
             out_φ[i - 1] = deriv_r + (2 * arr_φr[i] + arr_rφ[i]) / rs[i - 1]
 
     return tensor_divergence  # type: ignore
+
+
+@SphericalSymGrid.register_operator("tensor_double_divergence", rank_in=2, rank_out=0)
+@fill_in_docstring
+def make_tensor_double_divergence(
+    grid: SphericalSymGrid, safe: bool = True, conservative: bool = True
+) -> OperatorType:
+    """make a discretized tensor double divergence operator for a spherical grid
+
+    {DESCR_SPHERICAL_GRID}
+
+    Args:
+        grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
+            The polar grid for which this operator will be defined
+        safe (bool):
+            Add extra checks for the validity of the input
+
+    Returns:
+        A function that can be applied to an array of values
+    """
+    assert isinstance(grid, SphericalSymGrid)
+
+    # calculate preliminary quantities
+    dim_r = grid.shape[0]
+    rs = grid.axes_coords[0]
+    dr = grid.discretization[0]
+    scale_r = 1 / (2 * dr)
+    r_min, r_max = grid.axes_bounds[0]
+
+    # define the second-order derivative, which will be used later
+    if conservative:
+        # create a conservative spherical laplace operator
+        rl = rs - dr / 2  # inner radii of spherical shells
+        rh = rs + dr / 2  # outer radii
+        assert np.isclose(rl[0], r_min) and np.isclose(rh[-1], r_max)
+        volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
+        factor_l = (rs - 0.5 * dr) ** 2 / (dr * volumes)
+        factor_h = (rs + 0.5 * dr) ** 2 / (dr * volumes)
+
+        @jit
+        def laplace(arr: np.ndarray, i: int) -> float:
+            term_h = factor_h[i - 1] * (arr[i + 1] - arr[i])
+            term_l = factor_l[i - 1] * (arr[i] - arr[i - 1])
+            return term_h - term_l
+
+    else:
+        dr2 = 1 / dr**2
+
+        @jit
+        def laplace(arr: np.ndarray, i: int) -> float:
+            term1 = (arr[i + 1] - arr[i - 1]) / (rs[i - 1] * dr)
+            term2 = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr2
+            return term1 + term2
+
+    @jit
+    def tensor_double_divergence(arr: np.ndarray, out: np.ndarray) -> None:
+        """apply double divergence operator to tensor array `arr`"""
+        # assign aliases
+        arr_rr, arr_rθ, ______ = arr[0, 0, :], arr[0, 1, :], arr[0, 2, :]
+        arr_θr, arr_θθ, ______ = arr[1, 0, :], arr[1, 1, :], arr[1, 2, :]
+        ______, ______, arr_φφ = arr[2, 0, :], arr[2, 1, :], arr[2, 2, :]
+
+        # check inputs
+        if safe:
+            # the following conditions need to be met. Otherwise, the vector resulting
+            # from the divergence might contain components that cannot be expressed in
+            # spherically symmetric coordinates
+            assert np.all(arr_rθ[1:-1] == -arr_θr[1:-1])
+            assert np.all(arr_θθ[1:-1] == arr_φφ[1:-1])
+
+        # iterate over inner points
+        for i in range(1, dim_r + 1):
+            # first derivatives
+            arr_rr_dr = (arr_rr[i + 1] - arr_rr[i - 1]) * scale_r
+            arr_φφ_dr = (arr_φφ[i + 1] - arr_φφ[i - 1]) * scale_r
+
+            # second derivative (either conservative or not)
+            lap_rr = laplace(arr_rr, i)
+
+            enum = (arr_rr[i] - arr_φφ[i]) / rs[i - 1] + arr_rr_dr - arr_φφ_dr
+            out[i - 1] = lap_rr + 2 * enum / rs[i - 1]
+
+    return tensor_double_divergence  # type: ignore
 
 
 @fill_in_docstring

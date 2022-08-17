@@ -126,7 +126,11 @@ class VectorField(DataFieldBase):
 
     def __getitem__(self, key: Union[int, str]) -> ScalarField:
         """extract a component of the VectorField"""
-        return ScalarField(self.grid, self.data[self.grid.get_axis_index(key)])
+        return ScalarField(
+            self.grid,
+            data=self._data_full[self.grid.get_axis_index(key)],
+            with_ghost_cells=True,
+        )
 
     def __setitem__(
         self, key: Union[int, str], value: Union[NumberOrArray, ScalarField]
@@ -474,9 +478,7 @@ class VectorField(DataFieldBase):
             label (str, optional):
                 Name of the returned field
             **kwargs:
-                Additional arguments affecting how the operator behaves. For instance,
-                the argument `normal_bcs` can be used to control whether boundary
-                conditions only specify normal components or not.
+                Additional arguments affecting how the operator behaves.
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
@@ -506,9 +508,7 @@ class VectorField(DataFieldBase):
             label (str, optional):
                 Name of the returned field
             **kwargs:
-                Additional arguments affecting how the operator behaves. For instance,
-                the argument `normal_bcs` can be used to control whether boundary
-                conditions only specify normal components or not.
+                Additional arguments affecting how the operator behaves.
 
         Returns:
             :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the operator
@@ -538,9 +538,7 @@ class VectorField(DataFieldBase):
             label (str, optional):
                 Name of the returned field
             **kwargs:
-                Additional arguments affecting how the operator behaves. For instance,
-                the argument `normal_bcs` can be used to control whether boundary
-                conditions only specify normal components or not.
+                Additional arguments affecting how the operator behaves.
 
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
