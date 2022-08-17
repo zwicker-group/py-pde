@@ -1375,7 +1375,8 @@ class ConstBCBase(BCBase):
                 raise ValueError(
                     f"Dimensions {value.shape} of the given value are incompatible "
                     f"with the expected shape {self._shape_tensor} of the boundary "
-                    f"value and its spatial dimensions {self._shape_boundary}."
+                    f"value and its spatial dimensions {self._shape_boundary}. "
+                    f"(rank={self.rank}, normal={self.normal})"
                 )
 
         # check consistency
