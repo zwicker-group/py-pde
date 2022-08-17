@@ -403,10 +403,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
 
     @fill_in_docstring
     def get_boundary_conditions(
-        self,
-        bc: "BoundariesData" = "auto_periodic_neumann",
-        rank: int = 0,
-        normal: bool = False,
+        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
     ) -> "Boundaries":
         """constructs boundary conditions from a flexible data format
 
@@ -417,9 +414,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             rank (int):
                 The tensorial rank of the value associated with the boundary
                 conditions.
-            normal (bool):
-                Flag indicating whether the condition is only applied in the normal
-                direction.
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -429,7 +423,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         from .boundaries import Boundaries  # @Reimport
 
         # obtain boundary conditions
-        return Boundaries.from_data(self, bc, rank=rank, normal=normal)
+        return Boundaries.from_data(self, bc, rank=rank)
 
     def get_cartesian_grid(self, mode: str = "valid") -> CartesianGrid:
         """return a Cartesian grid for this Cylindrical one

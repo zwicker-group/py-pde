@@ -1544,23 +1544,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2  # type: ignore
 
     @fill_in_docstring
-    def set_ghost_cells(
-        self, bc: BoundariesData, *, normal: bool = False, args=None
-    ) -> None:
+    def set_ghost_cells(self, bc: BoundariesData, *, args=None) -> None:
         """set the boundary values on virtual points for all boundaries
 
         Args:
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
-            normal (bool):
-                Flag indicating whether the condition is only applied in the normal
-                direction.
             args:
                 Additional arguments that might be supported by special boundary
                 conditions.
         """
-        bcs = self.grid.get_boundary_conditions(bc, rank=self.rank, normal=normal)
+        bcs = self.grid.get_boundary_conditions(bc, rank=self.rank)
         bcs.set_ghost_cells(self._data_full, args=args)
 
     @property
@@ -1641,9 +1636,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             label (str, optional):
                 Name of the returned field
             **kwargs:
-                Additional arguments affecting how the operator behaves. For instance,
-                the argument `normal_bcs` can be used to control whether boundary
-                conditions only specify normal components or not.
+                Additional arguments affecting how the operator behaves.
 
         Returns:
             Field with new data. This is stored at `out` if given.

@@ -158,8 +158,8 @@ def test_examples_vector_cyl():
     e_φ = "r**2 * sin(z)"
     e_z = "r**4 * cos(z)"
     vf = VectorField.from_expression(grid, [e_r, e_z, e_φ])
-    bc_r = ({"derivative": 0}, {"value": "r**3 * sin(z)"})
-    bc_z = {"curvature": "-r**4 * cos(z)"}
+    bc_r = ({"normal_derivative": 0}, {"normal_value": "r**3 * sin(z)"})
+    bc_z = {"normal_curvature": "-r**4 * cos(z)"}
     bcs = [bc_r, bc_z]
 
     # divergence
@@ -201,7 +201,7 @@ def test_examples_tensor_cyl():
     # tensor divergence
     rs, zs = grid.axes_coords
     val_r_outer = np.broadcast_to(6 * rs * np.sin(zs), (3, 32))
-    bcs = [({"derivative": 0}, {"curvature": val_r_outer}), "periodic"]
+    bcs = [({"normal_derivative": 0}, {"normal_curvature": val_r_outer}), "periodic"]
     res = tf.divergence(bcs)
     expect = VectorField.from_expression(
         grid,
