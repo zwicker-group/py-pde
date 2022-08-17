@@ -1,11 +1,11 @@
 r"""
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 
-This module contains classes for handling a single boundary of a non-periodic
-axis. Since an axis has two boundary, we simply distinguish them by a boolean
-flag `upper`, which is True for the side of the axis with the larger coordinate.
+This module contains classes for handling a single boundary of a non-periodic axis.
+Since an axis has two boundary, we simply distinguish them by a boolean flag `upper`,
+which is `True` for the side of the axis with the larger coordinate.
 
-The module currently supports different boundary conditions:
+The module currently supports the following standard boundary conditions:
 
 * :class:`~pde.grids.boundaries.local.DirichletBC`:
   Imposing the value of a field at the boundary
@@ -16,6 +16,13 @@ The module currently supports different boundary conditions:
   value at the boundary  
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing the second derivative (curvature) of a field at the boundary
+  
+There are also variants of these boundary conditions that only affect the normal
+components of a vector or tensor field:
+:class:`~pde.grids.boundaries.local.NormalDirichletBC`,
+:class:`~pde.grids.boundaries.local.NormalNeumannBC`,
+:class:`~pde.grids.boundaries.local.NormalMixedBC`, and
+:class:`~pde.grids.boundaries.local.NormalCurvatureBC`.
   
 Finally, there are more specialized classes, which offer greater flexibility, but might
 also require a slightly deeper understanding for proper use:
