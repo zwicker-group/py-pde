@@ -211,7 +211,7 @@ def test_tensor_div_div():
     )
     res = tf._apply_operator("tensor_double_divergence", bc="curvature")
     expect = ScalarField.from_expression(grid, "2 * r * (15 * r - 4)")
-    np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.05)
+    np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.01)
 
     # compare to actual double divergence
     grid = SphericalSymGrid([0, 1], 128)
@@ -220,3 +220,9 @@ def test_tensor_div_div():
     res = tf._apply_operator("tensor_double_divergence", bc="neumann")
     est = tf.divergence("neumann").divergence("neumann")
     np.testing.assert_allclose(res.data, est.data, rtol=0.01, atol=0.5)
+
+    # simpler test case
+    tf = Tensor2Field.from_expression(grid, [[1, 0, 0], [0, 0, 0], [0, 0, 0]])
+    res = tf._apply_operator("tensor_double_divergence", "auto_periodic_neumann")
+    expect = ScalarField.from_expression(grid, "2 / r**2")
+    np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.001)
