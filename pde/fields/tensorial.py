@@ -349,9 +349,7 @@ class Tensor2Field(DataFieldBase):
             label (str, optional):
                 Name of the returned field
             **kwargs:
-                Additional arguments affecting how the operator behaves. For instance,
-                the argument `normal_bcs` can be used to control whether boundary
-                conditions only specify normal components or not.
+                Additional arguments affecting how the operator behaves.
 
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator

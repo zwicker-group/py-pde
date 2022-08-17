@@ -273,8 +273,8 @@ def test_vector_bcs():
     bc_y = {"value": [2, 3]}
     bcs = [bc_x, bc_y]
 
-    s1 = v.divergence(bcs, backend="scipy", normal_bcs=False).data
-    div = grid.make_operator("divergence", bcs, normal_bcs=False)
+    s1 = v.divergence(bcs, backend="scipy").data
+    div = grid.make_operator("divergence", bcs)
     s2 = div(v.data)
 
     np.testing.assert_allclose(s1, s2)

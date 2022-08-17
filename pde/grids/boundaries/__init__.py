@@ -121,7 +121,12 @@ The :mod:`~pde.grids.boundaries` package defines the following classes:
   
 
 There are corresponding classes that only affect the normal component of a field, which
-can be useful when dealing with vector and tensor fields.
+can be useful when dealing with vector and tensor fields:
+:class:`~pde.grids.boundaries.local.NormalDirichletBC`,
+:class:`~pde.grids.boundaries.local.NormalNeumannBC`,
+:class:`~pde.grids.boundaries.local.NormalMixedBC`, and
+:class:`~pde.grids.boundaries.local.NormalCurvatureBC`.
+
 
 **Boundaries for an axis:**
 

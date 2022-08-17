@@ -402,7 +402,7 @@ def make_tensor_double_divergence(
             # second derivative (either conservative or not)
             lap_rr = laplace(arr_rr, i)
 
-            enum = arr_rr[i] - arr_φφ[i] + arr_rr_dr - arr_φφ_dr
+            enum = (arr_rr[i] - arr_φφ[i]) / rs[i - 1] + arr_rr_dr - arr_φφ_dr
             out[i - 1] = lap_rr + 2 * enum / rs[i - 1]
 
     return tensor_double_divergence  # type: ignore

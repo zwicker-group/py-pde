@@ -62,9 +62,7 @@ class Boundaries(list):
         return f"[{items}]"
 
     @classmethod
-    def from_data(
-        cls, grid: GridBase, boundaries, rank: int = 0, normal: bool = False
-    ) -> Boundaries:
+    def from_data(cls, grid: GridBase, boundaries, rank: int = 0) -> Boundaries:
         """
         Creates all boundaries from given data
 
@@ -82,9 +80,6 @@ class Boundaries(list):
                 * tuple pair specifying the low and high boundary individually
             rank (int):
                 The tensorial rank of the field for this boundary condition
-            normal (bool):
-                Flag indicating whether the condition is only applied in the normal
-                direction.
         """
         # check whether this is already the correct class
         if isinstance(boundaries, Boundaries):
@@ -132,7 +127,7 @@ class Boundaries(list):
         if isinstance(boundaries, (str, dict)):
             # one specification for all axes
             bcs = [
-                get_boundary_axis(grid, i, boundaries, rank=rank, normal=normal)
+                get_boundary_axis(grid, i, boundaries, rank=rank)
                 for i in range(grid.num_axes)
             ]
 
@@ -141,12 +136,12 @@ class Boundaries(list):
             if len(boundaries) == grid.num_axes:
                 # assume that data is given for each boundary
                 bcs = [
-                    get_boundary_axis(grid, i, boundary, rank=rank, normal=normal)
+                    get_boundary_axis(grid, i, boundary, rank=rank)
                     for i, boundary in enumerate(boundaries)
                 ]
             elif grid.num_axes == 1 and len(boundaries) == 2:
                 # special case where the two sides can be specified directly
-                bcs = [get_boundary_axis(grid, 0, boundaries, rank=rank, normal=normal)]
+                bcs = [get_boundary_axis(grid, 0, boundaries, rank=rank)]
 
         if bcs is None:
             # none of the logic worked

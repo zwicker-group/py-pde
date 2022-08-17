@@ -393,7 +393,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
     @fill_in_docstring
     def get_boundary_conditions(
-        self, bc="auto_periodic_neumann", rank: int = 0, normal: bool = False
+        self, bc="auto_periodic_neumann", rank: int = 0
     ) -> "Boundaries":
         """constructs boundary conditions from a flexible data format.
 
@@ -407,9 +407,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
             rank (int):
                 The tensorial rank of the value associated with the boundary
                 conditions.
-            normal (bool):
-                Flag indicating whether the condition is only applied in the normal
-                direction.
 
         Raises:
             ValueError: If the data given in `bc` cannot be read
@@ -422,7 +419,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
         if self.has_hole:
             # grid has holes => specify two boundary conditions
-            return Boundaries.from_data(self, bc, rank=rank, normal=normal)
+            return Boundaries.from_data(self, bc, rank=rank)  # )
 
         if isinstance(bc, Boundaries):
             # a full boundary instance is given
@@ -430,20 +427,18 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
 
         if bc == "auto_periodic_neumann" or bc == "auto_periodic_neumann":
             # a simple value is given => use it for the outer boundary
-            return Boundaries.from_data(self, "derivative", rank=rank, normal=normal)
+            return Boundaries.from_data(self, "derivative", rank=rank)
         elif bc == "auto_periodic_dirichlet":
             # a simple value is given => use it for the outer boundary
-            return Boundaries.from_data(self, "value", rank=rank, normal=normal)
+            return Boundaries.from_data(self, "value", rank=rank)
         else:
             # a more complex value is given for the boundary
             try:
                 # try interpreting it as a value for the outer boundary
-                b_outer = BCBase.from_data(
-                    self, 0, upper=True, data=bc, rank=rank, normal=normal
-                )
+                b_outer = BCBase.from_data(self, 0, upper=True, data=bc, rank=rank)
             except ValueError:
                 # if this fails, try interpreting the value as the full BC
-                bcs = Boundaries.from_data(self, bc, rank=rank, normal=normal)
+                bcs = Boundaries.from_data(self, bc, rank=rank)
             else:
                 self._logger.warning(
                     "The inner boundary condition was not specified. Assuming a "

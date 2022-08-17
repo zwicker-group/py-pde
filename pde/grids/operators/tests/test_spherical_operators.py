@@ -185,7 +185,7 @@ def test_examples_tensor_sph():
     tfd[0, 1] = tfd[1, 1] = tfd[1, 2] = tfd[2, 1] = tfd[2, 2] = 0
 
     # tensor divergence
-    res = tf.divergence([{"derivative": 0}, {"value": [1, 1, 1]}])
+    res = tf.divergence([{"derivative": 0}, {"normal_value": [1, 1, 1]}])
     expect = VectorField.from_expression(grid, ["5 * r**2", "5 * r**2", "6 * r**2"])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
@@ -197,7 +197,7 @@ def test_tensor_sph_symmetry():
     vf_grad = vf.gradient({"derivative": 2})
     strain = vf_grad + vf_grad.transpose()
 
-    bcs = [{"value": 0}, {"derivative": [4, 0, 0]}]
+    bcs = [{"value": 0}, {"normal_derivative": [4, 0, 0]}]
     strain_div = strain.divergence(bcs, safe=False)
     np.testing.assert_allclose(strain_div.data[0], 8)
     np.testing.assert_allclose(strain_div.data[1:], 0)
@@ -211,12 +211,18 @@ def test_tensor_div_div():
     )
     res = tf._apply_operator("tensor_double_divergence", bc="curvature")
     expect = ScalarField.from_expression(grid, "2 * r * (15 * r - 4)")
-    np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.05)
+    np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.01)
 
     # compare to actual double divergence
     grid = SphericalSymGrid([0, 1], 128)
     expr = "tanh((0.5 - r) * 10)"
     tf = Tensor2Field.from_expression(grid, [[expr, 0, 0], [0, expr, 0], [0, 0, expr]])
-    res = tf._apply_operator("tensor_double_divergence", bc="neumann", normal_bcs=False)
+    res = tf._apply_operator("tensor_double_divergence", bc="neumann")
     est = tf.divergence("neumann").divergence("neumann")
     np.testing.assert_allclose(res.data, est.data, rtol=0.01, atol=0.5)
+
+    # simpler test case
+    tf = Tensor2Field.from_expression(grid, [[1, 0, 0], [0, 0, 0], [0, 0, 0]])
+    res = tf._apply_operator("tensor_double_divergence", "auto_periodic_neumann")
+    expect = ScalarField.from_expression(grid, "2 / r**2")
+    np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.001)
