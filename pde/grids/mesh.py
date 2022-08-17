@@ -6,8 +6,8 @@ from typing import Any, List, Tuple, TypeVar
 
 import numpy as np
 
+from ..fields.base import DataFieldBase, FieldBase
 from ..tools.cache import cached_property
-from ..fields.base import FieldBase, DataFieldBase
 from .base import GridBase
 
 
@@ -198,7 +198,7 @@ class GridMesh:
         for idx in np.ndindex(self.shape):
             grid = self.subgrids[idx]
             data = field.data[(...,) + self._data_indices_valid[idx]]
-            result[idx] = field.__class__(grid, data=data, dtype=field.dtype)
+            result[idx] = field.__class__(grid, data=data, dtype=field.dtype)  # type: ignore
         return result
 
     def combine_fields(self, fields: np.ndarray) -> FieldBase:
