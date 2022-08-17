@@ -190,8 +190,8 @@ def test_examples_tensor_sph():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-def test_tensor_sph_edge_case():
-    """test edge case, where safe=False is required to calculate tensor divergence"""
+def test_tensor_sph_symmetry():
+    """test treatment of symmetric tensor field"""
     grid = SphericalSymGrid(1, 16)
     vf = VectorField.from_expression(grid, ["r**2", 0, 0])
     vf_grad = vf.gradient({"derivative": 2})
