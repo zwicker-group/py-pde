@@ -217,6 +217,6 @@ def test_tensor_div_div():
     grid = SphericalSymGrid([0, 1], 128)
     expr = "tanh((0.5 - r) * 10)"
     tf = Tensor2Field.from_expression(grid, [[expr, 0, 0], [0, expr, 0], [0, 0, expr]])
-    res = tf._apply_operator("tensor_double_divergence", bc="neumann", normal_bcs=False)
+    res = tf._apply_operator("tensor_double_divergence", bc="neumann")
     est = tf.divergence("neumann").divergence("neumann")
     np.testing.assert_allclose(res.data, est.data, rtol=0.01, atol=0.5)
