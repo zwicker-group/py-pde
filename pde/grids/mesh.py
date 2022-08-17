@@ -2,11 +2,12 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, TypeVar
 
 import numpy as np
 
 from ..tools.cache import cached_property
+from ..fields.base import FieldBase, DataFieldBase
 from .base import GridBase
 
 
@@ -71,6 +72,9 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> List[GridBa
     return subgrids
 
 
+TField = TypeVar("TField", bound=FieldBase)
+
+
 class GridMesh:
     """handles a collection of subgrids arranged in a regular mesh"""
 
@@ -86,16 +90,6 @@ class GridMesh:
         self.subgrids = np.asarray(subgrids)
 
         assert basegrid.num_axes == self.subgrids.ndim
-
-    @property
-    def num_axes(self) -> int:
-        """int: the number of axes that the grids possess"""
-        return self.subgrids.ndim
-
-    @property
-    def shape(self) -> Tuple[int, ...]:
-        """tuple: the number of subgrids along each axis"""
-        return self.subgrids.shape
 
     @classmethod
     def from_grid(cls, grid: GridBase, decomposition: List[int]):
@@ -126,8 +120,30 @@ class GridMesh:
 
         return cls(basegrid=grid, subgrids=subgrids)
 
+    @property
+    def num_axes(self) -> int:
+        """int: the number of axes that the grids possess"""
+        return self.subgrids.ndim
+
+    @property
+    def shape(self) -> Tuple[int, ...]:
+        """tuple: the number of subgrids along each axis"""
+        return self.subgrids.shape
+
+    def _id2idx(self, mesh_id: int) -> Tuple[int, ...]:
+        """convert linear id into grid index
+
+        Args:
+            mesh_id (int):
+                Linear index identifying the subgrid
+
+        Returns:
+            tuple: Full index with `num_axes` entries.
+        """
+        return np.unravel_index(mesh_id, self.shape)  # type: ignore
+
     @cached_property()
-    def _indices_valid(self) -> np.ndarray:
+    def _data_indices_1d(self) -> List[List[slice]]:
         """indices to extract valid field data for each subgrid"""
         # create indices for each axis
         indices_1d = []
@@ -140,7 +156,12 @@ class GridMesh:
                 data.append(slice(last, last + n))
                 last += n
             indices_1d.append(data)
+        return indices_1d
 
+    @cached_property()
+    def _data_indices_valid(self) -> np.ndarray:
+        """indices to extract valid field data for each subgrid"""
+        indices_1d = self._data_indices_1d()
         # combine everything into a full indices
         indices = np.empty(self.shape, dtype=object)
         for idx in np.ndindex(self.shape):
@@ -148,7 +169,24 @@ class GridMesh:
 
         return indices
 
-    def split_field(self, field, with_ghost_cells: bool = False) -> np.ndarray:
+    def extract_subfield(self, field: TField, mesh_id: int) -> TField:
+        """extract one subfield from a global one
+
+        Args:
+            field (:class:`~pde.fields.base.DataFieldBase`):
+                The field that will be split
+            mesh_id (int):
+                Index identifying the subgrid
+        """
+        mesh_idx = self._id2idx(mesh_id)
+        grid = self.subgrids[mesh_idx]
+        i = (...,) + tuple(self._data_indices_1d[n][j] for n, j in enumerate(mesh_idx))
+        if isinstance(field, DataFieldBase):
+            return field.__class__(grid, data=field.data[i], dtype=field.dtype)
+        else:
+            raise NotImplementedError
+
+    def split_field(self, field: TField, with_ghost_cells: bool = False) -> np.ndarray:
         """split a field onto the subgrids
 
         Args:
@@ -159,11 +197,11 @@ class GridMesh:
         result = np.empty(self.shape, dtype=object)
         for idx in np.ndindex(self.shape):
             grid = self.subgrids[idx]
-            data = field.data[(...,) + self._indices_valid[idx]]
+            data = field.data[(...,) + self._data_indices_valid[idx]]
             result[idx] = field.__class__(grid, data=data, dtype=field.dtype)
         return result
 
-    def combine_fields(self, fields: np.ndarray):
+    def combine_fields(self, fields: np.ndarray) -> FieldBase:
         """combine multiple fields defined on subgrids
 
         Args:
@@ -177,6 +215,6 @@ class GridMesh:
 
         for idx in np.ndindex(self.shape):
             assert self.subgrids[idx] == fields[idx].grid
-            data[(...,) + self._indices_valid[idx]] = fields[idx].data
+            data[(...,) + self._data_indices_valid[idx]] = fields[idx].data
 
         return field0.__class__(self.basegrid, data=data, dtype=field0.dtype)
