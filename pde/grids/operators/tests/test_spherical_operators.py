@@ -30,23 +30,33 @@ def test_findiff_sph():
     np.testing.assert_allclose(grad.data[0, :], [1, 3, 2])
 
     # test divergence
-    div = v.divergence(bc="value")
+    div = v.divergence(bc="value", conservative=False)
     np.testing.assert_allclose(div.data, [9, 3 + 4 / r1, -6 + 8 / r2])
-    div = v.divergence(bc="derivative")
+    div = v.divergence(bc="derivative", conservative=False)
     np.testing.assert_allclose(div.data, [9, 3 + 4 / r1, 2 + 8 / r2])
 
 
-def test_conservative_laplace_sph():
-    """test and compare the two implementation of the laplace operator"""
-    r_max = 3.14
-    for r_min in [0, 0.1]:
-        grid = SphericalSymGrid((r_min, r_max), 8)
-        f = ScalarField.from_expression(grid, "cos(r)")
+def test_conservative_sph():
+    """test whether the integral over a divergence vanishes"""
+    grid = SphericalSymGrid((0, 2), 50)
+    expr = "1 / cosh((r - 1) * 10)"
 
-        res1 = f.laplace("auto_periodic_neumann", conservative=True)
-        res2 = f.laplace("auto_periodic_neumann", conservative=False)
-        np.testing.assert_allclose(res1.data, res2.data, rtol=0.5, atol=0.5)
-        np.testing.assert_allclose(res1.integral, 0, atol=1e-12)
+    # test divergence of vector field
+    vf = VectorField.from_expression(grid, [expr, 0, 0])
+    div = vf.divergence(bc="derivative", conservative=True)
+    assert div.integral == pytest.approx(0, abs=1e-2)
+
+    # test laplacian of scalar field
+    lap = vf[0].laplace("derivative")
+    assert lap.integral == pytest.approx(0, abs=1e-13)
+
+    # test double divergence of tensor field
+    expressions = [[expr, 0, 0], [0, expr, 0], [0, 0, expr]]
+    tf = Tensor2Field.from_expression(grid, expressions)
+    res = tf._apply_operator(
+        "tensor_double_divergence", bc="derivative", conservative=True
+    )
+    assert res.integral == pytest.approx(0, abs=1e-3)
 
 
 @pytest.mark.parametrize(
@@ -177,17 +187,24 @@ def test_examples_vector_sph():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-def test_examples_tensor_sph():
+@pytest.mark.parametrize("conservative", [True, False])
+def test_examples_tensor_sph(conservative):
     """compare derivatives of tensorial fields for spherical grids"""
+    # test explicit expression for which we know the results
     grid = SphericalSymGrid(1, 32)
-    tf = Tensor2Field.from_expression(grid, [["r**3"] * 3] * 3)
-    tfd = tf.data
-    tfd[0, 1] = tfd[1, 1] = tfd[1, 2] = tfd[2, 1] = tfd[2, 2] = 0
+    expressions = [["r**4", 0, 0], [0, "r**3", 0], [0, 0, "r**3"]]
+    tf = Tensor2Field.from_expression(grid, expressions)
 
     # tensor divergence
-    res = tf.divergence([{"derivative": 0}, {"normal_value": [1, 1, 1]}])
-    expect = VectorField.from_expression(grid, ["5 * r**2", "5 * r**2", "6 * r**2"])
-    np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+    bc = [{"derivative": 0}, {"normal_derivative": [4, 3, 3]}]
+    res = tf.divergence(bc, conservative=conservative)
+    expect = VectorField.from_expression(grid, ["2 * r**2 * (3 * r - 1)", 0, 0])
+    if conservative:
+        np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+    else:
+        np.testing.assert_allclose(
+            res.data[:, 1:-1], expect.data[:, 1:-1], rtol=0.1, atol=0.1
+        )
 
 
 def test_tensor_sph_symmetry():
