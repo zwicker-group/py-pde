@@ -387,7 +387,7 @@ Assuming the boundary condition $f(R) = a$, we obtain $y_N = 2a - y_{N-1}$.
 Here, we consider the boundary condition $f'(L) = b$, which specifies the outward derivative to equal the value $b$.
 We obtain $y_n = y_{n-1} + b \dx$.
 
-\subsection{Conservative operator}
+\subsection{Conservative Laplace operator}
 
 We call a discrete Laplace operator conservative when it preserves the desirable conservation equation
 \begin{align}
@@ -414,6 +414,7 @@ where we introduced the (scaled) shell volumes
 %	V_n &= \frac{\dr^3}{3}\bigl[(n + 1)^3 - n^3\bigr]
 	V_n &= \frac{r_{n + \frac12}^3 - r_{n - \frac12}^3}{3}
 	= \dr \left(	r_n^2 + \frac{\dr^2}{12} \right)
+	\label{eqn:spherical_shell_volume}
 \;.
 \end{align}
 Consequently,
@@ -486,6 +487,94 @@ we can write this as
 	+  \Delta r
 		\bigl[ \sin\theta \partial_\theta  f(r, \theta)\bigr]_{\theta_{m - \frac12}}^{\theta_{m + \frac12}}
 \end{multline}
+
+
+\subsection{Conservative double divergence operator}
+We next consider the double divergence of a rank-$2$ tensor field on spherical coordinates.
+In general, we have
+\begin{align}
+	\partial_\alpha\partial_\beta t_{\alpha\beta} = D_r(t_{\alpha\beta}) - D_\phi(t_{\alpha\beta})
+\end{align}
+where we defined the two differential operators 
+\begin{subequations}
+\begin{align}
+	D_r(t_{\alpha\beta}) &= 
+	 \frac{2 t_{rr}}{r^2} + \frac{4 t_{rr}'}{r} + t_{rr}''
+\\
+	D_\phi(t_{\alpha\beta}) &= \frac{2 t_{\phi \phi}}{r^2} + \frac{2t_{\phi \phi }'}{r}
+\end{align}
+\end{subequations}
+and used $t_{\phi\phi}=t_{\theta\theta}$, which holds in spherically symmetric systems.
+Here, primes denote derivatives with respect to the radial coordinate~$r$.
+We call these operators conservative when their integrals vanishes,
+\begin{align}
+	\int_\Omega D_i(t_{\alpha\beta}) \diff V  = 0 
+\end{align}
+We next analyze these operators individually.
+
+
+A conservative operator can be derived by integrating its definition in spherical coordinates over one spherical shell from $r=r_n - \dr/2$ to $r=r_n  + \dr/2$,
+\begin{align}
+%	r^2 \partial_\alpha^2 f &= \partial_r\bigl(r^2 \partial_r f(r)\bigr)
+%\\
+	\int_{r_{n - \frac12}}^{r_{n + \frac12}} D_\phi(t_{\alpha\beta}) r^2  \diff r
+	&= 2\int_{r_{n - \frac12}}^{r_{n + \frac12}} \left[
+			t_{\phi \phi} + rt_{\phi \phi }'
+		\right]\diff r
+%\notag\\&=
+%	2	\left[r t_{\phi \phi}(r)\right]_{r_{n - \frac12}}^{r_{n + \frac12}}
+	\;,
+\end{align}
+where we skipped the factor $4\pi$ stemming from the angle integration.
+Assuming that the quantity $D_\phi(t_{\alpha\beta})$ is constant across the discretization cell, we thus find
+\begin{align}
+	V_n D_\phi(t_{\alpha\beta}) 
+		&\sim \Bigl[2r t_{\phi \phi}(r)\Bigr]_{r_n - \dr/2}^{r_n + \dr/2}
+\end{align}
+where $V_n$ is given by \Eqref{eqn:spherical_shell_volume}. 
+Consequently,
+\begin{align}
+	D_\phi(t_{\alpha\beta}) 
+%		&\sim \dr^2 \frac{(n + 1)^2 f'\left(r_n + \frac{\dr}{2}\right) - n^2 f'\left(r_n - \frac{\dr}{2}\right)}{V_n}
+		&\sim \frac{2}{V_n}\left[
+			r_{n+\frac12} t_{\phi\phi}(r_{n+\frac12}) - r_{n-\frac12}  t_{\phi\phi}(r_{n-\frac12})
+		\right]
+\end{align}
+where the derivatives $t_{\phi\phi}(r)$ are evaluated at the midpoints by the weighted average,
+\begin{align}
+	t_{\phi\phi}(r_{n+\frac12}) &= \frac{t_{\phi\phi}(r_{n}) + t_{\phi\phi}(r_{n+1})}{2}
+	\;.
+\end{align}
+Taken together, we have a conservative definition of the angular part of the double divergence.
+
+The radial part follows analogously using
+\begin{align}
+	\int_{r_{n - \frac12}}^{r_{n + \frac12}} D_r(t_{\alpha\beta}) r^2  \diff r
+	&= 2\int_{r_{n - \frac12}}^{r_{n + \frac12}} \left[
+			 2 t_{rr} + 4 rt_{rr}' + r^2t_{rr}''
+		\right]\diff r	
+\end{align}
+resulting in
+\begin{align}
+	V_n D_r(t_{\alpha\beta}) \sim
+	\Bigl[2 r t_{rr}(r) + r^2 t_{rr}'(r)\Bigr]_{r_n - \dr/2}^{r_n + \dr/2}
+\end{align}
+where
+\begin{align}
+	t_{rr}'\bigl(r_{n + \frac12}\bigr) = \frac{t_{rr}(r_{n+1}) - t_{rr}(r_n)}{\dr}
+\end{align}
+so that $D_r(t_{\alpha\beta})$ can be expressed easily.
+Taken together, the double divergence operator reads
+\begin{widetext}
+\begin{align}
+	\partial_\alpha\partial_\beta t_{\alpha\beta} \sim \frac{
+	2 r_{n+\frac12} \left[t_{rr}(r_{n+\frac12}) - t_{\phi\phi}(r_{n+\frac12}) \right]
+	+ r_{n+\frac12}^2 t_{rr}'(r_{n+\frac12})
+	-2 r_{n-\frac12} \left[t_{rr}(r_{n-\frac12})  -  t_{\phi\phi}(r_{n-\frac12})\right]
+	- r_{n-\frac12}^2 t_{rr}'(r_{n-\frac12})
+	}{V_n}
+\end{align}
+\end{widetext}
 
 
 %\bibliographystyle{apsrev4-1}

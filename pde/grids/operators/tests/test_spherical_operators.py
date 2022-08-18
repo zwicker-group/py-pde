@@ -203,8 +203,8 @@ def test_tensor_sph_symmetry():
     np.testing.assert_allclose(strain_div.data[1:], 0)
 
 
-def test_tensor_div_div():
-    """test double divergence of a tensor field"""
+def test_tensor_div_div_analytical():
+    """test double divergence of a tensor field against analytical expression"""
     grid = SphericalSymGrid([0.5, 1], 12)
     tf = Tensor2Field.from_expression(
         grid, [["r**4", 0, 0], [0, "r**3", 0], [0, 0, "r**3"]]
@@ -213,16 +213,26 @@ def test_tensor_div_div():
     expect = ScalarField.from_expression(grid, "2 * r * (15 * r - 4)")
     np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.01)
 
-    # compare to actual double divergence
-    grid = SphericalSymGrid([0, 1], 128)
-    expr = "tanh((0.5 - r) * 10)"
-    tf = Tensor2Field.from_expression(grid, [[expr, 0, 0], [0, expr, 0], [0, 0, expr]])
-    res = tf._apply_operator("tensor_double_divergence", bc="neumann")
-    est = tf.divergence("neumann").divergence("neumann")
-    np.testing.assert_allclose(res.data, est.data, rtol=0.01, atol=0.5)
 
-    # simpler test case
-    tf = Tensor2Field.from_expression(grid, [[1, 0, 0], [0, 0, 0], [0, 0, 0]])
-    res = tf._apply_operator("tensor_double_divergence", "auto_periodic_neumann")
-    expect = ScalarField.from_expression(grid, "2 / r**2")
-    np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.001)
+@pytest.mark.parametrize("conservative", [True, False])
+def test_tensor_div_div(conservative):
+    """test double divergence of a tensor field by comparison with two divergences"""
+    grid = SphericalSymGrid([0, 1], 64)
+    expr = "r * tanh((0.5 - r) * 10)"
+    bc = "auto_periodic_neumann"
+
+    # test radial part
+    tf = Tensor2Field.from_expression(grid, [[expr, 0, 0], [0, 0, 0], [0, 0, 0]])
+    res = tf._apply_operator(
+        "tensor_double_divergence", bc=bc, conservative=conservative
+    )
+    est = tf.divergence(bc).divergence(bc)
+    np.testing.assert_allclose(res.data[2:-2], est.data[2:-2], rtol=0.02, atol=1)
+
+    # test angular part
+    tf = Tensor2Field.from_expression(grid, [[0, 0, 0], [0, expr, 0], [0, 0, expr]])
+    res = tf._apply_operator(
+        "tensor_double_divergence", bc=bc, conservative=conservative
+    )
+    est = tf.divergence(bc).divergence(bc)
+    np.testing.assert_allclose(res.data[2:-2], est.data[2:-2], rtol=0.02, atol=1)
