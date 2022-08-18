@@ -140,18 +140,29 @@ class FieldCollection(FieldBase):
         """return iterator over the actual fields"""
         return iter(self.fields)
 
-    def __getitem__(self, index: Union[int, str]) -> DataFieldBase:
-        """return a specific field"""
+    def __getitem__(
+        self, index: Union[int, str]
+    ) -> Union[DataFieldBase, FieldCollection]:
+        """returns one or many fields from the collection
+
+        If `index` is an integer or string, the field at this position or with this
+        label is returned, respectively. If `index` is a :class:`slice`, a collection is
+        returned. In this case the field data is copied.
+        """
         if isinstance(index, int):
-            # simple numerical index
+            # simple numerical index -> return single field
             return self.fields[index]
 
         elif isinstance(index, str):
-            # index specifying the label of the field
+            # index specifying the label of the field -> return a single field
             for field in self.fields:
                 if field.label == index:
                     return field
             raise KeyError(f"No field with name `{index}`")
+
+        elif isinstance(index, slice):
+            # range of indices -> collection is returned
+            return FieldCollection(self.fields[index], copy_fields=True)
 
         else:
             raise TypeError(f"Unsupported index `{index}`")
