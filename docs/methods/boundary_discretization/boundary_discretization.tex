@@ -392,10 +392,10 @@ We obtain $y_n = y_{n-1} + b \dx$.
 We call a discrete Laplace operator conservative when it preserves the desirable conservation equation
 \begin{align}
 	\int_\Omega \partial_\alpha^2 f \diff V
-		= \oint_{\partial\Omega} \partial_\alpha f n_\alpha \diff S= 0
+		= \oint_{\partial\Omega} \partial_\alpha f n_\alpha \diff S
+	\;.
 \end{align}
-when Neumann boundary conditions are imposed on the function $f$.
-A conservative operator can be derived by integrating the definition of the Laplace operator in spherical coordinates over one spherical shell from $r=r_n - \dr/2$ to $r=r_n  + \dr/2$,
+A conservative discrete operator can be derived by integrating the definition of the Laplace operator in spherical coordinates over one spherical shell from $r=r_n - \dr/2$ to $r=r_n  + \dr/2$,
 \begin{align}
 %	r^2 \partial_\alpha^2 f &= \partial_r\bigl(r^2 \partial_r f(r)\bigr)
 %\\
@@ -408,6 +408,7 @@ Assuming that the quantity $\partial_\alpha^2 f$ is constant across the discreti
 \begin{align}
 	V_n \partial_\alpha^2 f %\left[ \frac{r^3}{3} \right]_{r_n - \dr/2}^{r_n + \dr/2}
 		&\sim \Bigl[r^2 \partial_r f(r)\Bigr]_{r_n - \dr/2}^{r_n + \dr/2}
+	\label{eqn:spherical_laplace_conservative_relation}
 \end{align}
 where we introduced the (scaled) shell volumes
 \begin{align}
@@ -415,9 +416,12 @@ where we introduced the (scaled) shell volumes
 	V_n &= \frac{r_{n + \frac12}^3 - r_{n - \frac12}^3}{3}
 	= \dr \left(	r_n^2 + \frac{\dr^2}{12} \right)
 	\label{eqn:spherical_shell_volume}
-\;.
+\;,
 \end{align}
-Consequently,
+which also skip the factor $4\pi$.
+\Eqref{eqn:spherical_laplace_conservative_relation} provides an expression for the operator, which relies on the values on the adjacent boundaries.
+Since integrating the operator over the entire domain corresponds to summing all contributions from individual shells, this formulation ensures that adjacent shells have opposite contributions, so that finally only the outer boundaries contribute, ensuring the conservative property.
+Taken together we find
 \begin{align}
 	\partial_\alpha^2 f
 %		&\sim \dr^2 \frac{(n + 1)^2 f'\left(r_n + \frac{\dr}{2}\right) - n^2 f'\left(r_n - \frac{\dr}{2}\right)}{V_n}
@@ -429,6 +433,7 @@ where the derivatives $f'(r)$ are evaluated at the midpoints and can thus be rep
 	f'\left(r_{n + \frac12}\right) \sim \frac{y_{n+1} - y_n}{\dr}
 \\
 	f'\left(r_{n - \frac12}\right) \sim \frac{y_n - y_{n-1}}{\dr}
+	\;.
 \end{align}
 \end{subequations}
 In the special case where the spherical grid does not have a hole ($r_0=0$), we then arrive at
@@ -489,6 +494,47 @@ we can write this as
 \end{multline}
 
 
+\subsection{Conservative divergence operator}
+The divergence of a spherically-symmetric vector field reads
+\begin{align}
+	\partial_\alpha v_\alpha = v_r'(r)+\frac{2 v_r(r)}{r}
+\end{align}
+where $v_r$ is the radial part of the vector field and primes denote derivatives with respect to $r$.
+For a conservative implementation of the operator, we again integrate over a single shell,
+\begin{align}
+	\int_{r_{n-\frac12}}^{r_{n + \frac12}} \partial_\alpha v_{\alpha} r^2 \diff r 
+	 &= \left[r^2 v_r(r)\right]_{r_{n-\frac12}}^{r_{n + \frac12}}
+\end{align}
+Consequently, we find
+\begin{align}
+	\partial_\alpha v_{\alpha} \sim
+	 \frac{r_{n + \frac12}^2 v_r(r_{n + \frac12}) - r_{n - \frac12}^2 v_r(r_{n - \frac12})}{V_n}
+\end{align}
+where $V_n$ is given by \Eqref{eqn:spherical_shell_volume}. 
+
+
+
+\subsection{Conservative tensor divergence operator}
+The divergence of a spherically-symmetric vector tensor field reads
+\begin{align}
+	\partial_\beta t_{r\beta} =
+		\frac{2 \left[t_{rr}(r)-t_{\phi \phi }(r)\right]}{r}+t_{rr}'(r)
+\end{align}
+where primes denote derivatives with respect to $r$.
+Note that the angular components of the resulting vector field vanish.
+The integral over the shell reads
+\begin{align}
+	\int_{r_{n-\frac12}}^{r_{n + \frac12}} \partial_\beta t_{r\beta}  r^2 \diff r 
+	 &= \left[r^2 v_r(r)\right]_{r_{n-\frac12}}^{r_{n + \frac12}}
+\end{align}
+and we find
+\begin{align}
+	\partial_\alpha v_{\alpha} \sim
+	 \frac{r_{n + \frac12}^2 v_r(r_{n + \frac12}) - r_{n - \frac12}^2 v_r(r_{n - \frac12})}{V_n}
+\end{align}
+where $V_n$ is given by \Eqref{eqn:spherical_shell_volume}. 
+
+
 \subsection{Conservative double divergence operator}
 We next consider the double divergence of a rank-$2$ tensor field on spherical coordinates.
 In general, we have
@@ -506,10 +552,6 @@ where we defined the two differential operators
 \end{subequations}
 and used $t_{\phi\phi}=t_{\theta\theta}$, which holds in spherically symmetric systems.
 Here, primes denote derivatives with respect to the radial coordinate~$r$.
-We call these operators conservative when their integrals vanishes,
-\begin{align}
-	\int_\Omega D_i(t_{\alpha\beta}) \diff V  = 0 
-\end{align}
 We next analyze these operators individually.
 
 
