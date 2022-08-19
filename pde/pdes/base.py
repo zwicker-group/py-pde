@@ -120,7 +120,13 @@ class PDEBase(metaclass=ABCMeta):
         self, state: FieldBase
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function for evaluating the right hand side"""
-        raise NotImplementedError
+        raise NotImplementedError("No backend `numba`")
+
+    def _make_pde_rhs_numba_mpi(
+        self, state: FieldBase
+    ) -> Callable[[np.ndarray, float], np.ndarray]:
+        """create a compiled function for evaluating the right hand side using MPI"""
+        raise NotImplementedError("No backend `numba_mpi`")
 
     def check_rhs_consistency(
         self,
@@ -235,11 +241,7 @@ class PDEBase(metaclass=ABCMeta):
             else:
                 rhs._backend = "numba"  # type: ignore
 
-        if backend == "numba":
-            rhs = self._make_pde_rhs_numba_cached(state)
-            rhs._backend = "numba"  # type: ignore
-
-        elif backend == "numpy":
+        if backend == "numpy":
             state = state.copy()
 
             def evolution_rate_numpy(state_data: np.ndarray, t: float) -> np.ndarray:
@@ -249,6 +251,14 @@ class PDEBase(metaclass=ABCMeta):
 
             rhs = evolution_rate_numpy
             rhs._backend = "numpy"  # type: ignore
+
+        elif backend == "numba":
+            rhs = self._make_pde_rhs_numba_cached(state)
+            rhs._backend = "numba"  # type: ignore
+
+        elif backend == "numba_mpi":
+            rhs = self._make_pde_rhs_numba_mpi(state)
+            rhs._backend = "numba_mpi"  # type: ignore
 
         elif backend != "auto":
             raise ValueError(
@@ -455,7 +465,7 @@ class PDEBase(metaclass=ABCMeta):
             sde_rhs._backend = "numpy"  # type: ignore
 
         else:
-            raise ValueError(f"Unknown backend `{backend}`")
+            raise ValueError(f"Unsupported backend `{backend}`")
 
         return sde_rhs
 

@@ -58,6 +58,7 @@ setup(
         "io": ["h5py>=2.10", "pandas>=1.2"],
         "progress": ["tqdm>=4.60", "ipywidgets>=7"],
         "interactive": ["napari>=0.4.8", "ipywidgets>=7"],
+        "mpi": ["mpi4py", "numba_mpi"],
     },
     classifiers=[
         "Development Status :: 4 - Beta",

@@ -94,30 +94,7 @@ class Controller:
                     "t_range must be set to a single number or a tuple of two numbers"
                 )
 
-    def run(self, state: TState, dt: float = None) -> TState:
-        """run the simulation
-
-        Diagnostic information about the solver procedure are available in the
-        `diagnostics` property of the instance after this function has been called.
-
-        Args:
-            state:
-                The initial state of the simulation. This state will be copied and thus
-                not modified by the simulation. Instead, the final state will be
-                returned and trackers can be used to record intermediate states.
-            dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
-
-        Returns:
-            The state at the final time point.
-        """
-        # copy the initial state to not modify the supplied one
-        if hasattr(self.solver, "pde") and self.solver.pde.complex_valued:
-            self._logger.info("Convert state to complex numbers")
-            state = state.copy(dtype="complex")
-        else:
-            state = state.copy()
+    def _run_pre(self, state: TState, dt: float = None):
         t_start, t_end = self.t_range
 
         # initialize solver information
@@ -130,10 +107,11 @@ class Controller:
             "solver": self.solver.info,
         }
 
-        # initialize trackers
-        self.trackers.initialize(state, info=self.diagnostics)
+    def _run_post(self):
+        self.info["solver_start"] = str(self.info["solver_start"])
 
-        def _handle_stop_iteration(err):
+    def _get_stop_handler(self):
+        def _handle_stop_iteration(err, t):
             """helper function for handling interrupts raised by trackers"""
             if isinstance(err, FinishedSimulation):
                 # tracker determined that the simulation finished
@@ -159,18 +137,33 @@ class Controller:
 
             return msg_level, msg
 
+        return _handle_stop_iteration
+
+    def _get_stepper(self, state, dt):
+
         # initialize the stepper
         jit_count_init = int(JIT_COUNT)
         stepper = self.solver.make_stepper(state=state, dt=dt)
         self.diagnostics["jit_count"] = {
             "make_stepper": int(JIT_COUNT) - jit_count_init
         }
-        jit_count_after_init = int(JIT_COUNT)
+        self.diagnostics["jit_count_after_init"] = int(JIT_COUNT)
 
         # initialize profiling information
         solver_start = datetime.datetime.now()
-        self.info["solver_start"] = str(solver_start)
+        self.info["solver_start"] = solver_start
 
+        return stepper
+
+    def _run_single(self, state: TState, dt: float = None) -> None:
+        # initialize trackers
+        self.trackers.initialize(state, info=self.diagnostics)
+
+        # get helper functions
+        stepper = self._get_stepper(state, dt)
+        handle_stop_iteration = self._get_stop_handler()
+
+        # initialize profiler
         get_time = self.get_current_time  # type: ignore
         profiler = {"solver": 0.0, "tracker": 0.0}
         self.info["profiler"] = profiler
@@ -187,6 +180,7 @@ class Controller:
             atol = 0.1 * dt
 
         # evolve the system from t_start to t_end
+        t_start, t_end = self.t_range
         t = t_start
         self._logger.debug(f"Start simulation at t={t}")
         try:
@@ -207,7 +201,7 @@ class Controller:
 
         except StopIteration as err:
             # iteration has been interrupted by a tracker
-            msg_level, msg = _handle_stop_iteration(err)
+            msg_level, msg = handle_stop_iteration(err, t=t)
 
         except KeyboardInterrupt:
             # iteration has been interrupted by the user
@@ -228,14 +222,14 @@ class Controller:
                 self.trackers.handle(state, t, atol=atol)
             except StopIteration as err:
                 # error detected in the final handling of the tracker
-                msg_level, msg = _handle_stop_iteration(err)
+                msg_level, msg = handle_stop_iteration(err, t=t)
 
         # calculate final statistics
         profiler["tracker"] += get_time() - prof_start_tracker
-        duration = datetime.datetime.now() - solver_start
+        duration = datetime.datetime.now() - self.info["solver_start"]
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t
-        jit_count = int(JIT_COUNT) - jit_count_after_init
+        jit_count = int(JIT_COUNT) - self.diagnostics.pop("jit_count_after_init")
         self.diagnostics["jit_count"]["simulation"] = jit_count
         self.trackers.finalize(info=self.diagnostics)
 
@@ -247,5 +241,126 @@ class Controller:
                 f"Spent more time on handling trackers ({profiler['tracker']}) than on "
                 f"the actual simulation ({profiler['solver']})"
             )
+
+    def _run_mpi_main(self, state: TState, dt: float = None) -> None:
+        # initialize trackers
+        self.trackers.initialize(state, info=self.diagnostics)
+
+        # get helper functions
+        stepper = self._get_stepper(state, dt)
+        handle_stop_iteration = self._get_stop_handler()
+
+        # add some tolerance to account for inaccurate float point math
+        if dt is None:
+            dt = self.solver.info.get("dt")
+            # Note that self.solver.info['dt'] might be None
+
+        if dt is None:
+            atol = 1e-12
+        else:
+            atol = 0.1 * dt
+
+        # evolve the system from t_start to t_end
+        t_start, t_end = self.t_range
+        t = t_start
+        self._logger.debug(f"Start simulation at t={t}")
+        try:
+            while t < t_end:
+                # determine next time point with an action
+                # TODO: assemble state from all nodes
+                t_next_action = self.trackers.handle(state, t, atol=atol)
+                # TODO: write back state to all nodes
+                t_next_action = max(t_next_action, t + atol)
+                t_break = min(t_next_action, t_end)
+
+                # advance the system to the new time point
+                t = stepper(state, t, t_break)
+
+        except StopIteration as err:
+            # iteration has been interrupted by a tracker
+            msg_level, msg = handle_stop_iteration(err, t=t)
+
+        except KeyboardInterrupt:
+            # iteration has been interrupted by the user
+            self.info["successful"] = False
+            self.info["stop_reason"] = "User interrupted simulation"
+            msg = f"Simulation interrupted at t={t}"
+            msg_level = logging.INFO
+
+        else:
+            # reached final time
+            self.info["successful"] = True
+            self.info["stop_reason"] = "Reached final time"
+            msg = f"Simulation finished at t={t_end}."
+            msg_level = logging.INFO
+
+            # handle trackers one more time when t_end is reached
+            try:
+                self.trackers.handle(state, t, atol=atol)
+            except StopIteration as err:
+                # error detected in the final handling of the tracker
+                msg_level, msg = handle_stop_iteration(err, t=t)
+
+        # calculate final statistics
+        duration = datetime.datetime.now() - self.info["solver_start"]
+        self.info["solver_duration"] = str(duration)
+        self.info["t_final"] = t
+        jit_count = int(JIT_COUNT) - self.diagnostics.pop("jit_count_after_init")
+        self.diagnostics["jit_count"]["simulation"] = jit_count
+        self.trackers.finalize(info=self.diagnostics)
+
+        # show information after a potential progress bar has been deleted to
+        # not mess up the display
+        self._logger.log(msg_level, msg)
+
+    def _run_mpi_client(self, state: TState, dt: float = None) -> None:
+        pass
+
+    def run(self, initial_state: TState, dt: float = None) -> TState:
+        """run the simulation
+
+        Diagnostic information about the solver procedure are available in the
+        `diagnostics` property of the instance after this function has been called.
+
+        Args:
+            state:
+                The initial state of the simulation. This state will be copied and thus
+                not modified by the simulation. Instead, the final state will be
+                returned and trackers can be used to record intermediate states.
+            dt (float):
+                Time step of the chosen stepping scheme. If `None`, a default value
+                based on the stepper will be chosen.
+
+        Returns:
+            The state at the final time point.
+        """
+        # copy the initial state to not modify the supplied one
+        if hasattr(self.solver, "pde") and self.solver.pde.complex_valued:
+            self._logger.info("Convert state to complex numbers")
+            state = initial_state.copy(dtype="complex")
+        else:
+            state = initial_state.copy()
+
+        # set up run and initialize the controller
+        self._run_pre(state, dt)
+
+        try:
+            import numba_mpi
+        except ImportError:
+            # MPI cannot be used -> do a serial run
+            self._run_single(state, dt)
+        else:
+            if numba_mpi.size() == 1:
+                # mpi is available but only one process is used
+                self._run_single(state, dt)
+            elif numba_mpi.rank() == 0:
+                # multiple processes are used and this one is the primary one
+                self._run_mpi_main(state, dt)
+            else:
+                # multiple processes are used and this is one of the secondaries
+                self._run_mpi_client(state, dt)
+
+        # clean up
+        self._run_post()
 
         return state
