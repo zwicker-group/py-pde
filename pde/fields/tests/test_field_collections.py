@@ -42,6 +42,20 @@ def test_collections():
     assert fields2.labels == ["s", "v", "t"]
     assert not np.shares_memory(fields[0].data, fields2[0].data)
 
+    copy = fields[:2]
+    assert isinstance(copy, FieldCollection)
+    assert len(copy) == 2
+    np.testing.assert_equal(copy[0].data, sf.data)
+    assert not np.may_share_memory(copy[0].data, sf.data)
+    np.testing.assert_equal(copy[1].data, vf.data)
+    assert not np.may_share_memory(copy[1].data, vf.data)
+
+    copy = fields[2:]
+    assert isinstance(copy, FieldCollection)
+    assert len(copy) == 1
+    np.testing.assert_equal(copy[0].data, tf.data)
+    assert not np.may_share_memory(copy[0].data, tf.data)
+
     fields.data[:] = 0
     np.testing.assert_allclose(sf.data, 0)
     np.testing.assert_allclose(vf.data, 0)
