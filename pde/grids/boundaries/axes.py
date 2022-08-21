@@ -260,15 +260,6 @@ class Boundaries(list):
 
         return "\n".join(result)
 
-    def extract_component(self, *indices) -> Boundaries:
-        """extracts the boundary conditions of the given component of the tensor.
-
-        Args:
-            *indices:
-                One or two indices for vector or tensor fields, respectively
-        """
-        boundaries = [boundary.extract_component(*indices) for boundary in self]
-        return self.__class__(boundaries)
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cells for all boundaries

@@ -53,7 +53,17 @@ import logging
 import math
 from abc import ABCMeta, abstractmethod
 from numbers import Number
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    TYPE_CHECKING,
+)
 
 import numba as nb
 import numpy as np
@@ -68,6 +78,10 @@ from ...tools.typing import (
     VirtualPointEvaluator,
 )
 from ..base import GridBase, PeriodicityError
+
+if TYPE_CHECKING:
+    from ..mesh import GridMesh  # @UnusedImport
+
 
 BoundaryData = Union[Dict, str, "BCBase"]
 
@@ -526,17 +540,7 @@ class BCBase(metaclass=ABCMeta):
     def _cache_hash(self) -> int:
         pass
 
-    @abstractmethod
     def copy(self, upper: Optional[bool] = None, rank: int = None) -> BCBase:
-        pass
-
-    def extract_component(self, *indices):
-        """extracts the boundary conditions for the given component
-
-        Args:
-            *indices:
-                One or two indices for vector or tensor fields, respectively
-        """
         raise NotImplementedError
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
@@ -661,6 +665,91 @@ class BCBase(metaclass=ABCMeta):
         return ghost_cell_setter  # type: ignore
 
 
+class MPIBC(BCBase):
+    """represents a boundary that is exchanged with another MPI process"""
+
+    homogeneous = False
+
+    def __init__(self, mesh: "GridMesh", axis: int, upper: bool):
+        """
+        Args:
+            mesh (:class:`~pde.grids.mesh.GridMesh`):
+                Grid mesh describing the distributed MPI nodes
+            axis (int):
+                The axis to which this boundary condition is associated
+            upper (bool):
+                Flag indicating whether this boundary condition is associated with the
+                upper side of an axis or not. In essence, this determines the direction
+                of the local normal vector of the boundary.
+        """
+        super().__init__(mesh.current_grid, axis, upper)
+        self._cell_boundary_info = mesh._get_cell_boundary_info(axis=axis, upper=upper)
+
+    def __repr__(self):
+        args = [
+            f"grid={self.grid}",
+            f"axis={self.axis}",
+            f"upper={self.upper}",
+            f"cell={self._cell_boundary_info.cell}",
+        ]
+        args += self._repr_value()
+        return f"{self.__class__.__name__}({', '.join(args)})"
+
+    def __str__(self):
+        args = [f"axis={self.axis}", f"cell={self._cell_boundary_info.cell}"]
+        return f"{self.__class__.__name__}({', '.join(args)})"
+
+    def __eq__(self, other):
+        """checks for equality neglecting the `upper` property"""
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return (
+            self.__class__ == other.__class__
+            and self.grid == other.grid
+            and self.axis == other.axis
+            and self._cell_boundary_info == other._cell_boundary_info
+        )
+
+    def get_mathematical_representation(self, field_name: str = "C") -> str:
+        """return mathematical representation of the boundary condition"""
+        axis_name = self.grid.axes[self.axis]
+        return f"MPI @ {axis_name}={self.axis_coord}"
+
+    def _cache_hash(self) -> int:
+        """returns a value to determine when a cache needs to be updated"""
+        return hash((self.__class__.__name__, self.grid._cache_hash(), self.axis))
+
+    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+        """set the ghost cell values for this boundary
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        raise RuntimeError(
+            "MPIBC.set_ghost_cells should not be called individually. Instead, the "
+            "ghost cells are set by BoundaryMPIPair.set_ghost_cells"
+        )
+
+    def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
+        """returns a function evaluating the value at the virtual support point
+
+        Returns:
+            function: A function that takes the data array and an index marking
+            the current point, which is assumed to be a virtual point. The
+            result is the data value at this point, which is calculated using
+            the boundary condition.
+        """
+        raise NotImplementedError
+
+    def make_ghost_cell_setter(self) -> GhostCellSetter:
+        """return function that sets the ghost cells for this boundary"""
+        raise RuntimeError(
+            "MPIBC.make_ghost_cell_setter should not be called individually. Instead, "
+            "the ghost cells are set by BoundaryMPIPair.make_ghost_cell_setter"
+        )
+
+
 class UserBC(BCBase):
     """represents a boundary whose virtual point are set by the user.
 
@@ -707,9 +796,13 @@ class UserBC(BCBase):
         Args:
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
-            values  (:class:`~numpy.ndarray`):
-                The values determining the values of the ghost cell. The interpretation
-                of this values is determined by `self.target`.
+            args (:class:`~numpy.ndarray`):
+                Determines what boundary conditions are set. `args` should be set to
+                :code:`{TARGET: value}`. Here, `TARGET` determines how the `value` is
+                interpreted and what boundary condition is actually enforced: the value
+                of the virtual points directly (`virtual_point`), the value of the field
+                at the boundary (`value`) or the outward derivative of the field at the
+                boundary (`derivative`).
         """
         if args is None:
             # usual case where set_ghost_cells is called automatically. In our case,
@@ -1377,15 +1470,6 @@ class ConstBCBase(BCBase):
         if self.value_is_linked:
             obj.link_value(self.value)
         return obj
-
-    def extract_component(self, *indices):
-        """extracts the boundary conditions for the given component
-
-        Args:
-            *indices:
-                One or two indices for vector or tensor fields, respectively
-        """
-        return self.copy(value=self.value[indices], rank=self.rank - len(indices))
 
     def _make_value_getter(self) -> Callable[[], np.ndarray]:
         """return a (compiled) function for obtaining the value.

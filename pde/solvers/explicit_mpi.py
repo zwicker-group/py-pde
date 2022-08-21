@@ -1,0 +1,176 @@
+"""
+Defines an explicit solver supporting various methods
+   
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+"""
+
+from typing import Callable, Tuple, List
+
+import numpy as np
+
+from ..fields.base import FieldBase
+from ..grids.mesh import GridMesh
+from ..pdes.base import PDEBase
+from ..tools.numba import jit
+from .base import SolverBase
+
+
+class ExplicitMPISolver(SolverBase):
+    """class for solving partial differential equations explicitly using MPI
+
+    Warning:
+        `modify_after_step` can only be used to do local modifications since the field
+        data supplied to the function is local to each MPI node.
+    """
+
+    name = "explicit_mpi"
+
+    dt_min = 1e-10
+    dt_max = 1e10
+
+    def __init__(
+        self, pde: PDEBase, decomposition: List[int], *, backend: str = "auto"
+    ):
+        """
+        Args:
+            pde (:class:`~pde.pdes.base.PDEBase`):
+                The instance describing the pde that needs to be solved
+            decomposition (list of ints):
+                Number of subdivision in each direction. Must be a list of
+                length `grid.num_axes` or a single integer. In the latter case,
+                the same subdivision is assumed for each axes.
+            backend (str):
+                Determines how the function is created. Accepted  values are 'numpy` and
+                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
+                backend.
+        """
+        super().__init__(pde)
+        self.backend = backend
+        self.decomposition = decomposition
+
+    def _make_fixed_euler_stepper(
+        self, state: FieldBase, dt: float
+    ) -> Callable[[np.ndarray, float, int], Tuple[float, float]]:
+        """make a simple Euler stepper with fixed time step
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step of the explicit stepping.
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, steps: int)`
+        """
+        self.info["dt_adaptive"] = False
+        self.info["use_mpi"] = True
+
+        if self.pde.is_sde:
+            raise NotImplementedError
+
+        # extract data frim subgrid
+        self.mesh = GridMesh.from_grid(state.grid, self.decomposition)
+        sub_state = self.mesh.extract_subfield(state)
+
+        # obtain function of the PDE
+        rhs_pde = self._make_pde_rhs(sub_state, backend=self.backend)
+        modify_after_step = jit(self.pde.make_modify_after_step(state))
+
+        def stepper(
+            sub_state_data: np.ndarray, t_start: float, steps: int
+        ) -> Tuple[float, float]:
+            """compiled inner loop for speed"""
+            modifications = 0.0
+            for i in range(steps):
+                # calculate the right hand side
+                t = t_start + i * dt
+                sub_state_data += dt * rhs_pde(sub_state_data, t)
+                modifications += modify_after_step(sub_state_data)
+
+            return t + dt, modifications
+
+        self.info["stochastic"] = False
+        self._logger.info(f"Initialized explicit MPI-Euler stepper with dt=%g", dt)
+
+        return stepper
+
+    def make_stepper(
+        self, state: FieldBase, dt=None
+    ) -> Callable[[FieldBase, float, float], float]:
+        """return a stepper function using an explicit scheme
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step of the explicit stepping. If `None`, this solver specifies
+                1e-3 as a default value.
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        # support `None` as a default value, so the controller can signal that
+        # the solver should use a default time step
+        if dt is None:
+            dt = 1e-3
+            if not self.adaptive:
+                self._logger.warning(
+                    "Explicit stepper with a fixed time step did not receive any "
+                    f"initial value for `dt`. Using dt={dt}, but specifying a value or "
+                    "enabling adaptive stepping is advisable."
+                )
+
+        self.info["dt"] = dt
+        self.info["steps"] = 0
+        # self.info["scheme"] = self.scheme
+        self.info["state_modifications"] = 0.0
+
+        if self.pde.is_sde and self.adaptive:
+            self._logger.warning(
+                "Adaptive stochastic stepping is not implemented. Using a fixed time "
+                "step instead."
+            )
+
+        # create stepper with fixed steps
+        # if self.scheme == "euler":
+        fixed_stepper = self._make_fixed_euler_stepper(state, dt)
+        # elif self.scheme in {"runge-kutta", "rk", "rk45"}:
+        #     fixed_stepper = self._make_rk45_stepper(state, dt)
+        # else:
+        #     raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
+
+        if self.info["backend"] == "numba":
+            fixed_stepper = jit(fixed_stepper)  # compile inner stepper
+
+        def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
+            """advance `state` from `t_start` to `t_end` using fixed steps"""
+            import numba_mpi
+
+            # calculate number of steps (which is at least 1)
+            steps = max(1, int(np.ceil((t_end - t_start) / dt)))
+
+            # distribute the state onto the different cells
+            sub_state_data = self.mesh.split_field_data_mpi(state.data)
+
+            # evolve the sub state
+            t_last, modifications = fixed_stepper(sub_state_data, t_start, steps)
+
+            # import matplotlib.pyplot as plt
+            # plt.imshow(sub_state_data)
+            # import numba_mpi
+            # plt.title(numba_mpi.rank())
+
+            # collect the data from all cells
+            self.mesh.combine_field_data_mpi(sub_state_data, out=state.data)
+
+            self.info["steps"] += steps
+            self.info["state_modifications"] += modifications
+            return t_last
+
+        return wrapped_stepper

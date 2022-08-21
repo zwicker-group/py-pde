@@ -8,21 +8,41 @@ from typing import Any, List, Tuple, TypeVar, Optional, Sequence, NamedTuple
 import numpy as np
 
 from ..fields.base import DataFieldBase, FieldBase
-from ..tools.cache import cached_property
+from ..tools.cache import cached_method
 from .base import GridBase
+from ..tools.plotting import plot_on_axes
 
 
 class MPIFlags(IntEnum):
-    field_split = 1
-    field_combine = 2
-    boundary_lower = 3
-    boundary_upper = 4
+    """enum that contains flags for MPI communication"""
+
+    field_split = 1  # split full field onto nodes
+    field_combine = 2  # combine full field from subfields on nodes
+    _boundary_lower = 8  # exchange with lower boundary of node with lower id
+    _boundary_upper = 9  # exchange with upper boundary of node with lower id
+
+    @classmethod
+    def boundary_lower(cls, my_id: int, other_id: int) -> int:
+        """flag for connection between my lower boundary and `other_id`"""
+        if my_id <= other_id:
+            return 2 * my_id + cls._boundary_lower
+        else:
+            return 2 * other_id + cls._boundary_upper
+
+    @classmethod
+    def boundary_upper(cls, my_id: int, other_id: int) -> int:
+        """flag for connection between my upper boundary and `other_id`"""
+        if my_id <= other_id:
+            return 2 * my_id + cls._boundary_upper
+        else:
+            return 2 * other_id + cls._boundary_lower
 
 
-class BoundaryInfo(NamedTuple):
-    cell: int
-    idx: Tuple
-    flag: int
+class MPIBoundaryInfo(NamedTuple):
+    """contains information about a boundary between two nodes"""
+
+    cell: int  # id of the neighboring cell
+    flag: int  # MPI flag describing the connection
 
 
 def _subdivide(num: int, chunks: int) -> np.ndarray:
@@ -90,9 +110,13 @@ TField = TypeVar("TField", bound=FieldBase)
 
 
 class GridMesh:
-    """handles a collection of subgrids arranged in a regular mesh"""
+    """handles a collection of subgrids arranged in a regular mesh
 
-    def __init__(self, basegrid: GridBase, subgrids):
+    This class provides methods for managing MPI simulations of multiple connected
+    subgrids. Each subgrid is also called a cell and identified with a unique number.
+    """
+
+    def __init__(self, basegrid: GridBase, subgrids: Sequence):
         """
         Args:
             basegrid (:class:`~pde.grids.base.GridBase`):
@@ -102,6 +126,8 @@ class GridMesh:
         """
         self.basegrid = basegrid
         self.subgrids = np.asarray(subgrids)
+        for subgrid in self.subgrids.flat:  # , flags=["refs_ok"]):
+            subgrid._mesh = self
 
         assert basegrid.num_axes == self.subgrids.ndim
 
@@ -116,6 +142,9 @@ class GridMesh:
                 Number of subdivision in each direction. Must be a list of
                 length `grid.num_axes` or a single integer. In the latter case,
                 the same subdivision is assumed for each axes.
+
+        Returns:
+            :class:`GridMesh`
         """
         decomp_arr = np.broadcast_to(decomposition, (grid.num_axes,)).astype(int)
 
@@ -148,44 +177,67 @@ class GridMesh:
         """total number of subgrids"""
         return self.subgrids.size
 
-    def __getitem__(self, mesh_id: int) -> GridBase:
+    def __getitem__(self, node_id: int) -> GridBase:
         """extract one subgrid from the mesh
 
         Args:
-            mesh_id (int):
+            node_id (int):
                 Index identifying the subgrid
-        """
-        return self.subgrids[self._id2idx(mesh_id)]
 
-    def _id2idx(self, mesh_id: int) -> Tuple[int, ...]:
-        """convert linear id into grid index
+        Returns:
+            :class:`~pde.grids.base.GridBase`: The sub grid of the given cell
+        """
+        return self.subgrids[self._id2idx(node_id)]
+
+    @property
+    def current_node(self) -> int:
+        """int: current MPI node"""
+        import numba_mpi
+
+        return numba_mpi.rank()
+
+    @property
+    def current_grid(self) -> GridBase:
+        """:class:`~pde.grids.base.GridBase`:subgrid of current MPI node"""
+        return self[self.current_node]
+
+    def _id2idx(self, node_id: int) -> Tuple[int, ...]:
+        """convert linear id into node index
 
         Args:
-            mesh_id (int):
-                Linear index identifying the subgrid
+            node_id (int):
+                Linear index identifying the node
 
         Returns:
             tuple: Full index with `num_axes` entries.
         """
-        return np.unravel_index(mesh_id, self.shape)  # type: ignore
+        return np.unravel_index(node_id, self.shape)  # type: ignore
 
-    def _idx2id(self, mesh_idx: Tuple[int, ...]) -> int:
-        """convert grid index to linear index
+    def _idx2id(self, node_idx: Tuple[int, ...]) -> int:
+        """convert node index to linear index
 
         Args:
-            mesh_idx (tuple):
+            node_idx (tuple):
                 Full index with `num_axes` entries.
 
+        Returns:
+            int: Linear index identifying the node
+        """
+        return np.ravel_multi_index(node_idx, self.shape)  # type: ignore
+
+    @cached_method()
+    def _get_data_indices_1d(self, with_ghost_cells: bool = False) -> List[List[slice]]:
+        """indices to extract valid field data for each subgrid
+
+        Args:
+            with_ghost_cells (bool):
+                Indicates whether the ghost cells are included in `field_data`
 
         Returns:
-            int: Linear index identifying the subgrid
+            A list of slices for each axis
         """
-        return np.ravel_multi_index(mesh_idx, self.shape)  # type: ignore
-
-    @cached_property()
-    def _data_indices_1d(self) -> List[List[slice]]:
-        """indices to extract valid field data for each subgrid"""
         # create indices for each axis
+        i_add = 2 if with_ghost_cells else 0
         indices_1d = []
         for axis in range(self.num_axes):
             grid_ids: List[Any] = [0] * self.num_axes
@@ -193,15 +245,24 @@ class GridMesh:
             data, last = [], 0
             for grid in self.subgrids[tuple(grid_ids)]:
                 n = grid.shape[axis]
-                data.append(slice(last, last + n))
+                data.append(slice(last, last + n + i_add))
                 last += n
             indices_1d.append(data)
         return indices_1d
 
-    @cached_property()
-    def _data_indices_valid(self) -> np.ndarray:
-        """indices to extract valid field data for each subgrid"""
-        indices_1d = self._data_indices_1d
+    @cached_method()
+    def _get_data_indices(self, with_ghost_cells: bool = False) -> np.ndarray:
+        """indices to extract valid field data for each subgrid
+
+        Args:
+            with_ghost_cells (bool):
+                Indicates whether the ghost cells are included in `field_data`
+
+        Returns:
+            :class:`~numpy.ndarray` an array of indices to access data of the sub grids
+        """
+        indices_1d = self._get_data_indices_1d(with_ghost_cells)
+
         # combine everything into a full indices
         indices = np.empty(self.shape, dtype=object)
         for idx in np.ndindex(self.shape):
@@ -209,121 +270,133 @@ class GridMesh:
 
         return indices
 
-    def get_boundaries_send(self, mesh_id: int) -> List[BoundaryInfo]:
-        """return information about boundary cells that need to be sent to other cells"""
-        cell_idx = self._id2idx(mesh_id)
-        grid = self[mesh_id]
-        result = []
-        for axis in range(self.num_axes):
-            size = self.shape[axis]
-            if size > 1:
-                # my lower boundary (upper boundary of left cell)
-                idx_left = list(cell_idx)
-                idx_left[axis] = (cell_idx[axis] - 1) % size
-                my_idx = [...] + [slice(None)] * grid.num_axes
-                my_idx[1 + axis] = 0
-                b = BoundaryInfo(
-                    cell=self._idx2id(idx_left),
-                    idx=tuple(my_idx),
-                    flag=MPIFlags.boundary_lower + 16 * axis,
-                )
-                result.append(b)
+    def _get_cell_boundary_info(
+        self, node_id: int = None, axis: int = 0, upper: bool = False
+    ) -> Optional[MPIBoundaryInfo]:
+        """get boundary cells that need to be sent to other nodes along given axis
 
-                # my upper boundary (lower boundary of right cell)
-                idx_right = list(cell_idx)
-                idx_right[axis] = (cell_idx[axis] + 1) % size
-                my_idx = [...] + [slice(None)] * grid.num_axes
-                my_idx[1 + axis] = -1
-                b = BoundaryInfo(
-                    cell=self._idx2id(idx_right),
-                    idx=tuple(my_idx),
-                    flag=MPIFlags.boundary_upper + 16 * axis,
-                )
-                result.append(b)
+        Args:
+            node_id (int):
+                The ID of the considered node
+            axis (int):
+                The axis of the grid
+            upper (bool):
+                Flag deciding which boundary to consider
 
-        return result
+        Returns:
+            :class:`MPIBoundaryInfo`: Information about the given boundary or `None` if
+            the boundary is not subdivided in the mesh
+        """
+        # TODO: Move this to the boundary class
+        size = self.shape[axis]
+        if size == 1:
+            return None
 
-    def get_boundaries_receive(self, mesh_id: int) -> List[BoundaryInfo]:
-        """return information about boundary cells that need to be sent to other cells"""
-        cell_idx = self._id2idx(mesh_id)
-        grid = self[mesh_id]
-        result = []
-        for axis in range(self.num_axes):
-            size = self.shape[axis]
-            if size > 1:
-                # my lower boundary (upper boundary of left cell)
-                idx_left = list(cell_idx)
-                idx_left[axis] = (cell_idx[axis] - 1) % size
-                my_idx = [...] + [slice(1, -1)] * grid.num_axes
-                my_idx[1 + axis] = 0
-                b = BoundaryInfo(
-                    cell=self._idx2id(idx_left),
-                    idx=tuple(my_idx),
-                    flag=MPIFlags.boundary_upper + 16 * axis,
-                )
-                result.append(b)
+        if node_id is None:
+            node_id = self.current_node
 
-                # my upper boundary (lower boundary of right cell)
-                idx_right = list(cell_idx)
-                idx_right[axis] = (cell_idx[axis] + 1) % size
-                my_idx = [...] + [slice(1, -1)] * grid.num_axes
-                my_idx[1 + axis] = -1
-                b = BoundaryInfo(
-                    cell=self._idx2id(idx_right),
-                    idx=tuple(my_idx),
-                    flag=MPIFlags.boundary_lower + 16 * axis,
-                )
-                result.append(b)
+        other_idx = list(self._id2idx(node_id))
 
-        return result
+        if upper:
+            # my upper boundary (lower boundary of right cell)
+            other_idx[axis] = (other_idx[axis] + 1) % size
+            other_id = self._idx2id(other_idx)
+            link_flag = MPIFlags.boundary_upper(node_id, other_id)
 
-    def extract_subfield(self, field: TField, mesh_id: int) -> TField:
+        else:
+            # my lower boundary (upper boundary of left cell)
+            other_idx[axis] = (other_idx[axis] - 1) % size
+            other_id = self._idx2id(other_idx)
+            link_flag = MPIFlags.boundary_lower(node_id, other_id)
+
+        return MPIBoundaryInfo(cell=other_id, flag=link_flag)
+
+    def extract_field_data(
+        self,
+        field_data: np.ndarray,
+        node_id: int = None,
+        *,
+        with_ghost_cells: bool = False,
+    ) -> np.ndarray:
         """extract one subfield from a global one
+
+        Args:
+            field_data (:class:`~numpy.ndarray`):
+                The field data that will be split
+            node_id (int):
+                Index identifying the subgrid
+            with_ghost_cells (bool):
+                Indicates whether the ghost cells are included in `field_data`
+
+        Returns:
+            :class:`~numpy.ndarray`: Field data defined on the subgrid. The field
+            contains ghost cells if `with_ghost_cells == True`.
+        """
+        # consistency check
+        if with_ghost_cells:
+            assert field_data.shape[-self.num_axes :] == self.basegrid._shape_full
+        else:
+            assert field_data.shape[-self.num_axes :] == self.basegrid.shape
+
+        if node_id is None:
+            node_id = self.current_node
+
+        node_idx = self._id2idx(node_id)
+        idx = self._get_data_indices_1d(with_ghost_cells)
+        i = (...,) + tuple(idx[n][j] for n, j in enumerate(node_idx))
+        return field_data[i]
+
+    def extract_subfield(
+        self, field: TField, node_id: int = None, *, with_ghost_cells: bool = False
+    ) -> TField:
+        """extract one subfield from a global field
 
         Args:
             field (:class:`~pde.fields.base.DataFieldBase`):
                 The field that will be split
-            mesh_id (int):
+            node_id (int):
                 Index identifying the subgrid
+            with_ghost_cells (bool):
+                Indicates whether the ghost cells are included in data
+
+        Returns:
+            :class:`~pde.fields.base.DataFieldBase`: The sub field of the node
         """
-        mesh_idx = self._id2idx(mesh_id)
-        grid = self.subgrids[mesh_idx]
-        i = (...,) + tuple(self._data_indices_1d[n][j] for n, j in enumerate(mesh_idx))
+        if node_id is None:
+            node_id = self.current_node
+
         if isinstance(field, DataFieldBase):
-            return field.__class__(grid, data=field.data[i], dtype=field.dtype)
+            data = self.extract_field_data(
+                field._data_full if with_ghost_cells else field.data,
+                node_id,
+                with_ghost_cells=with_ghost_cells,
+            )
+
+            return field.__class__(
+                grid=self[node_id],
+                data=data,
+                dtype=field.dtype,
+                with_ghost_cells=with_ghost_cells,
+            )
         else:
+            # TODO: support FieldCollections, too
             raise NotImplementedError
 
-    def extract_field_data(self, field: np.ndarray, mesh_id: int) -> np.ndarray:
-        """extract one subfield from a global one
-
-        Args:
-            field (:class:`~numpy.ndarray`):
-                The field that will be split
-            mesh_id (int):
-                Index identifying the subgrid
-        """
-        mesh_idx = self._id2idx(mesh_id)
-        i = (...,) + tuple(self._data_indices_1d[n][j] for n, j in enumerate(mesh_idx))
-        return np.ascontiguousarray(field.data)[i]
-
-    def split_field(self, field: TField, with_ghost_cells: bool = False) -> np.ndarray:
-        """split a field onto the subgrids
+    def split_field_data_mpi(
+        self, field_data: np.ndarray = None, *, with_ghost_cells: bool = False
+    ) -> np.ndarray:
+        """extract one subfield from a global field
 
         Args:
             field (:class:`~pde.fields.base.DataFieldBase`):
                 The field that will be split
+            with_ghost_cells (bool):
+                Indicates whether the ghost cells are included in data. If `True`,
+                `field_data` must be the full data field.
+
+        Returns:
+            :class:`~pde.fields.base.DataFieldBase`: The sub field of the current node
         """
-        assert field.grid == self.basegrid
-        result = np.empty(self.shape, dtype=object)
-        for idx in np.ndindex(self.shape):
-            grid = self.subgrids[idx]
-            data = field.data[(...,) + self._data_indices_valid[idx]]
-            result[idx] = field.__class__(grid, data=data, dtype=field.dtype)  # type: ignore
-        return result
-
-    def split_field_data_mpi(self, field: np.ndarray = None) -> np.ndarray:
-
         import numba_mpi
 
         assert len(self) == numba_mpi.size()
@@ -331,69 +404,157 @@ class GridMesh:
         if numba_mpi.rank() == 0:
             # send fields to all client processes
             for i in range(1, len(self)):
-                subfield = self.extract_field_data(field, i)
+                subfield = self.extract_field_data(
+                    field_data, i, with_ghost_cells=with_ghost_cells
+                )
                 numba_mpi.send(subfield, i, MPIFlags.field_split)
-            return self.extract_field_data(field, 0)
+            # extract field for the current process
+            return self.extract_field_data(
+                field_data, 0, with_ghost_cells=with_ghost_cells
+            )
 
         else:
             # receive subfield from main process
-            subgrid = self[numba_mpi.rank()]
-            # TODO: support different ranks
-            subfield = np.empty(subgrid.shape, dtype=field.dtype)
-            numba_mpi.recv(subfield, 0, MPIFlags.field_split)
-            return subfield
+            subgrid = self.current_grid
 
-    def combine_fields(self, fields: np.ndarray) -> FieldBase:
-        """combine multiple fields defined on subgrids
+            # determine shape of resulting data
+            shape = field_data.shape[: -self.num_axes]
+            shape += subgrid._shape_full if with_ghost_cells else subgrid.shape
+
+            subfield_data = np.empty(shape, dtype=field_data.dtype)
+            numba_mpi.recv(subfield_data, 0, MPIFlags.field_split)
+            return subfield_data
+
+    def split_field_mpi(self, field: TField) -> TField:
+        """split a field onto the subgrids by communicating data via MPI
 
         Args:
-            fields (:class:`~numpy.ndarray` of :class:`~pde.fields.base.FieldBase`):
-                The fields that will be combined
+            field (:class:`~pde.fields.base.DataFieldBase`):
+                The field that will be split
+
+        Results:
+            :class:`~pde.fields.base.DataFieldBase`: The field defined on the subgrid
         """
-        # prepare to collect data
-        field0 = fields.flat[0]
-        shape = (self.basegrid.dim,) * field0.rank + self.basegrid.shape
-        data = np.empty(shape, dtype=field0.dtype)
+        assert field.grid == self.basegrid
+        return field.__class__(
+            self.current_grid,
+            data=self.split_field_data_mpi(field._data_full, with_ghost_cells=True),
+            label=field.label,
+            dtype=field.dtype,
+            with_ghost_cells=True,
+        )
 
-        for idx in np.ndindex(self.shape):
-            assert self.subgrids[idx] == fields[idx].grid
-            data[(...,) + self._data_indices_valid[idx]] = fields[idx].data
+    # def combine_fields(self, fields: np.ndarray) -> FieldBase:
+    #     """combine multiple fields defined on subgrids
+    #
+    #     Args:
+    #         fields (:class:`~numpy.ndarray` of :class:`~pde.fields.base.FieldBase`):
+    #             The fields that will be combined
+    #     """
+    #     # prepare to collect data
+    #     field0 = fields.flat[0]
+    #     shape = (self.basegrid.dim,) * field0.rank + self.basegrid.shape
+    #     data = np.empty(shape, dtype=field0.dtype)
+    #     data_idx = self._get_data_indices(with_ghost_cells=False)
+    #
+    #     for idx in np.ndindex(self.shape):
+    #         assert self.subgrids[idx] == fields[idx].grid
+    #         data[(...,) + data_idx[idx]] = fields[idx].data
+    #
+    #     return field0.__class__(self.basegrid, data=data, dtype=field0.dtype)
 
-        return field0.__class__(self.basegrid, data=data, dtype=field0.dtype)
-
-    def combine_field_data(self, fields: Sequence[np.ndarray]) -> np.ndarray:
+    def combine_field_data(
+        self, fields: Sequence[np.ndarray], out: np.ndarray = None
+    ) -> np.ndarray:
         """combine data of multiple fields defined on subgrids
 
         Args:
             fields (:class:`~numpy.ndarray`):
                 The data of the fields that will be combined
+            out (:class:`~numpy.ndarray`):
+                Full field to which the combined data is written
+
+        Returns:
+            :class:`~numpy.ndarray`: Combined field. This is `out` if out is not `None`
         """
         # prepare to collect data
         field0 = fields[0]
         rank = field0.ndim - self.basegrid.num_axes
         shape = (self.basegrid.dim,) * rank + self.basegrid.shape
-        data = np.empty(shape, dtype=field0.dtype)
+        if out is None:
+            out = np.empty(shape, dtype=field0.dtype)
 
+        data_idx = self._get_data_indices(with_ghost_cells=False)
         for i in range(len(self)):
             idx = self._id2idx(i)
-            data[(...,) + self._data_indices_valid[idx]] = fields[i]
+            out[(...,) + data_idx[idx]] = fields[i]
 
-        return data
+        return out
 
-    def combine_field_data_mpi(self, subfield: np.ndarray) -> Optional[np.ndarray]:
+    def combine_field_data_mpi(
+        self, subfield: np.ndarray, out: np.ndarray = None
+    ) -> Optional[np.ndarray]:
+        """combine data of all subfields using MPI
 
+        Args:
+            subfield (:class:`~numpy.ndarray`):
+                The data of the field defined on the current subgrid
+            out (:class:`~numpy.ndarray`):
+                Full field to which the combined data is written
+
+        Returns:
+            :class:`~numpy.ndarray`: Combined field if we are on the main node. For all
+            other cases, this function returns `None`. On the main node, this array is
+            `out` if `out` was supplied.
+        """
         import numba_mpi
 
         assert len(self) == numba_mpi.size()
 
         if numba_mpi.rank() == 0:
+            # main node that receives all data from all other nodes
             fields = [subfield]
             for i in range(1, len(self)):
                 subfield = np.empty(self[i].shape, dtype=subfield.dtype)
                 numba_mpi.recv(subfield, i, MPIFlags.field_combine)
                 fields.append(subfield)
-            return self.combine_field_data(fields)
+            return self.combine_field_data(fields, out=out)
 
         else:
-            numba_mpi.send(np.ascontiguousarray(subfield), 0, MPIFlags.field_combine)
+            # send our subfield to the main node
+            numba_mpi.send(subfield, 0, MPIFlags.field_combine)
             return None
+
+    @plot_on_axes()
+    def plot(self, ax, **kwargs):
+        r"""visualize the grid mesh
+
+        Args:
+            {PLOT_ARGS}
+            \**kwargs: Extra arguments are passed on the to the matplotlib
+                plotting routines, e.g., to set the color of the lines
+        """
+        if self.num_axes not in {1, 2}:
+            raise NotImplementedError(
+                f"Plotting is not implemented for grids of dimension {self.dim}"
+            )
+
+        kwargs.setdefault("color", "k")
+        for x in np.arange(self.shape[0] + 1) - 0.5:
+            ax.axvline(x, **kwargs)
+        ax.set_xlim(-0.5, self.shape[0] - 0.5)
+        ax.set_xlabel(self.subgrids.flat[0].axes[0])
+
+        if self.num_axes == 2:
+            for y in np.arange(self.shape[1] + 1) - 0.5:
+                ax.axhline(y, **kwargs)
+            ax.set_ylim(-0.5, self.shape[1] - 0.5)
+            ax.set_ylabel(self.subgrids.flat[0].axes[1])
+
+            ax.set_aspect(1)
+
+        for num, idx in enumerate(np.ndindex(self.shape)):
+            pos = (idx, 0) if self.num_axes == 1 else idx
+            ax.text(
+                *pos, str(num), horizontalalignment="center", verticalalignment="center"
+            )

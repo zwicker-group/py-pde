@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
 import numpy as np
 
 from ..tools.cuboid import Cuboid
-from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import plot_on_axes
 from .base import DimensionError, GridBase, _check_shape
 
@@ -543,29 +542,6 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
             ax.set_ylabel(self.axes[1])
 
             ax.set_aspect(1)
-
-    @fill_in_docstring
-    def get_boundary_conditions(
-        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
-    ) -> "Boundaries":
-        """constructs boundary conditions from a flexible data format
-
-        Args:
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-            rank (int):
-                The tensorial rank of the value associated with the boundary conditions.
-
-        Raises:
-            ValueError: If the data given in `bc` cannot be read
-            PeriodicityError: If the boundaries are not compatible with the
-                periodic axes of the grid.
-        """
-        from .boundaries import Boundaries  # @Reimport
-
-        # get boundary conditions
-        return Boundaries.from_data(self, bc, rank=rank)
 
     def get_subgrid(self, indices: Sequence[int]) -> CartesianGrid:
         """return a subgrid of only the specified axes

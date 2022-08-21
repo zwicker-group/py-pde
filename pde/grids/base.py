@@ -23,6 +23,7 @@ from typing import (
     Iterator,
     List,
     NamedTuple,
+    Optional,
     Sequence,
     Set,
     Tuple,
@@ -41,6 +42,7 @@ from ..tools.typing import CellVolume, FloatNumerical, NumberOrArray, OperatorTy
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
+    from .mesh import GridMesh
 
 
 PI_4 = 4 * np.pi
@@ -159,6 +161,7 @@ class GridBase(metaclass=ABCMeta):
     def __init__(self):
         """initialize the grid"""
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._mesh: Optional[GridMesh] = None
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """register all subclassess to reconstruct them later"""
@@ -731,11 +734,42 @@ class GridBase(metaclass=ABCMeta):
     ) -> Generator:
         pass
 
-    @abstractmethod
+    @fill_in_docstring
     def get_boundary_conditions(
         self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
     ) -> Boundaries:
-        pass
+        """constructs boundary conditions from a flexible data format
+
+        Args:
+            bc (str or list or tuple or dict):
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES}
+            rank (int):
+                The tensorial rank of the value associated with the boundary conditions.
+
+        Returns:
+            :class:`~pde.grids.boundaries.axes.Boundaries`: The boundary conditions for
+            all axes.
+
+        Raises:
+            ValueError: If the data given in `bc` cannot be read
+            PeriodicityError: If the boundaries are not compatible with the
+                periodic axes of the grid.
+        """
+        from .boundaries import Boundaries  # @Reimport
+        from .boundaries.axis import BoundaryMPIPair
+
+        # get boundary conditions
+        bcs = Boundaries.from_data(self, bc, rank=rank)
+
+        # check whether this grid is part of a mesh and we thus need to set special
+        # conditions to support parallelism via MPI
+        if self._mesh is not None:
+            for axis in range(self.num_axes):
+                if self._mesh.shape[axis] > 1:
+                    bcs[axis] = BoundaryMPIPair(self._mesh, axis)
+
+        return bcs
 
     @abstractmethod
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:

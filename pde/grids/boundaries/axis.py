@@ -11,14 +11,18 @@ non-periodic axes have more option, which are represented by
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Union, TYPE_CHECKING
 
 import numpy as np
+import numba as nb
 from numba.extending import register_jitable
 
 from ...tools.typing import GhostCellSetter
 from ..base import GridBase, PeriodicityError
-from .local import BCBase, BCDataError, BoundaryData, _PeriodicBC
+from .local import BCBase, BCDataError, BoundaryData, _PeriodicBC, MPIBC
+
+if TYPE_CHECKING:
+    from ..mesh import GridMesh  # @UnusedImport
 
 BoundaryPairData = Union[
     Dict[str, BoundaryData], BoundaryData, Tuple[BoundaryData, BoundaryData]
@@ -57,6 +61,31 @@ class BoundaryAxisBase:
 
         self.low = low
         self.high = high
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({self.low!r}, {self.high!r})"
+
+    def __str__(self):
+        if self.low == self.high:
+            return str(self.low)
+        else:
+            return f"({self.low}, {self.high})"
+
+    @classmethod
+    def get_help(cls) -> str:
+        """Return information on how boundary conditions can be set"""
+        return (
+            "Boundary conditions for each side can be set using a tuple: "
+            f"(lower_bc, upper_bc). {BCBase.get_help()}"
+        )
+
+    def _cache_hash(self) -> int:
+        """returns a value to determine when a cache needs to be updated"""
+        return hash((self.low._cache_hash(), self.high._cache_hash()))
+
+    def copy(self) -> BoundaryPair:
+        """return a copy of itself, but with a reference to the same grid"""
+        return self.__class__(self.low.copy(), self.high.copy())
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -190,31 +219,6 @@ class BoundaryAxisBase:
 class BoundaryPair(BoundaryAxisBase):
     """represents the two boundaries of an axis along a single dimension"""
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.low!r}, {self.high!r})"
-
-    def __str__(self):
-        if self.low == self.high:
-            return str(self.low)
-        else:
-            return f"({self.low}, {self.high})"
-
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        return hash((self.low._cache_hash(), self.high._cache_hash()))
-
-    def copy(self) -> BoundaryPair:
-        """return a copy of itself, but with a reference to the same grid"""
-        return self.__class__(self.low.copy(), self.high.copy())
-
-    @classmethod
-    def get_help(cls) -> str:
-        """Return information on how boundary conditions can be set"""
-        return (
-            "Boundary conditions for each side can be set using a tuple: "
-            f"(lower_bc, upper_bc). {BCBase.get_help()}"
-        )
-
     @classmethod
     def from_data(cls, grid: GridBase, axis: int, data, rank: int = 0) -> BoundaryPair:
         """create boundary pair from some data
@@ -286,17 +290,6 @@ class BoundaryPair(BoundaryAxisBase):
 
         return cls(low, high)
 
-    def extract_component(self, *indices) -> BoundaryPair:
-        """extracts the boundary pair of the given index.
-
-        Args:
-            *indices:
-                One or two indices for vector or tensor fields, respectively
-        """
-        bc_sub_low = self.low.extract_component(*indices)
-        bc_sub_high = self.high.extract_component(*indices)
-        return self.__class__(bc_sub_low, bc_sub_high)
-
     def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
 
@@ -309,6 +302,91 @@ class BoundaryPair(BoundaryAxisBase):
         """
         self.low.check_value_rank(rank)
         self.high.check_value_rank(rank)
+
+
+class BoundaryMPIPair(BoundaryAxisBase):
+    """represents the two boundaries of an axis along a single dimension"""
+
+    def __init__(self, mesh: "GridMesh", axis: int):
+        """
+        Args:
+            mesh (:class:`~pde.grids.mesh.GridMesh`):
+                Grid mesh describing the distributed MPI nodes
+            axis (int):
+                The axis to which this boundary condition is associated
+        """
+        low = MPIBC(mesh, axis, upper=False)
+        high = MPIBC(mesh, axis, upper=True)
+        super().__init__(low, high)
+
+    def make_ghost_cell_setter(self) -> GhostCellSetter:
+        """return function that sets the ghost cells for this axis on a full array
+
+        Each function first sends the data of the lower and upper boundary to the
+        neighboring cells and then receives the data of its upper and lower boundary
+        from the neighboring cells.
+        """
+        import numba_mpi
+
+        ce_l = self.low._cell_boundary_info
+        ce_h = self.high._cell_boundary_info
+        num_axes = self.grid.num_axes
+        axis = self.axis
+
+        if num_axes == 1:
+
+            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                numba_mpi.send(data_full[..., 1], ce_l.cell, ce_l.flag)
+                numba_mpi.send(data_full[..., -2], ce_h.cell, ce_h.flag)
+                numba_mpi.recv(data_full[..., -1], ce_h.cell, ce_h.flag)
+                numba_mpi.recv(data_full[..., 0], ce_l.cell, ce_l.flag)
+
+        elif num_axes == 2:
+            if axis == 0:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., 1, 1:-1], ce_l.cell, ce_l.flag)
+                    numba_mpi.send(data_full[..., -2, 1:-1], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., -1, 1:-1], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., 0, 1:-1], ce_l.cell, ce_l.flag)
+
+            else:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., 1:-1, 1], ce_l.cell, ce_l.flag)
+                    numba_mpi.send(data_full[..., 1:-1, -2], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., 1:-1, -1], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., 1:-1, 0], ce_l.cell, ce_l.flag)
+
+        elif num_axes == 3:
+            if axis == 0:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., 1, 1:-1, 1:-1], ce_l.cell, ce_l.flag)
+                    numba_mpi.send(data_full[..., -2, 1:-1, 1:-1], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., -1, 1:-1, 1:-1], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., 0, 1:-1, 1:-1], ce_l.cell, ce_l.flag)
+
+            elif axis == 1:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., 1:-1, 1, 1:-1], ce_l.cell, ce_l.flag)
+                    numba_mpi.send(data_full[..., 1:-1, -2, 1:-1], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., 1:-1, -1, 1:-1], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., 1:-1, 0, 1:-1], ce_l.cell, ce_l.flag)
+
+            else:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., 1:-1, 1:-1, 1], ce_l.cell, ce_l.flag)
+                    numba_mpi.send(data_full[..., 1:-1, 1:-1, -2], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., 1:-1, 1:-1, -1], ce_h.cell, ce_h.flag)
+                    numba_mpi.recv(data_full[..., 1:-1, 1:-1, 0], ce_l.cell, ce_l.flag)
+
+        else:
+            raise NotImplementedError
+
+        return register_jitable(ghost_cell_setter)  # type: ignore
 
 
 class BoundaryPeriodic(BoundaryPair):
@@ -353,15 +431,6 @@ class BoundaryPeriodic(BoundaryPair):
     def copy(self) -> BoundaryPeriodic:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(grid=self.grid, axis=self.axis, flip_sign=self.flip_sign)
-
-    def extract_component(self, *indices) -> BoundaryPeriodic:
-        """extracts the boundary pair of the given extract_component.
-
-        Args:
-            *indices:
-                One or two indices for vector or tensor fields, respectively
-        """
-        return self
 
     def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
