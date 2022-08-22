@@ -176,7 +176,7 @@ class Controller:
 
         # handle initial compilation of stepper and profile it separately
         prof_start_compile = get_time()
-        stepper(state.copy(), float(t_start), float(t_start))
+        stepper(state.copy(), t_start, t_start + 1e-12)
         prof_start_tracker = get_time()
         profiler["compilation"] = prof_start_tracker - prof_start_compile
 
