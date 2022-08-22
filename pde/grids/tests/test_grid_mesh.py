@@ -2,13 +2,12 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import numpy as np
 import pytest
 
-import numpy as np
-
-from pde.grids.mesh import GridMesh
-from pde.grids import UnitGrid
 from pde.fields import ScalarField
+from pde.grids import UnitGrid
+from pde.grids.mesh import GridMesh
 
 
 @pytest.mark.parametrize("decomp", [(1, 1), (2, 1), (1, 2), (2, 2)])

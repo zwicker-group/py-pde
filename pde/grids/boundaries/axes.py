@@ -260,7 +260,6 @@ class Boundaries(list):
 
         return "\n".join(result)
 
-
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cells for all boundaries
 

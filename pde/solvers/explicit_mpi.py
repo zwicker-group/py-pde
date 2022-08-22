@@ -4,7 +4,7 @@ Defines an explicit solver supporting various methods
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, Tuple, List
+from typing import Callable, List, Tuple, Union
 
 import numpy as np
 
@@ -29,16 +29,22 @@ class ExplicitMPISolver(SolverBase):
     dt_max = 1e10
 
     def __init__(
-        self, pde: PDEBase, decomposition: List[int], *, backend: str = "auto"
+        self,
+        pde: PDEBase,
+        decomposition: Union[int, List[int]] = -1,
+        *,
+        backend: str = "auto",
     ):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved
             decomposition (list of ints):
-                Number of subdivision in each direction. Must be a list of
-                length `grid.num_axes` or a single integer. In the latter case,
-                the same subdivision is assumed for each axes.
+                Number of subdivision in each direction. Should be a list of length
+                `grid.num_axes` specifying the number of nodes for this axis. If one
+                value is `-1`, its value will be determined from the number of available
+                nodes. The default value decomposed the first axis using all available
+                nodes.
             backend (str):
                 Determines how the function is created. Accepted  values are 'numpy` and
                 'numba'. Alternatively, 'auto' lets the code decide for the most optimal
@@ -155,22 +161,21 @@ class ExplicitMPISolver(SolverBase):
             # calculate number of steps (which is at least 1)
             steps = max(1, int(np.ceil((t_end - t_start) / dt)))
 
-            # distribute the state onto the different cells
+            # distribute the number of steps and the field to all nodes
+            steps = self.mesh.broadcast(steps)
             sub_state_data = self.mesh.split_field_data_mpi(state.data)
 
             # evolve the sub state
             t_last, modifications = fixed_stepper(sub_state_data, t_start, steps)
 
-            # import matplotlib.pyplot as plt
-            # plt.imshow(sub_state_data)
-            # import numba_mpi
-            # plt.title(numba_mpi.rank())
-
-            # collect the data from all cells
+            # collect the data from all nodes
+            modification_list = self.mesh.gather(modifications)
             self.mesh.combine_field_data_mpi(sub_state_data, out=state.data)
 
-            self.info["steps"] += steps
-            self.info["state_modifications"] += modifications
+            # store information in the main node
+            if numba_mpi.rank() == 0:
+                self.info["steps"] += steps
+                self.info["state_modifications"] += sum(modification_list)
             return t_last
 
         return wrapped_stepper

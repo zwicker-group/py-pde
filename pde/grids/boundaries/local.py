@@ -54,6 +54,7 @@ import math
 from abc import ABCMeta, abstractmethod
 from numbers import Number
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Dict,
@@ -62,7 +63,6 @@ from typing import (
     Tuple,
     Type,
     Union,
-    TYPE_CHECKING,
 )
 
 import numba as nb

@@ -4,6 +4,7 @@ Base classes
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+import copy
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Optional  # @UnusedImport
@@ -568,8 +569,8 @@ class PDEBase(metaclass=ABCMeta):
         final_state = controller.run(state, dt)
 
         if ret_info:
-            info = controller.diagnostics.copy()
-            info["controller"].pop("solver_class")  # remove redundant information
+            info = copy.deepcopy(controller.diagnostics)
+            info["controller"].pop("solver_class", None)  # remove redundant information
             return final_state, info
         else:
             return final_state

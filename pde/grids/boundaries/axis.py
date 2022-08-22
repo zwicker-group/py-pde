@@ -11,15 +11,15 @@ non-periodic axes have more option, which are represented by
 
 from __future__ import annotations
 
-from typing import Dict, Tuple, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Tuple, Union
 
-import numpy as np
 import numba as nb
+import numpy as np
 from numba.extending import register_jitable
 
 from ...tools.typing import GhostCellSetter
 from ..base import GridBase, PeriodicityError
-from .local import BCBase, BCDataError, BoundaryData, _PeriodicBC, MPIBC
+from .local import MPIBC, BCBase, BCDataError, BoundaryData, _PeriodicBC
 
 if TYPE_CHECKING:
     from ..mesh import GridMesh  # @UnusedImport

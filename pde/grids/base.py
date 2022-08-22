@@ -796,11 +796,11 @@ class GridBase(metaclass=ABCMeta):
         """register an operator for this grid
 
         Example:
-            The method can either be used directly::
+            The method can either be used directly:
 
                 GridClass.register_operator("operator", make_operator)
 
-            or as a decorator for the factory function::
+            or as a decorator for the factory function:
 
                 @GridClass.register_operator("operator")
                 def make_operator(bcs: Boundaries):
@@ -810,13 +810,12 @@ class GridBase(metaclass=ABCMeta):
             name (str):
                 The name of the operator to register
             factory_func (callable):
-                A function with signature ``(bcs: Boundaries, **kwargs)``, which
-                takes boundary conditions and optional keyword arguments and
-                returns an implementation of the given operator. This
-                implementation is a function that takes a
-                :class:`~numpy.ndarray` of discretized values as arguments and
-                returns the resulting discretized data in a
-                :class:`~numpy.ndarray` after applying the operator.
+                A function with signature ``(bcs: Boundaries, **kwargs)``, which takes
+                boundary conditions and optional keyword arguments and returns an
+                implementation of the given operator. This implementation is a function
+                that takes a :class:`~numpy.ndarray` of discretized values as arguments
+                and returns the resulting discretized data in a :class:`~numpy.ndarray`
+                after applying the operator.
             rank_in (int):
                 The rank of the input field for the operator
             rank_out (int):

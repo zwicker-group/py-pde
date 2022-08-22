@@ -2,15 +2,28 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 from enum import IntEnum
-from typing import Any, List, Tuple, TypeVar, Optional, Sequence, NamedTuple
+from typing import Any, List, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 
 from ..fields.base import DataFieldBase, FieldBase
 from ..tools.cache import cached_method
-from .base import GridBase
 from ..tools.plotting import plot_on_axes
+from .base import GridBase
+
+# read state of the current MPI node
+try:
+    import numba_mpi
+except ImportError:
+    # fall-back to serial code if MPI is not available
+    mpi_size = 1
+    mpi_rank = 0
+else:
+    mpi_size = numba_mpi.size()
+    mpi_rank = numba_mpi.rank()
 
 
 class MPIFlags(IntEnum):
@@ -107,6 +120,7 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> List[GridBa
 
 
 TField = TypeVar("TField", bound=FieldBase)
+TData = TypeVar("TData")
 
 
 class GridMesh:
@@ -132,26 +146,65 @@ class GridMesh:
         assert basegrid.num_axes == self.subgrids.ndim
 
     @classmethod
-    def from_grid(cls, grid: GridBase, decomposition: List[int]):
+    def from_grid(
+        cls, grid: GridBase, decomposition: Union[int, List[int]] = -1
+    ) -> GridMesh:
         """subdivide the grid into subgrids
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 Grid that will be subdivided
             decomposition (list of ints):
-                Number of subdivision in each direction. Must be a list of
-                length `grid.num_axes` or a single integer. In the latter case,
-                the same subdivision is assumed for each axes.
+                Number of subdivision in each direction. Should be a list of length
+                `grid.num_axes` specifying the number of nodes for this axis. If one
+                value is `-1`, its value will be determined from the number of available
+                nodes. The default value decomposed the first axis using all available
+                nodes.
 
         Returns:
             :class:`GridMesh`
         """
-        decomp_arr = np.broadcast_to(decomposition, (grid.num_axes,)).astype(int)
+        # parse `decomposition`
+        try:
+            decomposition = [int(d) for d in decomposition]
+        except TypeError:
+            decomposition = [int(decomposition)]
 
-        subgrids = np.empty(decomp_arr, dtype=object)
+        size, var_index = 1, None
+        for i, num in enumerate(decomposition):
+            if num == -1:
+                if var_index is None:
+                    var_index = i
+                else:
+                    raise ValueError("can only specify one unknown dimension")
+            elif num > 0:
+                size *= num
+            else:
+                raise RuntimeError(f"Unknown size `{num}`")
+
+        # replace potential variable index with correct value
+        if var_index is not None:
+            dim = mpi_size // size
+            if dim > 0:
+                decomposition[var_index] = dim
+            else:
+                raise RuntimeError("Not enough nodes to satisfy decomposition")
+
+        # fill up with 1s until the grid size is met
+        decomposition += [1] * (grid.num_axes - len(decomposition))
+
+        # check compatibility with number of nodes
+        if mpi_size > 1 and np.prod(decomposition) != mpi_size:
+            raise RuntimeError(
+                f"Node count ({mpi_size}) incompatible with decomposition "
+                f"({decomposition})"
+            )
+
+        # subdivide the base grid according to the decomposition
+        subgrids = np.empty(decomposition, dtype=object)
         subgrids.flat[0] = grid  # seed the initial grid at the top-left
         idx_set: List[Any] = [0] * subgrids.ndim  # indices to extract all grids
-        for axis, chunks in enumerate(decomp_arr):
+        for axis, chunks in enumerate(decomposition):
             # iterate over all grids that have been determined already
             for idx, subgrid in np.ndenumerate(subgrids[tuple(idx_set)]):
                 i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)
@@ -192,9 +245,7 @@ class GridMesh:
     @property
     def current_node(self) -> int:
         """int: current MPI node"""
-        import numba_mpi
-
-        return numba_mpi.rank()
+        return mpi_rank
 
     @property
     def current_grid(self) -> GridBase:
@@ -399,15 +450,16 @@ class GridMesh:
         """
         import numba_mpi
 
-        assert len(self) == numba_mpi.size()
+        assert len(self) == mpi_size
 
-        if numba_mpi.rank() == 0:
+        if mpi_rank == 0:
             # send fields to all client processes
             for i in range(1, len(self)):
                 subfield = self.extract_field_data(
                     field_data, i, with_ghost_cells=with_ghost_cells
                 )
                 numba_mpi.send(subfield, i, MPIFlags.field_split)
+
             # extract field for the current process
             return self.extract_field_data(
                 field_data, 0, with_ghost_cells=with_ghost_cells
@@ -509,9 +561,9 @@ class GridMesh:
         """
         import numba_mpi
 
-        assert len(self) == numba_mpi.size()
+        assert len(self) == mpi_size
 
-        if numba_mpi.rank() == 0:
+        if mpi_rank == 0:
             # main node that receives all data from all other nodes
             fields = [subfield]
             for i in range(1, len(self)):
@@ -524,6 +576,33 @@ class GridMesh:
             # send our subfield to the main node
             numba_mpi.send(subfield, 0, MPIFlags.field_combine)
             return None
+
+    def broadcast(self, data: TData) -> TData:
+        """distribute a value from the main node to all nodes
+
+        Args:
+            data: The data that will be broadcasted from the main node
+
+        Returns:
+            The same data, but on all nodes
+        """
+        from mpi4py.MPI import COMM_WORLD
+
+        return COMM_WORLD.bcast(data, root=0)
+
+    def gather(self, data: TData) -> Optional[List[TData]]:
+        """gather a value from all nodes
+
+        Args:
+            data: The data that will be sent to the main node
+
+        Returns:
+            None on all nodes, except the main node, which receives an ordered list with
+            the data from all nodes.
+        """
+        from mpi4py.MPI import COMM_WORLD
+
+        return COMM_WORLD.gather(data, root=0)
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
