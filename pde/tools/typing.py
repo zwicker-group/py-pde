@@ -20,6 +20,8 @@ try:
 
 except ImportError:
     # Protocol is not defined (likely because python version <= 3.7
+    # We demand python version 3.8 since 2022-08-23
+    # This fallback can thus be removed after 2022-02-23
     OperatorType = Callable[[np.ndarray, np.ndarray], None]
     AdjacentEvaluator = Callable[[np.ndarray, int, Tuple[int, ...]], float]
     CellVolume = Callable[..., float]
