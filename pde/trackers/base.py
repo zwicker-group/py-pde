@@ -176,11 +176,17 @@ class TrackerCollection:
         elif isinstance(data, str):
             trackers = [TrackerBase.from_data(data, **kwargs)]
         else:
-            trackers = [
-                TrackerBase.from_data(tracker)
-                for tracker in data
-                if tracker is not None
-            ]
+            # initialize trackers from a sequence
+            trackers, interrupt_ids = [], set()
+            for tracker in data:
+                if tracker is not None:
+                    tracker_obj = TrackerBase.from_data(tracker)
+                    if id(tracker_obj.interrupt) in interrupt_ids:
+                        # make sure that different trackers never use the same interrupt
+                        # class, which would be problematic during iteration
+                        tracker.interrupt = tracker.interrupt.copy()
+                    interrupt_ids.add(id(tracker_obj.interrupt))
+                    trackers.append(tracker_obj)
 
         return cls(trackers)
 

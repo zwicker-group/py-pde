@@ -14,6 +14,7 @@ from pde.pdes import AllenCahnPDE, CahnHilliardPDE, DiffusionPDE
 from pde.tools.misc import module_available
 from pde.trackers import get_named_trackers, trackers
 from pde.trackers.base import TrackerBase
+from pde.trackers.interrupts import ConstantInterrupts
 from pde.visualization.movies import Movie
 
 
@@ -225,3 +226,17 @@ def test_get_named_trackers():
         assert isinstance(name, str)
         tracker = TrackerBase.from_data(name)
         assert isinstance(tracker, cls)
+
+
+def test_double_tracker():
+    """simple test for using a custom tracker twice"""
+    interval = ConstantInterrupts(1)
+    times1, times2 = [], []
+    t1 = trackers.CallbackTracker(lambda s, t: times1.append(t), interval=interval)
+    t2 = trackers.CallbackTracker(lambda s, t: times2.append(t), interval=interval)
+
+    field = ScalarField.random_uniform(UnitGrid([3]))
+    DiffusionPDE().solve(field, t_range=4, dt=0.1, tracker=[t1, t2])
+
+    np.testing.assert_allclose(times1, np.arange(5))
+    np.testing.assert_allclose(times2, np.arange(5))
