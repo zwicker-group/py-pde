@@ -753,11 +753,15 @@ class GridBase(metaclass=ABCMeta):
         """register an operator for this grid
 
         Example:
-            The method can either be used directly::
+            The method can either be used directly:
+
+            .. code-block:: python
 
                 GridClass.register_operator("operator", make_operator)
 
-            or as a decorator for the factory function::
+            or as a decorator for the factory function:
+
+            .. code-block:: python
 
                 @GridClass.register_operator("operator")
                 def make_operator(bcs: Boundaries):
