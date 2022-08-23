@@ -50,7 +50,7 @@ REQUIREMENTS = [
         essential=True,
     ),
     Requirement(
-        name="numpy", version="1.18.0", usage="Handling numerical data", essential=True
+        name="numpy", version="1.22.0", usage="Handling numerical data", essential=True
     ),
     Requirement(
         name="scipy",
