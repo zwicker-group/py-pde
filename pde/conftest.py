@@ -49,19 +49,23 @@ def pytest_addoption(parser):
 def pytest_collection_modifyitems(config, items):
     """pytest hook to filter a collection of tests"""
     # parse options provided to py.test
+    running_cov = config.getvalue("--cov")
     runslow = config.getoption("--runslow", default=False)
     runinteractive = config.getoption("--runinteractive", default=False)
     use_mpi = config.getoption("--use_mpi", default=False)
     has_numba_mpi = module_available("numba_mpi")
 
     # prepare markers
+    skip_cov = pytest.mark.skip(reason="skipped during coverage run")
     skip_slow = pytest.mark.skip(reason="need --runslow option to run")
     skip_interactive = pytest.mark.skip(reason="need --runinteractive option to run")
     skip_serial = pytest.mark.skip(reason="serial test, but --use_mpi option was set")
     skip_mpi = pytest.mark.skip(reason="mpi test, but `numba_mpi` not available")
 
-    # check item
+    # check each test item
     for item in items:
+        if "no_cover" in item.keywords and running_cov:
+            item.add_marker(skip_cov)
         if "slow" in item.keywords and not runslow:
             item.add_marker(skip_slow)
         if "interactive" in item.keywords and not runinteractive:
