@@ -38,4 +38,5 @@ jobs:
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
+        cd tests
         python run_tests.py --unit --use_mpi --showconfig
