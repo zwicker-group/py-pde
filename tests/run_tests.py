@@ -111,8 +111,10 @@ def test_types(*, report: bool = False, verbose: bool = True) -> int:
 
 
 def run_unit_tests(
+    *,
     runslow: bool = False,
     runinteractive: bool = False,
+    use_mpi: bool = False,
     parallel: bool = False,
     coverage: bool = False,
     nojit: bool = False,
@@ -124,6 +126,7 @@ def run_unit_tests(
     Args:
         runslow (bool): Whether to run the slow tests
         runinteractive (bool): Whether to run the interactive tests
+        use_mpi (bool): Flag indicating whether tests are run using MPI
         parallel (bool): Whether to use multiple processors
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
@@ -143,8 +146,14 @@ def run_unit_tests(
         env["NUMBA_WARNINGS"] = "1"
         env["NUMBA_BOUNDSCHECK"] = "1"
 
+    if use_mpi:
+        # run pytest using MPI with two cores
+        args = ["mpiexec", "-host", "localhost", "-n", "2"]
+    else:
+        args = []
+
     # build the arguments string
-    args = [
+    args += [
         sys.executable,
         "-m",
         "pytest",  # run pytest module
@@ -155,11 +164,12 @@ def run_unit_tests(
         "--import-mode=importlib",
     ]
 
-    # allow running slow and interactive tests?
     if runslow:
-        args.append("--runslow")
+        args.append("--runslow")  # also run slow tests
     if runinteractive:
-        args.append("--runinteractive")
+        args.append("--runinteractive")  # also run interactive tests
+    if use_mpi:
+        args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
 
     # fail early if requested
     if early:
@@ -239,6 +249,12 @@ def main() -> int:
         help="Also run interactive unit tests",
     )
     group.add_argument(
+        "--use_mpi",
+        action="store_true",
+        default=False,
+        help="Run each unit test with MPI multiprocessing",
+    )
+    group.add_argument(
         "--showconfig",
         action="store_true",
         default=False,
@@ -303,6 +319,7 @@ def main() -> int:
         retcode = run_unit_tests(
             runslow=args.runslow,
             runinteractive=args.runinteractive,
+            use_mpi=args.use_mpi,
             coverage=args.coverage,
             parallel=args.parallel,
             nojit=args.nojit,

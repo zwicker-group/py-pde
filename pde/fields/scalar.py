@@ -276,7 +276,7 @@ class ScalarField(DataFieldBase):
         ax_retain = tuple(sorted(set(ax_all) - set(ax_remove)))
 
         # determine the new grid
-        subgrid = self.grid.get_subgrid(ax_retain)
+        sliced_grid = self.grid.slice(ax_retain)
 
         # calculate the new data
         if method == "integral":
@@ -291,7 +291,7 @@ class ScalarField(DataFieldBase):
             raise ValueError(f"Unknown projection method `{method}`")
 
         # create the new field instance
-        return self.__class__(grid=subgrid, data=subdata, label=label)
+        return self.__class__(grid=sliced_grid, data=subdata, label=label)
 
     def slice(
         self, position: Dict[str, float], *, method: str = "nearest", label: str = None
@@ -348,7 +348,7 @@ class ScalarField(DataFieldBase):
         # determine the axes left after slicing and the new grid
         ax_all = range(grid.num_axes)
         ax_retain = tuple(sorted(set(ax_all) - set(ax_remove)))
-        subgrid = grid.get_subgrid(ax_retain)
+        sliced_grid = grid.slice(ax_retain)
 
         # obtain the sliced data
         if method == "nearest":
@@ -371,7 +371,7 @@ class ScalarField(DataFieldBase):
             raise ValueError(f"Unknown slicing method `{method}`")
 
         # create the new field instance
-        return self.__class__(grid=subgrid, data=subdata, label=label)
+        return self.__class__(grid=sliced_grid, data=subdata, label=label)
 
     def to_scalar(
         self, scalar: Union[str, Callable] = "auto", *, label: Optional[str] = None

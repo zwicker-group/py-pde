@@ -10,6 +10,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, TypeVar, Union
 
+from ..tools import mpi
 from ..tools.numba import JIT_COUNT
 from ..trackers.base import (
     FinishedSimulation,
@@ -308,22 +309,14 @@ class Controller:
             state = initial_state.copy()
 
         # decide whether to call the main routine or whether this is an MPI client
-        try:
-            import numba_mpi
-        except ImportError:
-            # MPI cannot be used -> do a serial run
+        if mpi.is_main:
+            # this node is the primary one
             self._run_single(state, dt)
-            self.info["process_count"] = 1
-
+            self.info["process_count"] = mpi.size
         else:
-            if numba_mpi.size() == 1 or numba_mpi.rank() == 0:
-                # this node is the primary one
-                self._run_single(state, dt)
-                self.info["process_count"] = numba_mpi.size()
-            else:
-                # multiple processes are used and this is one of the secondaries
-                self._run_mpi_client(state, dt)
-                self.info["process_rank"] = numba_mpi.rank()
-                state = None  # do not return anything in client processes
+            # multiple processes are used and this is one of the secondaries
+            self._run_mpi_client(state, dt)
+            self.info["process_rank"] = mpi.rank
+            state = None  # do not return anything in client processes
 
         return state

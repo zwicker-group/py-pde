@@ -543,7 +543,7 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
 
             ax.set_aspect(1)
 
-    def get_subgrid(self, indices: Sequence[int]) -> CartesianGrid:
+    def slice(self, indices: Sequence[int]) -> CartesianGrid:
         """return a subgrid of only the specified axes
 
         Args:
@@ -622,7 +622,7 @@ class UnitGrid(CartesianGrid):
             self.cuboid.bounds, shape=self.shape, periodic=self.periodic
         )
 
-    def get_subgrid(self, indices: Sequence[int]) -> UnitGrid:
+    def slice(self, indices: Sequence[int]) -> UnitGrid:
         """return a subgrid of only the specified axes
 
         Args:

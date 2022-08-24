@@ -83,6 +83,13 @@ REQUIREMENTS = [
         optional=True,
     ),
     Requirement(
+        name="numba_mpi",
+        version="0.7",
+        usage="Numba compiled MPI wrappers",
+        optional=True,
+        for_tests=True,
+    ),
+    Requirement(
         name="pandas",
         version="1.2",
         usage="Handling tabular data",

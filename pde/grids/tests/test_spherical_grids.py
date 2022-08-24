@@ -9,23 +9,6 @@ from pde import CartesianGrid, PolarSymGrid, ScalarField, SphericalSymGrid
 from pde.grids.boundaries.local import NeumannBC
 
 
-@pytest.mark.parametrize("grid_class", [PolarSymGrid, SphericalSymGrid])
-def test_spherical_base_bcs(grid_class):
-    """test setting boundary conditions on spherical grids"""
-    grid = grid_class(2, 3)
-
-    domain1 = grid.get_boundary_conditions(["derivative", {"type": "value"}])
-    domain2 = grid.get_boundary_conditions({"type": "value"})
-    assert domain1 == domain2
-
-    # test boundary conditions for simulations with holes
-    grid = grid_class((1, 2), 3)
-    grid.get_boundary_conditions(["derivative", {"type": "value"}])
-    domain1 = grid.get_boundary_conditions({"type": "value"})
-    domain2 = grid.get_boundary_conditions(["value", "value"])
-    assert domain1 == domain2
-
-
 def test_polar_grid():
     """test simple polar grid"""
     grid = PolarSymGrid(4, 8)
@@ -169,7 +152,7 @@ def test_setting_boundary_conditions(grid_class):
     b_inner = NeumannBC(grid, 0, upper=False)
 
     assert grid.get_boundary_conditions("auto_periodic_neumann")[0].low == b_inner
-    assert grid.get_boundary_conditions({"value": 2})[0].low == b_inner
+    assert grid.get_boundary_conditions(["derivative", {"value": 2}])[0].low == b_inner
     bcs = grid.get_boundary_conditions(["value", "value"])
     assert bcs[0].low != b_inner
 

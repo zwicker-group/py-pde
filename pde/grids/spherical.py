@@ -415,62 +415,65 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         else:
             return rs
 
-    @fill_in_docstring
-    def get_boundary_conditions(
-        self, bc="auto_periodic_neumann", rank: int = 0
-    ) -> "Boundaries":
-        """constructs boundary conditions from a flexible data format.
-
-        If the inner boundary condition for a grid without a hole is not specified, this
-        condition is automatically set to a vanishing derivative at :math:`r=0`.
-
-        Args:
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-            rank (int):
-                The tensorial rank of the value associated with the boundary
-                conditions.
-
-        Raises:
-            ValueError: If the data given in `bc` cannot be read
-            PeriodicityError: If the boundaries are not compatible with the
-                periodic axes of the grid.
-        """
-        from .boundaries import Boundaries  # @Reimport
-        from .boundaries.axis import BoundaryPair
-        from .boundaries.local import BCBase, NeumannBC
-
-        if self.has_hole:
-            # grid has holes => specify two boundary conditions
-            return Boundaries.from_data(self, bc, rank=rank)  # )
-
-        if isinstance(bc, Boundaries):
-            # a full boundary instance is given
-            return bc
-
-        if bc == "auto_periodic_neumann" or bc == "auto_periodic_neumann":
-            # a simple value is given => use it for the outer boundary
-            return Boundaries.from_data(self, "derivative", rank=rank)
-        elif bc == "auto_periodic_dirichlet":
-            # a simple value is given => use it for the outer boundary
-            return Boundaries.from_data(self, "value", rank=rank)
-        else:
-            # a more complex value is given for the boundary
-            try:
-                # try interpreting it as a value for the outer boundary
-                b_outer = BCBase.from_data(self, 0, upper=True, data=bc, rank=rank)
-            except ValueError:
-                # if this fails, try interpreting the value as the full BC
-                bcs = Boundaries.from_data(self, bc, rank=rank)
-            else:
-                self._logger.warning(
-                    "The inner boundary condition was not specified. Assuming a "
-                    "vanishing derivative at r=0."
-                )
-                b_inner = NeumannBC(self, 0, upper=False, rank=rank)
-                bcs = Boundaries([BoundaryPair(b_inner, b_outer)])
-            return bcs
+    #
+    # def _parse_boundary_conditions(
+    #     self, bc="auto_periodic_neumann", rank: int = 0
+    # ) -> "Boundaries":
+    #     """constructs boundary conditions from a flexible data format.
+    #
+    #     If the inner boundary condition for a grid without a hole is not specified, this
+    #     condition is automatically set to a vanishing derivative at :math:`r=0`.
+    #
+    #     Args:
+    #         bc (str or list or tuple or dict):
+    #             The boundary conditions applied to the field.
+    #             {ARG_BOUNDARIES}
+    #         rank (int):
+    #             The tensorial rank of the value associated with the boundary
+    #             conditions.
+    #
+    #     Raises:
+    #         ValueError: If the data given in `bc` cannot be read
+    #         PeriodicityError: If the boundaries are not compatible with the
+    #             periodic axes of the grid.
+    #     """
+    #     from .boundaries import Boundaries  # @Reimport
+    #     from .boundaries.axis import BoundaryPair
+    #     from .boundaries.local import BCBase, NeumannBC
+    #
+    #     if self.has_hole:
+    #         # grid has holes => specify two boundary conditions
+    #         bcs = bc
+    #
+    #     elif isinstance(bc, Boundaries):
+    #         # a full boundary instance is given
+    #         bcs = bc
+    #
+    #     else:
+    #         # got partial data for a grid without a hole
+    #         if bc == "auto_periodic_neumann":
+    #             # a simple value is given => use it for the outer boundary
+    #             bcs = Boundaries.from_data(self, "derivative", rank=rank)
+    #         elif bc == "auto_periodic_dirichlet":
+    #             # a simple value is given => use it for the outer boundary
+    #             bcs = Boundaries.from_data(self, "value", rank=rank)
+    #         else:
+    #             # a more complex value is given for the boundary
+    #             try:
+    #                 # try interpreting it as a value for the outer boundary
+    #                 b_outer = BCBase.from_data(self, 0, upper=True, data=bc, rank=rank)
+    #             except ValueError:
+    #                 # if this fails, try interpreting the value as the full BC
+    #                 bcs = Boundaries.from_data(self, bc, rank=rank)
+    #             else:
+    #                 self._logger.warning(
+    #                     "The inner boundary condition was not specified. Assuming a "
+    #                     "vanishing derivative at r=0."
+    #                 )
+    #                 b_inner = NeumannBC(self, 0, upper=False, rank=rank)
+    #                 bcs = Boundaries([BoundaryPair(b_inner, b_outer)])
+    #
+    #     return super().get_boundary_conditions(bcs, rank)
 
     def get_cartesian_grid(self, mode: str = "valid", num: int = None) -> CartesianGrid:
         """return a Cartesian grid for this spherical one

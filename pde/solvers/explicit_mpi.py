@@ -11,6 +11,7 @@ import numpy as np
 from ..fields.base import FieldBase
 from ..grids.mesh import GridMesh
 from ..pdes.base import PDEBase
+from ..tools import mpi
 from ..tools.numba import jit
 from .base import SolverBase
 
@@ -156,8 +157,6 @@ class ExplicitMPISolver(SolverBase):
 
         def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
             """advance `state` from `t_start` to `t_end` using fixed steps"""
-            import numba_mpi
-
             # calculate number of steps (which is at least 1)
             steps = max(1, int(np.ceil((t_end - t_start) / dt)))
 
@@ -173,7 +172,7 @@ class ExplicitMPISolver(SolverBase):
             self.mesh.combine_field_data_mpi(sub_state_data, out=state.data)
 
             # store information in the main node
-            if numba_mpi.rank() == 0:
+            if mpi.is_main:
                 self.info["steps"] += steps
                 self.info["state_modifications"] += sum(modification_list)
             return t_last

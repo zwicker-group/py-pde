@@ -62,6 +62,7 @@ from typing import (
     Optional,
     Tuple,
     Type,
+    TypeVar,
     Union,
 )
 
@@ -228,6 +229,9 @@ def _make_get_arr_1d(
         raise NotImplementedError
 
     return register_jitable(inline="always")(get_arr_1d)  # type: ignore
+
+
+TBC = TypeVar("TBC", bound="BCBase")
 
 
 class BCBase(metaclass=ABCMeta):
@@ -521,6 +525,18 @@ class BCBase(metaclass=ABCMeta):
             raise PeriodicityError("Periodicity of conditions must match grid")
         return bc
 
+    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+        """converts this boundary condition to one valid for a given subgrid
+
+        Args:
+            subgrid (:class:`GridBase`):
+                Grid of the new boundary conditions
+
+        Returns:
+            :class:`BCBase`: Boundary conditions valid on the subgrid
+        """
+        raise NotImplementedError("Boundary condition cannot be transfered to subgrid")
+
     def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
 
@@ -540,7 +556,7 @@ class BCBase(metaclass=ABCMeta):
     def _cache_hash(self) -> int:
         pass
 
-    def copy(self, upper: Optional[bool] = None, rank: int = None) -> BCBase:
+    def copy(self: TBC, upper: Optional[bool] = None, rank: int = None) -> TBC:
         raise NotImplementedError
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
@@ -559,6 +575,15 @@ class BCBase(metaclass=ABCMeta):
     @abstractmethod
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary"""
+
+    def make_ghost_cell_sender(self) -> GhostCellSetter:
+        """return function that might send data to set ghost cells for this boundary"""
+
+        @register_jitable
+        def noop(data_full: np.ndarray, args=None) -> None:
+            pass
+
+        return noop
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this boundary"""
@@ -670,7 +695,9 @@ class MPIBC(BCBase):
 
     homogeneous = False
 
-    def __init__(self, mesh: "GridMesh", axis: int, upper: bool):
+    def __init__(
+        self, mesh: "GridMesh", axis: int, upper: bool, *, node_id: int = None
+    ):
         """
         Args:
             mesh (:class:`~pde.grids.mesh.GridMesh`):
@@ -682,21 +709,34 @@ class MPIBC(BCBase):
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
         """
-        super().__init__(mesh.current_grid, axis, upper)
-        self._cell_boundary_info = mesh._get_cell_boundary_info(axis=axis, upper=upper)
+        super().__init__(mesh[node_id], axis, upper)
+        # TODO: we don't need this complicated structure, but can save node and flag
+        self._neighbor_id = mesh.get_neighbor(axis, upper, node_id=node_id)
+        self._mpi_flag = mesh.get_boundary_flag(self._neighbor_id, upper)
+
+        # determine indices for reading and writing data
+        idx = [slice(1, -1)] * self.grid.num_axes
+        idx[self.axis] = -2 if self.upper else 1  # read valid data
+        self._idx_read = tuple([Ellipsis] + idx)
+        idx[self.axis] = -1 if self.upper else 0  # write ghost cells
+        self._idx_write = tuple([Ellipsis] + idx)
 
     def __repr__(self):
         args = [
             f"grid={self.grid}",
             f"axis={self.axis}",
             f"upper={self.upper}",
-            f"cell={self._cell_boundary_info.cell}",
+            f"neighbor={self._neighbor_id}",
         ]
         args += self._repr_value()
         return f"{self.__class__.__name__}({', '.join(args)})"
 
     def __str__(self):
-        args = [f"axis={self.axis}", f"cell={self._cell_boundary_info.cell}"]
+        args = [
+            f"axis={self.axis}",
+            f"upper={self.upper}",
+            f"neighbor={self._neighbor_id}",
+        ]
         return f"{self.__class__.__name__}({', '.join(args)})"
 
     def __eq__(self, other):
@@ -707,7 +747,7 @@ class MPIBC(BCBase):
             self.__class__ == other.__class__
             and self.grid == other.grid
             and self.axis == other.axis
-            and self._cell_boundary_info == other._cell_boundary_info
+            and self._neighbor_id == other._neighbor_id
         )
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
@@ -717,7 +757,24 @@ class MPIBC(BCBase):
 
     def _cache_hash(self) -> int:
         """returns a value to determine when a cache needs to be updated"""
-        return hash((self.__class__.__name__, self.grid._cache_hash(), self.axis))
+        data = (
+            self.__class__.__name__,
+            self.grid._cache_hash(),
+            self.axis,
+            self._neighbor_id,
+        )
+        return hash(data)
+
+    def send_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+        """send the ghost cell values for this boundary
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+        """
+        import numba_mpi
+
+        numba_mpi.send(data_full[self._idx_read], self._neighbor_id, self._mpi_flag)
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
@@ -726,10 +783,9 @@ class MPIBC(BCBase):
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
-        raise RuntimeError(
-            "MPIBC.set_ghost_cells should not be called individually. Instead, the "
-            "ghost cells are set by BoundaryMPIPair.set_ghost_cells"
-        )
+        import numba_mpi
+
+        numba_mpi.recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
@@ -742,12 +798,99 @@ class MPIBC(BCBase):
         """
         raise NotImplementedError
 
+    def make_ghost_cell_sender(self) -> GhostCellSetter:
+        """return function that sends data to set ghost cells for other boundaries"""
+        import numba_mpi
+
+        cell = self._neighbor_id
+        flag = self._mpi_flag
+        num_axes = self.grid.num_axes
+        axis = self.axis
+        idx = -2 if self.upper else 1  # index for reading data
+
+        if num_axes == 1:
+
+            def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                numba_mpi.send(data_full[..., idx], cell, flag)
+
+        elif num_axes == 2:
+            if axis == 0:
+
+                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., idx, 1:-1], cell, flag)
+
+            else:
+
+                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., 1:-1, idx], cell, flag)
+
+        elif num_axes == 3:
+            if axis == 0:
+
+                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
+
+            elif axis == 1:
+
+                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
+
+            else:
+
+                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
+
+        else:
+            raise NotImplementedError
+
+        return register_jitable(ghost_cell_sender)  # type: ignore
+
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this boundary"""
-        raise RuntimeError(
-            "MPIBC.make_ghost_cell_setter should not be called individually. Instead, "
-            "the ghost cells are set by BoundaryMPIPair.make_ghost_cell_setter"
-        )
+        import numba_mpi
+
+        cell = self._neighbor_id
+        flag = self._mpi_flag
+        num_axes = self.grid.num_axes
+        axis = self.axis
+        idx = -1 if self.upper else 0  # index for writing data
+
+        if num_axes == 1:
+
+            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                numba_mpi.recv(data_full[..., idx], cell, flag)
+
+        elif num_axes == 2:
+            if axis == 0:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.recv(data_full[..., idx, 1:-1], cell, flag)
+
+            else:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.recv(data_full[..., 1:-1, idx], cell, flag)
+
+        elif num_axes == 3:
+            if axis == 0:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
+
+            elif axis == 1:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
+
+            else:
+
+                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                    numba_mpi.recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
+
+        else:
+            raise NotImplementedError
+
+        return register_jitable(ghost_cell_setter)  # type: ignore
 
 
 class UserBC(BCBase):
@@ -777,17 +920,30 @@ class UserBC(BCBase):
         """returns a value to determine when a cache needs to be updated"""
         return hash((self.__class__.__name__, self.grid._cache_hash(), self.axis))
 
-    def copy(
-        self,
-        upper: Optional[bool] = None,
-        rank: int = None,
-    ) -> UserBC:
+    def copy(self: TBC, upper: Optional[bool] = None, rank: int = None) -> TBC:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(
             grid=self.grid,
             axis=self.axis,
             upper=self.upper if upper is None else upper,
             rank=self.rank if rank is None else rank,
+        )
+
+    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+        """converts this boundary condition to one valid for a given subgrid
+
+        Args:
+            subgrid (:class:`GridBase`):
+                Grid of the new boundary conditions
+
+        Returns:
+            :class:`BCBase`: Boundary conditions valid on the subgrid
+        """
+        # use `issubclass`, so that `self.grid` could be `UnitGrid`, while `subgrid` is
+        # `CartesianGrid`
+        assert issubclass(self.grid.__class__, subgrid.__class__)
+        return self.__class__(
+            grid=subgrid, axis=self.axis, upper=self.upper, rank=self.rank
         )
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
@@ -1021,17 +1177,35 @@ class ExpressionBC(BCBase):
             return NotImplemented
         return super().__eq__(other) and self._input == other._input
 
-    def copy(
-        self,
-        upper: Optional[bool] = None,
-        rank: int = None,
-    ) -> ExpressionBC:
+    def copy(self: TBC, upper: Optional[bool] = None, rank: int = None) -> TBC:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(
             grid=self.grid,
             axis=self.axis,
             upper=self.upper if upper is None else upper,
             rank=self.rank if rank is None else rank,
+            value=self._input["expression"],
+            target=self._input["target"],
+        )
+
+    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+        """converts this boundary condition to one valid for a given subgrid
+
+        Args:
+            subgrid (:class:`GridBase`):
+                Grid of the new boundary conditions
+
+        Returns:
+            :class:`BCBase`: Boundary conditions valid on the subgrid
+        """
+        # use `issubclass`, so that `self.grid` could be `UnitGrid`, while `subgrid` is
+        # `CartesianGrid`
+        assert issubclass(self.grid.__class__, subgrid.__class__)
+        return self.__class__(
+            grid=subgrid,
+            axis=self.axis,
+            upper=self.upper,
+            rank=self.rank,
             value=self._input["expression"],
             target=self._input["target"],
         )
@@ -1454,11 +1628,11 @@ class ConstBCBase(BCBase):
         )
 
     def copy(
-        self,
+        self: TBC,
         upper: Optional[bool] = None,
         rank: int = None,
         value: Union[float, np.ndarray, str] = None,
-    ) -> ConstBCBase:
+    ) -> TBC:
         """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
             grid=self.grid,
@@ -1470,6 +1644,30 @@ class ConstBCBase(BCBase):
         if self.value_is_linked:
             obj.link_value(self.value)
         return obj
+
+    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+        """converts this boundary condition to one valid for a given subgrid
+
+        Args:
+            subgrid (:class:`GridBase`):
+                Grid of the new boundary conditions
+
+        Returns:
+            :class:`ConstBCBase`: Boundary conditions valid on the subgrid
+        """
+        # use `issubclass`, so that `self.grid` could be `UnitGrid`, while `subgrid` is
+        # `CartesianGrid`
+        assert issubclass(self.grid.__class__, subgrid.__class__)
+        if self.value_is_linked or not self.homogeneous:
+            raise NotImplementedError("Cannot transfer complicated BC to subgrid")
+
+        return self.__class__(
+            grid=subgrid,
+            axis=self.axis,
+            upper=self.upper,
+            rank=self.rank,
+            value=self.value,
+        )
 
     def _make_value_getter(self) -> Callable[[], np.ndarray]:
         """return a (compiled) function for obtaining the value.
@@ -1758,6 +1956,35 @@ class _PeriodicBC(ConstBC1stOrderBase):
     def __str__(self):
         return '"periodic"'
 
+    def copy(self: TBC, upper: Optional[bool] = None) -> TBC:
+        """return a copy of itself, but with a reference to the same grid"""
+        return self.__class__(
+            grid=self.grid,
+            axis=self.axis,
+            upper=self.upper if upper is None else upper,
+            flip_sign=self.flip_sign,
+        )
+
+    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+        """converts this boundary condition to one valid for a given subgrid
+
+        Args:
+            subgrid (:class:`GridBase`):
+                Grid of the new boundary conditions
+
+        Returns:
+            :class:`ConstBCBase`: Boundary conditions valid on the subgrid
+        """
+        # use `issubclass`, so that `self.grid` could be `UnitGrid`, while `subgrid` is
+        # `CartesianGrid`
+        assert issubclass(self.grid.__class__, subgrid.__class__)
+        if self.value_is_linked or not self.homogeneous:
+            raise NotImplementedError("Cannot transfer complicated BC to subgrid")
+
+        return self.__class__(
+            grid=subgrid, axis=self.axis, upper=self.upper, flip_sign=self.flip_sign
+        )
+
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """return mathematical representation of the boundary condition"""
         if self.upper:
@@ -2001,12 +2228,12 @@ class MixedBC(ConstBC1stOrderBase):
         return hash((super()._cache_hash(), self.const.tobytes()))
 
     def copy(
-        self,
+        self: TBC,
         upper: Optional[bool] = None,
         rank: int = None,
         value: Union[float, np.ndarray, str] = None,
         const: Union[float, np.ndarray, str] = None,
-    ) -> MixedBC:
+    ) -> TBC:
         """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
             grid=self.grid,
@@ -2019,6 +2246,31 @@ class MixedBC(ConstBC1stOrderBase):
         if self.value_is_linked:
             obj.link_value(self.value)
         return obj
+
+    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+        """converts this boundary condition to one valid for a given subgrid
+
+        Args:
+            subgrid (:class:`GridBase`):
+                Grid of the new boundary conditions
+
+        Returns:
+            :class:`ConstBCBase`: Boundary conditions valid on the subgrid
+        """
+        # use `issubclass`, so that `self.grid` could be `UnitGrid`, while `subgrid` is
+        # `CartesianGrid`
+        assert issubclass(self.grid.__class__, subgrid.__class__)
+        if self.value_is_linked or not self.homogeneous:
+            raise NotImplementedError("Cannot transfer complicated BC to subgrid")
+
+        return self.__class__(
+            grid=subgrid,
+            axis=self.axis,
+            upper=self.upper,
+            rank=self.rank,
+            value=self.value,
+            const=self.const,
+        )
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """return mathematical representation of the boundary condition"""
@@ -2162,7 +2414,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
                 idx = (self.grid.shape[0] if self.upper else -1,)
             else:
                 raise ValueError(
-                    "Index `idx` can only be deduced for grids with a single axis."
+                    "Index can only be deduced for grids with a single axis."
                 )
 
         # extract the 1d array

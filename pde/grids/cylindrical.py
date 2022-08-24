@@ -431,30 +431,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         else:
             return dist
 
-    @fill_in_docstring
-    def get_boundary_conditions(
-        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
-    ) -> "Boundaries":
-        """constructs boundary conditions from a flexible data format
-
-        Args:
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-            rank (int):
-                The tensorial rank of the value associated with the boundary
-                conditions.
-
-        Raises:
-            ValueError: If the data given in `bc` cannot be read
-            PeriodicityError: If the boundaries are not compatible with the
-                periodic axes of the grid.
-        """
-        from .boundaries import Boundaries  # @Reimport
-
-        # obtain boundary conditions
-        return Boundaries.from_data(self, bc, rank=rank)
-
     def get_cartesian_grid(self, mode: str = "valid") -> CartesianGrid:
         """return a Cartesian grid for this Cylindrical one
 
@@ -482,9 +458,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         grid_shape = 2 * num, 2 * num, self.shape[1]
         return CartesianGrid(grid_bounds, grid_shape)
 
-    def get_subgrid(
-        self, indices: Sequence[int]
-    ) -> Union["CartesianGrid", "PolarSymGrid"]:
+    def slice(self, indices: Sequence[int]) -> Union["CartesianGrid", "PolarSymGrid"]:
         """return a subgrid of only the specified axes
 
         Args:

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Dict, Tuple, Union
 
-import numba as nb
 import numpy as np
 from numba.extending import register_jitable
 
@@ -198,20 +197,32 @@ class BoundaryAxisBase:
                 Additional arguments that might be supported by special boundary
                 conditions.
         """
-        self.low.set_ghost_cells(data_full, args=args)
+        # send boundary information to other nodes if using MPI
+        if isinstance(self.low, MPIBC):
+            self.low.send_ghost_cells(data_full, args=args)
+        if isinstance(self.high, MPIBC):
+            self.high.send_ghost_cells(data_full, args=args)
+        # set the actual ghost cells
         self.high.set_ghost_cells(data_full, args=args)
+        self.low.set_ghost_cells(data_full, args=args)
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this axis on a full array"""
-
+        # get the functions that handle the data
+        ghost_cell_sender_low = self.low.make_ghost_cell_sender()
+        ghost_cell_sender_high = self.high.make_ghost_cell_sender()
         ghost_cell_setter_low = self.low.make_ghost_cell_setter()
         ghost_cell_setter_high = self.high.make_ghost_cell_setter()
 
         @register_jitable
         def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
             """helper function setting the conditions on all axes"""
-            ghost_cell_setter_low(data_full, args=args)
+            # send boundary information to other nodes if using MPI
+            ghost_cell_sender_low(data_full, args=args)
+            ghost_cell_sender_high(data_full, args=args)
+            # set the actual ghost cells
             ghost_cell_setter_high(data_full, args=args)
+            ghost_cell_setter_low(data_full, args=args)
 
         return ghost_cell_setter  # type: ignore
 
@@ -302,91 +313,6 @@ class BoundaryPair(BoundaryAxisBase):
         """
         self.low.check_value_rank(rank)
         self.high.check_value_rank(rank)
-
-
-class BoundaryMPIPair(BoundaryAxisBase):
-    """represents the two boundaries of an axis along a single dimension"""
-
-    def __init__(self, mesh: "GridMesh", axis: int):
-        """
-        Args:
-            mesh (:class:`~pde.grids.mesh.GridMesh`):
-                Grid mesh describing the distributed MPI nodes
-            axis (int):
-                The axis to which this boundary condition is associated
-        """
-        low = MPIBC(mesh, axis, upper=False)
-        high = MPIBC(mesh, axis, upper=True)
-        super().__init__(low, high)
-
-    def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """return function that sets the ghost cells for this axis on a full array
-
-        Each function first sends the data of the lower and upper boundary to the
-        neighboring cells and then receives the data of its upper and lower boundary
-        from the neighboring cells.
-        """
-        import numba_mpi
-
-        ce_l = self.low._cell_boundary_info
-        ce_h = self.high._cell_boundary_info
-        num_axes = self.grid.num_axes
-        axis = self.axis
-
-        if num_axes == 1:
-
-            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                numba_mpi.send(data_full[..., 1], ce_l.cell, ce_l.flag)
-                numba_mpi.send(data_full[..., -2], ce_h.cell, ce_h.flag)
-                numba_mpi.recv(data_full[..., -1], ce_h.cell, ce_h.flag)
-                numba_mpi.recv(data_full[..., 0], ce_l.cell, ce_l.flag)
-
-        elif num_axes == 2:
-            if axis == 0:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., 1, 1:-1], ce_l.cell, ce_l.flag)
-                    numba_mpi.send(data_full[..., -2, 1:-1], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., -1, 1:-1], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., 0, 1:-1], ce_l.cell, ce_l.flag)
-
-            else:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., 1:-1, 1], ce_l.cell, ce_l.flag)
-                    numba_mpi.send(data_full[..., 1:-1, -2], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., 1:-1, -1], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., 1:-1, 0], ce_l.cell, ce_l.flag)
-
-        elif num_axes == 3:
-            if axis == 0:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., 1, 1:-1, 1:-1], ce_l.cell, ce_l.flag)
-                    numba_mpi.send(data_full[..., -2, 1:-1, 1:-1], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., -1, 1:-1, 1:-1], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., 0, 1:-1, 1:-1], ce_l.cell, ce_l.flag)
-
-            elif axis == 1:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., 1:-1, 1, 1:-1], ce_l.cell, ce_l.flag)
-                    numba_mpi.send(data_full[..., 1:-1, -2, 1:-1], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., 1:-1, -1, 1:-1], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., 1:-1, 0, 1:-1], ce_l.cell, ce_l.flag)
-
-            else:
-
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., 1:-1, 1:-1, 1], ce_l.cell, ce_l.flag)
-                    numba_mpi.send(data_full[..., 1:-1, 1:-1, -2], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., 1:-1, 1:-1, -1], ce_h.cell, ce_h.flag)
-                    numba_mpi.recv(data_full[..., 1:-1, 1:-1, 0], ce_l.cell, ce_l.flag)
-
-        else:
-            raise NotImplementedError
-
-        return register_jitable(ghost_cell_setter)  # type: ignore
 
 
 class BoundaryPeriodic(BoundaryPair):

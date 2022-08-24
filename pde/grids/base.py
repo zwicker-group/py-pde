@@ -262,11 +262,11 @@ class GridBase(metaclass=ABCMeta):
         def get_valid(arr: np.ndarray) -> np.ndarray:
             """return valid part of the data (without ghost cells)"""
             if num_axes == 1:
-                return arr[..., 1:-1]  # type: ignore
+                return arr[..., 1:-1]
             elif num_axes == 2:
-                return arr[..., 1:-1, 1:-1]  # type: ignore
+                return arr[..., 1:-1, 1:-1]
             elif num_axes == 3:
-                return arr[..., 1:-1, 1:-1, 1:-1]  # type: ignore
+                return arr[..., 1:-1, 1:-1, 1:-1]
             else:
                 raise NotImplementedError
 
@@ -734,6 +734,13 @@ class GridBase(metaclass=ABCMeta):
     ) -> Generator:
         pass
 
+    # def _parse_boundary_conditions(
+    #     self, bc: "BoundariesData", rank: int = 0
+    # ) -> "BoundariesData":
+    #     """helper function that parses the boundary data before applying it"""
+    #     # default behavior is to do nothing
+    # return bc
+
     @fill_in_docstring
     def get_boundary_conditions(
         self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
@@ -757,17 +764,16 @@ class GridBase(metaclass=ABCMeta):
                 periodic axes of the grid.
         """
         from .boundaries import Boundaries  # @Reimport
-        from .boundaries.axis import BoundaryMPIPair
 
-        # get boundary conditions
-        bcs = Boundaries.from_data(self, bc, rank=rank)
+        if self._mesh is None:
+            # get boundary conditions for a simple grid that is not part of a mesh
+            bcs = Boundaries.from_data(self, bc, rank=rank)
 
-        # check whether this grid is part of a mesh and we thus need to set special
-        # conditions to support parallelism via MPI
-        if self._mesh is not None:
-            for axis in range(self.num_axes):
-                if self._mesh.shape[axis] > 1:
-                    bcs[axis] = BoundaryMPIPair(self._mesh, axis)
+        else:
+            # this grid is part of a mesh and we thus need to set special conditions to
+            # support parallelism via MPI
+            bcs_base = Boundaries.from_data(self._mesh.basegrid, bc, rank=rank)
+            bcs = self._mesh.extract_boundary_conditions(bcs_base)
 
         return bcs
 
@@ -1021,10 +1027,10 @@ class GridBase(metaclass=ABCMeta):
 
         return apply_op  # type: ignore
 
-    def get_subgrid(self, indices: Sequence[int]) -> GridBase:
+    def slice(self, indices: Sequence[int]) -> GridBase:
         """return a subgrid of only the specified axes"""
         raise NotImplementedError(
-            f"Subgrids are not implemented for class {self.__class__.__name__}"
+            f"Slicing is not implemented for class {self.__class__.__name__}"
         )
 
     def plot(self):

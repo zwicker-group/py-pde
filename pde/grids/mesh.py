@@ -5,25 +5,18 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import Any, List, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 
 from ..fields.base import DataFieldBase, FieldBase
+from ..tools import mpi
 from ..tools.cache import cached_method
 from ..tools.plotting import plot_on_axes
 from .base import GridBase
-
-# read state of the current MPI node
-try:
-    import numba_mpi
-except ImportError:
-    # fall-back to serial code if MPI is not available
-    mpi_size = 1
-    mpi_rank = 0
-else:
-    mpi_size = numba_mpi.size()
-    mpi_rank = numba_mpi.rank()
+from .boundaries.axes import Boundaries
+from .boundaries.axis import BoundaryPair
+from .boundaries.local import MPIBC
 
 
 class MPIFlags(IntEnum):
@@ -49,13 +42,6 @@ class MPIFlags(IntEnum):
             return 2 * my_id + cls._boundary_upper
         else:
             return 2 * other_id + cls._boundary_lower
-
-
-class MPIBoundaryInfo(NamedTuple):
-    """contains information about a boundary between two nodes"""
-
-    cell: int  # id of the neighboring cell
-    flag: int  # MPI flag describing the connection
 
 
 def _subdivide(num: int, chunks: int) -> np.ndarray:
@@ -184,7 +170,7 @@ class GridMesh:
 
         # replace potential variable index with correct value
         if var_index is not None:
-            dim = mpi_size // size
+            dim = mpi.size // size
             if dim > 0:
                 decomposition[var_index] = dim
             else:
@@ -194,9 +180,9 @@ class GridMesh:
         decomposition += [1] * (grid.num_axes - len(decomposition))
 
         # check compatibility with number of nodes
-        if mpi_size > 1 and np.prod(decomposition) != mpi_size:
+        if mpi.size > 1 and np.prod(decomposition) != mpi.size:
             raise RuntimeError(
-                f"Node count ({mpi_size}) incompatible with decomposition "
+                f"Node count ({mpi.size}) incompatible with decomposition "
                 f"({decomposition})"
             )
 
@@ -230,7 +216,12 @@ class GridMesh:
         """total number of subgrids"""
         return self.subgrids.size
 
-    def __getitem__(self, node_id: int) -> GridBase:
+    @property
+    def current_node(self) -> int:
+        """int: current MPI node"""
+        return mpi.rank
+
+    def __getitem__(self, node_id: Optional[int]) -> GridBase:
         """extract one subgrid from the mesh
 
         Args:
@@ -240,12 +231,9 @@ class GridMesh:
         Returns:
             :class:`~pde.grids.base.GridBase`: The sub grid of the given cell
         """
+        if node_id is None:
+            node_id = self.current_node
         return self.subgrids[self._id2idx(node_id)]
-
-    @property
-    def current_node(self) -> int:
-        """int: current MPI node"""
-        return mpi_rank
 
     @property
     def current_grid(self) -> GridBase:
@@ -321,46 +309,69 @@ class GridMesh:
 
         return indices
 
-    def _get_cell_boundary_info(
-        self, node_id: int = None, axis: int = 0, upper: bool = False
-    ) -> Optional[MPIBoundaryInfo]:
-        """get boundary cells that need to be sent to other nodes along given axis
+    def get_boundary_flag(self, neighbor: int, upper: bool) -> int:
+        """get MPI flag indicating the boundary between this node and its neighbor
 
         Args:
             node_id (int):
-                The ID of the considered node
+                The ID of the neighboring node
+            upper (bool):
+                Flag indicating the boundary of the current node
+
+        Returns:
+            int: the unique flag associated with this boundary
+        """
+        if upper:
+            # my upper boundary (lower boundary of right cell)
+            return MPIFlags.boundary_upper(self.current_node, neighbor)
+        else:
+            # my lower boundary (upper boundary of left cell)
+            return MPIFlags.boundary_lower(self.current_node, neighbor)
+
+    def get_neighbor(
+        self, axis: int, upper: bool, *, node_id: int = None
+    ) -> Optional[int]:
+        """get node id of the neighbor along the given axis and direction
+
+        Args:
             axis (int):
                 The axis of the grid
             upper (bool):
                 Flag deciding which boundary to consider
+            node_id (int):
+                The ID of the considered node. Derived from MPI.rank() if omitted.
 
         Returns:
-            :class:`MPIBoundaryInfo`: Information about the given boundary or `None` if
-            the boundary is not subdivided in the mesh
+            int: The id of the neighboring node
         """
-        # TODO: Move this to the boundary class
         size = self.shape[axis]
         if size == 1:
-            return None
+            return None  # there are no other nodes along this axis
 
         if node_id is None:
             node_id = self.current_node
 
-        other_idx = list(self._id2idx(node_id))
+        idx = list(self._id2idx(node_id))
 
         if upper:
-            # my upper boundary (lower boundary of right cell)
-            other_idx[axis] = (other_idx[axis] + 1) % size
-            other_id = self._idx2id(other_idx)
-            link_flag = MPIFlags.boundary_upper(node_id, other_id)
+            # my upper boundary
+            if idx[axis] < size - 1:
+                idx[axis] = idx[axis] + 1  # proper cell neighbor on upper side
+            elif self.basegrid.periodic[axis]:
+                idx[axis] = 0  # last upper cell, but periodic conditions
+            else:
+                return None  # no neighbor
 
         else:
-            # my lower boundary (upper boundary of left cell)
-            other_idx[axis] = (other_idx[axis] - 1) % size
-            other_id = self._idx2id(other_idx)
-            link_flag = MPIFlags.boundary_lower(node_id, other_id)
+            # my lower boundary
+            if idx[axis] > 0:
+                idx[axis] = idx[axis] - 1  # proper cell neighbor on lower side
+            elif self.basegrid.periodic[axis]:
+                idx[axis] = size - 1  # last lower cell, but periodic conditions
+            else:
+                return None  # no neighbor
 
-        return MPIBoundaryInfo(cell=other_id, flag=link_flag)
+        return self._idx2id(idx)
 
     def extract_field_data(
         self,
@@ -433,6 +444,31 @@ class GridMesh:
             # TODO: support FieldCollections, too
             raise NotImplementedError
 
+    def extract_boundary_conditions(self, bcs_base: Boundaries) -> Boundaries:
+        """extract boundary conditions for current subgrid from global conditions
+
+        Args:
+            bcs_base (:class:`~pde.grids.boundaries.axes.Boundaries`):
+                The boundary conditions that will be split
+
+        Returns:
+            :class:`~pde.grids.boundaries.axes.Boundaries`: Boundary conditions of the
+            sub grid
+        """
+        bcs = []
+        for axis in range(self.num_axes):
+            bcs_axis = []
+            for upper in [False, True]:
+                bc = bcs_base[axis][upper]
+                if self.get_neighbor(axis, upper=upper) is None:
+                    bc = bc.to_subgrid(self.current_grid)  # extract BC for subgrid
+                else:
+                    bc = MPIBC(self, axis, upper)  # set an MPI boundary condition
+                bcs_axis.append(bc)
+            bcs.append(BoundaryPair(*bcs_axis))
+
+        return Boundaries(bcs)
+
     def split_field_data_mpi(
         self, field_data: np.ndarray = None, *, with_ghost_cells: bool = False
     ) -> np.ndarray:
@@ -450,9 +486,9 @@ class GridMesh:
         """
         import numba_mpi
 
-        assert len(self) == mpi_size
+        assert len(self) == mpi.size
 
-        if mpi_rank == 0:
+        if mpi.is_main:
             # send fields to all client processes
             for i in range(1, len(self)):
                 subfield = self.extract_field_data(
@@ -495,25 +531,6 @@ class GridMesh:
             dtype=field.dtype,
             with_ghost_cells=True,
         )
-
-    # def combine_fields(self, fields: np.ndarray) -> FieldBase:
-    #     """combine multiple fields defined on subgrids
-    #
-    #     Args:
-    #         fields (:class:`~numpy.ndarray` of :class:`~pde.fields.base.FieldBase`):
-    #             The fields that will be combined
-    #     """
-    #     # prepare to collect data
-    #     field0 = fields.flat[0]
-    #     shape = (self.basegrid.dim,) * field0.rank + self.basegrid.shape
-    #     data = np.empty(shape, dtype=field0.dtype)
-    #     data_idx = self._get_data_indices(with_ghost_cells=False)
-    #
-    #     for idx in np.ndindex(self.shape):
-    #         assert self.subgrids[idx] == fields[idx].grid
-    #         data[(...,) + data_idx[idx]] = fields[idx].data
-    #
-    #     return field0.__class__(self.basegrid, data=data, dtype=field0.dtype)
 
     def combine_field_data(
         self, fields: Sequence[np.ndarray], out: np.ndarray = None
@@ -561,9 +578,9 @@ class GridMesh:
         """
         import numba_mpi
 
-        assert len(self) == mpi_size
+        assert len(self) == mpi.size
 
-        if mpi_rank == 0:
+        if mpi.is_main:
             # main node that receives all data from all other nodes
             fields = [subfield]
             for i in range(1, len(self)):
