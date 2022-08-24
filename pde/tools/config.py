@@ -188,6 +188,7 @@ def environment() -> Dict[str, Any]:
 
     from .. import __version__ as package_version
     from .. import config
+    from . import mpi
     from .numba import numba_environment
     from .plotting import get_plotting_context
 
@@ -214,5 +215,11 @@ def environment() -> Dict[str, Any]:
     )
     if module_available("numba"):
         result["numba environment"] = numba_environment()
+
+    # add information about MPI environment
+    if mpi.size > 1:
+        result["multiprocessing"] = {"initialized": True, "size": mpi.size}
+    else:
+        result["multiprocessing"] = {"initialized": False}
 
     return result

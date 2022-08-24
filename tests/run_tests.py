@@ -5,7 +5,7 @@ import os
 import subprocess as sp
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, Union
 
 PACKAGE = "pde"  # name of the package that needs to be tested
 PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package
@@ -115,7 +115,7 @@ def run_unit_tests(
     runslow: bool = False,
     runinteractive: bool = False,
     use_mpi: bool = False,
-    parallel: bool = False,
+    num_cores: Union[str, int] = 1,
     coverage: bool = False,
     nojit: bool = False,
     early: bool = False,
@@ -127,7 +127,7 @@ def run_unit_tests(
         runslow (bool): Whether to run the slow tests
         runinteractive (bool): Whether to run the interactive tests
         use_mpi (bool): Flag indicating whether tests are run using MPI
-        parallel (bool): Whether to use multiple processors
+        num_cores (int or str): Number of cores to use (`auto` for automatic choice)
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
         early (bool): Whether to fail at the first test
@@ -176,10 +176,14 @@ def run_unit_tests(
         args.append("--maxfail=1")
 
     # run tests using multiple cores?
-    if parallel:
+    if num_cores == "auto":
         from multiprocessing import cpu_count
 
-        args.extend(["-n", str(cpu_count() // 2), "--durations=10"])
+        num_cores = cpu_count() // 2
+    else:
+        num_cores = int(num_cores)
+    if num_cores > 1:
+        args.extend(["-n", str(num_cores), "--durations=10"])
 
     # run only a subset of the tests?
     if pattern is not None:
@@ -267,10 +271,11 @@ def main() -> int:
         help="Record test coverage of unit tests",
     )
     group.add_argument(
-        "--parallel",
-        action="store_true",
-        default=False,
-        help="Use multiprocessing",
+        "--num_cores",
+        metavar="CORES",
+        type=str,
+        default=1,
+        help="Number of cores to use (`auto` for automatic choice)",
     )
     group.add_argument(
         "--nojit",
@@ -321,7 +326,7 @@ def main() -> int:
             runinteractive=args.runinteractive,
             use_mpi=args.use_mpi,
             coverage=args.coverage,
-            parallel=args.parallel,
+            num_cores=args.num_cores,
             nojit=args.nojit,
             early=args.early,
             pattern=args.pattern,

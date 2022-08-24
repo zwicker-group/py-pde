@@ -20,11 +20,13 @@ except ImportError:
         )
 
     # assume that we run serial code if `numba_mpi` is not available
+    initialized = False
     size = 1
     rank = 0
 
 else:
     # we have access to MPI
+    initialized = numba_mpi.initialized()
     size = numba_mpi.size()
     rank = numba_mpi.rank()
 

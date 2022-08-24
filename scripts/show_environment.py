@@ -9,13 +9,11 @@ import sys
 from pathlib import Path
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
-sys.path.append(str(PACKAGE_PATH))
+sys.path.insert(0, str(PACKAGE_PATH))
 
 from pde import environment
 
-env = environment()
-
-for category, data in env.items():
+for category, data in environment().items():
     if hasattr(data, "items"):
         print(f"\n{category}:")
         for key, value in data.items():
