@@ -4,12 +4,10 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
@@ -32,7 +30,7 @@ jobs:
         MPLBACKEND: agg
       run: |
         cd tests
-#        python run_tests.py --unit --showconfig
+        python run_tests.py --unit --num_cores 2 --showconfig
         
     - name: Run parallel tests with pytest
       env:
@@ -40,4 +38,4 @@ jobs:
         MPLBACKEND: agg
       run: |
         cd tests
-        python run_tests.py --unit --use_mpi --showconfig
+        python run_tests.py --unit --use_mpi

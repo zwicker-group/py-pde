@@ -148,7 +148,9 @@ def run_unit_tests(
 
     if use_mpi:
         # run pytest using MPI with two cores
-        args = ["mpiexec", "-host", "localhost", "-n", "2"]
+        args = ["mpiexec", "-n", "2"]
+        if sys.platform == "darwin":
+            args += ["-host", "localhost"]
     else:
         args = []
 

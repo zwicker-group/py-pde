@@ -8,6 +8,11 @@ echo "----------"
 ./tests_types.sh
 
 echo ""
-echo "Run unittests"
+echo "Run serial unittests"
 echo "-------------"
 ./tests_parallel.sh
+
+echo ""
+echo "Run parallel unittests"
+echo "-------------"
+./tests_mpi.sh
