@@ -858,7 +858,14 @@ class MPIBC(BCBase):
         if num_axes == 1:
 
             def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                numba_mpi.recv(data_full[..., idx], cell, flag)
+                if data_full.ndim == 1:
+                    # in this case, `data_full[..., idx]` is a scalar. Numba treats
+                    # scalar differently and `numba_mpi.recv` fails
+                    buffer = np.empty(1)
+                    numba_mpi.recv(buffer, cell, flag)
+                    data_full[..., idx] = buffer.item()
+                else:
+                    numba_mpi.recv(data_full[..., idx], cell, flag)
 
         elif num_axes == 2:
             if axis == 0:

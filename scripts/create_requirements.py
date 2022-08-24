@@ -45,7 +45,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="numba",
-        version="0.50.0",
+        version="0.56.0",
         usage="Just-in-time compilation to accelerate numerics",
         essential=True,
     ),

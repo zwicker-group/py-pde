@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid, DiffusionPDE, PolarSymGrid, CylindricalSymGrid
+from pde import CylindricalSymGrid, DiffusionPDE, PolarSymGrid, ScalarField, UnitGrid
 from pde.grids.mesh import GridMesh
 from pde.tools import mpi
 

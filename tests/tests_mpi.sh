@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export PYTHONPATH=/Users/dzwicker/Code/numba-mpi:$PYTHONPATH
+
 if [ ! -z $1 ] 
 then 
     # test pattern was specified 
