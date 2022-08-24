@@ -347,12 +347,12 @@ def test_anti_periodic_bcs():
 
     # test normal periodic BCs
     eq1 = PDE({"c": "laplace(c) + c - c**3"}, bc="periodic")
-    res1 = eq1.solve(field, t_range=1e5, dt=1e-1)
-    assert np.allclose(np.abs(res1.data), 1)
-    assert res1.fluctuations == pytest.approx(0)
+    res1 = eq1.solve(field, t_range=1e4, dt=1e-1)
+    np.testing.assert_allclose(np.abs(res1.data), 1)
+    assert res1.fluctuations == pytest.approx(0, abs=1e-5)
 
     # test normal anti-periodic BCs
     eq2 = PDE({"c": "laplace(c) + c - c**3"}, bc="anti-periodic")
-    res2 = eq2.solve(field, t_range=1e3, dt=1e-3)
+    res2 = eq2.solve(field, t_range=1e3, dt=1e-3, adaptive=True)
     assert np.all(np.abs(res2.data) <= 1)
     assert res2.fluctuations > 0.1
