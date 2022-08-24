@@ -28,4 +28,4 @@ jobs:
       run: |
         pip install pytest
         cd tests
-        python run_tests.py --unit --num_cores 2 --showconfig
+        python run_tests.py --unit --num_cores auto --showconfig

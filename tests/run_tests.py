@@ -31,9 +31,9 @@ def show_config():
     from importlib.machinery import SourceFileLoader
 
     # imports the package from the package path
-    pde = SourceFileLoader(PACKAGE, f"{PACKAGE_PATH/PACKAGE}/__init__.py").load_module()
+    mod = SourceFileLoader(PACKAGE, f"{PACKAGE_PATH/PACKAGE}/__init__.py").load_module()
     # obtain the package environment
-    env = pde.environment()
+    env = mod.environment()
 
     print(f"{'='*33} CONFIGURATION {'='*32}")
     for category, data in env.items():
@@ -67,7 +67,7 @@ def test_codestyle(*, verbose: bool = True) -> int:
         result = sp.run(["isort", "--profile", "black", "--diff", path])
         retcodes.append(result.returncode)
         # format rest
-        result = sp.run(["black", "-t", "py36", "--check", path])
+        result = sp.run(["black", "-t", "py38", "--check", path])
         retcodes.append(result.returncode)
 
     return _most_severe_exit_code(retcodes)
