@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pytest
 
+from pde.tools.misc import module_available
+
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_and_teardown():
@@ -50,11 +52,13 @@ def pytest_collection_modifyitems(config, items):
     runslow = config.getoption("--runslow", default=False)
     runinteractive = config.getoption("--runinteractive", default=False)
     use_mpi = config.getoption("--use_mpi", default=False)
+    has_numba_mpi = module_available("numba_mpi")
 
     # prepare markers
     skip_slow = pytest.mark.skip(reason="need --runslow option to run")
     skip_interactive = pytest.mark.skip(reason="need --runinteractive option to run")
-    skip_nompi = pytest.mark.skip(reason="serial test, but --use_mpi option was set")
+    skip_serial = pytest.mark.skip(reason="serial test, but --use_mpi option was set")
+    skip_mpi = pytest.mark.skip(reason="mpi test, but `numba_mpi` not available")
 
     # check item
     for item in items:
@@ -63,5 +67,7 @@ def pytest_collection_modifyitems(config, items):
         if "interactive" in item.keywords and not runinteractive:
             item.add_marker(skip_interactive)
 
-        if "multiprocessing" not in item.keywords and use_mpi:
-            item.add_marker(skip_nompi)
+        if "multiprocessing" in item.keywords and not has_numba_mpi:
+            item.add_marker(skip_mpi)
+        if use_mpi and "multiprocessing" not in item.keywords:
+            item.add_marker(skip_serial)
