@@ -6,6 +6,7 @@ Solvers define how a PDE is solved, i.e., how the initial state is advanced in t
 
    ~controller.Controller
    ~explicit.ExplicitSolver
+   ~explicit_mpi.ExplicitMPISolver
    ~implicit.ImplicitSolver
    ~scipy.ScipySolver
    ~registered_solvers
@@ -19,6 +20,11 @@ from .controller import Controller
 from .explicit import ExplicitSolver
 from .implicit import ImplicitSolver
 from .scipy import ScipySolver
+
+try:
+    from .explicit_mpi import ExplicitMPISolver
+except ImportError:
+    pass  # MPI modules do not seem to be properly available
 
 
 def registered_solvers() -> List[str]:

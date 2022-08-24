@@ -55,7 +55,7 @@ def _subdivide(num: int, chunks: int) -> np.ndarray:
         list: The number of intervals per chunk
     """
     if chunks > num:
-        raise RuntimeError("Cannot divide in more chunks than support points ")
+        raise RuntimeError("Cannot divide in more chunks than support points")
     return np.diff(np.linspace(0, num, chunks + 1).astype(int))
 
 

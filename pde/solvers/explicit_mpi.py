@@ -1,11 +1,12 @@
 """
-Defines an explicit solver supporting various methods
+Defines an explicit solver using multiprocessing via MPI
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
 from typing import Callable, List, Tuple, Union
 
+import numba_mpi
 import numpy as np
 
 from ..fields.base import FieldBase
@@ -18,6 +19,8 @@ from .base import SolverBase
 
 class ExplicitMPISolver(SolverBase):
     """class for solving partial differential equations explicitly using MPI
+
+    This solver can only be used if MPI is properly installed.
 
     Warning:
         `modify_after_step` can only be used to do local modifications since the field
@@ -73,13 +76,11 @@ class ExplicitMPISolver(SolverBase):
             t_start: float, steps: int)`
         """
         self.info["dt_adaptive"] = False
-        self.info["use_mpi"] = True
 
         if self.pde.is_sde:
             raise NotImplementedError
 
         # extract data frim subgrid
-        self.mesh = GridMesh.from_grid(state.grid, self.decomposition)
         sub_state = self.mesh.extract_subfield(state)
 
         # obtain function of the PDE
@@ -135,8 +136,13 @@ class ExplicitMPISolver(SolverBase):
 
         self.info["dt"] = dt
         self.info["steps"] = 0
-        # self.info["scheme"] = self.scheme
         self.info["state_modifications"] = 0.0
+        self.info["use_mpi"] = True
+        # self.info["scheme"] = self.scheme
+
+        # decompose the state into multiple cells
+        self.mesh = GridMesh.from_grid(state.grid, self.decomposition)
+        self.info["grid_decomposition"] = self.mesh.shape
 
         if self.pde.is_sde and self.adaptive:
             self._logger.warning(

@@ -55,7 +55,6 @@ def pytest_collection_modifyitems(config, items):
     skip_slow = pytest.mark.skip(reason="need --runslow option to run")
     skip_interactive = pytest.mark.skip(reason="need --runinteractive option to run")
     skip_nompi = pytest.mark.skip(reason="serial test, but --use_mpi option was set")
-    skip_mpi = pytest.mark.skip(reason="need --use_mpi option to run")
 
     # check item
     for item in items:
@@ -64,7 +63,5 @@ def pytest_collection_modifyitems(config, items):
         if "interactive" in item.keywords and not runinteractive:
             item.add_marker(skip_interactive)
 
-        if "multiprocessing" in item.keywords and not use_mpi:
-            item.add_marker(skip_mpi)
         if "multiprocessing" not in item.keywords and use_mpi:
             item.add_marker(skip_nompi)
