@@ -147,7 +147,9 @@ class Controller:
                 Time step of the chosen stepping scheme. If `None`, a default value
                 based on the stepper will be chosen.
         """
+        # gather basic information
         t_start, t_end = self.t_range
+        get_time = self.get_current_time  # type: ignore
 
         # initialize solver information
         self.info["t_start"] = t_start
@@ -155,32 +157,31 @@ class Controller:
         self.info["solver_class"] = self.solver.__class__.__name__
         self.diagnostics["solver"] = self.solver.info
 
-        # initialize trackers and profilers
-        self.trackers.initialize(state, info=self.diagnostics)
-        get_time = self.get_current_time  # type: ignore
+        # initialize profilers
+        jit_count_base = int(JIT_COUNT)
         profiler = {"solver": 0.0, "tracker": 0.0}
         self.info["profiler"] = profiler
-
-        # initialize the stepper and helper function
         prof_start_compile = get_time()
-        jit_count_0 = int(JIT_COUNT)
-        stepper = self.solver.make_stepper(state=state, dt=dt)
-        self.diagnostics["jit_count"] = {"make_stepper": int(JIT_COUNT) - jit_count_0}
+
+        # initialize trackers and handlers
+        self.trackers.initialize(state, info=self.diagnostics)
         handle_stop_iteration = self._get_stop_handler()
-        self.diagnostics["jit_count_after_init"] = int(JIT_COUNT)
+
+        # initialize the stepper
+        stepper = self.solver.make_stepper(state=state, dt=dt)
+
+        # store intermediate profiling information before starting simulation
+        jit_count_after_init = int(JIT_COUNT)
+        self.info["jit_count"] = {"make_stepper": jit_count_after_init - jit_count_base}
         prof_start_tracker = get_time()
         profiler["compilation"] = prof_start_tracker - prof_start_compile
-
-        # initialize profiling information
         solver_start = datetime.datetime.now()
         self.info["solver_start"] = str(solver_start)
 
-        # add some tolerance to account for inaccurate float point math
         if dt is None:
             dt = self.solver.info.get("dt")
-            # Note that self.solver.info['dt'] might be None
-
-        if dt is None:
+        # add some tolerance to account for inaccurate float point math
+        if dt is None:  # self.solver.info['dt'] might be None
             atol = 1e-12
         else:
             atol = 0.1 * dt
@@ -234,8 +235,7 @@ class Controller:
         duration = datetime.datetime.now() - solver_start
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t
-        jit_count = int(JIT_COUNT) - self.diagnostics.pop("jit_count_after_init")
-        self.diagnostics["jit_count"]["simulation"] = jit_count
+        self.info["jit_count"]["simulation"] = int(JIT_COUNT) - jit_count_after_init
         self.trackers.finalize(info=self.diagnostics)
 
         # show information after a potential progress bar has been deleted to

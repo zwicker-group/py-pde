@@ -4,10 +4,9 @@ Defines an explicit solver using multiprocessing via MPI
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, List, Tuple, Union
+from typing import Callable, List, Union
 
 import numba as nb
-import numba_mpi
 import numpy as np
 
 from ..fields.base import FieldBase
@@ -15,10 +14,10 @@ from ..grids.mesh import GridMesh
 from ..pdes.base import PDEBase
 from ..tools import mpi
 from ..tools.numba import jit
-from .base import SolverBase
+from .explicit import ExplicitSolver
 
 
-class ExplicitMPISolver(SolverBase):
+class ExplicitMPISolver(ExplicitSolver):
     """class for solving partial differential equations explicitly using MPI
 
     This solver can only be used if MPI is properly installed.
@@ -36,6 +35,7 @@ class ExplicitMPISolver(SolverBase):
     def __init__(
         self,
         pde: PDEBase,
+        scheme: str = "euler",
         decomposition: Union[int, List[int]] = -1,
         *,
         backend: str = "auto",
@@ -44,6 +44,9 @@ class ExplicitMPISolver(SolverBase):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved
+            scheme (str):
+                Defines the explicit scheme to use. Supported values are 'euler' and
+                'runge-kutta' (or 'rk' for short).
             decomposition (list of ints):
                 Number of subdivision in each direction. Should be a list of length
                 `grid.num_axes` specifying the number of nodes for this axis. If one
@@ -55,60 +58,8 @@ class ExplicitMPISolver(SolverBase):
                 'numba'. Alternatively, 'auto' lets the code decide for the most optimal
                 backend.
         """
-        super().__init__(pde)
-        self.backend = backend
+        super().__init__(pde, scheme=scheme, backend=backend, adaptive=False)
         self.decomposition = decomposition
-
-    def _make_fixed_euler_stepper(
-        self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, int], Tuple[float, float]]:
-        """make a simple Euler stepper with fixed time step
-
-        Args:
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Time step of the explicit stepping.
-
-        Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, steps: int)`
-        """
-        self.info["dt_adaptive"] = False
-
-        if self.pde.is_sde:
-            raise NotImplementedError
-
-        # extract data from subgrid
-        sub_state = self.mesh.extract_subfield(state)
-
-        # obtain function of the PDE
-        rhs_pde = self._make_pde_rhs(sub_state, backend=self.backend)
-        modify_after_step = jit(self.pde.make_modify_after_step(state))
-
-        def stepper(
-            sub_state_data: np.ndarray, t_start: float, steps: int
-        ) -> Tuple[float, float]:
-            """compiled inner loop for speed"""
-            modifications = 0.0
-            for i in range(steps):
-                # calculate the right hand side
-                t = t_start + i * dt
-                sub_state_data += dt * rhs_pde(sub_state_data, t)
-                modifications += modify_after_step(sub_state_data)
-
-            return t + dt, modifications
-
-        if self.info["backend"] == "numba":
-            sig = (nb.typeof(state.data), nb.double, nb.int_)
-            stepper = jit(sig)(stepper)
-
-        self.info["stochastic"] = False
-        self._logger.info(f"Initialized explicit MPI-Euler stepper with dt=%g", dt)
-
-        return stepper
 
     def make_stepper(
         self, state: FieldBase, dt=None
@@ -147,24 +98,26 @@ class ExplicitMPISolver(SolverBase):
 
         # decompose the state into multiple cells
         self.mesh = GridMesh.from_grid(state.grid, self.decomposition)
+        sub_state = self.mesh.extract_subfield(state)
         self.info["grid_decomposition"] = self.mesh.shape
 
-        if self.pde.is_sde and self.adaptive:
+        if self.adaptive:
             self._logger.warning(
                 "Adaptive stochastic stepping is not implemented. Using a fixed time "
                 "step instead."
             )
 
         # create stepper with fixed steps
-        # if self.scheme == "euler":
-        fixed_stepper = self._make_fixed_euler_stepper(state, dt)
-        # elif self.scheme in {"runge-kutta", "rk", "rk45"}:
-        #     fixed_stepper = self._make_rk45_stepper(state, dt)
-        # else:
-        #     raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
+        if self.scheme == "euler":
+            fixed_stepper = self._make_fixed_euler_stepper(sub_state, dt)
+        elif self.scheme in {"runge-kutta", "rk", "rk45"}:
+            fixed_stepper = self._make_rk45_stepper(sub_state, dt)
+        else:
+            raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
 
         if self.backend == "numba":
-            fixed_stepper = jit(fixed_stepper)  # compile inner stepper
+            sig = (nb.typeof(sub_state.data), nb.double, nb.int_)
+            fixed_stepper = jit(sig)(fixed_stepper)  # compile inner stepper
 
         def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
             """advance `state` from `t_start` to `t_end` using fixed steps"""

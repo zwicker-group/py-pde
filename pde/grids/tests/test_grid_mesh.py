@@ -98,45 +98,6 @@ def test_boundary_conditions_numba(bc):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("decomposition", [[1, -1], [-1, 1]])
-def test_simple_pde(decomposition):
-    """test setting boundary conditions using numba"""
-    grid = UnitGrid([8, 8], periodic=[True, False])
-
-    field = ScalarField.random_uniform(grid)
-    eq = DiffusionPDE()
-
-    args = {
-        "state": field,
-        "t_range": 1.01,
-        "dt": 0.1,
-        "tracker": None,
-        "ret_info": True,
-    }
-    res1, info1 = eq.solve(
-        backend="numpy", method="explicit_mpi", decomposition=decomposition, **args
-    )
-    res2, info2 = eq.solve(
-        backend="numba", method="explicit_mpi", decomposition=decomposition, **args
-    )
-
-    if mpi.is_main:
-        # check results in the main process
-        expect, _ = eq.solve(backend="numpy", method="explicit", **args)
-        np.testing.assert_allclose(res1.data, expect.data)
-        np.testing.assert_allclose(res2.data, expect.data)
-
-        for info in [info1, info2]:
-            assert info["solver"]["steps"] == 11
-            assert info["solver"]["use_mpi"]
-            for i in range(2):
-                if decomposition[i] == 1:
-                    assert info["solver"]["grid_decomposition"][i] == 1
-                else:
-                    assert info["solver"]["grid_decomposition"][i] == mpi.size
-
-
-@pytest.mark.multiprocessing
 @pytest.mark.parametrize(
     "grid", [PolarSymGrid(3, 4), CylindricalSymGrid(3, (0, 3), 4, periodic_z=True)]
 )

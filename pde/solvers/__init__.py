@@ -24,7 +24,7 @@ from .scipy import ScipySolver
 try:
     from .explicit_mpi import ExplicitMPISolver
 except ImportError:
-    pass  # MPI modules do not seem to be properly available
+    ExplicitMPISolver = None  # MPI modules do not seem to be properly available
 
 
 def registered_solvers() -> List[str]:

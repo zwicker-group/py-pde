@@ -64,7 +64,9 @@ class PDEBase(metaclass=ABCMeta):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`).
                 Note that this random number generator is only used for numpy function,
-                while compiled numba code is unaffected.
+                while compiled numba code is unaffected. Moreover, in simulations using
+                multiprocessing, setting the same generator in all processes might yield
+                unintended correlations in the simulation results.
 
         Note:
             If more complicated noise structures are required, the methods

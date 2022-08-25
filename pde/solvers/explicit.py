@@ -27,6 +27,7 @@ class ExplicitSolver(SolverBase):
         self,
         pde: PDEBase,
         scheme: str = "euler",
+        *,
         backend: str = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-5,
