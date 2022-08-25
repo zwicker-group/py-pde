@@ -70,3 +70,17 @@ def test_config_modes():
 
     c = Config({"new_value": "value"}, mode="locked")
     assert c["new_value"] == "value"
+
+
+def test_config_contexts():
+    """test context manager temporarily changing configuration"""
+    c = Config()
+
+    assert c["numba.parallel_threshold"] > 0
+    with c({"numba.parallel_threshold": 0}):
+        assert c["numba.parallel_threshold"] == 0
+        with c({"numba.parallel_threshold": 1}):
+            assert c["numba.parallel_threshold"] == 1
+        assert c["numba.parallel_threshold"] == 0
+
+    assert c["numba.parallel_threshold"] > 0

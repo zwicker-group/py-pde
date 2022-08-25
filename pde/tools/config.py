@@ -14,6 +14,7 @@ Handles configuration variables of the package
 """
 
 import collections
+import contextlib
 import importlib
 import sys
 import warnings
@@ -42,7 +43,7 @@ DEFAULT_CONFIG: List[Parameter] = [
         "numba.parallel",
         True,
         bool,
-        "Determines whether multiple cores are used in numba-compiled code.",
+        "Determines whether multiple threads are used in numba-compiled code.",
     ),
     Parameter(
         "numba.parallel_threshold",
@@ -125,6 +126,23 @@ class Config(collections.UserDict):
     def __repr__(self) -> str:
         """represent the configuration as a string"""
         return f"{self.__class__.__name__}({repr(self.to_dict())})"
+
+    @contextlib.contextmanager
+    def __call__(self, values: Dict[str, any] = None, **kwargs):
+        """context manager temporarily changing the configuration
+
+        Args:
+            values (dict): New configuration parameters
+            **kwargs: New configuration parameters
+        """
+        data_initial = self.data.copy()  # save old configuration
+        # set new configuration
+        if values is not None:
+            self.data.update(values)
+        self.data.update(kwargs)
+        yield  # return to caller
+        # restore old configuration
+        self.data = data_initial
 
 
 def get_package_versions(
