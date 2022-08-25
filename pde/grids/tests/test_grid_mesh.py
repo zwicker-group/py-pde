@@ -106,32 +106,22 @@ def test_simple_pde(decomposition):
     field = ScalarField.random_uniform(grid)
     eq = DiffusionPDE()
 
+    args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
     res1, info1 = eq.solve(
-        field,
-        t_range=1,
-        dt=0.1,
-        backend="numpy",
-        method="explicit_mpi",
-        decomposition=decomposition,
-        ret_info=True,
+        backend="numpy", method="explicit_mpi", decomposition=decomposition, **args
     )
     res2, info2 = eq.solve(
-        field,
-        t_range=1,
-        dt=0.1,
-        backend="numba",
-        method="explicit_mpi",
-        decomposition=decomposition,
-        ret_info=True,
+        backend="numba", method="explicit_mpi", decomposition=decomposition, **args
     )
 
     if mpi.is_main:
         # check results in the main process
-        expect = eq.solve(field, t_range=1, dt=0.1, backend="numpy", method="explicit")
+        expect, _ = eq.solve(backend="numpy", method="explicit", **args)
         np.testing.assert_allclose(res1.data, expect.data)
         np.testing.assert_allclose(res2.data, expect.data)
 
         for info in [info1, info2]:
+            assert info["solver"]["steps"] == 11
             assert info["solver"]["use_mpi"]
             for i in range(2):
                 if decomposition[i] == 1:
@@ -145,7 +135,7 @@ def test_simple_pde(decomposition):
     "grid", [PolarSymGrid(3, 4), CylindricalSymGrid(3, (0, 3), 4, periodic_z=True)]
 )
 def test_noncartesian_grids(grid):
-    """test whether we can deal with noncartesian grids"""
+    """test whether we can deal with non-cartesian grids"""
     if isinstance(grid, CylindricalSymGrid):
         decomposition = [1, -1]
     else:
