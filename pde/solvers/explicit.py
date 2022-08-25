@@ -6,6 +6,7 @@ Defines an explicit solver supporting various methods
 
 from typing import Callable, Tuple
 
+import numba as nb
 import numpy as np
 
 from ..fields.base import FieldBase
@@ -460,8 +461,9 @@ class ExplicitSolver(SolverBase):
                     f"Explicit adaptive scheme `{self.scheme}` is not supported"
                 )
 
-            if self.info["backend"] == "numba":
-                adaptive_stepper = jit(adaptive_stepper)  # compile inner stepper
+            if self.backend == "numba":
+                sig = (nb.typeof(state.data), nb.double, nb.double, nb.double)
+                adaptive_stepper = jit(sig)(adaptive_stepper)  # compile inner stepper
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
@@ -484,8 +486,9 @@ class ExplicitSolver(SolverBase):
             else:
                 raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
 
-            if self.info["backend"] == "numba":
-                fixed_stepper = jit(fixed_stepper)  # compile inner stepper
+            if self.backend == "numba":
+                sig = (nb.typeof(state.data), nb.double, nb.int_)
+                fixed_stepper = jit(sig)(fixed_stepper)  # compile inner stepper
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float

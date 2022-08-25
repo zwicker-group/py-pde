@@ -106,7 +106,13 @@ def test_simple_pde(decomposition):
     field = ScalarField.random_uniform(grid)
     eq = DiffusionPDE()
 
-    args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
+    args = {
+        "state": field,
+        "t_range": 1.01,
+        "dt": 0.1,
+        "tracker": None,
+        "ret_info": True,
+    }
     res1, info1 = eq.solve(
         backend="numpy", method="explicit_mpi", decomposition=decomposition, **args
     )
@@ -144,16 +150,16 @@ def test_noncartesian_grids(grid):
     field = ScalarField.random_uniform(grid)
     eq = DiffusionPDE()
 
-    res = eq.solve(
-        field,
-        t_range=1,
-        dt=0.1,
-        backend="numpy",
-        method="explicit_mpi",
-        decomposition=decomposition,
-    )
+    args = {
+        "state": field,
+        "t_range": 1,
+        "dt": 0.1,
+        "backend": "numpy",
+        "tracker": None,
+    }
+    res = eq.solve(method="explicit_mpi", decomposition=decomposition, **args)
 
     if mpi.is_main:
         # check results in the main process
-        expect = eq.solve(field, t_range=1, dt=0.1, backend="numpy", method="explicit")
+        expect = eq.solve(method="explicit", **args)
         np.testing.assert_allclose(res.data, expect.data)

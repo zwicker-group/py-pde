@@ -123,12 +123,6 @@ class PDEBase(metaclass=ABCMeta):
         """create a compiled function for evaluating the right hand side"""
         raise NotImplementedError("No backend `numba`")
 
-    def _make_pde_rhs_numba_mpi(
-        self, state: FieldBase
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create a compiled function for evaluating the right hand side using MPI"""
-        raise NotImplementedError("No backend `numba_mpi`")
-
     def check_rhs_consistency(
         self,
         state: FieldBase,
@@ -256,10 +250,6 @@ class PDEBase(metaclass=ABCMeta):
         elif backend == "numba":
             rhs = self._make_pde_rhs_numba_cached(state)
             rhs._backend = "numba"  # type: ignore
-
-        elif backend == "numba_mpi":
-            rhs = self._make_pde_rhs_numba_mpi(state)
-            rhs._backend = "numba_mpi"  # type: ignore
 
         elif backend != "auto":
             raise ValueError(

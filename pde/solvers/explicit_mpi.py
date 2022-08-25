@@ -6,6 +6,7 @@ Defines an explicit solver using multiprocessing via MPI
 
 from typing import Callable, List, Tuple, Union
 
+import numba as nb
 import numba_mpi
 import numpy as np
 
@@ -80,7 +81,7 @@ class ExplicitMPISolver(SolverBase):
         if self.pde.is_sde:
             raise NotImplementedError
 
-        # extract data frim subgrid
+        # extract data from subgrid
         sub_state = self.mesh.extract_subfield(state)
 
         # obtain function of the PDE
@@ -99,6 +100,10 @@ class ExplicitMPISolver(SolverBase):
                 modifications += modify_after_step(sub_state_data)
 
             return t + dt, modifications
+
+        if self.info["backend"] == "numba":
+            sig = (nb.typeof(state.data), nb.double, nb.int_)
+            stepper = jit(sig)(stepper)
 
         self.info["stochastic"] = False
         self._logger.info(f"Initialized explicit MPI-Euler stepper with dt=%g", dt)
@@ -158,7 +163,7 @@ class ExplicitMPISolver(SolverBase):
         # else:
         #     raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
 
-        if self.info["backend"] == "numba":
+        if self.backend == "numba":
             fixed_stepper = jit(fixed_stepper)  # compile inner stepper
 
         def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:

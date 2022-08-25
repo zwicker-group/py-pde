@@ -1,9 +1,8 @@
 """
-Defines the :class:`~pde.controller.Controller` class for solving pdes.
+Defines a class controlling the simulations of PDEs.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
-
 
 import datetime
 import logging
@@ -156,28 +155,19 @@ class Controller:
         self.info["solver_class"] = self.solver.__class__.__name__
         self.diagnostics["solver"] = self.solver.info
 
-        # initialize trackers
+        # initialize trackers and profilers
         self.trackers.initialize(state, info=self.diagnostics)
-
-        # initialize the stepper
-        jit_count_init = int(JIT_COUNT)
-        stepper = self.solver.make_stepper(state=state, dt=dt)
-        self.diagnostics["jit_count"] = {
-            "make_stepper": int(JIT_COUNT) - jit_count_init
-        }
-        self.diagnostics["jit_count_after_init"] = int(JIT_COUNT)
-
-        # get helper function
-        handle_stop_iteration = self._get_stop_handler()
-
-        # initialize profiler
         get_time = self.get_current_time  # type: ignore
         profiler = {"solver": 0.0, "tracker": 0.0}
         self.info["profiler"] = profiler
 
-        # handle initial compilation of stepper and profile it separately
+        # initialize the stepper and helper function
         prof_start_compile = get_time()
-        stepper(state.copy(), t_start, t_start + 1e-12)
+        jit_count_0 = int(JIT_COUNT)
+        stepper = self.solver.make_stepper(state=state, dt=dt)
+        self.diagnostics["jit_count"] = {"make_stepper": int(JIT_COUNT) - jit_count_0}
+        handle_stop_iteration = self._get_stop_handler()
+        self.diagnostics["jit_count_after_init"] = int(JIT_COUNT)
         prof_start_tracker = get_time()
         profiler["compilation"] = prof_start_tracker - prof_start_compile
 
