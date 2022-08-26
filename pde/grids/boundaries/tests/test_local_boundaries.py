@@ -81,7 +81,6 @@ def test_individual_boundaries():
 
         for bc_copy in [BCBase.from_data(g, 0, upper=True, data=bc, rank=0), bc.copy()]:
             assert bc == bc_copy
-            assert bc._cache_hash() == bc_copy._cache_hash()
 
 
 def test_individual_boundaries_multidimensional():
@@ -101,7 +100,6 @@ def test_individual_boundaries_multidimensional():
 
     for bc_copy in [BCBase.from_data(g2, 0, upper=True, data=bc, rank=1), bc.copy()]:
         assert bc == bc_copy
-        assert bc._cache_hash() == bc_copy._cache_hash()
 
 
 def test_virtual_points():

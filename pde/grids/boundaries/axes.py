@@ -156,10 +156,6 @@ class Boundaries(list):
             return NotImplemented
         return super().__eq__(other) and self.grid == other.grid
 
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        return hash(tuple(bc_ax._cache_hash() for bc_ax in self))
-
     def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
 

@@ -8,6 +8,7 @@ import pytest
 from pde import PDE, MemoryStorage, SwiftHohenbergPDE, grids
 from pde.fields import FieldCollection, ScalarField, VectorField
 from pde.grids.boundaries.local import BCDataError
+from pde.tools import mpi
 
 
 def iter_grids():
@@ -214,7 +215,7 @@ def test_pde_user_funcs():
     )
 
 
-def test_pde_complex():
+def test_pde_complex_serial():
     """test complex valued PDE"""
     eq = PDE({"p": "I * laplace(p)"})
     assert not eq.explicit_time_dependence
@@ -224,10 +225,43 @@ def test_pde_complex():
     assert not field.is_complex
     res1 = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
     assert res1.is_complex
-    res2 = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
+    res2 = eq.solve(field, t_range=1, dt=0.1, backend="numba", tracker=None)
     assert res2.is_complex
 
     np.testing.assert_allclose(res1.data, res2.data)
+
+
+@pytest.mark.multiprocessing
+def test_pde_complex_mpi():
+    """test complex valued PDE"""
+    eq = PDE({"p": "I * laplace(p)"})
+    assert not eq.explicit_time_dependence
+    assert eq.complex_valued
+
+    field = ScalarField.random_uniform(grids.UnitGrid([4]))
+    assert not field.is_complex
+
+    args = {
+        "state": field,
+        "t_range": 1.01,
+        "dt": 0.1,
+        "tracker": None,
+        "ret_info": True,
+    }
+    res1, info1 = eq.solve(backend="numpy", method="explicit_mpi", **args)
+    res2, info2 = eq.solve(backend="numba", method="explicit_mpi", **args)
+
+    if mpi.is_main:
+        # check results in the main process
+        expect, _ = eq.solve(backend="numpy", method="explicit", **args)
+
+        assert res1.is_complex
+        np.testing.assert_allclose(res1.data, expect.data)
+        assert info1["solver"]["steps"] == 11
+
+        assert res2.is_complex
+        np.testing.assert_allclose(res2.data, expect.data)
+        assert info2["solver"]["steps"] == 11
 
 
 def test_pde_product_operators():

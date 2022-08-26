@@ -78,10 +78,6 @@ class BoundaryAxisBase:
             f"(lower_bc, upper_bc). {BCBase.get_help()}"
         )
 
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        return hash((self.low._cache_hash(), self.high._cache_hash()))
-
     def copy(self) -> BoundaryPair:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(self.low.copy(), self.high.copy())
@@ -349,10 +345,6 @@ class BoundaryPeriodic(BoundaryPair):
             return '"anti-periodic"'
         else:
             return '"periodic"'
-
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        return hash((self.grid._cache_hash(), self.axis, self.flip_sign))
 
     def copy(self) -> BoundaryPeriodic:
         """return a copy of itself, but with a reference to the same grid"""

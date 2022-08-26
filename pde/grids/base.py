@@ -338,7 +338,7 @@ class GridBase(metaclass=ABCMeta):
                 self.__class__.__name__,
                 self.shape,
                 self.axes_bounds,
-                hash(tuple(self.periodic)),
+                tuple(self.periodic),
             )
         )
 

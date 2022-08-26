@@ -435,10 +435,7 @@ class FieldBase(metaclass=ABCMeta):
         Returns:
             FieldBase: An field that contains the result of the operation.
         """
-        data = op(self.data)
-        result = self.copy(dtype=data.dtype)
-        result.data = data
-        return result
+        return self.__class__(grid=self.grid, data=op(self.data), label=self.label)
 
     @property
     def real(self: TField) -> TField:
@@ -779,6 +776,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             f"{self.__class__.__name__}(grid={self.grid}, "
             f"data=Array{self.data.shape}"
         )
+        if self.dtype != np.double:
+            result = result[:-1] + f', dtype="{self.dtype}")'
         if self.label:
             result += f', label="{self.label}"'
         return result + ")"

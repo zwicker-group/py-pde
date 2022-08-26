@@ -552,10 +552,6 @@ class BCBase(metaclass=ABCMeta):
                 f"Expected rank {rank}, but boundary condition had rank {self.rank}."
             )
 
-    @abstractmethod
-    def _cache_hash(self) -> int:
-        pass
-
     def copy(self: TBC, upper: Optional[bool] = None, rank: int = None) -> TBC:
         raise NotImplementedError
 
@@ -755,16 +751,6 @@ class MPIBC(BCBase):
         axis_name = self.grid.axes[self.axis]
         return f"MPI @ {axis_name}={self.axis_coord}"
 
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        data = (
-            self.__class__.__name__,
-            self.grid._cache_hash(),
-            self.axis,
-            self._neighbor_id,
-        )
-        return hash(data)
-
     def send_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """send the ghost cell values for this boundary
 
@@ -861,9 +847,8 @@ class MPIBC(BCBase):
                 if data_full.ndim == 1:
                     # in this case, `data_full[..., idx]` is a scalar. Numba treats
                     # scalar differently and `numba_mpi.recv` fails
-                    buffer = np.empty(1)
+                    buffer = np.empty(1, dtype=data_full.dtype)
                     numba_mpi.recv(buffer, cell, flag)
-                    data_full[..., idx] = buffer.item()
                 else:
                     numba_mpi.recv(data_full[..., idx], cell, flag)
 
@@ -922,10 +907,6 @@ class UserBC(BCBase):
         """return mathematical representation of the boundary condition"""
         axis_name = self.grid.axes[self.axis]
         return f"user-controlled  @ {axis_name}={self.axis_coord}"
-
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        return hash((self.__class__.__name__, self.grid._cache_hash(), self.axis))
 
     def copy(self: TBC, upper: Optional[bool] = None, rank: int = None) -> TBC:
         """return a copy of itself, but with a reference to the same grid"""
@@ -1172,11 +1153,6 @@ class ExpressionBC(BCBase):
             return f"{sign}∂{field}/∂{axis_name} = {expression}   @ {axis_name}={self.axis_coord}"
         else:
             raise NotImplementedError(f"Unsupported target `{target}`")
-
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        data = (self.__class__.__name__, self.grid._cache_hash(), self.axis)
-        return hash(data + tuple(self._input.values()))
 
     def __eq__(self, other):
         """checks for equality neglecting the `upper` property"""
@@ -1574,11 +1550,11 @@ class ConstBCBase(BCBase):
 
         elif np.isscalar(value):
             # scalar value applied to all positions
-            result = np.broadcast_to(float(value), self._shape_tensor)  # type: ignore
+            result = np.broadcast_to(value, self._shape_tensor)  # type: ignore
 
         else:
             # assume tensorial and/or inhomogeneous values
-            value = np.asarray(value, dtype=np.double)
+            value = np.asarray(value)
 
             if value.ndim == 0:
                 # value is a scalar
@@ -1622,17 +1598,6 @@ class ConstBCBase(BCBase):
         self._value = value
         self.homogeneous = False
         self.value_is_linked = True
-
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        if self.value_is_linked:
-            value: Union[int, bytes] = self.value.ctypes.data
-        else:
-            value = self.value.tobytes()
-
-        return hash(
-            (self.__class__.__name__, self.grid._cache_hash(), self.axis, value)
-        )
 
     def copy(
         self: TBC,
@@ -2024,8 +1989,8 @@ class _PeriodicBC(ConstBC1stOrderBase):
         if not compiled:
             return (0.0, value, index)
         else:
-            const = np.array(0, np.double)
-            factor = np.array(value, np.double)
+            const = np.array(0)
+            factor = np.array(value)
 
             @register_jitable(inline="always")
             def const_func():
@@ -2074,7 +2039,7 @@ class DirichletBC(ConstBC1stOrderBase):
             # arrays are copied into closures, making them compile-time
             # constants
 
-            const = np.array(const, np.double)
+            const = np.array(const)
             factor = np.full_like(const, -1)
 
             if self.value_is_linked:
@@ -2137,7 +2102,7 @@ class NeumannBC(ConstBC1stOrderBase):
             # arrays are copied into closures, making them compile-time
             # constants
 
-            const = np.array(const, np.double)
+            const = np.array(const)
             factor = np.ones_like(const)
 
             if self.value_is_linked:
@@ -2230,10 +2195,6 @@ class MixedBC(ConstBC1stOrderBase):
             return NotImplemented
         return super().__eq__(other) and self.const == other.const
 
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        return hash((super()._cache_hash(), self.const.tobytes()))
-
     def copy(
         self: TBC,
         upper: Optional[bool] = None,
@@ -2320,7 +2281,7 @@ class MixedBC(ConstBC1stOrderBase):
         # arrays are copied into closures, making them compile-time
         # constants
         if self.value_is_linked:
-            const_val = np.array(self.const, np.double)
+            const_val = np.array(self.const)
             value_func = self._make_value_getter()
 
             @register_jitable(inline="always")
@@ -2348,8 +2309,8 @@ class MixedBC(ConstBC1stOrderBase):
                 return factor
 
         else:
-            const = np.array(const, np.double)
-            factor = np.array(factor, np.double)
+            const = np.array(const)
+            factor = np.array(factor)
 
             @register_jitable(inline="always")
             def const_func():

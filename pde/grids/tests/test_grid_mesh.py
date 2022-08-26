@@ -26,13 +26,20 @@ def test_split_fields(decomp):
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("decomp", [(-1, 1), (1, -1)])
-def test_split_fields_mpi(decomp):
+@pytest.mark.parametrize("dtype", [int, float, complex])
+def test_split_fields_mpi(decomp, dtype):
     """test splitting and recombining fields using multiprocessing"""
     grid = UnitGrid([8, 8])
     mesh = GridMesh.from_grid(grid, decomp)
 
-    field = ScalarField(grid)
-    field._data_full = np.random.uniform(size=grid._shape_full)
+    field = ScalarField(grid, dtype=dtype)
+    if dtype == int:
+        field._data_full = np.random.randint(0, 10, size=grid._shape_full)
+    elif dtype == complex:
+        field._data_full.real = np.random.uniform(size=grid._shape_full)
+        field._data_full.imag = np.random.uniform(size=grid._shape_full)
+    else:
+        field._data_full = np.random.uniform(size=grid._shape_full)
 
     # split without ghost cells
     subfield = mesh.split_field_mpi(field)

@@ -1,6 +1,5 @@
 """
-Defines a collection of fields to represent multiple fields defined on a common
-grid.
+Defines a collection of fields to represent multiple fields defined on a common grid.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -9,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Union
 
 import numpy as np
 
@@ -493,6 +492,19 @@ class FieldCollection(FieldBase):
 
         # create the collection from the copied fields
         return self.__class__(fields, copy_fields=False, label=label, dtype=dtype)
+
+    def _unary_operation(self: FieldCollection, op: Callable) -> FieldCollection:
+        """perform an unary operation on this field collection
+
+        Args:
+            op (callable):
+                A function calculating the result
+
+        Returns:
+            FieldBase: An field that contains the result of the operation.
+        """
+        fields = [fields._unary_operation(op) for fields in self.fields]
+        return self.__class__(fields, label=self.label)
 
     def interpolate_to_grid(
         self,
