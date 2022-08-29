@@ -1,4 +1,4 @@
-name: "Test minimal requirements"
+name: "Tests with minimal requirements"
 
 on: [push]
 
