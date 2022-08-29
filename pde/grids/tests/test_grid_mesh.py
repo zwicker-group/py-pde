@@ -5,7 +5,8 @@
 import numpy as np
 import pytest
 
-from pde import CylindricalSymGrid, DiffusionPDE, PolarSymGrid, ScalarField, UnitGrid
+from pde import DiffusionPDE, ScalarField
+from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid, UnitGrid
 from pde.grids.mesh import GridMesh
 from pde.tools import mpi
 
@@ -25,39 +26,49 @@ def test_split_fields(decomp):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("decomp", [(-1, 1), (1, -1)])
+@pytest.mark.parametrize("decomp", [(-1,), (-1, 1), (1, -1)])
 @pytest.mark.parametrize("dtype", [int, float, complex])
 def test_split_fields_mpi(decomp, dtype):
     """test splitting and recombining fields using multiprocessing"""
-    grid = UnitGrid([8, 8])
+    dim = len(decomp)
+    grid = UnitGrid([8] * dim)
     mesh = GridMesh.from_grid(grid, decomp)
 
     field = ScalarField(grid, dtype=dtype)
+    rng = np.random.default_rng(0)
     if dtype == int:
-        field._data_full = np.random.randint(0, 10, size=grid._shape_full)
+        field._data_full = rng.integers(0, 10, size=grid._shape_full)
     elif dtype == complex:
-        field._data_full.real = np.random.uniform(size=grid._shape_full)
-        field._data_full.imag = np.random.uniform(size=grid._shape_full)
+        field._data_full.real = rng.random(size=grid._shape_full)
+        field._data_full.imag = rng.random(size=grid._shape_full)
     else:
-        field._data_full = np.random.uniform(size=grid._shape_full)
+        field._data_full = rng.random(size=grid._shape_full)
 
     # split without ghost cells
     subfield = mesh.split_field_mpi(field)
     field_data = mesh.combine_field_data_mpi(subfield.data)
-    if mesh.current_node == 0:
+    if mpi.is_main:
         np.testing.assert_equal(field.data, field_data)
+    else:
+        assert field_data is None
 
     # split without ghost cells
     subfield_data = mesh.split_field_data_mpi(field.data, with_ghost_cells=False)
+    np.testing.assert_equal(subfield.data, subfield_data)
     field_data = mesh.combine_field_data_mpi(subfield_data)
-    if mesh.current_node == 0:
+    if mpi.is_main:
         np.testing.assert_equal(field.data, field_data)
+    else:
+        assert field_data is None
 
     # split with ghost cells
     subfield_data = mesh.split_field_data_mpi(field._data_full, with_ghost_cells=True)
-    field_data = mesh.combine_field_data_mpi(subfield_data[1:-1, 1:-1])
-    if mesh.current_node == 0:
+    np.testing.assert_equal(subfield._data_full, subfield_data)
+    field_data = mesh.combine_field_data_mpi(subfield_data[(slice(1, -1),) * dim])
+    if mpi.is_main:
         np.testing.assert_equal(field.data, field_data)
+    else:
+        assert field_data is None
 
 
 @pytest.mark.multiprocessing
@@ -106,7 +117,12 @@ def test_boundary_conditions_numba(bc):
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize(
-    "grid", [PolarSymGrid(3, 4), CylindricalSymGrid(3, (0, 3), 4, periodic_z=True)]
+    "grid",
+    [
+        PolarSymGrid(3, 4),
+        SphericalSymGrid(3, 4),
+        CylindricalSymGrid(3, (0, 3), 4, periodic_z=True),
+    ],
 )
 def test_noncartesian_grids(grid):
     """test whether we can deal with non-cartesian grids"""

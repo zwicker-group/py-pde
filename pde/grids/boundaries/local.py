@@ -845,10 +845,11 @@ class MPIBC(BCBase):
 
             def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
                 if data_full.ndim == 1:
-                    # in this case, `data_full[..., idx]` is a scalar. Numba treats
-                    # scalar differently and `numba_mpi.recv` fails
-                    buffer = np.empty(1, dtype=data_full.dtype)
+                    # in this case, `data_full[..., idx]` is a scalar, which numba
+                    # treats differently, so `numba_mpi.recv` fails
+                    buffer = np.empty((), dtype=data_full.dtype)
                     numba_mpi.recv(buffer, cell, flag)
+                    data_full[..., idx] = buffer
                 else:
                     numba_mpi.recv(data_full[..., idx], cell, flag)
 

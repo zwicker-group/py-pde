@@ -470,13 +470,14 @@ class GridMesh:
         return Boundaries(bcs)
 
     def split_field_data_mpi(
-        self, field_data: np.ndarray = None, *, with_ghost_cells: bool = False
+        self, field_data: np.ndarray, *, with_ghost_cells: bool = False
     ) -> np.ndarray:
         """extract one subfield from a global field
 
         Args:
             field (:class:`~pde.fields.base.DataFieldBase`):
-                The field that will be split
+                The field that will be split. An array with the correct shape and dtype
+                also needs to be passed to the receiving nodes.
             with_ghost_cells (bool):
                 Indicates whether the ghost cells are included in data. If `True`,
                 `field_data` must be the full data field.
@@ -491,10 +492,10 @@ class GridMesh:
         if mpi.is_main:
             # send fields to all client processes
             for i in range(1, len(self)):
-                subfield = self.extract_field_data(
+                subfield_data = self.extract_field_data(
                     field_data, i, with_ghost_cells=with_ghost_cells
                 )
-                numba_mpi.send(subfield, i, MPIFlags.field_split)
+                numba_mpi.send(subfield_data, i, MPIFlags.field_split)
 
             # extract field for the current process
             return self.extract_field_data(
@@ -515,6 +516,9 @@ class GridMesh:
 
     def split_field_mpi(self, field: TField) -> TField:
         """split a field onto the subgrids by communicating data via MPI
+
+        The ghost cells of the returned fields will be set according to the values of
+        the original field.
 
         Args:
             field (:class:`~pde.fields.base.DataFieldBase`):
@@ -541,7 +545,8 @@ class GridMesh:
             fields (:class:`~numpy.ndarray`):
                 The data of the fields that will be combined
             out (:class:`~numpy.ndarray`):
-                Full field to which the combined data is written
+                Full field to which the combined data is written. If `None`, a new array
+                is allocated.
 
         Returns:
             :class:`~numpy.ndarray`: Combined field. This is `out` if out is not `None`
@@ -582,12 +587,12 @@ class GridMesh:
 
         if mpi.is_main:
             # main node that receives all data from all other nodes
-            fields = [subfield]
+            field_data = [subfield]
             for i in range(1, len(self)):
-                subfield = np.empty(self[i].shape, dtype=subfield.dtype)
-                numba_mpi.recv(subfield, i, MPIFlags.field_combine)
-                fields.append(subfield)
-            return self.combine_field_data(fields, out=out)
+                subfield_data = np.empty(self[i].shape, dtype=subfield.dtype)
+                numba_mpi.recv(subfield_data, i, MPIFlags.field_combine)
+                field_data.append(subfield_data)
+            return self.combine_field_data(field_data, out=out)
 
         else:
             # send our subfield to the main node

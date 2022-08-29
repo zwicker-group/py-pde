@@ -208,6 +208,20 @@ def test_data_managment():
             FieldCollection([c])
 
 
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+def test_complex_fields(field_class):
+    """test operations on complex fields"""
+    grid = UnitGrid([3])
+
+    field = field_class.random_uniform(grid, 0, 1 + 1j)
+    assert field.is_complex
+    assert field.dtype == np.dtype("complex")
+
+    field_copy = field.copy()
+    assert field_copy.is_complex
+    assert field_copy.dtype == np.dtype("complex")
+
+
 @skipUnlessModule("h5py")
 def test_hdf_input_output(tmp_path):
     """test writing and reading files"""

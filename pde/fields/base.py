@@ -106,9 +106,9 @@ class FieldBase(metaclass=ABCMeta):
         if isinstance(value, FieldBase):
             # copy data into current field
             self.assert_field_compatible(value, accept_scalar=True)
-            self._data_valid[:] = value.data
+            self._data_valid[...] = value.data
         else:
-            self._data_valid[:] = value
+            self._data_valid[...] = value
 
     @property
     def _idx_valid(self) -> Tuple[slice, ...]:
@@ -135,7 +135,7 @@ class FieldBase(metaclass=ABCMeta):
 
         if np.isscalar(value):
             # supplied value is a scalar
-            self.__data_full[:] = value
+            self.__data_full[...] = value
 
         elif isinstance(value, np.ndarray):
             # check the shape of the supplied array
@@ -1077,6 +1077,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if label is None:
             label = self.label
+        if dtype is None:
+            dtype = self.dtype
 
         return self.__class__(
             self.grid,

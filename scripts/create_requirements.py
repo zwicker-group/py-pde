@@ -83,8 +83,8 @@ REQUIREMENTS = [
         optional=True,
     ),
     Requirement(
-        name="numba_mpi",
-        version="0.7",
+        name="numba-mpi",
+        version="0.10",
         usage="Numba compiled MPI wrappers",
         optional=True,
     ),
