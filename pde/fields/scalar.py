@@ -12,6 +12,7 @@ from typing import List  # @UnusedImport
 from typing import TYPE_CHECKING, Callable, Dict, Optional, Sequence, Union
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 from ..grids import CartesianGrid, UnitGrid
 from ..grids.base import DomainError, GridBase
@@ -37,7 +38,7 @@ class ScalarField(DataFieldBase):
         expression: str,
         *,
         label: str = None,
-        dtype: np.typing.DTypeLike = None,
+        dtype: DTypeLike = None,
     ) -> ScalarField:
         """create a scalar field on a grid from a given expression
 

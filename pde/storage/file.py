@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Optional, Tuple  # @UnusedImport
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 from ..fields.base import FieldBase
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
@@ -112,7 +113,7 @@ class FileStorage(StorageBase):
         self,
         name: str,
         shape: Tuple[int, ...] = tuple(),
-        dtype: np.typing.DTypeLike = np.double,
+        dtype: DTypeLike = np.double,
     ):
         """create a hdf5 dataset with the given name and data_shape
 

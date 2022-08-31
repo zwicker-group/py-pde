@@ -7,12 +7,12 @@ Provides support for mypy type checking of the package
 from typing import Callable, Tuple, Union
 
 import numpy as np
+from numpy.typing import ArrayLike  # @UnusedImport
 
 Real = Union[int, float]
 Number = Union[Real, complex]
 NumberOrArray = Union[Number, np.ndarray]
 FloatNumerical = Union[float, np.ndarray]
-ArrayLike = np.typing.ArrayLike
 
 
 try:

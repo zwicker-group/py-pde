@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Tuple, Uni
 
 import numba as nb
 import numpy as np
+from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
@@ -38,7 +39,7 @@ class Tensor2Field(DataFieldBase):
         expressions: Sequence[Sequence[str]],
         *,
         label: str = None,
-        dtype: np.typing.DTypeLike = None,
+        dtype: DTypeLike = None,
     ) -> Tensor2Field:
         """create a tensor field on a grid from given expressions
 

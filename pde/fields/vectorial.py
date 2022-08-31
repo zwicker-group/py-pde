@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence,
 
 import numba as nb
 import numpy as np
+from numpy.typing import DTypeLike
 
 try:
     from numba.core.extending import register_jitable
@@ -37,11 +38,7 @@ class VectorField(DataFieldBase):
 
     @classmethod
     def from_scalars(
-        cls,
-        fields: List[ScalarField],
-        *,
-        label: str = None,
-        dtype: np.typing.DTypeLike = None,
+        cls, fields: List[ScalarField], *, label: str = None, dtype: DTypeLike = None
     ) -> VectorField:
         """create a vector field from a list of ScalarFields
 
@@ -82,7 +79,7 @@ class VectorField(DataFieldBase):
         expressions: Sequence[str],
         *,
         label: str = None,
-        dtype: np.typing.DTypeLike = None,
+        dtype: DTypeLike = None,
     ) -> VectorField:
         """create a vector field on a grid from given expressions
 
