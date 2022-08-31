@@ -19,7 +19,6 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, TypeVar, Union
 import numpy as np
 
 from ..tools.cache import cached_property
-from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import plot_on_axes
 from .base import DimensionError, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
@@ -49,9 +48,9 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     if dim == 1:
         return 2 * radius
     elif dim == 2:
-        return π * radius**2  # type: ignore
+        return π * radius**2
     elif dim == 3:
-        return PI_43 * radius**3  # type: ignore
+        return PI_43 * radius**3
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 

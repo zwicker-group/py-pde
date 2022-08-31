@@ -78,7 +78,7 @@ class BoundaryAxisBase:
             f"(lower_bc, upper_bc). {BCBase.get_help()}"
         )
 
-    def copy(self) -> BoundaryPair:
+    def copy(self) -> BoundaryAxisBase:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(self.low.copy(), self.high.copy())
 

@@ -63,7 +63,7 @@ class StorageBase(metaclass=ABCMeta):
         self.info = {} if info is None else info
         self.write_mode = write_mode
         self._data_shape: Optional[Tuple[int, ...]] = None
-        self._dtype: Optional[Tuple[int, ...]] = None
+        self._dtype: Optional[np.typing.DTypeLike] = None
         self._grid: Optional[GridBase] = None
         self._field: Optional[FieldBase] = None
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -81,7 +81,7 @@ class StorageBase(metaclass=ABCMeta):
             return self._data_shape
 
     @property
-    def dtype(self) -> Tuple[int, ...]:
+    def dtype(self) -> np.typing.DTypeLike:
         """the current data type.
 
         Raises:

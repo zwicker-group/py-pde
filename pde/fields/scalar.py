@@ -32,7 +32,12 @@ class ScalarField(DataFieldBase):
     @classmethod
     @fill_in_docstring
     def from_expression(
-        cls, grid: GridBase, expression: str, *, label: str = None, dtype=None
+        cls,
+        grid: GridBase,
+        expression: str,
+        *,
+        label: str = None,
+        dtype: np.typing.DTypeLike = None,
     ) -> ScalarField:
         """create a scalar field on a grid from a given expression
 
@@ -68,9 +73,7 @@ class ScalarField(DataFieldBase):
             for cells in np.ndindex(*grid.shape):
                 data[cells] = expr(grid.cell_coords[cells])
 
-        return cls(  # lgtm [py/call-to-non-callable]
-            grid=grid, data=data, label=label, dtype=dtype
-        )
+        return cls(grid=grid, data=data, label=label, dtype=dtype)
 
     @classmethod
     def from_image(

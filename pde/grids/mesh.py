@@ -152,9 +152,9 @@ class GridMesh:
         """
         # parse `decomposition`
         try:
-            decomposition = [int(d) for d in decomposition]
+            decomposition = [int(d) for d in decomposition]  # type: ignore
         except TypeError:
-            decomposition = [int(decomposition)]
+            decomposition = [int(decomposition)]  # type: ignore
 
         size, var_index = 1, None
         for i, num in enumerate(decomposition):
@@ -193,14 +193,14 @@ class GridMesh:
         for axis, chunks in enumerate(decomposition):
             # iterate over all grids that have been determined already
             for idx, subgrid in np.ndenumerate(subgrids[tuple(idx_set)]):
-                i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)
+                i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)  # type: ignore
                 divison = _subdivide_along_axis(subgrid, axis=axis, chunks=chunks)
                 subgrids[i] = divison
 
             # mark this axis as set
             idx_set[axis] = slice(None, None)
 
-        return cls(basegrid=grid, subgrids=subgrids)
+        return cls(basegrid=grid, subgrids=subgrids)  # type: ignore
 
     @property
     def num_axes(self) -> int:
@@ -233,7 +233,7 @@ class GridMesh:
         """
         if node_id is None:
             node_id = self.current_node
-        return self.subgrids[self._id2idx(node_id)]
+        return self.subgrids[self._id2idx(node_id)]  # type: ignore
 
     @property
     def current_grid(self) -> GridBase:
@@ -252,7 +252,7 @@ class GridMesh:
         """
         return np.unravel_index(node_id, self.shape)  # type: ignore
 
-    def _idx2id(self, node_idx: Tuple[int, ...]) -> int:
+    def _idx2id(self, node_idx: Sequence[int]) -> int:
         """convert node index to linear index
 
         Args:
@@ -434,7 +434,7 @@ class GridMesh:
                 with_ghost_cells=with_ghost_cells,
             )
 
-            return field.__class__(
+            return field.__class__(  # type: ignore
                 grid=self[node_id],
                 data=data,
                 dtype=field.dtype,
@@ -514,7 +514,7 @@ class GridMesh:
             numba_mpi.recv(subfield_data, 0, MPIFlags.field_split)
             return subfield_data
 
-    def split_field_mpi(self, field: TField) -> TField:
+    def split_field_mpi(self: GridMesh, field: TField) -> TField:
         """split a field onto the subgrids by communicating data via MPI
 
         The ghost cells of the returned fields will be set according to the values of
@@ -528,7 +528,8 @@ class GridMesh:
             :class:`~pde.fields.base.DataFieldBase`: The field defined on the subgrid
         """
         assert field.grid == self.basegrid
-        return field.__class__(
+        assert isinstance(field, DataFieldBase)  # collections not implemented yet
+        return field.__class__(  # type: ignore
             self.current_grid,
             data=self.split_field_data_mpi(field._data_full, with_ghost_cells=True),
             label=field.label,
@@ -610,7 +611,7 @@ class GridMesh:
         """
         from mpi4py.MPI import COMM_WORLD
 
-        return COMM_WORLD.bcast(data, root=0)
+        return COMM_WORLD.bcast(data, root=0)  # type: ignore
 
     def gather(self, data: TData) -> Optional[List[TData]]:
         """gather a value from all nodes

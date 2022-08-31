@@ -37,7 +37,11 @@ class VectorField(DataFieldBase):
 
     @classmethod
     def from_scalars(
-        cls, fields: List[ScalarField], *, label: str = None, dtype=None
+        cls,
+        fields: List[ScalarField],
+        *,
+        label: str = None,
+        dtype: np.typing.DTypeLike = None,
     ) -> VectorField:
         """create a vector field from a list of ScalarFields
 
@@ -78,7 +82,7 @@ class VectorField(DataFieldBase):
         expressions: Sequence[str],
         *,
         label: str = None,
-        dtype=None,
+        dtype: np.typing.DTypeLike = None,
     ) -> VectorField:
         """create a vector field on a grid from given expressions
 
@@ -120,9 +124,7 @@ class VectorField(DataFieldBase):
             data.append(values)
 
         # create vector field from the data
-        return cls(  # lgtm [py/call-to-non-callable]
-            grid=grid, data=data, label=label, dtype=dtype
-        )
+        return cls(grid=grid, data=data, label=label, dtype=dtype)
 
     def __getitem__(self, key: Union[int, str]) -> ScalarField:
         """extract a component of the VectorField"""

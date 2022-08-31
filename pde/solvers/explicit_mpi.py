@@ -138,7 +138,7 @@ class ExplicitMPISolver(ExplicitSolver):
             # store information in the main node
             if mpi.is_main:
                 self.info["steps"] += steps
-                self.info["state_modifications"] += sum(modification_list)
+                self.info["state_modifications"] += sum(modification_list)  # type: ignore
             return t_last
 
         return wrapped_stepper

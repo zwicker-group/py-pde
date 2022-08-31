@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
 import numpy as np
 
 from ..tools.cache import cached_property
-from ..tools.docstrings import fill_in_docstring
 from .base import DimensionError, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
 
@@ -71,7 +70,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         self,
         radius: float,
         bounds_z: Tuple[float, float],
-        shape: Tuple[int, int],
+        shape: Union[int, Sequence[int]],
         periodic_z: bool = False,
     ):
         """
@@ -170,7 +169,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         radii, bounds_z = bounds
         if radii[0] != 0:
             raise NotImplementedError("Cylinders with hollow core are not implemented.")
-        return cls(radii[1], bounds_z, shape, periodic_z=periodic[1])  # type: ignore
+        return cls(radii[1], bounds_z, shape, periodic_z=periodic[1])
 
     @property
     def radius(self) -> float:
@@ -277,7 +276,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         if extract == "cut_z" or extract == "cut_axial":
             # do a cut along the z axis for r=0
             axis = 1
-            data_y = data[..., 0, :]
+            data_y: Union[np.ndarray, Tuple[np.ndarray]] = data[..., 0, :]
             label_y = "Cut along z"
 
         elif extract == "project_z" or extract == "project_axial":

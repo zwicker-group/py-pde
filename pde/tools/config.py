@@ -128,7 +128,7 @@ class Config(collections.UserDict):
         return f"{self.__class__.__name__}({repr(self.to_dict())})"
 
     @contextlib.contextmanager
-    def __call__(self, values: Dict[str, any] = None, **kwargs):
+    def __call__(self, values: Dict[str, Any] = None, **kwargs):
         """context manager temporarily changing the configuration
 
         Args:

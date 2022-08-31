@@ -109,7 +109,10 @@ class FileStorage(StorageBase):
         self.close()
 
     def _create_hdf_dataset(
-        self, name: str, shape: Tuple[int, ...] = tuple(), dtype=np.double
+        self,
+        name: str,
+        shape: Tuple[int, ...] = tuple(),
+        dtype: np.typing.DTypeLike = np.double,
     ):
         """create a hdf5 dataset with the given name and data_shape
 

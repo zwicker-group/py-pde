@@ -579,7 +579,7 @@ class BCBase(metaclass=ABCMeta):
         def noop(data_full: np.ndarray, args=None) -> None:
             pass
 
-        return noop
+        return noop  # type: ignore
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this boundary"""
@@ -706,12 +706,12 @@ class MPIBC(BCBase):
                 of the local normal vector of the boundary.
         """
         super().__init__(mesh[node_id], axis, upper)
-        # TODO: we don't need this complicated structure, but can save node and flag
         self._neighbor_id = mesh.get_neighbor(axis, upper, node_id=node_id)
+        assert self._neighbor_id is not None
         self._mpi_flag = mesh.get_boundary_flag(self._neighbor_id, upper)
 
         # determine indices for reading and writing data
-        idx = [slice(1, -1)] * self.grid.num_axes
+        idx: List[Any] = [slice(1, -1)] * self.grid.num_axes
         idx[self.axis] = -2 if self.upper else 1  # read valid data
         self._idx_read = tuple([Ellipsis] + idx)
         idx[self.axis] = -1 if self.upper else 0  # write ghost cells
@@ -1161,7 +1161,9 @@ class ExpressionBC(BCBase):
             return NotImplemented
         return super().__eq__(other) and self._input == other._input
 
-    def copy(self: TBC, upper: Optional[bool] = None, rank: int = None) -> TBC:
+    def copy(
+        self: ExpressionBC, upper: Optional[bool] = None, rank: int = None
+    ) -> ExpressionBC:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(
             grid=self.grid,
@@ -1172,7 +1174,7 @@ class ExpressionBC(BCBase):
             target=self._input["target"],
         )
 
-    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+    def to_subgrid(self: ExpressionBC, subgrid: GridBase) -> ExpressionBC:
         """converts this boundary condition to one valid for a given subgrid
 
         Args:
@@ -1551,7 +1553,7 @@ class ConstBCBase(BCBase):
 
         elif np.isscalar(value):
             # scalar value applied to all positions
-            result = np.broadcast_to(value, self._shape_tensor)  # type: ignore
+            result = np.broadcast_to(value, self._shape_tensor)
 
         else:
             # assume tensorial and/or inhomogeneous values
@@ -1601,11 +1603,11 @@ class ConstBCBase(BCBase):
         self.value_is_linked = True
 
     def copy(
-        self: TBC,
+        self: ConstBCBase,
         upper: Optional[bool] = None,
         rank: int = None,
         value: Union[float, np.ndarray, str] = None,
-    ) -> TBC:
+    ) -> ConstBCBase:
         """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
             grid=self.grid,
@@ -1618,7 +1620,7 @@ class ConstBCBase(BCBase):
             obj.link_value(self.value)
         return obj
 
-    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+    def to_subgrid(self: ConstBCBase, subgrid: GridBase) -> ConstBCBase:
         """converts this boundary condition to one valid for a given subgrid
 
         Args:
@@ -1929,7 +1931,7 @@ class _PeriodicBC(ConstBC1stOrderBase):
     def __str__(self):
         return '"periodic"'
 
-    def copy(self: TBC, upper: Optional[bool] = None) -> TBC:
+    def copy(self: _PeriodicBC, upper: Optional[bool] = None) -> _PeriodicBC:  # type: ignore
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(
             grid=self.grid,
@@ -1938,7 +1940,7 @@ class _PeriodicBC(ConstBC1stOrderBase):
             flip_sign=self.flip_sign,
         )
 
-    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+    def to_subgrid(self: _PeriodicBC, subgrid: GridBase) -> _PeriodicBC:
         """converts this boundary condition to one valid for a given subgrid
 
         Args:
@@ -2197,12 +2199,12 @@ class MixedBC(ConstBC1stOrderBase):
         return super().__eq__(other) and self.const == other.const
 
     def copy(
-        self: TBC,
+        self: MixedBC,
         upper: Optional[bool] = None,
         rank: int = None,
         value: Union[float, np.ndarray, str] = None,
         const: Union[float, np.ndarray, str] = None,
-    ) -> TBC:
+    ) -> MixedBC:
         """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
             grid=self.grid,
@@ -2216,7 +2218,7 @@ class MixedBC(ConstBC1stOrderBase):
             obj.link_value(self.value)
         return obj
 
-    def to_subgrid(self: TBC, subgrid: GridBase) -> TBC:
+    def to_subgrid(self: MixedBC, subgrid: GridBase) -> MixedBC:
         """converts this boundary condition to one valid for a given subgrid
 
         Args:
@@ -2264,7 +2266,7 @@ class MixedBC(ConstBC1stOrderBase):
         """
         # calculate values assuming finite factor
         dx = self.grid.discretization[self.axis]
-        with np.errstate(invalid="ignore"):  # type: ignore
+        with np.errstate(invalid="ignore"):
             const = np.asarray(2 * dx * self.const / (2 + dx * self.value))
             factor = np.asarray((2 - dx * self.value) / (2 + dx * self.value))
 

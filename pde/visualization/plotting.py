@@ -221,9 +221,7 @@ class ScalarFieldPlot:
                     quantity["scale"] = (vmin, vmax)
 
         # actually setup
-        return cls(  # lgtm [py/call-to-non-callable]
-            fields, quantities, tight=tight, show=show
-        )
+        return cls(fields, quantities, tight=tight, show=show)
 
     @staticmethod
     @fill_in_docstring

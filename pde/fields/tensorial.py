@@ -38,7 +38,7 @@ class Tensor2Field(DataFieldBase):
         expressions: Sequence[Sequence[str]],
         *,
         label: str = None,
-        dtype=None,
+        dtype: np.typing.DTypeLike = None,
     ) -> Tensor2Field:
         """create a tensor field on a grid from given expressions
 
@@ -78,9 +78,7 @@ class Tensor2Field(DataFieldBase):
         points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
 
         # evaluate all vector components at all points
-        data: List[List[Optional[np.ndarray]]] = [
-            [None] * grid.dim for _ in range(grid.dim)
-        ]
+        data: List[List[np.ndarray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
         for i in range(grid.dim):
             for j in range(grid.dim):
                 expr = ScalarExpression(expressions[i][j], signature=grid.axes)
@@ -88,9 +86,7 @@ class Tensor2Field(DataFieldBase):
                 data[i][j] = values
 
         # create vector field from the data
-        return cls(  # lgtm [py/call-to-non-callable]
-            grid=grid, data=data, label=label, dtype=dtype
-        )
+        return cls(grid=grid, data=data, label=label, dtype=dtype)
 
     def _get_axes_index(
         self, key: Tuple[Union[int, str], Union[int, str]]

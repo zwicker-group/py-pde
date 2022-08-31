@@ -339,7 +339,7 @@ class FieldBase(metaclass=ABCMeta):
         self: TField,
         *,
         label: str = None,
-        dtype=None,
+        dtype: np.typing.DTypeLike = None,
     ) -> TField:
         pass
 
@@ -366,10 +366,10 @@ class FieldBase(metaclass=ABCMeta):
             raise ValueError(f"Grids {self.grid} and {other.grid} are incompatible")
 
     @property
-    def dtype(self):
-        """returns the numpy dtype of the underlying data"""
+    def dtype(self) -> np.typing.DTypeLike:
+        """:class:`~np.typing.DTypeLike`: the numpy dtype of the underlying data"""
         # this property is necessary to support np.iscomplexobj for DataFieldBases
-        return self.data.dtype
+        return self.data.dtype  # type: ignore
 
     @property
     def is_complex(self) -> bool:
@@ -692,7 +692,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         data: Optional[Union[ArrayLike, str]] = "zeros",
         *,
         label: str = None,
-        dtype=None,
+        dtype: np.typing.DTypeLike = None,
         with_ghost_cells: bool = False,
     ):
         """
@@ -790,7 +790,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         vmax: float = 1,
         *,
         label: Optional[str] = None,
-        dtype=None,
+        dtype: np.typing.DTypeLike = None,
         rng: np.random.Generator = None,
     ) -> TDataField:
         """create field with uniform distributed random values
@@ -838,7 +838,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         scaling: str = "none",
         label: Optional[str] = None,
-        dtype=None,
+        dtype: np.typing.DTypeLike = None,
         rng: np.random.Generator = None,
     ) -> TDataField:
         """create field with normal distributed random values
@@ -904,7 +904,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         axis_combination=np.multiply,
         *,
         label: Optional[str] = None,
-        dtype=None,
+        dtype: np.typing.DTypeLike = None,
         rng: np.random.Generator = None,
     ) -> TDataField:
         r"""create a random field build from harmonics
@@ -979,7 +979,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         scale: float = 1,
         *,
         label: Optional[str] = None,
-        dtype=None,
+        dtype: np.typing.DTypeLike = None,
         rng: np.random.Generator = None,
     ) -> TDataField:
         r"""create a field of random values with colored noise
@@ -1064,7 +1064,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         self: TDataField,
         *,
         label: str = None,
-        dtype=None,
+        dtype: np.typing.DTypeLike = None,
     ) -> TDataField:
         """return a copy of the data, but not of the grid
 
@@ -1472,7 +1472,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 non-uniform discretizations.
         """
         point = np.atleast_1d(point)
-        amount = np.broadcast_to(amount, self.data_shape)  # type: ignore
+        amount = np.broadcast_to(amount, self.data_shape)
         grid = self.grid
         grid_dim = len(grid.axes)
 

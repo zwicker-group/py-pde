@@ -7,7 +7,7 @@ Defines a class controlling the simulations of PDEs.
 import datetime
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
 from ..tools import mpi
 from ..tools.numba import JIT_COUNT
@@ -103,17 +103,17 @@ class Controller:
                     "t_range must be set to a single number or a tuple of two numbers"
                 )
 
-    def _get_stop_handler(self) -> Callable[[Exception, float], None]:
+    def _get_stop_handler(self) -> Callable[[Exception, float], Tuple[int, str]]:
         """return function that handles messaging"""
 
-        def _handle_stop_iteration(err: Exception, t: float) -> None:
+        def _handle_stop_iteration(err: Exception, t: float) -> Tuple[int, str]:
             """helper function for handling interrupts raised by trackers"""
             if isinstance(err, FinishedSimulation):
                 # tracker determined that the simulation finished
                 self.info["successful"] = True
                 msg = f"Simulation finished at t={t}"
                 msg_level = logging.INFO
-                if err.value:
+                if hasattr(err, "value") and err.value:
                     self.info["stop_reason"] = err.value
                     msg += f" ({err.value})"
                 else:
@@ -124,9 +124,9 @@ class Controller:
                 self.info["successful"] = False
                 msg = f"Simulation aborted at t={t}"
                 msg_level = logging.WARNING
-                if err.value:
-                    self.info["stop_reason"] = err.value
-                    msg += f" ({err.value})"
+                if hasattr(err, "value") and err.value:  # type: ignore
+                    self.info["stop_reason"] = err.value  # type: ignore
+                    msg += f" ({err.value})"  # type: ignore
                 else:
                     self.info["stop_reason"] = "Tracker raised StopIteration"
 
@@ -207,7 +207,7 @@ class Controller:
 
         except StopIteration as err:
             # iteration has been interrupted by a tracker
-            msg_level, msg = handle_stop_iteration(err, t=t)
+            msg_level, msg = handle_stop_iteration(err, t)
 
         except KeyboardInterrupt:
             # iteration has been interrupted by the user
@@ -228,7 +228,7 @@ class Controller:
                 self.trackers.handle(state, t, atol=atol)
             except StopIteration as err:
                 # error detected in the final handling of the tracker
-                msg_level, msg = handle_stop_iteration(err, t=t)
+                msg_level, msg = handle_stop_iteration(err, t)
 
         # calculate final statistics
         profiler["tracker"] += get_time() - prof_start_tracker
@@ -272,7 +272,7 @@ class Controller:
         while t < t_end:
             t = stepper(state, t, t_end)
 
-    def run(self, initial_state: TState, dt: float = None) -> TState:
+    def run(self, initial_state: TState, dt: float = None) -> Optional[TState]:
         """run the simulation
 
         Diagnostic information about the solver procedure are available in the
@@ -294,7 +294,7 @@ class Controller:
         # copy the initial state to not modify the supplied one
         if hasattr(self.solver, "pde") and self.solver.pde.complex_valued:
             self._logger.info("Convert state to complex numbers")
-            state = initial_state.copy(dtype=complex)
+            state: TState = initial_state.copy(dtype=complex)
         else:
             state = initial_state.copy()
 
@@ -307,6 +307,6 @@ class Controller:
             # multiple processes are used and this is one of the secondaries
             self._run_mpi_client(state, dt)
             self.info["process_rank"] = mpi.rank
-            state = None  # do not return anything in client processes
+            return None  # do not return anything in client processes
 
         return state

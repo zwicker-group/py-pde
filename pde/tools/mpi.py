@@ -13,7 +13,7 @@ try:
 
 except ImportError:
     # package `numba_mpi` could not be loaded
-    if os.environ.get("PMI_SIZE", 1) > 1:
+    if int(os.environ.get("PMI_SIZE", "1")) > 1:
         # environment variable indicates that we are in a parallel program
         sys.exit(
             "WARNING: Detected multiprocessing run, but could not load `numba_mpi`"

@@ -471,7 +471,7 @@ class PDEBase(metaclass=ABCMeta):
         method: Union[str, "SolverBase"] = "auto",
         ret_info: bool = False,
         **kwargs,
-    ) -> Union[FieldBase, Tuple[FieldBase, Dict[str, Any]]]:
+    ) -> Union[Optional[FieldBase], Tuple[Optional[FieldBase], Dict[str, Any]]]:
         """convenience method for solving the partial differential equation
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)
@@ -531,7 +531,9 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             :class:`~pde.fields.base.FieldBase`:
             The state at the final time point. If `ret_info == True`, a tuple with the
-            final state and a dictionary with additional information is returned.
+            final state and a dictionary with additional information is returned. Note
+            that `None` instead of a field is returned in multiprocessing simulations if
+            the current run is not the main MPI node.
         """
         from ..solvers.base import SolverBase  # @Reimport
 

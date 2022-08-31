@@ -58,17 +58,19 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-def _check_shape(shape) -> Tuple[int, ...]:
+def _check_shape(shape: Union[int, Sequence[int]]) -> Tuple[int, ...]:
     """checks the consistency of shape tuples"""
-    if not hasattr(shape, "__iter__"):
-        shape = [shape]  # support single numbers
+    if hasattr(shape, "__iter__"):
+        shape_list: Sequence[int] = shape  # type: ignore
+    else:
+        shape_list = [shape]  # type: ignore
 
-    if len(shape) == 0:
+    if len(shape_list) == 0:
         raise ValueError("Require at least one dimension")
 
     # convert the shape to a tuple of integers
     result = []
-    for dim in shape:
+    for dim in shape_list:
         if dim == int(dim) and dim >= 1:
             result.append(int(dim))
         else:
@@ -1305,7 +1307,7 @@ class GridBase(metaclass=ABCMeta):
                         return fill
 
                 # do the linear interpolation
-                return w_l * data[..., c_li] + w_h * data[..., c_hi]  # type: ignore
+                return w_l * data[..., c_li] + w_h * data[..., c_hi]
 
         elif self.num_axes == 2:
             # specialize for 2-dimensional interpolation

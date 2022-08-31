@@ -382,7 +382,7 @@ class FieldCollection(FieldBase):
         ]
 
         # create vector field from the data
-        return cls(fields=fields, label=label)  # lgtm [py/call-to-non-callable]
+        return cls(fields=fields, label=label)
 
     @classmethod
     def scalar_random_uniform(

@@ -475,8 +475,9 @@ class ExplicitSolver(SolverBase):
                 )
 
             if self.backend == "numba":
-                sig = (nb.typeof(state.data), nb.double, nb.double, nb.double)
-                adaptive_stepper = jit(sig)(adaptive_stepper)  # compile inner stepper
+                # compile inner stepper
+                sig_adaptive = (nb.typeof(state.data), nb.double, nb.double, nb.double)
+                adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
@@ -500,8 +501,9 @@ class ExplicitSolver(SolverBase):
                 raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
 
             if self.backend == "numba":
-                sig = (nb.typeof(state.data), nb.double, nb.int_)
-                fixed_stepper = jit(sig)(fixed_stepper)  # compile inner stepper
+                # compile inner stepper
+                sig_fixed = (nb.typeof(state.data), nb.double, nb.int_)
+                fixed_stepper = jit(sig_fixed)(fixed_stepper)
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
