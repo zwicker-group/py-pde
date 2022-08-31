@@ -168,10 +168,15 @@ class ExplicitSolver(SolverBase):
             modifications = 0.0
             dt = dt_init
             t = t_start
+            calculate_rate = True  # flag stating whether to calculate rate for time t
             steps = 0
             while t < t_end:
+                if calculate_rate:
+                    rate = rhs_pde(state_data, t)
+                    calculate_rate = False
+                # else: rate is reused from last (failed) iteration
+
                 # single step with dt
-                rate = rhs_pde(state_data, t)
                 k1 = state_data + dt * rate
 
                 # double step with half the dt
@@ -189,13 +194,14 @@ class ExplicitSolver(SolverBase):
 
                 # do the step if the error is sufficiently small
                 if error <= tolerance:
-                    t += dt
                     steps += 1
-                    state_data[:] = k2
+                    t += dt
+                    state_data[...] = k2
                     modifications += modify_after_step(state_data)
+                    calculate_rate = True
 
                 # adjust the time step
-                if error < 1e-8:
+                if error < 1e-2 * tolerance:
                     # error was very small => maximal increase in dt
                     dt *= 4.0
                 elif np.isnan(error):
@@ -209,7 +215,10 @@ class ExplicitSolver(SolverBase):
                 if dt > dt_max:
                     dt = dt_max
                 elif dt < dt_min:
-                    raise RuntimeError(dt_min_err)
+                    if np.isnan(error):
+                        raise RuntimeError("Encountered NaN at t=" + str(t))
+                    else:
+                        raise RuntimeError(dt_min_err)
 
             return t, dt, steps, modifications
 
@@ -400,7 +409,10 @@ class ExplicitSolver(SolverBase):
                 if dt > dt_max:
                     dt = dt_max
                 elif dt < dt_min:
-                    raise RuntimeError(dt_min_err)
+                    if np.isnan(error):
+                        raise RuntimeError("Encountered NaN at t=" + str(t))
+                    else:
+                        raise RuntimeError(dt_min_err)
 
             return t, dt, steps, modifications
 
