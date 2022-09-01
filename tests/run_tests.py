@@ -201,6 +201,9 @@ def run_unit_tests(
                 f"--cov={PACKAGE}",  # specify in which package the coverage is measured
             ]
         )
+        if use_mpi:
+            # this is a hack to allow appending the coverage report
+            args.append("--cov-append")
 
     # specify the package to run
     args.append(PACKAGE)

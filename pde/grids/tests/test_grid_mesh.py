@@ -18,6 +18,14 @@ GRIDS = [
 ]
 
 
+@pytest.mark.parametrize("grid, decomposition", GRIDS)
+def test_generic_meshes(grid, decomposition):
+    """test generic functions of the grid mesh"""
+    mesh = GridMesh.from_grid(grid, decomposition)
+    assert len(mesh) == mpi.size
+    mesh.plot(action="close")
+
+
 @pytest.mark.parametrize("decomp", [(1, 1), (2, 1), (1, 2), (2, 2)])
 def test_split_fields(decomp):
     """test splitting and recombining fields"""
