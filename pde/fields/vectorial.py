@@ -547,7 +547,7 @@ class VectorField(DataFieldBase):
     @property
     def integral(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: integral of each component over space"""
-        return self.grid.integrate(self.data)
+        return self.grid.integrate(self.data)  # type: ignore
 
     def to_scalar(
         self,

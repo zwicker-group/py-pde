@@ -356,7 +356,7 @@ class Tensor2Field(DataFieldBase):
     @property
     def integral(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: integral of each component over space"""
-        return self.grid.integrate(self.data)
+        return self.grid.integrate(self.data)  # type: ignore
 
     def transpose(self, label: str = "transpose") -> Tensor2Field:
         """return the transpose of the tensor field

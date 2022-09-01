@@ -1048,7 +1048,7 @@ class GridBase(metaclass=ABCMeta):
 
     def integrate(
         self, data: NumberOrArray, axes: Union[int, Sequence[int]] = None
-    ) -> np.ndarray:
+    ) -> NumberOrArray:
         """Integrates the discretized data over the grid
 
         Args:
@@ -1095,7 +1095,19 @@ class GridBase(metaclass=ABCMeta):
                 axes = tuple(offset + i for i in axes)
 
         # calculate integral using a weighted sum along the chosen axes
-        return (data * cell_volumes).sum(axis=axes)  # type: ignore
+        integral = (data * cell_volumes).sum(axis=axes)
+
+        if self._mesh is None or len(self._mesh) == 1:
+            # standard case of a single integral
+            return integral  # type: ignore
+
+        else:
+            # we are in a parallel run, so we need to gather the sub-integrals from all
+            from mpi4py.MPI import COMM_WORLD
+
+            integral_full = np.empty_like(integral)
+            COMM_WORLD.Allreduce(integral, integral_full)
+            return integral_full  # type: ignore
 
     @cached_method()
     def make_normalize_point_compiled(
@@ -1545,41 +1557,80 @@ class GridBase(metaclass=ABCMeta):
 
         return insert  # type: ignore
 
-    def make_integrator(self) -> Callable[[np.ndarray], np.ndarray]:
+    def make_integrator(self) -> Callable[[np.ndarray], NumberOrArray]:
         """Return function that can be used to integrates discretized data over the grid
 
-        Note that currently only scalar fields are supported.
+        If this function is used in a multiprocessing run (using MPI), the integrals are
+        performed on all subgrids and then accumulated. Each process then receives the
+        same value representing the global integral.
 
         Returns:
             callable: A function that takes a numpy array and returns the integral with
             the correct weights given by the cell volumes.
         """
         num_axes = self.num_axes
+        # cell volume varies with position
+        get_cell_volume = self.make_cell_volume_compiled(flat_index=True)
 
-        if self.uniform_cell_volumes:
-            # all cells have the same volume
-            cell_volume = np.product(self.cell_volume_data)  # type: ignore
+        @nb.generated_jit(nopython=True)
+        def integrate_local(arr: np.ndarray) -> Callable[[np.ndarray], NumberOrArray]:
+            """integrates data over a grid"""
+            if arr.ndim == num_axes:
+                # `arr` is a scalar field
+                grid_shape = self.shape
 
-            @jit
-            def integrate(arr: np.ndarray) -> Number:
-                """function that integrates data over a uniform grid"""
-                assert arr.ndim == num_axes
-                return cell_volume * arr.sum()  # type: ignore
+                def impl(arr: np.ndarray) -> Number:
+                    """integrate a scalar field"""
+                    assert arr.shape == grid_shape
+                    total = 0
+                    for i in range(arr.size):
+                        total += get_cell_volume(i) * arr.flat[i]
+                    return total
+
+            else:
+                # `arr` is a tensorial field with rank >= 1
+                tensor_shape = (self.dim,) * (arr.ndim - num_axes)
+                data_shape = tensor_shape + self.shape
+
+                def impl(arr: np.ndarray) -> np.ndarray:  # type: ignore
+                    """integrate a tensorial field"""
+                    assert arr.shape == data_shape
+                    total = np.zeros(tensor_shape)
+                    for idx in np.ndindex(*tensor_shape):
+                        arr_comp = arr[idx]
+                        for i in range(arr_comp.size):
+                            total[idx] += get_cell_volume(i) * arr_comp.flat[i]
+                    return total
+
+            return impl
+
+        # get implementation of `integrate_local` even with disabled numba compilation
+        if nb.config.DISABLE_JIT:  # @UndefinedVariable
+
+            def integrate_local_impl(arr: np.ndarray) -> NumberOrArray:
+                """provide working function without compilation"""
+                return integrate_local(arr)(arr)  # type: ignore
 
         else:
-            # cell volume varies with position
-            get_cell_volume = self.make_cell_volume_compiled(flat_index=True)
+            integrate_local_impl = integrate_local
+
+        # deal with MPI multiprocessing
+        if self._mesh is None or len(self._mesh) == 1:
+            # standard case of a single integral
+            return integrate_local_impl
+
+        else:
+            # we are in a parallel run, so we need to gather the sub-integrals from all
+            # subgrids in the grid mesh
+            import numba_mpi
 
             @jit
-            def integrate(arr: np.ndarray) -> Number:
-                """function that integrates scalar data over a non-uniform grid"""
-                assert arr.ndim == num_axes
-                total = 0
-                for i in nb.prange(arr.size):
-                    total += get_cell_volume(i) * arr.flat[i]
-                return total
+            def integrate_global(arr: np.ndarray) -> NumberOrArray:
+                """integrates data over MPI parallelized grid"""
+                integral = integrate_local_impl(arr)
+                return numba_mpi.allreduce(integral)  # type: ignore
 
-        return integrate  # type: ignore
+            return integrate_global  # type: ignore
 
 
 def registered_operators() -> Dict[str, List[str]]:

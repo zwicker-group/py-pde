@@ -5,10 +5,17 @@
 import numpy as np
 import pytest
 
-from pde import DiffusionPDE, ScalarField
+from pde import DiffusionPDE, ScalarField, Tensor2Field
 from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid, UnitGrid
 from pde.grids.mesh import GridMesh
 from pde.tools import mpi
+
+GRIDS = [
+    (UnitGrid([3, 4]), [1, -1]),
+    (PolarSymGrid(3, 4), [-1]),
+    (SphericalSymGrid(3, 4), [-1]),
+    (CylindricalSymGrid(3, (0, 3), 4, periodic_z=True), [1, -1]),
+]
 
 
 @pytest.mark.parametrize("decomp", [(1, 1), (2, 1), (1, 2), (2, 2)])
@@ -116,21 +123,9 @@ def test_boundary_conditions_numba(bc):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize(
-    "grid",
-    [
-        PolarSymGrid(3, 4),
-        SphericalSymGrid(3, 4),
-        CylindricalSymGrid(3, (0, 3), 4, periodic_z=True),
-    ],
-)
-def test_noncartesian_grids(grid):
+@pytest.mark.parametrize("grid, decomposition", GRIDS)
+def test_noncartesian_grids(grid, decomposition):
     """test whether we can deal with non-cartesian grids"""
-    if isinstance(grid, CylindricalSymGrid):
-        decomposition = [1, -1]
-    else:
-        decomposition = [-1]
-
     field = ScalarField.random_uniform(grid)
     eq = DiffusionPDE()
 
@@ -147,3 +142,27 @@ def test_noncartesian_grids(grid):
         # check results in the main process
         expect = eq.solve(method="explicit", **args)
         np.testing.assert_allclose(res.data, expect.data)
+
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("grid, decomposition", GRIDS)
+@pytest.mark.parametrize("rank", [0, 2])
+def test_integration_parallel(grid, decomposition, rank):
+    """test integration of fields over grids"""
+    mesh = GridMesh.from_grid(grid, decomposition=decomposition)
+    if rank == 0:
+        field = ScalarField(grid, 1)
+        expected = grid.volume
+    else:
+        field = Tensor2Field(grid, 1)
+        expected = np.full((grid.dim,) * 2, grid.volume)
+    subfield = mesh.extract_subfield(field)
+
+    # numpy version
+    np.testing.assert_allclose(field.integral, expected)
+    np.testing.assert_allclose(subfield.integral, expected)
+
+    # numba version
+    res = subfield.grid.make_integrator()(subfield.data)
+    assert rank > 0 or np.isscalar(res)
+    np.testing.assert_allclose(res, expected)

@@ -30,5 +30,7 @@ else:
     size = numba_mpi.size()
     rank = numba_mpi.rank()
 
+# set flag indicating whether we are in a parallel run
+parallel_run = size > 1
 # set flag indicating whether the current process is the main process
 is_main = rank == 0

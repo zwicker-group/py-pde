@@ -84,7 +84,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="numba-mpi",
-        version="0.10",
+        version="0.12",
         usage="Numba compiled MPI wrappers",
         optional=True,
     ),
@@ -238,7 +238,7 @@ def main():
     # write requirements to docs folder
     write_requirements_txt(
         root / "tests" / "requirements.txt",
-        [r for r in REQUIREMENTS if r.for_tests],
+        [r for r in REQUIREMENTS if r.for_tests or r.optional],
         ref_base=True,
     )
 
