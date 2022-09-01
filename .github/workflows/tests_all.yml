@@ -19,9 +19,9 @@ jobs:
       # install all requirements
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r tests/requirements_full.txt
         pip install -r tests/requirements.txt
-        
+
     - name: Run serial tests with pytest
       env:
         NUMBA_WARNINGS: 1

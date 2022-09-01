@@ -3,6 +3,4 @@ h5py,Storing data in the hierarchical file format
 ipywidgets,Jupyter notebook support
 napari,Displaying images interactively
 numba-mpi,Numba compiled MPI wrappers
-pandas,Handling tabular data
 pyfftw,Faster Fourier transforms
-tqdm,Display progress bars during calculations

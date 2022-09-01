@@ -4,9 +4,9 @@ This script creates the requirements files in the project
 """
 
 import csv
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import List, Set
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 
@@ -19,9 +19,9 @@ class Requirement:
     version: str  # minimal version
     usage: str = ""  # description for how the package is used in py-pde
     essential: bool = False  # basic requirement for the package
-    optional: bool = False  # optional requirements for the package
     for_docs: bool = False  # required for documentation
     for_tests: bool = False  # required for tests
+    collections: Set[str] = field(default_factory=set)  # collections where this fits
 
     @property
     def short_version(self):
@@ -41,7 +41,10 @@ class Requirement:
 REQUIREMENTS = [
     # essential requirements
     Requirement(
-        name="matplotlib", version="3.1.0", usage="Visualizing results", essential=True
+        name="matplotlib",
+        version="3.1.0",
+        usage="Visualizing results",
+        essential=True,
     ),
     Requirement(
         name="numba",
@@ -50,7 +53,10 @@ REQUIREMENTS = [
         essential=True,
     ),
     Requirement(
-        name="numpy", version="1.22.0", usage="Handling numerical data", essential=True
+        name="numpy",
+        version="1.22.0",
+        usage="Handling numerical data",
+        essential=True,
     ),
     Requirement(
         name="scipy",
@@ -64,51 +70,49 @@ REQUIREMENTS = [
         usage="Dealing with user-defined mathematical expressions",
         essential=True,
     ),
+    Requirement(
+        name="tqdm",
+        version="4.60",
+        usage="Display progress bars during calculations",
+        essential=True,
+    ),
     # general, optional requirements
     Requirement(
         name="h5py",
         version="2.10",
         usage="Storing data in the hierarchical file format",
-        optional=True,
-        for_docs=True,
-        for_tests=True,
-    ),
-    Requirement(
-        name="ipywidgets", version="7", usage="Jupyter notebook support", optional=True
-    ),
-    Requirement(
-        name="napari",
-        version="0.4.8",
-        usage="Displaying images interactively",
-        optional=True,
-    ),
-    Requirement(
-        name="numba-mpi",
-        version="0.12",
-        usage="Numba compiled MPI wrappers",
-        optional=True,
+        collections={"full", "multiprocessing"},
     ),
     Requirement(
         name="pandas",
         version="1.2",
         usage="Handling tabular data",
-        optional=True,
         for_docs=True,
-        for_tests=True,
+        collections={"full", "multiprocessing"},
     ),
     Requirement(
         name="pyfftw",
         version="0.12",
         usage="Faster Fourier transforms",
-        optional=True,
+        collections={"full"},
     ),
     Requirement(
-        name="tqdm",
-        version="4.60",
-        usage="Display progress bars during calculations",
-        optional=True,
-        for_docs=True,
-        for_tests=True,
+        name="ipywidgets",
+        version="7",
+        usage="Jupyter notebook support",
+        collections={"interactive"},
+    ),
+    Requirement(
+        name="napari",
+        version="0.4.8",
+        usage="Displaying images interactively",
+        collections={"interactive"},
+    ),
+    Requirement(
+        name="numba-mpi",
+        version="0.12",
+        usage="Numba compiled MPI wrappers",
+        collections={"multiprocessing"},
     ),
     # for documentation only
     Requirement(name="Sphinx", version="4", for_docs=True),
@@ -228,17 +232,31 @@ def main():
         comment="These are the minimal requirements used to test compatibility",
     )
 
-    # write requirements to docs folder
+    # write full requirements to tests folder
     write_requirements_txt(
-        root / "docs" / "requirements.txt",
-        [r for r in REQUIREMENTS if r.for_docs],
+        root / "tests" / "requirements_full.txt",
+        [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
+        comment="These are the full requirements used to test all functions",
+    )
+
+    # write full requirements to tests folder
+    write_requirements_txt(
+        root / "tests" / "requirements_mpi.txt",
+        [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
+        comment="These are the full requirements used to test all functions",
+    )
+
+    # write requirements to tests folder
+    write_requirements_txt(
+        root / "tests" / "requirements.txt",
+        [r for r in REQUIREMENTS if r.for_tests],
         ref_base=True,
     )
 
     # write requirements to docs folder
     write_requirements_txt(
-        root / "tests" / "requirements.txt",
-        [r for r in REQUIREMENTS if r.for_tests or r.optional],
+        root / "docs" / "requirements.txt",
+        [r for r in REQUIREMENTS if r.for_docs],
         ref_base=True,
     )
 
@@ -251,7 +269,7 @@ def main():
     # write requirements for documentation as CSV
     write_requirements_csv(
         root / "docs" / "source" / "_static" / "requirements_optional.csv",
-        [r for r in REQUIREMENTS if r.optional],
+        [r for r in REQUIREMENTS if not (r.essential or r.for_tests or r.for_docs)],
         incl_version=False,
     )
 

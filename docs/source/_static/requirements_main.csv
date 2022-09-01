@@ -4,3 +4,4 @@ numba,0.56,Just-in-time compilation to accelerate numerics
 numpy,1.22,Handling numerical data
 scipy,1.4,Miscellaneous scientific functions
 sympy,1.5,Dealing with user-defined mathematical expressions
+tqdm,4.60,Display progress bars during calculations

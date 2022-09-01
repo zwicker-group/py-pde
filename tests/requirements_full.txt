@@ -1,0 +1,10 @@
+# These are the full requirements used to test all functions
+h5py>=2.10
+matplotlib>=3.1.0
+numba>=0.56.0
+numpy>=1.22.0
+pandas>=1.2
+pyfftw>=0.12
+scipy>=1.4.0
+sympy>=1.5.0
+tqdm>=4.60
