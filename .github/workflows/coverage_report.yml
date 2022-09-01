@@ -16,21 +16,20 @@ jobs:
       with:
         python-version: 3.8
     - uses: mpi4py/setup-mpi@v1
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
         pip install -r tests/requirements.txt
         pip install numba_mpi
-        
+
     - name: Generate coverage report
       run: |
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pytest --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov=pde --runslow pde
-        
+
     - name: Upload coverage to Codecov  
       uses: codecov/codecov-action@v1
       with:
