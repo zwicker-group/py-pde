@@ -1624,13 +1624,25 @@ class GridBase(metaclass=ABCMeta):
             # subgrids in the grid mesh
             import numba_mpi
 
-            @jit
-            def integrate_global(arr: np.ndarray) -> NumberOrArray:
-                """integrates data over MPI parallelized grid"""
-                integral = integrate_local_impl(arr)
-                return numba_mpi.allreduce(integral)  # type: ignore
+            if nb.config.DISABLE_JIT:
+                # numba_mpi.allreduce is implemented with numba.generated_jit, which
+                # currently *numba version 0.55) does not play nicely with disabled
+                # jitting. We thus need to treat this case specially
 
-            return integrate_global  # type: ignore
+                def integrate_global(arr: np.ndarray) -> NumberOrArray:
+                    """integrates data over MPI parallelized grid"""
+                    integral = integrate_local_impl(arr)
+                    return numba_mpi.allreduce(integral)(integral)  # type: ignore
+
+            else:
+
+                @jit
+                def integrate_global(arr: np.ndarray) -> NumberOrArray:
+                    """integrates data over MPI parallelized grid"""
+                    integral = integrate_local_impl(arr)
+                    return numba_mpi.allreduce(integral)  # type: ignore
+
+            return integrate_global
 
 
 def registered_operators() -> Dict[str, List[str]]:

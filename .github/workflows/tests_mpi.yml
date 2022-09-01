@@ -29,4 +29,4 @@ jobs:
         MPLBACKEND: agg
       run: |
         cd tests
-        python run_tests.py --unit --use_mpi
+        python run_tests.py --unit --use_mpi --showconfig
