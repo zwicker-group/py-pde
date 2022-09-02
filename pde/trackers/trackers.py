@@ -207,7 +207,7 @@ class ProgressTracker(TrackerBase):
             # progress bar) since reaching steady state means the simulation
             # was successful even though it did not reach t_final
             try:
-                self.progress_bar.sp(bar_style="success")  # type: ignore
+                self.progress_bar.sp(bar_style="success")
             except TypeError:
                 self.progress_bar.close()
             else:

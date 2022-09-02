@@ -111,7 +111,7 @@ REQUIREMENTS = [
     Requirement(
         name="numba-mpi",
         version="0.13",
-        usage="Numba compiled MPI wrappers",
+        usage="Parallel processing using MPI",
         collections={"multiprocessing"},
     ),
     # for documentation only
@@ -270,7 +270,6 @@ def main():
     write_requirements_csv(
         root / "docs" / "source" / "_static" / "requirements_optional.csv",
         [r for r in REQUIREMENTS if not (r.essential or r.for_tests or r.for_docs)],
-        incl_version=False,
     )
 
     # write version.py

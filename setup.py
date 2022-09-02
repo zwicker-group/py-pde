@@ -25,10 +25,11 @@ except FileNotFoundError:
     print("Cannot find requirements.txt")
     install_requires = [
         "matplotlib>=3.1.0",
-        "numpy>=1.18.0",
-        "numba>=0.50.0",
+        "numba>=0.56.0",
+        "numpy>=1.22.0",
         "scipy>=1.4.0",
         "sympy>=1.5.0",
+        "tqdm>=4.60",
     ]
 
 
@@ -56,7 +57,6 @@ setup(
     extras_require={
         "hdf": ["h5py>=2.10"],
         "io": ["h5py>=2.10", "pandas>=1.2"],
-        "progress": ["tqdm>=4.60", "ipywidgets>=7"],
         "interactive": ["napari>=0.4.8", "ipywidgets>=7"],
         "mpi": ["mpi4py", "numba_mpi"],
     },

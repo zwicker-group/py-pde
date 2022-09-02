@@ -50,7 +50,7 @@ class ExplicitMPISolver(ExplicitSolver):
                 'runge-kutta' (or 'rk' for short).
             decomposition (list of ints):
                 Number of subdivision in each direction. Should be a list of length
-                `grid.num_axes` specifying the number of nodes for this axis. If one
+                `grid.num_axes` specifying the number of nodes along this axis. If one
                 value is `-1`, its value will be determined from the number of available
                 nodes. The default value decomposed the first axis using all available
                 nodes.

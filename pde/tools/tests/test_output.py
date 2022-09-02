@@ -7,11 +7,11 @@ from pde.tools import output
 
 def test_progress_bars():
     """test progress bars"""
-    for pb_cls in [output.SimpleProgress, output.get_progress_bar_class()]:
-        tot = 0
-        for i in pb_cls(range(4)):
-            tot += i
-        assert tot == 6
+    pb_cls = output.get_progress_bar_class()
+    tot = 0
+    for i in pb_cls(range(4)):
+        tot += i
+    assert tot == 6
 
 
 def test_in_jupyter_notebook():

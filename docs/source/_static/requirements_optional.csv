@@ -1,6 +1,6 @@
-Package,Usage
-h5py,Storing data in the hierarchical file format
-ipywidgets,Jupyter notebook support
-napari,Displaying images interactively
-numba-mpi,Numba compiled MPI wrappers
-pyfftw,Faster Fourier transforms
+Package,Minimal version,Usage
+h5py,2.10,Storing data in the hierarchical file format
+ipywidgets,7,Jupyter notebook support
+napari,0.4.8,Displaying images interactively
+numba-mpi,0.13,Parallel processing using MPI
+pyfftw,0.12,Faster Fourier transforms

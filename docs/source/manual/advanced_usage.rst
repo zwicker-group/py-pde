@@ -234,7 +234,7 @@ However, a complete list of operators supported by a certain grid class can be
 obtained from the class property :attr:`GridClass.operators`.
 New operators can be added using the class method
 :meth:`GridClass.register_operator`.
- 
+
 
 Field integration
 *****************
@@ -353,7 +353,7 @@ introduced above:
                         - diffusivity / 2 * dot(state_grad, state_grad))
             
             return pde_rhs
-        
+
  
 To activate the compiled implementation of the evolution rate, we simply have
 to overwrite the :meth:`~pde.pdes.base.PDEBase._make_pde_rhs_numba` method.
@@ -384,7 +384,7 @@ which will be much faster than their python equivalents.
 For instance, we could have written the dot product in the last line as an
 explicit loop:
 
- 
+
 .. code-block:: python
 
     [...]
@@ -421,8 +421,10 @@ Here, we extract the total number of elements in the state using its
 grid attribute :attr:`dim`.
 Note that we access numpy arrays using their :attr:`flat` attribute to provide
 an implementation that works for all dimensions.     
-        
-        
+
+
+.. _configuration:
+
 Configuration parameters
 """"""""""""""""""""""""
 
