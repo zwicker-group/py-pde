@@ -6,14 +6,13 @@ Defines an explicit solver using multiprocessing via MPI
 
 from typing import Callable, List, Union
 
-import numba as nb
 import numpy as np
+import numba as nb
 
 from ..fields.base import FieldBase
 from ..grids.mesh import GridMesh
 from ..pdes.base import PDEBase
 from ..tools import mpi
-from ..tools.numba import jit
 from .explicit import ExplicitSolver
 
 
@@ -39,6 +38,8 @@ class ExplicitMPISolver(ExplicitSolver):
         decomposition: Union[int, List[int]] = -1,
         *,
         backend: str = "auto",
+        adaptive: bool = False,
+        tolerance: float = 1e-5,
     ):
         """
         Args:
@@ -57,9 +58,41 @@ class ExplicitMPISolver(ExplicitSolver):
                 Determines how the function is created. Accepted  values are 'numpy` and
                 'numba'. Alternatively, 'auto' lets the code decide for the most optimal
                 backend.
+            adaptive (bool):
+                When enabled, the time step is adjusted during the simulation using the
+                error tolerance set with `tolerance`.
+            tolerance (float):
+                The error tolerance used in adaptive time stepping. This is used in
+                adaptive time stepping to choose a time step which is small enough so
+                the truncation error of a single step is below `tolerance`.
         """
-        super().__init__(pde, scheme=scheme, backend=backend, adaptive=False)
+        super().__init__(
+            pde, scheme=scheme, backend=backend, adaptive=adaptive, tolerance=tolerance
+        )
         self.decomposition = decomposition
+
+    def _make_error_synchronizer(self) -> Callable[[float], float]:
+        """return helper function that synchronizes errors between multiple processes"""
+        if mpi.parallel_run:
+            # in a parallel run, we need to return the maximal error
+            from numba_mpi import Operator, allreduce
+
+            if nb.config.DISABLE_JIT:
+                # numba_mpi.allreduce is implemented with numba.generated_jit, which
+                # currently *numba version 0.55) does not play nicely with disabled
+                # jitting. We thus need to treat this case specially
+
+                def synchronize_errors(error: float) -> float:
+                    return allreduce(error, Operator.MAX)(error, Operator.MAX)  # type: ignore
+
+            else:
+
+                def synchronize_errors(error: float) -> float:
+                    return allreduce(error, Operator.MAX)  # type: ignore
+
+            return synchronize_errors
+        else:
+            return super()._make_error_synchronizer()
 
     def make_stepper(
         self, state: FieldBase, dt=None
@@ -94,7 +127,7 @@ class ExplicitMPISolver(ExplicitSolver):
         self.info["steps"] = 0
         self.info["state_modifications"] = 0.0
         self.info["use_mpi"] = True
-        # self.info["scheme"] = self.scheme
+        self.info["scheme"] = self.scheme
 
         # decompose the state into multiple cells
         self.mesh = GridMesh.from_grid(state.grid, self.decomposition)
@@ -102,43 +135,67 @@ class ExplicitMPISolver(ExplicitSolver):
         self.info["grid_decomposition"] = self.mesh.shape
 
         if self.adaptive:
-            self._logger.warning(
-                "Adaptive stochastic stepping is not implemented. Using a fixed time "
-                "step instead."
-            )
+            # create stepper with adaptive steps
+            adaptive_stepper = self._make_adaptive_stepper(sub_state, dt)
+            self.info["dt_last"] = dt  # store the time step between calls
 
-        # create stepper with fixed steps
-        if self.scheme == "euler":
-            fixed_stepper = self._make_fixed_euler_stepper(sub_state, dt)
-        elif self.scheme in {"runge-kutta", "rk", "rk45"}:
-            fixed_stepper = self._make_rk45_stepper(sub_state, dt)
+            def wrapped_stepper(
+                state: FieldBase, t_start: float, t_end: float
+            ) -> float:
+                """advance `state` from `t_start` to `t_end` using adaptive steps"""
+                # distribute the field to all nodes
+                substate_data = self.mesh.split_field_data_mpi(state.data)
+
+                t_last, dt, steps, modifications = adaptive_stepper(
+                    substate_data, t_start, t_end, self.info["dt_last"]
+                )
+
+                # check whether dt is the same for all processes
+                dt_list = self.mesh.gather(dt)
+                if dt_list is not None and not np.isclose(min(dt_list), max(dt_list)):
+                    raise RuntimeError(f"Processes went out of sync: dt={dt_list}")
+
+                # collect the data from all nodes
+                modification_list = self.mesh.gather(modifications)
+                self.mesh.combine_field_data_mpi(substate_data, out=state.data)
+
+                self.info["dt_last"] = dt  # store the value for the next call
+                if mpi.is_main:
+                    self.info["steps"] += steps
+                    self.info["state_modifications"] += sum(modification_list)  # type: ignore
+                return t_last
+
         else:
-            raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
+            # create stepper with fixed steps
+            fixed_stepper = self._make_fixed_stepper(sub_state, dt)
 
-        if self.backend == "numba":
-            sig = (nb.typeof(sub_state.data), nb.double, nb.int_)
-            fixed_stepper = jit(sig)(fixed_stepper)  # compile inner stepper
+            def wrapped_stepper(
+                state: FieldBase, t_start: float, t_end: float
+            ) -> float:
+                """advance `state` from `t_start` to `t_end` using fixed steps"""
+                # calculate number of steps (which is at least 1)
+                steps = max(1, int(np.ceil((t_end - t_start) / dt)))
 
-        def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """advance `state` from `t_start` to `t_end` using fixed steps"""
-            # calculate number of steps (which is at least 1)
-            steps = max(1, int(np.ceil((t_end - t_start) / dt)))
+                # distribute the number of steps and the field to all nodes
+                steps = self.mesh.broadcast(steps)
+                substate_data = self.mesh.split_field_data_mpi(state.data)
 
-            # distribute the number of steps and the field to all nodes
-            steps = self.mesh.broadcast(steps)
-            sub_state_data = self.mesh.split_field_data_mpi(state.data)
+                # evolve the sub state
+                t_last, modifications = fixed_stepper(substate_data, t_start, steps)
 
-            # evolve the sub state
-            t_last, modifications = fixed_stepper(sub_state_data, t_start, steps)
+                # check whether t_last is the same for all processes
+                t_list = self.mesh.gather(t_last)
+                if t_list is not None and not np.isclose(min(t_list), max(t_list)):
+                    raise RuntimeError(f"Processes went out of sync: t_last={t_list}")
 
-            # collect the data from all nodes
-            modification_list = self.mesh.gather(modifications)
-            self.mesh.combine_field_data_mpi(sub_state_data, out=state.data)
+                # collect the data from all nodes
+                modification_list = self.mesh.gather(modifications)
+                self.mesh.combine_field_data_mpi(substate_data, out=state.data)
 
-            # store information in the main node
-            if mpi.is_main:
-                self.info["steps"] += steps
-                self.info["state_modifications"] += sum(modification_list)  # type: ignore
-            return t_last
+                # store information in the main node
+                if mpi.is_main:
+                    self.info["steps"] += steps
+                    self.info["state_modifications"] += sum(modification_list)  # type: ignore
+                return t_last
 
         return wrapped_stepper

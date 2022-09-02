@@ -9,33 +9,65 @@ import pytest
 
 from pde import PDE, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
 from pde.pdes import PDEBase
-from pde.solvers import Controller, ExplicitSolver
+from pde.solvers import Controller, ExplicitMPISolver, ExplicitSolver
+from pde.tools import mpi
 
 
+@pytest.mark.multiprocessing
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
-@pytest.mark.parametrize("adaptive", [True, False])
-def test_solvers_simple_example(scheme, adaptive):
+def test_solvers_simple_fixed(scheme):
     """test explicit solvers"""
     grid = UnitGrid([4])
-    field = ScalarField(grid, 1)
+    xs = grid.axes_coords[0]
+    field = ScalarField.from_expression(grid, "x")
     eq = PDE({"c": "c"})
 
-    dt = 1e-3 if scheme == "euler" else 1e-2
+    dt = 0.001 if scheme == "euler" else 0.01
 
-    solver = ExplicitSolver(eq, scheme=scheme, adaptive=adaptive)
+    if mpi.parallel_run:
+        solver = ExplicitMPISolver(eq, scheme=scheme, adaptive=False)
+    else:
+        solver = ExplicitSolver(eq, scheme=scheme, adaptive=False)
     controller = Controller(solver, t_range=10.0, tracker=None)
     res = controller.run(field, dt=dt)
-    np.testing.assert_allclose(res.data, np.exp(10), rtol=0.1)
-    if adaptive:
-        assert solver.info["steps"] != pytest.approx(10 / dt, abs=1)
-    else:
+
+    if mpi.is_main:
+        np.testing.assert_allclose(res.data, xs * np.exp(10), rtol=0.1)
         assert solver.info["steps"] == pytest.approx(10 / dt, abs=1)
-    assert solver.info["dt_adaptive"] == adaptive
+        assert not solver.info["dt_adaptive"]
+
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
+def test_solvers_simple_adaptive(scheme):
+    """test explicit solvers"""
+    grid = UnitGrid([4])
+    y0 = np.array([1e-3, 1e-3, 1e3, 1e3])
+    field = ScalarField(grid, y0)
+    eq = PDE({"c": "c"})
+
+    dt = 0.1 if scheme == "euler" else 1
+
+    if mpi.parallel_run:
+        solver = ExplicitMPISolver(eq, scheme=scheme, adaptive=True, tolerance=1e-3)
+    else:
+        solver = ExplicitSolver(eq, scheme=scheme, adaptive=True, tolerance=1e-3)
+    controller = Controller(solver, t_range=10.0, tracker=None)
+    res = controller.run(field, dt=dt)
+
+    if mpi.is_main:
+        np.testing.assert_allclose(res.data, y0 * np.exp(10), rtol=0.02)
+        assert solver.info["steps"] != pytest.approx(10 / dt, abs=1)
+        assert solver.info["dt_adaptive"]
+        if scheme == "euler":
+            assert solver.info["dt_last"] < 0.0005
+        else:
+            assert solver.info["dt_last"] < 0.03
 
 
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
 @pytest.mark.parametrize("adaptive", [True, False])
-def test_solvers_simple_ode(scheme, adaptive):
+def test_solvers_time_dependent(scheme, adaptive):
     """test explicit solvers with a simple ODE"""
     grid = UnitGrid([1])
     field = ScalarField(grid, 1)
@@ -87,15 +119,10 @@ def test_stochastic_adaptive_solver(caplog):
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1)
     eq = DiffusionPDE(noise=1e-6)
 
-    with caplog.at_level(logging.WARNING):
+    with pytest.raises(NotImplementedError):
         solver = ExplicitSolver(eq, backend="numpy", adaptive=True)
-
-    c = Controller(solver, t_range=1, tracker=None)
-    c.run(field, dt=1e-2)
-
-    # check whether it falls back to fixed time step and emits warning
-    assert "fixed" in caplog.text
-    assert not solver.info["dt_adaptive"]
+        c = Controller(solver, t_range=1, tracker=None)
+        c.run(field, dt=1e-2)
 
 
 def test_unsupported_stochastic_solvers():
