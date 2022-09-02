@@ -11,13 +11,13 @@ Package containing several tools required in py-pde
    expressions
    math
    misc
+   mpi
    numba
    output
    parameters
    parse_duration
    plotting
    spectral
-   spherical
    typing
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 

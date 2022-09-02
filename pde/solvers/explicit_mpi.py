@@ -10,7 +10,7 @@ import numba as nb
 import numpy as np
 
 from ..fields.base import FieldBase
-from ..grids.mesh import GridMesh
+from ..grids._mesh import GridMesh
 from ..pdes.base import PDEBase
 from ..tools import mpi
 from .explicit import ExplicitSolver

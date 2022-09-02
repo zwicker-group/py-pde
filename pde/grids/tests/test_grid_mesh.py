@@ -7,7 +7,7 @@ import pytest
 
 from pde import DiffusionPDE, ScalarField, Tensor2Field
 from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid, UnitGrid
-from pde.grids.mesh import GridMesh
+from pde.grids._mesh import GridMesh
 from pde.tools import mpi
 
 GRIDS = [

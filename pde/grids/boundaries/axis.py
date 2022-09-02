@@ -18,10 +18,10 @@ from numba.extending import register_jitable
 
 from ...tools.typing import GhostCellSetter
 from ..base import GridBase, PeriodicityError
-from .local import MPIBC, BCBase, BCDataError, BoundaryData, _PeriodicBC
+from .local import _MPIBC, BCBase, BCDataError, BoundaryData, _PeriodicBC
 
 if TYPE_CHECKING:
-    from ..mesh import GridMesh  # @UnusedImport
+    from .._mesh import GridMesh  # @UnusedImport
 
 BoundaryPairData = Union[
     Dict[str, BoundaryData], BoundaryData, Tuple[BoundaryData, BoundaryData]
@@ -194,9 +194,9 @@ class BoundaryAxisBase:
                 conditions.
         """
         # send boundary information to other nodes if using MPI
-        if isinstance(self.low, MPIBC):
+        if isinstance(self.low, _MPIBC):
             self.low.send_ghost_cells(data_full, args=args)
-        if isinstance(self.high, MPIBC):
+        if isinstance(self.high, _MPIBC):
             self.high.send_ghost_cells(data_full, args=args)
         # set the actual ghost cells
         self.high.set_ghost_cells(data_full, args=args)

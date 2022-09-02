@@ -81,7 +81,7 @@ from ...tools.typing import (
 from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
-    from ..mesh import GridMesh  # @UnusedImport
+    from .._mesh import GridMesh  # @UnusedImport
 
 
 BoundaryData = Union[Dict, str, "BCBase"]
@@ -686,7 +686,7 @@ class BCBase(metaclass=ABCMeta):
         return ghost_cell_setter  # type: ignore
 
 
-class MPIBC(BCBase):
+class _MPIBC(BCBase):
     """represents a boundary that is exchanged with another MPI process"""
 
     homogeneous = False
@@ -696,7 +696,7 @@ class MPIBC(BCBase):
     ):
         """
         Args:
-            mesh (:class:`~pde.grids.mesh.GridMesh`):
+            mesh (:class:`~pde.grids._mesh.GridMesh`):
                 Grid mesh describing the distributed MPI nodes
             axis (int):
                 The axis to which this boundary condition is associated

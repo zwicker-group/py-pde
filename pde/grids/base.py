@@ -41,8 +41,8 @@ from ..tools.numba import jit, jit_allocate_out
 from ..tools.typing import CellVolume, FloatNumerical, NumberOrArray, OperatorType
 
 if TYPE_CHECKING:
+    from ._mesh import GridMesh
     from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
-    from .mesh import GridMesh
 
 
 PI_4 = 4 * np.pi

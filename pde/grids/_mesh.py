@@ -16,7 +16,7 @@ from ..tools.plotting import plot_on_axes
 from .base import GridBase
 from .boundaries.axes import Boundaries
 from .boundaries.axis import BoundaryPair
-from .boundaries.local import MPIBC
+from .boundaries.local import _MPIBC
 
 
 class MPIFlags(IntEnum):
@@ -463,7 +463,7 @@ class GridMesh:
                 if self.get_neighbor(axis, upper=upper) is None:
                     bc = bc.to_subgrid(self.current_grid)  # extract BC for subgrid
                 else:
-                    bc = MPIBC(self, axis, upper)  # set an MPI boundary condition
+                    bc = _MPIBC(self, axis, upper)  # set an MPI boundary condition
                 bcs_axis.append(bc)
             bcs.append(BoundaryPair(*bcs_axis))
 
