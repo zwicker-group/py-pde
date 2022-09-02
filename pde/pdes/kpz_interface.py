@@ -63,11 +63,7 @@ class KPZInterfacePDE(PDEBase):
     @property
     def expression(self) -> str:
         """str: the expression of the right hand side of this PDE"""
-        return (
-            expr_prod(self.nu, "laplace(c)")
-            + " + "
-            + expr_prod(self.lmbda, "gradient_squared(c)")
-        )
+        return expr_prod(self.nu, "∇²c") + " + " + expr_prod(self.lmbda, "|∇c|²")
 
     def evolution_rate(  # type: ignore
         self,

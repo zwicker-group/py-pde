@@ -8,6 +8,7 @@ from typing import Callable, List, Union
 
 import numba as nb
 import numpy as np
+from numba.extending import register_jitable
 
 from ..fields.base import FieldBase
 from ..grids._mesh import GridMesh
@@ -87,6 +88,7 @@ class ExplicitMPISolver(ExplicitSolver):
 
             else:
 
+                @register_jitable
                 def synchronize_errors(error: float) -> float:
                     return allreduce(error, Operator.MAX)  # type: ignore
 

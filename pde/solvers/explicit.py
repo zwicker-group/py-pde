@@ -8,6 +8,7 @@ from typing import Callable, Tuple
 
 import numba as nb
 import numpy as np
+from numba.extending import register_jitable
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
@@ -60,6 +61,7 @@ class ExplicitSolver(SolverBase):
     def _make_error_synchronizer(self) -> Callable[[float], float]:
         """return helper function that synchronizes errors between multiple processes"""
 
+        @register_jitable
         def synchronize_errors(error: float) -> float:
             return error
 
@@ -93,18 +95,21 @@ class ExplicitSolver(SolverBase):
                 dt *= 0.25
             else:
                 # otherwise, adjust time step according to error
-                dt *= max(0.9 * (error_norm) ** -0.2, 0.1)
+                dt *= max(0.9 * error_norm**-0.2, 0.1)
 
             # limit time step to permissible bracket
             if dt > dt_max:
                 dt = dt_max
             elif dt < dt_min:
                 if np.isnan(error_norm):
-                    raise RuntimeError("Encountered NaN at t=" + str(t))
+                    raise RuntimeError("Encountered NaN during simulation")
                 else:
                     raise RuntimeError(dt_min_err)
 
             return dt
+
+        if self.backend == "numba":
+            adjust_dt = jit(adjust_dt)
 
         return adjust_dt
 

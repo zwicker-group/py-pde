@@ -66,8 +66,8 @@ class KuramotoSivashinskyPDE(PDEBase):
     @property
     def expression(self) -> str:
         """str: the expression of the right hand side of this PDE"""
-        expr = f"c + {expr_prod(self.nu, 'laplace(c)')}"
-        return f"-laplace({expr}) - 0.5 * gradient_squared(c)"
+        expr = f"c + {expr_prod(self.nu, '∇²c')}"
+        return f"-∇²({expr}) - 0.5 * ∇|c|²"
 
     def evolution_rate(  # type: ignore
         self,
