@@ -6,8 +6,8 @@ Defines an explicit solver using multiprocessing via MPI
 
 from typing import Callable, List, Union
 
-import numpy as np
 import numba as nb
+import numpy as np
 
 from ..fields.base import FieldBase
 from ..grids.mesh import GridMesh
