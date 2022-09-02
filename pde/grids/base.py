@@ -806,9 +806,13 @@ class GridBase(metaclass=ABCMeta):
         Example:
             The method can either be used directly:
 
+            .. code-block:: python
+
                 GridClass.register_operator("operator", make_operator)
 
             or as a decorator for the factory function:
+
+            .. code-block:: python
 
                 @GridClass.register_operator("operator")
                 def make_operator(bcs: Boundaries):
