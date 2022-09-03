@@ -18,14 +18,14 @@ from pde.grids.boundaries import Boundaries
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit, jit_allocate_out
 
-config["numba.parallel"] = False
+config["numba.multithreading"] = False
 
 
 def custom_laplace_2d_periodic(shape, dx=1):
     """make laplace operator with periodic boundary conditions"""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
-    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None, args=None):
@@ -60,7 +60,7 @@ def custom_laplace_2d_neumann(shape, dx=1):
     """make laplace operator with Neumann boundary conditions"""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
-    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None, args=None):

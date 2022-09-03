@@ -384,7 +384,7 @@ def _make_laplace_numba_2d(grid: CartesianGrid) -> OperatorType:
     scale_x, scale_y = grid.discretization**-2
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
@@ -412,7 +412,7 @@ def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorType:
     scale_x, scale_y, scale_z = grid.discretization**-2
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
@@ -545,7 +545,7 @@ def _make_gradient_numba_2d(grid: CartesianGrid) -> OperatorType:
     scale_x, scale_y = 0.5 / grid.discretization
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
@@ -572,7 +572,7 @@ def _make_gradient_numba_3d(grid: CartesianGrid) -> OperatorType:
     scale_x, scale_y, scale_z = 0.5 / grid.discretization
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
@@ -701,7 +701,7 @@ def _make_gradient_squared_numba_2d(
     dim_x, dim_y = grid.shape
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     if central:
         # use central differences
@@ -758,7 +758,7 @@ def _make_gradient_squared_numba_3d(
     dim_x, dim_y, dim_z = grid.shape
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
 
     if central:
         # use central differences
@@ -904,7 +904,7 @@ def _make_divergence_numba_2d(grid: CartesianGrid) -> OperatorType:
     scale_x, scale_y = 0.5 / grid.discretization
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
@@ -932,7 +932,7 @@ def _make_divergence_numba_3d(grid: CartesianGrid) -> OperatorType:
     scale_x, scale_y, scale_z = 0.5 / grid.discretization
 
     # use parallel processing for large enough arrays
-    parallel = dim_x * dim_y * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:

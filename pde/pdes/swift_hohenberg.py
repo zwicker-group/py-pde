@@ -73,7 +73,7 @@ class SwiftHohenbergPDE(PDEBase):
         return (
             f"{expr_prod(self.rate - self.kc2 ** 2, 'c')} - c³"
             f" + {expr_prod(self.delta, 'c²')}"
-            f" - ∇²({expr_prod(2 * self.kc2, 'c')} + ∇²c)"
+            f" - ∇²({expr_prod(2 * self.kc2, 'c')} + ∇²(c))"
         )
 
     def evolution_rate(  # type: ignore

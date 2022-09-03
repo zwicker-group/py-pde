@@ -65,7 +65,7 @@ class ExplicitSolver(SolverBase):
         def synchronize_errors(error: float) -> float:
             return error
 
-        return synchronize_errors
+        return synchronize_errors  # type: ignore
 
     def _make_dt_adjuster(self) -> Callable[[float, float, float], float]:
         """return a function that can be used to adjust time steps"""

@@ -388,7 +388,7 @@ explicit loop:
 .. code-block:: python
 
     [...]
-                
+
         def _make_pde_rhs_numba(self, state):
             """ the numba-accelerated evolution equation """
             # make attributes locally available             
@@ -445,6 +445,6 @@ Here is a list of all configuration options that can be adjusted in the package:
     .. code-block:: python
     
         from pde import config
-        config['numba.parallel'] = False
+        config["numba.multithreading"] = False
         
         # actual code using py-pde

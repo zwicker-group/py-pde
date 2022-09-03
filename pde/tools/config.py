@@ -40,17 +40,17 @@ DEFAULT_CONFIG: List[Parameter] = [
         "the precision of the mathematical calculations.",
     ),
     Parameter(
-        "numba.parallel",
+        "numba.multithreading",
         True,
         bool,
         "Determines whether multiple threads are used in numba-compiled code.",
     ),
     Parameter(
-        "numba.parallel_threshold",
+        "numba.multithreading_threshold",
         256**2,
         int,
-        "Minimal number of support points before multithreading or multiprocessing is "
-        "enabled in the numba compilations.",
+        "Minimal number of support points before multithreading is enabled in numba "
+        "compilations.",
     ),
 ]
 
@@ -80,8 +80,28 @@ class Config(collections.UserDict):
             self.update(items)
         self.mode = mode
 
+    def _translate_deprecated_key(self, key: str) -> str:
+        """helper function that allows using deprecated config items"""
+        if key == "numba.parallel":
+            warnings.warn(
+                "Option `numba.parallel` has been renamed to `numba.multithreading`",
+                DeprecationWarning,
+            )
+            return "numba.multithreading"
+
+        elif key == "numba.parallel_threshold":
+            warnings.warn(
+                "Option `numba.parallel_threshold` has been renamed to "
+                "`numba.multithreading_threshold`",
+                DeprecationWarning,
+            )
+            return "numba.multithreading_threshold"
+
+        return key
+
     def __getitem__(self, key: str):
         """retrieve item `key`"""
+        key = self._translate_deprecated_key(key)
         parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
@@ -90,6 +110,7 @@ class Config(collections.UserDict):
 
     def __setitem__(self, key: str, value):
         """update item `key` with `value`"""
+        key = self._translate_deprecated_key(key)
         if self.mode == "insert":
             self.data[key] = value
 
@@ -110,6 +131,7 @@ class Config(collections.UserDict):
 
     def __delitem__(self, key: str):
         """removes item `key`"""
+        key = self._translate_deprecated_key(key)
         if self.mode == "insert":
             del self.data[key]
         else:

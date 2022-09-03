@@ -25,6 +25,16 @@ from ..tools.numba import jit
 from ..tools.typing import ArrayLike, NumberOrArray
 
 
+# Define short notations that can appear in mathematical equations and need to be
+# expanded. Since these replacements are replaced in order, it's advisible to start with
+# more complex expressions first
+_EXPRESSION_REPLACEMENT: Dict[str, str] = {
+    "∇²": "laplace",
+    "²": "**2",
+    "³": "**3",
+}
+
+
 class PDE(PDEBase):
     """PDE defined by mathematical expressions
 
@@ -128,11 +138,16 @@ class PDE(PDEBase):
         self._rhs_expr, self._operators = {}, {}
         explicit_time_dependence = False
         complex_valued = False
-        for var, rhs_str in rhs.items():
+        for var, rhs_item in rhs.items():
+            # replace shorthand operators
+            if isinstance(rhs_item, str):
+                for search, repl in _EXPRESSION_REPLACEMENT.items():
+                    rhs_item = rhs_item.replace(search, repl)
+
             # create placeholder dictionary of constants that will be specified later
             consts_d: Dict[str, NumberOrArray] = {name: 0 for name in consts}
             rhs_expr = ScalarExpression(
-                rhs_str,
+                rhs_item,
                 user_funcs=user_funcs,
                 consts=consts_d,
                 explicit_symbols=rhs.keys(),  # type: ignore
