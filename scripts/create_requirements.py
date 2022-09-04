@@ -4,8 +4,10 @@ This script creates the requirements files in the project
 """
 
 import csv
+import subprocess as sp
 from dataclasses import dataclass, field
 from pathlib import Path
+from string import Template
 from typing import List, Set
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
@@ -132,6 +134,13 @@ REQUIREMENTS = [
 ]
 
 
+SETUP_WARNING = """
+# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
+# If you want to adjust settings in this file, change scripts/templates/setup.py
+
+"""
+
+
 def write_requirements_txt(
     path: Path,
     requirements: List[Requirement],
@@ -214,6 +223,38 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
         fp.writelines(content)
 
 
+def write_script(path: Path, requirements: List[Requirement], template_name: str):
+    """write script based on a template
+
+    Args:
+        path (:class:`Path`): The path where the requirements are written
+        requirements (list): The requirements to be written
+        template_name (str): The name of the template
+    """
+    print(f"Write `{path}`")
+
+    # format requirements list
+    req_list = "[" + ", ".join('"' + ref.line(">=") + '"' for ref in requirements) + "]"
+
+    # load template data
+    template_path = Path(__file__).parent / "templates" / template_name
+    with template_path.open("r") as fp:
+        template = Template(fp.read())
+
+    # format template
+    substitutes = {"INSTALL_REQUIRES": req_list}
+    for ref in REQUIREMENTS:
+        substitutes[ref.name.replace("-", "_")] = ref.line(">=")
+    content = template.substitute(substitutes)
+
+    # write content to file
+    with open(path, "w") as fp:
+        fp.writelines(SETUP_WARNING + content)
+
+    # call black formatter on it
+    sp.check_call(["black", "-q", "-t", "py38", str(path)])
+
+
 def main():
     """main function creating all the requirements"""
     root = Path(PACKAGE_PATH)
@@ -276,6 +317,11 @@ def main():
     write_requirements_py(
         root / "pde" / "__init__.py",
         [r for r in REQUIREMENTS if r.essential],
+    )
+
+    # write setup.py
+    write_script(
+        root / "setup.py", [r for r in REQUIREMENTS if r.essential], "setup.py"
     )
 
 

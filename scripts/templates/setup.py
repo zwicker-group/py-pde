@@ -1,6 +1,3 @@
-# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
-# If you want to adjust settings in this file, change scripts/templates/setup.py
-
 from pathlib import Path
 
 from setuptools import find_packages, setup
@@ -32,19 +29,12 @@ setup(
     download_url=DOWNLOAD_URL,
     keywords=["pdes", "partial-differential-equations", "dynamical-systems"],
     python_requires=">=3.8",
-    install_requires=[
-        "matplotlib>=3.1.0",
-        "numba>=0.56.0",
-        "numpy>=1.22.0",
-        "scipy>=1.4.0",
-        "sympy>=1.5.0",
-        "tqdm>=4.60",
-    ],
+    install_requires=$INSTALL_REQUIRES,
     extras_require={
-        "hdf": ["h5py>=2.10"],
-        "io": ["h5py>=2.10", "pandas>=1.2"],
-        "interactive": ["napari>=0.4.8", "ipywidgets>=7"],
-        "mpi": ["numba-mpi>=0.13"],
+        "hdf": ["$h5py"],
+        "io": ["$h5py", "$pandas"],
+        "interactive": ["$napari", "$ipywidgets"],
+        "mpi": ["$numba_mpi"],
     },
     classifiers=[
         "Development Status :: 4 - Beta",
