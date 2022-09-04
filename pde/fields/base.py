@@ -9,7 +9,6 @@ from __future__ import annotations
 import functools
 import json
 import logging
-import warnings
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from pathlib import Path
@@ -1441,15 +1440,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         data = self.interpolate(points, backend=backend, method=method, fill=fill)
         return self.__class__(grid, data, label=label)
 
-    def add_interpolated(self, point: np.ndarray, amount: ArrayLike) -> None:
-        """deprecated alias of method `insert`"""
-        # this was deprecated on 2021-02-23
-        warnings.warn(
-            "`add_interpolated` is deprecated. Use `insert` instead",
-            DeprecationWarning,
-        )
-        self.insert(point, amount)
-
     def insert(self, point: np.ndarray, amount: ArrayLike) -> None:
         """adds an (integrated) value to the field at an interpolated position
 
@@ -2150,14 +2140,3 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         name = "Field" if self.label is None else self.label
         return {name: self._get_napari_layer_data(**kwargs)}
-
-
-def _get_field_class_by_rank(rank: int) -> Type[DataFieldBase]:
-    """return a field class associated with a certain rank
-
-    Args:
-        rank (int): The rank of the tensor field
-    """
-    # deprecated on 2021-09-17
-    warnings.warn("Use DataFieldBase.get_class_by_rank instead.", DeprecationWarning)
-    return DataFieldBase.get_class_by_rank(rank)

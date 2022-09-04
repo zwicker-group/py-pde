@@ -214,7 +214,6 @@ def movie(
     filename: str,
     *,
     progress: bool = True,
-    dpi: float = 150,
     show_time: bool = True,
     plot_args: Dict[str, Any] = None,
     movie_args: Dict[str, Any] = None,
@@ -229,8 +228,6 @@ def movie(
             the format used.
         progress (bool):
             Flag determining whether the progress of making the movie is shown.
-        dpi (float):
-            Resolution of the movie
         show_time (bool):
             Whether to show the simulation time in the movie
         plot_args (dict):
@@ -244,14 +241,6 @@ def movie(
         plot_args = {}
     if movie_args is None:
         movie_args = {}
-
-    # use the dpi from movie_args if present
-    movie_args.setdefault("dpi", dpi)
-    if dpi != 150:
-        warnings.warn(
-            "Setting DPI using `dpi` argument is deprecated. Use `movie_args` instead.",
-            DeprecationWarning,
-        )
 
     # create the iterator over the data
     field_iter = display_progress(storage.items(), total=len(storage), enabled=progress)

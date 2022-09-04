@@ -82,6 +82,8 @@ class Config(collections.UserDict):
 
     def _translate_deprecated_key(self, key: str) -> str:
         """helper function that allows using deprecated config items"""
+        # the depreciations have been introduced on 2022-09-04 and are scheduled to be
+        # removed after 2023-03-04
         if key == "numba.parallel":
             warnings.warn(
                 "Option `numba.parallel` has been renamed to `numba.multithreading`",
