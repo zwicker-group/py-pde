@@ -736,13 +736,6 @@ class GridBase(metaclass=ABCMeta):
     ) -> Generator:
         pass
 
-    # def _parse_boundary_conditions(
-    #     self, bc: "BoundariesData", rank: int = 0
-    # ) -> "BoundariesData":
-    #     """helper function that parses the boundary data before applying it"""
-    #     # default behavior is to do nothing
-    # return bc
-
     @fill_in_docstring
     def get_boundary_conditions(
         self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0

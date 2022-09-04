@@ -114,9 +114,15 @@ class ExplicitMPISolver(ExplicitSolver):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
-        # support `None` as a default value, so the controller can signal that
-        # the solver should use a default time step
+        if not mpi.parallel_run:
+            self._logger.warn(
+                "Using `ExplicitMPISolver` without a proper multiprocessing run. "
+                "Scripts need to be started with `mpiexec` to profit from multiple cores"
+            )
+
         if dt is None:
+            # support `None` as a default value, so the controller can signal that
+            # the solver should use a default time step
             dt = 1e-3
             if not self.adaptive:
                 self._logger.warning(
