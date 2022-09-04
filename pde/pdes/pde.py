@@ -24,14 +24,15 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
 from ..tools.typing import ArrayLike, NumberOrArray
 
-
 # Define short notations that can appear in mathematical equations and need to be
-# expanded. Since these replacements are replaced in order, it's advisible to start with
+# expanded. Since these replacements are replaced in order, it's advisable to start with
 # more complex expressions first
 _EXPRESSION_REPLACEMENT: Dict[str, str] = {
-    "∇²": "laplace",
-    "²": "**2",
-    "³": "**3",
+    r"\|\s*∇\s*(\w+)\s*\|(²|\*\*2)": r"gradient_squared(\1)",  # |∇c|² or |∇c|**2
+    r"∇(²|\*\*2)\s*(\w+)": r"laplace(\2)",  # ∇²c or ∇**2 c
+    r"∇(²|\*\*2)\s*\(": r"laplace(",  # ∇²(c) or ∇**2(c)
+    r"²": r"**2",
+    r"³": r"**3",
 }
 
 
@@ -141,8 +142,11 @@ class PDE(PDEBase):
         for var, rhs_item in rhs.items():
             # replace shorthand operators
             if isinstance(rhs_item, str):
+                rhs_item_old = rhs_item
                 for search, repl in _EXPRESSION_REPLACEMENT.items():
-                    rhs_item = rhs_item.replace(search, repl)
+                    rhs_item = re.sub(search, repl, rhs_item)
+                if rhs_item != rhs_item_old:
+                    self._logger.info("Transformed expression to `%s`", rhs_item)
 
             # create placeholder dictionary of constants that will be specified later
             consts_d: Dict[str, NumberOrArray] = {name: 0 for name in consts}

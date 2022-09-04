@@ -59,7 +59,7 @@ class CahnHilliardPDE(PDEBase):
     @property
     def expression(self) -> str:
         """str: the expression of the right hand side of this PDE"""
-        return f"∇²(c³ - c - {expr_prod(self.interface_width, '∇²(c)')})"
+        return f"∇²(c³ - c - {expr_prod(self.interface_width, '∇²c')})"
 
     def evolution_rate(  # type: ignore
         self,

@@ -52,7 +52,7 @@ class AllenCahnPDE(PDEBase):
     @property
     def expression(self) -> str:
         """str: the expression of the right hand side of this PDE"""
-        return f"{expr_prod(self.interface_width, '∇²(c)')} - c³ + c"
+        return f"{expr_prod(self.interface_width, '∇²c')} - c³ + c"
 
     def evolution_rate(  # type: ignore
         self,
