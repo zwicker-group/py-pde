@@ -2,8 +2,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import logging
-
 import numpy as np
 import pytest
 
@@ -60,9 +58,9 @@ def test_solvers_simple_adaptive(scheme):
         assert solver.info["steps"] != pytest.approx(10 / dt, abs=1)
         assert solver.info["dt_adaptive"]
         if scheme == "euler":
-            assert solver.info["dt_last"] < 0.0005
+            assert solver.info["dt_statistics"]["min"] < 0.0005
         else:
-            assert solver.info["dt_last"] < 0.03
+            assert solver.info["dt_statistics"]["min"] < 0.03
 
 
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
@@ -166,5 +164,5 @@ def test_adaptive_solver_nan(scheme):
     )
 
     np.testing.assert_allclose(sol.data, 0)
-    assert info["solver"]["dt_last"] > 0.1
+    assert info["solver"]["dt_statistics"]["max"] > 0.1
     assert info["solver"]["dt_adaptive"]

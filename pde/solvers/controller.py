@@ -237,6 +237,9 @@ class Controller:
         self.info["t_final"] = t
         self.info["jit_count"]["simulation"] = int(JIT_COUNT) - jit_count_after_init
         self.trackers.finalize(info=self.diagnostics)
+        if "dt_statistics" in self.solver.info:
+            dt_statistics = dict(self.solver.info["dt_statistics"].to_dict())
+            self.solver.info["dt_statistics"] = dt_statistics
 
         # show information after a potential progress bar has been deleted to
         # not mess up the display

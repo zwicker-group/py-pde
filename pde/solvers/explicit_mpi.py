@@ -14,6 +14,7 @@ from ..fields.base import FieldBase
 from ..grids._mesh import GridMesh
 from ..pdes.base import PDEBase
 from ..tools import mpi
+from ..tools.math import OnlineStatistics
 from .explicit import ExplicitSolver
 
 
@@ -145,17 +146,19 @@ class ExplicitMPISolver(ExplicitSolver):
         if self.adaptive:
             # create stepper with adaptive steps
             adaptive_stepper = self._make_adaptive_stepper(sub_state, dt)
-            self.info["dt_last"] = dt  # store the time step between calls
+            self.info["dt_statistics"] = OnlineStatistics()
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
             ) -> float:
                 """advance `state` from `t_start` to `t_end` using adaptive steps"""
+                nonlocal dt  # `dt` stores value for the next call
+
                 # distribute the field to all nodes
                 substate_data = self.mesh.split_field_data_mpi(state.data)
 
                 t_last, dt, steps, modifications = adaptive_stepper(
-                    substate_data, t_start, t_end, self.info["dt_last"]
+                    substate_data, t_start, t_end, dt, self.info["dt_statistics"]
                 )
 
                 # check whether dt is the same for all processes
@@ -167,7 +170,6 @@ class ExplicitMPISolver(ExplicitSolver):
                 modification_list = self.mesh.gather(modifications)
                 self.mesh.combine_field_data_mpi(substate_data, out=state.data)
 
-                self.info["dt_last"] = dt  # store the value for the next call
                 if mpi.is_main:
                     self.info["steps"] += steps
                     self.info["state_modifications"] += sum(modification_list)  # type: ignore
