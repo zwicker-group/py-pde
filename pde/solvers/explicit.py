@@ -182,7 +182,7 @@ class ExplicitSolver(SolverBase):
         return stepper
 
     def _make_adaptive_euler_stepper(
-        self, state: FieldBase, dt: float
+        self, state: FieldBase
     ) -> Callable[
         [np.ndarray, float, float, float, Optional[OnlineStatistics]],
         Tuple[float, float, int, float],
@@ -193,8 +193,6 @@ class ExplicitSolver(SolverBase):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            dt (float):
-                Initial time step of the explicit stepping.
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -224,7 +222,7 @@ class ExplicitSolver(SolverBase):
         ) -> Tuple[float, float, int, float]:
             """compiled inner loop for speed"""
             modifications = 0.0
-            dt = dt_init
+            dt_opt = dt_init
             t = t_start
             calculate_rate = True  # flag stating whether to calculate rate for time t
             steps = 0
@@ -234,12 +232,15 @@ class ExplicitSolver(SolverBase):
                     calculate_rate = False
                 # else: rate is reused from last (failed) iteration
 
-                # single step with dt
-                k1 = state_data + dt * rate
+                # use a smaller time step if close to t_end
+                dt_step = min(dt_opt, t_end - t)
 
-                # double step with half the dt
-                k2 = state_data + 0.5 * dt * rate
-                k2 += 0.5 * dt * rhs_pde(k2, t + 0.5 * dt)
+                # single step with dt
+                k1 = state_data + dt_step * rate
+
+                # double step with half the time step
+                k2 = state_data + 0.5 * dt_step * rate
+                k2 += 0.5 * dt_step * rhs_pde(k2, t + 0.5 * dt_step)
 
                 # calculate maximal error
                 error = 0.0
@@ -248,7 +249,7 @@ class ExplicitSolver(SolverBase):
                     # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
                     # we thus need to use the following order:
                     error = max(abs(k1.flat[i] - k2.flat[i]), error)
-                error *= dt  # error estimate should be independent of magnitude of dt
+                error *= dt_step  # estimate should be independent of magnitude of dt
                 error_rel = error / tolerance  # normalize error to given tolerance
 
                 # synchronize the error between all processes (if necessary)
@@ -257,18 +258,20 @@ class ExplicitSolver(SolverBase):
                 # do the step if the error is sufficiently small
                 if error_rel <= 1:
                     steps += 1
-                    t += dt
+                    t += dt_step
                     state_data[...] = k2
                     modifications += modify_after_step(state_data)
                     calculate_rate = True
                     if dt_stats is not None:
-                        dt_stats.add(dt)
+                        dt_stats.add(dt_step)
 
-                dt = adjust_dt(dt, error_rel, t)
+                if t < t_end:
+                    # adjust the time step if it is not the last step
+                    dt_opt = adjust_dt(dt_step, error_rel, t)
 
-            return t, dt, steps, modifications
+            return t, dt_opt, steps, modifications
 
-        self._logger.info(f"Initialized adaptive Euler stepper with dt_0={dt}")
+        self._logger.info(f"Initialized adaptive Euler stepper")
         return stepper
 
     def _make_rk45_stepper(
@@ -322,7 +325,7 @@ class ExplicitSolver(SolverBase):
         return stepper
 
     def _make_rkf_stepper(
-        self, state: FieldBase, dt: float
+        self, state: FieldBase
     ) -> Callable[
         [np.ndarray, float, float, float, Optional[OnlineStatistics]],
         Tuple[float, float, int, float],
@@ -333,8 +336,6 @@ class ExplicitSolver(SolverBase):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            dt (float):
-                Initial time step of the explicit stepping.
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -402,21 +403,27 @@ class ExplicitSolver(SolverBase):
         ) -> Tuple[float, float, int, float]:
             """compiled inner loop for speed"""
             modifications = 0.0
-            dt = dt_init
+            dt_opt = dt_init
             t = t_start
             steps = 0
             while t < t_end:
+                # use a smaller time step if close to t_end
+                dt_step = min(dt_opt, t_end - t)
+
                 # do the six intermediate steps
-                k1 = dt * rhs(state_data, t)
-                k2 = dt * rhs(state_data + b21 * k1, t + a2 * dt)
-                k3 = dt * rhs(state_data + b31 * k1 + b32 * k2, t + a3 * dt)
-                k4 = dt * rhs(state_data + b41 * k1 + b42 * k2 + b43 * k3, t + a4 * dt)
-                k5 = dt * rhs(
-                    state_data + b51 * k1 + b52 * k2 + b53 * k3 + b54 * k4, t + a5 * dt
+                k1 = dt_step * rhs(state_data, t)
+                k2 = dt_step * rhs(state_data + b21 * k1, t + a2 * dt_step)
+                k3 = dt_step * rhs(state_data + b31 * k1 + b32 * k2, t + a3 * dt_step)
+                k4 = dt_step * rhs(
+                    state_data + b41 * k1 + b42 * k2 + b43 * k3, t + a4 * dt_step
                 )
-                k6 = dt * rhs(
+                k5 = dt_step * rhs(
+                    state_data + b51 * k1 + b52 * k2 + b53 * k3 + b54 * k4,
+                    t + a5 * dt_step,
+                )
+                k6 = dt_step * rhs(
                     state_data + b61 * k1 + b62 * k2 + b63 * k3 + b64 * k4 + b65 * k5,
-                    t + a6 * dt,
+                    t + a6 * dt_step,
                 )
 
                 # estimate the maximal error
@@ -433,7 +440,7 @@ class ExplicitSolver(SolverBase):
                     # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
                     # we thus need to use the following order:
                     error = max(error_local, error)  # type: ignore
-
+                error *= dt_step  # estimate should be independent of magnitude of dt
                 error_rel = error / tolerance  # normalize error to given tolerance
 
                 # synchronize the error between all processes (if necessary)
@@ -442,20 +449,19 @@ class ExplicitSolver(SolverBase):
                 # do the step if the error is sufficiently small
                 if error <= 1:
                     steps += 1
-                    t += dt
+                    t += dt_step
                     state_data += c1 * k1 + c3 * k3 + c4 * k4 + c5 * k5
                     modifications += modify_after_step(state_data)
                     if dt_stats is not None:
-                        dt_stats.add(dt)
+                        dt_stats.add(dt_step)
 
-                # adjust the time step
-                dt = adjust_dt(dt, error_rel, t)
+                if t < t_end:
+                    # adjust the time step if it is not the last step
+                    dt_opt = adjust_dt(dt_step, error_rel, t)
 
-            return t, dt, steps, modifications
+            return t, dt_opt, steps, modifications
 
-        self._logger.info(
-            f"Initialized adaptive Runge-Kutta-Fehlberg stepper with initial dt={dt}"
-        )
+        self._logger.info(f"Initialized adaptive Runge-Kutta-Fehlberg stepper")
         return stepper
 
     def _make_fixed_stepper(
@@ -498,7 +504,7 @@ class ExplicitSolver(SolverBase):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step of the explicit stepping.
+                Initial time step of the adaptive explicit stepping
         """
         if self.pde.is_sde:
             raise NotImplementedError(
@@ -508,9 +514,9 @@ class ExplicitSolver(SolverBase):
         self.info["stochastic"] = False
 
         if self.scheme == "euler":
-            adaptive_stepper = self._make_adaptive_euler_stepper(state, dt)
+            adaptive_stepper = self._make_adaptive_euler_stepper(state)
         elif self.scheme in {"runge-kutta", "rk", "rk45"}:
-            adaptive_stepper = self._make_rkf_stepper(state, dt)
+            adaptive_stepper = self._make_rkf_stepper(state)
         else:
             raise ValueError(
                 f"Explicit adaptive scheme `{self.scheme}` is not supported"
