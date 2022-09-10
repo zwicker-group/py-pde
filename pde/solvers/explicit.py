@@ -212,6 +212,7 @@ class ExplicitSolver(SolverBase):
         sync_errors = self._make_error_synchronizer()
         adjust_dt = self._make_dt_adjuster()
         tolerance = self.tolerance
+        dt_min = self.dt_min
 
         def stepper(
             state_data: np.ndarray,
@@ -232,8 +233,8 @@ class ExplicitSolver(SolverBase):
                     calculate_rate = False
                 # else: rate is reused from last (failed) iteration
 
-                # use a smaller time step if close to t_end
-                dt_step = min(dt_opt, t_end - t)
+                # use a smaller (but not too small) time step if close to t_end
+                dt_step = max(min(dt_opt, t_end - t), dt_min)
 
                 # single step with dt
                 k1 = state_data + dt_step * rate
@@ -358,6 +359,7 @@ class ExplicitSolver(SolverBase):
         sync_errors = self._make_error_synchronizer()
         adjust_dt = self._make_dt_adjuster()
         tolerance = self.tolerance
+        dt_min = self.dt_min
 
         # use Runge-Kutta-Fehlberg method
         # define coefficients for RK4(5), formula 2 Table III in Fehlberg
@@ -409,8 +411,8 @@ class ExplicitSolver(SolverBase):
             t = t_start
             steps = 0
             while True:
-                # use a smaller time step if close to t_end
-                dt_step = min(dt_opt, t_end - t)
+                # use a smaller (but not too small) time step if close to t_end
+                dt_step = max(min(dt_opt, t_end - t), dt_min)
 
                 # do the six intermediate steps
                 k1 = dt_step * rhs(state_data, t)
