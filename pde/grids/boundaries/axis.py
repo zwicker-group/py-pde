@@ -24,7 +24,10 @@ if TYPE_CHECKING:
     from .._mesh import GridMesh  # @UnusedImport
 
 BoundaryPairData = Union[
-    Dict[str, BoundaryData], BoundaryData, Tuple[BoundaryData, BoundaryData]
+    Dict[str, BoundaryData],
+    BoundaryData,
+    Tuple[BoundaryData, BoundaryData],
+    "BoundaryAxisBase",
 ]
 
 

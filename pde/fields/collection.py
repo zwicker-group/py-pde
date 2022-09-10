@@ -8,7 +8,17 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Union,
+    overload,
+)
 
 import numpy as np
 
@@ -139,8 +149,16 @@ class FieldCollection(FieldBase):
         """return iterator over the actual fields"""
         return iter(self.fields)
 
+    @overload
+    def __getitem__(self, index: Union[int, str]) -> DataFieldBase:
+        ...
+
+    @overload
+    def __getitem__(self, index: slice) -> FieldCollection:
+        ...
+
     def __getitem__(
-        self, index: Union[int, str]
+        self, index: Union[int, str, slice]
     ) -> Union[DataFieldBase, FieldCollection]:
         """returns one or many fields from the collection
 
