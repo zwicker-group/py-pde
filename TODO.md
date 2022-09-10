@@ -18,18 +18,11 @@ TODO
     - we could for instance have a flag on trackers, whether they are being handled a final time
     - an alternative would be to pass the final state to the `finalize` method 
 * Think about logger names (add `pde.` before class name)
-* Add Glossary or something to development guide
-    - e.g., state = attributes + data
 * Hide attributes in field classes that should not be overwritten
     - clarify in the description of grids and fields what fields are mutable
 * Extend methods `get_image_data` to allow different cuts, visualizations
   - use an interface similar to that of `get_line_data`
   - mimic this interface for plotting 3d droplets?
-* Add tests:
-    - update plotting of fields and field collections
-	- general Trackers
-	- Different intervals for trackers
-	- Interpolating using boundary conditions
 
 
 LOW-PRIORITY (Future ideas)
@@ -47,19 +40,6 @@ LOW-PRIORITY (Future ideas)
 	stored state (this requires storing random seeds)
 	- we now have support for random state in numpy implementations
 	- it's not clear how to support numba, since the random state is not as accessible
-* Implement multiprocessing:
-	- Separate CartesianGrid into different blocks
-	  (we need to slice the whole grid at defined locations)
-	- Communicate boundary values every time step using special boundary condition
-	  (these BCs must follow from the slicing, periodic BCs can also be replaced
-	  by the virtual BC)
-	- This relies on being able to pass information into BCs  
-	- Use mpi4py to pass information around
-	- How would this play with numba? (we might need to only use numba for the
-	  time stepping and do the rest in python)
-	- Also look into ipyparallel, pyop
-    - this likely relies on BCs that are implemented on ghost cells
-    - however, it is not clear how to define the value of ghost cells for divergence(vector_field)
 * Support CUDA/threading using numba?
     - could we partition the calculation of the rhs of PDE and just exchange the
       boundary/interface values between threads?
