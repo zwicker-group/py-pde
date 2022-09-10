@@ -1,4 +1,7 @@
 #!/bin/bash
-echo 'Determine coverage of all unittests...'
 
-./run_tests.py --unit --coverage --nojit --parallel --runslow
+echo 'Run serial tests to determine coverage...'
+./run_tests.py --unit --coverage --nojit --num_cores auto --runslow
+
+echo 'Run parallel tests to determine coverage...'
+./run_tests.py --unit --coverage --nojit --use_mpi --runslow

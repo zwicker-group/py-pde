@@ -92,7 +92,7 @@ def test_coordinate_conversion(grid):
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_integration(grid):
+def test_integration_serial(grid):
     """test integration of fields"""
     arr = np.random.randn(*grid.shape)
     res = grid.make_integrator()(arr)

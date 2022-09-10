@@ -1,15 +1,13 @@
-name: "Test minimal requirements"
+name: "Tests with minimal requirements"
 
 on: [push]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]  # windows-latest
-
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
@@ -22,12 +20,13 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r tests/requirements_min.txt
-        
+        pip install -r tests/requirements.txt
+
     - name: Test with pytest
       env:
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
-        pip install pytest
+        pip install pytest pytest-cov
         cd tests
-        python run_tests.py --unit --showconfig
+        python run_tests.py --unit --num_cores auto --showconfig

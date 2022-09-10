@@ -5,13 +5,14 @@ Cylindrical grids with azimuthal symmetry
  
 """
 
+from __future__ import annotations
+
 import warnings
 from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
 
 import numpy as np
 
 from ..tools.cache import cached_property
-from ..tools.docstrings import fill_in_docstring
 from .base import DimensionError, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
 
@@ -69,7 +70,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         self,
         radius: float,
         bounds_z: Tuple[float, float],
-        shape: Tuple[int, int],
+        shape: Union[int, Sequence[int]],
         periodic_z: bool = False,
     ):
         """
@@ -141,6 +142,34 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         if state_copy:
             raise ValueError(f"State items {state_copy.keys()} were not used")
         return obj
+
+    @classmethod
+    def from_bounds(
+        cls,
+        bounds: Sequence[Tuple[float, float]],
+        shape: Sequence[int],
+        periodic: Sequence[bool],
+    ) -> CylindricalSymGrid:
+        """
+        Args:
+            bounds (tuple):
+                Give the coordinate range for each axis. This should be a tuple of two
+                number (lower and upper bound) for each axis. The length of `bounds`
+                must be 2.
+            shape (tuple):
+                The number of support points for each axis. The length of `shape` needs
+                to be 2.
+            periodic (bool or list):
+                Specifies which axes possess periodic boundary conditions. The first
+                entry is ignored.
+
+        Returns:
+            CylindricalGrid representing the region chosen by bounds
+        """
+        radii, bounds_z = bounds
+        if radii[0] != 0:
+            raise NotImplementedError("Cylinders with hollow core are not implemented.")
+        return cls(radii[1], bounds_z, shape, periodic_z=periodic[1])
 
     @property
     def radius(self) -> float:
@@ -247,7 +276,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         if extract == "cut_z" or extract == "cut_axial":
             # do a cut along the z axis for r=0
             axis = 1
-            data_y = data[..., 0, :]
+            data_y: Union[np.ndarray, Tuple[np.ndarray]] = data[..., 0, :]
             label_y = "Cut along z"
 
         elif extract == "project_z" or extract == "project_axial":
@@ -401,30 +430,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         else:
             return dist
 
-    @fill_in_docstring
-    def get_boundary_conditions(
-        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
-    ) -> "Boundaries":
-        """constructs boundary conditions from a flexible data format
-
-        Args:
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-            rank (int):
-                The tensorial rank of the value associated with the boundary
-                conditions.
-
-        Raises:
-            ValueError: If the data given in `bc` cannot be read
-            PeriodicityError: If the boundaries are not compatible with the
-                periodic axes of the grid.
-        """
-        from .boundaries import Boundaries  # @Reimport
-
-        # obtain boundary conditions
-        return Boundaries.from_data(self, bc, rank=rank)
-
     def get_cartesian_grid(self, mode: str = "valid") -> CartesianGrid:
         """return a Cartesian grid for this Cylindrical one
 
@@ -452,9 +457,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         grid_shape = 2 * num, 2 * num, self.shape[1]
         return CartesianGrid(grid_bounds, grid_shape)
 
-    def get_subgrid(
-        self, indices: Sequence[int]
-    ) -> Union["CartesianGrid", "PolarSymGrid"]:
+    def slice(self, indices: Sequence[int]) -> Union["CartesianGrid", "PolarSymGrid"]:
         """return a subgrid of only the specified axes
 
         Args:

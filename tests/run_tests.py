@@ -5,7 +5,7 @@ import os
 import subprocess as sp
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Sequence, Union
 
 PACKAGE = "pde"  # name of the package that needs to be tested
 PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package
@@ -31,9 +31,9 @@ def show_config():
     from importlib.machinery import SourceFileLoader
 
     # imports the package from the package path
-    pde = SourceFileLoader(PACKAGE, f"{PACKAGE_PATH/PACKAGE}/__init__.py").load_module()
+    mod = SourceFileLoader(PACKAGE, f"{PACKAGE_PATH/PACKAGE}/__init__.py").load_module()
     # obtain the package environment
-    env = pde.environment()
+    env = mod.environment()
 
     print(f"{'='*33} CONFIGURATION {'='*32}")
     for category, data in env.items():
@@ -67,7 +67,7 @@ def test_codestyle(*, verbose: bool = True) -> int:
         result = sp.run(["isort", "--profile", "black", "--diff", path])
         retcodes.append(result.returncode)
         # format rest
-        result = sp.run(["black", "-t", "py36", "--check", path])
+        result = sp.run(["black", "-t", "py38", "--check", path])
         retcodes.append(result.returncode)
 
     return _most_severe_exit_code(retcodes)
@@ -111,9 +111,11 @@ def test_types(*, report: bool = False, verbose: bool = True) -> int:
 
 
 def run_unit_tests(
+    *,
     runslow: bool = False,
     runinteractive: bool = False,
-    parallel: bool = False,
+    use_mpi: bool = False,
+    num_cores: Union[str, int] = 1,
     coverage: bool = False,
     nojit: bool = False,
     early: bool = False,
@@ -124,7 +126,8 @@ def run_unit_tests(
     Args:
         runslow (bool): Whether to run the slow tests
         runinteractive (bool): Whether to run the interactive tests
-        parallel (bool): Whether to use multiple processors
+        use_mpi (bool): Flag indicating whether tests are run using MPI
+        num_cores (int or str): Number of cores to use (`auto` for automatic choice)
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
         early (bool): Whether to fail at the first test
@@ -143,8 +146,16 @@ def run_unit_tests(
         env["NUMBA_WARNINGS"] = "1"
         env["NUMBA_BOUNDSCHECK"] = "1"
 
+    if use_mpi:
+        # run pytest using MPI with two cores
+        args = ["mpiexec", "-n", "2"]
+        if sys.platform == "darwin":
+            args += ["-host", "localhost"]
+    else:
+        args = []
+
     # build the arguments string
-    args = [
+    args += [
         sys.executable,
         "-m",
         "pytest",  # run pytest module
@@ -155,21 +166,26 @@ def run_unit_tests(
         "--import-mode=importlib",
     ]
 
-    # allow running slow and interactive tests?
     if runslow:
-        args.append("--runslow")
+        args.append("--runslow")  # also run slow tests
     if runinteractive:
-        args.append("--runinteractive")
+        args.append("--runinteractive")  # also run interactive tests
+    if use_mpi:
+        args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
 
     # fail early if requested
     if early:
         args.append("--maxfail=1")
 
     # run tests using multiple cores?
-    if parallel:
+    if num_cores == "auto":
         from multiprocessing import cpu_count
 
-        args.extend(["-n", str(cpu_count() // 2), "--durations=10"])
+        num_cores = cpu_count() // 2
+    else:
+        num_cores = int(num_cores)
+    if num_cores > 1:
+        args.extend(["-n", str(num_cores), "--durations=10"])
 
     # run only a subset of the tests?
     if pattern is not None:
@@ -185,6 +201,9 @@ def run_unit_tests(
                 f"--cov={PACKAGE}",  # specify in which package the coverage is measured
             ]
         )
+        if use_mpi:
+            # this is a hack to allow appending the coverage report
+            args.append("--cov-append")
 
     # specify the package to run
     args.append(PACKAGE)
@@ -239,6 +258,12 @@ def main() -> int:
         help="Also run interactive unit tests",
     )
     group.add_argument(
+        "--use_mpi",
+        action="store_true",
+        default=False,
+        help="Run each unit test with MPI multiprocessing",
+    )
+    group.add_argument(
         "--showconfig",
         action="store_true",
         default=False,
@@ -251,10 +276,11 @@ def main() -> int:
         help="Record test coverage of unit tests",
     )
     group.add_argument(
-        "--parallel",
-        action="store_true",
-        default=False,
-        help="Use multiprocessing",
+        "--num_cores",
+        metavar="CORES",
+        type=str,
+        default=1,
+        help="Number of cores to use (`auto` for automatic choice)",
     )
     group.add_argument(
         "--nojit",
@@ -303,8 +329,9 @@ def main() -> int:
         retcode = run_unit_tests(
             runslow=args.runslow,
             runinteractive=args.runinteractive,
+            use_mpi=args.use_mpi,
             coverage=args.coverage,
-            parallel=args.parallel,
+            num_cores=args.num_cores,
             nojit=args.nojit,
             early=args.early,
             pattern=args.pattern,

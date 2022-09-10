@@ -14,6 +14,7 @@ Handles configuration variables of the package
 """
 
 import collections
+import contextlib
 import importlib
 import sys
 import warnings
@@ -39,17 +40,17 @@ DEFAULT_CONFIG: List[Parameter] = [
         "the precision of the mathematical calculations.",
     ),
     Parameter(
-        "numba.parallel",
+        "numba.multithreading",
         True,
         bool,
-        "Determines whether multiple cores are used in numba-compiled code.",
+        "Determines whether multiple threads are used in numba-compiled code.",
     ),
     Parameter(
-        "numba.parallel_threshold",
+        "numba.multithreading_threshold",
         256**2,
         int,
-        "Minimal number of support points before multithreading or multiprocessing is "
-        "enabled in the numba compilations.",
+        "Minimal number of support points before multithreading is enabled in numba "
+        "compilations.",
     ),
 ]
 
@@ -79,8 +80,30 @@ class Config(collections.UserDict):
             self.update(items)
         self.mode = mode
 
+    def _translate_deprecated_key(self, key: str) -> str:
+        """helper function that allows using deprecated config items"""
+        # the depreciations have been introduced on 2022-09-04 and are scheduled to be
+        # removed after 2023-03-04
+        if key == "numba.parallel":
+            warnings.warn(
+                "Option `numba.parallel` has been renamed to `numba.multithreading`",
+                DeprecationWarning,
+            )
+            return "numba.multithreading"
+
+        elif key == "numba.parallel_threshold":
+            warnings.warn(
+                "Option `numba.parallel_threshold` has been renamed to "
+                "`numba.multithreading_threshold`",
+                DeprecationWarning,
+            )
+            return "numba.multithreading_threshold"
+
+        return key
+
     def __getitem__(self, key: str):
         """retrieve item `key`"""
+        key = self._translate_deprecated_key(key)
         parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
@@ -89,6 +112,7 @@ class Config(collections.UserDict):
 
     def __setitem__(self, key: str, value):
         """update item `key` with `value`"""
+        key = self._translate_deprecated_key(key)
         if self.mode == "insert":
             self.data[key] = value
 
@@ -109,6 +133,7 @@ class Config(collections.UserDict):
 
     def __delitem__(self, key: str):
         """removes item `key`"""
+        key = self._translate_deprecated_key(key)
         if self.mode == "insert":
             del self.data[key]
         else:
@@ -125,6 +150,23 @@ class Config(collections.UserDict):
     def __repr__(self) -> str:
         """represent the configuration as a string"""
         return f"{self.__class__.__name__}({repr(self.to_dict())})"
+
+    @contextlib.contextmanager
+    def __call__(self, values: Dict[str, Any] = None, **kwargs):
+        """context manager temporarily changing the configuration
+
+        Args:
+            values (dict): New configuration parameters
+            **kwargs: New configuration parameters
+        """
+        data_initial = self.data.copy()  # save old configuration
+        # set new configuration
+        if values is not None:
+            self.data.update(values)
+        self.data.update(kwargs)
+        yield  # return to caller
+        # restore old configuration
+        self.data = data_initial
 
 
 def get_package_versions(
@@ -188,6 +230,7 @@ def environment() -> Dict[str, Any]:
 
     from .. import __version__ as package_version
     from .. import config
+    from . import mpi
     from .numba import numba_environment
     from .plotting import get_plotting_context
 
@@ -214,5 +257,11 @@ def environment() -> Dict[str, Any]:
     )
     if module_available("numba"):
         result["numba environment"] = numba_environment()
+
+    # add information about MPI environment
+    if mpi.size > 1:
+        result["multiprocessing"] = {"initialized": True, "size": mpi.size}
+    else:
+        result["multiprocessing"] = {"initialized": False}
 
     return result

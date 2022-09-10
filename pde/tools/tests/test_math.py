@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde.tools.math import SmoothData1D
+from pde.tools.math import OnlineStatistics, SmoothData1D
 
 
 def test_SmoothData1D():
@@ -32,3 +32,19 @@ def test_SmoothData1D():
     y = [0, 1, np.nan]
     s = SmoothData1D(x, y)
     assert s(0.5) == pytest.approx(0.5)
+
+
+def test_online_statistics():
+    """test OnlineStatistics class"""
+    stat = OnlineStatistics()
+
+    stat.add(1)
+    stat.add(2)
+
+    assert stat.mean == pytest.approx(1.5)
+    assert stat.std == pytest.approx(0.5)
+    assert stat.var == pytest.approx(0.25)
+    assert stat.count == 2
+    assert stat.to_dict() == pytest.approx(
+        {"min": 1, "max": 2, "mean": 1.5, "std": 0.5, "count": 2}
+    )

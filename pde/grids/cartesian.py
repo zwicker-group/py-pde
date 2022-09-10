@@ -15,7 +15,6 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
 import numpy as np
 
 from ..tools.cuboid import Cuboid
-from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import plot_on_axes
 from .base import DimensionError, GridBase, _check_shape
 
@@ -172,6 +171,32 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         if state_copy:
             raise ValueError(f"State items {state_copy.keys()} were not used")
         return obj
+
+    @classmethod
+    def from_bounds(
+        cls,
+        bounds: Sequence[Tuple[float, float]],
+        shape: Sequence[int],
+        periodic: Sequence[bool],
+    ) -> CartesianGrid:
+        """
+        Args:
+            bounds (tuple):
+                Give the coordinate range for each axis. This should be a tuple of two
+                number (lower and upper bound) for each axis. The length of `bounds`
+                thus determines the grid dimension.
+            shape (tuple):
+                The number of support points for each axis. The length of `shape` needs
+                to match the grid dimension.
+            periodic (bool or list):
+                Specifies which axes possess periodic boundary conditions. This is
+                either a list of booleans defining periodicity for each individual axis
+                or a single boolean value specifying the same periodicity for all axes.
+
+        Returns:
+            :class:`CartesianGrid` representing the region chosen by bounds
+        """
+        return CartesianGrid(bounds, shape, periodic)
 
     @property
     def volume(self) -> float:
@@ -518,30 +543,7 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
 
             ax.set_aspect(1)
 
-    @fill_in_docstring
-    def get_boundary_conditions(
-        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
-    ) -> "Boundaries":
-        """constructs boundary conditions from a flexible data format
-
-        Args:
-            bc (str or list or tuple or dict):
-                The boundary conditions applied to the field.
-                {ARG_BOUNDARIES}
-            rank (int):
-                The tensorial rank of the value associated with the boundary conditions.
-
-        Raises:
-            ValueError: If the data given in `bc` cannot be read
-            PeriodicityError: If the boundaries are not compatible with the
-                periodic axes of the grid.
-        """
-        from .boundaries import Boundaries  # @Reimport
-
-        # get boundary conditions
-        return Boundaries.from_data(self, bc, rank=rank)
-
-    def get_subgrid(self, indices: Sequence[int]) -> CartesianGrid:
+    def slice(self, indices: Sequence[int]) -> CartesianGrid:
         """return a subgrid of only the specified axes
 
         Args:
@@ -620,7 +622,7 @@ class UnitGrid(CartesianGrid):
             self.cuboid.bounds, shape=self.shape, periodic=self.periodic
         )
 
-    def get_subgrid(self, indices: Sequence[int]) -> UnitGrid:
+    def slice(self, indices: Sequence[int]) -> UnitGrid:
         """return a subgrid of only the specified axes
 
         Args:

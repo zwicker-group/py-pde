@@ -156,10 +156,6 @@ class Boundaries(list):
             return NotImplemented
         return super().__eq__(other) and self.grid == other.grid
 
-    def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
-        return hash(tuple(bc_ax._cache_hash() for bc_ax in self))
-
     def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
 
@@ -259,16 +255,6 @@ class Boundaries(list):
                 result.append(f"Representation not implemented for axis {axis_name}")
 
         return "\n".join(result)
-
-    def extract_component(self, *indices) -> Boundaries:
-        """extracts the boundary conditions of the given component of the tensor.
-
-        Args:
-            *indices:
-                One or two indices for vector or tensor fields, respectively
-        """
-        boundaries = [boundary.extract_component(*indices) for boundary in self]
-        return self.__class__(boundaries)
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cells for all boundaries

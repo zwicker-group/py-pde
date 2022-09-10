@@ -81,9 +81,6 @@ def test_individual_boundaries():
 
         for bc_copy in [BCBase.from_data(g, 0, upper=True, data=bc, rank=0), bc.copy()]:
             assert bc == bc_copy
-            assert bc._cache_hash() == bc_copy._cache_hash()
-
-    assert bc.extract_component() == bc
 
 
 def test_individual_boundaries_multidimensional():
@@ -101,16 +98,8 @@ def test_individual_boundaries_multidimensional():
     with pytest.raises(RuntimeError):
         bc.check_value_rank(0)
 
-    bc_comp = bc.extract_component(0)
-    assert bc_comp.rank == 0
-    assert bc_comp.value == 1
-    bc_comp = bc.extract_component(1)
-    assert bc_comp.rank == 0
-    assert bc_comp.value == 2
-
     for bc_copy in [BCBase.from_data(g2, 0, upper=True, data=bc, rank=1), bc.copy()]:
         assert bc == bc_copy
-        assert bc._cache_hash() == bc_copy._cache_hash()
 
 
 def test_virtual_points():

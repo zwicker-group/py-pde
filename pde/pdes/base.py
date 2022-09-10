@@ -4,6 +4,7 @@ Base classes
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+import copy
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Optional  # @UnusedImport
@@ -63,7 +64,9 @@ class PDEBase(metaclass=ABCMeta):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`).
                 Note that this random number generator is only used for numpy function,
-                while compiled numba code is unaffected.
+                while compiled numba code is unaffected. Moreover, in simulations using
+                multiprocessing, setting the same generator in all processes might yield
+                unintended correlations in the simulation results.
 
         Note:
             If more complicated noise structures are required, the methods
@@ -120,7 +123,7 @@ class PDEBase(metaclass=ABCMeta):
         self, state: FieldBase
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function for evaluating the right hand side"""
-        raise NotImplementedError
+        raise NotImplementedError("No backend `numba`")
 
     def check_rhs_consistency(
         self,
@@ -235,11 +238,7 @@ class PDEBase(metaclass=ABCMeta):
             else:
                 rhs._backend = "numba"  # type: ignore
 
-        if backend == "numba":
-            rhs = self._make_pde_rhs_numba_cached(state)
-            rhs._backend = "numba"  # type: ignore
-
-        elif backend == "numpy":
+        if backend == "numpy":
             state = state.copy()
 
             def evolution_rate_numpy(state_data: np.ndarray, t: float) -> np.ndarray:
@@ -249,6 +248,10 @@ class PDEBase(metaclass=ABCMeta):
 
             rhs = evolution_rate_numpy
             rhs._backend = "numpy"  # type: ignore
+
+        elif backend == "numba":
+            rhs = self._make_pde_rhs_numba_cached(state)
+            rhs._backend = "numba"  # type: ignore
 
         elif backend != "auto":
             raise ValueError(
@@ -455,7 +458,7 @@ class PDEBase(metaclass=ABCMeta):
             sde_rhs._backend = "numpy"  # type: ignore
 
         else:
-            raise ValueError(f"Unknown backend `{backend}`")
+            raise ValueError(f"Unsupported backend `{backend}`")
 
         return sde_rhs
 
@@ -468,7 +471,7 @@ class PDEBase(metaclass=ABCMeta):
         method: Union[str, "SolverBase"] = "auto",
         ret_info: bool = False,
         **kwargs,
-    ) -> Union[FieldBase, Tuple[FieldBase, Dict[str, Any]]]:
+    ) -> Union[Optional[FieldBase], Tuple[Optional[FieldBase], Dict[str, Any]]]:
         """convenience method for solving the partial differential equation
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)
@@ -528,7 +531,9 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             :class:`~pde.fields.base.FieldBase`:
             The state at the final time point. If `ret_info == True`, a tuple with the
-            final state and a dictionary with additional information is returned.
+            final state and a dictionary with additional information is returned. Note
+            that `None` instead of a field is returned in multiprocessing simulations if
+            the current run is not the main MPI node.
         """
         from ..solvers.base import SolverBase  # @Reimport
 
@@ -558,8 +563,8 @@ class PDEBase(metaclass=ABCMeta):
         final_state = controller.run(state, dt)
 
         if ret_info:
-            info = controller.diagnostics.copy()
-            info["controller"].pop("solver_class")  # remove redundant information
+            info = copy.deepcopy(controller.diagnostics)
+            info["controller"].pop("solver_class", None)  # remove redundant information
             return final_state, info
         else:
             return final_state

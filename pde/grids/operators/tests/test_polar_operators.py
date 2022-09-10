@@ -15,7 +15,7 @@ from pde import (
 )
 
 
-def test_findiff():
+def test_findiff_polar():
     """test operator for a simple polar grid"""
     grid = PolarSymGrid(1.5, 3)
     _, _, r2 = grid.axes_coords[0]
@@ -24,13 +24,13 @@ def test_findiff():
     v = VectorField(grid, [[1, 2, 4], [0] * 3])
 
     # test gradient
-    grad = s.gradient(bc="value")
+    grad = s.gradient(bc=["derivative", "value"])
     np.testing.assert_allclose(grad.data[0, :], [1, 3, -6])
     grad = s.gradient(bc="derivative")
     np.testing.assert_allclose(grad.data[0, :], [1, 3, 2])
 
     # test divergence
-    div = v.divergence(bc="value")
+    div = v.divergence(bc=["derivative", "value"])
     np.testing.assert_allclose(div.data, [5, 17 / 3, -6 + 4 / r2])
     div = v.divergence(bc="derivative")
     np.testing.assert_allclose(div.data, [5, 17 / 3, 2 + 4 / r2])

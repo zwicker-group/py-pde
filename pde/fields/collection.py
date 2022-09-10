@@ -1,6 +1,5 @@
 """
-Defines a collection of fields to represent multiple fields defined on a common
-grid.
+Defines a collection of fields to represent multiple fields defined on a common grid.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -9,7 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, Iterator, List, Optional, Sequence, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Union
 
 import numpy as np
 
@@ -383,7 +382,7 @@ class FieldCollection(FieldBase):
         ]
 
         # create vector field from the data
-        return cls(fields=fields, label=label)  # lgtm [py/call-to-non-callable]
+        return cls(fields=fields, label=label)
 
     @classmethod
     def scalar_random_uniform(
@@ -493,6 +492,19 @@ class FieldCollection(FieldBase):
 
         # create the collection from the copied fields
         return self.__class__(fields, copy_fields=False, label=label, dtype=dtype)
+
+    def _unary_operation(self: FieldCollection, op: Callable) -> FieldCollection:
+        """perform an unary operation on this field collection
+
+        Args:
+            op (callable):
+                A function calculating the result
+
+        Returns:
+            FieldBase: An field that contains the result of the operation.
+        """
+        fields = [fields._unary_operation(op) for fields in self.fields]
+        return self.__class__(fields, label=self.label)
 
     def interpolate_to_grid(
         self,
@@ -635,7 +647,6 @@ class FieldCollection(FieldBase):
     def plot(
         self,
         kind: Union[str, Sequence[str]] = "auto",
-        resize_fig=None,
         figsize="auto",
         arrangement="horizontal",
         fig=None,
@@ -650,8 +661,6 @@ class FieldCollection(FieldBase):
                 `line`, `vector`, or `interactive`. Alternatively, `auto` determines the
                 best visualization based on each field itself. Instead of a single value
                 for all fields, a list with individual values can be given.
-            resize_fig (bool):
-                Whether to resize the figure to adjust to the number of panels
             figsize (str or tuple of numbers):
                 Determines the figure size. The figure size is unchanged if the string
                 `default` is passed. Conversely, the size is adjusted automatically when
@@ -674,22 +683,6 @@ class FieldCollection(FieldBase):
             List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
-        if resize_fig is not None:
-            # Deprecated this argument on 2021-02-01
-            import warnings
-
-            warnings.warn(
-                "`resize_fig` is a deprecated argument. Use `figsize` directly",
-                DeprecationWarning,
-            )
-
-            if resize_fig is True:
-                figsize = "auto"
-            elif resize_fig is False:
-                figsize = "default"
-            else:
-                raise ValueError
-
         # set the size of the figure
         if figsize == "default":
             pass  # just leave the figure size at its default value

@@ -72,7 +72,7 @@ class WavePDE(PDEBase):
     @property
     def expressions(self) -> Dict[str, str]:
         """dict: the expressions of the right hand side of this PDE"""
-        return {"u": "v", "v": expr_prod(self.speed**2, "laplace(u)")}
+        return {"u": "v", "v": expr_prod(self.speed**2, "∇²u")}
 
     def evolution_rate(  # type: ignore
         self,

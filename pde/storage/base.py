@@ -22,6 +22,7 @@ from typing import (
 )
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 from ..fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from ..fields.base import FieldBase
@@ -63,7 +64,7 @@ class StorageBase(metaclass=ABCMeta):
         self.info = {} if info is None else info
         self.write_mode = write_mode
         self._data_shape: Optional[Tuple[int, ...]] = None
-        self._dtype: Optional[Tuple[int, ...]] = None
+        self._dtype: Optional[DTypeLike] = None
         self._grid: Optional[GridBase] = None
         self._field: Optional[FieldBase] = None
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -81,7 +82,7 @@ class StorageBase(metaclass=ABCMeta):
             return self._data_shape
 
     @property
-    def dtype(self) -> Tuple[int, ...]:
+    def dtype(self) -> DTypeLike:
         """the current data type.
 
         Raises:

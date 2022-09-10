@@ -44,7 +44,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
     dr_2, dz_2 = 1 / grid.discretization**2
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
@@ -81,7 +81,7 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
     scale_r, scale_z = 1 / (2 * grid.discretization)
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
@@ -118,7 +118,7 @@ def make_gradient_squared(
     """
     # use processing for large enough arrays
     dim_r, dim_z = grid.shape
-    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     if central:
         # use central differences
@@ -170,7 +170,7 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
     rs = grid.axes_coords[0]
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
@@ -208,7 +208,7 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
     rs = grid.axes_coords[0]
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
@@ -259,7 +259,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
     scale_z = 1 / (dz**2)
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
@@ -316,7 +316,7 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
     scale_r, scale_z = 1 / (2 * grid.discretization)
 
     # use processing for large enough arrays
-    parallel = dim_r * dim_z >= config["numba.parallel_threshold"]
+    parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:

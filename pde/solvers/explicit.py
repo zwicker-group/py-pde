@@ -4,12 +4,15 @@ Defines an explicit solver supporting various methods
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
+import numba as nb
 import numpy as np
+from numba.extending import register_jitable
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
+from ..tools.math import OnlineStatistics
 from ..tools.numba import jit
 from .base import SolverBase
 
@@ -26,6 +29,7 @@ class ExplicitSolver(SolverBase):
         self,
         pde: PDEBase,
         scheme: str = "euler",
+        *,
         backend: str = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-5,
@@ -55,6 +59,61 @@ class ExplicitSolver(SolverBase):
         self.adaptive = adaptive
         self.tolerance = tolerance
 
+    def _make_error_synchronizer(self) -> Callable[[float], float]:
+        """return helper function that synchronizes errors between multiple processes"""
+
+        @register_jitable
+        def synchronize_errors(error: float) -> float:
+            return error
+
+        return synchronize_errors  # type: ignore
+
+    def _make_dt_adjuster(self) -> Callable[[float, float, float], float]:
+        """return a function that can be used to adjust time steps"""
+        dt_min = self.dt_min
+        dt_min_err = f"Time step below {dt_min}"
+        dt_max = self.dt_max
+
+        def adjust_dt(dt: float, error_rel: float, t: float) -> float:
+            """helper function that adjust the time step
+
+            Args:
+                dt (float): Current time step
+                error_rel (float): Current (normalized) error estimate
+                t (float): Current time point
+
+            Returns:
+                float: Time step of the next iteration
+            """
+            # adjust the time step
+            if error_rel < 0.00057665:
+                # error was very small => maximal increase in dt
+                # The constant on the right hand side of the comparison is chosen to
+                # agree with the equation for adjusting dt below
+                dt *= 4.0
+            elif np.isnan(error_rel):
+                # state contained NaN => decrease time step strongly
+                dt *= 0.25
+            else:
+                # otherwise, adjust time step according to error
+                dt *= max(0.9 * error_rel**-0.2, 0.1)
+
+            # limit time step to permissible bracket
+            if dt > dt_max:
+                dt = dt_max
+            elif dt < dt_min:
+                if np.isnan(error_rel):
+                    raise RuntimeError("Encountered NaN during simulation")
+                else:
+                    raise RuntimeError(dt_min_err)
+
+            return dt
+
+        if self.backend == "numba":
+            adjust_dt = jit(adjust_dt)
+
+        return adjust_dt
+
     def _make_fixed_euler_stepper(
         self, state: FieldBase, dt: float
     ) -> Callable[[np.ndarray, float, int], Tuple[float, float]]:
@@ -72,8 +131,6 @@ class ExplicitSolver(SolverBase):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, steps: int)`
         """
-        self.info["dt_adaptive"] = False
-
         # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step(state))
 
@@ -126,7 +183,10 @@ class ExplicitSolver(SolverBase):
 
     def _make_adaptive_euler_stepper(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, float, float], Tuple[float, float, int, float]]:
+    ) -> Callable[
+        [np.ndarray, float, float, float, Optional[OnlineStatistics]],
+        Tuple[float, float, int, float],
+    ]:
         """make an adaptive Euler stepper
 
         Args:
@@ -146,30 +206,35 @@ class ExplicitSolver(SolverBase):
                 "Cannot use adaptive Euler stepper with stochastic equation"
             )
 
-        # obtain post-step action function
+        # obtain functions determining how the PDE is evolved
+        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
         modify_after_step = jit(self.pde.make_modify_after_step(state))
 
-        # handle deterministic version of the pde using an adaptive stepper
-        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
+        # obtain auxiliary functions
+        sync_errors = self._make_error_synchronizer()
+        adjust_dt = self._make_dt_adjuster()
         tolerance = self.tolerance
-        self.info["stochastic"] = False
-        self.info["dt_adaptive"] = True
-
-        dt_min = self.dt_min
-        dt_min_err = f"Time step below {dt_min}"
-        dt_max = self.dt_max
 
         def stepper(
-            state_data: np.ndarray, t_start: float, t_end: float, dt_init: float
+            state_data: np.ndarray,
+            t_start: float,
+            t_end: float,
+            dt_init: float,
+            dt_stats: OnlineStatistics = None,
         ) -> Tuple[float, float, int, float]:
             """compiled inner loop for speed"""
             modifications = 0.0
             dt = dt_init
             t = t_start
+            calculate_rate = True  # flag stating whether to calculate rate for time t
             steps = 0
             while t < t_end:
+                if calculate_rate:
+                    rate = rhs_pde(state_data, t)
+                    calculate_rate = False
+                # else: rate is reused from last (failed) iteration
+
                 # single step with dt
-                rate = rhs_pde(state_data, t)
                 k1 = state_data + dt * rate
 
                 # double step with half the dt
@@ -184,30 +249,22 @@ class ExplicitSolver(SolverBase):
                     # we thus need to use the following order:
                     error = max(abs(k1.flat[i] - k2.flat[i]), error)
                 error *= dt  # error estimate should be independent of magnitude of dt
+                error_rel = error / tolerance  # normalize error to given tolerance
+
+                # synchronize the error between all processes (if necessary)
+                error_rel = sync_errors(error_rel)
 
                 # do the step if the error is sufficiently small
-                if error <= tolerance:
-                    t += dt
+                if error_rel <= 1:
                     steps += 1
-                    state_data[:] = k2
+                    t += dt
+                    state_data[...] = k2
                     modifications += modify_after_step(state_data)
+                    calculate_rate = True
+                    if dt_stats is not None:
+                        dt_stats.add(dt)
 
-                # adjust the time step
-                if error < 1e-8:
-                    # error was very small => maximal increase in dt
-                    dt *= 4.0
-                elif np.isnan(error):
-                    # state contained NaN => decrease time step strongly
-                    dt *= 0.25
-                else:
-                    # otherwise, adjust time step according to error
-                    dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
-
-                # limit time step to permissible bracket
-                if dt > dt_max:
-                    dt = dt_max
-                elif dt < dt_min:
-                    raise RuntimeError(dt_min_err)
+                dt = adjust_dt(dt, error_rel, t)
 
             return t, dt, steps, modifications
 
@@ -233,14 +290,12 @@ class ExplicitSolver(SolverBase):
         """
         if self.pde.is_sde:
             raise RuntimeError(
-                "Cannot use Runge-Kutta stepper with stochastic equation"
+                "Runge-Kutta stepper does not support stochastic equations"
             )
-
-        rhs = self._make_pde_rhs(state, backend=self.backend)
         self.info["stochastic"] = False
-        self.info["dt_adaptive"] = False
 
-        # obtain post-step action function
+        # obtain functions determining how the PDE is evolved
+        rhs = self._make_pde_rhs(state, backend=self.backend)
         modify_after_step = jit(self.pde.make_modify_after_step(state))
 
         def stepper(
@@ -264,12 +319,14 @@ class ExplicitSolver(SolverBase):
             return t + dt, modifications
 
         self._logger.info(f"Initialized explicit Runge-Kutta-45 stepper with dt=%g", dt)
-
         return stepper
 
     def _make_rkf_stepper(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, float, float], Tuple[float, float, int, float]]:
+    ) -> Callable[
+        [np.ndarray, float, float, float, Optional[OnlineStatistics]],
+        Tuple[float, float, int, float],
+    ]:
         """make an adaptive stepper using the explicit Runge-Kutta-Fehlberg method
 
         Args:
@@ -289,19 +346,17 @@ class ExplicitSolver(SolverBase):
                 "Cannot use Runge-Kutta-Fehlberg stepper with stochastic equation"
             )
 
+        # obtain functions determining how the PDE is evolved
         rhs = self._make_pde_rhs(state, backend=self.backend)
-        self.info["stochastic"] = False
-        self.info["dt_adaptive"] = True
-
-        # obtain post-step action function
         modify_after_step = jit(self.pde.make_modify_after_step(state))
+        self.info["stochastic"] = False
+
+        # obtain auxiliary functions
+        sync_errors = self._make_error_synchronizer()
+        adjust_dt = self._make_dt_adjuster()
+        tolerance = self.tolerance
 
         # use Runge-Kutta-Fehlberg method
-        tolerance = self.tolerance
-        dt_min = self.dt_min
-        dt_min_err = f"Time step below {dt_min}"
-        dt_max = self.dt_max
-
         # define coefficients for RK4(5), formula 2 Table III in Fehlberg
         a2 = 1 / 4
         a3 = 3 / 8
@@ -339,7 +394,11 @@ class ExplicitSolver(SolverBase):
         c5 = -1 / 5
 
         def stepper(
-            state_data: np.ndarray, t_start: float, t_end: float, dt_init: float
+            state_data: np.ndarray,
+            t_start: float,
+            t_end: float,
+            dt_init: float,
+            dt_stats: OnlineStatistics = None,
         ) -> Tuple[float, float, int, float]:
             """compiled inner loop for speed"""
             modifications = 0.0
@@ -347,8 +406,6 @@ class ExplicitSolver(SolverBase):
             t = t_start
             steps = 0
             while t < t_end:
-                steps += 1
-
                 # do the six intermediate steps
                 k1 = dt * rhs(state_data, t)
                 k2 = dt * rhs(state_data + b21 * k1, t + a2 * dt)
@@ -377,28 +434,22 @@ class ExplicitSolver(SolverBase):
                     # we thus need to use the following order:
                     error = max(error_local, error)  # type: ignore
 
+                error_rel = error / tolerance  # normalize error to given tolerance
+
+                # synchronize the error between all processes (if necessary)
+                error_rel = sync_errors(error_rel)
+
                 # do the step if the error is sufficiently small
-                if error <= tolerance:
+                if error <= 1:
+                    steps += 1
                     t += dt
                     state_data += c1 * k1 + c3 * k3 + c4 * k4 + c5 * k5
                     modifications += modify_after_step(state_data)
+                    if dt_stats is not None:
+                        dt_stats.add(dt)
 
                 # adjust the time step
-                if error < 1e-8:
-                    # error was very small => maximal increase in dt
-                    dt *= 4.0
-                elif np.isnan(error):
-                    # state contained NaN => decrease time step strongly
-                    dt *= 0.25
-                else:
-                    # otherwise, adjust time step according to error
-                    dt *= min(max(0.9 * (tolerance / error) ** 0.2, 0.1), 4.0)
-
-                # limit time step to permissible bracket
-                if dt > dt_max:
-                    dt = dt_max
-                elif dt < dt_min:
-                    raise RuntimeError(dt_min_err)
+                dt = adjust_dt(dt, error_rel, t)
 
             return t, dt, steps, modifications
 
@@ -407,8 +458,80 @@ class ExplicitSolver(SolverBase):
         )
         return stepper
 
+    def _make_fixed_stepper(
+        self, state: FieldBase, dt: float
+    ) -> Callable[[np.ndarray, float, int], Tuple[float, float]]:
+        """return a stepper function using an explicit scheme with fixed time steps
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step of the explicit stepping.
+        """
+        if self.scheme == "euler":
+            fixed_stepper = self._make_fixed_euler_stepper(state, dt)
+        elif self.scheme in {"runge-kutta", "rk", "rk45"}:
+            fixed_stepper = self._make_rk45_stepper(state, dt)
+        else:
+            raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
+
+        if self.backend == "numba":
+            # compile inner stepper
+            sig_fixed = (nb.typeof(state.data), nb.double, nb.int_)
+            fixed_stepper = jit(sig_fixed)(fixed_stepper)
+
+        self.info["dt_adaptive"] = False
+        return fixed_stepper
+
+    def _make_adaptive_stepper(
+        self, state: FieldBase, dt: float
+    ) -> Callable[
+        [np.ndarray, float, float, float, OnlineStatistics],
+        Tuple[float, float, int, float],
+    ]:
+        """return a stepper function using an explicit scheme with fixed time steps
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step of the explicit stepping.
+        """
+        if self.pde.is_sde:
+            raise NotImplementedError(
+                "Adaptive stochastic stepping is not implemented. Use a fixed time "
+                "step instead."
+            )
+        self.info["stochastic"] = False
+
+        if self.scheme == "euler":
+            adaptive_stepper = self._make_adaptive_euler_stepper(state, dt)
+        elif self.scheme in {"runge-kutta", "rk", "rk45"}:
+            adaptive_stepper = self._make_rkf_stepper(state, dt)
+        else:
+            raise ValueError(
+                f"Explicit adaptive scheme `{self.scheme}` is not supported"
+            )
+
+        if self.backend == "numba":
+            # compile inner stepper
+            sig_adaptive = (
+                nb.typeof(state.data),
+                nb.double,
+                nb.double,
+                nb.double,
+                nb.typeof(self.info["dt_statistics"]),
+            )
+            adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
+
+        self.info["dt_adaptive"] = True
+        return adaptive_stepper
+
     def make_stepper(
-        self, state: FieldBase, dt=None
+        self, state: FieldBase, dt: float = None
     ) -> Callable[[FieldBase, float, float], float]:
         """return a stepper function using an explicit scheme
 
@@ -435,64 +558,41 @@ class ExplicitSolver(SolverBase):
                     f"initial value for `dt`. Using dt={dt}, but specifying a value or "
                     "enabling adaptive stepping is advisable."
                 )
+        dt_float = float(dt)  # explicit casting to help type checking
 
-        self.info["dt"] = dt
+        self.info["dt"] = dt_float
         self.info["steps"] = 0
         self.info["scheme"] = self.scheme
         self.info["state_modifications"] = 0.0
 
-        if self.pde.is_sde and self.adaptive:
-            self._logger.warning(
-                "Adaptive stochastic stepping is not implemented. Using a fixed time "
-                "step instead."
-            )
-
-        if self.adaptive and not self.pde.is_sde:
+        if self.adaptive:
             # create stepper with adaptive steps
-            self.info["dt_last"] = dt  # store the time step between calls
-
-            if self.scheme == "euler":
-                adaptive_stepper = self._make_adaptive_euler_stepper(state, dt)
-            elif self.scheme in {"runge-kutta", "rk", "rk45"}:
-                adaptive_stepper = self._make_rkf_stepper(state, dt)
-            else:
-                raise ValueError(
-                    f"Explicit adaptive scheme `{self.scheme}` is not supported"
-                )
-
-            if self.info["backend"] == "numba":
-                adaptive_stepper = jit(adaptive_stepper)  # compile inner stepper
+            adaptive_stepper = self._make_adaptive_stepper(state, dt_float)
+            self.info["dt_statistics"] = OnlineStatistics()
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
             ) -> float:
                 """advance `state` from `t_start` to `t_end` using adaptive steps"""
-                t_last, dt, steps, modifications = adaptive_stepper(
-                    state.data, t_start, t_end, self.info["dt_last"]
+                nonlocal dt_float  # `dt_float` stores value for the next call
+
+                t_last, dt_float, steps, modifications = adaptive_stepper(
+                    state.data, t_start, t_end, dt_float, self.info["dt_statistics"]
                 )
-                self.info["dt_last"] = dt
                 self.info["steps"] += steps
                 self.info["state_modifications"] += modifications
                 return t_last
 
         else:
             # create stepper with fixed steps
-            if self.scheme == "euler":
-                fixed_stepper = self._make_fixed_euler_stepper(state, dt)
-            elif self.scheme in {"runge-kutta", "rk", "rk45"}:
-                fixed_stepper = self._make_rk45_stepper(state, dt)
-            else:
-                raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
-
-            if self.info["backend"] == "numba":
-                fixed_stepper = jit(fixed_stepper)  # compile inner stepper
+            fixed_stepper = self._make_fixed_stepper(state, dt_float)
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
             ) -> float:
                 """advance `state` from `t_start` to `t_end` using fixed steps"""
                 # calculate number of steps (which is at least 1)
-                steps = max(1, int(np.ceil((t_end - t_start) / dt)))
+                steps = max(1, int(np.ceil((t_end - t_start) / dt_float)))
                 t_last, modifications = fixed_stepper(state.data, t_start, steps)
                 self.info["steps"] += steps
                 self.info["state_modifications"] += modifications

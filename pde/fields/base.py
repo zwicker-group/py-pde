@@ -9,7 +9,6 @@ from __future__ import annotations
 import functools
 import json
 import logging
-import warnings
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from pathlib import Path
@@ -27,6 +26,7 @@ from typing import (
 )
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..grids.boundaries.axes import BoundariesData
@@ -106,9 +106,9 @@ class FieldBase(metaclass=ABCMeta):
         if isinstance(value, FieldBase):
             # copy data into current field
             self.assert_field_compatible(value, accept_scalar=True)
-            self._data_valid[:] = value.data
+            self._data_valid[...] = value.data
         else:
-            self._data_valid[:] = value
+            self._data_valid[...] = value
 
     @property
     def _idx_valid(self) -> Tuple[slice, ...]:
@@ -135,7 +135,7 @@ class FieldBase(metaclass=ABCMeta):
 
         if np.isscalar(value):
             # supplied value is a scalar
-            self.__data_full[:] = value
+            self.__data_full[...] = value
 
         elif isinstance(value, np.ndarray):
             # check the shape of the supplied array
@@ -335,12 +335,7 @@ class FieldBase(metaclass=ABCMeta):
         raise NotImplementedError(f"Cannot save {self.__class__.__name__} as an image")
 
     @abstractmethod
-    def copy(
-        self: TField,
-        *,
-        label: str = None,
-        dtype=None,
-    ) -> TField:
+    def copy(self: TField, *, label: str = None, dtype: DTypeLike = None) -> TField:
         pass
 
     def assert_field_compatible(self, other: FieldBase, accept_scalar: bool = False):
@@ -366,10 +361,10 @@ class FieldBase(metaclass=ABCMeta):
             raise ValueError(f"Grids {self.grid} and {other.grid} are incompatible")
 
     @property
-    def dtype(self):
-        """returns the numpy dtype of the underlying data"""
+    def dtype(self) -> DTypeLike:
+        """:class:`~DTypeLike`: the numpy dtype of the underlying data"""
         # this property is necessary to support np.iscomplexobj for DataFieldBases
-        return self.data.dtype
+        return self.data.dtype  # type: ignore
 
     @property
     def is_complex(self) -> bool:
@@ -435,10 +430,7 @@ class FieldBase(metaclass=ABCMeta):
         Returns:
             FieldBase: An field that contains the result of the operation.
         """
-        data = op(self.data)
-        result = self.copy(dtype=data.dtype)
-        result.data = data
-        return result
+        return self.__class__(grid=self.grid, data=op(self.data), label=self.label)
 
     @property
     def real(self: TField) -> TField:
@@ -695,7 +687,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         data: Optional[Union[ArrayLike, str]] = "zeros",
         *,
         label: str = None,
-        dtype=None,
+        dtype: DTypeLike = None,
         with_ghost_cells: bool = False,
     ):
         """
@@ -779,6 +771,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             f"{self.__class__.__name__}(grid={self.grid}, "
             f"data=Array{self.data.shape}"
         )
+        if self.dtype != np.double:
+            result = result[:-1] + f', dtype="{self.dtype}")'
         if self.label:
             result += f', label="{self.label}"'
         return result + ")"
@@ -791,7 +785,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         vmax: float = 1,
         *,
         label: Optional[str] = None,
-        dtype=None,
+        dtype: DTypeLike = None,
         rng: np.random.Generator = None,
     ) -> TDataField:
         """create field with uniform distributed random values
@@ -839,7 +833,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         scaling: str = "none",
         label: Optional[str] = None,
-        dtype=None,
+        dtype: DTypeLike = None,
         rng: np.random.Generator = None,
     ) -> TDataField:
         """create field with normal distributed random values
@@ -905,7 +899,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         axis_combination=np.multiply,
         *,
         label: Optional[str] = None,
-        dtype=None,
+        dtype: DTypeLike = None,
         rng: np.random.Generator = None,
     ) -> TDataField:
         r"""create a random field build from harmonics
@@ -980,7 +974,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         scale: float = 1,
         *,
         label: Optional[str] = None,
-        dtype=None,
+        dtype: DTypeLike = None,
         rng: np.random.Generator = None,
     ) -> TDataField:
         r"""create a field of random values with colored noise
@@ -1062,10 +1056,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(attributes.pop("grid"), data=data, **attributes)
 
     def copy(
-        self: TDataField,
-        *,
-        label: str = None,
-        dtype=None,
+        self: TDataField, *, label: str = None, dtype: DTypeLike = None
     ) -> TDataField:
         """return a copy of the data, but not of the grid
 
@@ -1078,6 +1069,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if label is None:
             label = self.label
+        if dtype is None:
+            dtype = self.dtype
 
         return self.__class__(
             self.grid,
@@ -1447,15 +1440,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         data = self.interpolate(points, backend=backend, method=method, fill=fill)
         return self.__class__(grid, data, label=label)
 
-    def add_interpolated(self, point: np.ndarray, amount: ArrayLike) -> None:
-        """deprecated alias of method `insert`"""
-        # this was deprecated on 2021-02-23
-        warnings.warn(
-            "`add_interpolated` is deprecated. Use `insert` instead",
-            DeprecationWarning,
-        )
-        self.insert(point, amount)
-
     def insert(self, point: np.ndarray, amount: ArrayLike) -> None:
         """adds an (integrated) value to the field at an interpolated position
 
@@ -1471,7 +1455,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 non-uniform discretizations.
         """
         point = np.atleast_1d(point)
-        amount = np.broadcast_to(amount, self.data_shape)  # type: ignore
+        amount = np.broadcast_to(amount, self.data_shape)
         grid = self.grid
         grid_dim = len(grid.axes)
 
@@ -2156,14 +2140,3 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         name = "Field" if self.label is None else self.label
         return {name: self._get_napari_layer_data(**kwargs)}
-
-
-def _get_field_class_by_rank(rank: int) -> Type[DataFieldBase]:
-    """return a field class associated with a certain rank
-
-    Args:
-        rank (int): The rank of the tensor field
-    """
-    # deprecated on 2021-09-17
-    warnings.warn("Use DataFieldBase.get_class_by_rank instead.", DeprecationWarning)
-    return DataFieldBase.get_class_by_rank(rank)

@@ -24,13 +24,13 @@ def test_findiff_sph():
     v = VectorField(grid, [[1, 2, 4], [0] * 3, [0] * 3])
 
     # test gradient
-    grad = s.gradient(bc="value")
+    grad = s.gradient(bc=["derivative", "value"])
     np.testing.assert_allclose(grad.data[0, :], [1, 3, -6])
     grad = s.gradient(bc="derivative")
     np.testing.assert_allclose(grad.data[0, :], [1, 3, 2])
 
     # test divergence
-    div = v.divergence(bc="value", conservative=False)
+    div = v.divergence(bc=["derivative", "value"], conservative=False)
     np.testing.assert_allclose(div.data, [9, 3 + 4 / r1, -6 + 8 / r2])
     div = v.divergence(bc="derivative", conservative=False)
     np.testing.assert_allclose(div.data, [9, 3 + 4 / r1, 2 + 8 / r2])
@@ -211,7 +211,7 @@ def test_tensor_sph_symmetry():
     """test treatment of symmetric tensor field"""
     grid = SphericalSymGrid(1, 16)
     vf = VectorField.from_expression(grid, ["r**2", 0, 0])
-    vf_grad = vf.gradient({"derivative": 2})
+    vf_grad = vf.gradient(["derivative", {"derivative": 2}])
     strain = vf_grad + vf_grad.transpose()
 
     bcs = [{"value": 0}, {"normal_derivative": [4, 0, 0]}]

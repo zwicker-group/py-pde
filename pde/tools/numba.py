@@ -122,7 +122,8 @@ def numba_environment() -> Dict[str, Any]:
 
     return {
         "version": nb.__version__,
-        "parallel": config["numba.parallel"],
+        "multithreading": config["numba.multithreading"],
+        "multithreading_threshold": config["numba.multithreading_threshold"],
         "fastmath": config["numba.fastmath"],
         "debug": config["numba.debug"],
         "using_svml": nb.config.USING_SVML,
@@ -150,7 +151,7 @@ def _get_jit_args(parallel: bool = False, **kwargs) -> Dict[str, Any]:
     kwargs.setdefault("debug", config["numba.debug"])
 
     # make sure parallel numba is only enabled in restricted cases
-    kwargs["parallel"] = parallel and config["numba.parallel"]
+    kwargs["parallel"] = parallel and config["numba.multithreading"]
     return kwargs
 
 

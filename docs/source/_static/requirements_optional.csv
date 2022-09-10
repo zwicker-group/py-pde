@@ -1,7 +1,7 @@
-Package,Usage
-h5py,Storing data in the hierarchical file format
-ipywidgets,Jupyter notebook support
-napari,Displaying images interactively
-pandas,Handling tabular data
-pyfftw,Faster Fourier transforms
-tqdm,Display progress bars during calculations
+Package,Minimal version,Usage
+h5py,2.10,Storing data in the hierarchical file format
+ipywidgets,7,Jupyter notebook support
+napari,0.4.8,Displaying images interactively
+numba-mpi,0.13,Parallel processing using MPI
+pandas,1.2,Handling tabular data
+pyfftw,0.12,Faster Fourier transforms

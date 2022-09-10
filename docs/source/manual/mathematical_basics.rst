@@ -146,10 +146,11 @@ This reduction is also known as the method of lines.
 The `py-pde` package implements the simple Euler scheme and a more advanced
 `Runge-Kutta scheme <https://en.wikipedia.org/wiki/Runge–Kutta_methods>`_ in 
 the :class:`~pde.solvers.explicit.ExplicitSolver` class.   
-For the simple implementations of these explicit methods, the user needs to
-specify a time step, which will be kept fixed.
-One problem with explicit solvers is that they require small time steps for some
-PDEs, which are then often called 'stiff PDEs'.
+For the simple implementations of these explicit methods, the user typically specifies
+a fixed time step, although adaptive methods, which adjust the time step automatically,
+are also often used.
+One problem with explicit solvers is that they require small time steps to stably evolve
+some PDEs; such PDEs are then often called 'stiff'.
 Stiff PDEs can sometimes be solved more efficiently by using implicit methods.
 This package provides a simple implementation of the `Backward Euler method
 <https://en.wikipedia.org/wiki/Backward_Euler_method>`_ in the

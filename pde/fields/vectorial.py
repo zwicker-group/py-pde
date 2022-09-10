@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence,
 
 import numba as nb
 import numpy as np
+from numpy.typing import DTypeLike
 
 try:
     from numba.core.extending import register_jitable
@@ -37,7 +38,7 @@ class VectorField(DataFieldBase):
 
     @classmethod
     def from_scalars(
-        cls, fields: List[ScalarField], *, label: str = None, dtype=None
+        cls, fields: List[ScalarField], *, label: str = None, dtype: DTypeLike = None
     ) -> VectorField:
         """create a vector field from a list of ScalarFields
 
@@ -78,7 +79,7 @@ class VectorField(DataFieldBase):
         expressions: Sequence[str],
         *,
         label: str = None,
-        dtype=None,
+        dtype: DTypeLike = None,
     ) -> VectorField:
         """create a vector field on a grid from given expressions
 
@@ -120,9 +121,7 @@ class VectorField(DataFieldBase):
             data.append(values)
 
         # create vector field from the data
-        return cls(  # lgtm [py/call-to-non-callable]
-            grid=grid, data=data, label=label, dtype=dtype
-        )
+        return cls(grid=grid, data=data, label=label, dtype=dtype)
 
     def __getitem__(self, key: Union[int, str]) -> ScalarField:
         """extract a component of the VectorField"""
@@ -548,7 +547,7 @@ class VectorField(DataFieldBase):
     @property
     def integral(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: integral of each component over space"""
-        return self.grid.integrate(self.data)
+        return self.grid.integrate(self.data)  # type: ignore
 
     def to_scalar(
         self,

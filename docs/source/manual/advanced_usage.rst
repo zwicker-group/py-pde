@@ -234,7 +234,7 @@ However, a complete list of operators supported by a certain grid class can be
 obtained from the class property :attr:`GridClass.operators`.
 New operators can be added using the class method
 :meth:`GridClass.register_operator`.
- 
+
 
 Field integration
 *****************
@@ -353,7 +353,7 @@ introduced above:
                         - diffusivity / 2 * dot(state_grad, state_grad))
             
             return pde_rhs
-        
+
  
 To activate the compiled implementation of the evolution rate, we simply have
 to overwrite the :meth:`~pde.pdes.base.PDEBase._make_pde_rhs_numba` method.
@@ -384,11 +384,11 @@ which will be much faster than their python equivalents.
 For instance, we could have written the dot product in the last line as an
 explicit loop:
 
- 
+
 .. code-block:: python
 
     [...]
-                
+
         def _make_pde_rhs_numba(self, state):
             """ the numba-accelerated evolution equation """
             # make attributes locally available             
@@ -421,8 +421,10 @@ Here, we extract the total number of elements in the state using its
 grid attribute :attr:`dim`.
 Note that we access numpy arrays using their :attr:`flat` attribute to provide
 an implementation that works for all dimensions.     
-        
-        
+
+
+.. _configuration:
+
 Configuration parameters
 """"""""""""""""""""""""
 
@@ -443,6 +445,6 @@ Here is a list of all configuration options that can be adjusted in the package:
     .. code-block:: python
     
         from pde import config
-        config['numba.parallel'] = False
+        config["numba.multithreading"] = False
         
         # actual code using py-pde

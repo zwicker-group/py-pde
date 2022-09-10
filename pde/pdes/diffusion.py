@@ -55,7 +55,7 @@ class DiffusionPDE(PDEBase):
     @property
     def expression(self) -> str:
         """str: the expression of the right hand side of this PDE"""
-        return expr_prod(self.diffusivity, "laplace(c)")
+        return expr_prod(self.diffusivity, "∇²(c)")
 
     def evolution_rate(  # type: ignore
         self,

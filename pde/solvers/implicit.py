@@ -137,7 +137,8 @@ class ImplicitSolver(SolverBase):
 
         if self.info["backend"] == "numba":
             # compile inner step
-            inner_stepper = jit(inner_stepper)
+            sig = (nb.typeof(state.data), nb.double, nb.int_)
+            inner_stepper = jit(sig)(inner_stepper)
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
             """use Euler stepping to advance `state` from `t_start` to `t_end`"""

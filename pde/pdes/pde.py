@@ -24,6 +24,17 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
 from ..tools.typing import ArrayLike, NumberOrArray
 
+# Define short notations that can appear in mathematical equations and need to be
+# expanded. Since these replacements are replaced in order, it's advisable to start with
+# more complex expressions first
+_EXPRESSION_REPLACEMENT: Dict[str, str] = {
+    r"\|\s*∇\s*(\w+)\s*\|(²|\*\*2)": r"gradient_squared(\1)",  # |∇c|² or |∇c|**2
+    r"∇(²|\*\*2)\s*(\w+)": r"laplace(\2)",  # ∇²c or ∇**2 c
+    r"∇(²|\*\*2)\s*\(": r"laplace(",  # ∇²(c) or ∇**2(c)
+    r"²": r"**2",
+    r"³": r"**3",
+}
+
 
 class PDE(PDEBase):
     """PDE defined by mathematical expressions
@@ -128,11 +139,19 @@ class PDE(PDEBase):
         self._rhs_expr, self._operators = {}, {}
         explicit_time_dependence = False
         complex_valued = False
-        for var, rhs_str in rhs.items():
+        for var, rhs_item in rhs.items():
+            # replace shorthand operators
+            if isinstance(rhs_item, str):
+                rhs_item_old = rhs_item
+                for search, repl in _EXPRESSION_REPLACEMENT.items():
+                    rhs_item = re.sub(search, repl, rhs_item)
+                if rhs_item != rhs_item_old:
+                    self._logger.info("Transformed expression to `%s`", rhs_item)
+
             # create placeholder dictionary of constants that will be specified later
             consts_d: Dict[str, NumberOrArray] = {name: 0 for name in consts}
             rhs_expr = ScalarExpression(
-                rhs_str,
+                rhs_item,
                 user_funcs=user_funcs,
                 consts=consts_d,
                 explicit_symbols=rhs.keys(),  # type: ignore

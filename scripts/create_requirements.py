@@ -4,9 +4,11 @@ This script creates the requirements files in the project
 """
 
 import csv
-from dataclasses import dataclass
+import subprocess as sp
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from string import Template
+from typing import List, Set
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 
@@ -19,12 +21,13 @@ class Requirement:
     version: str  # minimal version
     usage: str = ""  # description for how the package is used in py-pde
     essential: bool = False  # basic requirement for the package
-    optional: bool = False  # optional requirements for the package
-    for_docs: bool = False  # required for documentation
-    for_tests: bool = False  # required for tests
+    docs_only: bool = False  # only required for creating documentation
+    tests_only: bool = False  # only required for running tests
+    collections: Set[str] = field(default_factory=set)  # collections where this fits
 
     @property
-    def short_version(self):
+    def short_version(self) -> str:
+        """str: simplified version string"""
         version = self.version
         processing = True
         while processing:
@@ -34,23 +37,37 @@ class Requirement:
                 processing = False
         return version
 
-    def line(self, rel: str = ">=") -> str:
-        return f"{self.name}{rel}{self.version}"
+    def line(self, relation: str = ">=") -> str:
+        """create a line for a requirements file
+
+        Args:
+            relation (str): The relation used for version comparison
+
+        Returns:
+            str: A string that can be written to a requirements file
+        """
+        return f"{self.name}{relation}{self.version}"
 
 
 REQUIREMENTS = [
     # essential requirements
     Requirement(
-        name="matplotlib", version="3.1.0", usage="Visualizing results", essential=True
+        name="matplotlib",
+        version="3.1.0",
+        usage="Visualizing results",
+        essential=True,
     ),
     Requirement(
         name="numba",
-        version="0.50.0",
+        version="0.56.0",
         usage="Just-in-time compilation to accelerate numerics",
         essential=True,
     ),
     Requirement(
-        name="numpy", version="1.22.0", usage="Handling numerical data", essential=True
+        name="numpy",
+        version="1.22.0",
+        usage="Handling numerical data",
+        essential=True,
     ),
     Requirement(
         name="scipy",
@@ -64,69 +81,79 @@ REQUIREMENTS = [
         usage="Dealing with user-defined mathematical expressions",
         essential=True,
     ),
+    Requirement(
+        name="tqdm",
+        version="4.60",
+        usage="Display progress bars during calculations",
+        essential=True,
+    ),
     # general, optional requirements
     Requirement(
         name="h5py",
         version="2.10",
         usage="Storing data in the hierarchical file format",
-        optional=True,
-        for_docs=True,
-        for_tests=True,
-    ),
-    Requirement(
-        name="ipywidgets", version="7", usage="Jupyter notebook support", optional=True
-    ),
-    Requirement(
-        name="napari",
-        version="0.4.8",
-        usage="Displaying images interactively",
-        optional=True,
+        collections={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="pandas",
         version="1.2",
         usage="Handling tabular data",
-        optional=True,
-        for_docs=True,
-        for_tests=True,
+        collections={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="pyfftw",
         version="0.12",
         usage="Faster Fourier transforms",
-        optional=True,
+        collections={"full"},
     ),
     Requirement(
-        name="tqdm",
-        version="4.60",
-        usage="Display progress bars during calculations",
-        optional=True,
-        for_docs=True,
-        for_tests=True,
+        name="ipywidgets",
+        version="7",
+        usage="Jupyter notebook support",
+        collections={"interactive"},
+    ),
+    Requirement(
+        name="napari",
+        version="0.4.8",
+        usage="Displaying images interactively",
+        collections={"interactive"},
+    ),
+    Requirement(
+        name="numba-mpi",
+        version="0.13",
+        usage="Parallel processing using MPI",
+        collections={"multiprocessing"},
     ),
     # for documentation only
-    Requirement(name="Sphinx", version="4", for_docs=True),
-    Requirement(name="sphinx-autodoc-annotation", version="1.0", for_docs=True),
-    Requirement(name="sphinx-gallery", version="0.6", for_docs=True),
-    Requirement(name="sphinx-rtd-theme", version="0.4", for_docs=True),
-    Requirement(name="Pillow", version="7.0", for_docs=True),
+    Requirement(name="Sphinx", version="4", docs_only=True),
+    Requirement(name="sphinx-autodoc-annotation", version="1.0", docs_only=True),
+    Requirement(name="sphinx-gallery", version="0.6", docs_only=True),
+    Requirement(name="sphinx-rtd-theme", version="0.4", docs_only=True),
+    Requirement(name="Pillow", version="7.0", docs_only=True),
     # for tests only
-    Requirement(name="jupyter_contrib_nbextensions", version="0.5", for_tests=True),
-    Requirement(name="black", version="19.*", for_tests=True),
-    Requirement(name="isort", version="5.1", for_tests=True),
-    Requirement(name="mypy", version="0.770", for_tests=True),
-    Requirement(name="pyinstrument", version="3", for_tests=True),
-    Requirement(name="pytest", version="5.4", for_tests=True),
-    Requirement(name="pytest-cov", version="2.8", for_tests=True),
-    Requirement(name="pytest-xdist", version="1.30", for_tests=True),
+    Requirement(name="jupyter_contrib_nbextensions", version="0.5", tests_only=True),
+    Requirement(name="black", version="19.*", tests_only=True),
+    Requirement(name="isort", version="5.1", tests_only=True),
+    Requirement(name="mypy", version="0.770", tests_only=True),
+    Requirement(name="pyinstrument", version="3", tests_only=True),
+    Requirement(name="pytest", version="5.4", tests_only=True),
+    Requirement(name="pytest-cov", version="2.8", tests_only=True),
+    Requirement(name="pytest-xdist", version="1.30", tests_only=True),
 ]
+
+
+SETUP_WARNING = """
+# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
+# If you want to adjust settings in this file, change scripts/templates/setup.py
+
+"""
 
 
 def write_requirements_txt(
     path: Path,
     requirements: List[Requirement],
     *,
-    rel: str = ">=",
+    relation: str = ">=",
     ref_base: bool = False,
     comment: str = None,
 ):
@@ -135,7 +162,7 @@ def write_requirements_txt(
     Args:
         path (:class:`Path`): The path where the requirements are written
         requirements (list): The requirements to be written
-        rel (str): The relation that is used in the requirements file
+        relation (str): The relation that is used in the requirements file
         ref_base (bool): Whether the basic requirements.txt is referenced
         comment (str): An optional comment on top of the requirements file
     """
@@ -148,7 +175,7 @@ def write_requirements_txt(
             reference = Path("/".join([".."] * levels)) / "requirements.txt"
             fp.write(f"-r {reference}\n")
         for reference in sorted(requirements, key=lambda r: r.name.lower()):
-            fp.write(reference.line(rel) + "\n")
+            fp.write(reference.line(relation) + "\n")
 
 
 def write_requirements_csv(
@@ -204,6 +231,38 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
         fp.writelines(content)
 
 
+def write_script(path: Path, requirements: List[Requirement], template_name: str):
+    """write script based on a template
+
+    Args:
+        path (:class:`Path`): The path where the requirements are written
+        requirements (list): The requirements to be written
+        template_name (str): The name of the template
+    """
+    print(f"Write `{path}`")
+
+    # format requirements list
+    req_list = "[" + ", ".join('"' + ref.line(">=") + '"' for ref in requirements) + "]"
+
+    # load template data
+    template_path = Path(__file__).parent / "templates" / template_name
+    with template_path.open("r") as fp:
+        template = Template(fp.read())
+
+    # format template
+    substitutes = {"INSTALL_REQUIRES": req_list}
+    for ref in REQUIREMENTS:
+        substitutes[ref.name.replace("-", "_")] = ref.line(">=")
+    content = template.substitute(substitutes)
+
+    # write content to file
+    with open(path, "w") as fp:
+        fp.writelines(SETUP_WARNING + content)
+
+    # call black formatter on it
+    sp.check_call(["black", "-q", "-t", "py38", str(path)])
+
+
 def main():
     """main function creating all the requirements"""
     root = Path(PACKAGE_PATH)
@@ -218,21 +277,35 @@ def main():
     write_requirements_txt(
         root / "tests" / "requirements_min.txt",
         [r for r in REQUIREMENTS if r.essential],
-        rel="~=",
+        relation="~=",
         comment="These are the minimal requirements used to test compatibility",
     )
 
-    # write requirements to docs folder
+    # write full requirements to tests folder
     write_requirements_txt(
-        root / "docs" / "requirements.txt",
-        [r for r in REQUIREMENTS if r.for_docs],
+        root / "tests" / "requirements_full.txt",
+        [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
+        comment="These are the full requirements used to test all functions",
+    )
+
+    # write full requirements to tests folder
+    write_requirements_txt(
+        root / "tests" / "requirements_mpi.txt",
+        [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
+        comment="These are the full requirements used to test all functions",
+    )
+
+    # write requirements to tests folder
+    write_requirements_txt(
+        root / "tests" / "requirements.txt",
+        [r for r in REQUIREMENTS if r.tests_only or "tests" in r.collections],
         ref_base=True,
     )
 
     # write requirements to docs folder
     write_requirements_txt(
-        root / "tests" / "requirements.txt",
-        [r for r in REQUIREMENTS if r.for_tests],
+        root / "docs" / "requirements.txt",
+        [r for r in REQUIREMENTS if r.docs_only or "docs" in r.collections],
         ref_base=True,
     )
 
@@ -245,14 +318,18 @@ def main():
     # write requirements for documentation as CSV
     write_requirements_csv(
         root / "docs" / "source" / "_static" / "requirements_optional.csv",
-        [r for r in REQUIREMENTS if r.optional],
-        incl_version=False,
+        [r for r in REQUIREMENTS if not (r.essential or r.tests_only or r.docs_only)],
     )
 
     # write version.py
     write_requirements_py(
         root / "pde" / "__init__.py",
         [r for r in REQUIREMENTS if r.essential],
+    )
+
+    # write setup.py
+    write_script(
+        root / "setup.py", [r for r in REQUIREMENTS if r.essential], "setup.py"
     )
 
 

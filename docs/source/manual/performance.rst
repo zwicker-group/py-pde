@@ -54,3 +54,80 @@ of typical packages
     port install py37-numpy +gcc8+openblas
     port install py37-scipy +gcc8+openblas
     port install py37-numba +tbb
+
+Note that you can disable the automatic multithreading via :ref:`configuration`.
+
+
+Multiprocessing using MPI
+"""""""""""""""""""""""""
+
+The package also supports parallel simulations of PDEs using the `Message Passing 
+Interface (MPI) <https://en.wikipedia.org/wiki/Message_Passing_Interface>`_, which
+allows combining the power of CPU cores that do not share memory. To use this advanced
+simulation technique, a working implementation of MPI needs to be installed on the
+computer. Usually, this is done automatically, when the optional package
+:mod:`numba-mpi` is installed via `pip` or `conda`.
+
+To run simulations in parallel, the special solver
+:class:`~pde.solvers.explicit_mpi.ExplicitMPISolver` needs to be used and the entire
+script needs to be started using :code:`mpiexec`.
+Taken together, a minimal example reads
+
+.. code-block:: python
+
+   from pde import DiffusionPDE, ScalarField, UnitGrid
+
+   grid = UnitGrid([64, 64])
+   state = ScalarField.random_uniform(grid, 0.2, 0.3)
+
+   eq = DiffusionPDE(diffusivity=0.1)
+   result = eq.solve(state, t_range=10, dt=0.1, method="explicit_mpi")
+
+   if result is not None:
+      result.plot()
+
+Saving this script as `multiprocessing.py`, we can evoke a parallel simulation using
+
+.. code-block:: bash
+
+    mpiexec -n 2 python3 multiprocessing.py
+
+Here, the number `2` determines the number of cores that will be used.
+Note that macOS might require an additional hint on how to connect the processes even
+when they are run on the same machine (e.g., your workstation). It might help to run
+:code:`mpiexec -n 2 -host localhost python3 multiprocessing.py` in this case.
+
+In the example above, two python processes will start in parallel and run independently
+at first.
+In particular, both processes will load all packages and create the initial `state`
+field as well as the PDE class `eq`.
+Once the `explicit_mpi` solver is evoked, the processes will start communicating.
+`py-pde` will split up the full grid into two sub-grids, in this case of shape 32x64,
+distribute the associated sub-fields to both processes and ask each process to evolve
+the PDE for their sub-field.
+Note that boundary conditions are treated and boundary values are exchanged between
+neighboring sub-grids automatically.
+To avoid confusion, trackers will only be used on one process and also the result is
+only returned in one process to avoid problems where multiple process write data
+simultaneously.
+Consequently, the example above checked whether `result is None` (in which case the
+corresponnding process is a child process) and only resumes analysis when the result is
+actually present.
+
+The automatic treatment tries to use sensible default values, so typical simulations
+work out of the box.
+However, in some situations it might be advantageous to adjust these values.
+For instance, the decomposition of the grid can be affected by an argument
+`decomposition`, which can be passed to the :meth:`~pde.pdes.base.PDEBase.solve` method
+or the :class:`~pde.solvers.explicit_mpi.ExplicitMPISolver`.
+The argument should be a list with one integer for each axis in the grid, which
+specifies how often the particular axis is divided.
+
+.. warning::
+   The automatic division of the grid into sub-grids can lead to unexpected behavior,
+   particularly in custom PDEs that were not designed for this use case.
+   As a rule of thumb, all local operations are fine (since they can be performed on
+   each subgrid), while global operations might need synchronization between all
+   subgrids. One example is integration, which has been implemented properly in `py-pde`.
+   Consequently, it is safe to use :attr:`~pde.fields.scalar.ScalarField.integral`.
+

@@ -4,9 +4,13 @@ Auxiliary mathematical functions
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Tuple
+from __future__ import annotations
 
+from typing import Any, Dict, Tuple
+
+import numba as nb
 import numpy as np
+from numba.experimental import jitclass
 
 
 class SmoothData1D:
@@ -17,7 +21,7 @@ class SmoothData1D:
     """
 
     sigma_auto_scale: float = 10
-    """ float: scale for setting automatic values for sigma """
+    """float: scale for setting automatic values for sigma"""
 
     def __init__(self, x, y, sigma: float = None):
         """initialize with data
@@ -79,3 +83,62 @@ class SmoothData1D:
 
         result = self.y @ weight
         return result.reshape(shape)
+
+
+@jitclass(
+    [
+        ("min", nb.double),
+        ("max", nb.double),
+        ("mean", nb.double),
+        ("_mean2", nb.double),
+        ("count", nb.uint),
+    ]
+)
+class OnlineStatistics:
+    """class for using an online algorithm for calculating statistics"""
+
+    mean: float
+    """float: recorded mean"""
+    count: int
+    """int: recorded number of items"""
+
+    def __init__(self):
+        self.min = np.inf
+        self.max = -np.inf
+        self.mean = 0
+        self._mean2: float = 0
+        self.count = 0
+
+    @property
+    def var(self) -> float:
+        """float: recorded variance"""
+        DDOF = 0
+        return self._mean2 / (self.count - DDOF)
+
+    @property
+    def std(self) -> float:
+        """float: recorded standard deviation"""
+        return np.sqrt(self.var)  # type: ignore
+
+    def add(self, value: float) -> None:
+        """add a value to the accumulator
+
+        Args:
+            value (float): The value to add
+        """
+        self.min = min(self.min, value)
+        self.max = max(self.max, value)
+        delta = value - self.mean
+        self.count += 1
+        self.mean += delta / self.count
+        self._mean2 += delta * (value - self.mean)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """return the information as a dictionary"""
+        return {
+            "min": self.min,
+            "max": self.max,
+            "mean": self.mean,
+            "std": self.std,
+            "count": self.count,
+        }

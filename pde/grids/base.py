@@ -23,6 +23,7 @@ from typing import (
     Iterator,
     List,
     NamedTuple,
+    Optional,
     Sequence,
     Set,
     Tuple,
@@ -40,6 +41,7 @@ from ..tools.numba import jit, jit_allocate_out
 from ..tools.typing import CellVolume, FloatNumerical, NumberOrArray, OperatorType
 
 if TYPE_CHECKING:
+    from ._mesh import GridMesh
     from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
 
 
@@ -56,17 +58,19 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-def _check_shape(shape) -> Tuple[int, ...]:
+def _check_shape(shape: Union[int, Sequence[int]]) -> Tuple[int, ...]:
     """checks the consistency of shape tuples"""
-    if not hasattr(shape, "__iter__"):
-        shape = [shape]  # support single numbers
+    if hasattr(shape, "__iter__"):
+        shape_list: Sequence[int] = shape  # type: ignore
+    else:
+        shape_list = [shape]  # type: ignore
 
-    if len(shape) == 0:
+    if len(shape_list) == 0:
         raise ValueError("Require at least one dimension")
 
     # convert the shape to a tuple of integers
     result = []
-    for dim in shape:
+    for dim in shape_list:
         if dim == int(dim) and dim >= 1:
             result.append(int(dim))
         else:
@@ -159,6 +163,7 @@ class GridBase(metaclass=ABCMeta):
     def __init__(self):
         """initialize the grid"""
         self._logger = logging.getLogger(self.__class__.__name__)
+        self._mesh: Optional[GridMesh] = None
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """register all subclassess to reconstruct them later"""
@@ -186,6 +191,15 @@ class GridBase(metaclass=ABCMeta):
             raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
         grid_cls = cls._subclasses[class_name]
         return grid_cls.from_state(state)
+
+    @classmethod
+    def from_bounds(
+        cls,
+        bounds: Sequence[Tuple[float, float]],
+        shape: Sequence[int],
+        periodic: Sequence[bool],
+    ) -> GridBase:
+        raise NotImplementedError
 
     @property
     def axes_bounds(self) -> Tuple[Tuple[float, float], ...]:
@@ -250,11 +264,11 @@ class GridBase(metaclass=ABCMeta):
         def get_valid(arr: np.ndarray) -> np.ndarray:
             """return valid part of the data (without ghost cells)"""
             if num_axes == 1:
-                return arr[..., 1:-1]  # type: ignore
+                return arr[..., 1:-1]
             elif num_axes == 2:
-                return arr[..., 1:-1, 1:-1]  # type: ignore
+                return arr[..., 1:-1, 1:-1]
             elif num_axes == 3:
-                return arr[..., 1:-1, 1:-1, 1:-1]  # type: ignore
+                return arr[..., 1:-1, 1:-1, 1:-1]
             else:
                 raise NotImplementedError
 
@@ -326,7 +340,7 @@ class GridBase(metaclass=ABCMeta):
                 self.__class__.__name__,
                 self.shape,
                 self.axes_bounds,
-                hash(tuple(self.periodic)),
+                tuple(self.periodic),
             )
         )
 
@@ -722,11 +736,41 @@ class GridBase(metaclass=ABCMeta):
     ) -> Generator:
         pass
 
-    @abstractmethod
+    @fill_in_docstring
     def get_boundary_conditions(
         self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
     ) -> Boundaries:
-        pass
+        """constructs boundary conditions from a flexible data format
+
+        Args:
+            bc (str or list or tuple or dict):
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES}
+            rank (int):
+                The tensorial rank of the value associated with the boundary conditions.
+
+        Returns:
+            :class:`~pde.grids.boundaries.axes.Boundaries`: The boundary conditions for
+            all axes.
+
+        Raises:
+            ValueError: If the data given in `bc` cannot be read
+            PeriodicityError: If the boundaries are not compatible with the
+                periodic axes of the grid.
+        """
+        from .boundaries import Boundaries  # @Reimport
+
+        if self._mesh is None:
+            # get boundary conditions for a simple grid that is not part of a mesh
+            bcs = Boundaries.from_data(self, bc, rank=rank)
+
+        else:
+            # this grid is part of a mesh and we thus need to set special conditions to
+            # support parallelism via MPI
+            bcs_base = Boundaries.from_data(self._mesh.basegrid, bc, rank=rank)
+            bcs = self._mesh.extract_boundary_conditions(bcs_base)
+
+        return bcs
 
     @abstractmethod
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
@@ -771,13 +815,12 @@ class GridBase(metaclass=ABCMeta):
             name (str):
                 The name of the operator to register
             factory_func (callable):
-                A function with signature ``(bcs: Boundaries, **kwargs)``, which
-                takes boundary conditions and optional keyword arguments and
-                returns an implementation of the given operator. This
-                implementation is a function that takes a
-                :class:`~numpy.ndarray` of discretized values as arguments and
-                returns the resulting discretized data in a
-                :class:`~numpy.ndarray` after applying the operator.
+                A function with signature ``(bcs: Boundaries, **kwargs)``, which takes
+                boundary conditions and optional keyword arguments and returns an
+                implementation of the given operator. This implementation is a function
+                that takes a :class:`~numpy.ndarray` of discretized values as arguments
+                and returns the resulting discretized data in a :class:`~numpy.ndarray`
+                after applying the operator.
             rank_in (int):
                 The rank of the input field for the operator
             rank_out (int):
@@ -983,10 +1026,10 @@ class GridBase(metaclass=ABCMeta):
 
         return apply_op  # type: ignore
 
-    def get_subgrid(self, indices: Sequence[int]) -> GridBase:
+    def slice(self, indices: Sequence[int]) -> GridBase:
         """return a subgrid of only the specified axes"""
         raise NotImplementedError(
-            f"Subgrids are not implemented for class {self.__class__.__name__}"
+            f"Slicing is not implemented for class {self.__class__.__name__}"
         )
 
     def plot(self):
@@ -1002,7 +1045,7 @@ class GridBase(metaclass=ABCMeta):
 
     def integrate(
         self, data: NumberOrArray, axes: Union[int, Sequence[int]] = None
-    ) -> np.ndarray:
+    ) -> NumberOrArray:
         """Integrates the discretized data over the grid
 
         Args:
@@ -1049,7 +1092,19 @@ class GridBase(metaclass=ABCMeta):
                 axes = tuple(offset + i for i in axes)
 
         # calculate integral using a weighted sum along the chosen axes
-        return (data * cell_volumes).sum(axis=axes)  # type: ignore
+        integral = (data * cell_volumes).sum(axis=axes)
+
+        if self._mesh is None or len(self._mesh) == 1:
+            # standard case of a single integral
+            return integral  # type: ignore
+
+        else:
+            # we are in a parallel run, so we need to gather the sub-integrals from all
+            from mpi4py.MPI import COMM_WORLD
+
+            integral_full = np.empty_like(integral)
+            COMM_WORLD.Allreduce(integral, integral_full)
+            return integral_full  # type: ignore
 
     @cached_method()
     def make_normalize_point_compiled(
@@ -1261,7 +1316,7 @@ class GridBase(metaclass=ABCMeta):
                         return fill
 
                 # do the linear interpolation
-                return w_l * data[..., c_li] + w_h * data[..., c_hi]  # type: ignore
+                return w_l * data[..., c_li] + w_h * data[..., c_hi]
 
         elif self.num_axes == 2:
             # specialize for 2-dimensional interpolation
@@ -1499,45 +1554,97 @@ class GridBase(metaclass=ABCMeta):
 
         return insert  # type: ignore
 
-    def make_integrator(self) -> Callable[[np.ndarray], np.ndarray]:
+    def make_integrator(self) -> Callable[[np.ndarray], NumberOrArray]:
         """Return function that can be used to integrates discretized data over the grid
 
-        Note that currently only scalar fields are supported.
+        If this function is used in a multiprocessing run (using MPI), the integrals are
+        performed on all subgrids and then accumulated. Each process then receives the
+        same value representing the global integral.
 
         Returns:
             callable: A function that takes a numpy array and returns the integral with
             the correct weights given by the cell volumes.
         """
         num_axes = self.num_axes
+        # cell volume varies with position
+        get_cell_volume = self.make_cell_volume_compiled(flat_index=True)
 
-        if self.uniform_cell_volumes:
-            # all cells have the same volume
-            cell_volume = np.product(self.cell_volume_data)  # type: ignore
+        @nb.generated_jit(nopython=True)
+        def integrate_local(arr: np.ndarray) -> Callable[[np.ndarray], NumberOrArray]:
+            """integrates data over a grid"""
+            if arr.ndim == num_axes:
+                # `arr` is a scalar field
+                grid_shape = self.shape
 
-            @jit
-            def integrate(arr: np.ndarray) -> Number:
-                """function that integrates data over a uniform grid"""
-                assert arr.ndim == num_axes
-                return cell_volume * arr.sum()  # type: ignore
+                def impl(arr: np.ndarray) -> Number:
+                    """integrate a scalar field"""
+                    assert arr.shape == grid_shape
+                    total = 0
+                    for i in range(arr.size):
+                        total += get_cell_volume(i) * arr.flat[i]
+                    return total
+
+            else:
+                # `arr` is a tensorial field with rank >= 1
+                tensor_shape = (self.dim,) * (arr.ndim - num_axes)
+                data_shape = tensor_shape + self.shape
+
+                def impl(arr: np.ndarray) -> np.ndarray:  # type: ignore
+                    """integrate a tensorial field"""
+                    assert arr.shape == data_shape
+                    total = np.zeros(tensor_shape)
+                    for idx in np.ndindex(*tensor_shape):
+                        arr_comp = arr[idx]
+                        for i in range(arr_comp.size):
+                            total[idx] += get_cell_volume(i) * arr_comp.flat[i]
+                    return total
+
+            return impl
+
+        # get implementation of `integrate_local` even with disabled numba compilation
+        if nb.config.DISABLE_JIT:  # @UndefinedVariable
+
+            def integrate_local_impl(arr: np.ndarray) -> NumberOrArray:
+                """provide working function without compilation"""
+                return integrate_local(arr)(arr)  # type: ignore
 
         else:
-            # cell volume varies with position
-            get_cell_volume = self.make_cell_volume_compiled(flat_index=True)
+            integrate_local_impl = integrate_local
 
-            @jit
-            def integrate(arr: np.ndarray) -> Number:
-                """function that integrates scalar data over a non-uniform grid"""
-                assert arr.ndim == num_axes
-                total = 0
-                for i in nb.prange(arr.size):
-                    total += get_cell_volume(i) * arr.flat[i]
-                return total
+        # deal with MPI multiprocessing
+        if self._mesh is None or len(self._mesh) == 1:
+            # standard case of a single integral
+            return integrate_local_impl
 
-        return integrate  # type: ignore
+        else:
+            # we are in a parallel run, so we need to gather the sub-integrals from all
+            # subgrids in the grid mesh
+            import numba_mpi
+
+            if nb.config.DISABLE_JIT:
+                # numba_mpi.allreduce is implemented with numba.generated_jit, which
+                # currently *numba version 0.55) does not play nicely with disabled
+                # jitting. We thus need to treat this case specially
+
+                def integrate_global(arr: np.ndarray) -> NumberOrArray:
+                    """integrates data over MPI parallelized grid"""
+                    integral = integrate_local_impl(arr)
+                    return numba_mpi.allreduce(integral)(integral)  # type: ignore
+
+            else:
+
+                @jit
+                def integrate_global(arr: np.ndarray) -> NumberOrArray:
+                    """integrates data over MPI parallelized grid"""
+                    integral = integrate_local_impl(arr)
+                    return numba_mpi.allreduce(integral)  # type: ignore
+
+            return integrate_global
 
 
 def registered_operators() -> Dict[str, List[str]]:
     """returns all operators that are currently defined
+
 
     Returns:
         dict: a dictionary with the names of the operators defined for each grid class

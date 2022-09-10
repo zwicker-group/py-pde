@@ -34,6 +34,10 @@ class InterruptsBase(metaclass=ABCMeta):
     """float: current time difference between interrupts"""
 
     @abstractmethod
+    def copy(self):
+        pass
+
+    @abstractmethod
     def initialize(self, t: float) -> float:
         pass
 

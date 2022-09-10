@@ -1,15 +1,13 @@
-name: "Test all requirements"
+name: "Serial tests"
 
 on: [push]
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
-
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
@@ -21,13 +19,13 @@ jobs:
       # install all requirements
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
+        pip install -r tests/requirements_full.txt
         pip install -r tests/requirements.txt
-        
-    - name: Test with pytest
+
+    - name: Run serial tests with pytest
       env:
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
         cd tests
-        python run_tests.py --unit --showconfig
+        python run_tests.py --unit --num_cores auto --showconfig

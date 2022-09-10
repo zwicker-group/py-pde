@@ -71,9 +71,9 @@ class SwiftHohenbergPDE(PDEBase):
     def expression(self) -> str:
         """str: the expression of the right hand side of this PDE"""
         return (
-            f"{expr_prod(self.rate - self.kc2 ** 2, 'c')} - c**3"
-            f" + {expr_prod(self.delta, 'c**2')}"
-            f" - laplace({expr_prod(2 * self.kc2, 'c')} + laplace(c))"
+            f"{expr_prod(self.rate - self.kc2 ** 2, 'c')} - c³"
+            f" + {expr_prod(self.delta, 'c²')}"
+            f" - ∇²({expr_prod(2 * self.kc2, 'c')} + ∇²c)"
         )
 
     def evolution_rate(  # type: ignore

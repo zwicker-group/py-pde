@@ -1,15 +1,15 @@
 """
-Defines the :class:`~pde.controller.Controller` class for solving pdes.
+Defines a class controlling the simulations of PDEs.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-
 import datetime
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Dict, Tuple, TypeVar, Union  # @UnusedImport
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
+from ..tools import mpi
 from ..tools.numba import JIT_COUNT
 from ..trackers.base import (
     FinishedSimulation,
@@ -28,7 +28,11 @@ TState = TypeVar("TState", bound="FieldBase")
 
 
 class Controller:
-    """class controlling a simulation"""
+    """class controlling a simulation
+
+    The controller calls a solver to advance the simulation into the future and it takes
+    care of trackers that analyze and modify the state periodically.
+    """
 
     # set a function to determine the current time for profiling purposes. We generally
     # use the more accurate time.process_time, but better performance may be obtained by
@@ -65,7 +69,12 @@ class Controller:
         self.t_range = t_range  # type: ignore
         self.trackers = TrackerCollection.from_data(tracker)
 
+        # initialize some diagnostic information
         self.info: Dict[str, Any] = {}
+        self.diagnostics: Dict[str, Any] = {
+            "controller": self.info,
+            "package_version": __version__,
+        }
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
@@ -94,53 +103,17 @@ class Controller:
                     "t_range must be set to a single number or a tuple of two numbers"
                 )
 
-    def run(self, state: TState, dt: float = None) -> TState:
-        """run the simulation
+    def _get_stop_handler(self) -> Callable[[Exception, float], Tuple[int, str]]:
+        """return function that handles messaging"""
 
-        Diagnostic information about the solver procedure are available in the
-        `diagnostics` property of the instance after this function has been called.
-
-        Args:
-            state:
-                The initial state of the simulation. This state will be copied and thus
-                not modified by the simulation. Instead, the final state will be
-                returned and trackers can be used to record intermediate states.
-            dt (float):
-                Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen.
-
-        Returns:
-            The state at the final time point.
-        """
-        # copy the initial state to not modify the supplied one
-        if hasattr(self.solver, "pde") and self.solver.pde.complex_valued:
-            self._logger.info("Convert state to complex numbers")
-            state = state.copy(dtype="complex")
-        else:
-            state = state.copy()
-        t_start, t_end = self.t_range
-
-        # initialize solver information
-        self.info["t_start"] = t_start
-        self.info["t_end"] = t_end
-        self.info["solver_class"] = self.solver.__class__.__name__
-        self.diagnostics: Dict[str, Any] = {
-            "controller": self.info,
-            "package_version": __version__,
-            "solver": self.solver.info,
-        }
-
-        # initialize trackers
-        self.trackers.initialize(state, info=self.diagnostics)
-
-        def _handle_stop_iteration(err):
+        def _handle_stop_iteration(err: Exception, t: float) -> Tuple[int, str]:
             """helper function for handling interrupts raised by trackers"""
             if isinstance(err, FinishedSimulation):
                 # tracker determined that the simulation finished
                 self.info["successful"] = True
                 msg = f"Simulation finished at t={t}"
                 msg_level = logging.INFO
-                if err.value:
+                if hasattr(err, "value") and err.value:
                     self.info["stop_reason"] = err.value
                     msg += f" ({err.value})"
                 else:
@@ -151,37 +124,64 @@ class Controller:
                 self.info["successful"] = False
                 msg = f"Simulation aborted at t={t}"
                 msg_level = logging.WARNING
-                if err.value:
-                    self.info["stop_reason"] = err.value
-                    msg += f" ({err.value})"
+                if hasattr(err, "value") and err.value:  # type: ignore
+                    self.info["stop_reason"] = err.value  # type: ignore
+                    msg += f" ({err.value})"  # type: ignore
                 else:
                     self.info["stop_reason"] = "Tracker raised StopIteration"
 
             return msg_level, msg
 
-        # initialize the stepper
-        jit_count_init = int(JIT_COUNT)
-        stepper = self.solver.make_stepper(state=state, dt=dt)
-        self.diagnostics["jit_count"] = {
-            "make_stepper": int(JIT_COUNT) - jit_count_init
-        }
-        jit_count_after_init = int(JIT_COUNT)
+        return _handle_stop_iteration
 
-        # initialize profiling information
+    def _run_single(self, state: TState, dt: float = None) -> None:
+        """run the simulation
+
+        Diagnostic information about the solver procedure are available in the
+        `diagnostics` property of the instance after this function has been called.
+
+        Args:
+            state:
+                The initial state, which will be updated during the simulation.
+            dt (float):
+                Time step of the chosen stepping scheme. If `None`, a default value
+                based on the stepper will be chosen.
+        """
+        # gather basic information
+        t_start, t_end = self.t_range
+        get_time = self.get_current_time  # type: ignore
+
+        # initialize solver information
+        self.info["t_start"] = t_start
+        self.info["t_end"] = t_end
+        self.info["solver_class"] = self.solver.__class__.__name__
+        self.diagnostics["solver"] = self.solver.info
+
+        # initialize profilers
+        jit_count_base = int(JIT_COUNT)
+        profiler = {"solver": 0.0, "tracker": 0.0}
+        self.info["profiler"] = profiler
+        prof_start_compile = get_time()
+
+        # initialize trackers and handlers
+        self.trackers.initialize(state, info=self.diagnostics)
+        handle_stop_iteration = self._get_stop_handler()
+
+        # initialize the stepper
+        stepper = self.solver.make_stepper(state=state, dt=dt)
+
+        # store intermediate profiling information before starting simulation
+        jit_count_after_init = int(JIT_COUNT)
+        self.info["jit_count"] = {"make_stepper": jit_count_after_init - jit_count_base}
+        prof_start_tracker = get_time()
+        profiler["compilation"] = prof_start_tracker - prof_start_compile
         solver_start = datetime.datetime.now()
         self.info["solver_start"] = str(solver_start)
 
-        get_time = self.get_current_time  # type: ignore
-        profiler = {"solver": 0.0, "tracker": 0.0}
-        self.info["profiler"] = profiler
-        prof_start_tracker = get_time()
-
-        # add some tolerance to account for inaccurate float point math
         if dt is None:
             dt = self.solver.info.get("dt")
-            # Note that self.solver.info['dt'] might be None
-
-        if dt is None:
+        # add some tolerance to account for inaccurate float point math
+        if dt is None:  # self.solver.info['dt'] might be None
             atol = 1e-12
         else:
             atol = 0.1 * dt
@@ -207,7 +207,7 @@ class Controller:
 
         except StopIteration as err:
             # iteration has been interrupted by a tracker
-            msg_level, msg = _handle_stop_iteration(err)
+            msg_level, msg = handle_stop_iteration(err, t)
 
         except KeyboardInterrupt:
             # iteration has been interrupted by the user
@@ -228,16 +228,18 @@ class Controller:
                 self.trackers.handle(state, t, atol=atol)
             except StopIteration as err:
                 # error detected in the final handling of the tracker
-                msg_level, msg = _handle_stop_iteration(err)
+                msg_level, msg = handle_stop_iteration(err, t)
 
         # calculate final statistics
         profiler["tracker"] += get_time() - prof_start_tracker
         duration = datetime.datetime.now() - solver_start
         self.info["solver_duration"] = str(duration)
         self.info["t_final"] = t
-        jit_count = int(JIT_COUNT) - jit_count_after_init
-        self.diagnostics["jit_count"]["simulation"] = jit_count
+        self.info["jit_count"]["simulation"] = int(JIT_COUNT) - jit_count_after_init
         self.trackers.finalize(info=self.diagnostics)
+        if "dt_statistics" in self.solver.info:
+            dt_statistics = dict(self.solver.info["dt_statistics"].to_dict())
+            self.solver.info["dt_statistics"] = dt_statistics
 
         # show information after a potential progress bar has been deleted to
         # not mess up the display
@@ -247,5 +249,73 @@ class Controller:
                 f"Spent more time on handling trackers ({profiler['tracker']}) than on "
                 f"the actual simulation ({profiler['solver']})"
             )
+
+    def _run_mpi_client(self, state: TState, dt: float = None) -> None:
+        """loop for run the simulation on client nodes during an MPI run
+
+        This function just loops the stepper advancing the sub field of the current node
+        in time. All other logic, including trackers, are done in the main node.
+
+        Args:
+            state:
+                The initial state, which will be updated during the simulation.
+            dt (float):
+                Time step of the chosen stepping scheme. If `None`, a default value
+                based on the stepper will be chosen.
+
+        Returns:
+            The state at the final time point.
+        """
+        # get stepper function
+        stepper = self.solver.make_stepper(state=state, dt=dt)
+
+        if not self.solver.info.get("use_mpi", False):
+            self._logger.warn(
+                "Started multiprocessing run without a stepper that supports it. Use "
+                "`ExplicitMPISolver` to profit from multiple cores"
+            )
+
+        # evolve the system from t_start to t_end
+        t_start, t_end = self.t_range
+        t = t_start
+        while t < t_end:
+            t = stepper(state, t, t_end)
+
+    def run(self, initial_state: TState, dt: float = None) -> Optional[TState]:
+        """run the simulation
+
+        Diagnostic information about the solver procedure are available in the
+        `diagnostics` property of the instance after this function has been called.
+
+        Args:
+            state:
+                The initial state of the simulation. This state will be copied and thus
+                not modified by the simulation. Instead, the final state will be
+                returned and trackers can be used to record intermediate states.
+            dt (float):
+                Time step of the chosen stepping scheme. If `None`, a default value
+                based on the stepper will be chosen.
+
+        Returns:
+            The state at the final time point. If multiprocessing is used, only the main
+            node will return the state. All other nodes return None.
+        """
+        # copy the initial state to not modify the supplied one
+        if hasattr(self.solver, "pde") and self.solver.pde.complex_valued:
+            self._logger.info("Convert state to complex numbers")
+            state: TState = initial_state.copy(dtype=complex)
+        else:
+            state = initial_state.copy()
+
+        # decide whether to call the main routine or whether this is an MPI client
+        if mpi.is_main:
+            # this node is the primary one
+            self._run_single(state, dt)
+            self.info["process_count"] = mpi.size
+        else:
+            # multiple processes are used and this is one of the secondaries
+            self._run_mpi_client(state, dt)
+            self.info["process_rank"] = mpi.rank
+            return None  # do not return anything in client processes
 
         return state

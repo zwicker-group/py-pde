@@ -184,7 +184,7 @@ class TrackerCollection:
                     if id(tracker_obj.interrupt) in interrupt_ids:
                         # make sure that different trackers never use the same interrupt
                         # class, which would be problematic during iteration
-                        tracker.interrupt = tracker.interrupt.copy()
+                        tracker_obj.interrupt = tracker_obj.interrupt.copy()
                     interrupt_ids.add(id(tracker_obj.interrupt))
                     trackers.append(tracker_obj)
 

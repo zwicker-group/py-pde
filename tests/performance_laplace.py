@@ -18,14 +18,14 @@ from pde.grids.boundaries import Boundaries
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit, jit_allocate_out
 
-config["numba.parallel"] = False
+config["numba.multithreading"] = False
 
 
 def custom_laplace_2d_periodic(shape, dx=1):
     """make laplace operator with periodic boundary conditions"""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
-    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None, args=None):
@@ -60,7 +60,7 @@ def custom_laplace_2d_neumann(shape, dx=1):
     """make laplace operator with Neumann boundary conditions"""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
-    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
+    parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit_allocate_out(parallel=parallel)
     def laplace(arr, out=None, args=None):
@@ -86,32 +86,6 @@ def custom_laplace_2d(shape, periodic, dx=1):
         return custom_laplace_2d_periodic(shape, dx=dx)
     else:
         return custom_laplace_2d_neumann(shape, dx=dx)
-
-
-def flexible_laplace_2d(bcs):
-    """make laplace operator with flexible boundary conditions"""
-    bc_x, bc_y = bcs
-    dx = np.mean(bcs.grid.discretization)
-    dx_2 = 1 / dx**2
-    dim_x, dim_y = bcs.grid.shape
-
-    region_x = bc_x.make_region_evaluator()
-    region_y = bc_y.make_region_evaluator()
-
-    parallel = dim_x * dim_y >= config["numba.parallel_threshold"]
-
-    @jit_allocate_out(parallel=parallel)
-    def laplace(arr, out=None, args=None):
-        """apply laplace operator to array `arr`"""
-        for i in nb.prange(dim_x):
-            for j in range(dim_y):
-                val_x_l, val_x, val_x_r = region_x(arr, (i, j))
-                val_y_l, _, val_y_r = region_y(arr, (i, j))
-
-                out[i, j] = (val_x_l + val_x_r + val_y_l + val_y_r - 4 * val_x) * dx_2
-        return out
-
-    return laplace
 
 
 def optimized_laplace_2d(bcs):
@@ -177,10 +151,7 @@ def main():
     """main routine testing the performance"""
     print("Reports calls-per-second (larger is better)")
     print("  The `CUSTOM` method implemented by hand is the baseline case.")
-    print(
-        "  The `FLEXIBLE` method is a serial implementation using the "
-        "boundary conditions from the package."
-    )
+    print("  The `OPTIMIZED` uses some infrastructure form the py-pde package.")
     print("  The other methods use the functions supplied by the package.\n")
 
     # Cartesian grid with different shapes and boundary conditions
@@ -192,11 +163,9 @@ def main():
             bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
             expected = field.laplace("auto_periodic_neumann")
 
-            for method in ["CUSTOM", "FLEXIBLE", "OPTIMIZED", "numba", "scipy"]:
+            for method in ["CUSTOM", "OPTIMIZED", "numba", "scipy"]:
                 if method == "CUSTOM":
                     laplace = custom_laplace_2d(shape, periodic=periodic)
-                elif method == "FLEXIBLE":
-                    laplace = flexible_laplace_2d(bcs)
                 elif method == "OPTIMIZED":
                     laplace = optimized_laplace_2d(bcs)
                 elif method in {"numba", "scipy"}:

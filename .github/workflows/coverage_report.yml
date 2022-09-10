@@ -4,39 +4,33 @@ on: [push]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.8]
-
     steps:
     - uses: actions/checkout@v2
-    
     - name: Install FFmpeg
       continue-on-error: true
       run: |
         sudo apt-get install ffmpeg
-    
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
-        
+        python-version: 3.8
+    - uses: mpi4py/setup-mpi@v1
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install tqdm h5py pandas
-        
+        pip install -r tests/requirements_mpi.txt
+        pip install -r tests/requirements.txt
+
     - name: Generate coverage report
       run: |
-        pip install pytest pytest-cov h5py pandas tqdm
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pytest --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov=pde --runslow pde
-        
+        mpiexec -n 2 pytest --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov-append --cov=pde --use_mpi pde 
+
     - name: Upload coverage to Codecov  
       uses: codecov/codecov-action@v1
       with:

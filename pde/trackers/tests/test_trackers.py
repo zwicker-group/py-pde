@@ -4,7 +4,6 @@
 
 import os
 import pickle
-from unittest import mock
 
 import numpy as np
 import pytest
@@ -59,15 +58,6 @@ def test_simple_progress():
     pbar.initialize(field)
     pbar.handle(field, 2)
     pbar.finalize()
-
-
-def test_progress_no_tqdm(capsys):
-    """test progress bar without tqdm package"""
-    with mock.patch.dict("sys.modules", {"tqdm": None}):  # @UndefinedVariable
-        with pytest.warns(UserWarning):
-            test_simple_progress()
-    captured = capsys.readouterr()
-    assert len(captured.err) > 0
 
 
 def test_trackers():
