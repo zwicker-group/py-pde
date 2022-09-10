@@ -8,6 +8,7 @@ Handles configuration variables of the package
    get_package_versions
    parse_version_str
    check_package_version
+   packages_from_requirements
    environment
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
@@ -16,9 +17,11 @@ Handles configuration variables of the package
 import collections
 import contextlib
 import importlib
+import re
 import sys
 import warnings
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Union
 
 from .misc import module_available
 from .parameters import Parameter
@@ -184,7 +187,7 @@ def get_package_versions(
     versions: Dict[str, str] = {}
     for name in sorted(packages):
         try:
-            module = importlib.import_module(name)
+            module = importlib.import_module(name.replace("-", "_"))
         except ImportError:
             versions[name] = na_str
         else:
@@ -220,6 +223,28 @@ def check_package_version(package_name: str, min_version: str):
             warnings.warn(f"{msg} (installed: {version})")
 
 
+def packages_from_requirements(requirements_file: Union[Path, str]) -> List[str]:
+    """read package names from a requirements file
+
+    Args:
+        requirements_file (str or :class:`~pathlib.Path`):
+            The file from which everything is read
+
+    Returns:
+        list of package names
+    """
+    result = []
+    with open(requirements_file) as fp:
+        for line in fp:
+            line_s = line.strip()
+            if line_s.startswith("#"):
+                continue
+            res = re.search(r"[a-zA-Z0-9_\-]+", line_s)
+            if res:
+                result.append(res.group(0))
+    return result
+
+
 def environment() -> Dict[str, Any]:
     """obtain information about the compute environment
 
@@ -234,6 +259,8 @@ def environment() -> Dict[str, Any]:
     from .numba import numba_environment
     from .plotting import get_plotting_context
 
+    PACKAGE_PATH = Path(__file__).resolve().parents[2]
+
     result: Dict[str, Any] = {}
     result["package version"] = package_version
     result["python version"] = sys.version
@@ -243,18 +270,19 @@ def environment() -> Dict[str, Any]:
     result["config"] = config.to_dict()
 
     # add details for mandatory packages
-    result["mandatory packages"] = get_package_versions(
-        ["matplotlib", "numba", "numpy", "scipy", "sympy"]
-    )
+    packages_min = packages_from_requirements(PACKAGE_PATH / "requirements.txt")
+    result["mandatory packages"] = get_package_versions(packages_min)
     result["matplotlib environment"] = {
         "backend": mpl.get_backend(),
         "plotting context": get_plotting_context().__class__.__name__,
     }
 
     # add details about optional packages
-    result["optional packages"] = get_package_versions(
-        ["h5py", "napari", "pandas", "pyfftw", "tqdm"]
-    )
+    tests_folder = PACKAGE_PATH / "tests"
+    packages = set(packages_from_requirements(tests_folder / "requirements_full.txt"))
+    packages |= set(packages_from_requirements(tests_folder / "requirements_mpi.txt"))
+    packages -= set(packages_min)
+    result["optional packages"] = get_package_versions(sorted(packages))
     if module_available("numba"):
         result["numba environment"] = numba_environment()
 

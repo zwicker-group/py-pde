@@ -292,7 +292,7 @@ def main():
     write_requirements_txt(
         root / "tests" / "requirements_mpi.txt",
         [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
-        comment="These are the full requirements used to test all functions",
+        comment="These are requirements used to test multiprocessing",
     )
 
     # write requirements to tests folder
