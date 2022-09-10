@@ -28,9 +28,8 @@ jobs:
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
-        cd tests
-        pytest --cov-config=.coveragerc --cov-report xml:report_coverage.xml --cov=pde --runslow pde
-        mpiexec -n 2 pytest --cov-config=.coveragerc --cov-report xml:report_coverage.xml --cov-append --cov=pde --use_mpi pde 
+        pytest --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov=pde --runslow pde
+        mpiexec -n 2 pytest --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov-append --cov=pde --use_mpi pde 
 
     - name: Upload coverage to Codecov  
       uses: codecov/codecov-action@v1
