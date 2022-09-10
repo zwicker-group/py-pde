@@ -1,4 +1,6 @@
 -r ../requirements.txt
+h5py>=2.10
+numba-mpi>=0.13
 pandas>=1.2
 Pillow>=7.0
 Sphinx>=4

@@ -21,12 +21,13 @@ class Requirement:
     version: str  # minimal version
     usage: str = ""  # description for how the package is used in py-pde
     essential: bool = False  # basic requirement for the package
-    for_docs: bool = False  # required for documentation
-    for_tests: bool = False  # required for tests
+    docs_only: bool = False  # only required for creating documentation
+    tests_only: bool = False  # only required for running tests
     collections: Set[str] = field(default_factory=set)  # collections where this fits
 
     @property
-    def short_version(self):
+    def short_version(self) -> str:
+        """str: simplified version string"""
         version = self.version
         processing = True
         while processing:
@@ -36,8 +37,16 @@ class Requirement:
                 processing = False
         return version
 
-    def line(self, rel: str = ">=") -> str:
-        return f"{self.name}{rel}{self.version}"
+    def line(self, relation: str = ">=") -> str:
+        """create a line for a requirements file
+
+        Args:
+            relation (str): The relation used for version comparison
+
+        Returns:
+            str: A string that can be written to a requirements file
+        """
+        return f"{self.name}{relation}{self.version}"
 
 
 REQUIREMENTS = [
@@ -83,14 +92,13 @@ REQUIREMENTS = [
         name="h5py",
         version="2.10",
         usage="Storing data in the hierarchical file format",
-        collections={"full", "multiprocessing"},
+        collections={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="pandas",
         version="1.2",
         usage="Handling tabular data",
-        for_docs=True,
-        collections={"full", "multiprocessing"},
+        collections={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="pyfftw",
@@ -114,23 +122,23 @@ REQUIREMENTS = [
         name="numba-mpi",
         version="0.13",
         usage="Parallel processing using MPI",
-        collections={"multiprocessing"},
+        collections={"multiprocessing", "docs"},
     ),
     # for documentation only
-    Requirement(name="Sphinx", version="4", for_docs=True),
-    Requirement(name="sphinx-autodoc-annotation", version="1.0", for_docs=True),
-    Requirement(name="sphinx-gallery", version="0.6", for_docs=True),
-    Requirement(name="sphinx-rtd-theme", version="0.4", for_docs=True),
-    Requirement(name="Pillow", version="7.0", for_docs=True),
+    Requirement(name="Sphinx", version="4", docs_only=True),
+    Requirement(name="sphinx-autodoc-annotation", version="1.0", docs_only=True),
+    Requirement(name="sphinx-gallery", version="0.6", docs_only=True),
+    Requirement(name="sphinx-rtd-theme", version="0.4", docs_only=True),
+    Requirement(name="Pillow", version="7.0", docs_only=True),
     # for tests only
-    Requirement(name="jupyter_contrib_nbextensions", version="0.5", for_tests=True),
-    Requirement(name="black", version="19.*", for_tests=True),
-    Requirement(name="isort", version="5.1", for_tests=True),
-    Requirement(name="mypy", version="0.770", for_tests=True),
-    Requirement(name="pyinstrument", version="3", for_tests=True),
-    Requirement(name="pytest", version="5.4", for_tests=True),
-    Requirement(name="pytest-cov", version="2.8", for_tests=True),
-    Requirement(name="pytest-xdist", version="1.30", for_tests=True),
+    Requirement(name="jupyter_contrib_nbextensions", version="0.5", tests_only=True),
+    Requirement(name="black", version="19.*", tests_only=True),
+    Requirement(name="isort", version="5.1", tests_only=True),
+    Requirement(name="mypy", version="0.770", tests_only=True),
+    Requirement(name="pyinstrument", version="3", tests_only=True),
+    Requirement(name="pytest", version="5.4", tests_only=True),
+    Requirement(name="pytest-cov", version="2.8", tests_only=True),
+    Requirement(name="pytest-xdist", version="1.30", tests_only=True),
 ]
 
 
@@ -145,7 +153,7 @@ def write_requirements_txt(
     path: Path,
     requirements: List[Requirement],
     *,
-    rel: str = ">=",
+    relation: str = ">=",
     ref_base: bool = False,
     comment: str = None,
 ):
@@ -154,7 +162,7 @@ def write_requirements_txt(
     Args:
         path (:class:`Path`): The path where the requirements are written
         requirements (list): The requirements to be written
-        rel (str): The relation that is used in the requirements file
+        relation (str): The relation that is used in the requirements file
         ref_base (bool): Whether the basic requirements.txt is referenced
         comment (str): An optional comment on top of the requirements file
     """
@@ -167,7 +175,7 @@ def write_requirements_txt(
             reference = Path("/".join([".."] * levels)) / "requirements.txt"
             fp.write(f"-r {reference}\n")
         for reference in sorted(requirements, key=lambda r: r.name.lower()):
-            fp.write(reference.line(rel) + "\n")
+            fp.write(reference.line(relation) + "\n")
 
 
 def write_requirements_csv(
@@ -269,7 +277,7 @@ def main():
     write_requirements_txt(
         root / "tests" / "requirements_min.txt",
         [r for r in REQUIREMENTS if r.essential],
-        rel="~=",
+        relation="~=",
         comment="These are the minimal requirements used to test compatibility",
     )
 
@@ -290,14 +298,14 @@ def main():
     # write requirements to tests folder
     write_requirements_txt(
         root / "tests" / "requirements.txt",
-        [r for r in REQUIREMENTS if r.for_tests],
+        [r for r in REQUIREMENTS if r.tests_only or "tests" in r.collections],
         ref_base=True,
     )
 
     # write requirements to docs folder
     write_requirements_txt(
         root / "docs" / "requirements.txt",
-        [r for r in REQUIREMENTS if r.for_docs],
+        [r for r in REQUIREMENTS if r.docs_only or "docs" in r.collections],
         ref_base=True,
     )
 
@@ -310,7 +318,7 @@ def main():
     # write requirements for documentation as CSV
     write_requirements_csv(
         root / "docs" / "source" / "_static" / "requirements_optional.csv",
-        [r for r in REQUIREMENTS if not (r.essential or r.for_tests or r.for_docs)],
+        [r for r in REQUIREMENTS if not (r.essential or r.tests_only or r.docs_only)],
     )
 
     # write version.py
