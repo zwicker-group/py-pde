@@ -24,6 +24,13 @@ def setup_and_teardown():
     plt.close("all")
 
 
+def pytest_configure(config):
+    """add markers to the configuration"""
+    config.addinivalue_line("markers", "interactive: test is interactive")
+    config.addinivalue_line("markers", "multiprocessing: test requires multiprocessing")
+    config.addinivalue_line("markers", "slow: test runs slowly")
+
+
 def pytest_addoption(parser):
     """pytest hook to add command line options parsed by pytest"""
     parser.addoption(
