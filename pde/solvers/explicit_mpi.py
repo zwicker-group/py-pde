@@ -116,7 +116,7 @@ class ExplicitMPISolver(ExplicitSolver):
             t_start: float, t_end: float)`
         """
         if not mpi.parallel_run:
-            self._logger.warn(
+            self._logger.warning(
                 "Using `ExplicitMPISolver` without a proper multiprocessing run. "
                 "Scripts need to be started with `mpiexec` to profit from multiple cores"
             )

@@ -15,7 +15,6 @@ Functions for creating movies of simulation results
 """
 
 import pathlib
-import warnings
 from typing import Any, Dict
 
 from ..storage.base import StorageBase

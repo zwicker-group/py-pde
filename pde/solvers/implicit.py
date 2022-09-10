@@ -122,7 +122,7 @@ class ImplicitSolver(SolverBase):
                     evolution_last = evolution_this
                 else:
                     with nb.objmode:
-                        self._logger.warn(
+                        self._logger.warning(
                             "Implicit Euler step did not converge after %d iterations "
                             "at t=%g (error=%g)",
                             maxiter,

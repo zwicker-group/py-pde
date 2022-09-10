@@ -270,7 +270,7 @@ class Controller:
         stepper = self.solver.make_stepper(state=state, dt=dt)
 
         if not self.solver.info.get("use_mpi", False):
-            self._logger.warn(
+            self._logger.warning(
                 "Started multiprocessing run without a stepper that supports it. Use "
                 "`ExplicitMPISolver` to profit from multiple cores"
             )
