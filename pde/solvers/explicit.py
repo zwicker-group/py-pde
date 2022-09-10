@@ -226,7 +226,7 @@ class ExplicitSolver(SolverBase):
             t = t_start
             calculate_rate = True  # flag stating whether to calculate rate for time t
             steps = 0
-            while t < t_end:
+            while True:
                 if calculate_rate:
                     rate = rhs_pde(state_data, t)
                     calculate_rate = False
@@ -266,8 +266,10 @@ class ExplicitSolver(SolverBase):
                         dt_stats.add(dt_step)
 
                 if t < t_end:
-                    # adjust the time step if it is not the last step
+                    # adjust the time step and continue
                     dt_opt = adjust_dt(dt_step, error_rel, t)
+                else:
+                    break  # return to the controller
 
             return t, dt_opt, steps, modifications
 
@@ -406,7 +408,7 @@ class ExplicitSolver(SolverBase):
             dt_opt = dt_init
             t = t_start
             steps = 0
-            while t < t_end:
+            while True:
                 # use a smaller time step if close to t_end
                 dt_step = min(dt_opt, t_end - t)
 
@@ -456,8 +458,10 @@ class ExplicitSolver(SolverBase):
                         dt_stats.add(dt_step)
 
                 if t < t_end:
-                    # adjust the time step if it is not the last step
+                    # adjust the time step and continue
                     dt_opt = adjust_dt(dt_step, error_rel, t)
+                else:
+                    break  # return to the controller
 
             return t, dt_opt, steps, modifications
 
