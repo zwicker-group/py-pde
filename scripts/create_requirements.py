@@ -122,7 +122,7 @@ REQUIREMENTS = [
         name="numba-mpi",
         version="0.13",
         usage="Parallel processing using MPI",
-        collections={"multiprocessing", "docs"},
+        collections={"multiprocessing"},
     ),
     # for documentation only
     Requirement(name="Sphinx", version="4", docs_only=True),
