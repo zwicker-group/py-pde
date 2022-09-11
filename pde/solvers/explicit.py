@@ -32,7 +32,7 @@ class ExplicitSolver(SolverBase):
         *,
         backend: str = "auto",
         adaptive: bool = False,
-        tolerance: float = 1e-3,
+        tolerance: float = 1e-4,
     ):
         """
         Args:
