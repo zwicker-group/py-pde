@@ -154,16 +154,19 @@ class ExplicitMPISolver(ExplicitSolver):
                 """advance `state` from `t_start` to `t_end` using adaptive steps"""
                 nonlocal dt  # `dt` stores value for the next call
 
-                # distribute the field to all nodes
+                # distribute the end time and the field to all nodes
+                t_end = self.mesh.broadcast(t_end)
                 substate_data = self.mesh.split_field_data_mpi(state.data)
 
+                # evolve the sub state
                 t_last, dt, steps, modifications = adaptive_stepper(
                     substate_data, t_start, t_end, dt, self.info["dt_statistics"]
                 )
 
                 # check whether dt is the same for all processes
-                dt_list = self.mesh.gather(dt)
-                if dt_list is not None and not np.isclose(min(dt_list), max(dt_list)):
+                dt_list = self.mesh.allgather(dt)
+                if not np.isclose(min(dt_list), max(dt_list)):
+                    # abort simulations in all nodes when they went out of sync
                     raise RuntimeError(f"Processes went out of sync: dt={dt_list}")
 
                 # collect the data from all nodes

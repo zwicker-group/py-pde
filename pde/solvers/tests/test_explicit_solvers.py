@@ -47,20 +47,22 @@ def test_solvers_simple_adaptive(scheme):
     dt = 0.1 if scheme == "euler" else 1
 
     if mpi.parallel_run:
-        solver = ExplicitMPISolver(eq, scheme=scheme, adaptive=True, tolerance=1e-3)
+        solver = ExplicitMPISolver(eq, scheme=scheme, adaptive=True, tolerance=1e-1)
     else:
-        solver = ExplicitSolver(eq, scheme=scheme, adaptive=True, tolerance=1e-3)
-    controller = Controller(solver, t_range=10.0, tracker=None)
+        solver = ExplicitSolver(eq, scheme=scheme, adaptive=True, tolerance=1e-1)
+    storage = MemoryStorage()
+    controller = Controller(solver, t_range=10.1, tracker=storage.tracker(1.0))
     res = controller.run(field, dt=dt)
 
     if mpi.is_main:
-        np.testing.assert_allclose(res.data, y0 * np.exp(10), rtol=0.02)
-        assert solver.info["steps"] != pytest.approx(10 / dt, abs=1)
+        np.testing.assert_allclose(res.data, y0 * np.exp(10.1), rtol=0.02)
+        assert solver.info["steps"] != pytest.approx(10.1 / dt, abs=1)
         assert solver.info["dt_adaptive"]
         if scheme == "euler":
             assert solver.info["dt_statistics"]["min"] < 0.0005
         else:
             assert solver.info["dt_statistics"]["min"] < 0.03
+        assert np.allclose(storage.times, np.arange(11))
 
 
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
