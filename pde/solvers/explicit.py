@@ -250,7 +250,6 @@ class ExplicitSolver(SolverBase):
                     # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
                     # we thus need to use the following order:
                     error = max(abs(k1.flat[i] - k2.flat[i]), error)
-                error *= dt_step  # estimate should be independent of magnitude of dt
                 error_rel = error / tolerance  # normalize error to given tolerance
 
                 # synchronize the error between all processes (if necessary)
@@ -444,7 +443,6 @@ class ExplicitSolver(SolverBase):
                     # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
                     # we thus need to use the following order:
                     error = max(error_local, error)  # type: ignore
-                error *= dt_step  # estimate should be independent of magnitude of dt
                 error_rel = error / tolerance  # normalize error to given tolerance
 
                 # synchronize the error between all processes (if necessary)
