@@ -32,7 +32,7 @@ class ExplicitSolver(SolverBase):
         *,
         backend: str = "auto",
         adaptive: bool = False,
-        tolerance: float = 1e-5,
+        tolerance: float = 1e-3,
     ):
         """
         Args:
@@ -577,8 +577,8 @@ class ExplicitSolver(SolverBase):
 
         if self.adaptive:
             # create stepper with adaptive steps
-            adaptive_stepper = self._make_adaptive_stepper(state, dt_float)
             self.info["dt_statistics"] = OnlineStatistics()
+            adaptive_stepper = self._make_adaptive_stepper(state, dt_float)
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
