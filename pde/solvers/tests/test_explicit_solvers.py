@@ -47,9 +47,9 @@ def test_solvers_simple_adaptive(scheme):
     dt = 0.1 if scheme == "euler" else 1
 
     if mpi.parallel_run:
-        solver = ExplicitMPISolver(eq, scheme=scheme, adaptive=True, tolerance=1e-3)
+        solver = ExplicitMPISolver(eq, scheme=scheme, adaptive=True, tolerance=1e-1)
     else:
-        solver = ExplicitSolver(eq, scheme=scheme, adaptive=True, tolerance=1e-3)
+        solver = ExplicitSolver(eq, scheme=scheme, adaptive=True, tolerance=1e-1)
     storage = MemoryStorage()
     controller = Controller(solver, t_range=10.1, tracker=storage.tracker(1.0))
     res = controller.run(field, dt=dt)

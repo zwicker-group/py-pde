@@ -18,6 +18,24 @@ GRIDS = [
 ]
 
 
+@pytest.mark.multiprocessing
+def test_basic_mpi_methods():
+    """test very basic methods"""
+    mesh = GridMesh.from_grid(UnitGrid([4]))
+
+    value = mesh.broadcast(mpi.rank)
+    assert value == 0
+
+    value = mesh.gather(mpi.rank)
+    if mpi.is_main:
+        assert value == list(range(mpi.size))
+    else:
+        assert value is None
+
+    value = mesh.allgather(mpi.rank)
+    assert value == list(range(mpi.size))
+
+
 @pytest.mark.parametrize("grid, decomposition", GRIDS)
 def test_generic_meshes(grid, decomposition):
     """test generic functions of the grid mesh"""

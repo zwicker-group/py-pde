@@ -627,6 +627,19 @@ class GridMesh:
 
         return COMM_WORLD.gather(data, root=0)
 
+    def allgather(self, data: TData) -> List[TData]:
+        """gather a value from reach node and sends them to all nodes
+
+        Args:
+            data: The data that will be sent to the main node
+
+        Returns:
+            list: data from all nodes.
+        """
+        from mpi4py.MPI import COMM_WORLD
+
+        return COMM_WORLD.allgather(data)
+
     @plot_on_axes()
     def plot(self, ax, **kwargs):
         r"""visualize the grid mesh

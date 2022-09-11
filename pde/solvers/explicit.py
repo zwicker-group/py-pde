@@ -228,13 +228,13 @@ class ExplicitSolver(SolverBase):
             calculate_rate = True  # flag stating whether to calculate rate for time t
             steps = 0
             while True:
+                # use a smaller (but not too small) time step if close to t_end
+                dt_step = max(min(dt_opt, t_end - t), dt_min)
+
                 if calculate_rate:
                     rate = rhs_pde(state_data, t)
                     calculate_rate = False
                 # else: rate is reused from last (failed) iteration
-
-                # use a smaller (but not too small) time step if close to t_end
-                dt_step = max(min(dt_opt, t_end - t), dt_min)
 
                 # single step with dt
                 k1 = state_data + dt_step * rate
@@ -449,7 +449,7 @@ class ExplicitSolver(SolverBase):
                 error_rel = sync_errors(error_rel)
 
                 # do the step if the error is sufficiently small
-                if error <= 1:
+                if error_rel <= 1:
                     steps += 1
                     t += dt_step
                     state_data += c1 * k1 + c3 * k3 + c4 * k4 + c5 * k5
