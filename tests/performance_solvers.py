@@ -37,34 +37,44 @@ def main(equation: str = "cahn-hilliard", t_range: float = 100, size: int = 32):
         eq = CahnHilliardPDE()
     else:
         raise ValueError(f"Undefined equation `{equation}`")
-    print(f"EQUATION: ∂c/∂t = {eq.expression}")
+    print(f"EQUATION: ∂c/∂t = {eq.expression}\n")
+
+    print("Determine ground truth...")
+    expected = eq.solve(field, t_range=t_range, dt=1e-4, tracker=["progress"])
 
     print("\nSOLVER PERFORMANCE:")
-
-    expected = eq.solve(field, t_range=t_range, dt=1e-5, tracker=None)
-
     solvers = {
         "Euler, fixed": (1e-3, ExplicitSolver(eq, scheme="euler", adaptive=False)),
         "Euler, adaptive": (1e-3, ExplicitSolver(eq, scheme="euler", adaptive=True)),
-        "Runge-Kutta, fixed": (1e-3, ExplicitSolver(eq, scheme="rk", adaptive=False)),
-        "Runge-Kutta, adaptive": (1e-3, ExplicitSolver(eq, scheme="rk", adaptive=True)),
-        "implicit": (1e-3, ImplicitSolver(eq)),
+        "Runge-Kutta, fixed": (1e-2, ExplicitSolver(eq, scheme="rk", adaptive=False)),
+        "Runge-Kutta, adaptive": (1e-2, ExplicitSolver(eq, scheme="rk", adaptive=True)),
+        "implicit": (1e-2, ImplicitSolver(eq)),
         "scipy": (None, ScipySolver(eq)),
     }
 
     for name, (dt, solver) in solvers.items():
-
+        # run the simulation with the given solver
         solver.backend = "numba"
         controller = Controller(solver, t_range=t_range, tracker=None)
         result = controller.run(field, dt=dt)
 
-        # call once to pre-compile and test result
-        if np.allclose(result.data, expected.data, atol=1e-2):
-            # report the duration
-            print(f"{name:>21s}: {controller.info['profiler']['solver']:.3g}")
+        # determine the deviation from the ground truth
+        error = np.linalg.norm(result.data - expected.data)
+        error_str = f"{error:.4g}"
+
+        # report the runtime
+        runtime_str = f"{controller.info['profiler']['solver']:.3g}"
+
+        # report information about the time step
+        if solver.info.get("dt_adaptive", False):
+            stats = solver.info["dt_statistics"]
+            dt_str = f"{stats['min']:.3g} .. {stats['max']:.3g}"
+        elif solver.info["dt"] is None:
+            dt_str = "automatic"
         else:
-            # report the mismatch
-            print(f"{name:>21s}: MISMATCH")
+            dt_str = f"{solver.info['dt']:.3g}"
+
+        print(f"{name:>21s}:  runtime={runtime_str:8} error={error_str:11} dt={dt_str}")
 
 
 if __name__ == "__main__":
