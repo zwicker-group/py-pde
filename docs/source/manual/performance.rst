@@ -37,8 +37,36 @@ This can be done using the function
 Improving performance
 """""""""""""""""""""
 
-Factors influencing the performance of the package include the compiler used for
-:mod:`numpy`, :mod:`scipy`, and of course :mod:`numba`.
+Beside the underlying implementation of the operators, a major factor for performance is
+numerical problem at hand and the methods that are used to solve it.
+As a rule of thumb, simulations run faster when there are fewer degrees of freedom.
+In the case of partial differential equations, this often means using a coarser grid
+with fewer support points.
+However, there often also is an lower bound to the number of support points if
+structures of a certain length scales need to be resolved.
+Reducing the number of support points not only reduces the number of variables to be
+treated, but it can also allow for larger time steps.
+This is particularly transparent for the simple diffusion equation, where a `von Neumann
+stability analysis <https://en.wikipedia.org/wiki/Von_Neumann_stability_analysis>`_
+reveals that the maximal time step scales as one over the discretization length squared!
+Choosing the right time step obviously also affects performance of a simulation.
+The package supports automatic choice of suitable time steps, using adaptive stepping
+schemes.
+To enable those, it's best to specify an initial time step, like so
+
+.. code-block:: python
+
+    eq.solve(t_range=10, dt=1e-3, adaptive=True)
+
+An additional advantage of this choice is that it selects
+:class:`~pde.solvers.explicit.ExplicitSolver`, which is also compiled with :mod:`numba`
+for speed.
+Alternatively, if only `t_range` is specified, the generic scipy-solver 
+:class:`~pde.solvers.scipy.ScipySolver`, which can be significantly slower.
+
+
+Additional factors influencing the performance of the package include the compiler used
+for :mod:`numpy`, :mod:`scipy`, and of course :mod:`numba`.
 Moreover, the BLAS and LAPACK libraries might make a difference.
 The package has some basic support for multithreading, which can be accelerated
 using the `Threading Building Blocks` library.

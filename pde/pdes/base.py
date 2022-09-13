@@ -481,7 +481,7 @@ class PDEBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
-                The initial state (which also defines the spatial grid)
+                The initial state (which also defines the spatial grid).
             t_range (float or tuple):
                 Sets the time range for which the PDE is solved. This should typically
                 be a tuple of two numbers, `(t_start, t_end)`, specifying the initial
@@ -504,10 +504,10 @@ class PDEBase(metaclass=ABCMeta):
                 :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be
                 specified as a list. The default value `auto` checks the state for
                 consistency (tracker 'consistency') and displays a progress bar (tracker
-                'progress') when :mod:`tqdm` is installed. More general trackers are
-                defined in :mod:`~pde.trackers`, where all options are explained in
-                detail. In particular, the interval at which the tracker is evaluated
-                can be chosen when creating a tracker object explicitly.
+                'progress'). More general trackers are defined in :mod:`~pde.trackers`,
+                where all options are explained in detail. In particular, the interval
+                at which the tracker is evaluated can be chosen when creating a tracker
+                object explicitly.
             method (:class:`~pde.solvers.base.SolverBase` or str):
                 Specifies the method for solving the differential equation. This can
                 either be an instance of :class:`~pde.solvers.base.SolverBase` or a
@@ -533,12 +533,16 @@ class PDEBase(metaclass=ABCMeta):
             The state at the final time point. If `ret_info == True`, a tuple with the
             final state and a dictionary with additional information is returned. Note
             that `None` instead of a field is returned in multiprocessing simulations if
-            the current run is not the main MPI node.
+            the current node is not the main MPI node.
         """
+        from ..solvers import Controller
         from ..solvers.base import SolverBase  # @Reimport
 
         if method == "auto":
-            method = "scipy" if dt is None else "explicit"
+            if dt is None and not kwargs.get("adaptive", False):
+                method = "scipy"
+            else:
+                method = "explicit"
 
         # create solver
         if callable(method):
@@ -555,8 +559,6 @@ class PDEBase(metaclass=ABCMeta):
             raise TypeError(f"Method {method} is not supported")
 
         # create controller
-        from ..solvers import Controller
-
         controller = Controller(solver, t_range=t_range, tracker=tracker)
 
         # run the simulation
