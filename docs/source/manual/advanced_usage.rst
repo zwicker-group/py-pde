@@ -85,6 +85,47 @@ special condition `auto_periodic_dirichlet` enforces periodic boundary condition
 Dirichlet boundary condition (vanishing value), depending on the periodicity of the
 underlying grid. 
 
+In summary, we have the following options for boundary conditions on a field :math:`c`
+
+.. list-table:: Supported boundary conditions
+   :widths: 20 30 50
+   :header-rows: 1
+
+   * - Name
+     - Condition
+     - Example
+   * - Dirichlet
+     - :math:`c = \textrm{const}`
+     - :code:`{"value": 1.5}`
+   * -
+     - :math:`c = f(x, t)`
+     - :code:`{"value_expression": "sin(x)"}`
+   * - Neumann
+     - :math:`\partial_n c = \textrm{const}`
+     - :code:`{"derivative": -2}`
+   * -
+     - :math:`\partial_n c = f(x, t)`
+     - :code:`{"derivative_expression": "exp(t)"}`
+   * - Robin
+     - :math:`\partial_n c + \textrm{value}\cdot c = \textrm{const}`
+     - :code:`{"type": "mixed", "value": 2, "const": 7}`
+   * - Curvature
+     - :math:`\partial_n^2 c = \textrm{const}`
+     - :code:`{"curvature": 3}`
+   * -
+     - 
+     -
+   * - Periodic
+     - :math:`c(0) = c(L)`
+     - :code:`"periodic"`
+   * - Anti-periodic
+     - :math:`c(0) = -c(L)`
+     - :code:`"anti-periodic"`
+
+Here, :math:`\partial_n` denotes a derivative in outward normal direction, :math:`f`
+denotes an arbitrary function given by an expression (see next section), :math:`x`
+denotes coordinates along the boundary, :math:`t` denotes time.
+
 
 .. _documentation-expressions:
 
