@@ -1064,7 +1064,13 @@ class UserBC(BCBase):
 
 
 class ExpressionBC(BCBase):
-    """represents a boundary whose virtual point is calculated from an expression"""
+    """represents a boundary whose virtual point is calculated from an expression
+
+    The expression is given as a string and will be parsed by :mod:`sympy`. The
+    expression can contain typical mathematical operators and may depend on the value
+    at the last support point next to the boundary (`value`), spatial coordinates
+    defined by the grid marking the boundary point (e.g., `x` or `r`), and time `t`.
+    """
 
     names = ["virtual_point"]
 
@@ -1259,13 +1265,13 @@ class ExpressionBC(BCBase):
             the boundary condition.
         """
         dx = self.grid.discretization[self.axis]
-        get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
+        num_axes = self.grid.num_axes
+        get_arr_1d = _make_get_arr_1d(num_axes, self.axis)
         time_dependent = self._expr.depends_on("t")
         bc_coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
         bc_coords = np.moveaxis(bc_coords, -1, 0)  # point coordinates to first axis
         func = self._expr.get_compiled()
-        dim = self.grid.dim
-        assert dim <= 3
+        assert num_axes <= 3
 
         @register_jitable
         def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
@@ -1286,11 +1292,11 @@ class ExpressionBC(BCBase):
             else:
                 t = float(args["t"])
 
-            if dim == 1:
+            if num_axes == 1:
                 return func(grid_value, dx, coords[0], t)  # type: ignore
-            elif dim == 2:
+            elif num_axes == 2:
                 return func(grid_value, dx, coords[0], coords[1], t)  # type: ignore
-            elif dim == 3:
+            elif num_axes == 3:
                 return func(grid_value, dx, coords[0], coords[1], coords[2], t)  # type: ignore
             else:
                 # cheap way to signal a problem
@@ -1300,7 +1306,13 @@ class ExpressionBC(BCBase):
 
 
 class ExpressionValueBC(ExpressionBC):
-    """represents a boundary whose value is calculated from an expression"""
+    """represents a boundary whose value is calculated from an expression
+
+    The expression is given as a string and will be parsed by :mod:`sympy`. The
+    expression can contain typical mathematical operators and may depend on the value
+    at the last support point next to the boundary (`value`), spatial coordinates
+    defined by the grid marking the boundary point (e.g., `x` or `r`), and time `t`.
+    """
 
     names = ["value_expression", "value_expr"]
 
@@ -1340,7 +1352,13 @@ class ExpressionValueBC(ExpressionBC):
 
 
 class ExpressionDerivativeBC(ExpressionBC):
-    """represents a boundary whose outward derivative is calculated from an expression"""
+    """represents a boundary whose outward derivative is calculated from an expression
+
+    The expression is given as a string and will be parsed by :mod:`sympy`. The
+    expression can contain typical mathematical operators and may depend on the value
+    at the last support point next to the boundary (`value`), spatial coordinates
+    defined by the grid marking the boundary point (e.g., `x` or `r`), and time `t`.
+    """
 
     names = ["derivative_expression", "derivative_expr"]
 
