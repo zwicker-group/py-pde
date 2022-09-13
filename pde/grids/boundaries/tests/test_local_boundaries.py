@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, ScalarField, UnitGrid
+from pde import CartesianGrid, PolarSymGrid, ScalarField, UnitGrid
 from pde.grids.boundaries.local import (
     BCBase,
     BCDataError,
@@ -348,6 +348,23 @@ def test_expression_invalid_args():
     grid = CartesianGrid([[0, 1]], 4)
     with pytest.raises(BCDataError):
         grid.get_boundary_conditions({"derivative_expression": "heaviside(x)"})
+
+
+def test_expression_bc_polar_grid():
+    """test whether expression BCs work on polar grids"""
+    grid = PolarSymGrid(radius=1, shape=8)
+    bcs = grid.get_boundary_conditions([{"value": 1}, {"value_expression": "1"}])
+
+    state = ScalarField.from_expression(grid, "0")
+    bcs.set_ghost_cells(state._data_full)
+    np.testing.assert_allclose(state.data, 0)
+    assert state._data_full[0] == state._data_full[-1] == 2
+
+    state._data_full[...] = 0
+    bc_setter = bcs.make_ghost_cell_setter()
+    bc_setter(state._data_full)
+    np.testing.assert_allclose(state.data, 0)
+    assert state._data_full[0] == state._data_full[-1] == 2
 
 
 def test_getting_registered_bcs():
