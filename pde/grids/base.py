@@ -665,47 +665,6 @@ class GridBase(metaclass=ABCMeta):
             raise ValueError(f"Unknown source coordinates `{source}`")
         raise ValueError(f"Unknown target coordinates `{target}`")
 
-    def cell_to_point(self, cells: np.ndarray, cartesian: bool = True) -> np.ndarray:
-        """convert cell coordinates to real coordinates
-
-        Args:
-            cells (:class:`~numpy.ndarray`):
-                Indices of the cells whose center coordinates are requested.
-                This can be float values to indicate positions relative to the
-                cell center.
-            cartesian (bool):
-                Determines whether the point is returned in Cartesian
-                coordinates or grid coordinates.
-
-        Returns:
-            :class:`~numpy.ndarray`: The center points of the respective cells
-
-        Warning:
-            This method is deprecated since 2022-03-14 and will be removed soon.
-        """
-        # deprecated since 2022-03-14
-        warnings.warn("`cell_to_point` is deprecated. Use `transform` method instead")
-        if cartesian:
-            return self.transform(cells, "cell", "cartesian")
-        else:
-            return self.transform(cells, "cell", "grid")
-
-    def point_to_cell(self, points: np.ndarray) -> np.ndarray:
-        """Determine cell(s) corresponding to given point(s)
-
-        Args:
-            points (:class:`~numpy.ndarray`): Real coordinates
-
-        Returns:
-            :class:`~numpy.ndarray`: The indices of the respective cells
-
-        Warning:
-            This method is deprecated since 2022-03-14 and will be removed soon.
-        """
-        # deprecated since 2022-03-14
-        warnings.warn("`point_to_cell` is deprecated. Use `transform` method instead")
-        return self.transform(points, "cartesian", "cell")
-
     @abstractmethod
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
@@ -1278,11 +1237,10 @@ class GridBase(metaclass=ABCMeta):
                 point coordinates.
 
         Returns:
-            A function which returns interpolated values when called with
-            arbitrary positions within the space of the grid. The signature of
-            this function is (data, point), where `data` is the numpy array
-            containing the field data and position is denotes the position in
-            grid coordinates.
+            A function which returns interpolated values when called with arbitrary
+            positions within the space of the grid. The signature of this function is
+            (data, point), where `data` is the numpy array containing the field data and
+            position denotes the position in grid coordinates.
         """
         if full_data and fill is not None:
             self._logger.warning("Interpolation of full data does not use `fill`.")

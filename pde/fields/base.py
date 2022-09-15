@@ -1223,8 +1223,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Otherwise, the given value is returned.
 
         Returns:
-            A function which returns interpolated values when called with
-            arbitrary positions within the space of the grid.
+            A function which returns interpolated values when called with arbitrary
+            positions within the space of the grid.
         """
         grid = self.grid
         num_axes = self.grid.num_axes
@@ -1316,20 +1316,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 interpolator methods and can be used to further affect the
                 behavior.
 
-        The scipy implementations use scipy.interpolate.RegularGridInterpolator
-        and thus do not respect boundary conditions. Additional keyword
-        arguments are directly forwarded to the constructor of
-        `RegularGridInterpolator`.
-
-        The numba implementation respect boundary conditions, which can be set
-        using the `bc` keywords argument. Supported values are the same as for
-        the operators, e.g., the Laplacian. If no boundary conditions are
-        specified,  natural boundary conditions are assumed, which are periodic
-        conditions for periodic axes and Neumann conditions otherwise.
+        The scipy implementation uses :class:`scipy.interpolate.RegularGridInterpolator`
+        and thus do not respect boundary conditions. Additional keyword arguments are
+        directly forwarded to the constructor of
+        :class:`~scipy.interpolate.RegularGridInterpolator`.
 
         Returns:
-            A function which returns interpolated values when called with
-            arbitrary positions within the space of the grid.
+            A function which returns interpolated values when called with arbitrary
+            positions within the space of the grid.
         """
         if backend == "scipy":
             return self._make_interpolator_scipy(method=method, fill=fill, **kwargs)

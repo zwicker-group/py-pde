@@ -7,7 +7,6 @@ Cylindrical grids with azimuthal symmetry
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
 
 import numpy as np
@@ -23,13 +22,13 @@ if TYPE_CHECKING:
 
 class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     r""" 3-dimensional cylindrical grid assuming polar symmetry 
-    
+
     The polar symmetry implies that states only depend on the radial and axial
     coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly as
-    
+
     .. math::
         :nowrap:
-    
+
         \begin{align*}
             r_i &= \left(i + \frac12\right) \Delta r
             &&\quad \text{for} \quad i = 0, \ldots, N_r - 1
@@ -40,12 +39,12 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             &&\quad \text{with}
                 \quad \Delta z = \frac{z_\mathrm{max} - z_\mathrm{min}}{N_z}
         \end{align*}
-    
+
     where :math:`R` is the radius of the cylindrical grid, :math:`z_\mathrm{min}` and
     :math:`z_\mathrm{max}` denote the respective lower and upper bounds of the axial
     direction, so that :math:`z_\mathrm{max} - z_\mathrm{min}` is the total height. The
     two axes are discretized by :math:`N_r` and :math:`N_z` support points, respectively.
-    
+
     Warning:
         The order of components in the vector and tensor fields defined on this grid is
         different than in ordinary math. While it is common to use :math:`(r, \phi, z)`,
@@ -193,7 +192,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         avoid_center: bool = False,
         coords: str = "cartesian",
         rng: np.random.Generator = None,
-        cartesian: bool = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -216,11 +214,6 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
-        if cartesian is not None:
-            # deprecated on 2022-03-11
-            warnings.warn("Argument `cartesian` is deprecated. Use `coords` instead")
-            coords = "cartesian" if cartesian else "grid"
-
         if rng is None:
             rng = np.random.default_rng()
 

@@ -8,7 +8,6 @@ Cartesian grids of arbitrary dimension.
 from __future__ import annotations
 
 import itertools
-import warnings
 from typing import List  # @UnusedImport
 from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
 
@@ -24,7 +23,7 @@ if TYPE_CHECKING:
 
 class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
     r""" d-dimensional Cartesian grid with uniform discretization for each axis
-    
+
     The grids can be thought of as a collection of n-dimensional boxes, called cells, of
     equal length in each dimension. The bounds then defined the total volume covered by
     these cells, while the cell coordinates give the location of the box centers. We
@@ -32,7 +31,7 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
     :math:`i-\frac12` corresponds to the left edge of the  covered interval and the
     index :math:`i+\frac12` corresponds to the right edge, when the dimension is covered
     by d boxes.
-    
+
     In particular, the discretization along dimension :math:`k` is defined as
 
     .. math::
@@ -42,7 +41,7 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         \\
             \Delta x^{(k)} &= \frac{x^{(k)}_\mathrm{max} -
                                     x^{(k)}_\mathrm{min}}{N^{(k)}}
-                                    
+
     where :math:`N^{(k)}` is the number of cells along this dimension. Consequently, 
     cells have dimension :math:`\Delta x^{(k)}` and cover the interval
     :math:`[x^{(k)}_\mathrm{min}, x^{(k)}_\mathrm{max}]`.
@@ -243,7 +242,6 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         boundary_distance: float = 0,
         coords: str = "cartesian",
         rng: np.random.Generator = None,
-        cartesian: bool = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -260,11 +258,6 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
-        if cartesian is not None:
-            # deprecated on 2022-03-11
-            warnings.warn("Argument `cartesian` is deprecated. Use `coords` instead")
-            coords = "cartesian" if cartesian else "grid"
-
         if rng is None:
             rng = np.random.default_rng()
 
@@ -638,7 +631,3 @@ class UnitGrid(CartesianGrid):
         )
         subgrid.axes = [self.axes[i] for i in indices]
         return subgrid
-
-
-# temporarily define CartesianGridBase, but this is deprecated since 2022-03-22
-CartesianGridBase = CartesianGrid
