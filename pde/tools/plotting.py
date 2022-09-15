@@ -239,32 +239,29 @@ def plot_on_axes(wrapped=None, update_method=None):
     ):
         """
         title (str):
-            Title of the plot. If omitted, the title might be chosen
-            automatically.
+            Title of the plot. If omitted, the title might be chosen automatically.
         filename (str, optional):
             If given, the plot is written to the specified file.
         action (str):
-            Decides what to do with the final figure. If the argument is set to
-            `show`, :func:`matplotlib.pyplot.show` will be called to show the
-            plot. If the value is `none`, the figure will be created, but not
-            necessarily shown. The value `close` closes the figure, after saving
-            it to a file when `filename` is given. The default value `auto`
-            implies that the plot is shown if it is not a nested plot call.
+            Decides what to do with the final figure. If the argument is set to `show`,
+            :func:`matplotlib.pyplot.show` will be called to show the plot. If the value
+            is `none`, the figure will be created, but not necessarily shown. The value
+            `close` closes the figure, after saving it to a file when `filename` is
+            given. The default value `auto` implies that the plot is shown if it is not
+            a nested plot call.
         ax_style (dict):
-            Dictionary with properties that will be changed on the axis
-            after the plot has been drawn by calling
-            :meth:`matplotlib.pyplot.setp`. A special item in this dictionary is
-            `use_offset`, which is flag that can be used to control whether
-            offset are shown along the axes of the plot.
+            Dictionary with properties that will be changed on the axis after the plot
+            has been drawn by calling :meth:`matplotlib.pyplot.setp`. A special item i
+            this dictionary is `use_offset`, which is flag that can be used to control
+            whether offset are shown along the axes of the plot.
         fig_style (dict):
-            Dictionary with properties that will be changed on the
-            figure after the plot has been drawn by calling
-            :meth:`matplotlib.pyplot.setp`. For instance, using
-            fig_style={'dpi': 200} increases the resolution of the figure.
+            Dictionary with properties that will be changed on the figure after the plot
+            has been drawn by calling :meth:`matplotlib.pyplot.setp`. For instance,
+            using fig_style={'dpi': 200} increases the resolution of the figure.
         ax (:class:`matplotlib.axes.Axes`):
-            Figure axes to be used for plotting. The special value "create"
-            creates a new figure, while "reuse" attempts to reuse an existing
-            figure, which is the default.
+            Figure axes to be used for plotting. The special value "create" creates a
+            new figure, while "reuse" attempts to reuse an existing figure, which is
+            the default.
         """
         # Note on docstring: This docstring replaces the token {PLOT_ARGS} in
         # the wrapped function
@@ -339,10 +336,6 @@ def plot_on_axes(wrapped=None, update_method=None):
 
             elif action == "close":
                 plt.close(fig)
-
-            elif action == "create":
-                # deprecated on 2022-03-08. Scheduled for removal on 2022-09-08
-                warnings.warn("action `create` is called `none`", DeprecationWarning)
 
             elif action != "none":
                 raise ValueError(f"Unknown action `{action}`")
@@ -448,25 +441,24 @@ def plot_on_figure(wrapped=None, update_method=None):
             Title of the plot. If omitted, the title might be chosen automatically.
             This is shown above all panels.
         constrained_layout (bool):
-            Whether to use `constrained_layout` in :func:`matplotlib.pyplot.figure`
-            call to create a figure. This affects the layout of all plot elements.
-            Generally, spacing might be better with this flag enabled, but it can
-            also lead to problems when plotting multiple plots successively, e.g.,
-            when creating a movie.
+            Whether to use `constrained_layout` in :func:`matplotlib.pyplot.figure` call
+            to create a figure. This affects the layout of all plot elements. Generally,
+            spacing might be better with this flag enabled, but it can also lead to
+            problems when plotting multiple plots successively, e.g., when creating a
+            movie.
         filename (str, optional):
             If given, the figure is written to the specified file.
         action (str):
-            Decides what to do with the final figure. If the argument is set to
-            `show`, :func:`matplotlib.pyplot.show` will be called to show the
-            plot. If the value is `none`, the figure will be created, but not
-            necessarily shown. The value `close` closes the figure, after saving
-            it to a file when `filename` is given. The default value `auto`
-            implies that the plot is shown if it is not a nested plot call.
+            Decides what to do with the final figure. If the argument is set to `show`,
+            :func:`matplotlib.pyplot.show` will be called to show the plot. If the value
+            is `none`, the figure will be created, but not necessarily shown. The value
+            `close` closes the figure, after saving it to a file when `filename` is
+            given. The default value `auto` implies that the plot is shown if it is not
+            a nested plot call.
         fig_style (dict):
-            Dictionary with properties that will be changed on the
-            figure after the plot has been drawn by calling
-            :meth:`matplotlib.pyplot.setp`. For instance, using
-            fig_style={'dpi': 200} increases the resolution of the figure.
+            Dictionary with properties that will be changed on the figure after the plot
+            has been drawn by calling :meth:`matplotlib.pyplot.setp`. For instance,
+            using fig_style={'dpi': 200} increases the resolution of the figure.
         fig (:class:`matplotlib.figures.Figure`):
             Figure that is used for plotting. If omitted, a new figure is created.
         """
@@ -514,10 +506,6 @@ def plot_on_figure(wrapped=None, update_method=None):
 
             elif action == "close":
                 plt.close(fig)
-
-            elif action == "create":
-                # deprecated on 2022-03-08. Scheduled for removal on 2022-09-08
-                warnings.warn("action `create` is called `none`", DeprecationWarning)
 
             elif action != "none":
                 raise ValueError(f"Unknown action `{action}`")
@@ -728,14 +716,14 @@ def get_plotting_context(
     Args:
         context:
             An instance of :class:`PlottingContextBase` or an instance of
-            :class:`matplotlib.axes.Axes` or :class:`matplotlib.figure.Figure`
-            to determine where the plotting will happen. If omitted, the context
-            is determined automatically.
+            :class:`matplotlib.axes.Axes` or :class:`matplotlib.figure.Figure` to
+            determine where the plotting will happen. If omitted, the context is
+            determined automatically.
         title (str):
             The title shown in the plot
         show (bool):
-            Determines whether the plot is shown while the simulation is
-            running. If `False`, the files are created in the background.
+            Determines whether the plot is shown while the simulation is running. If
+            `False`, the files are created in the background.
 
     Returns:
         :class:`PlottingContextBase`: The plotting context

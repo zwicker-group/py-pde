@@ -12,7 +12,6 @@ vanishes.
 
 from __future__ import annotations
 
-import warnings
 from abc import ABCMeta
 from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, TypeVar, Union
 
@@ -193,7 +192,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         avoid_center: bool = False,
         coords: str = "cartesian",
         rng: np.random.Generator = None,
-        cartesian: bool = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -216,11 +214,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
-        if cartesian is not None:
-            # deprecated on 2022-03-11
-            warnings.warn("Argument `cartesian` is deprecated. Use `coords` instead")
-            coords = "cartesian" if cartesian else "grid"
-
         if rng is None:
             rng = np.random.default_rng()
 
