@@ -12,7 +12,7 @@ import inspect
 import itertools
 import json
 import logging
-import warnings
+import math
 from abc import ABCMeta, abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -245,6 +245,11 @@ class GridBase(metaclass=ABCMeta):
     def shape(self) -> Tuple[int, ...]:
         """tuple of int: the number of support points of each axis"""
         return self._shape
+
+    @property
+    def num_cells(self) -> int:
+        """int: the number of cells in this grid"""
+        return math.prod(self.shape)
 
     @property
     def _shape_full(self) -> Tuple[int, ...]:
@@ -1122,7 +1127,7 @@ class GridBase(metaclass=ABCMeta):
         """
         if all(np.isscalar(d) for d in self.cell_volume_data):
             # all cells have the same volume
-            cell_volume = np.product(self.cell_volume_data)  # type: ignore
+            cell_volume = np.prod(self.cell_volume_data)  # type: ignore
 
             @jit
             def get_cell_volume(*args) -> float:
