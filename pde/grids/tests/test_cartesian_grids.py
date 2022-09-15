@@ -41,6 +41,7 @@ def test_generic_cartesian_grid(dim):
     ]
     for grid in cases:
         assert grid.dim == dim
+        assert grid.num_cells == np.prod(shape)
         dim_axes = len(grid.axes) + len(grid.axes_symmetric)
         assert dim_axes == dim
         vol = np.prod(grid.discretization) * np.prod(shape)

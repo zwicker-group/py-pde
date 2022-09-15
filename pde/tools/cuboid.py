@@ -174,9 +174,9 @@ class Cuboid:
         null = sides == 0
         null_count = null.sum()
         if null_count == 0:
-            return 2 * np.sum(np.product(sides) / sides)  # type: ignore
+            return 2 * np.sum(np.prod(sides) / sides)  # type: ignore
         elif null_count == 1:
-            return 2 * np.product(sides[~null])  # type: ignore
+            return 2 * np.prod(sides[~null])  # type: ignore
         else:
             return 0
 

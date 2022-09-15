@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import math
 from enum import IntEnum
 from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
 
@@ -180,7 +181,7 @@ class GridMesh:
         decomposition += [1] * (grid.num_axes - len(decomposition))
 
         # check compatibility with number of nodes
-        if mpi.size > 1 and np.prod(decomposition) != mpi.size:
+        if mpi.size > 1 and math.prod(decomposition) != mpi.size:
             raise RuntimeError(
                 f"Node count ({mpi.size}) incompatible with decomposition "
                 f"({decomposition})"

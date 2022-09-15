@@ -13,6 +13,7 @@ def test_polar_grid():
     """test simple polar grid"""
     grid = PolarSymGrid(4, 8)
     assert grid.dim == 2
+    assert grid.num_cells == 8
     assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
     assert not grid.has_hole
@@ -38,6 +39,7 @@ def test_polar_annulus():
     """test simple polar grid with a hole"""
     grid = PolarSymGrid((2, 4), 8)
     assert grid.dim == 2
+    assert grid.num_cells == 8
     assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
     assert grid.has_hole
@@ -81,6 +83,7 @@ def test_spherical_grid():
     """test simple spherical grid"""
     grid = SphericalSymGrid(4, 8)
     assert grid.dim == 3
+    assert grid.num_cells == 8
     assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
     assert not grid.has_hole
@@ -106,6 +109,7 @@ def test_spherical_annulus():
     """test simple spherical grid with a hole"""
     grid = SphericalSymGrid((2, 4), 8)
     assert grid.dim == 3
+    assert grid.num_cells == 8
     assert grid.numba_type == "f8[:]"
     assert grid.shape == (8,)
     assert grid.has_hole
