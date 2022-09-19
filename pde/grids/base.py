@@ -1223,6 +1223,7 @@ class GridBase(metaclass=ABCMeta):
 
         return get_axis_data  # type: ignore
 
+    @cached_method()
     def _make_interpolator_compiled(
         self, *, fill: Number = None, full_data: bool = False, cell_coords: bool = False
     ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
