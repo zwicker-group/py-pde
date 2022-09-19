@@ -412,6 +412,7 @@ class FieldCollection(FieldBase):
         *,
         label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
+        rng: np.random.Generator = None,
     ) -> FieldCollection:
         """create scalar fields with random values between `vmin` and `vmax`
 
@@ -428,12 +429,14 @@ class FieldCollection(FieldBase):
                 Name of the field collection
             labels (list of str, optional):
                 Names of the individual fields
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
         if labels is None:
             labels = [None] * num_fields  # type: ignore
         return cls(
             [
-                ScalarField.random_uniform(grid, vmin, vmax, label=labels[i])
+                ScalarField.random_uniform(grid, vmin, vmax, label=labels[i], rng=rng)
                 for i in range(num_fields)
             ],
             label=label,
