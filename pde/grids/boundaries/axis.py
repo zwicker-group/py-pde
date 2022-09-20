@@ -382,12 +382,23 @@ def get_boundary_axis(
             Appropriate boundary condition for the axis
     """
     # handle special constructs that describe boundary conditions
-    if data == "natural" or data == "auto_periodic_neumann":
+    if data in {"natural", "auto_periodic_neumann", "auto_periodic_derivative"}:
         # automatic choice between periodic and Neumann condition
-        data = "periodic" if grid.periodic[axis] else "derivative"
-    elif data == "auto_periodic_dirichlet":
+        if grid.periodic[axis]:
+            data = "periodic"
+        elif rank == 0:
+            data = "derivative"
+        else:
+            data = "normal_derivative"
+
+    elif data in {"auto_periodic_dirichlet", "auto_periodic_value"}:
         # automatic choice between periodic and Dirichlet condition
-        data = "periodic" if grid.periodic[axis] else "value"
+        if grid.periodic[axis]:
+            data = "periodic"
+        elif grid.periodic[axis]:
+            data = "value"
+        else:
+            data = "normal_value"
 
     # handle different types of data that specify boundary conditions
     if isinstance(data, BoundaryAxisBase):
