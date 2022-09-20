@@ -71,7 +71,7 @@ def test_pde_vector():
     assert eq.explicit_time_dependence
     assert not eq.complex_valued
     grid = grids.UnitGrid([8, 8])
-    field = VectorField.random_normal(grid)
+    field = VectorField.random_normal(grid).smooth(1)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
     res_b = eq.solve(field, t_range=1, dt=0.01, backend="numba", tracker=None)
@@ -103,7 +103,10 @@ def test_pde_vector_scalar():
     assert not eq.complex_valued
     grid = grids.UnitGrid([8, 8])
     field = FieldCollection(
-        [VectorField.random_uniform(grid), ScalarField.random_uniform(grid)]
+        [
+            VectorField.random_uniform(grid).smooth(1),
+            ScalarField.random_uniform(grid).smooth(1),
+        ]
     )
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)

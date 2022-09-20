@@ -390,19 +390,15 @@ def get_boundary_axis(
         # automatic choice between periodic and Neumann condition
         if grid.periodic[axis]:
             data = "periodic"
-        elif rank == 0:
-            data = "derivative"
         else:
-            data = "normal_derivative"
+            data = "derivative"
 
     elif data == "auto_periodic_dirichlet" or data == "auto_periodic_value":
         # automatic choice between periodic and Dirichlet condition
         if grid.periodic[axis]:
             data = "periodic"
-        elif rank == 0:
-            data = "value"
         else:
-            data = "normal_value"
+            data = "value"
 
     # handle different types of data that specify boundary conditions
     if isinstance(data, BoundaryAxisBase):

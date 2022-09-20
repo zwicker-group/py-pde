@@ -99,10 +99,8 @@ class Boundaries(list):
             for periodic in grid.periodic:
                 if periodic:
                     boundaries.append("periodic")
-                elif rank == 0:
-                    boundaries.append("derivative")
                 else:
-                    boundaries.append("normal_derivative")
+                    boundaries.append("derivative")
 
         elif (
             boundaries == "auto_periodic_dirichlet"
@@ -113,10 +111,8 @@ class Boundaries(list):
             for periodic in grid.periodic:
                 if periodic:
                     boundaries.append("periodic")
-                elif rank == 0:
-                    boundaries.append("value")
                 else:
-                    boundaries.append("normal_value")
+                    boundaries.append("value")
 
         elif boundaries == "auto_periodic_curvature":
             # set the respective natural conditions (with vanishing curvature) for all axes
@@ -124,10 +120,8 @@ class Boundaries(list):
             for periodic in grid.periodic:
                 if periodic:
                     boundaries.append("periodic")
-                elif rank == 0:
-                    boundaries.append("curvature")
                 else:
-                    boundaries.append("normal_curvature")
+                    boundaries.append("curvature")
 
         # create the list of BoundaryAxis objects
         bcs = None
