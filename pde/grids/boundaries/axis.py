@@ -399,7 +399,7 @@ def get_boundary_axis(
         # automatic choice between periodic and Dirichlet condition
         if grid.periodic[axis]:
             data = "periodic"
-        elif grid.periodic[axis]:
+        elif rank == 0:
             data = "value"
         else:
             data = "normal_value"
