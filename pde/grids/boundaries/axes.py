@@ -89,11 +89,11 @@ class Boundaries(list):
             return boundaries
 
         # convert natural boundary conditions if present
-        if boundaries in {
-            "natural",
-            "auto_periodic_neumann",
-            "auto_periodic_derivative",
-        }:
+        if (
+            boundaries == "natural"
+            or boundaries == "auto_periodic_neumann"
+            or boundaries == "auto_periodic_derivative"
+        ):
             # set the respective natural conditions for all axes
             boundaries = []
             for periodic in grid.periodic:
@@ -104,7 +104,10 @@ class Boundaries(list):
                 else:
                     boundaries.append("normal_derivative")
 
-        elif boundaries in {"auto_periodic_dirichlet", "auto_periodic_value"}:
+        elif (
+            boundaries == "auto_periodic_dirichlet"
+            or boundaries == "auto_periodic_value"
+        ):
             # set the respective natural conditions (with vanishing values) for all axes
             boundaries = []
             for periodic in grid.periodic:
