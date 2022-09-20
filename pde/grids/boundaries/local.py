@@ -2644,7 +2644,7 @@ class CurvatureBC(ConstBC2ndOrderBase):
 class NormalDirichletBC(DirichletBC):
     """represents a boundary condition imposing the value on normal components"""
 
-    names = ["normal_value", "normal_dirichlet"]
+    names = ["normal_value", "normal_dirichlet", "dirichlet_normal"]
     normal = True
 
 
@@ -2652,7 +2652,7 @@ class NormalNeumannBC(NeumannBC):
     """represents a boundary condition imposing the derivative of normal components
     in the outward normal direction of the boundary"""
 
-    names = ["normal_derivative", "normal_neumann"]
+    names = ["normal_derivative", "normal_neumann", "neumann_normal"]
     normal = True
 
 

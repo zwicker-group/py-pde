@@ -89,27 +89,30 @@ class Boundaries(list):
             return boundaries
 
         # convert natural boundary conditions if present
-        if boundaries == "natural" or boundaries == "auto_periodic_neumann":
+        if (
+            boundaries == "natural"
+            or boundaries == "auto_periodic_neumann"
+            or boundaries == "auto_periodic_derivative"
+        ):
             # set the respective natural conditions for all axes
             boundaries = []
             for periodic in grid.periodic:
                 if periodic:
                     boundaries.append("periodic")
-                elif rank == 0:
-                    boundaries.append("neumann")
                 else:
-                    boundaries.append("neumann")
+                    boundaries.append("derivative")
 
-        elif boundaries == "auto_periodic_dirichlet":
+        elif (
+            boundaries == "auto_periodic_dirichlet"
+            or boundaries == "auto_periodic_value"
+        ):
             # set the respective natural conditions (with vanishing values) for all axes
             boundaries = []
             for periodic in grid.periodic:
                 if periodic:
                     boundaries.append("periodic")
-                elif rank == 0:
-                    boundaries.append("dirichlet")
                 else:
-                    boundaries.append("dirichlet")
+                    boundaries.append("value")
 
         elif boundaries == "auto_periodic_curvature":
             # set the respective natural conditions (with vanishing curvature) for all axes
@@ -117,8 +120,6 @@ class Boundaries(list):
             for periodic in grid.periodic:
                 if periodic:
                     boundaries.append("periodic")
-                elif rank == 0:
-                    boundaries.append("curvature")
                 else:
                     boundaries.append("curvature")
 
