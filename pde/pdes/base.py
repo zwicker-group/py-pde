@@ -132,6 +132,7 @@ class PDEBase(metaclass=ABCMeta):
         *,
         tol: float = 1e-7,
         rhs_numba: Callable = None,
+        **kwargs,
     ):
         """check the numba compiled right hand side versus the numpy variant
 
@@ -149,7 +150,7 @@ class PDEBase(metaclass=ABCMeta):
                 :meth:`PDEBase._make_pde_rhs_numba_cached`.
         """
         # obtain evolution rate from the numpy implementation
-        res_numpy = self.evolution_rate(state.copy(), t).data
+        res_numpy = self.evolution_rate(state.copy(), t, **kwargs).data
         if not np.all(np.isfinite(res_numpy)):
             self._logger.warning(
                 "The numpy implementation of the PDE returned non-finite values."
@@ -157,7 +158,7 @@ class PDEBase(metaclass=ABCMeta):
 
         # obtain evolution rate from the numba implementation
         if rhs_numba is None:
-            rhs_numba = self._make_pde_rhs_numba_cached(state)
+            rhs_numba = self._make_pde_rhs_numba_cached(state, **kwargs)
         test_state = state.copy()
         res_numba = rhs_numba(test_state.data, t)
         if not np.all(np.isfinite(res_numba)):
@@ -209,7 +210,7 @@ class PDEBase(metaclass=ABCMeta):
             rhs = self._make_pde_rhs_numba(state, **kwargs)
 
         if check_implementation:
-            self.check_rhs_consistency(state, rhs_numba=rhs)
+            self.check_rhs_consistency(state, rhs_numba=rhs, **kwargs)
 
         return rhs  # type: ignore
 
