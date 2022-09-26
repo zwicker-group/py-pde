@@ -566,7 +566,7 @@ class PDE(PDEBase):
         return chain()
 
     def _make_pde_rhs_numba(
-        self, state: FieldBase
+        self, state: FieldBase, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function evaluating the right hand side of the PDE
 
