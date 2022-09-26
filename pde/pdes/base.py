@@ -120,7 +120,7 @@ class PDEBase(metaclass=ABCMeta):
         pass
 
     def _make_pde_rhs_numba(
-        self, state: FieldBase
+        self, state: FieldBase, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function for evaluating the right hand side"""
         raise NotImplementedError("No backend `numba`")
@@ -132,6 +132,7 @@ class PDEBase(metaclass=ABCMeta):
         *,
         tol: float = 1e-7,
         rhs_numba: Callable = None,
+        **kwargs,
     ):
         """check the numba compiled right hand side versus the numpy variant
 
@@ -149,7 +150,7 @@ class PDEBase(metaclass=ABCMeta):
                 :meth:`PDEBase._make_pde_rhs_numba_cached`.
         """
         # obtain evolution rate from the numpy implementation
-        res_numpy = self.evolution_rate(state.copy(), t).data
+        res_numpy = self.evolution_rate(state.copy(), t, **kwargs).data
         if not np.all(np.isfinite(res_numpy)):
             self._logger.warning(
                 "The numpy implementation of the PDE returned non-finite values."
@@ -157,7 +158,7 @@ class PDEBase(metaclass=ABCMeta):
 
         # obtain evolution rate from the numba implementation
         if rhs_numba is None:
-            rhs_numba = self._make_pde_rhs_numba_cached(state)
+            rhs_numba = self._make_pde_rhs_numba_cached(state, **kwargs)
         test_state = state.copy()
         res_numba = rhs_numba(test_state.data, t)
         if not np.all(np.isfinite(res_numba)):
@@ -176,7 +177,7 @@ class PDEBase(metaclass=ABCMeta):
         )
 
     def _make_pde_rhs_numba_cached(
-        self, state: FieldBase
+        self, state: FieldBase, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function for evaluating the right hand side
 
@@ -201,20 +202,20 @@ class PDEBase(metaclass=ABCMeta):
                 # cache was not hit
                 self._logger.info("Write compiled rhs to cache")
                 self._cache["pde_rhs_numba_state"] = grid_state
-                self._cache["pde_rhs_numba"] = self._make_pde_rhs_numba(state)
+                self._cache["pde_rhs_numba"] = self._make_pde_rhs_numba(state, **kwargs)
             rhs = self._cache["pde_rhs_numba"]
 
         else:
             # caching was skipped
-            rhs = self._make_pde_rhs_numba(state)
+            rhs = self._make_pde_rhs_numba(state, **kwargs)
 
         if check_implementation:
-            self.check_rhs_consistency(state, rhs_numba=rhs)
+            self.check_rhs_consistency(state, rhs_numba=rhs, **kwargs)
 
         return rhs  # type: ignore
 
     def make_pde_rhs(
-        self, state: FieldBase, backend: str = "auto"
+        self, state: FieldBase, backend: str = "auto", **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """return a function for evaluating the right hand side of the PDE
 
@@ -232,7 +233,7 @@ class PDEBase(metaclass=ABCMeta):
         """
         if backend == "auto":
             try:
-                rhs = self._make_pde_rhs_numba_cached(state)
+                rhs = self._make_pde_rhs_numba_cached(state, **kwargs)
             except NotImplementedError:
                 backend = "numpy"
             else:
@@ -244,13 +245,13 @@ class PDEBase(metaclass=ABCMeta):
             def evolution_rate_numpy(state_data: np.ndarray, t: float) -> np.ndarray:
                 """evaluate the rhs given only a state without the grid"""
                 state.data = state_data
-                return self.evolution_rate(state, t).data
+                return self.evolution_rate(state, t, **kwargs).data
 
             rhs = evolution_rate_numpy
             rhs._backend = "numpy"  # type: ignore
 
         elif backend == "numba":
-            rhs = self._make_pde_rhs_numba_cached(state)
+            rhs = self._make_pde_rhs_numba_cached(state, **kwargs)
             rhs._backend = "numba"  # type: ignore
 
         elif backend != "auto":
@@ -262,7 +263,7 @@ class PDEBase(metaclass=ABCMeta):
         return rhs
 
     def noise_realization(
-        self, state: FieldBase, t: float = 0, label: str = "Noise realization"
+        self, state: FieldBase, t: float = 0, *, label: str = "Noise realization"
     ) -> FieldBase:
         """returns a realization for the noise
 
@@ -307,7 +308,7 @@ class PDEBase(metaclass=ABCMeta):
         return result
 
     def _make_noise_realization_numba(
-        self, state: FieldBase
+        self, state: FieldBase, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """return a function for evaluating the noise term of the PDE
 
@@ -363,7 +364,7 @@ class PDEBase(metaclass=ABCMeta):
         return noise_realization  # type: ignore
 
     def _make_sde_rhs_numba(
-        self, state: FieldBase
+        self, state: FieldBase, **kwargs
     ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the noise term of the PDE
 
@@ -375,8 +376,8 @@ class PDEBase(metaclass=ABCMeta):
         Returns:
             Function determining the right hand side of the PDE
         """
-        evolution_rate = self._make_pde_rhs_numba_cached(state)
-        noise_realization = self._make_noise_realization_numba(state)
+        evolution_rate = self._make_pde_rhs_numba_cached(state, **kwargs)
+        noise_realization = self._make_noise_realization_numba(state, **kwargs)
 
         @jit
         def sde_rhs(state_data: np.ndarray, t: float) -> Tuple[np.ndarray, np.ndarray]:
@@ -386,7 +387,7 @@ class PDEBase(metaclass=ABCMeta):
         return sde_rhs  # type: ignore
 
     def _make_sde_rhs_numba_cached(
-        self, state: FieldBase
+        self, state: FieldBase, **kwargs
     ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """create a compiled function for evaluating the noise term of the PDE
 
@@ -403,17 +404,17 @@ class PDEBase(metaclass=ABCMeta):
                 # cache was not hit
                 self._logger.info("Write compiled noise term to cache")
                 self._cache["sde_rhs_numba_state"] = grid_state
-                self._cache["sde_rhs_numba"] = self._make_sde_rhs_numba(state)
+                self._cache["sde_rhs_numba"] = self._make_sde_rhs_numba(state, **kwargs)
             sde_rhs = self._cache["sde_rhs_numba"]
 
         else:
             # caching was skipped
-            sde_rhs = self._make_sde_rhs_numba(state)
+            sde_rhs = self._make_sde_rhs_numba(state, **kwargs)
 
         return sde_rhs  # type: ignore
 
     def make_sde_rhs(
-        self, state: FieldBase, backend: str = "auto"
+        self, state: FieldBase, backend: str = "auto", **kwargs
     ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the right hand side of the SDE
 
@@ -431,7 +432,7 @@ class PDEBase(metaclass=ABCMeta):
         """
         if backend == "auto":
             try:
-                sde_rhs = self._make_sde_rhs_numba_cached(state)
+                sde_rhs = self._make_sde_rhs_numba_cached(state, **kwargs)
             except NotImplementedError:
                 backend = "numpy"
             else:
@@ -439,7 +440,7 @@ class PDEBase(metaclass=ABCMeta):
                 return sde_rhs
 
         if backend == "numba":
-            sde_rhs = self._make_sde_rhs_numba_cached(state)
+            sde_rhs = self._make_sde_rhs_numba_cached(state, **kwargs)
             sde_rhs._backend = "numba"  # type: ignore
 
         elif backend == "numpy":
@@ -451,8 +452,8 @@ class PDEBase(metaclass=ABCMeta):
                 """evaluate the rhs given only a state without the grid"""
                 state.data = state_data
                 return (
-                    self.evolution_rate(state, t).data,
-                    self.noise_realization(state, t).data,
+                    self.evolution_rate(state, t, **kwargs).data,
+                    self.noise_realization(state, t, **kwargs).data,
                 )
 
             sde_rhs._backend = "numpy"  # type: ignore
