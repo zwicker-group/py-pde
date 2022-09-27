@@ -241,13 +241,21 @@ class Controller:
             dt_statistics = dict(self.solver.info["dt_statistics"].to_dict())
             self.solver.info["dt_statistics"] = dt_statistics
 
-        # show information after a potential progress bar has been deleted to
-        # not mess up the display
+        # show information after a potential progress bar has been deleted to not mess
+        # up the display
         self._logger.log(msg_level, msg)
         if profiler["tracker"] > max(profiler["solver"], 1):
             self._logger.warning(
                 f"Spent more time on handling trackers ({profiler['tracker']}) than on "
                 f"the actual simulation ({profiler['solver']})"
+            )
+
+        # check potential state modifications and throw a warning if they are detected
+        state_modifications = self.solver.info.get("state_modifications", 0)
+        if state_modifications > 1:
+            self._logger.warning(
+                f"Detected significant state modifications ({state_modifications}). "
+                "Consider reducing time step."
             )
 
     def _run_mpi_client(self, state: TState, dt: float = None) -> None:

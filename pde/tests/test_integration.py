@@ -47,7 +47,7 @@ def test_inhomogeneous_bcs():
 
 
 @pytest.mark.multiprocessing
-def test_custom_pde_mpi():
+def test_custom_pde_mpi(caplog):
     """test a custom PDE using the parallelized solver"""
 
     class TestPDE(PDEBase):
@@ -57,7 +57,7 @@ def test_custom_pde_mpi():
                 for i in range(state_data.size):
                     if state_data.flat[i] > 1:
                         state_data.flat[i] -= 1
-                        modification += 1
+                        modification += 2
                 return modification
 
             return modify_after_step
@@ -83,8 +83,15 @@ def test_custom_pde_mpi():
         "tracker": None,
         "ret_info": True,
     }
+
     res1, info1 = eq.solve(backend="numpy", method="explicit_mpi", **args)
+    if mpi.is_main:
+        assert "significant state modifications" in caplog.text
+        caplog.clear()
+
     res2, info2 = eq.solve(backend="numba", method="explicit_mpi", **args)
+    if mpi.is_main:
+        assert "significant state modifications" in caplog.text
 
     if mpi.is_main:
         # check results in the main process
