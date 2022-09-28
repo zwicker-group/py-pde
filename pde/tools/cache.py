@@ -572,7 +572,10 @@ class _class_cache:
                     self.name,
                     func_args,
                 )
-                result = func(obj, *args, **kwargs)
+                try:
+                    result = func(obj, *args, **kwargs)
+                except Exception as exc:
+                    raise exc from None  # raise exc without KeyError information
                 cache[cache_key] = result
             return result
 
