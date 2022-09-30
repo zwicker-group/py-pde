@@ -30,9 +30,6 @@ class ExplicitMPISolver(ExplicitSolver):
 
     name = "explicit_mpi"
 
-    dt_min = 1e-10
-    dt_max = 1e10
-
     def __init__(
         self,
         pde: PDEBase,
@@ -41,7 +38,7 @@ class ExplicitMPISolver(ExplicitSolver):
         *,
         backend: str = "auto",
         adaptive: bool = False,
-        tolerance: float = 1e-5,
+        tolerance: float = 1e-4,
     ):
         """
         Args:

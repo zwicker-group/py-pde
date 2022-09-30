@@ -1,5 +1,5 @@
 """
-Base classes
+Base class for defining partial differential equations
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
@@ -30,28 +30,33 @@ class PDEBase(metaclass=ABCMeta):
     case of deterministic PDEs, the methods :meth:`PDEBase.evolution_rate` and
     :meth:`PDEBase._make_pde_rhs_numba` need to be overwritten for the `numpy` and
     `numba` backend, respectively.
+
+    Attributes:
+        diagnostics (dict):
+            Additional diagnostic information available after a PDE has been solved.
     """
 
+    diagnostics: Dict[str, Any]
+
     check_implementation: bool = True
-    """ bool: Flag determining whether (some) numba-compiled functions should be checked
+    """bool: Flag determining whether (some) numba-compiled functions should be checked
     against their numpy counter-parts. This can help with implementing a correct
-    compiled version for a PDE class. """
+    compiled version for a PDE class."""
 
     cache_rhs: bool = False
-    """ bool: Flag indicating whether the right hand side of the equation should be
+    """bool: Flag indicating whether the right hand side of the equation should be
     cached. If True, the same implementation is used in subsequent calls to `solve`.
     Note that this might lead to wrong results if the parameters of the PDE were changed
     after the first call. This option is thus disabled by default and should be used
-    with care. 
-    """
+    with care."""
 
     explicit_time_dependence: Optional[bool] = None
-    """ bool: Flag indicating whether the right hand side of the PDE has an explicit
-    time dependence. """
+    """bool: Flag indicating whether the right hand side of the PDE has an explicit
+    time dependence."""
 
     complex_valued: bool = False
-    """ bool: Flag indicating whether the right hand side is a complex-valued PDE, which
-    requires all involved variables to be of complex type """
+    """bool: Flag indicating whether the right hand side is a complex-valued PDE, which
+    requires all involved variables to be of complex type."""
 
     def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator = None):
         """
@@ -76,11 +81,9 @@ class PDEBase(metaclass=ABCMeta):
         """
         self._logger = logging.getLogger(self.__class__.__name__)
         self._cache: Dict[str, Any] = {}
+        self.diagnostics = {}
         self.noise = np.asanyarray(noise)
-        if rng is None:
-            self.rng = np.random.default_rng()
-        else:
-            self.rng = rng
+        self.rng = rng if rng is not None else np.random.default_rng()
 
     @property
     def is_sde(self) -> bool:
@@ -469,16 +472,18 @@ class PDEBase(metaclass=ABCMeta):
         t_range: "TRangeType",
         dt: float = None,
         tracker: TrackerCollectionDataType = "auto",
+        *,
         method: Union[str, "SolverBase"] = "auto",
         ret_info: bool = False,
         **kwargs,
     ) -> Union[Optional[FieldBase], Tuple[Optional[FieldBase], Dict[str, Any]]]:
-        """convenience method for solving the partial differential equation
+        """solves the partial differential equation
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)
         and controller (:class:`~pde.controller.Controller`) to advance the state over
-        the temporal range specified by `t_range`. To obtain full flexibility, it is
-        advisable to construct these classes explicitly.
+        the temporal range specified by `t_range`. This method only exposes the most
+        common functions, so explicit construction of these classes might offer more
+        flexibility.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -513,14 +518,15 @@ class PDEBase(metaclass=ABCMeta):
                 Specifies the method for solving the differential equation. This can
                 either be an instance of :class:`~pde.solvers.base.SolverBase` or a
                 descriptive name like 'explicit' or 'scipy'. The valid names are given
-                by :meth:`pde.solvers.base.SolverBase.registered_solvers`. The default
-                value 'auto' selects :class:`~pde.solvers.ScipySolver` if `dt` is not
-                specified and :class:`~pde.solvers.explicit.ExplicitSolver` otherwise.
+                by :meth:`pde.solvers.registered_solvers`. The default value 'auto'
+                selects :class:`~pde.solvers.ScipySolver` if `dt` is not specified and
+                :class:`~pde.solvers.explicit.ExplicitSolver` otherwise.
                 Details of the solvers and additional features (like adaptive time
                 steps) are explained in their documentation.
             ret_info (bool):
-                Flag determining whether diagnostic information about the solver
-                process should be returned.
+                Flag determining whether diagnostic information about the solver process
+                should be returned. Note that the same information is also available
+                as the :attr:`~PDEBase.diagnostics` attribute.
             **kwargs:
                 Additional keyword arguments are forwarded to the solver class chosen
                 with the `method` argument. In particular,
@@ -540,12 +546,12 @@ class PDEBase(metaclass=ABCMeta):
         from ..solvers.base import SolverBase  # @Reimport
 
         if method == "auto":
-            if dt is None and not kwargs.get("adaptive", False):
-                method = "scipy"
-            else:
+            if dt is not None or kwargs.get("adaptive", False):
                 method = "explicit"
+            else:
+                method = "scipy"
 
-        # create solver
+        # create solver instance
         if callable(method):
             solver = method(pde=self, **kwargs)
             if not isinstance(solver, SolverBase):
@@ -559,16 +565,22 @@ class PDEBase(metaclass=ABCMeta):
         else:
             raise TypeError(f"Method {method} is not supported")
 
-        # create controller
+        # create controller instance
         controller = Controller(solver, t_range=t_range, tracker=tracker)
 
         # run the simulation
         final_state = controller.run(state, dt)
 
+        # copy diagnostic information to the PDE instance
+        if hasattr(self, "diagnostics"):
+            self.diagnostics.update(controller.diagnostics)
+        else:
+            self.diagnostics = copy.copy(controller.diagnostics)
+
         if ret_info:
-            info = copy.deepcopy(controller.diagnostics)
-            info["controller"].pop("solver_class", None)  # remove redundant information
-            return final_state, info
+            # return a copy of the diagnostic information so it will not be overwritten
+            # by a repeated call to `solve()`.
+            return final_state, copy.deepcopy(self.diagnostics)
         else:
             return final_state
 

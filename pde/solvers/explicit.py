@@ -22,8 +22,10 @@ class ExplicitSolver(SolverBase):
 
     name = "explicit"
 
-    dt_min = 1e-10
-    dt_max = 1e10
+    dt_min: float = 1e-10
+    """float: minimal time step that the adaptive solver will use"""
+    dt_max: float = 1e10
+    """float: maximal time step that the adaptive solver will use"""
 
     def __init__(
         self,

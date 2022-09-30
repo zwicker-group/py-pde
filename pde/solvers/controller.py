@@ -154,7 +154,6 @@ class Controller:
         # initialize solver information
         self.info["t_start"] = t_start
         self.info["t_end"] = t_end
-        self.info["solver_class"] = self.solver.__class__.__name__
         self.diagnostics["solver"] = self.solver.info
 
         # initialize profilers

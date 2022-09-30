@@ -23,6 +23,7 @@ class FitzhughNagumoPDE(PDEBase):
     """FitzHugh–Nagumo model with diffusive coupling"""
 
     def __init__(self, stimulus=0.5, τ=10, a=0, b=0, bc="auto_periodic_neumann"):
+        super().__init__()
         self.bc = bc
         self.stimulus = stimulus
         self.τ = τ
