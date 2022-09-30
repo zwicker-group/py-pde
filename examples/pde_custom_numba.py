@@ -20,6 +20,7 @@ class KuramotoSivashinskyPDE(PDEBase):
     """Implementation of the normalized Kuramoto–Sivashinsky equation"""
 
     def __init__(self, bc="auto_periodic_neumann"):
+        super().__init__()
         self.bc = bc
 
     def evolution_rate(self, state, t=0):

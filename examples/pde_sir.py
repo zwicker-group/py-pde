@@ -26,6 +26,7 @@ class SIRPDE(PDEBase):
     def __init__(
         self, beta=0.3, gamma=0.9, diffusivity=0.1, bc="auto_periodic_neumann"
     ):
+        super().__init__()
         self.beta = beta  # transmission rate
         self.gamma = gamma  # recovery rate
         self.diffusivity = diffusivity  # spatial mobility

@@ -572,7 +572,10 @@ class PDEBase(metaclass=ABCMeta):
         final_state = controller.run(state, dt)
 
         # copy diagnostic information to the PDE instance
-        self.diagnostics.update(controller.diagnostics)
+        if hasattr(self, "diagnostics"):
+            self.diagnostics.update(controller.diagnostics)
+        else:
+            self.diagnostics = copy.copy(controller.diagnostics)
 
         if ret_info:
             # return a copy of the diagnostic information so it will not be overwritten
