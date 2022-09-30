@@ -1,5 +1,11 @@
 'py-pde' python package
-=========================
+=======================
+
+..  figure:: _images/logo.png
+    :figwidth: 25%
+    :align: right
+
+    Package Logo
 
 The `py-pde` python package provides methods and classes useful for solving
 partial differential equations (PDEs) of the form
@@ -24,7 +30,6 @@ Consequently, the mathematical operator :math:`\mathcal D` can be naturally
 translated to a function evaluating the evolution rate of the PDE.
 
 
-
 **Contents**
 
 .. toctree-filt::
@@ -36,7 +41,6 @@ translated to a function evaluating the evolution rate of the PDE.
     manual/index
     packages/pde
  
-
 
 **Indices and tables**
 
