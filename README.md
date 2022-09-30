@@ -5,15 +5,16 @@
 
 [![PyPI version](https://badge.fury.io/py/py-pde.svg)](https://badge.fury.io/py/py-pde)
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/py-pde.svg)](https://anaconda.org/conda-forge/py-pde)
-[![Documentation Status](https://readthedocs.org/projects/py-pde/badge/?version=latest)](https://py-pde.readthedocs.io/en/latest/?badge=latest)
-[![DOI](https://joss.theoj.org/papers/10.21105/joss.02158/status.svg)](https://doi.org/10.21105/joss.02158)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 [![Build Status](https://github.com/zwicker-group/py-pde/actions/workflows/tests_all.yml/badge.svg)](https://github.com/zwicker-group/py-pde/actions/workflows/tests_all.yml)
 [![codecov](https://codecov.io/gh/zwicker-group/py-pde/branch/master/graph/badge.svg)](https://codecov.io/gh/zwicker-group/py-pde)
 [![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/zwicker-group/py-pde.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/zwicker-group/py-pde/context:python)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
+
+[![Documentation Status](https://readthedocs.org/projects/py-pde/badge/?version=latest)](https://py-pde.readthedocs.io/en/latest/?badge=latest)
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.02158/status.svg)](https://doi.org/10.21105/joss.02158)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 `py-pde` is a Python package for solving partial differential equations (PDEs). 
 The package provides classes for grids on which scalar and tensor fields can be
