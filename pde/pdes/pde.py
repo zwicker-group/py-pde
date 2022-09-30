@@ -209,7 +209,7 @@ class PDE(PDEBase):
             self.bcs[key] = value
 
         # save information for easy inspection
-        self.diagnostics = {
+        self.diagnostics["definition"] = {
             "variables": self.variables,
             "constants": tuple(self.consts),
             "explicit_time_dependence": explicit_time_dependence,
@@ -365,7 +365,7 @@ class PDE(PDEBase):
         """
         # check the cache
         cache = self._cache.get(backend, {})
-        if state.attributes == cache.get("state.attributes", None):
+        if state.attributes == cache.get("state_attributes", None):
             return cache  # this cache was already prepared
         cache = self._cache[backend] = {}  # clear cache, if there was any
 
@@ -376,7 +376,7 @@ class PDE(PDEBase):
 
         # check whether the state is compatible with the PDE
         num_fields = len(self.variables)
-        self.diagnostics["num_fields"] = num_fields
+        self.diagnostics["definition"]["num_fields"] = num_fields
         if isinstance(state, FieldCollection):
             if num_fields != len(state):
                 raise ValueError(
@@ -408,21 +408,22 @@ class PDE(PDEBase):
         ops_general: Dict[str, Callable] = {}
 
         # create special operators if necessary
-        if "dot" in self.diagnostics["operators"]:  # type: ignore
+        operators = self.diagnostics["definition"]["operators"]
+        if "dot" in operators:
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
             ops_general["dot"] = VectorField(state.grid).make_dot_operator(backend)
 
-        if "inner" in self.diagnostics["operators"]:  # type: ignore
+        if "inner" in operators:
             # inner is a synonym for dot product operator
             ops_general["inner"] = VectorField(state.grid).make_dot_operator(backend)
 
-        if "outer" in self.diagnostics["operators"]:  # type: ignore
+        if "outer" in operators:
             # generate an operator that calculates an outer product
             vec_field = VectorField(state.grid)
             ops_general["outer"] = vec_field.make_outer_prod_operator(backend)
 
-        if "integral" in self.diagnostics["operators"]:  # type: ignore
+        if "integral" in operators:
             # add an operator that integrates a field
             ops_general["integral"] = state.grid.make_integrator()
 

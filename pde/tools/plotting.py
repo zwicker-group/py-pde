@@ -71,6 +71,7 @@ def add_scaled_colorbar(
     Returns:
         :class:`~matplotlib.colorbar.Colorbar`: The resulting Colorbar object
     """
+    import matplotlib.pyplot as plt
     from mpl_toolkits import axes_grid1
 
     class _AxesXY(axes_grid1.axes_size._Base):
@@ -112,6 +113,9 @@ def add_scaled_colorbar(
 
     if label:
         cbar.set_label(label)
+
+    plt.sca(ax)  # ensure that the colorbar is not set as the current axes
+
     return cbar
 
 
@@ -327,17 +331,24 @@ def plot_on_axes(wrapped=None, update_method=None):
                     # circumstances determined above
                     action = "show"
                 else:
-                    action = "none"
+                    action = "sca"
 
-            if action == "show":
+            if action == "sca":
+                # set the axes as the current axes, so subsequent plot calls modify it
+                plt.sca(ax)
+
+            elif action == "show":
+                # show the entire figure
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     plt.show()
 
             elif action == "close":
+                # close the figure, e.g., because it has already been used
                 plt.close(fig)
 
             elif action != "none":
+                # do nothing if "none", otherwise raise error
                 raise ValueError(f"Unknown action `{action}`")
 
         return reference
@@ -500,14 +511,17 @@ def plot_on_figure(wrapped=None, update_method=None):
                     action = "none"
 
             if action == "show":
+                # show the entire figure
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     plt.show()
 
             elif action == "close":
+                # close the figure, e.g., because it has already been used
                 plt.close(fig)
 
             elif action != "none":
+                # do nothing if "none", otherwise raise error
                 raise ValueError(f"Unknown action `{action}`")
 
         return reference
