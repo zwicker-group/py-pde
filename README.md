@@ -1,5 +1,8 @@
 # py-pde
 
+<img src="docs/source/_images/logo.png" width="100em" align="right" />
+
+
 [![PyPI version](https://badge.fury.io/py/py-pde.svg)](https://badge.fury.io/py/py-pde)
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/py-pde.svg)](https://anaconda.org/conda-forge/py-pde)
 [![Documentation Status](https://readthedocs.org/projects/py-pde/badge/?version=latest)](https://py-pde.readthedocs.io/en/latest/?badge=latest)
