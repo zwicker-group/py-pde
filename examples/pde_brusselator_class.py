@@ -28,6 +28,7 @@ class BrusselatorPDE(PDEBase):
     """Brusselator with diffusive mobility"""
 
     def __init__(self, a=1, b=3, diffusivity=[1, 0.1], bc="auto_periodic_neumann"):
+        super().__init__()
         self.a = a
         self.b = b
         self.diffusivity = diffusivity  # spatial mobility

@@ -43,10 +43,6 @@ class PDE(PDEBase):
         variables (tuple):
             The name of the variables (i.e., fields) in the order they are expected to
             appear in the `state`.
-        diagnostics (dict):
-            Additional diagnostic information that might help with analyzing problems,
-            e.g., when :mod:`sympy` cannot parse or :mod`numba` cannot compile a
-            function.
     """
 
     @fill_in_docstring
