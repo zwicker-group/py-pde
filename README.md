@@ -1,6 +1,6 @@
 # py-pde
 
-<img src="docs/source/_images/logo.png" width="150em" align="right" />
+<img src="docs/source/_images/logo.png" width="200em" align="right" />
 
 
 [![PyPI version](https://badge.fury.io/py/py-pde.svg)](https://badge.fury.io/py/py-pde)
