@@ -25,10 +25,9 @@ class KuramotoSivashinskyPDE(PDEBase):
         \partial_t u = -\nu \nabla^4 u  - \nabla^2 u -
             \frac{1}{2} \left(\nabla h\right)^2  + \eta(\boldsymbol r, t)
 
-    where :math:`u` is the height of the interface in Monge parameterization.
-    The dynamics are governed by the parameters :math:`\nu` , while
-    :math:`\eta` is Gaussian white noise, whose strength is controlled by the
-    `noise` argument.
+    where :math:`u` is the height of the interface in Monge parameterization. The
+    dynamics are governed by the parameters :math:`\nu` , while :math:`\eta` is Gaussian
+    white noise, whose strength is controlled by the `noise` argument.
     """
 
     explicit_time_dependence = False

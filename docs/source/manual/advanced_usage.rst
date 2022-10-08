@@ -55,19 +55,18 @@ Inhomogeneous values can also be specified by directly supplying an array, whose
 needs to be compatible with the boundary, i.e., it needs to have the same shape as the
 grid but with the dimension of the axis along which the boundary is specified removed.
 
-There exist also special boundary conditions that impose a time-dependent value
-(:code:`bc='value_expression'`) of the field or its derivative
+There exist also special boundary conditions that impose a more complex value of the
+field (:code:`bc='value_expression'`) or its derivative
 (:code:`bc='derivative_expression'`). Beyond the spatial coordinates that are already
-supported for the constant conditiosn above, the expressions of these boundary
+supported for the constant conditions above, the expressions of these boundary
 conditions can depend on the time variable :code:`t`. Note that PDEs need to supply the
 current time when setting the boundary conditions, e.g., when applying the differential
 operators. The pre-defined PDEs and the general class :class:`~pde.pdes.pde.PDE` already
 support time-dependent boundary conditions.
 
 One important aspect about boundary conditions is that they need to respect the
-periodicity of the underlying grid.
-For instance, in a 2d grid with one periodic axis, the following boundary condition
-can be used:
+periodicity of the underlying grid. For instance, in a 2d grid with one periodic axis,
+the following boundary condition can be used:
 
 .. code-block:: python
 
@@ -77,13 +76,11 @@ can be used:
     field.laplace(bc)
     
 For convenience, this typical situation can be described with the special boundary
-condition `natural`, e.g., calling the Laplace operator using 
-:code:`field.laplace("natural")` is identical to the example above.
-Alternatively, this condition can be called `auto_periodic_neumann` to stress that this
-chooses between periodic and Neumann boundary conditions automatically. Similarly, the
-special condition `auto_periodic_dirichlet` enforces periodic boundary conditions or
-Dirichlet boundary condition (vanishing value), depending on the periodicity of the
-underlying grid. 
+condition `auto_periodic_neumann`, e.g., calling the Laplace operator using 
+:code:`field.laplace("auto_periodic_neumann")` is identical to the example above.
+Similarly, the special condition `auto_periodic_dirichlet` enforces periodic boundary
+conditions or Dirichlet boundary condition (vanishing value), depending on the
+periodicity of the underlying grid. 
 
 In summary, we have the following options for boundary conditions on a field :math:`c`
 
@@ -95,12 +92,18 @@ In summary, we have the following options for boundary conditions on a field :ma
      - Condition
      - Example
    * - Dirichlet
+     - :math:`c = 0`
+     - :code:`"dirichlet"` or :code:`"value"`
+   * -
      - :math:`c = \textrm{const}`
      - :code:`{"value": 1.5}`
    * -
      - :math:`c = f(x, t)`
      - :code:`{"value_expression": "sin(x)"}`
    * - Neumann
+     - :math:`\partial_n c = 0`
+     - :code:`"neumann"` or :code:`"derivative"`
+   * -
      - :math:`\partial_n c = \textrm{const}`
      - :code:`{"derivative": -2}`
    * -
@@ -121,6 +124,15 @@ In summary, we have the following options for boundary conditions on a field :ma
    * - Anti-periodic
      - :math:`c(0) = -c(L)`
      - :code:`"anti-periodic"`
+   * -
+     - 
+     -
+   * - Periodic or Dirichlet
+     - :math:`c(0) = c(L)` or :math:`c = 0`
+     - :code:`"auto_periodic_dirichlet"`
+   * - Periodic or Neumann
+     - :math:`c(0) = c(L)` or :math:`\partial_n c = 0`
+     - :code:`"auto_periodic_neumann"`
 
 Here, :math:`\partial_n` denotes a derivative in outward normal direction, :math:`f`
 denotes an arbitrary function given by an expression (see next section), :math:`x`

@@ -24,7 +24,7 @@ class AllenCahnPDE(PDEBase):
     .. math::
         \partial_t c = \gamma \nabla^2 c - c^3 + c
 
-    where :math:`c` is a scalar field and :math:`\gamma` sets the interfacial
+    where :math:`c` is a scalar field and :math:`\gamma` sets the (squared) interfacial
     width.
     """
 

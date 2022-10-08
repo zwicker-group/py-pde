@@ -25,7 +25,7 @@ class CahnHilliardPDE(PDEBase):
         \partial_t c = \nabla^2 \left(c^3 - c - \gamma \nabla^2 c\right)
 
     where :math:`c` is a scalar field taking values on the interval :math:`[-1, 1]` and
-    :math:`\gamma` sets the interfacial width.
+    :math:`\gamma` sets the (squared) interfacial width.
     """
 
     explicit_time_dependence = False

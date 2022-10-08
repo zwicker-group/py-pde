@@ -25,10 +25,10 @@ class KPZInterfacePDE(PDEBase):
         \partial_t h = \nu \nabla^2 h +
             \frac{\lambda}{2} \left(\nabla h\right)^2  + \eta(\boldsymbol r, t)
 
-    where :math:`h` is the height of the interface in Monge parameterization.
-    The dynamics are governed by the two parameters :math:`\nu` and
-    :math:`\lambda`, while :math:`\eta` is Gaussian white noise, whose strength
-    is controlled by the `noise` argument.
+    where :math:`h` is the height of the interface in Monge parameterization. The
+    dynamics are governed by the two parameters :math:`\nu` and :math:`\lambda`, while
+    :math:`\eta` is Gaussian white noise, whose strength is controlled by the `noise`
+    argument.
     """
 
     explicit_time_dependence = False
