@@ -4,8 +4,7 @@
 ..  figure:: _images/logo.png
     :figwidth: 25%
     :align: right
-
-    Package Logo
+    :alt: Logo of the py-pde package
 
 The `py-pde` python package provides methods and classes useful for solving
 partial differential equations (PDEs) of the form

@@ -18,19 +18,18 @@ from .base import PDEBase, expr_prod
 
 class WavePDE(PDEBase):
     r""" A simple wave equation
-    
+
     The mathematical definition,
-    
+
     .. math::
         \partial_t^2 u = c^2 \nabla^2 u
-        
+
     is implemented as two first-order equations:
     
     .. math::
         \partial_t u &= v \\
         \partial_t v &= c^2 \nabla^2 u
-        
-        
+
     where :math:`u` is the density field that and :math:`c` sets the wave speed.
     """
 

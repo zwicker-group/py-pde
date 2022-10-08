@@ -24,8 +24,7 @@ class DiffusionPDE(PDEBase):
     .. math::
         \partial_t c = D \nabla^2 c
 
-    where :math:`c` is a scalar field that is distributed with diffusivity
-    :math:`D`.
+    where :math:`c` is a scalar field and :math:`D` denotes the diffusivity.
     """
 
     explicit_time_dependence = False

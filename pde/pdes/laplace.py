@@ -19,8 +19,8 @@ def solve_poisson_equation(
 ) -> ScalarField:
     r"""Solve Laplace's equation on a given grid
 
-    Denoting the current field by :math:`u`, we thus solve for :math:`f`,
-    defined by the equation
+    Denoting the current field by :math:`u`, we thus solve for :math:`f`, defined by the
+    equation
 
     .. math::
         \nabla^2 u(\boldsymbol r) = -f(\boldsymbol r)
@@ -28,9 +28,8 @@ def solve_poisson_equation(
     with boundary conditions specified by `bc`.
 
     Note:
-        In case of periodic or Neumann boundary conditions, the right hand
-        side :math:`f(\boldsymbol r)` needs to satisfy the following
-        condition
+        In case of periodic or Neumann boundary conditions, the right hand side
+        :math:`f(\boldsymbol r)` needs to satisfy the following condition
 
         .. math::
             \int f \, \mathrm{d}V = \oint g \, \mathrm{d}S \;,

@@ -24,29 +24,26 @@ if TYPE_CHECKING:
 
 
 class PDEBase(metaclass=ABCMeta):
-    """base class for solving partial differential equations
+    """base class for defining partial differential equations (PDEs)
 
     Custom PDEs can be implemented by specifying their evolution rate. In the simple
     case of deterministic PDEs, the methods :meth:`PDEBase.evolution_rate` and
     :meth:`PDEBase._make_pde_rhs_numba` need to be overwritten for the `numpy` and
     `numba` backend, respectively.
-
-    Attributes:
-        diagnostics (dict):
-            Additional diagnostic information available after a PDE has been solved.
     """
 
     diagnostics: Dict[str, Any]
+    """dict: Diagnostic information (available after the PDE has been solved)"""
 
     check_implementation: bool = True
-    """bool: Flag determining whether (some) numba-compiled functions should be checked
-    against their numpy counter-parts. This can help with implementing a correct
-    compiled version for a PDE class."""
+    """bool: Flag determining whether numba-compiled functions should be checked against
+    their numpy counter-parts. This can help with implementing a correct compiled
+    version for a PDE class."""
 
     cache_rhs: bool = False
     """bool: Flag indicating whether the right hand side of the equation should be
     cached. If True, the same implementation is used in subsequent calls to `solve`.
-    Note that this might lead to wrong results if the parameters of the PDE were changed
+    Note that this might lead to wrong results if the parameters of the PDE are changed
     after the first call. This option is thus disabled by default and should be used
     with care."""
 
@@ -56,7 +53,7 @@ class PDEBase(metaclass=ABCMeta):
 
     complex_valued: bool = False
     """bool: Flag indicating whether the right hand side is a complex-valued PDE, which
-    requires all involved variables to be of complex type."""
+    requires all involved variables to have complex data type."""
 
     def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator = None):
         """
