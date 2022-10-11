@@ -492,3 +492,12 @@ def test_piecewise_expressions():
     x = grid.axes_coords[0]
     field_data = np.piecewise(x, [x > 2, x <= 2], [lambda x: x**2, lambda x: 1 + x])
     np.testing.assert_allclose(field.data, field_data)
+
+
+def test_boundary_expressions_with_t():
+    """test special case of imposing time-dependent boundary conditions"""
+    field = ScalarField(UnitGrid([3]), 0)
+    res = field.laplace({"value_expression": "t"}, args={"t": 0})
+    np.testing.assert_allclose(res.data, [0, 0, 0])
+    res = field.laplace({"value_expression": "t"}, args={"t": 1})
+    np.testing.assert_allclose(res.data, [2, 0, 2])

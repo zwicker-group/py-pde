@@ -1281,7 +1281,7 @@ class ExpressionBC(BCBase):
             coords = bc_coords[bc_idx]
 
             # extract time for handling time-dependent BCs
-            if args is None:
+            if args is None or "t" not in args:
                 if time_dependent:
                     raise RuntimeError(
                         "Require value for `t` for time-dependent BC. The value must "
