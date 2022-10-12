@@ -2585,16 +2585,22 @@ class ConstBC2ndOrderBase(ConstBCBase):
             idx_1[offset - 1] = self.axis
             idx_2[offset - 1] = self.axis
 
-        # add dimension to const until it can be broadcasted to shape of data_full
+        # # add dimension to const until it can be broadcasted to shape of data_full
         const, factor1, factor2 = data[0], data[1], data[3]
-        while factor1.ndim < self.grid.num_axes:
-            factor1 = factor1[..., np.newaxis]
-        while factor2.ndim < self.grid.num_axes:
-            factor2 = factor2[..., np.newaxis]
-        while const.ndim < self.grid.num_axes:
-            const = const[..., np.newaxis]
+        if self.homogeneous:
+            if not np.isscalar(factor1):
+                for _ in range(self.grid.num_axes - 1):
+                    const = const[..., np.newaxis]
+            if not np.isscalar(factor1):
+                for _ in range(self.grid.num_axes - 1):
+                    factor1 = factor1[..., np.newaxis]
+            if not np.isscalar(factor2):
+                for _ in range(self.grid.num_axes - 1):
+                    factor2 = factor2[..., np.newaxis]
 
         # calculate the virtual points
+        print(f"{idx_write=}, {idx_1=}, {idx_2=}")
+        print(f"{const.shape=}, {factor1.shape=}, {factor2.shape=}")
         data_full[tuple(idx_write)] = (
             const
             + factor1 * data_full[tuple(idx_1)]
