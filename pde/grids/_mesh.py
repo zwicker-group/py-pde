@@ -626,7 +626,7 @@ class GridMesh:
         """
         from mpi4py.MPI import COMM_WORLD
 
-        return COMM_WORLD.gather(data, root=0)
+        return COMM_WORLD.gather(data, root=0)  # type: ignore
 
     def allgather(self, data: TData) -> List[TData]:
         """gather a value from reach node and sends them to all nodes
@@ -639,7 +639,7 @@ class GridMesh:
         """
         from mpi4py.MPI import COMM_WORLD
 
-        return COMM_WORLD.allgather(data)
+        return COMM_WORLD.allgather(data)  # type: ignore
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):

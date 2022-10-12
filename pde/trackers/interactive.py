@@ -69,7 +69,7 @@ def napari_process(
 
         # add time if given
         if t_initial is not None:
-            from qtpy.QtWidgets import QLabel  # type: ignore
+            from qtpy.QtWidgets import QLabel
 
             label = QLabel()
             label.setText(f"Time: {t_initial}")
@@ -155,7 +155,7 @@ class NapariViewer:
         }
         args = (self.data_channel, initial_data, t_initial, viewer_args)
 
-        self.proc = context.Process(target=napari_process, args=args)
+        self.proc = context.Process(target=napari_process, args=args)  # type: ignore
 
         # start the process in the background
         try:

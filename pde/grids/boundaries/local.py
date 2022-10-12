@@ -1457,7 +1457,7 @@ class ConstBCBase(BCBase):
     def value(self) -> np.ndarray:
         return self._value
 
-    @value.setter  # type: ignore
+    @value.setter
     @fill_in_docstring
     def value(self, value: Union[float, np.ndarray, str] = 0):
         """set the value of this boundary condition
