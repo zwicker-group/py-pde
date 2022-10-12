@@ -34,7 +34,7 @@ from ..grids.cartesian import CartesianGrid
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
-from ..tools.numba import jit, make_array_constructor, numba_dict
+from ..tools.numba import jit, make_array_constructor
 from ..tools.plotting import (
     PlotReference,
     napari_add_layers,
