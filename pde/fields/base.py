@@ -34,7 +34,7 @@ from ..grids.cartesian import CartesianGrid
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
-from ..tools.numba import jit, make_array_constructor, numba_dict
+from ..tools.numba import jit, make_array_constructor
 from ..tools.plotting import (
     PlotReference,
     napari_add_layers,
@@ -1633,16 +1633,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if label is not None:
                 out.label = label
 
-        if bc is None:
-            # apply the operator without imposing boundary conditions
-            op_raw = self.grid.make_operator_no_bc(operator_info, **kwargs)
-            op_raw(self._data_full, out.data)
-        else:
-            # apply the operator with boundary conditions
-            op_with_bcs = self.grid.make_operator(operator_info, bc=bc, **kwargs)
-
-            # we need to convert the python dict into a numba dict for compilation
-            op_with_bcs(self.data, out=out.data, args=numba_dict(args))
+        op_raw = self.grid.make_operator_no_bc(operator_info, **kwargs)
+        if bc is not None:
+            self.set_ghost_cells(bc, args=args)  # impose boundary conditions
+        # apply the operator without imposing boundary conditions
+        op_raw(self._data_full, out.data)
 
         return out
 
