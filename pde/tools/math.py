@@ -6,6 +6,7 @@ Auxiliary mathematical functions
 
 from __future__ import annotations
 
+import math
 from typing import Any, Dict, Tuple
 
 import numba as nb
@@ -113,7 +114,10 @@ class OnlineStatistics:
     def var(self) -> float:
         """float: recorded variance"""
         DDOF = 0
-        return self._mean2 / (self.count - DDOF)
+        if self.count <= DDOF:
+            return math.nan
+        else:
+            return self._mean2 / (self.count - DDOF)
 
     @property
     def std(self) -> float:

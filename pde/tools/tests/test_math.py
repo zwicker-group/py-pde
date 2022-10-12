@@ -48,3 +48,6 @@ def test_online_statistics():
     assert stat.to_dict() == pytest.approx(
         {"min": 1, "max": 2, "mean": 1.5, "std": 0.5, "count": 2}
     )
+
+    stat = OnlineStatistics()
+    assert stat.to_dict()["count"] == 0
