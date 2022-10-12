@@ -718,7 +718,7 @@ class SteadyStateTracker(TrackerBase):
 
             if diff_abs_max <= self.atol:
                 # simulation has converged
-                if self.progress:
+                if self.progress and self._progress_bar is not None:
                     # advance progress bar to 100%
                     self._progress_bar.n = self._pbar_offset - np.log10(self.atol)
                     try:
