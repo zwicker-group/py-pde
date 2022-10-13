@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde import DiffusionPDE, ScalarField, Tensor2Field
+from pde import DiffusionPDE, FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid, UnitGrid
 from pde.grids._mesh import GridMesh
 from pde.tools import mpi
@@ -81,6 +81,7 @@ def test_split_fields_mpi(decomp, dtype):
     subfield = mesh.split_field_mpi(field)
     field_data = mesh.combine_field_data_mpi(subfield.data)
     if mpi.is_main:
+        assert subfield.label == field.label
         np.testing.assert_equal(field.data, field_data)
     else:
         assert field_data is None
@@ -97,11 +98,61 @@ def test_split_fields_mpi(decomp, dtype):
     # split with ghost cells
     subfield_data = mesh.split_field_data_mpi(field._data_full, with_ghost_cells=True)
     np.testing.assert_equal(subfield._data_full, subfield_data)
-    field_data = mesh.combine_field_data_mpi(subfield_data[(slice(1, -1),) * dim])
+    field_data = mesh.combine_field_data_mpi(
+        subfield_data[(slice(1, -1),) * dim], with_ghost_cells=False
+    )
     if mpi.is_main:
         np.testing.assert_equal(field.data, field_data)
     else:
         assert field_data is None
+
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("decomp", [(-1,), (-1, 1), (1, -1)])
+def test_split_fieldcollections_mpi(decomp):
+    """test splitting and recombining field collections using multiprocessing"""
+    dim = len(decomp)
+    grid = UnitGrid([8] * dim)
+    mesh = GridMesh.from_grid(grid, decomp)
+
+    rng = np.random.default_rng(0)
+    sf = ScalarField.random_uniform(grid, rng=rng)
+    vf = VectorField.random_uniform(grid, rng=rng)
+    fc = FieldCollection([sf, vf], labels=["s", "v"])
+
+    # split without ghost cells
+    subfield = mesh.split_field_mpi(fc)
+    sub_sf = mesh.split_field_mpi(sf)
+    sub_vf = mesh.split_field_mpi(vf)
+    sub_fc = FieldCollection([sub_sf, sub_vf], labels=["s", "v"])
+    np.testing.assert_allclose(subfield.data, sub_fc.data)
+
+    fc_data = mesh.combine_field_data_mpi(subfield.data)
+    if mpi.is_main:
+        assert subfield.labels == fc.labels
+        np.testing.assert_equal(fc.data, fc_data)
+    else:
+        assert fc_data is None
+
+    # split without ghost cells
+    subfield_data = mesh.split_field_data_mpi(fc.data, with_ghost_cells=False)
+    np.testing.assert_equal(subfield.data, subfield_data)
+    fc_data = mesh.combine_field_data_mpi(subfield_data)
+    if mpi.is_main:
+        np.testing.assert_equal(fc.data, fc_data)
+    else:
+        assert fc_data is None
+
+    # split with ghost cells
+    subfield_data = mesh.split_field_data_mpi(fc._data_full, with_ghost_cells=True)
+    np.testing.assert_equal(subfield._data_full, subfield_data)
+    fc_data = mesh.combine_field_data_mpi(
+        subfield_data[(...,) + (slice(1, -1),) * dim], with_ghost_cells=False
+    )
+    if mpi.is_main:
+        np.testing.assert_equal(fc.data, fc_data)
+    else:
+        assert fc_data is None
 
 
 @pytest.mark.multiprocessing

@@ -46,7 +46,7 @@ class FieldCollection(FieldBase):
         *,
         copy_fields: bool = False,
         label: Optional[str] = None,
-        labels: List[Optional[str]] = None,
+        labels: Union[List[Optional[str]], _FieldLabels] = None,
         dtype=None,
     ):
         """
@@ -306,6 +306,55 @@ class FieldCollection(FieldBase):
             collection.data = data  # set the data of all fields
 
         return collection
+
+    @classmethod
+    def from_data(
+        cls,
+        field_classes,
+        grid: GridBase,
+        data: np.ndarray,
+        *,
+        with_ghost_cells: bool = True,
+        label: Optional[str] = None,
+        labels: Union[List[Optional[str]], _FieldLabels] = None,
+        dtype=None,
+    ):
+        """create a field collection from classes and data
+
+        Args:
+            field_classes (list):
+                List of the classes that define the individual fields
+            data (:class:`~numpy.ndarray`, optional):
+                Data values of all fields at support points of the grid
+            grid (:class:`~pde.grids.base.GridBase`):
+                Grid defining the space on which this field is defined.
+            with_ghost_cells (bool):
+                Indicates whether the ghost cells are included in data
+            label (str):
+                Label of the field collection
+            labels (list of str):
+                Labels of the individual fields. If omitted, the labels from the
+                `fields` argument are used.
+            dtype (numpy dtype):
+                The data type of the field. All the numpy dtypes are supported. If
+                omitted, it will be determined from `data` automatically.
+        """
+        # extract data from individual fields
+        fields = []
+        start = 0
+        for field_class in field_classes:
+            if not issubclass(field_class, DataFieldBase):
+                raise RuntimeError("Individual fields must be of type DataFieldBase.")
+            field = field_class(grid)
+            end = start + grid.num_axes**field.rank
+            if with_ghost_cells:
+                field._data_flat = data[start:end]
+            else:
+                field.data.flat = data[start:end].flat
+            fields.append(field)
+            start = end
+
+        return cls(fields, copy_fields=False, label=label, labels=labels, dtype=dtype)
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> FieldCollection:

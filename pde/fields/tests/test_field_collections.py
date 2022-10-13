@@ -272,3 +272,31 @@ def test_collection_plotting():
     # test different arrangements
     fc.plot(arrangement="horizontal")
     fc.plot(arrangement="vertical")
+
+
+def test_from_data():
+    """test the `from_data` method"""
+    grid = UnitGrid([3, 5])
+    s = ScalarField.random_uniform(grid, label="s1")
+    v = VectorField.random_uniform(grid, label="v2")
+    f1 = FieldCollection([s, v])
+
+    f2 = FieldCollection.from_data(
+        [ScalarField, VectorField],
+        grid,
+        data=f1.data,
+        with_ghost_cells=False,
+        labels=["a", "b"],
+    )
+    assert f2.labels == ["a", "b"]
+    np.testing.assert_allclose(f1.data, f2.data)
+
+    f3 = FieldCollection.from_data(
+        [ScalarField, VectorField],
+        grid,
+        data=f1._data_full,
+        with_ghost_cells=True,
+        labels=["c", "d"],
+    )
+    assert f3.labels == ["c", "d"]
+    np.testing.assert_allclose(f1.data, f2.data)
