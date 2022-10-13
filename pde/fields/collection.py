@@ -46,7 +46,7 @@ class FieldCollection(FieldBase):
         *,
         copy_fields: bool = False,
         label: Optional[str] = None,
-        labels: List[Optional[str]] = None,
+        labels: Union[List[Optional[str]], _FieldLabels] = None,
         dtype=None,
     ):
         """
@@ -316,7 +316,7 @@ class FieldCollection(FieldBase):
         *,
         with_ghost_cells: bool = True,
         label: Optional[str] = None,
-        labels: List[Optional[str]] = None,
+        labels: Union[List[Optional[str]], _FieldLabels] = None,
         dtype=None,
     ):
         """create a field collection from classes and data

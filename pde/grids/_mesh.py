@@ -10,8 +10,8 @@ from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 
-from ..fields.base import DataFieldBase, FieldBase
 from ..fields import FieldCollection
+from ..fields.base import DataFieldBase, FieldBase
 from ..tools import mpi
 from ..tools.cache import cached_method
 from ..tools.plotting import plot_on_axes
@@ -455,7 +455,7 @@ class GridMesh:
             ]
 
             # combine everything to a field collection
-            return FieldCollection(fields)
+            return field.__class__(fields, label=field.label)  # type: ignore
 
         else:
             raise TypeError(f"Field type {field.__class__.__name__} unsupported")
@@ -559,7 +559,7 @@ class GridMesh:
             # split field collection
             field_classes = [f.__class__ for f in field]
             data = self.split_field_data_mpi(field._data_full, with_ghost_cells=True)
-            return FieldCollection.from_data(
+            return field.__class__.from_data(  # type: ignore
                 field_classes,
                 self.current_grid,
                 data,
@@ -641,10 +641,15 @@ class GridMesh:
         if mpi.is_main:
             # simply copy the subfield that is on the main node
             field_data = [subfield]
+            element_shape = subfield.shape[: -self.num_axes]
 
             # collect all subfields from all nodes
             for i in range(1, len(self)):
-                subfield_data = np.empty(self[i].shape, dtype=subfield.dtype)
+                if with_ghost_cells:
+                    shape = element_shape + self[i]._shape_full
+                else:
+                    shape = element_shape + self[i].shape
+                subfield_data = np.empty(shape, dtype=subfield.dtype)
                 numba_mpi.recv(subfield_data, i, MPIFlags.field_combine)
                 field_data.append(subfield_data)
 
@@ -683,7 +688,7 @@ class GridMesh:
         """
         from mpi4py.MPI import COMM_WORLD
 
-        return COMM_WORLD.gather(data, root=0)  # type: ignore
+        return COMM_WORLD.gather(data, root=0)
 
     def allgather(self, data: TData) -> List[TData]:
         """gather a value from reach node and sends them to all nodes
@@ -696,7 +701,7 @@ class GridMesh:
         """
         from mpi4py.MPI import COMM_WORLD
 
-        return COMM_WORLD.allgather(data)  # type: ignore
+        return COMM_WORLD.allgather(data)
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
