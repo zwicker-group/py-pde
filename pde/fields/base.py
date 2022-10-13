@@ -1132,7 +1132,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         plt.imsave(filename, img["data"].T, origin="lower", **kwargs)
 
     def _make_interpolator_scipy(
-        self, method: str = "linear", fill: Number = None, **kwargs
+        self, method: str = "linear", fill: Union[str, Number] = "extrapolate", **kwargs
     ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
 
@@ -1147,7 +1147,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
-                Otherwise, the given value is returned.
+                Otherwise, the given value is returned, where `"extrapolate"` refers to
+                simple extrapolation.
             \**kwargs: All keyword arguments are forwarded to
                 :class:`~scipy.interpolate.RegularGridInterpolator`
 
@@ -1178,6 +1179,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # set the fill behavior
         if fill is None:
             kwargs["bounds_error"] = True
+        elif fill == "extrapolate":
+            kwargs["bounds_error"] = False
+            kwargs["fill_value"] = None
         else:
             kwargs["bounds_error"] = False
             kwargs["fill_value"] = fill

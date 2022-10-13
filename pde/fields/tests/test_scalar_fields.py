@@ -31,6 +31,21 @@ def test_interpolation_singular():
         assert val == pytest.approx(1)
 
 
+@pytest.mark.parametrize("backend", ["scipy", "numba"])
+def test_interpolation_edge(backend):
+    """test interpolation close to the boundary"""
+    grid = UnitGrid([2])
+    field = ScalarField(grid, data=[1, 2])
+
+    # test constant boundary conditions
+    ps = np.array([0.0, 1.0, 2.0])
+    if backend == "scipy":
+        y = field.interpolate(ps.reshape(3, 1), backend=backend, fill="extrapolate")
+    else:
+        y = field.interpolate(ps.reshape(3, 1), backend=backend)
+    np.testing.assert_allclose(y, [1.0, 1.5, 2.0])
+
+
 @pytest.mark.parametrize("grid", iter_grids())
 def test_simple_shapes(grid):
     """test simple scalar fields"""
