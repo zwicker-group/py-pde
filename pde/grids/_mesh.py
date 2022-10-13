@@ -11,6 +11,7 @@ from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
 import numpy as np
 
 from ..fields.base import DataFieldBase, FieldBase
+from ..fields import FieldCollection
 from ..tools import mpi
 from ..tools.cache import cached_method
 from ..tools.plotting import plot_on_axes
@@ -429,6 +430,7 @@ class GridMesh:
             node_id = self.current_node
 
         if isinstance(field, DataFieldBase):
+            # extract data from a single field
             data = self.extract_field_data(
                 field._data_full if with_ghost_cells else field.data,
                 node_id,
@@ -438,12 +440,25 @@ class GridMesh:
             return field.__class__(  # type: ignore
                 grid=self[node_id],
                 data=data,
+                label=field.label,
                 dtype=field.dtype,
                 with_ghost_cells=with_ghost_cells,
             )
+
+        elif isinstance(field, FieldCollection):
+            # extract data from a field collection
+
+            # extract individual fields
+            fields = [
+                self.extract_subfield(f, node_id, with_ghost_cells=with_ghost_cells)
+                for f in field
+            ]
+
+            # combine everything to a field collection
+            return FieldCollection(fields)
+
         else:
-            # TODO: support FieldCollections, too
-            raise NotImplementedError
+            raise TypeError(f"Field type {field.__class__.__name__} unsupported")
 
     def extract_boundary_conditions(self, bcs_base: Boundaries) -> Boundaries:
         """extract boundary conditions for current subgrid from global conditions
@@ -529,46 +544,79 @@ class GridMesh:
             :class:`~pde.fields.base.DataFieldBase`: The field defined on the subgrid
         """
         assert field.grid == self.basegrid
-        assert isinstance(field, DataFieldBase)  # collections not implemented yet
-        return field.__class__(  # type: ignore
-            self.current_grid,
-            data=self.split_field_data_mpi(field._data_full, with_ghost_cells=True),
-            label=field.label,
-            dtype=field.dtype,
-            with_ghost_cells=True,
-        )
+
+        if isinstance(field, DataFieldBase):
+            # split individual field
+            return field.__class__(  # type: ignore
+                self.current_grid,
+                data=self.split_field_data_mpi(field._data_full, with_ghost_cells=True),
+                label=field.label,
+                dtype=field.dtype,
+                with_ghost_cells=True,
+            )
+
+        elif isinstance(field, FieldCollection):
+            # split field collection
+            field_classes = [f.__class__ for f in field]
+            data = self.split_field_data_mpi(field._data_full, with_ghost_cells=True)
+            return FieldCollection.from_data(
+                field_classes,
+                self.current_grid,
+                data,
+                label=field.label,
+                labels=field.labels,
+            )
+
+        else:
+            raise TypeError(f"Field type {field.__class__.__name__} unsupported")
 
     def combine_field_data(
-        self, fields: Sequence[np.ndarray], out: np.ndarray = None
+        self,
+        subfields: Sequence[np.ndarray],
+        out: np.ndarray = None,
+        *,
+        with_ghost_cells: bool = False,
     ) -> np.ndarray:
         """combine data of multiple fields defined on subgrids
 
         Args:
-            fields (:class:`~numpy.ndarray`):
+            subfields (:class:`~numpy.ndarray`):
                 The data of the fields that will be combined
             out (:class:`~numpy.ndarray`):
                 Full field to which the combined data is written. If `None`, a new array
                 is allocated.
+            with_ghost_cells (bool):
+                Indicates whether the ghost cells are included in data. If `True`,
+                `fields` must be the full data fields.
 
         Returns:
             :class:`~numpy.ndarray`: Combined field. This is `out` if out is not `None`
         """
-        # prepare to collect data
-        field0 = fields[0]
-        rank = field0.ndim - self.basegrid.num_axes
-        shape = (self.basegrid.dim,) * rank + self.basegrid.shape
+        assert len(subfields) == len(self)
+
+        # allocate memory to collect the data
+        field0 = subfields[0]
+        shape = field0.shape[: -self.num_axes]
+        shape += self.basegrid._shape_full if with_ghost_cells else self.basegrid.shape
         if out is None:
             out = np.empty(shape, dtype=field0.dtype)
+        else:
+            assert out.shape == shape
 
-        data_idx = self._get_data_indices(with_ghost_cells=False)
+        # collect data from all fields
+        data_idx = self._get_data_indices(with_ghost_cells=with_ghost_cells)
         for i in range(len(self)):
             idx = self._id2idx(i)
-            out[(...,) + data_idx[idx]] = fields[i]
+            out[(...,) + data_idx[idx]] = subfields[i]
 
         return out
 
     def combine_field_data_mpi(
-        self, subfield: np.ndarray, out: np.ndarray = None
+        self,
+        subfield: np.ndarray,
+        out: np.ndarray = None,
+        *,
+        with_ghost_cells: bool = False,
     ) -> Optional[np.ndarray]:
         """combine data of all subfields using MPI
 
@@ -577,6 +625,9 @@ class GridMesh:
                 The data of the field defined on the current subgrid
             out (:class:`~numpy.ndarray`):
                 Full field to which the combined data is written
+            with_ghost_cells (bool):
+                Indicates whether the ghost cells are included in data. If `True`,
+                `subfield` must be the full data fields.
 
         Returns:
             :class:`~numpy.ndarray`: Combined field if we are on the main node. For all
@@ -588,13 +639,19 @@ class GridMesh:
         assert len(self) == mpi.size
 
         if mpi.is_main:
-            # main node that receives all data from all other nodes
+            # simply copy the subfield that is on the main node
             field_data = [subfield]
+
+            # collect all subfields from all nodes
             for i in range(1, len(self)):
                 subfield_data = np.empty(self[i].shape, dtype=subfield.dtype)
                 numba_mpi.recv(subfield_data, i, MPIFlags.field_combine)
                 field_data.append(subfield_data)
-            return self.combine_field_data(field_data, out=out)
+
+            # combine the data into a single field
+            return self.combine_field_data(
+                field_data, out=out, with_ghost_cells=with_ghost_cells
+            )
 
         else:
             # send our subfield to the main node
