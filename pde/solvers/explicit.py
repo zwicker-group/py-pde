@@ -215,6 +215,7 @@ class ExplicitSolver(SolverBase):
         adjust_dt = self._make_dt_adjuster()
         tolerance = self.tolerance
         dt_min = self.dt_min
+        compiled = self.backend == "numba"
 
         def stepper(
             state_data: np.ndarray,
@@ -246,12 +247,15 @@ class ExplicitSolver(SolverBase):
                 k2 += 0.5 * dt_step * rhs_pde(k2, t + 0.5 * dt_step)
 
                 # calculate maximal error
-                error = 0.0
-                for i in range(state_data.size):
-                    # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
-                    # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
-                    # we thus need to use the following order:
-                    error = max(abs(k1.flat[i] - k2.flat[i]), error)
+                if compiled:
+                    error = 0.0
+                    for i in range(state_data.size):
+                        # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
+                        # while `max(0, np.nan) == 0`. To propagate NaNs in the
+                        # evaluation, we thus need to use the following order:
+                        error = max(abs(k1.flat[i] - k2.flat[i]), error)
+                else:
+                    error = np.abs(k1 - k2).max()
                 error_rel = error / tolerance  # normalize error to given tolerance
 
                 # synchronize the error between all processes (if necessary)
@@ -361,6 +365,7 @@ class ExplicitSolver(SolverBase):
         adjust_dt = self._make_dt_adjuster()
         tolerance = self.tolerance
         dt_min = self.dt_min
+        compiled = self.backend == "numba"
 
         # use Runge-Kutta-Fehlberg method
         # define coefficients for RK4(5), formula 2 Table III in Fehlberg
@@ -432,19 +437,23 @@ class ExplicitSolver(SolverBase):
                 )
 
                 # estimate the maximal error
-                error = 0.0
-                for i in range(state_data.size):
-                    error_local = abs(
-                        r1 * k1.flat[i]
-                        + r3 * k3.flat[i]
-                        + r4 * k4.flat[i]
-                        + r5 * k5.flat[i]
-                        + r6 * k6.flat[i]
-                    )
-                    # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
-                    # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
-                    # we thus need to use the following order:
-                    error = max(error_local, error)  # type: ignore
+                if compiled:
+                    error = 0.0
+                    for i in range(state_data.size):
+                        error_local = abs(
+                            r1 * k1.flat[i]
+                            + r3 * k3.flat[i]
+                            + r4 * k4.flat[i]
+                            + r5 * k5.flat[i]
+                            + r6 * k6.flat[i]
+                        )
+                        # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
+                        # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
+                        # we thus need to use the following order:
+                        error = max(error_local, error)  # type: ignore
+                else:
+                    error_local = r1 * k1 + r3 * k3 + r4 * k4 + r5 * k5 + r6 * k6
+                    error = np.abs(error_local).sum()
                 error_rel = error / tolerance  # normalize error to given tolerance
 
                 # synchronize the error between all processes (if necessary)

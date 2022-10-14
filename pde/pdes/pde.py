@@ -205,7 +205,7 @@ class PDE(PDEBase):
             self.bcs[key] = value
 
         # save information for easy inspection
-        self.diagnostics["definition"] = {
+        self.diagnostics["pde"] = {
             "variables": self.variables,
             "constants": tuple(self.consts),
             "explicit_time_dependence": explicit_time_dependence,
@@ -372,7 +372,7 @@ class PDE(PDEBase):
 
         # check whether the state is compatible with the PDE
         num_fields = len(self.variables)
-        self.diagnostics["definition"]["num_fields"] = num_fields
+        self.diagnostics["pde"]["num_fields"] = num_fields
         if isinstance(state, FieldCollection):
             if num_fields != len(state):
                 raise ValueError(
@@ -404,7 +404,7 @@ class PDE(PDEBase):
         ops_general: Dict[str, Callable] = {}
 
         # create special operators if necessary
-        operators = self.diagnostics["definition"]["operators"]
+        operators = self.diagnostics["pde"]["operators"]
         if "dot" in operators:
             # add dot product between two vector fields. This can for instance
             # appear when two gradients of scalar fields need to be multiplied
