@@ -52,24 +52,10 @@ def test_interpolation_natural(grid, field_class):
                 boundary_distance=1, avoid_center=True, coords="grid"
             )
 
-    # interpolate a single, random point
-    p = get_point()
-    i1 = f.interpolate(p, backend="scipy", method="linear")
-    i2 = f.interpolate(p, backend="numba", method="linear")
-    np.testing.assert_almost_equal(i1, i2, err_msg=msg)
-
-    # multiple random points
-    ps = np.array([get_point() for _ in range(2)])
-    i1 = f.interpolate(ps, backend="scipy", method="linear")
-    i2 = f.interpolate(ps, backend="numba", method="linear")
-    np.testing.assert_almost_equal(i1, i2, err_msg=msg)
-
     # interpolate at cell center
     c = (1,) * len(grid.axes)
     p = f.grid.cell_coords[c]
-    val = f.interpolate(p, backend="scipy", method="linear")
-    np.testing.assert_allclose(val, f.data[(Ellipsis,) + c], err_msg=msg)
-    val = f.interpolate(p, backend="numba", method="linear")
+    val = f.interpolate(p)
     np.testing.assert_allclose(val, f.data[(Ellipsis,) + c], err_msg=msg)
 
 
@@ -258,7 +244,6 @@ def test_writing_images(tmp_path):
             imread(fp)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("ndim", [1, 2])
 def test_interpolation_to_grid_fields(ndim):
     """test whether data is interpolated correctly for different fields"""
@@ -273,38 +258,64 @@ def test_interpolation_to_grid_fields(ndim):
 
     for f in [sf, vf, fc]:
         # test self-interpolation
-        f0 = f.interpolate_to_grid(grid, backend="numba")
+        f0 = f.interpolate_to_grid(grid)
         np.testing.assert_allclose(f.data, f0.data, atol=1e-15)
 
         # test interpolation to finer grid and back
-        f2 = f.interpolate_to_grid(grid2, backend="numba")
-        f3 = f2.interpolate_to_grid(grid, backend="numba")
+        f2 = f.interpolate_to_grid(grid2)
+        f3 = f2.interpolate_to_grid(grid)
         np.testing.assert_allclose(f.data, f3.data, atol=0.2, rtol=0.2)
 
 
-@pytest.mark.slow
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
 def test_interpolation_values(field_cls):
     """test whether data is interpolated correctly for different fields"""
     grid = UnitGrid([3, 4])
     f = field_cls.random_uniform(grid)
+    f.set_ghost_cells("auto_periodic_neumann")
 
-    intp = f.make_interpolator(backend="numba")
+    intp = f.make_interpolator()
     c = f.grid.cell_coords[2, 2]
     np.testing.assert_allclose(intp(c), f.data[..., 2, 2])
 
-    intp = f.make_interpolator(backend="numba", full_data=True)
+    intp = f.make_interpolator(with_ghost_cells=True)
     c = f.grid.cell_coords[2, 2]
     np.testing.assert_allclose(intp(c, f._data_full), f.data[..., 2, 2])
 
     with pytest.raises((ValueError, IndexError)):
         intp(np.array([100, -100]))
 
-    res = f.make_interpolator(backend="numba", fill=45)(np.array([100, -100]))
+    res = f.make_interpolator(fill=45)(np.array([100, -100]))
     np.testing.assert_almost_equal(res, np.full(f.data_shape, 45))
 
 
-@pytest.mark.slow
+def test_interpolation_ghost_cells():
+    """test whether data is interpolated correctly with or without ghost cells"""
+    grid = UnitGrid([3])
+    f = ScalarField(grid, [1, 2, 3])
+    f.set_ghost_cells({"value": 0})
+
+    intp = f.make_interpolator()
+    res = intp(np.c_[0:4])
+    np.testing.assert_allclose(res, np.array([1.0, 1.5, 2.5, 3.0]))
+
+    intp = f.make_interpolator(with_ghost_cells=True)
+    res = intp(np.c_[0:4])
+    np.testing.assert_allclose(res, np.array([0, 1.5, 2.5, 0]))
+
+    grid = UnitGrid([3], periodic=True)
+    f = ScalarField(grid, [1, 2, 3])
+    f.set_ghost_cells("periodic")
+
+    intp = f.make_interpolator()
+    res = intp(np.c_[0:4])
+    np.testing.assert_allclose(res, np.array([2.0, 1.5, 2.5, 2.0]))
+
+    intp = f.make_interpolator(with_ghost_cells=True)
+    res = intp(np.c_[0:4])
+    np.testing.assert_allclose(res, np.array([2.0, 1.5, 2.5, 2.0]))
+
+
 @pytest.mark.parametrize(
     "grid",
     [
