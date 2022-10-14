@@ -1155,7 +1155,7 @@ class GridBase(metaclass=ABCMeta):
         self,
         axis: int,
         *,
-        full_data: bool = False,
+        with_ghost_cells: bool = False,
         cell_coords: bool = False,
     ) -> Callable[[float], Tuple[int, int, float, float]]:
         """factory for obtaining interpolation information
@@ -1163,9 +1163,9 @@ class GridBase(metaclass=ABCMeta):
         Args:
             axis (int):
                 The axis along which interpolation is performed
-            full_data (bool):
+            with_ghost_cells (bool):
                 Flag indicating that the interpolator should work on the full data array
-                that includes values for the grid points. If this is the case, the
+                that includes values for the ghost points. If this is the case, the
                 boundaries are not checked and the coordinates are used as is.
             cell_coords (bool):
                 Flag indicating whether points are given in cell coordinates or actual
@@ -1185,30 +1185,41 @@ class GridBase(metaclass=ABCMeta):
         @register_jitable
         def get_axis_data(coord: float) -> Tuple[int, int, float, float]:
             """determines data for interpolating along one axis"""
+            # determine the index of the left cell and the fraction toward the right
             if cell_coords:
                 c_l, d_l = divmod(coord, 1.0)
             else:
                 c_l, d_l = divmod((coord - lo) / dx - 0.5, 1.0)
 
-            if full_data:
-                c_li = int(c_l) + 1  # left support point
-                c_hi = c_li + 1  # right support point
-            elif periodic:  # periodic domain
+            # determine the indices of the two cells whose value affect interpolation
+            if periodic:
+                # deal with periodic domains, which is easy
                 c_li = int(c_l) % size  # left support point
                 c_hi = (c_li + 1) % size  # right support point
-            elif 0 <= c_l + d_l < size - 1:  # in bulk part of domain
-                c_li = int(c_l)  # left support point
-                c_hi = c_li + 1  # right support point
-            elif size - 1 <= c_l + d_l <= size - 0.5:  # close to upper boundary
-                c_li = c_hi = int(c_l)  # both support points close to boundary
-                # This branch also covers the special case, where size == 1 and data is
-                # evaluated at the only support point (c_l == d_l == 0.)
-            elif -0.5 <= c_l + d_l <= 0:  # close to lower boundary
-                c_li = c_hi = int(c_l) + 1  # both support points close to boundary
-            else:
-                return -42, -42, 0.0, 0.0  # indicates out of bounds
 
-            # determine the weights
+            elif with_ghost_cells:
+                # deal with edge cases using the values of ghost cells
+                if -0.5 <= c_l + d_l <= size - 0.5:  # in bulk part of domain
+                    c_li = int(c_l)  # left support point
+                    c_hi = c_li + 1  # right support point
+                else:
+                    return -42, -42, 0.0, 0.0  # indicates out of bounds
+
+            else:
+                # deal with edge cases using nearest-neighbor interpolation at boundary
+                if 0 <= c_l + d_l < size - 1:  # in bulk part of domain
+                    c_li = int(c_l)  # left support point
+                    c_hi = c_li + 1  # right support point
+                elif size - 1 <= c_l + d_l <= size - 0.5:  # close to upper boundary
+                    c_li = c_hi = int(c_l)  # both support points close to boundary
+                    # This branch also covers the special case, where size == 1 and data
+                    # is evaluated at the only support point (c_l == d_l == 0.)
+                elif -0.5 <= c_l + d_l <= 0:  # close to lower boundary
+                    c_li = c_hi = int(c_l) + 1  # both support points close to boundary
+                else:
+                    return -42, -42, 0.0, 0.0  # indicates out of bounds
+
+            # determine the weights of the two cells
             w_l, w_h = 1 - d_l, d_l
             # set small weights to zero. If this is not done, invalid data at the corner
             # of the grid (where two rows of ghost cells intersect) could be accessed.
@@ -1219,13 +1230,22 @@ class GridBase(metaclass=ABCMeta):
             if w_h < 1e-15:
                 w_h = 0
 
+            # shift points to allow accessing data with ghost points
+            if with_ghost_cells:
+                c_li += 1
+                c_hi += 1
+
             return c_li, c_hi, w_l, w_h
 
         return get_axis_data  # type: ignore
 
     @cached_method()
     def _make_interpolator_compiled(
-        self, *, fill: Number = None, full_data: bool = False, cell_coords: bool = False
+        self,
+        *,
+        fill: Number = None,
+        with_ghost_cells: bool = False,
+        cell_coords: bool = False,
     ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
         """return a compiled function for linear interpolation on the grid
 
@@ -1234,9 +1254,9 @@ class GridBase(metaclass=ABCMeta):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
-            full_data (bool):
+            with_ghost_cells (bool):
                 Flag indicating that the interpolator should work on the full data array
-                that includes values for the grid points. If this is the case, the
+                that includes values for the ghost points. If this is the case, the
                 boundaries are not checked and the coordinates are used as is.
             cell_coords (bool):
                 Flag indicating whether points are given in cell coordinates or actual
@@ -1248,9 +1268,7 @@ class GridBase(metaclass=ABCMeta):
             (data, point), where `data` is the numpy array containing the field data and
             position denotes the position in grid coordinates.
         """
-        if full_data and fill is not None:
-            self._logger.warning("Interpolation of full data does not use `fill`.")
-        args = {"full_data": full_data, "cell_coords": cell_coords}
+        args = {"with_ghost_cells": with_ghost_cells, "cell_coords": cell_coords}
 
         if self.num_axes == 1:
             # specialize for 1-dimensional interpolation
@@ -1372,12 +1390,12 @@ class GridBase(metaclass=ABCMeta):
         return interpolate_single  # type: ignore
 
     def make_inserter_compiled(
-        self, *, full_data: bool = False
+        self, *, with_ghost_cells: bool = False
     ) -> Callable[[np.ndarray, np.ndarray, NumberOrArray], None]:
         """return a compiled function to insert values at interpolated positions
 
         Args:
-            full_data (bool):
+            with_ghost_cells (bool):
                 Flag indicating that the interpolator should work on the full data array
                 that includes values for the grid points. If this is the case, the
                 boundaries are not checked and the coordinates are used as is.
@@ -1391,7 +1409,9 @@ class GridBase(metaclass=ABCMeta):
 
         if self.num_axes == 1:
             # specialize for 1-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, full_data=full_data)
+            data_x = self._make_interpolation_axis_data(
+                0, with_ghost_cells=with_ghost_cells
+            )
 
             @jit
             def insert(
@@ -1421,8 +1441,12 @@ class GridBase(metaclass=ABCMeta):
 
         elif self.num_axes == 2:
             # specialize for 2-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, full_data=full_data)
-            data_y = self._make_interpolation_axis_data(1, full_data=full_data)
+            data_x = self._make_interpolation_axis_data(
+                0, with_ghost_cells=with_ghost_cells
+            )
+            data_y = self._make_interpolation_axis_data(
+                1, with_ghost_cells=with_ghost_cells
+            )
 
             @jit
             def insert(
@@ -1461,9 +1485,15 @@ class GridBase(metaclass=ABCMeta):
 
         elif self.num_axes == 3:
             # specialize for 3-dimensional interpolation
-            data_x = self._make_interpolation_axis_data(0, full_data=full_data)
-            data_y = self._make_interpolation_axis_data(1, full_data=full_data)
-            data_z = self._make_interpolation_axis_data(2, full_data=full_data)
+            data_x = self._make_interpolation_axis_data(
+                0, with_ghost_cells=with_ghost_cells
+            )
+            data_y = self._make_interpolation_axis_data(
+                1, with_ghost_cells=with_ghost_cells
+            )
+            data_z = self._make_interpolation_axis_data(
+                2, with_ghost_cells=with_ghost_cells
+            )
 
             @jit
             def insert(

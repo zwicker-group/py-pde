@@ -22,7 +22,7 @@ def test_interpolation_singular():
 
     # test constant boundary conditions
     x = np.linspace(0, 1, 7).reshape((7, 1))
-    y = field.interpolate(x, backend="numba")
+    y = field.interpolate(x)
     np.testing.assert_allclose(y, 3)
 
     # # test boundary interpolation
@@ -31,18 +31,14 @@ def test_interpolation_singular():
         assert val == pytest.approx(1)
 
 
-@pytest.mark.parametrize("backend", ["scipy", "numba"])
-def test_interpolation_edge(backend):
+def test_interpolation_edge():
     """test interpolation close to the boundary"""
     grid = UnitGrid([2])
     field = ScalarField(grid, data=[1, 2])
 
     # test constant boundary conditions
     ps = np.array([0.0, 1.0, 2.0])
-    if backend == "scipy":
-        y = field.interpolate(ps.reshape(3, 1), backend=backend, fill="extrapolate")
-    else:
-        y = field.interpolate(ps.reshape(3, 1), backend=backend)
+    y = field.interpolate(ps.reshape(3, 1))
     np.testing.assert_allclose(y, [1.0, 1.5, 2.0])
 
 
@@ -137,8 +133,16 @@ def test_gradient():
 def test_interpolation_to_grid(grid):
     """test whether data is interpolated correctly for different grids"""
     sf = ScalarField.random_uniform(grid)
-    sf2 = sf.interpolate_to_grid(grid, backend="numba")
+    sf2 = sf.interpolate_to_grid(grid)
     np.testing.assert_allclose(sf.data, sf2.data, rtol=1e-6)
+
+
+def test_interpolation_bcs():
+    """test interpolation of data involving boundary conditions"""
+    grid = UnitGrid([3])
+    f = ScalarField(grid, [1, 2, 3])
+    res = f.interpolate(np.c_[-1:5], bc="extrapolate", fill=42)
+    np.testing.assert_allclose(res, np.array([42.0, 0.5, 1.5, 2.5, 3.5, 42.0]))
 
 
 @pytest.mark.parametrize("grid", iter_grids())
@@ -311,20 +315,19 @@ def test_interpolation_mutable():
     grid = UnitGrid([2], periodic=True)
     field = ScalarField(grid)
 
-    for backend in ["numba", "scipy"]:
-        field.data = 1
-        np.testing.assert_allclose(field.interpolate([0.5], backend=backend), 1)
-        field.data = 2
-        np.testing.assert_allclose(field.interpolate([0.5], backend=backend), 2)
+    field.data = 1
+    np.testing.assert_allclose(field.interpolate([0.5]), 1)
+    field.data = 2
+    np.testing.assert_allclose(field.interpolate([0.5]), 2)
 
     # test overwriting field values
     data = np.full_like(field._data_full, 3)
-    intp = field.make_interpolator(backend="numba")
+    intp = field.make_interpolator()
     np.testing.assert_allclose(intp(np.array([0.5]), data), 3)
 
     # test overwriting field values
     data = np.full_like(field.data, 4)
-    intp = field.make_interpolator(backend="numba")
+    intp = field.make_interpolator()
     np.testing.assert_allclose(intp(np.array([0.5]), data), 4)
 
 
@@ -432,9 +435,8 @@ def test_complex_methods():
     """test special methods for complex data type"""
     grid = UnitGrid([2, 2])
     f = ScalarField(grid, 1j)
-    for backend in ["scipy", "numba"]:
-        val = f.interpolate([1, 1], backend=backend)
-        np.testing.assert_allclose(val, np.array([1j, 1j]))
+    val = f.interpolate([1, 1])
+    np.testing.assert_allclose(val, np.array([1j, 1j]))
 
     f = ScalarField(grid, 1 + 2j)
     np.testing.assert_allclose(f.project("x").data, np.full((2,), 2 + 4j))
@@ -450,7 +452,7 @@ def test_complex_operators():
 def test_interpolation_after_free():
     """test whether interpolation is possible when the original field is removed"""
     f = ScalarField.from_expression(UnitGrid([5]), "x")
-    intp = f.make_interpolator(backend="numba")
+    intp = f.make_interpolator()
 
     # delete original field
     del f

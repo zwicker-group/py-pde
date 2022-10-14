@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import functools
 import json
+import warnings
 import logging
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
@@ -1131,100 +1132,24 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         kwargs.setdefault("cmap", "gray")
         plt.imsave(filename, img["data"].T, origin="lower", **kwargs)
 
-    def _make_interpolator_scipy(
-        self, method: str = "linear", fill: Union[str, Number] = "extrapolate", **kwargs
+    @cached_method()
+    def make_interpolator(
+        self,
+        *,
+        fill: Number = None,
+        with_ghost_cells: bool = False,
     ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
-
-        This uses :class:`scipy.interpolate.RegularGridInterpolator` and thus supports
-        extra options supplied by keyword arguments. Note that this interpolator does
-        not respect periodic boundary conditions, yet.
-
-        Args:
-            method (str):
-                The method used for interpolation. Currently, "linear" and "nearest" are
-                supported by :class:`~scipy.interpolate.RegularGridInterpolator`.
-            fill (Number, optional):
-                Determines how values out of bounds are handled. If `None`, a
-                `ValueError` is raised when out-of-bounds points are requested.
-                Otherwise, the given value is returned, where `"extrapolate"` refers to
-                simple extrapolation.
-            \**kwargs: All keyword arguments are forwarded to
-                :class:`~scipy.interpolate.RegularGridInterpolator`
-
-        Returns:
-            A function which returns interpolated values when called with
-            arbitrary positions within the space of the grid.
-        """
-        from scipy import interpolate
-
-        coords_src = self.grid.axes_coords
-        grid_dim = len(self.grid.axes)
-
-        if self.rank == 0:
-            # scalar field => data layout is already usable
-            data = self.data
-            revert_shape = False
-        else:
-            # spatial dimensions need to come first => move data to last axis
-            assert self.data.shape[:-grid_dim] == self.data_shape
-            idx = (slice(None),) + (slice(1, -1),) * self.grid.num_axes
-            data_flat = self._data_flat[idx]
-            data_flat = np.moveaxis(data_flat, 0, -1)
-            new_shape = self.grid.shape + (-1,)
-            data = data_flat.reshape(new_shape)
-            assert data.shape[-1] == self.grid.dim**self.rank
-            revert_shape = True
-
-        # set the fill behavior
-        if fill is None:
-            kwargs["bounds_error"] = True
-        elif fill == "extrapolate":
-            kwargs["bounds_error"] = False
-            kwargs["fill_value"] = None
-        else:
-            kwargs["bounds_error"] = False
-            kwargs["fill_value"] = fill
-
-        # prepare the interpolator
-        intp = interpolate.RegularGridInterpolator(
-            coords_src, data, method=method, **kwargs
-        )
-
-        # determine under which conditions the axes can be squeezed
-        if grid_dim == 1:
-            scalar_dim = 0
-        else:
-            scalar_dim = 1
-
-        # introduce wrapper function to process arrays
-        def interpolator(point: np.ndarray, **kwargs) -> NumberOrArray:
-            """return the interpolated value at the position `point`"""
-            point = np.atleast_1d(point)
-            # apply periodic boundary conditions to grid point
-            point = self.grid.normalize_point(point, reflect=False)
-            out = intp(point, **kwargs)
-            if point.ndim == scalar_dim or point.ndim == point.size == 1:
-                out = out[0]
-            if revert_shape:
-                # revert the shuffling of spatial and local axes
-                out = np.moveaxis(out, point.ndim - 1, 0)
-                out = out.reshape(self.data_shape + point.shape[:-1])
-
-            return out  # type: ignore
-
-        return interpolator  # type: ignore
-
-    def _make_interpolator_numba(
-        self, fill: Number = None, **kwargs
-    ) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
-        """return a compiled interpolator
 
         Args:
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
+            with_ghost_cells (bool):
+                Flag indicating that the interpolator should work on the full data array
+                that includes values for the ghost points. If this is the case, the
+                boundaries are not checked and the coordinates are used as is.
 
         Returns:
             A function which returns interpolated values when called with arbitrary
@@ -1241,11 +1166,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             else:
                 fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)  # type: ignore
 
-        # use the full array and assume BCs are set via ghost points
-        interpolate_single = grid._make_interpolator_compiled(fill=fill, **kwargs)
+        # create the method to interpolate data at a single point
+        interpolate_single = grid._make_interpolator_compiled(
+            fill=fill, with_ghost_cells=with_ghost_cells
+        )
 
-        # extract information about the data field
-        if kwargs.get("full_data", False):
+        # provide a method to access the current data of the field
+        if with_ghost_cells:
             get_data_array = make_array_constructor(self._data_full)
         else:
             get_data_array = make_array_constructor(self.data)
@@ -1259,13 +1186,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             Args:
                 point (:class:`~numpy.ndarray`):
                     The list of points. This point coordinates should be given along the
-                    last axis, i.e., the shape should be `(..., dim)`.
+                    last axis, i.e., the shape should be `(..., num_axes)`.
                 data (:class:`~numpy.ndarray`, optional):
                     The discretized field values. If omitted, the data of the current
                     field is used, which should be the default. However, this option can
                     be useful to interpolate other fields defined on the same grid
                     without recreating the interpolator. If a data array is supplied, it
-                    needs to be the valid data, without ghost points.
+                    needs to be the full data if `with_ghost_cells == True`, and
+                    otherwise only the valid data.
 
             Returns:
                 :class:`~numpy.ndarray`: The interpolated values at the points
@@ -1292,60 +1220,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         return interpolator  # type: ignore
 
-    @cached_method()
-    def make_interpolator(
-        self,
-        method: str = "linear",
-        *,
-        fill: Number = None,
-        backend: str = "numba",
-        **kwargs,
-    ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
-        r"""returns a function that can be used to interpolate values.
-
-        Args:
-            backend (str):
-                The accepted values `scipy` and `numba` determine the backend that is
-                used for the interpolation.
-            method (str):
-                Determines the method being used for interpolation. Typical values that
-                are "nearest" and "linear", but the supported values depend on the
-                chosen `backend`.
-            fill (Number, optional):
-                Determines how values out of bounds are handled. If `None`, a
-                `ValueError` is raised when out-of-bounds points are requested.
-                Otherwise, the given value is returned.
-            \**kwargs:
-                Additional keyword arguments are passed to the individual
-                interpolator methods and can be used to further affect the
-                behavior.
-
-        The scipy implementation uses :class:`scipy.interpolate.RegularGridInterpolator`
-        and thus do not respect boundary conditions. Additional keyword arguments are
-        directly forwarded to the constructor of
-        :class:`~scipy.interpolate.RegularGridInterpolator`.
-
-        Returns:
-            A function which returns interpolated values when called with arbitrary
-            positions within the space of the grid.
-        """
-        if backend == "scipy":
-            return self._make_interpolator_scipy(method=method, fill=fill, **kwargs)
-        elif backend == "numba":
-            if method != "linear":
-                raise NotImplementedError(
-                    "The numba backend currently only supports linear interpolation"
-                )
-            return self._make_interpolator_numba(fill=fill, **kwargs)
-        else:
-            raise ValueError(f"Unknown backend `{backend}`")
-
+    @fill_in_docstring
     def interpolate(
         self,
         point: np.ndarray,
         *,
-        backend: str = "numba",
-        method: str = "linear",
+        bc: Optional[BoundariesData] = None,
         fill: Number = None,
         **kwargs,
     ) -> NumberOrArray:
@@ -1355,13 +1235,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             point (:class:`~numpy.ndarray`):
                 The points at which the values should be obtained. This is given in grid
                 coordinates.
-            backend (str):
-                The accepted values "scipy" and "numba" determine the backend that is
-                used for the interpolation.
-            method (str):
-                Determines the method being used for interpolation. Typical values that
-                are "nearest" and "linear", but the supported values depend on the
-                chosen `backend`.
+            bc:
+                The boundary conditions applied to the field, which affects values close
+                to the boundary. If omitted, the argument `fill` is used.
+                {ARG_BOUNDARIES_OPTIONAL}
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -1373,17 +1250,28 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: the values of the field
         """
-        interpolator = self.make_interpolator(
-            backend=backend, method=method, fill=fill, **kwargs
-        )
+        if kwargs:
+            warnings.warn(
+                f"args {kwargs.keys()} are no longer supported", DeprecationWarning
+            )
+            # this was deprecated on 2022-10-14
+
+        if bc is not None:
+            # impose boundary conditions and then interpolate using ghost cells
+            self.set_ghost_cells(bc)
+            interpolator = self.make_interpolator(fill=fill, with_ghost_cells=True)
+
+        else:
+            # create an interpolator without imposing bounary conditions
+            interpolator = self.make_interpolator(fill=fill, with_ghost_cells=False)
+
+        # do the actual interpolation
         return interpolator(np.asarray(point))  # type: ignore
 
     def interpolate_to_grid(
         self: TDataField,
         grid: GridBase,
         *,
-        backend: str = "numba",
-        method: str = "linear",
         fill: Number = None,
         label: Optional[str] = None,
     ) -> TDataField:
@@ -1393,13 +1281,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
-            backend (str):
-                The accepted values "scipy" and "numba" determine the backend that is
-                used for the interpolation.
-            method (str):
-                Determines the method being used for interpolation. Typical values that
-                are "nearest" and "linear", but the supported values depend on the
-                chosen `backend`.
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -1435,7 +1316,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
 
         # interpolate the data to the grid
-        data = self.interpolate(points, backend=backend, method=method, fill=fill)
+        data = self.interpolate(points, fill=fill)
         return self.__class__(grid, data, label=label)
 
     def insert(self, point: np.ndarray, amount: ArrayLike) -> None:
