@@ -22,6 +22,18 @@ REPLACEMENTS = [
     ("Union[int, float, complex, numpy.generic, numpy.ndarray]", "NumberOrArray"),
     ("Union[int, float, complex, numpy.ndarray]", "NumberOrArray"),
     ("Union[int, float, complex]", "Number"),
+    (
+        "Optional[Union[_SupportsArray[dtype], _NestedSequence[_SupportsArray[dtype]], "
+        "bool, int, float, complex, str, bytes, _NestedSequence[Union[bool, int, "
+        "float, complex, str, bytes]]]]",
+        "NumberOrArray",
+    ),
+    (
+        "Union[dtype[Any], None, Type[Any], _SupportsDType[dtype[Any]], str, "
+        "Tuple[Any, int], Tuple[Any, Union[SupportsIndex, Sequence[SupportsIndex]]], "
+        "List[Any], _DTypeDict, Tuple[Any, Any]]",
+        "DType",
+    ),
     # Remove some unnecessary information in favor of a more compact style
     ("Dict[KT, VT]", "dict"),
     ("Dict[str, Any]", "dict"),

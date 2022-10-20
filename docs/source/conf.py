@@ -20,8 +20,6 @@ sys.path.append(os.path.abspath("../sphinx_ext/"))
 
 from datetime import date
 
-# import sphinx_simplify_typehints  # @UnresolvedImport @UnusedImport
-
 # -- Project information -----------------------------------------------------
 
 project = "py-pde"
@@ -51,7 +49,7 @@ extensions = [
     # our own extensions
     "toctree_filter",
     "package_config",
-    "simplify_typehints",
+    # "simplify_typehints",
 ]
 
 templates_path = ["_templates"]
@@ -80,6 +78,7 @@ exclude_patterns = []
 pygments_style = None
 
 modindex_common_prefix = [f"{module_name}."]
+toc_object_entries = False
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -256,6 +255,8 @@ sphinx_gallery_conf = {
 }
 
 # run autodoc
+autodoc_typehints = "description"
+
 from run_autodoc import main
 
 main()
