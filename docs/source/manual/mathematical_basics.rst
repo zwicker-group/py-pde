@@ -12,7 +12,6 @@ a set of ordinary differential equations, which can be solved using standard
 methods as described below.
 
 
-
 Curvilinear coordinates
 """""""""""""""""""""""
 The package supports multiple curvilinear coordinate systems. They allow to exploit
@@ -57,7 +56,7 @@ coordinates reads
     \text{for} \; r \in [0, \infty], \;
     \theta \in [0, \pi], \; \text{and} \;
     \phi \in [0, 2\pi)
-    
+
 
 The associated symmetric grid  :class:`~pde.grids.spherical.SphericalSymGrid`
 assumes that fields only depend on the radial coordinate :math:`r`. Note that vector and
@@ -70,7 +69,6 @@ tensor fields can still have components in the two angular direction.
    component of the vector field vanishes. Similarly, the divergence of a tensor field
    can only be taken in special situations.
 
-    
 
 Cylindrical coordinates
 ----------------------- 
@@ -99,9 +97,9 @@ tensor fields still specify all components in the three-dimensional space.
    we here use the order :math:`(r, z, \phi)`. It might thus be best to access
    components by name instead of index.
 
+
 Spatial discretization
 """"""""""""""""""""""
-
 
 .. image:: /_images/discretization_cropped.*
    :alt: Schematic of the discretization scheme
@@ -128,27 +126,37 @@ the centers of the box:
         \quad \text{for} \quad i = 0, \ldots, N - 1
     \\
         \Delta x &= \frac{x_\mathrm{max} - x_\mathrm{min}}{N}
-        
+
 which is also indicated in the inset.
+
 Differential operators are implemented using the usual second-order central
-difference.
+differences.
 This requires the introducing of virtual support points at :math:`x_{-1}` and
 :math:`x_N`, which can be determined from the boundary conditions at
-:math:`x=x_\mathrm{min}` and :math:`x=x_\mathrm{max}`, respectively. 
+:math:`x=x_\mathrm{min}` and :math:`x=x_\mathrm{max}`, respectively.
+The field classes automate this transparently.
+However, if you need more control over boundary conditions, you can access the full
+underlying data using the :attr:`field._data_full`, which will have :math:`N + 2`
+entries along an axis that has :math:`N` support points.
+In this case, the first and last entries (:code:`data_full[0]` and
+:code:`data_full[N + 1]`) denote the lower and upper virtual point, respectively.
+The actual field data can be obtained using :code:`data_full[1:-1]` or the
+:attr:`field.data` attribute for convenience.
+Note that functions evaluating differential operators generally expect the full data as
+input while they return only valid data.
 
 
 Temporal evolution
 """"""""""""""""""
-Once the fields have been discretized, the PDE reduces to a set of coupled
-ordinary differential equations (ODEs), which can be solved using standard
-methods.
+Once the fields have been discretized, the PDE reduces to a set of coupled ordinary
+differential equations (ODEs), which can be solved using standard methods.
 This reduction is also known as the method of lines.
 The `py-pde` package implements the simple Euler scheme and a more advanced
 `Runge-Kutta scheme <https://en.wikipedia.org/wiki/Runge–Kutta_methods>`_ in 
-the :class:`~pde.solvers.explicit.ExplicitSolver` class.   
+the :class:`~pde.solvers.explicit.ExplicitSolver` class.
 For the simple implementations of these explicit methods, the user typically specifies
 a fixed time step, although adaptive methods, which adjust the time step automatically,
-are also often used.
+are also often used and available in the package.
 One problem with explicit solvers is that they require small time steps to stably evolve
 some PDEs; such PDEs are then often called 'stiff'.
 Stiff PDEs can sometimes be solved more efficiently by using implicit methods.
@@ -156,6 +164,4 @@ This package provides a simple implementation of the `Backward Euler method
 <https://en.wikipedia.org/wiki/Backward_Euler_method>`_ in the
 :class:`~pde.solvers.implicit.ImplicitSolver` class.
 Finally, more advanced methods are available by wrapping the
-:func:`scipy.integrate.solve_ivp` in the
-:class:`~pde.solvers.scipy.ScipySolver` class.
- 
+:func:`scipy.integrate.solve_ivp` in the :class:`~pde.solvers.scipy.ScipySolver` class.
