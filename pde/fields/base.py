@@ -29,6 +29,8 @@ from typing import (
 import numpy as np
 from numpy.typing import DTypeLike
 
+from modelrunner.state import ArrayState
+
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGrid
@@ -55,7 +57,7 @@ class RankError(TypeError):
     """error indicating that the field has the wrong rank"""
 
 
-class FieldBase(metaclass=ABCMeta):
+class FieldBase(ArrayState, metaclass=ABCMeta):
     """abstract base class for describing (discretized) fields"""
 
     _subclasses: Dict[str, Type[FieldBase]] = {}  # all classes inheriting from this
@@ -226,7 +228,7 @@ class FieldBase(metaclass=ABCMeta):
             .. code-block:: python
 
                 field = pde.ScalarField(...)
-                field.write_to("test.hdf5")
+                field.to_file("test.hdf5")
 
                 field_copy = pde.FieldBase.from_file("test.hdf5")
 
