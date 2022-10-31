@@ -28,7 +28,7 @@ as
 .. code-block:: python
 
     grid = pde.CartesianGrid([[0, 10], [0, 5]], [20, 10], periodic=[True, False])
-    
+
 This grid will have a rectangular shape of 10x5 with square unit cells of side length
 `0.5`.
 Note that the grid will only be periodic in the `x`-direction.
@@ -81,7 +81,7 @@ A simple implementation of this equation reads
 .. code-block:: python
 
     eq = pde.PDE({"u": "-gradient_squared(u) / 2 - laplace(u + laplace(u))"})
-    
+
 Here, the argument defines the evolution rate for all fields (in this case
 only :math:`u`).
 The expression on the right hand side can contain typical mathematical functions
@@ -98,7 +98,7 @@ In the simplest case, the solution is then obtain by running
  .. code-block:: python
 
     result = eq.solve(field, t_range=10, dt=1e-2)
-    
+
 Here, `t_range` specifies the duration over which the PDE is considered and `dt`
 specifies the time step.
 The `result` field will be defined on the same grid as the initial condition `field`,
@@ -134,9 +134,7 @@ subsequently:
 
     for time, field in storage.items():
         print(f"t={time}, field={field.magnitude}")
-        
+
 Moreover, a movie of the simulation can be created using
 :code:`pde.movie(storage, filename=FILE)`, where `FILE` determines where the movie is
 written.
-
-        

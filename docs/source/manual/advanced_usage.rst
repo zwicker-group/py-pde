@@ -16,11 +16,11 @@ field to be `4` at the lower side and its derivative (in the outward direction) 
     bc_lower = {"value": 4}
     bc_upper = {"derivative": 2}
     bc = [bc_lower, bc_upper]
-    
+
     grid = pde.UnitGrid([16])
     field = pde.ScalarField(grid)
     field.laplace(bc)
-    
+
 Here, the Laplace operator applied to the field in the last line will respect
 the boundary conditions.
 Note that it suffices to give one condition if both sides of the axis require the same
@@ -42,15 +42,15 @@ which may depend on the coordinates of all axes:
     bc_x = [{"derivative": 0.1}, {"value": "sin(y / 2)"}] 
     # the same condition on the lower and upper end of the y-axis
     bc_y = {"value": "sqrt(1 + cos(x))"}
-     
+
     grid = UnitGrid([32, 32])
     field = pde.ScalarField(grid)
     field.laplace(bc=[bc_x, bc_y])
-    
+
 .. warning::
     To interpret arbitrary expressions, the package uses :func:`exec`. It
     should therefore not be used in a context where malicious input could occur.
-        
+
 Inhomogeneous values can also be specified by directly supplying an array, whose shape
 needs to be compatible with the boundary, i.e., it needs to have the same shape as the
 grid but with the dimension of the axis along which the boundary is specified removed.
@@ -74,7 +74,7 @@ the following boundary condition can be used:
     field = pde.ScalarField(grid)
     bc = ["periodic", {"derivative": 0}]
     field.laplace(bc)
-    
+
 For convenience, this typical situation can be described with the special boundary
 condition `auto_periodic_neumann`, e.g., calling the Laplace operator using 
 :code:`field.laplace("auto_periodic_neumann")` is identical to the example above.
@@ -151,12 +151,11 @@ Expressions are parsed using :mod:`sympy`, so  the expected syntax is defined by
 python package. While we describe some common use cases below, it might be best to test
 the abilities using the :func:`~pde.tools.expressions.evaluate` function.  
 
- 
+
 .. warning::
     To interpret arbitrary expressions, the package uses :func:`exec`. It
     should therefore not be used in a context where malicious input could occur.
-    
-    
+
 Simple expressions can contain many standard mathematical functions, e.g.,
 :code:`sin(a) + b**2` is a valid expression. :class:`~pde.pdes.pde.PDE` and 
 :func:`~pde.tools.expressions.evaluate` furthermore accept differential operators
@@ -195,7 +194,7 @@ A simple implementation for the Kuramoto–Sivashinsky equation could read
 .. code-block:: python
 
     class KuramotoSivashinskyPDE(PDEBase):
-        
+
         def evolution_rate(self, state, t=0):
             """ numpy implementation of the evolution equation """
             state_lapacian = state.laplace(bc="auto_periodic_neumann")
@@ -210,14 +209,14 @@ instance define the boundary conditions and the diffusivity:
 .. code-block:: python
 
     class KuramotoSivashinskyPDE(PDEBase):
-        
+
         def __init__(self, diffusivity=1, bc="auto_periodic_neumann", bc_laplace="auto_periodic_neumann"):
             """ initialize the class with a diffusivity and boundary conditions
             for the actual field and its second derivative """
             self.diffusivity = diffusivity
             self.bc = bc
             self.bc_laplace = bc_laplace
-        
+
         def evolution_rate(self, state, t=0):
             """ numpy implementation of the evolution equation """
             state_lapacian = state.laplace(bc=self.bc)
@@ -252,11 +251,11 @@ which in this case contains the discretized Laplacian of the original field.
 The equivalent call using the low-level interface is
 
 .. code-block:: python
-    
+
     apply_laplace = field.grid.make_operator("laplace", bc)
-    
+
     laplace_data = apply_laplace(field.data)
-    
+
 Here, the first line creates a function :code:`apply_laplace` for the given grid
 :code:`field.grid` and the boundary conditions `bc`.
 This function can be applied to :class:`numpy.ndarray` instances, e.g.
@@ -266,10 +265,10 @@ Note that the result of this call is again a :class:`numpy.ndarray`.
 Similarly, a gradient operator can be defined
 
 .. code-block:: python
-    
+
     grid = UnitGrid([6, 8])
     apply_gradient = grid.make_operator("gradient", bc="auto_periodic_neumann")
-    
+
     data = np.random.random((6, 8))
     gradient_data = apply_gradient(data)
     assert gradient_data.shape == (2, 6, 8)
@@ -298,7 +297,7 @@ cell volumes, calculating the integral using only :mod:`numpy` is easy:
 
 
 .. code-block:: python
-    
+
     cell_volumes = field.grid.cell_volumes
     integral = (field.data * cell_volumes).sum()
 
@@ -314,13 +313,13 @@ Similarly to the differential operators discussed above, this call can also be
 translated to code that does not use the full package:
 
 .. code-block:: python
-    
+
     grid = UnitGrid([6, 8])
     interpolate = grid.make_interpolator_compiled(bc="auto_periodic_neumann")
-    
+
     data = np.random.random((6, 8))
     value = interpolate(data, np.array([3.5, 7.9]))
-    
+
 We first create a function :code:`interpolate`, which is then used to
 interpolate the field data at a certain point.
 Note that the coordinates of the point need to be supplied as a
@@ -339,13 +338,13 @@ The package also provides an implementation for an dot-operator:
 
 
 .. code-block:: python
-    
+
     grid = UnitGrid([6, 8])
     field1 = VectorField.random_normal(grid)
     field2 = VectorField.random_normal(grid)
-    
+
     dot_operator = field1.make_dot_operator()
-    
+
     result = dot_operator(field1.data, field2.data)
     assert result.shape == (6, 8)
 
@@ -364,18 +363,18 @@ introduced above:
 .. code-block:: python
 
     from pde.tools.numba import jit
-    
+
 
     class KuramotoSivashinskyPDE(PDEBase):
-        
+
         def __init__(self, diffusivity=1, bc="auto_periodic_neumann", bc_laplace="auto_periodic_neumann"):
             """ initialize the class with a diffusivity and boundary conditions
             for the actual field and its second derivative """
             self.diffusivity = diffusivity
             self.bc = bc
             self.bc_laplace = bc_laplace
-        
-        
+
+
         def evolution_rate(self, state, t=0):
             """ numpy implementation of the evolution equation """
             state_lapacian = state.laplace(bc=self.bc)
@@ -383,19 +382,19 @@ introduced above:
             return (- state_lapacian.laplace(bc=self.bc_laplace)
                     - state_lapacian
                     - 0.5 * self.diffusivity * (state_gradient @ state_gradient))
-              
-                
+
+
         def _make_pde_rhs_numba(self, state):
             """ the numba-accelerated evolution equation """
             # make attributes locally available             
             diffusivity = self.diffusivity
-    
+
             # create operators
             laplace_u = state.grid.make_operator("laplace", bc=self.bc)
             gradient_u = state.grid.make_operator("gradient", bc=self.bc)
             laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace)
             dot = VectorField(state.grid).make_dot_operator()
-    
+
             @jit
             def pde_rhs(state_data, t=0):
                 """ compiled helper function evaluating right hand side """
@@ -404,10 +403,10 @@ introduced above:
                 return (- laplace2_u(state_lapacian)
                         - state_lapacian
                         - diffusivity / 2 * dot(state_grad, state_grad))
-            
+
             return pde_rhs
 
- 
+
 To activate the compiled implementation of the evolution rate, we simply have
 to overwrite the :meth:`~pde.pdes.base.PDEBase._make_pde_rhs_numba` method.
 This method expects an example of the state class (e.g., an instance of
@@ -446,29 +445,29 @@ explicit loop:
             """ the numba-accelerated evolution equation """
             # make attributes locally available             
             diffusivity = self.diffusivity
-    
+
             # create operators
             laplace_u = state.grid.make_operator("laplace", bc=self.bc)
             gradient_u = state.grid.make_operator("gradient", bc=self.bc)
             laplace2_u = state.grid.make_operator("laplace", bc=self.bc_laplace)
             dot = VectorField(state.grid).make_dot_operator()
             dim = state.grid.dim
-    
+
             @jit
             def pde_rhs(state_data, t=0):
                 """ compiled helper function evaluating right hand side """
                 state_lapacian = laplace_u(state_data)
                 state_grad = gradient_u(state_data)
                 result = - laplace2_u(state_lapacian) - state_lapacian
-                
+
                 for i in range(state_data.size):
                     for j in range(dim):
                         result.flat[i] -= diffusivity / 2 * state_grad[j].flat[i]**2
-                        
+
                 return result
-            
+
             return pde_rhs
-        
+
 Here, we extract the total number of elements in the state using its
 :attr:`size` attribute and we obtain the dimensionality of the space from the
 grid attribute :attr:`dim`.
@@ -490,14 +489,14 @@ Here is a list of all configuration options that can be adjusted in the package:
 
 
 .. tip::
-    
+
     To disable parallel computing in the package, the following code could be added to
     the start of the script:
-    
-    
+
+
     .. code-block:: python
-    
+
         from pde import config
         config["numba.multithreading"] = False
-        
+
         # actual code using py-pde
