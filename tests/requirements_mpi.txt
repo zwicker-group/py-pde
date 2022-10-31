@@ -6,6 +6,7 @@ numba>=0.56.0
 numba-mpi>=0.18
 numpy>=1.22.0
 pandas>=1.2
+py-modelrunner>=0.3
 scipy>=1.4.0
 sympy>=1.5.0
 tqdm>=4.60

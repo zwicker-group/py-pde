@@ -238,27 +238,35 @@ class FieldBase(ArrayState, metaclass=ABCMeta):
         Returns:
             :class:`FieldBase`: The field with the appropriate sub-class
         """
-        import h5py
+        extension = Path(filename).suffix.lower()
 
-        from .collection import FieldCollection
+        if extension in {".hdf", ".hdf5", ".he5", ".h5"}:
+            # load an HDF file
+            import h5py
 
-        with h5py.File(filename, "r") as fp:
-            if "class" in fp.attrs:
-                # this should be a field collection
-                assert json.loads(fp.attrs["class"]) == "FieldCollection"
-                obj = FieldCollection._from_hdf_dataset(fp)
+            from .collection import FieldCollection
 
-            elif len(fp) == 1:
-                # a single field is stored in the data
-                dataset = fp[list(fp.keys())[0]]  # retrieve only dataset
-                obj = cls._from_hdf_dataset(dataset)  # type: ignore
+            with h5py.File(filename, "r") as fp:
+                if "class" in fp.attrs:
+                    # this should be a field collection
+                    assert json.loads(fp.attrs["class"]) == "FieldCollection"
+                    obj = FieldCollection._from_hdf_dataset(fp)
 
-            else:
-                raise RuntimeError(
-                    "Multiple data fields were found in the "
-                    "file but no FieldCollection is expected"
-                )
-        return obj
+                elif len(fp) == 1:
+                    # a single field is stored in the data
+                    dataset = fp[list(fp.keys())[0]]  # retrieve only dataset
+                    obj = cls._from_hdf_dataset(dataset)  # type: ignore
+
+                else:
+                    raise RuntimeError(
+                        "Multiple data fields were found in the "
+                        "file but no FieldCollection is expected"
+                    )
+            return obj
+
+        else:
+            # use the py-modelrunner logic to load a file
+            return super().from_file(filename)
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> FieldBase:
@@ -318,7 +326,8 @@ class FieldBase(ArrayState, metaclass=ABCMeta):
             self._write_to_image(filename, **kwargs)
 
         else:
-            raise ValueError(f"Do not know how to save data to `*{extension}`")
+            # use the py-modelrunner logic to write the file
+            super().to_file(filename)
 
     def _write_hdf_dataset(self, hdf_path, key: str = "data"):
         """write data to a given hdf5 path `hdf_path`"""

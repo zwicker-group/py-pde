@@ -26,6 +26,7 @@ from .visualization import *  # @UnusedWildImport
 check_package_version("matplotlib", "3.1.0")
 check_package_version("numba", "0.56.0")
 check_package_version("numpy", "1.22.0")
+check_package_version("py-modelrunner", "0.3")
 check_package_version("scipy", "1.4.0")
 check_package_version("sympy", "1.5.0")
 check_package_version("tqdm", "4.60")

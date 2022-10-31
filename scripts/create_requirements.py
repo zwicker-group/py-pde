@@ -70,6 +70,12 @@ REQUIREMENTS = [
         essential=True,
     ),
     Requirement(
+        name="py-modelrunner",
+        version="0.3",
+        usage="Handling input/output",
+        essential=True,
+    ),
+    Requirement(
         name="scipy",
         version="1.4.0",
         usage="Miscellaneous scientific functions",

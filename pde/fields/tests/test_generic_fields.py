@@ -244,6 +244,20 @@ def test_writing_images(tmp_path):
             imread(fp)
 
 
+def test_writing_fields(tmp_path):
+    """test writing and reading general files"""
+    grid = UnitGrid([4, 4])
+    s = ScalarField.random_uniform(grid, label="scalar")
+    v = VectorField.random_uniform(grid, label="vector")
+    t = Tensor2Field.random_uniform(grid, label="tensor")
+
+    path = tmp_path / "test.yaml"
+    for f in [s, v, t]:
+        f.to_file(path)
+        f2 = ScalarField.from_file(path)
+        assert f == f2
+
+
 @pytest.mark.parametrize("ndim", [1, 2])
 def test_interpolation_to_grid_fields(ndim):
     """test whether data is interpolated correctly for different fields"""
