@@ -501,17 +501,17 @@ class GridMesh:
         Returns:
             :class:`~pde.fields.base.DataFieldBase`: The sub field of the current node
         """
-        import numba_mpi
+        from ..tools.mpi import mpi_recv, mpi_send
 
         assert len(self) == mpi.size
 
         if mpi.is_main:
-            # send fields to all client processes
+            # mpi_send fields to all client processes
             for i in range(1, len(self)):
                 subfield_data = self.extract_field_data(
                     field_data, i, with_ghost_cells=with_ghost_cells
                 )
-                numba_mpi.send(subfield_data, i, MPIFlags.field_split)
+                mpi_send(subfield_data, i, MPIFlags.field_split)
 
             # extract field for the current process
             return self.extract_field_data(
@@ -527,7 +527,7 @@ class GridMesh:
             shape += subgrid._shape_full if with_ghost_cells else subgrid.shape
 
             subfield_data = np.empty(shape, dtype=field_data.dtype)
-            numba_mpi.recv(subfield_data, 0, MPIFlags.field_split)
+            mpi_recv(subfield_data, 0, MPIFlags.field_split)
             return subfield_data
 
     def split_field_mpi(self: GridMesh, field: TField) -> TField:
@@ -634,7 +634,7 @@ class GridMesh:
             other cases, this function returns `None`. On the main node, this array is
             `out` if `out` was supplied.
         """
-        import numba_mpi
+        from ..tools.mpi import mpi_recv, mpi_send
 
         assert len(self) == mpi.size
 
@@ -650,7 +650,7 @@ class GridMesh:
                 else:
                     shape = element_shape + self[i].shape
                 subfield_data = np.empty(shape, dtype=subfield.dtype)
-                numba_mpi.recv(subfield_data, i, MPIFlags.field_combine)
+                mpi_recv(subfield_data, i, MPIFlags.field_combine)
                 field_data.append(subfield_data)
 
             # combine the data into a single field
@@ -659,8 +659,8 @@ class GridMesh:
             )
 
         else:
-            # send our subfield to the main node
-            numba_mpi.send(subfield, 0, MPIFlags.field_combine)
+            # mpi_send our subfield to the main node
+            mpi_send(subfield, 0, MPIFlags.field_combine)
             return None
 
     def broadcast(self, data: TData) -> TData:

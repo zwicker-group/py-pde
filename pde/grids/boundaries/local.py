@@ -573,7 +573,7 @@ class BCBase(metaclass=ABCMeta):
         """set the ghost cell values for this boundary"""
 
     def make_ghost_cell_sender(self) -> GhostCellSetter:
-        """return function that might send data to set ghost cells for this boundary"""
+        """return function that might mpi_send data to set ghost cells for this boundary"""
 
         @register_jitable
         def noop(data_full: np.ndarray, args=None) -> None:
@@ -752,15 +752,15 @@ class _MPIBC(BCBase):
         return f"MPI @ {axis_name}={self.axis_coord}"
 
     def send_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
-        """send the ghost cell values for this boundary
+        """mpi_send the ghost cell values for this boundary
 
         Args:
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
-        import numba_mpi
+        from ...tools.mpi import mpi_send
 
-        numba_mpi.send(data_full[self._idx_read], self._neighbor_id, self._mpi_flag)
+        mpi_send(data_full[self._idx_read], self._neighbor_id, self._mpi_flag)
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         """set the ghost cell values for this boundary
@@ -769,9 +769,9 @@ class _MPIBC(BCBase):
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
         """
-        import numba_mpi
+        from ...tools.mpi import mpi_recv
 
-        numba_mpi.recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
+        mpi_recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
@@ -786,7 +786,7 @@ class _MPIBC(BCBase):
 
     def make_ghost_cell_sender(self) -> GhostCellSetter:
         """return function that sends data to set ghost cells for other boundaries"""
-        import numba_mpi
+        from ...tools.mpi import mpi_send
 
         cell = self._neighbor_id
         flag = self._mpi_flag
@@ -797,34 +797,34 @@ class _MPIBC(BCBase):
         if num_axes == 1:
 
             def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                numba_mpi.send(data_full[..., idx], cell, flag)
+                mpi_send(data_full[..., idx], cell, flag)
 
         elif num_axes == 2:
             if axis == 0:
 
                 def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., idx, 1:-1], cell, flag)
+                    mpi_send(data_full[..., idx, 1:-1], cell, flag)
 
             else:
 
                 def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., 1:-1, idx], cell, flag)
+                    mpi_send(data_full[..., 1:-1, idx], cell, flag)
 
         elif num_axes == 3:
             if axis == 0:
 
                 def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
+                    mpi_send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
 
             elif axis == 1:
 
                 def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
+                    mpi_send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
 
             else:
 
                 def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
+                    mpi_send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
 
         else:
             raise NotImplementedError
@@ -833,7 +833,7 @@ class _MPIBC(BCBase):
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this boundary"""
-        import numba_mpi
+        from ...tools.mpi import mpi_recv
 
         cell = self._neighbor_id
         flag = self._mpi_flag
@@ -846,39 +846,39 @@ class _MPIBC(BCBase):
             def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
                 if data_full.ndim == 1:
                     # in this case, `data_full[..., idx]` is a scalar, which numba
-                    # treats differently, so `numba_mpi.recv` fails
+                    # treats differently, so `numba_mpi.mpi_recv` fails
                     buffer = np.empty((), dtype=data_full.dtype)
-                    numba_mpi.recv(buffer, cell, flag)
+                    mpi_recv(buffer, cell, flag)
                     data_full[..., idx] = buffer
                 else:
-                    numba_mpi.recv(data_full[..., idx], cell, flag)
+                    mpi_recv(data_full[..., idx], cell, flag)
 
         elif num_axes == 2:
             if axis == 0:
 
                 def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.recv(data_full[..., idx, 1:-1], cell, flag)
+                    mpi_recv(data_full[..., idx, 1:-1], cell, flag)
 
             else:
 
                 def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.recv(data_full[..., 1:-1, idx], cell, flag)
+                    mpi_recv(data_full[..., 1:-1, idx], cell, flag)
 
         elif num_axes == 3:
             if axis == 0:
 
                 def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
+                    mpi_recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
 
             elif axis == 1:
 
                 def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
+                    mpi_recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
 
             else:
 
                 def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    numba_mpi.recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
+                    mpi_recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
 
         else:
             raise NotImplementedError

@@ -1613,17 +1613,18 @@ class GridBase(metaclass=ABCMeta):
         else:
             # we are in a parallel run, so we need to gather the sub-integrals from all
             # subgrids in the grid mesh
-            import numba_mpi
+            from ..tools.mpi import mpi_allreduce
 
             if nb.config.DISABLE_JIT:
-                # numba_mpi.allreduce is implemented with numba.generated_jit, which
+                # numba_mpi.mpi_allreduce is implemented with numba.generated_jit, which
                 # currently *numba version 0.55) does not play nicely with disabled
                 # jitting. We thus need to treat this case specially
 
                 def integrate_global(arr: np.ndarray) -> NumberOrArray:
                     """integrates data over MPI parallelized grid"""
                     integral = integrate_local_impl(arr)
-                    return numba_mpi.allreduce(integral)(integral)  # type: ignore
+                    allreduce_impl = mpi_allreduce(integral)
+                    return allreduce_impl(integral)  # type: ignore
 
             else:
 
@@ -1631,7 +1632,7 @@ class GridBase(metaclass=ABCMeta):
                 def integrate_global(arr: np.ndarray) -> NumberOrArray:
                     """integrates data over MPI parallelized grid"""
                     integral = integrate_local_impl(arr)
-                    return numba_mpi.allreduce(integral)  # type: ignore
+                    return mpi_allreduce(integral)  # type: ignore
 
             return integrate_global
 

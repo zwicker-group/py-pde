@@ -44,12 +44,11 @@ setup(
         "hdf": ["h5py>=2.10"],
         "io": ["h5py>=2.10", "pandas>=1.2"],
         "interactive": ["napari>=0.4.8", "ipywidgets>=7"],
-        "mpi": ["numba-mpi>=0.13"],
+        "mpi": ["numba-mpi>=0.18"],
     },
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
-        "Intended Audience :: Education",
         "Intended Audience :: Science/Research",
         "Topic :: Scientific/Engineering",
         "License :: OSI Approved :: MIT License",
