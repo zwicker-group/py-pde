@@ -119,9 +119,9 @@ def mpi_allreduce(data, operator: int = None):  # pylint: disable=unused-argumen
             recvobj = np.empty((1,), sendobj.dtype)
 
             if operator is None:
-                status = numba_mpi(data, recvobj)
+                status = numba_mpi.allreduce(data, recvobj)
             else:
-                status = numba_mpi(data, recvobj, operator)
+                status = numba_mpi.allreduce(data, recvobj, operator)
             assert status == 0
             return recvobj[0]
 
@@ -131,9 +131,9 @@ def mpi_allreduce(data, operator: int = None):  # pylint: disable=unused-argumen
             recvobj = np.empty(data.shape, data.dtype)
 
             if operator is None:
-                status = numba_mpi(data, recvobj)
+                status = numba_mpi.allreduce(data, recvobj)
             else:
-                status = numba_mpi(data, recvobj, operator)
+                status = numba_mpi.allreduce(data, recvobj, operator)
             assert status == 0
 
             return recvobj
