@@ -210,7 +210,7 @@ class PDE(PDEBase):
             "constants": tuple(self.consts),
             "explicit_time_dependence": explicit_time_dependence,
             "complex_valued_rhs": complex_valued,
-            "operators": operators,
+            "operators": list(sorted(operators)),
         }
         self._cache: Dict[str, Dict[str, Any]] = {}
 
