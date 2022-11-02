@@ -9,29 +9,6 @@ Auxillary functions and variables for dealing with MPI multiprocessing
    mpi_recv
    mpi_allreduce
 
-
-The module also defines the following constants:
-
-.. data:: size
-    :type: int
-
-    Total process count
-
-.. data:: rank
-    :type: int
-
-    ID of the current process
-
-.. data:: parallel_run
-    :type: bool
-
-    Flag indicating whether the current run is using multiprocessing
-
-.. data:: is_main
-    :type: bool
-
-    Flag indicating whether the current process is the main process (with ID 0)
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -42,6 +19,17 @@ from numbers import Number
 import numba
 import numpy as np
 from numba.core import types
+
+
+# Initialize assuming that we run serial code if `numba_mpi` is not available
+initialized: bool = False
+"""bool: Flag determining whether mpi was initialized (and is available)"""
+
+size: int = 1
+"""int: Total process count"""
+
+rank: int = 0
+"""int: ID of the current process"""
 
 # read state of the current MPI node
 try:
@@ -55,21 +43,17 @@ except ImportError:
             "WARNING: Detected multiprocessing run, but could not load `numba_mpi`"
         )
 
-    # assume that we run serial code if `numba_mpi` is not available
-    initialized = False
-    size = 1
-    rank = 0
-
 else:
     # we have access to MPI
     initialized = numba_mpi.initialized()
     size = numba_mpi.size()
     rank = numba_mpi.rank()
 
-# set flag indicating whether we are in a parallel run
-parallel_run = size > 1
-# set flag indicating whether the current process is the main process
-is_main = rank == 0
+parallel_run: bool = size > 1
+"""bool: Flag indicating whether the current run is using multiprocessing"""
+
+is_main: bool = rank == 0
+"""bool: Flag indicating whether the current process is the main process (with ID 0)"""
 
 
 @numba.njit
@@ -100,7 +84,7 @@ def mpi_recv(data, source, tag) -> None:
 
 
 @numba.generated_jit(nopython=True)
-def mpi_allreduce(data, operator: int = None):  # pylint: disable=unused-argument
+def mpi_allreduce(data, operator: int = None):
     """combines data from all MPI nodes
 
     Note that complex datatypes and user-defined functions are not properly supported.
