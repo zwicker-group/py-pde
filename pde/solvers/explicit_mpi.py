@@ -78,20 +78,22 @@ class ExplicitMPISolver(ExplicitSolver):
 
             from ..tools.mpi import mpi_allreduce
 
+            operator_max_int = int(Operator.MAX)
+
             if nb.config.DISABLE_JIT:
                 # numba_mpi.mpi_allreduce is implemented with numba.generated_jit, which
                 # currently *numba version 0.55) does not play nicely with disabled
                 # jitting. We thus need to treat this case specially
 
                 def synchronize_errors(error: float) -> float:
-                    allreduce_impl = mpi_allreduce(error, Operator.MAX)
-                    return allreduce_impl(error, Operator.MAX)  # type: ignore
+                    allreduce_impl = mpi_allreduce(error, operator_max_int)
+                    return allreduce_impl(error, operator_max_int)  # type: ignore
 
             else:
 
                 @register_jitable
                 def synchronize_errors(error: float) -> float:
-                    return mpi_allreduce(error, Operator.MAX)  # type: ignore
+                    return mpi_allreduce(error, operator_max_int)  # type: ignore
 
             return synchronize_errors
         else:

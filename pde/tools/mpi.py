@@ -15,11 +15,14 @@ Auxillary functions and variables for dealing with MPI multiprocessing
 import os
 import sys
 from numbers import Number
+from typing import Union, TYPE_CHECKING
 
 import numba
 import numpy as np
 from numba.core import types
 
+if TYPE_CHECKING:
+    from numba_mpi import Operator  # @UnusedImport
 
 # Initialize assuming that we run serial code if `numba_mpi` is not available
 initialized: bool = False
@@ -84,14 +87,17 @@ def mpi_recv(data, source, tag) -> None:
 
 
 @numba.generated_jit(nopython=True)
-def mpi_allreduce(data, operator: int = None):
+def mpi_allreduce(data, operator: Union[int, "Operator"] = None):
     """combines data from all MPI nodes
 
     Note that complex datatypes and user-defined functions are not properly supported.
 
     Args:
-        data: Data being send from this node to all others
-        operator: The operator used to combine all data
+        data:
+            Data being send from this node to all others
+        operator:
+            The operator used to combine all data. Possible options are summarized in
+            the IntEnum :class:`numba_mpi.Operator`.
 
     Returns:
         The accumulated data
