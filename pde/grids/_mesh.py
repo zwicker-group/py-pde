@@ -477,9 +477,11 @@ class GridMesh:
             for upper in [False, True]:
                 bc = bcs_base[axis][upper]
                 if self.get_neighbor(axis, upper=upper) is None:
-                    bc = bc.to_subgrid(self.current_grid)  # extract BC for subgrid
+                    # extract BC for subgrid
+                    bc = bc.to_subgrid(self.current_grid)
                 else:
-                    bc = _MPIBC(self, axis, upper)  # set an MPI boundary condition
+                    # set an MPI boundary condition
+                    bc = _MPIBC(self, axis, upper, rank=bc.rank)
                 bcs_axis.append(bc)
             bcs.append(BoundaryPair(*bcs_axis))
 

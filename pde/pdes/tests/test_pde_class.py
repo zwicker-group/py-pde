@@ -80,6 +80,29 @@ def test_pde_vector():
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
+@pytest.mark.multiprocessing
+def test_pde_vector_mpi():
+    """test PDE with a single vector field using multiprocessing"""
+    eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
+    assert eq.explicit_time_dependence
+    assert not eq.complex_valued
+    grid = grids.UnitGrid([8, 8])
+    field = VectorField.random_normal(grid).smooth(1)
+
+    args = {
+        "state": field,
+        "t_range": 1,
+        "dt": 0.01,
+        "tracker": None,
+    }
+    res_a = eq.solve(backend="numpy", method="explicit_mpi", **args)
+    res_b = eq.solve(backend="numba", method="explicit_mpi", **args)
+
+    if mpi.is_main:
+        res_a.assert_field_compatible(res_b)
+        np.testing.assert_allclose(res_a.data, res_b.data)
+
+
 def test_pde_2scalar():
     """test PDE with two scalar fields"""
     eq = PDE({"u": "laplace(u) - u", "v": "- u * v"})
@@ -144,7 +167,7 @@ def test_custom_operators():
     field = ScalarField.random_normal(grid)
     eq = PDE({"u": "undefined(u)"})
 
-    with pytest.raises(NameError):
+    with pytest.raises(ValueError):
         eq.evolution_rate(field)
 
     def make_op(state):
