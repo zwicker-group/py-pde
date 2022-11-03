@@ -120,7 +120,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="numba-mpi",
-        version="0.13",
+        version="0.18",
         usage="Parallel processing using MPI",
         collections={"multiprocessing"},
     ),
