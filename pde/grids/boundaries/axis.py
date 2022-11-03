@@ -48,10 +48,14 @@ class BoundaryAxisBase:
                 Instance describing the upper boundary
         """
         # check data consistency
-        assert low.grid == high.grid
-        assert low.axis == high.axis
-        assert low.rank == high.rank
-        assert high.upper and not low.upper
+        if (
+            low.grid != high.grid
+            or low.axis != high.axis
+            or low.rank != high.rank
+            or not high.upper
+            or low.upper
+        ):
+            raise ValueError(f"Incompatible {low} and {high}")
 
         # check consistency with the grid
         if not (

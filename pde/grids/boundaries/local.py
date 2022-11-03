@@ -692,7 +692,13 @@ class _MPIBC(BCBase):
     homogeneous = False
 
     def __init__(
-        self, mesh: "GridMesh", axis: int, upper: bool, *, node_id: int = None
+        self,
+        mesh: "GridMesh",
+        axis: int,
+        upper: bool,
+        *,
+        rank: int = 0,
+        node_id: int = None,
     ):
         """
         Args:
@@ -704,8 +710,12 @@ class _MPIBC(BCBase):
                 Flag indicating whether this boundary condition is associated with the
                 upper side of an axis or not. In essence, this determines the direction
                 of the local normal vector of the boundary.
+            rank (int):
+                The tensorial rank of the field for this boundary condition
+            node_id (int):
+                The MPI node (the subgrid ID) this BC is associated with
         """
-        super().__init__(mesh[node_id], axis, upper)
+        super().__init__(mesh[node_id], axis, upper, rank=rank)
         self._neighbor_id = mesh.get_neighbor(axis, upper, node_id=node_id)
         assert self._neighbor_id is not None
         self._mpi_flag = mesh.get_boundary_flag(self._neighbor_id, upper)
@@ -717,23 +727,8 @@ class _MPIBC(BCBase):
         idx[self.axis] = -1 if self.upper else 0  # write ghost cells
         self._idx_write = tuple([Ellipsis] + idx)
 
-    def __repr__(self):
-        args = [
-            f"grid={self.grid}",
-            f"axis={self.axis}",
-            f"upper={self.upper}",
-            f"neighbor={self._neighbor_id}",
-        ]
-        args += self._repr_value()
-        return f"{self.__class__.__name__}({', '.join(args)})"
-
-    def __str__(self):
-        args = [
-            f"axis={self.axis}",
-            f"upper={self.upper}",
-            f"neighbor={self._neighbor_id}",
-        ]
-        return f"{self.__class__.__name__}({', '.join(args)})"
+    def _repr_value(self):
+        return [f"neighbor={self._neighbor_id}"]
 
     def __eq__(self, other):
         """checks for equality neglecting the `upper` property"""
@@ -743,6 +738,7 @@ class _MPIBC(BCBase):
             self.__class__ == other.__class__
             and self.grid == other.grid
             and self.axis == other.axis
+            and self.rank == other.rank
             and self._neighbor_id == other._neighbor_id
         )
 

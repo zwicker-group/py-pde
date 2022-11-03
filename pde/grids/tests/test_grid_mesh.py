@@ -200,6 +200,26 @@ def test_boundary_conditions_numba(bc):
 
 
 @pytest.mark.multiprocessing
+def test_vector_boundary_conditions():
+    """test setting vectorial boundary conditions"""
+    grid = UnitGrid([8, 8])
+    mesh = GridMesh.from_grid(grid)
+
+    field = VectorField.random_uniform(grid)
+
+    # split without ghost cells
+    f1 = mesh.split_field_mpi(field)
+    f1.set_ghost_cells({"value": [1, 2]})
+
+    # split after setting ghost cells
+    field.set_ghost_cells({"value": [1, 2]})
+    f2 = mesh.split_field_mpi(field)
+
+    np.testing.assert_equal(f1._data_full[:, 1:-1, :], f2._data_full[:, 1:-1, :])
+    np.testing.assert_equal(f1._data_full[:, :, 1:-1], f2._data_full[:, :, 1:-1])
+
+
+@pytest.mark.multiprocessing
 @pytest.mark.parametrize("grid, decomposition", GRIDS)
 def test_noncartesian_grids(grid, decomposition):
     """test whether we can deal with non-cartesian grids"""

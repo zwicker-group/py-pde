@@ -173,7 +173,6 @@ class PDE(PDEBase):
         self.consts = consts
         self.explicit_time_dependence = explicit_time_dependence
         self.complex_valued = complex_valued
-        operators = frozenset().union(*self._operators.values())
 
         # setup boundary conditions
         if bc_ops is None:
@@ -206,11 +205,11 @@ class PDE(PDEBase):
 
         # save information for easy inspection
         self.diagnostics["pde"] = {
-            "variables": self.variables,
-            "constants": tuple(self.consts),
+            "variables": list(self.variables),
+            "constants": list(sorted(self.consts)),
             "explicit_time_dependence": explicit_time_dependence,
             "complex_valued_rhs": complex_valued,
-            "operators": list(sorted(operators)),
+            "operators": list(sorted(set().union(*self._operators.values()))),
         }
         self._cache: Dict[str, Dict[str, Any]] = {}
 
@@ -273,13 +272,6 @@ class PDE(PDEBase):
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
-            except ValueError:
-                # any other exception should signal that the operator is not
-                # defined, so we (almost) silently assume that sympy defines the
-                # operator
-                self._logger.info(
-                    "Assuming that sympy knows undefined operator `%s`", func
-                )
 
             # add `bc_args` as an argument to the call of the operators to be able
             # to pass additional information, like time
