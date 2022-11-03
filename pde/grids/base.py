@@ -1593,48 +1593,28 @@ class GridBase(metaclass=ABCMeta):
                             total[idx] += get_cell_volume(i) * arr_comp.flat[i]
                     return total
 
-            return impl
-
-        # get implementation of `integrate_local` even with disabled numba compilation
-        if nb.config.DISABLE_JIT:  # @UndefinedVariable
-
-            def integrate_local_impl(arr: np.ndarray) -> NumberOrArray:
-                """provide working function without compilation"""
-                return integrate_local(arr)(arr)  # type: ignore
-
-        else:
-            integrate_local_impl = integrate_local
+            if nb.config.DISABLE_JIT:
+                return impl(arr)  # type: ignore
+            else:
+                return impl
 
         # deal with MPI multiprocessing
         if self._mesh is None or len(self._mesh) == 1:
             # standard case of a single integral
-            return integrate_local_impl
+            return integrate_local  # type: ignore
 
         else:
             # we are in a parallel run, so we need to gather the sub-integrals from all
             # subgrids in the grid mesh
             from ..tools.mpi import mpi_allreduce
 
-            if nb.config.DISABLE_JIT:
-                # numba_mpi.mpi_allreduce is implemented with numba.generated_jit, which
-                # currently *numba version 0.55) does not play nicely with disabled
-                # jitting. We thus need to treat this case specially
+            @jit
+            def integrate_global(arr: np.ndarray) -> NumberOrArray:
+                """integrates data over MPI parallelized grid"""
+                integral = integrate_local(arr)
+                return mpi_allreduce(integral)  # type: ignore
 
-                def integrate_global(arr: np.ndarray) -> NumberOrArray:
-                    """integrates data over MPI parallelized grid"""
-                    integral = integrate_local_impl(arr)
-                    allreduce_impl = mpi_allreduce(integral)
-                    return allreduce_impl(integral)  # type: ignore
-
-            else:
-
-                @jit
-                def integrate_global(arr: np.ndarray) -> NumberOrArray:
-                    """integrates data over MPI parallelized grid"""
-                    integral = integrate_local_impl(arr)
-                    return mpi_allreduce(integral)  # type: ignore
-
-            return integrate_global
+            return integrate_global  # type: ignore
 
 
 def registered_operators() -> Dict[str, List[str]]:

@@ -6,7 +6,6 @@ Defines an explicit solver using multiprocessing via MPI
 
 from typing import Callable, List, Union
 
-import numba as nb
 import numpy as np
 from numba.extending import register_jitable
 
@@ -80,22 +79,12 @@ class ExplicitMPISolver(ExplicitSolver):
 
             operator_max_int = int(Operator.MAX)
 
-            if nb.config.DISABLE_JIT:
-                # numba_mpi.mpi_allreduce is implemented with numba.generated_jit, which
-                # currently *numba version 0.55) does not play nicely with disabled
-                # jitting. We thus need to treat this case specially
+            @register_jitable
+            def synchronize_errors(error: float) -> float:
+                """return maximal error accross all cores"""
+                return mpi_allreduce(error, operator_max_int)  # type: ignore
 
-                def synchronize_errors(error: float) -> float:
-                    allreduce_impl = mpi_allreduce(error, operator_max_int)
-                    return allreduce_impl(error, operator_max_int)  # type: ignore
-
-            else:
-
-                @register_jitable
-                def synchronize_errors(error: float) -> float:
-                    return mpi_allreduce(error, operator_max_int)  # type: ignore
-
-            return synchronize_errors
+            return synchronize_errors  # type: ignore
         else:
             return super()._make_error_synchronizer()
 
