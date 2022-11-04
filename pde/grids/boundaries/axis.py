@@ -55,7 +55,7 @@ class BoundaryAxisBase:
             or not high.upper
             or low.upper
         ):
-            raise ValueError(f"Incompatible {low} and {high}")
+            raise ValueError(f"Incompatible {low!r} and {high!r}")
 
         # check consistency with the grid
         if not (
