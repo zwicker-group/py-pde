@@ -718,9 +718,10 @@ class GridBase(metaclass=ABCMeta):
             all axes.
 
         Raises:
-            ValueError: If the data given in `bc` cannot be read
-            PeriodicityError: If the boundaries are not compatible with the
-                periodic axes of the grid.
+            ValueError:
+                If the data given in `bc` cannot be read
+            PeriodicityError:
+                If the boundaries are not compatible with the periodic axes of the grid.
         """
         from .boundaries import Boundaries  # @Reimport
 
@@ -728,9 +729,13 @@ class GridBase(metaclass=ABCMeta):
             # get boundary conditions for a simple grid that is not part of a mesh
             bcs = Boundaries.from_data(self, bc, rank=rank)
 
+        elif hasattr(bc, "grid") and bc.grid._mesh is not None:
+            bcs = Boundaries.from_data(self, bc, rank=rank)
+
         else:
             # this grid is part of a mesh and we thus need to set special conditions to
-            # support parallelism via MPI
+            # support parallelism via MPI. We here assume that bc is given for the full
+            # system and not 
             bcs_base = Boundaries.from_data(self._mesh.basegrid, bc, rank=rank)
             bcs = self._mesh.extract_boundary_conditions(bcs_base)
 

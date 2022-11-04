@@ -506,7 +506,16 @@ class BCBase(metaclass=ABCMeta):
         # check all different data formats
         if isinstance(data, BCBase):
             # already in the correct format
-            assert data.grid == grid and data.axis == axis and data.rank == rank
+            if data.grid._mesh is not None:
+                # we need to exclude this case since otherwise we get into a rabit hole
+                # where it is not clear what grid boundary conditions belong to. The
+                # idea is that users only create boundary conditions for the full grid
+                # and that the splitting onto subgrids is only done once, automatically,
+                # and without involving calls to `from_data`
+                raise ValueError("Cannot create MPI sub grid BC from data")
+
+            if data.grid != grid or data.axis != axis or data.rank != rank:
+                raise ValueError(f"Incompatible: {data!r} & {grid=}, {axis=}, {rank=})")
             bc = data.copy(upper=upper)
 
         elif isinstance(data, dict):
@@ -2595,8 +2604,6 @@ class ConstBC2ndOrderBase(ConstBCBase):
                     factor2 = factor2[..., np.newaxis]
 
         # calculate the virtual points
-        print(f"{idx_write=}, {idx_1=}, {idx_2=}")
-        print(f"{const.shape=}, {factor1.shape=}, {factor2.shape=}")
         data_full[tuple(idx_write)] = (
             const
             + factor1 * data_full[tuple(idx_1)]

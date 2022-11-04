@@ -22,6 +22,17 @@ class ExplicitMPISolver(ExplicitSolver):
 
     This solver can only be used if MPI is properly installed.
 
+    The main idea of the solver is to take the full initial state in the main node
+    (ID 0) and split the grid into roughly equal subgrids. The main node then
+    distributes these subfields to all other nodes and each node creates the right hand
+    side of the PDE for itself (and independently). Each node then advances the PDE
+    independently, ensuring proper coupling to neighboring nodes via special boundary
+    conditions, which exchange field values between sub grids. This is implemented by
+    the :meth:`get_boundary_conditions` method of the sub grids, which takes the
+    boundary conditions for the full grid and creates conditions suitable for the
+    specific sub grid on the given node. The trackers (and thus all input and output)
+    are only handled on the main node.
+
     Warning:
         `modify_after_step` can only be used to do local modifications since the field
         data supplied to the function is local to each MPI node.
