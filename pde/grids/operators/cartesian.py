@@ -11,8 +11,7 @@ This module implements differential operators on Cartesian grids
    make_vector_laplace
    make_tensor_divergence
    make_poisson_solver
-   
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>   
 """
 

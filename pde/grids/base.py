@@ -38,7 +38,13 @@ from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, classproperty
 from ..tools.numba import jit, jit_allocate_out
-from ..tools.typing import CellVolume, FloatNumerical, NumberOrArray, OperatorType
+from ..tools.typing import (
+    CellVolume,
+    FloatNumerical,
+    NumberOrArray,
+    OperatorFactory,
+    OperatorType,
+)
 
 if TYPE_CHECKING:
     from ._mesh import GridMesh
@@ -52,7 +58,7 @@ PI_43 = 4 / 3 * np.pi
 class OperatorInfo(NamedTuple):
     """stores information about an operator"""
 
-    factory: Callable[..., OperatorType]
+    factory: OperatorFactory
     rank_in: int
     rank_out: int
     name: str = ""  # attach a unique name to help caching
@@ -90,14 +96,14 @@ def discretize_interval(
             \quad \text{for} \quad i = 0, \ldots, N - 1
         \\
             \Delta x &= \frac{x_\mathrm{max} - x_\mathrm{min}}{N}
-        
+
     where :math:`N` is the number of intervals given by `num`.
-    
+
     Args:
         x_min (float): Minimal value of the axis
         x_max (float): Maximal value of the axis
         num (int): Number of intervals
-    
+
     Returns:
         tuple: (midpoints, dx): the midpoints of the intervals and the used
         discretization `dx`.
@@ -300,7 +306,7 @@ class GridBase(metaclass=ABCMeta):
     @property
     @abstractmethod
     def state(self) -> Dict[str, Any]:
-        pass
+        ...
 
     @property
     def state_serialized(self) -> str:
@@ -486,17 +492,17 @@ class GridBase(metaclass=ABCMeta):
     @property
     @abstractmethod
     def volume(self) -> float:
-        pass
+        ...
 
     @abstractmethod
     def point_to_cartesian(
         self, points: np.ndarray, *, full: bool = False
     ) -> np.ndarray:
-        pass
+        ...
 
     @abstractmethod
     def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
-        pass
+        ...
 
     def normalize_point(
         self, point: np.ndarray, *, reflect: bool = False
@@ -674,7 +680,7 @@ class GridBase(metaclass=ABCMeta):
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
     ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
-        pass
+        ...
 
     def contains_point(
         self, points: np.ndarray, *, coords: str = "cartesian", wrap: bool = True
@@ -698,7 +704,7 @@ class GridBase(metaclass=ABCMeta):
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
-        pass
+        ...
 
     @fill_in_docstring
     def get_boundary_conditions(
@@ -732,7 +738,7 @@ class GridBase(metaclass=ABCMeta):
         else:
             # this grid is part of a mesh and we thus need to set special conditions to
             # support parallelism via MPI. We here assume that bc is given for the full
-            # system and not 
+            # system and not
             bcs_base = Boundaries.from_data(self._mesh.basegrid, bc, rank=rank)
             bcs = self._mesh.extract_boundary_conditions(bcs_base)
 
@@ -740,23 +746,23 @@ class GridBase(metaclass=ABCMeta):
 
     @abstractmethod
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
-        pass
+        ...
 
     @abstractmethod
     def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
-        pass
+        ...
 
     @abstractmethod
     def get_random_point(
         self, *, boundary_distance: float = 0, coords: str = "cartesian"
     ) -> np.ndarray:
-        pass
+        ...
 
     @classmethod
     def register_operator(
         cls,
         name: str,
-        factory_func: Callable = None,
+        factory_func: OperatorFactory = None,
         rank_in: int = 0,
         rank_out: int = 0,
     ):
@@ -774,15 +780,15 @@ class GridBase(metaclass=ABCMeta):
             .. code-block:: python
 
                 @GridClass.register_operator("operator")
-                def make_operator(bcs: Boundaries):
+                def make_operator(grid: GridBase):
                     ...
 
         Args:
             name (str):
                 The name of the operator to register
             factory_func (callable):
-                A function with signature ``(bcs: Boundaries, **kwargs)``, which takes
-                boundary conditions and optional keyword arguments and returns an
+                A function with signature ``(grid: GridBase, **kwargs)``, which takes
+                a grid object and optional keyword arguments and returns an
                 implementation of the given operator. This implementation is a function
                 that takes a :class:`~numpy.ndarray` of discretized values as arguments
                 and returns the resulting discretized data in a :class:`~numpy.ndarray`
@@ -793,7 +799,7 @@ class GridBase(metaclass=ABCMeta):
                 The rank of the field that is returned by the operator
         """
 
-        def register_operator(factor_func_arg: Callable):
+        def register_operator(factor_func_arg: OperatorFactory):
             """helper function to register the operator"""
             cls._operators[name] = OperatorInfo(
                 factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
