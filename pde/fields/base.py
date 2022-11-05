@@ -337,7 +337,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @abstractmethod
     def copy(self: TField, *, label: str = None, dtype: DTypeLike = None) -> TField:
-        pass
+        ...
 
     def assert_field_compatible(self, other: FieldBase, accept_scalar: bool = False):
         """checks whether `other` is compatible with the current field
@@ -636,19 +636,19 @@ class FieldBase(metaclass=ABCMeta):
     def get_line_data(
         self, scalar: str = "auto", extract: str = "auto"
     ) -> Dict[str, Any]:
-        pass
+        ...
 
     @abstractmethod
     def get_image_data(self) -> Dict[str, Any]:
-        pass
+        ...
 
     @abstractmethod
     def plot(self, *args, **kwargs):
-        pass
+        ...
 
     @abstractmethod
     def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
-        pass
+        ...
 
     def plot_interactive(self, viewer_args: Dict[str, Any] = None, **kwargs):
         """create an interactive plot of the field using :mod:`napari`
@@ -1424,13 +1424,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @property
     @abstractmethod
     def integral(self) -> NumberOrArray:
-        pass
+        ...
 
     @abstractmethod
     def to_scalar(
         self, scalar: str = "auto", *, label: Optional[str] = None
     ) -> "ScalarField":
-        pass
+        ...
 
     @property
     def average(self) -> NumberOrArray:

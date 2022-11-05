@@ -4,10 +4,13 @@ Provides support for mypy type checking of the package
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Callable, Tuple, Union
+from typing import TYPE_CHECKING, Protocol, Tuple, Union
 
 import numpy as np
 from numpy.typing import ArrayLike  # @UnusedImport
+
+if TYPE_CHECKING:
+    from ..grids.base import GridBase  # @UnusedImport
 
 Real = Union[int, float]
 Number = Union[Real, complex]
@@ -15,40 +18,37 @@ NumberOrArray = Union[Number, np.ndarray]
 FloatNumerical = Union[float, np.ndarray]
 
 
-try:
-    from typing import Protocol
+class OperatorType(Protocol):
+    """an operator that acts on an array"""
 
-except ImportError:
-    # Protocol is not defined (likely because python version <= 3.7
-    # We demand python version 3.8 since 2022-08-23
-    # This fallback can thus be removed after 2022-02-23
-    OperatorType = Callable[[np.ndarray, np.ndarray], None]
-    AdjacentEvaluator = Callable[[np.ndarray, int, Tuple[int, ...]], float]
-    CellVolume = Callable[..., float]
-    GhostCellSetter = Callable[..., None]
-    VirtualPointEvaluator = Callable[..., float]
+    def __call__(self, arr: np.ndarray, out: np.ndarray) -> None:
+        ...
 
-else:
-    # Protocol is defined
 
-    class OperatorType(Protocol):  # type: ignore
-        def __call__(self, arr: np.ndarray, out: np.ndarray) -> None:
-            pass
+class OperatorFactory(Protocol):
+    """a factory function that creates an operator for a particular grid"""
 
-    class AdjacentEvaluator(Protocol):  # type: ignore
-        def __call__(
-            self, arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
-        ) -> float:
-            pass
+    def __call__(self, grid: "GridBase", **kwargs) -> OperatorType:
+        ...
 
-    class CellVolume(Protocol):  # type: ignore
-        def __call__(self, *args: int) -> float:
-            pass
 
-    class GhostCellSetter(Protocol):  # type: ignore
-        def __call__(self, data_full: np.ndarray, args=None) -> None:
-            pass
+class AdjacentEvaluator(Protocol):
+    def __call__(
+        self, arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
+    ) -> float:
+        ...
 
-    class VirtualPointEvaluator(Protocol):  # type: ignore
-        def __call__(self, arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
-            pass
+
+class CellVolume(Protocol):
+    def __call__(self, *args: int) -> float:
+        ...
+
+
+class GhostCellSetter(Protocol):
+    def __call__(self, data_full: np.ndarray, args=None) -> None:
+        ...
+
+
+class VirtualPointEvaluator(Protocol):
+    def __call__(self, arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
+        ...
