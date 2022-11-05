@@ -505,7 +505,10 @@ class GridMesh:
         """
         from ..tools.mpi import mpi_recv, mpi_send
 
-        assert len(self) == mpi.size
+        if len(self) != mpi.size:
+            raise RuntimeError(
+                f"GridMesh size differs from MPI size ({len(self)} != {mpi.size})"
+            )
 
         if mpi.is_main:
             # mpi_send fields to all client processes
