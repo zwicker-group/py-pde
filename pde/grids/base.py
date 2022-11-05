@@ -729,9 +729,6 @@ class GridBase(metaclass=ABCMeta):
             # get boundary conditions for a simple grid that is not part of a mesh
             bcs = Boundaries.from_data(self, bc, rank=rank)
 
-        elif hasattr(bc, "grid") and bc.grid._mesh is not None:
-            bcs = Boundaries.from_data(self, bc, rank=rank)
-
         else:
             # this grid is part of a mesh and we thus need to set special conditions to
             # support parallelism via MPI. We here assume that bc is given for the full
