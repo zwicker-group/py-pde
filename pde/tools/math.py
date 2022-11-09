@@ -13,6 +13,8 @@ import numba as nb
 import numpy as np
 from numba.experimental import jitclass
 
+from .typing import ArrayLike
+
 
 class SmoothData1D:
     """allows smoothing data in 1d using a Gaussian kernel of defined width
@@ -61,14 +63,14 @@ class SmoothData1D:
         """checks whether the value `x` is contain in the range of x-values"""
         return self.x.min() <= x <= self.x.max()  # type: ignore
 
-    def __call__(self, xs):
+    def __call__(self, xs: ArrayLike) -> np.ndarray:
         """return smoothed y values for the positions given in `xs`
 
         Args:
-            xs: a list of x-values
+            xs (list of :class:`~numpy.ndarray`): the x-values
 
         Returns:
-            :class:`~numpy.ndarray`: The associated y-values
+            :class:`~numpy.ndarray`: The associated function values
         """
         xs = np.asanyarray(xs)
         shape = xs.shape
@@ -83,7 +85,36 @@ class SmoothData1D:
             weight[..., i] /= weight_sum[i]
 
         result = self.y @ weight
-        return result.reshape(shape)
+        return result.reshape(shape)  # type: ignore
+
+    def derivative(self, xs: ArrayLike) -> np.ndarray:
+        """return the derivative of the smoothed values for the positions `xs`
+
+        Note that this value
+
+        Args:
+            xs (list of :class:`~numpy.ndarray`): the x-values
+
+        Returns:
+            :class:`~numpy.ndarray`: The associated values of the derivative
+        """
+        xs = np.asanyarray(xs)
+        shape = xs.shape
+        xs = np.ravel(xs)
+        scale = 0.5 * self.sigma**-2
+
+        # determine the weights of all input points
+        with np.errstate(under="ignore"):
+            ws = np.exp(-scale * (self.x[:, None] - xs[None, :]) ** 2)
+            # first axis varies internal points where we know values
+            # second axis gives positions at which we want to evaluate values
+            ws_sum = ws.sum(axis=0)
+            i = ws_sum > 0
+            ws[..., i] /= ws_sum[i]
+
+        diff = 2 * scale * (self.x[:, None] - xs[None, :])
+        result = self.y @ (diff * ws) - (self.y @ ws) * (diff * ws).sum(axis=0)
+        return result.reshape(shape)  # type: ignore
 
 
 @jitclass(
