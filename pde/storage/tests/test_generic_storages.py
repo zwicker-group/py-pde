@@ -10,49 +10,59 @@ import pytest
 
 from pde import DiffusionPDE, FileStorage, MemoryStorage, UnitGrid
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
+from pde.tools import mpi
 from pde.tools.misc import module_available
 
+STORAGE_CLASSES = [MemoryStorage, FileStorage]
 
-def test_storage_write(tmp_path):
+
+@pytest.fixture
+def storage_factory(tmp_path, storage_class):
+    """helper fixture that provides a storage factory that initializes files"""
+    if storage_class is FileStorage:
+        # provide factory that initializes a FileStorage with a file
+        if not module_available("h5py"):
+            pytest.skip("No module `h5py`")
+        file_path = tmp_path / "test_storage_write.hdf5"
+        return functools.partial(FileStorage, file_path)
+
+    # simply return the storage class assuming it is a factory function already
+    return storage_class
+
+
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
+def test_storage_write(storage_factory):
     """test simple memory storage"""
     dim = 5
     grid = UnitGrid([dim])
     field = ScalarField(grid)
 
-    storage_classes = {"MemoryStorage": MemoryStorage}
-    if module_available("h5py"):
-        file_path = tmp_path / "test_storage_write.hdf5"
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
+    storage = storage_factory(info={"a": 1})
+    storage.start_writing(field, info={"b": 2})
+    field.data = np.arange(dim)
+    storage.append(field, 0)
+    field.data = np.arange(dim)
+    storage.append(field, 1)
+    storage.end_writing()
 
-    for name, storage_cls in storage_classes.items():
-        storage = storage_cls(info={"a": 1})
-        storage.start_writing(field, info={"b": 2})
-        field.data = np.arange(dim)
-        storage.append(field, 0)
-        field.data = np.arange(dim)
-        storage.append(field, 1)
+    assert not storage.has_collection
+
+    np.testing.assert_allclose(storage.times, np.arange(2))
+    for f in storage:
+        np.testing.assert_array_equal(f.data, np.arange(dim))
+    for i in range(2):
+        np.testing.assert_array_equal(storage[i].data, np.arange(dim))
+    assert {"a": 1, "b": 2}.items() <= storage.info.items()
+
+    storage = storage_factory()
+    storage.clear()
+    for i in range(3):
+        storage.start_writing(field)
+        field.data = np.arange(dim) + i
+        storage.append(field, i)
         storage.end_writing()
 
-        assert not storage.has_collection
-
-        np.testing.assert_allclose(storage.times, np.arange(2))
-        for f in storage:
-            np.testing.assert_array_equal(f.data, np.arange(dim))
-        for i in range(2):
-            np.testing.assert_array_equal(storage[i].data, np.arange(dim))
-        assert {"a": 1, "b": 2}.items() <= storage.info.items()
-
-        storage = storage_cls()
-        storage.clear()
-        for i in range(3):
-            storage.start_writing(field)
-            field.data = np.arange(dim) + i
-            storage.append(field, i)
-            storage.end_writing()
-
-        np.testing.assert_allclose(
-            storage.times, np.arange(3), err_msg="storage class: " + name
-        )
+    np.testing.assert_allclose(storage.times, np.arange(3))
 
 
 def test_storage_truncation(tmp_path):
@@ -89,48 +99,44 @@ def test_storage_truncation(tmp_path):
         assert not storage.has_collection
 
 
-def test_storing_extract_range(tmp_path):
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
+def test_storing_extract_range(storage_factory):
     """test methods specific to FieldCollections in memory storage"""
     sf = ScalarField(UnitGrid([1]))
 
-    storage_classes = {"MemoryStorage": MemoryStorage}
-    if module_available("h5py"):
-        file_path = tmp_path / "test_storage_write.hdf5"
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
+    # store some data
+    s1 = storage_factory()
+    s1.start_writing(sf)
+    sf.data = np.array([0])
+    s1.append(sf, 0)
+    sf.data = np.array([2])
+    s1.append(sf, 1)
+    s1.end_writing()
 
-    for storage_cls in storage_classes.values():
-        # store some data
-        s1 = storage_cls()
-        s1.start_writing(sf)
-        sf.data = np.array([0])
-        s1.append(sf, 0)
-        sf.data = np.array([2])
-        s1.append(sf, 1)
-        s1.end_writing()
+    np.testing.assert_equal(s1[0].data, 0)
+    np.testing.assert_equal(s1[1].data, 2)
+    np.testing.assert_equal(s1[-1].data, 2)
+    np.testing.assert_equal(s1[-2].data, 0)
 
-        np.testing.assert_equal(s1[0].data, 0)
-        np.testing.assert_equal(s1[1].data, 2)
-        np.testing.assert_equal(s1[-1].data, 2)
-        np.testing.assert_equal(s1[-2].data, 0)
+    with pytest.raises(IndexError):
+        s1[2]
+    with pytest.raises(IndexError):
+        s1[-3]
 
-        with pytest.raises(IndexError):
-            s1[2]
-        with pytest.raises(IndexError):
-            s1[-3]
-
-        # test extraction
-        s2 = s1.extract_time_range()
-        assert s2.times == list(s1.times)
-        np.testing.assert_allclose(s2.data, s1.data)
-        s3 = s1.extract_time_range(0.5)
-        assert s3.times == s1.times[:1]
-        np.testing.assert_allclose(s3.data, s1.data[:1])
-        s4 = s1.extract_time_range((0.5, 1.5))
-        assert s4.times == s1.times[1:]
-        np.testing.assert_allclose(s4.data, s1.data[1:])
+    # test extraction
+    s2 = s1.extract_time_range()
+    assert s2.times == list(s1.times)
+    np.testing.assert_allclose(s2.data, s1.data)
+    s3 = s1.extract_time_range(0.5)
+    assert s3.times == s1.times[:1]
+    np.testing.assert_allclose(s3.data, s1.data[:1])
+    s4 = s1.extract_time_range((0.5, 1.5))
+    assert s4.times == s1.times[1:]
+    np.testing.assert_allclose(s4.data, s1.data[1:])
 
 
-def test_storing_collection(tmp_path):
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
+def test_storing_collection(storage_factory):
     """test methods specific to FieldCollections in memory storage"""
     grid = UnitGrid([2, 2])
     f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="a")
@@ -138,42 +144,32 @@ def test_storing_collection(tmp_path):
     f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4, label="c")
     fc = FieldCollection([f1, f2, f3])
 
-    storage_classes = {"MemoryStorage": MemoryStorage}
-    if module_available("h5py"):
-        file_path = tmp_path / "test_storage_write.hdf5"
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
+    # store some data
+    storage = storage_factory()
+    storage.start_writing(fc)
+    storage.append(fc, 0)
+    storage.append(fc, 1)
+    storage.end_writing()
 
-    for storage_cls in storage_classes.values():
-        # store some data
-        storage = storage_cls()
-        storage.start_writing(fc)
-        storage.append(fc, 0)
-        storage.append(fc, 1)
-        storage.end_writing()
-
-        assert storage.has_collection
-        assert storage.extract_field(0)[0] == f1
-        assert storage.extract_field(1)[0] == f2
-        assert storage.extract_field(2)[0] == f3
-        assert storage.extract_field(0)[0].label == "a"
-        assert storage.extract_field(0, label="new label")[0].label == "new label"
-        assert storage.extract_field(0)[0].label == "a"  # do not alter label
-        assert storage.extract_field("a")[0] == f1
-        assert storage.extract_field("b")[0] == f2
-        assert storage.extract_field("c")[0] == f3
-        with pytest.raises(ValueError):
-            storage.extract_field("nonsense")
+    assert storage.has_collection
+    assert storage.extract_field(0)[0] == f1
+    assert storage.extract_field(1)[0] == f2
+    assert storage.extract_field(2)[0] == f3
+    assert storage.extract_field(0)[0].label == "a"
+    assert storage.extract_field(0, label="new label")[0].label == "new label"
+    assert storage.extract_field(0)[0].label == "a"  # do not alter label
+    assert storage.extract_field("a")[0] == f1
+    assert storage.extract_field("b")[0] == f2
+    assert storage.extract_field("c")[0] == f3
+    with pytest.raises(ValueError):
+        storage.extract_field("nonsense")
 
 
-def test_storage_apply(tmp_path):
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES + [None])
+def test_storage_apply(storage_factory):
     """test the apply function of StorageBase"""
     grid = UnitGrid([2])
     field = ScalarField(grid)
-
-    storage_classes = {"None": None, "MemoryStorage": MemoryStorage}
-    if module_available("h5py"):
-        file_path = tmp_path / "test_storage_apply.hdf5"
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
 
     s1 = MemoryStorage()
     s1.start_writing(field, info={"b": 2})
@@ -183,14 +179,13 @@ def test_storage_apply(tmp_path):
     s1.append(field, 1)
     s1.end_writing()
 
-    for name, storage_cls in storage_classes.items():
-        out = None if storage_cls is None else storage_cls()
-        s2 = s1.apply(lambda x: x + 1, out=out)
-        assert storage_cls is None or s2 is out
-        assert len(s2) == 2
-        np.testing.assert_allclose(s2.times, s1.times)
-        assert s2[0] == ScalarField(grid, [1, 2]), name
-        assert s2[1] == ScalarField(grid, [2, 3]), name
+    out = None if storage_factory is None else storage_factory()
+    s2 = s1.apply(lambda x: x + 1, out=out)
+    assert storage_factory is None or s2 is out
+    assert len(s2) == 2
+    np.testing.assert_allclose(s2.times, s1.times)
+    assert s2[0] == ScalarField(grid, [1, 2])
+    assert s2[1] == ScalarField(grid, [2, 3])
 
     # test empty storage
     s1 = MemoryStorage()
@@ -198,15 +193,11 @@ def test_storage_apply(tmp_path):
     assert len(s2) == 0
 
 
-def test_storage_copy(tmp_path):
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES + [None])
+def test_storage_copy(storage_factory):
     """test the copy function of StorageBase"""
     grid = UnitGrid([2])
     field = ScalarField(grid)
-
-    storage_classes = {"None": None, "MemoryStorage": MemoryStorage}
-    if module_available("h5py"):
-        file_path = tmp_path / "test_storage_apply.hdf5"
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
 
     s1 = MemoryStorage()
     s1.start_writing(field, info={"b": 2})
@@ -216,14 +207,13 @@ def test_storage_copy(tmp_path):
     s1.append(field, 1)
     s1.end_writing()
 
-    for name, storage_cls in storage_classes.items():
-        out = None if storage_cls is None else storage_cls()
-        s2 = s1.copy(out=out)
-        assert storage_cls is None or s2 is out
-        assert len(s2) == 2
-        np.testing.assert_allclose(s2.times, s1.times)
-        assert s2[0] == s1[0], name
-        assert s2[1] == s1[1], name
+    out = None if storage_factory is None else storage_factory()
+    s2 = s1.copy(out=out)
+    assert storage_factory is None or s2 is out
+    assert len(s2) == 2
+    np.testing.assert_allclose(s2.times, s1.times)
+    assert s2[0] == s1[0]
+    assert s2[1] == s1[1]
 
     # test empty storage
     s1 = MemoryStorage()
@@ -231,27 +221,40 @@ def test_storage_copy(tmp_path):
     assert len(s2) == 0
 
 
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
 @pytest.mark.parametrize("dtype", [bool, complex])
-def test_storage_types(dtype, tmp_path):
+def test_storage_types(storage_factory, dtype):
     """test storing different types"""
     grid = UnitGrid([32])
     field = ScalarField.random_uniform(grid).copy(dtype=dtype)
     if dtype == complex:
         field += 1j * ScalarField.random_uniform(grid)
 
-    storage_classes = {"MemoryStorage": MemoryStorage}
-    if module_available("h5py"):
-        file_path = tmp_path / "test_storage_apply.hdf5"
-        storage_classes["FileStorage"] = functools.partial(FileStorage, file_path)
+    s = storage_factory()
+    s.start_writing(field)
+    s.append(field, 0)
+    s.append(field, 1)
+    s.end_writing()
 
-    for storage_cls in storage_classes.values():
-        s = storage_cls()
-        s.start_writing(field)
-        s.append(field, 0)
-        s.append(field, 1)
-        s.end_writing()
+    assert len(s) == 2
+    np.testing.assert_allclose(s.times, [0, 1])
+    np.testing.assert_equal(s[0].data, field.data)
+    np.testing.assert_equal(s[1].data, field.data)
 
-        assert len(s) == 2
-        np.testing.assert_allclose(s.times, [0, 1])
-        np.testing.assert_equal(s[0].data, field.data)
-        np.testing.assert_equal(s[1].data, field.data)
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
+def test_storage_mpi(storage_factory):
+    """test writing data using MPI"""
+    eq = DiffusionPDE()
+    grid = UnitGrid([8])
+    field = ScalarField.random_normal(grid).smooth(1)
+
+    storage = storage_factory()
+    res = eq.solve(
+        field, t_range=0.1, dt=0.001, backend="numpy", tracker=[storage.tracker(0.01)]
+    )
+
+    if mpi.is_main:
+        assert res.integral == pytest.approx(field.integral)
+        assert len(storage) == 11
