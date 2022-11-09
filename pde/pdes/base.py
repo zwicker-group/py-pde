@@ -209,6 +209,9 @@ class PDEBase(metaclass=ABCMeta):
             # caching was skipped
             rhs = self._make_pde_rhs_numba(state, **kwargs)
 
+        if rhs is None:
+            raise RuntimeError("`_make_pde_rhs_numba` returned None")
+
         if check_implementation:
             self.check_rhs_consistency(state, rhs_numba=rhs, **kwargs)
 

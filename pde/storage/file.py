@@ -313,7 +313,7 @@ class FileStorage(StorageBase):
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
-                An example of the data that will be written to extract the grid and the 
+                An example of the data that will be written to extract the grid and the
                 data_shape
             info (dict):
                 Supplies extra information that is stored in the storage

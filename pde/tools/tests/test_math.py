@@ -10,17 +10,21 @@ from pde.tools.math import OnlineStatistics, SmoothData1D
 
 def test_SmoothData1D():
     """test smoothing"""
-    x = np.random.uniform(0, 1, 128)
+    rng = np.random.default_rng(1)
+    x = rng.uniform(0, 1, 128)
     xs = np.linspace(0, 1, 16)[1:-1]
 
     s = SmoothData1D(x, np.ones_like(x))
     np.testing.assert_allclose(s(xs), 1)
+    np.testing.assert_allclose(s.derivative(xs), 0, atol=1e-14)
 
-    s = SmoothData1D(x, x)
+    s = SmoothData1D(x, x, 0.05)
     np.testing.assert_allclose(s(xs), xs, atol=0.1)
+    np.testing.assert_allclose(s.derivative(xs), 1, atol=0.3)
 
-    s = SmoothData1D(x, np.sin(x))
+    s = SmoothData1D(x, np.sin(x), 0.05)
     np.testing.assert_allclose(s(xs), np.sin(xs), atol=0.1)
+    np.testing.assert_allclose(s.derivative(xs), np.cos(xs), atol=0.3)
 
     assert -0.1 not in s
     assert x.min() in s
