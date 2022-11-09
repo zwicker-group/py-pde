@@ -1,6 +1,5 @@
 """
-Defines a class storing data on the file system using the hierarchical data
-format (hdf).
+Defines a class storing data on the file system using the hierarchical data format (hdf)
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
@@ -16,6 +15,7 @@ import numpy as np
 from numpy.typing import DTypeLike
 
 from ..fields.base import FieldBase
+from ..tools import mpi
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
 from .base import InfoDict, StorageBase
 
@@ -27,10 +27,12 @@ class FileStorage(StorageBase):
         self,
         filename: str,
         info: InfoDict = None,
+        *,
         write_mode: str = "truncate_once",
         max_length: Optional[int] = None,
         compression: bool = True,
         keep_opened: bool = True,
+        check_mpi: bool = True,
     ):
         """
         Args:
@@ -39,31 +41,33 @@ class FileStorage(StorageBase):
             info (dict):
                 Supplies extra information that is stored in the storage
             write_mode (str):
-                Determines how new data is added to already existing data.
-                Possible values are: 'append' (data is always appended),
-                'truncate' (data is cleared every time this storage is used
-                for writing), or 'truncate_once' (data is cleared for the first
-                writing, but appended subsequently). Alternatively, specifying
-                'readonly' will disable writing completely.
+                Determines how new data is added to already existing data. Possible
+                values are: 'append' (data is always appended), 'truncate' (data is
+                cleared every time this storage is used for writing), or 'truncate_once'
+                (data is cleared for the first writing, but appended subsequently).
+                Alternatively, specifying 'readonly' will disable writing completely.
             max_length (int, optional):
-                Maximal number of entries that will be stored in the file. This
-                can be used to preallocate data, which can lead to smaller
-                files, but is also less flexible. Giving `max_length = None`,
-                allows for arbitrarily large data, which might lead to larger
-                files.
+                Maximal number of entries that will be stored in the file. This can be
+                used to preallocate data, which can lead to smaller files, but is also
+                less flexible. Giving `max_length = None`, allows for arbitrarily large
+                data, which might lead to larger files.
             compression (bool):
-                Whether to store the data in compressed form. Automatically
-                enabled chunked storage.
+                Whether to store the data in compressed form. Automatically enabled
+                chunked storage.
             keep_opened (bool):
-                Flag indicating whether the file should be kept opened after
-                each writing. If `False`, the file will be closed after writing
-                a dataset. This keeps the file in a consistent state, but also
-                requires more work before data can be written.
+                Flag indicating whether the file should be kept opened after each
+                writing. If `False`, the file will be closed after writing a dataset.
+                This keeps the file in a consistent state, but also requires more work
+                before data can be written.
+            check_mpi (bool):
+                If True, files will only be opened in the main node for an parallel
+                simulation using MPI. This flag has no effect in serial code.
         """
         super().__init__(info=info, write_mode=write_mode)
         self.filename = Path(filename)
         self.compression = compression
         self.keep_opened = keep_opened
+        self.check_mpi = check_mpi
 
         self._logger = logging.getLogger(self.__class__.__name__)
         self._file: Any = None
@@ -71,14 +75,16 @@ class FileStorage(StorageBase):
         self._data_length: int = None  # type: ignore
         self._max_length: Optional[int] = max_length
 
-        if self.filename.is_file() and self.filename.stat().st_size > 0:
-            try:
-                self._open("reading")
-            except (OSError, KeyError):
-                self.close()
-                self._logger.warning(
-                    f"File `{filename}` could not be opened for reading"
-                )
+        if not self.check_mpi or mpi.is_main:
+            # we are on the main process and can thus open the file directly
+            if self.filename.is_file() and self.filename.stat().st_size > 0:
+                try:
+                    self._open("reading")
+                except (OSError, KeyError):
+                    self.close()
+                    self._logger.warning(
+                        f"File `{filename}` could not be opened for reading"
+                    )
 
     def __del__(self):
         self.close()  # ensure open files are closed when the FileStorage is deleted
@@ -144,12 +150,16 @@ class FileStorage(StorageBase):
 
         Args:
             mode (str):
-                Determines how the file is opened. Possible values are
-                `reading`, `appending`, `writing`, and `closed`.
+                Determines how the file is opened. Possible values are `reading`,
+                `appending`, `writing`, and `closed`.
             info (dict):
                 Supplies extra information that is stored in the storage
         """
         import h5py  # lazy loading so it's not a hard dependence
+
+        if self.check_mpi and not mpi.is_main:
+            self._logger.warning("Do not open file on MPI child nodes")
+            return
 
         state = self._file_state
 
@@ -265,9 +275,13 @@ class FileStorage(StorageBase):
         """truncate the storage by removing all stored data.
 
         Args:
-            clear_data_shape (bool): Flag determining whether the data shape is
-                also deleted.
+            clear_data_shape (bool):
+                Flag determining whether the data shape is also deleted.
         """
+        if self.check_mpi and not mpi.is_main:
+            self._logger.warning("Do not clear file on MPI child nodes")
+            return
+
         if self._is_writing:
             # remove data from opened file
             self._logger.info("Truncate data in hdf5 file")
@@ -299,8 +313,8 @@ class FileStorage(StorageBase):
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
-                An example of the data that will be written to extract the grid
-                and the data_shape
+                An example of the data that will be written to extract the grid and the 
+                data_shape
             info (dict):
                 Supplies extra information that is stored in the storage
         """
