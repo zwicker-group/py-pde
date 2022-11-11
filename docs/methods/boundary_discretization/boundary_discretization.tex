@@ -502,7 +502,7 @@ The divergence of a spherically-symmetric vector field reads
 where $v_r$ is the radial part of the vector field and primes denote derivatives with respect to $r$.
 For a conservative implementation of the operator, we again integrate over a single shell,
 \begin{align}
-	\int_{r_{n-\frac12}}^{r_{n + \frac12}} \partial_\alpha v_{\alpha} r^2 \diff r 
+	\int_{r_{n-\frac12}}^{r_{n + \frac12}} (\partial_\alpha v_{\alpha}) r^2 \diff r 
 	 &= \left[r^2 v_r(r)\right]_{r_{n-\frac12}}^{r_{n + \frac12}}
 \end{align}
 Consequently, we find
@@ -511,28 +511,52 @@ Consequently, we find
 	 \frac{r_{n + \frac12}^2 v_r(r_{n + \frac12}) - r_{n - \frac12}^2 v_r(r_{n - \frac12})}{V_n}
 \end{align}
 where $V_n$ is given by \Eqref{eqn:spherical_shell_volume}. 
-
+Here, we approximate the function values at the midpoints using a simple average,
+\begin{align}
+	v_r(r_{n + \frac12}) &\approx \frac{v_r(r_{n}) + v_r(r_{n+1})}{2}
+	\;,
+\end{align}
+which might introduced uncontrolled artifacts.
 
 
 \subsection{Conservative tensor divergence operator}
-The divergence of a spherically-symmetric vector tensor field reads
+The radial component of the divergence of a spherically-symmetric tensor field (with $t_{\theta\theta} = t_{\phi\phi}$) reads
 \begin{align}
 	\partial_\beta t_{r\beta} =
 		\frac{2 \left[t_{rr}(r)-t_{\phi \phi }(r)\right]}{r}+t_{rr}'(r)
+	\;,
 \end{align}
 where primes denote derivatives with respect to $r$.
 Note that the angular components of the resulting vector field vanish.
 The integral over the shell reads
+\begin{multline}
+	\int_{r_{n-\frac12}}^{r_{n + \frac12}} (\partial_\beta t_{r\beta})  r^2 \diff r 
+\\	
+	 = \left[r^2 t_{rr}(r)\right]_{r_{n-\frac12}}^{r_{n + \frac12}}
+	  - 2 \int_{r_{n-\frac12}}^{r_{n + \frac12}} t_{\phi \phi }(r) \, r \, \diff r 
+%\\
+%	 \approx \left[r^2 t_{rr}(r)\right]_{r_{n-\frac12}}^{r_{n + \frac12}}
+%	  - 2 t_{\phi \phi }(r) \int_{r_{n-\frac12}}^{r_{n + \frac12}}  r \, \diff r 
+\\
+	 \approx \left[r^2 t_{rr}(r)\right]_{r_{n-\frac12}}^{r_{n + \frac12}}
+	  - t_{\phi \phi }(r) \left(
+	  	r_{n+\frac12}^2 - r_{n-\frac12}^2
+	  \right)
+\end{multline}
+where we assumed that $t_{\phi\phi}(r)$ is constant over the integration volume in the last approximation.
+We thus find
 \begin{align}
-	\int_{r_{n-\frac12}}^{r_{n + \frac12}} \partial_\beta t_{r\beta}  r^2 \diff r 
-	 &= \left[r^2 v_r(r)\right]_{r_{n-\frac12}}^{r_{n + \frac12}}
-\end{align}
-and we find
-\begin{align}
-	\partial_\alpha v_{\alpha} \sim
-	 \frac{r_{n + \frac12}^2 v_r(r_{n + \frac12}) - r_{n - \frac12}^2 v_r(r_{n - \frac12})}{V_n}
+	\partial_\alpha v_{\alpha} &\sim
+	 \frac{r_{n + \frac12}^2 t_{rr}(r_{n + \frac12}) - r_{n - \frac12}^2 t_{rr}(r_{n - \frac12})}{V_n}
+\\\notag & \quad - t_{\phi \phi }(r) \frac{r_{n+\frac12}^2 - r_{n-\frac12}^2}{V_n}
 \end{align}
 where $V_n$ is given by \Eqref{eqn:spherical_shell_volume}. 
+We again approximate the function values at the midpoints using a simple average,
+\begin{align}
+	t_{rr}(r_{n + \frac12}) &\approx \frac{t_{rr}(r_{n}) + t_{rr}(r_{n+1})}{2}
+	\;,
+\end{align}
+which might introduced uncontrolled artifacts.
 
 
 \subsection{Conservative double divergence operator}
