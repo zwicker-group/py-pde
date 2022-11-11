@@ -342,6 +342,7 @@ def make_tensor_divergence(
         volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
         factor_l = rl**2 / (2 * volumes)
         factor_h = rh**2 / (2 * volumes)
+        area_factor = (rh**2 - rl**2) / volumes
 
         @jit
         def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
@@ -368,7 +369,7 @@ def make_tensor_divergence(
             for i in range(1, dim_r + 1):
                 term_r_h = factor_h[i - 1] * (arr_rr[i] + arr_rr[i + 1])
                 term_r_l = factor_l[i - 1] * (arr_rr[i - 1] + arr_rr[i])
-                out_r[i - 1] = term_r_h - term_r_l - 2 * arr_φφ[i] / rs[i - 1]
+                out_r[i - 1] = term_r_h - term_r_l - area_factor[i - 1] * arr_φφ[i]
                 out_θ[i - 1] = 0
                 out_φ[i - 1] = 0
 

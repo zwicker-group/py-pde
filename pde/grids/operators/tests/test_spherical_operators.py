@@ -206,6 +206,23 @@ def test_examples_tensor_sph(conservative):
             res.data[:, 1:-1], expect.data[:, 1:-1], rtol=0.1, atol=0.1
         )
 
+    # test an edge case
+    grid = SphericalSymGrid([0, 10], 50)
+    tensor = Tensor2Field(grid)
+    tensor[0, 0] = ScalarField.from_expression(grid, "tanh(r - 5)")
+    tensor[1, 1] = tensor[0, 0]
+    tensor[2, 2] = tensor[0, 0]
+
+    bc_lower = {"value": [[-1, 0, 0], [0, -1, 0], [0, 0, -1]]}
+    bc_upper = {"derivative": 0}
+    bc = [bc_lower, bc_upper]
+    div = tensor.divergence(bc=bc, conservative=conservative)
+
+    expected = ScalarField.from_expression(grid, "cosh(5 - r)**-2")
+    np.testing.assert_allclose(div[0].data, expected.data, atol=0.1)
+    np.testing.assert_allclose(div[1].data, 0, atol=0.1)
+    np.testing.assert_allclose(div[2].data, 0, atol=0.1)
+
 
 def test_tensor_sph_symmetry():
     """test treatment of symmetric tensor field"""
