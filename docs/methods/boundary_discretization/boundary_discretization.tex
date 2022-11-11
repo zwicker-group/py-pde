@@ -520,10 +520,11 @@ which might introduced uncontrolled artifacts.
 
 
 \subsection{Conservative tensor divergence operator}
-The radial component of the divergence of a spherically-symmetric vector tensor field reads
+The radial component of the divergence of a spherically-symmetric tensor field (with $t_{\theta\theta} = t_{\phi\phi}$) reads
 \begin{align}
 	\partial_\beta t_{r\beta} =
 		\frac{2 \left[t_{rr}(r)-t_{\phi \phi }(r)\right]}{r}+t_{rr}'(r)
+	\;,
 \end{align}
 where primes denote derivatives with respect to $r$.
 Note that the angular components of the resulting vector field vanish.
@@ -542,7 +543,7 @@ The integral over the shell reads
 	  	r_{n+\frac12}^2 - r_{n-\frac12}^2
 	  \right)
 \end{multline}
-where we assumed that $t_{rr}(r)$ is constant over the integration volume in the last approximation.
+where we assumed that $t_{\phi\phi}(r)$ is constant over the integration volume in the last approximation.
 We thus find
 \begin{align}
 	\partial_\alpha v_{\alpha} &\sim

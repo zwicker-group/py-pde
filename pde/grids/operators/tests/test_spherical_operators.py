@@ -231,8 +231,13 @@ def test_tensor_sph_symmetry():
     vf_grad = vf.gradient(["derivative", {"derivative": 2}])
     strain = vf_grad + vf_grad.transpose()
 
+    expect = ScalarField.from_expression(grid, "2*r").data
+    np.testing.assert_allclose(strain.data[0, 0], 2 * expect)
+    np.testing.assert_allclose(strain.data[1, 1], expect)
+    np.testing.assert_allclose(strain.data[2, 2], expect)
+
     bcs = [{"value": 0}, {"normal_derivative": [4, 0, 0]}]
-    strain_div = strain.divergence(bcs, safe=False)
+    strain_div = strain.divergence(bcs)
     np.testing.assert_allclose(strain_div.data[0], 8)
     np.testing.assert_allclose(strain_div.data[1:], 0)
 

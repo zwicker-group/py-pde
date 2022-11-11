@@ -309,7 +309,7 @@ def make_vector_gradient(grid: SphericalSymGrid, safe: bool = True) -> OperatorT
 @SphericalSymGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(
-    grid: SphericalSymGrid, safe: bool = True, conservative: bool = True
+    grid: SphericalSymGrid, safe: bool = True, conservative: bool = False
 ) -> OperatorType:
     """make a discretized tensor divergence operator for a spherical grid
 
