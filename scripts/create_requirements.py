@@ -113,6 +113,12 @@ REQUIREMENTS = [
         collections={"interactive"},
     ),
     Requirement(
+        name="mpi4py",
+        version="3",
+        usage="Parallel processing using MPI",
+        collections={"multiprocessing"},
+    ),
+    Requirement(
         name="napari",
         version="0.4.8",
         usage="Displaying images interactively",
@@ -121,7 +127,7 @@ REQUIREMENTS = [
     Requirement(
         name="numba-mpi",
         version="0.18",
-        usage="Parallel processing using MPI",
+        usage="Parallel processing using MPI+numba",
         collections={"multiprocessing"},
     ),
     # for documentation only
