@@ -20,6 +20,7 @@ with open(BASE_PATH / "README.md", "r") as fh:
 setup(
     name="py-pde",
     packages=find_packages(),
+    package_data={"pde": ["py.typed"]},
     zip_safe=False,  # this is required for mypy to find the py.typed file
     version=__version__,
     license="MIT",
