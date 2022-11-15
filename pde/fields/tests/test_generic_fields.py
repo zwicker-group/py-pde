@@ -226,6 +226,24 @@ def test_hdf_input_output(tmp_path):
         assert isinstance(str(f), str)
         assert isinstance(repr(f), str)
 
+def test_field_input_output(tmp_path):
+    """test writing and reading files"""
+    grid = UnitGrid([4, 4])
+    s = ScalarField.random_uniform(grid, label="scalar")
+    v = VectorField.random_uniform(grid, label="vector")
+    t = Tensor2Field.random_uniform(grid, label="tensor")
+    col = FieldCollection([s, v, t], label="collection")
+
+    path = tmp_path / "test_zarr_input_output.zarr"
+    for f in [s, v, t, col]:
+        print(f._attributes_store)
+        f.to_file(path)
+        f2 = FieldBase.from_file(path)
+        assert f == f2
+        assert f.label == f2.label
+        assert isinstance(str(f), str)
+        assert isinstance(repr(f), str)
+
 
 def test_writing_images(tmp_path):
     """test writing and reading files"""

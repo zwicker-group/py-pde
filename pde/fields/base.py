@@ -208,7 +208,7 @@ class FieldBase(ArrayState, metaclass=ABCMeta):
                 Data values at the support points of the grid defining the field
         """
         # base class was chosen => select correct class from attributes
-        class_name = attributes.pop("class")
+        class_name = attributes.pop("__class__")
 
         if class_name == cls.__name__:
             raise RuntimeError(f"Cannot reconstruct abstract class `{class_name}`")
@@ -389,7 +389,6 @@ class FieldBase(ArrayState, metaclass=ABCMeta):
     def attributes(self) -> Dict[str, Any]:
         """dict: describes the state of the instance (without the data)"""
         return {
-            "class": self.__class__.__name__,
             "grid": self.grid,
             "label": self.label,
             "dtype": self.dtype,
@@ -398,7 +397,7 @@ class FieldBase(ArrayState, metaclass=ABCMeta):
     @property
     def attributes_serialized(self) -> Dict[str, str]:
         """dict: serialized version of the attributes"""
-        results = {}
+        results = {"class": self.__class__.__name__}
         for key, value in self.attributes.items():
             if key == "grid":
                 results[key] = value.state_serialized
@@ -407,6 +406,19 @@ class FieldBase(ArrayState, metaclass=ABCMeta):
             else:
                 results[key] = json.dumps(value)
         return results
+
+    @property
+    def _attributes_store(self) -> Dict[str, Any]:
+        """dict: Attributes in the form in which they will be written to storage"""
+        attrs = super()._attributes_store
+        for key, value in self.attributes.items():
+            if key == "grid":
+                attrs[key] = value.state_serialized
+            elif key == "dtype":
+                attrs[key] = value.str
+            else:
+                attrs[key] = value
+        return attrs
 
     @classmethod
     def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
@@ -1067,9 +1079,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             data (:class:`~numpy.ndarray`, optional):
                 Data values at the support points of the grid defining the field
         """
-        if "class" in attributes:
-            class_name = attributes.pop("class")
+        if "__class__" in attributes:
+            class_name = attributes.pop("__class__")
             assert class_name == cls.__name__
+        attributes.pop("__version__")
 
         # create the instance from the attributes
         return cls(attributes.pop("grid"), data=data, **attributes)
