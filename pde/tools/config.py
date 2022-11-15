@@ -21,7 +21,7 @@ import re
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from .misc import module_available
 from .parameters import Parameter
@@ -61,7 +61,7 @@ DEFAULT_CONFIG: List[Parameter] = [
 class Config(collections.UserDict):
     """class handling the package configuration"""
 
-    def __init__(self, items: Dict[str, Any] = None, mode: str = "update"):
+    def __init__(self, items: Optional[Dict[str, Any]] = None, mode: str = "update"):
         """
         Args:
             items (dict, optional):
@@ -155,7 +155,7 @@ class Config(collections.UserDict):
         return f"{self.__class__.__name__}({repr(self.to_dict())})"
 
     @contextlib.contextmanager
-    def __call__(self, values: Dict[str, Any] = None, **kwargs):
+    def __call__(self, values: Optional[Dict[str, Any]] = None, **kwargs):
         """context manager temporarily changing the configuration
 
         Args:

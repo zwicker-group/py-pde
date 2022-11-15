@@ -186,7 +186,7 @@ class FieldBase(metaclass=ABCMeta):
         return self._label
 
     @label.setter
-    def label(self, value: str = None):
+    def label(self, value: Optional[str] = None):
         """set the new label of the field"""
         if value is None or isinstance(value, str):
             self._label = value
@@ -195,7 +195,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def from_state(
-        cls, attributes: Dict[str, Any], data: np.ndarray = None
+        cls, attributes: Dict[str, Any], data: Optional[np.ndarray] = None
     ) -> FieldBase:
         """create a field from given state.
 
@@ -336,7 +336,9 @@ class FieldBase(metaclass=ABCMeta):
         raise NotImplementedError(f"Cannot save {self.__class__.__name__} as an image")
 
     @abstractmethod
-    def copy(self: TField, *, label: str = None, dtype: DTypeLike = None) -> TField:
+    def copy(
+        self: TField, *, label: Optional[str] = None, dtype: Optional[DTypeLike] = None
+    ) -> TField:
         ...
 
     def assert_field_compatible(self, other: FieldBase, accept_scalar: bool = False):
@@ -606,7 +608,10 @@ class FieldBase(metaclass=ABCMeta):
         return self
 
     def apply(
-        self: TField, func: Callable, out: Optional[TField] = None, label: str = None
+        self: TField,
+        func: Callable,
+        out: Optional[TField] = None,
+        label: Optional[str] = None,
     ) -> TField:
         """applies a function to the data and returns it as a field
 
@@ -650,7 +655,7 @@ class FieldBase(metaclass=ABCMeta):
     def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
         ...
 
-    def plot_interactive(self, viewer_args: Dict[str, Any] = None, **kwargs):
+    def plot_interactive(self, viewer_args: Optional[Dict[str, Any]] = None, **kwargs):
         """create an interactive plot of the field using :mod:`napari`
 
         For a detailed description of the launched program, see the
@@ -685,10 +690,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: Optional[Union[ArrayLike, str]] = "zeros",
+        data: Union[ArrayLike, str, None] = "zeros",
         *,
-        label: str = None,
-        dtype: DTypeLike = None,
+        label: Optional[str] = None,
+        dtype: Optional[DTypeLike] = None,
         with_ghost_cells: bool = False,
     ):
         """
@@ -786,8 +791,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         vmax: float = 1,
         *,
         label: Optional[str] = None,
-        dtype: DTypeLike = None,
-        rng: np.random.Generator = None,
+        dtype: Optional[DTypeLike] = None,
+        rng: Optional[np.random.Generator] = None,
     ) -> TDataField:
         """create field with uniform distributed random values
 
@@ -834,8 +839,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         scaling: str = "none",
         label: Optional[str] = None,
-        dtype: DTypeLike = None,
-        rng: np.random.Generator = None,
+        dtype: Optional[DTypeLike] = None,
+        rng: Optional[np.random.Generator] = None,
     ) -> TDataField:
         """create field with normal distributed random values
 
@@ -900,8 +905,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         axis_combination=np.multiply,
         *,
         label: Optional[str] = None,
-        dtype: DTypeLike = None,
-        rng: np.random.Generator = None,
+        dtype: Optional[DTypeLike] = None,
+        rng: Optional[np.random.Generator] = None,
     ) -> TDataField:
         r"""create a random field build from harmonics
 
@@ -975,8 +980,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         scale: float = 1,
         *,
         label: Optional[str] = None,
-        dtype: DTypeLike = None,
-        rng: np.random.Generator = None,
+        dtype: Optional[DTypeLike] = None,
+        rng: Optional[np.random.Generator] = None,
     ) -> TDataField:
         r"""create a field of random values with colored noise
 
@@ -1039,7 +1044,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def from_state(
-        cls: Type[TDataField], attributes: Dict[str, Any], data: np.ndarray = None
+        cls: Type[TDataField],
+        attributes: Dict[str, Any],
+        data: Optional[np.ndarray] = None,
     ) -> TDataField:
         """create a field from given state.
 
@@ -1057,7 +1064,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(attributes.pop("grid"), data=data, **attributes)
 
     def copy(
-        self: TDataField, *, label: str = None, dtype: DTypeLike = None
+        self: TDataField,
+        *,
+        label: Optional[str] = None,
+        dtype: Optional[DTypeLike] = None,
     ) -> TDataField:
         """return a copy of the data, but not of the grid
 
@@ -1136,7 +1146,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def make_interpolator(
         self,
         *,
-        fill: Number = None,
+        fill: Optional[Number] = None,
         with_ghost_cells: bool = False,
     ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
@@ -1180,7 +1190,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         dim_error_msg = f"Dimension of point does not match axes count {num_axes}"
 
         @jit
-        def interpolator(point: np.ndarray, data: np.ndarray = None) -> np.ndarray:
+        def interpolator(
+            point: np.ndarray, data: Optional[np.ndarray] = None
+        ) -> np.ndarray:
             """return the interpolated value at the position `point`
 
             Args:
@@ -1226,7 +1238,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         point: np.ndarray,
         *,
         bc: Optional[BoundariesData] = None,
-        fill: Number = None,
+        fill: Optional[Number] = None,
         **kwargs,
     ) -> NumberOrArray:
         r"""interpolate the field to points between support points
@@ -1272,7 +1284,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         self: TDataField,
         grid: GridBase,
         *,
-        fill: Number = None,
+        fill: Optional[Number] = None,
         label: Optional[str] = None,
     ) -> TDataField:
         """interpolate the data of this field to another grid.
@@ -1482,8 +1494,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         bc: Optional[BoundariesData],
         out: Optional[DataFieldBase] = None,
         *,
-        label: str = None,
-        args: Dict[str, Any] = None,
+        label: Optional[str] = None,
+        args: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> DataFieldBase:
         r"""apply an operator and return result as a field
@@ -1531,7 +1543,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         sigma: float = 1,
         *,
         out: Optional[TDataField] = None,
-        label: str = None,
+        label: Optional[str] = None,
     ) -> TDataField:
         """applies Gaussian smoothing with the given standard deviation
 
@@ -1655,7 +1667,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         ax,
         scalar: str = "auto",
         extract: str = "auto",
-        ylabel: str = None,
+        ylabel: Optional[str] = None,
         **kwargs,
     ) -> PlotReference:
         r"""visualize a field using a 1d line plot
@@ -1981,7 +1993,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return reference
 
     def _get_napari_layer_data(
-        self, scalar: str = "auto", args: Dict[str, Any] = None
+        self, scalar: str = "auto", args: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """returns data for plotting on a single napari layer
 

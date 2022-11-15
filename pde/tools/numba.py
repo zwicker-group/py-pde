@@ -474,7 +474,7 @@ def convert_scalar(arr):
         return lambda arr: arr
 
 
-def numba_dict(data: Dict[str, Any] = None) -> Optional[NumbaDict]:
+def numba_dict(data: Optional[Dict[str, Any]] = None) -> Optional[NumbaDict]:
     """converts a python dictionary to a numba typed dictionary"""
     if data is None:
         return None

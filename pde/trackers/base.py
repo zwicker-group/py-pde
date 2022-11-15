@@ -72,7 +72,7 @@ class TrackerBase(metaclass=ABCMeta):
         else:
             raise ValueError(f"Unsupported tracker format: `{data}`.")
 
-    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
+    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -102,7 +102,7 @@ class TrackerBase(metaclass=ABCMeta):
         """
         pass
 
-    def finalize(self, info: InfoDict = None) -> None:
+    def finalize(self, info: Optional[InfoDict] = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:
@@ -190,7 +190,7 @@ class TrackerCollection:
 
         return cls(trackers)
 
-    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
+    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -254,7 +254,7 @@ class TrackerCollection:
             self.time_next_action = min(self.tracker_action_times)
         return self.time_next_action
 
-    def finalize(self, info: InfoDict = None) -> None:
+    def finalize(self, info: Optional[InfoDict] = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:

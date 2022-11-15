@@ -8,7 +8,7 @@ This module handles the boundaries of all axes of a grid. It only defines
 
 from __future__ import annotations
 
-from typing import List, Sequence, Union
+from typing import List, Optional, Sequence, Union
 
 import numpy as np
 from numba.extending import register_jitable
@@ -287,7 +287,7 @@ class Boundaries(list):
         # return set_ghost_cells
 
         def chain(
-            fs: Sequence[GhostCellSetter], inner: GhostCellSetter = None
+            fs: Sequence[GhostCellSetter], inner: Optional[GhostCellSetter] = None
         ) -> GhostCellSetter:
             """helper function composing setters of all axes recursively"""
 

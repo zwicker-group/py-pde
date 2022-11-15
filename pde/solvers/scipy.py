@@ -4,7 +4,7 @@ Defines a solver using :mod:`scipy.integrate`
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -39,7 +39,7 @@ class ScipySolver(SolverBase):
         self.solver_params = kwargs
 
     def make_stepper(
-        self, state: FieldBase, dt: float = None
+        self, state: FieldBase, dt: Optional[float] = None
     ) -> Callable[[FieldBase, float, float], float]:
         """return a stepper function
 

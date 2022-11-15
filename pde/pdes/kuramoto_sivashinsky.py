@@ -4,7 +4,7 @@ The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interf
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable
+from typing import Callable, Optional
 
 import numba as nb
 import numpy as np
@@ -39,7 +39,7 @@ class KuramotoSivashinskyPDE(PDEBase):
         *,
         noise: float = 0,
         bc: BoundariesData = "auto_periodic_neumann",
-        bc_lap: BoundariesData = None,
+        bc_lap: Optional[BoundariesData] = None,
     ):
         r"""
         Args:

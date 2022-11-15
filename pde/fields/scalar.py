@@ -37,8 +37,8 @@ class ScalarField(DataFieldBase):
         grid: GridBase,
         expression: str,
         *,
-        label: str = None,
-        dtype: DTypeLike = None,
+        label: Optional[str] = None,
+        dtype: Optional[DTypeLike] = None,
     ) -> ScalarField:
         """create a scalar field on a grid from a given expression
 
@@ -78,7 +78,12 @@ class ScalarField(DataFieldBase):
 
     @classmethod
     def from_image(
-        cls, path: Union[Path, str], bounds=None, periodic=False, *, label: str = None
+        cls,
+        path: Union[Path, str],
+        bounds=None,
+        periodic=False,
+        *,
+        label: Optional[str] = None,
     ) -> ScalarField:
         """create a scalar field from an image
 
@@ -246,7 +251,7 @@ class ScalarField(DataFieldBase):
         self,
         axes: Union[str, Sequence[str]],
         method: str = "integral",
-        label: str = None,
+        label: Optional[str] = None,
     ) -> ScalarField:
         """project scalar field along given axes
 
@@ -298,7 +303,11 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=sliced_grid, data=subdata, label=label)
 
     def slice(
-        self, position: Dict[str, float], *, method: str = "nearest", label: str = None
+        self,
+        position: Dict[str, float],
+        *,
+        method: str = "nearest",
+        label: Optional[str] = None,
     ) -> ScalarField:
         """slice data at a given position
 

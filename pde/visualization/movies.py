@@ -15,7 +15,7 @@ Functions for creating movies of simulation results
 """
 
 import pathlib
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
@@ -43,7 +43,11 @@ class Movie:
     """
 
     def __init__(
-        self, filename: str, framerate: float = 30, dpi: float = None, **kwargs
+        self,
+        filename: str,
+        framerate: float = 30,
+        dpi: Optional[float] = None,
+        **kwargs,
     ):
         r"""
         Args:
@@ -142,7 +146,7 @@ def movie_scalar(
     storage: StorageBase,
     filename: str,
     scale: ScaleData = "automatic",
-    extras: Dict[str, Any] = None,
+    extras: Optional[Dict[str, Any]] = None,
     progress: bool = True,
     tight: bool = False,
     show: bool = True,
@@ -214,8 +218,8 @@ def movie(
     *,
     progress: bool = True,
     show_time: bool = True,
-    plot_args: Dict[str, Any] = None,
-    movie_args: Dict[str, Any] = None,
+    plot_args: Optional[Dict[str, Any]] = None,
+    movie_args: Optional[Dict[str, Any]] = None,
 ) -> None:
     """produce a movie by simply plotting each frame
 

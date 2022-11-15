@@ -13,7 +13,7 @@ Methods for automatic transformation of docstrings
 
 import re
 import textwrap
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 DOCSTRING_REPLACEMENTS = {
     # description of function arguments
@@ -122,7 +122,7 @@ TFunc = TypeVar("TFunc")
 
 
 def replace_in_docstring(
-    f: TFunc, token: str, value: str, docstring: str = None
+    f: TFunc, token: str, value: str, docstring: Optional[str] = None
 ) -> TFunc:
     """replace a text in a docstring using the correct indentation
 

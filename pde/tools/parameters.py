@@ -18,7 +18,7 @@ One aim is to allow easy management of inheritance of parameters.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Sequence, Type, Union
+from typing import Any, Dict, Optional, Sequence, Type, Union
 
 import numpy as np
 
@@ -36,7 +36,7 @@ class Parameter:
         cls=object,
         description: str = "",
         hidden: bool = False,
-        extra: Dict[str, Any] = None,
+        extra: Optional[Dict[str, Any]] = None,
     ):
         """initialize a parameter
 
@@ -167,7 +167,7 @@ class Parameterized:
     parameters_default: ParameterListType = []
     _subclasses: Dict[str, Type[Parameterized]] = {}
 
-    def __init__(self, parameters: Dict[str, Any] = None):
+    def __init__(self, parameters: Optional[Dict[str, Any]] = None):
         """initialize the parameters of the object
 
         Args:
@@ -256,7 +256,7 @@ class Parameterized:
     @classmethod
     def _parse_parameters(
         cls,
-        parameters: Dict[str, Any] = None,
+        parameters: Optional[Dict[str, Any]] = None,
         check_validity: bool = True,
         allow_hidden: bool = True,
         include_deprecated: bool = False,
@@ -321,11 +321,11 @@ class Parameterized:
     @classmethod
     def _show_parameters(
         cls,
-        description: bool = None,
+        description: Optional[bool] = None,
         sort: bool = False,
         show_hidden: bool = False,
         show_deprecated: bool = False,
-        parameter_values: Dict[str, Any] = None,
+        parameter_values: Optional[Dict[str, Any]] = None,
     ):
         """private method showing all parameters in human readable format
 
@@ -402,7 +402,7 @@ class Parameterized:
     @hybridmethod
     def show_parameters(  # @NoSelf
         cls,
-        description: bool = None,  # @NoSelf
+        description: Optional[bool] = None,  # @NoSelf
         sort: bool = False,
         show_hidden: bool = False,
         show_deprecated: bool = False,
@@ -428,7 +428,7 @@ class Parameterized:
     @show_parameters.instancemethod  # type: ignore
     def show_parameters(
         self,
-        description: bool = None,  # @NoSelf
+        description: Optional[bool] = None,  # @NoSelf
         sort: bool = False,
         show_hidden: bool = False,
         show_deprecated: bool = False,

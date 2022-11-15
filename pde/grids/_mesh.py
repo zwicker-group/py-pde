@@ -331,7 +331,7 @@ class GridMesh:
             return MPIFlags.boundary_lower(self.current_node, neighbor)
 
     def get_neighbor(
-        self, axis: int, upper: bool, *, node_id: int = None
+        self, axis: int, upper: bool, *, node_id: Optional[int] = None
     ) -> Optional[int]:
         """get node id of the neighbor along the given axis and direction
 
@@ -378,7 +378,7 @@ class GridMesh:
     def extract_field_data(
         self,
         field_data: np.ndarray,
-        node_id: int = None,
+        node_id: Optional[int] = None,
         *,
         with_ghost_cells: bool = False,
     ) -> np.ndarray:
@@ -411,7 +411,11 @@ class GridMesh:
         return field_data[i]
 
     def extract_subfield(
-        self, field: TField, node_id: int = None, *, with_ghost_cells: bool = False
+        self,
+        field: TField,
+        node_id: Optional[int] = None,
+        *,
+        with_ghost_cells: bool = False,
     ) -> TField:
         """extract one subfield from a global field
 
@@ -578,7 +582,7 @@ class GridMesh:
     def combine_field_data(
         self,
         subfields: Sequence[np.ndarray],
-        out: np.ndarray = None,
+        out: Optional[np.ndarray] = None,
         *,
         with_ghost_cells: bool = False,
     ) -> np.ndarray:
@@ -619,7 +623,7 @@ class GridMesh:
     def combine_field_data_mpi(
         self,
         subfield: np.ndarray,
-        out: np.ndarray = None,
+        out: Optional[np.ndarray] = None,
         *,
         with_ghost_cells: bool = False,
     ) -> Optional[np.ndarray]:

@@ -90,7 +90,7 @@ def mpi_recv(data, source, tag) -> None:
 
 
 @nb.generated_jit(nopython=True)
-def mpi_allreduce(data, operator: Union[int, "Operator"] = None):
+def mpi_allreduce(data, operator: Union[int, "Operator", None] = None):
     """combines data from all MPI nodes
 
     Note that complex datatypes and user-defined functions are not properly supported.

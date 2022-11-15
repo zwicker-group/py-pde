@@ -646,7 +646,7 @@ def _plot_kymograph(
 @plot_on_axes()
 def plot_kymograph(
     storage: StorageBase,
-    field_index: int = None,
+    field_index: Optional[int] = None,
     scalar: str = "auto",
     extract: str = "auto",
     colorbar: bool = True,
@@ -810,7 +810,7 @@ def plot_kymographs(
 def plot_interactive(
     storage: StorageBase,
     time_scaling: str = "exact",
-    viewer_args: Dict[str, Any] = None,
+    viewer_args: Optional[Dict[str, Any]] = None,
     **kwargs,
 ):
     r"""plots stored data interactively using the `napari <https://napari.org>`_ viewer

@@ -48,7 +48,9 @@ class StorageBase(metaclass=ABCMeta):
     data: Any  # actual data for all the stored times
     write_mode: str  # mode determining how the storage behaves
 
-    def __init__(self, info: InfoDict = None, write_mode: str = "truncate_once"):
+    def __init__(
+        self, info: Optional[InfoDict] = None, write_mode: str = "truncate_once"
+    ):
         """
         Args:
             info (dict):
@@ -277,7 +279,7 @@ class StorageBase(metaclass=ABCMeta):
         """
         return StorageTracker(storage=self, interval=interval)
 
-    def start_writing(self, field: FieldBase, info: InfoDict = None) -> None:
+    def start_writing(self, field: FieldBase, info: Optional[InfoDict] = None) -> None:
         """initialize the storage for writing data
 
         Args:
@@ -307,7 +309,7 @@ class StorageBase(metaclass=ABCMeta):
         pass
 
     def extract_field(
-        self, field_id: Union[int, str], label: str = None
+        self, field_id: Union[int, str], label: Optional[str] = None
     ) -> "MemoryStorage":
         """extract the time course of a single field from a collection
 
@@ -359,7 +361,7 @@ class StorageBase(metaclass=ABCMeta):
         )
 
     def extract_time_range(
-        self, t_range: Union[float, Tuple[float, float]] = None
+        self, t_range: Union[float, Tuple[float, float], None] = None
     ) -> "MemoryStorage":
         """extract a particular time interval
 
@@ -400,7 +402,11 @@ class StorageBase(metaclass=ABCMeta):
         )
 
     def apply(
-        self, func: Callable, out: StorageBase = None, *, progress: bool = False
+        self,
+        func: Callable,
+        out: Optional[StorageBase] = None,
+        *,
+        progress: bool = False,
     ) -> StorageBase:
         """applies function to each field in a storage
 
@@ -459,7 +465,9 @@ class StorageBase(metaclass=ABCMeta):
 
         return out
 
-    def copy(self, out: StorageBase = None, *, progress: bool = False) -> StorageBase:
+    def copy(
+        self, out: Optional[StorageBase] = None, *, progress: bool = False
+    ) -> StorageBase:
         """copies all fields in a storage to a new one
 
         Args:
@@ -497,7 +505,7 @@ class StorageTracker(TrackerBase):
         super().__init__(interval=interval)
         self.storage = storage
 
-    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
+    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
         """
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -522,7 +530,7 @@ class StorageTracker(TrackerBase):
         """
         self.storage.append(field, time=t)
 
-    def finalize(self, info: InfoDict = None) -> None:
+    def finalize(self, info: Optional[InfoDict] = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:

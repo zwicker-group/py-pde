@@ -38,8 +38,8 @@ class Tensor2Field(DataFieldBase):
         grid: GridBase,
         expressions: Sequence[Sequence[str]],
         *,
-        label: str = None,
-        dtype: DTypeLike = None,
+        label: Optional[str] = None,
+        dtype: Optional[DTypeLike] = None,
     ) -> Tensor2Field:
         """create a tensor field on a grid from given expressions
 
@@ -139,7 +139,7 @@ class Tensor2Field(DataFieldBase):
     def dot(
         self,
         other: Union[VectorField, Tensor2Field],
-        out: Optional[Union[VectorField, Tensor2Field]] = None,
+        out: Union[VectorField, Tensor2Field, None] = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
@@ -241,7 +241,7 @@ class Tensor2Field(DataFieldBase):
             if nb.config.DISABLE_JIT:  # @UndefinedVariable
 
                 def dot(
-                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                 ) -> np.ndarray:
                     """wrapper deciding whether the underlying function is called
                     with or without `out`."""
@@ -253,7 +253,7 @@ class Tensor2Field(DataFieldBase):
 
                 @nb.generated_jit
                 def dot(
-                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                 ) -> np.ndarray:
                     """wrapper deciding whether the underlying function is called
                     with or without `out`."""
@@ -282,7 +282,7 @@ class Tensor2Field(DataFieldBase):
             # create the dot product using basic numpy functions
 
             def calc(
-                a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
                 """calculate dot product between two tensors"""
                 if a.shape == b.shape:
@@ -312,7 +312,7 @@ class Tensor2Field(DataFieldBase):
                 # create inner function calculating the dot product using conjugate
 
                 def dot(
-                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                 ) -> np.ndarray:
                     """calculate dot product with conjugated second operand"""
                     return calc(a, b.conjugate(), out=out)  # type: ignore

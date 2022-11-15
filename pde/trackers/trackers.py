@@ -113,7 +113,10 @@ class ProgressTracker(TrackerBase):
 
     @fill_in_docstring
     def __init__(
-        self, interval: IntervalData = None, ndigits: int = 5, leave: bool = True
+        self,
+        interval: Optional[IntervalData] = None,
+        ndigits: int = 5,
+        leave: bool = True,
     ):
         """
         Args:
@@ -134,7 +137,7 @@ class ProgressTracker(TrackerBase):
         self.ndigits = ndigits
         self.leave = leave
 
-    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
+    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -179,7 +182,7 @@ class ProgressTracker(TrackerBase):
         self.progress_bar.n = round(t_new, self.ndigits)
         self.progress_bar.set_description("")
 
-    def finalize(self, info: InfoDict = None) -> None:
+    def finalize(self, info: Optional[InfoDict] = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:
@@ -269,10 +272,10 @@ class PlotTracker(TrackerBase):
         *,
         title: Union[str, Callable] = "Time: {time:g}",
         output_file: Optional[str] = None,
-        movie: Union[str, Path, "Movie"] = None,
-        show: bool = None,
+        movie: Union[str, Path, "Movie", None] = None,
+        show: Optional[bool] = None,
         max_fps: float = math.inf,
-        plot_args: Dict[str, Any] = None,
+        plot_args: Optional[Dict[str, Any]] = None,
     ):
         """
         Args:
@@ -356,7 +359,7 @@ class PlotTracker(TrackerBase):
         else:
             self.show = show
 
-    def initialize(self, state: FieldBase, info: InfoDict = None) -> float:
+    def initialize(self, state: FieldBase, info: Optional[InfoDict] = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -381,7 +384,7 @@ class PlotTracker(TrackerBase):
             # the context supports reusing figures
             if hasattr(state.plot, "update_method"):
                 # the plotting method supports updating the plot
-                if state.plot.update_method is None:  # type: ignore
+                if state.plot.update_method is None:
                     if state.plot.mpl_class == "axes":  # type: ignore
                         self._update_method = "update_ax"
                     elif state.plot.mpl_class == "figure":  # type: ignore
@@ -457,7 +460,7 @@ class PlotTracker(TrackerBase):
 
         self._last_update = time.monotonic()
 
-    def finalize(self, info: InfoDict = None) -> None:
+    def finalize(self, info: Optional[InfoDict] = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:
@@ -542,7 +545,7 @@ class DataTracker(CallbackTracker):
 
     @fill_in_docstring
     def __init__(
-        self, func: Callable, interval: IntervalData = 1, filename: str = None
+        self, func: Callable, interval: IntervalData = 1, filename: Optional[str] = None
     ):
         """
         Args:
@@ -586,7 +589,7 @@ class DataTracker(CallbackTracker):
         else:
             self.data.append(self._callback(field, t))
 
-    def finalize(self, info: InfoDict = None) -> None:
+    def finalize(self, info: Optional[InfoDict] = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:
@@ -665,7 +668,7 @@ class SteadyStateTracker(TrackerBase):
     @fill_in_docstring
     def __init__(
         self,
-        interval: IntervalData = None,
+        interval: Optional[IntervalData] = None,
         atol: float = 1e-8,
         rtol: float = 1e-5,
         progress: bool = False,
@@ -776,7 +779,7 @@ class RuntimeTracker(TrackerBase):
             td = parse_duration(str(max_runtime))
             self.max_runtime = td.total_seconds()
 
-    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
+    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
         """
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -810,7 +813,7 @@ class ConsistencyTracker(TrackerBase):
     name = "consistency"
 
     @fill_in_docstring
-    def __init__(self, interval: IntervalData = None):
+    def __init__(self, interval: Optional[IntervalData] = None):
         """
         Args:
             interval:
@@ -857,7 +860,7 @@ class MaterialConservationTracker(TrackerBase):
         self.atol = atol
         self.rtol = rtol
 
-    def initialize(self, field: FieldBase, info: InfoDict = None) -> float:
+    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
         """
         Args:
             field (:class:`~pde.fields.base.FieldBase`):

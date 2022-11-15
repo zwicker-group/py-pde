@@ -561,13 +561,15 @@ class BCBase(metaclass=ABCMeta):
                 f"Expected rank {rank}, but boundary condition had rank {self.rank}."
             )
 
-    def copy(self: TBC, upper: Optional[bool] = None, rank: int = None) -> TBC:
+    def copy(
+        self: TBC, upper: Optional[bool] = None, rank: Optional[int] = None
+    ) -> TBC:
         raise NotImplementedError
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         raise NotImplementedError
 
-    def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
+    def get_virtual_point(self, arr, idx: Optional[Tuple[int, ...]] = None) -> float:
         raise NotImplementedError
 
     @abstractmethod
@@ -707,7 +709,7 @@ class _MPIBC(BCBase):
         upper: bool,
         *,
         rank: int = 0,
-        node_id: int = None,
+        node_id: Optional[int] = None,
     ):
         """
         Args:
@@ -914,7 +916,9 @@ class UserBC(BCBase):
         axis_name = self.grid.axes[self.axis]
         return f"user-controlled  @ {axis_name}={self.axis_coord}"
 
-    def copy(self: TBC, upper: Optional[bool] = None, rank: int = None) -> TBC:
+    def copy(
+        self: TBC, upper: Optional[bool] = None, rank: Optional[int] = None
+    ) -> TBC:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(
             grid=self.grid,
@@ -1173,7 +1177,7 @@ class ExpressionBC(BCBase):
         return super().__eq__(other) and self._input == other._input
 
     def copy(
-        self: ExpressionBC, upper: Optional[bool] = None, rank: int = None
+        self: ExpressionBC, upper: Optional[bool] = None, rank: Optional[int] = None
     ) -> ExpressionBC:
         """return a copy of itself, but with a reference to the same grid"""
         return self.__class__(
@@ -1210,7 +1214,7 @@ class ExpressionBC(BCBase):
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         raise NotImplementedError
 
-    def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
+    def get_virtual_point(self, arr, idx: Optional[Tuple[int, ...]] = None) -> float:
         raise NotImplementedError
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
@@ -1628,8 +1632,8 @@ class ConstBCBase(BCBase):
     def copy(
         self: ConstBCBase,
         upper: Optional[bool] = None,
-        rank: int = None,
-        value: Union[float, np.ndarray, str] = None,
+        rank: Optional[int] = None,
+        value: Union[float, np.ndarray, str, None] = None,
     ) -> ConstBCBase:
         """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
@@ -1733,7 +1737,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         return const, {data[2]: factor}
 
-    def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
+    def get_virtual_point(self, arr, idx: Optional[Tuple[int, ...]] = None) -> float:
         """calculate the value of the virtual point outside the boundary
 
         Args:
@@ -2224,9 +2228,9 @@ class MixedBC(ConstBC1stOrderBase):
     def copy(
         self: MixedBC,
         upper: Optional[bool] = None,
-        rank: int = None,
-        value: Union[float, np.ndarray, str] = None,
-        const: Union[float, np.ndarray, str] = None,
+        rank: Optional[int] = None,
+        value: Union[float, np.ndarray, str, None] = None,
+        const: Union[float, np.ndarray, str, None] = None,
     ) -> MixedBC:
         """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
@@ -2388,7 +2392,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
 
         return const, {data[2]: factor1, data[4]: factor2}
 
-    def get_virtual_point(self, arr, idx: Tuple[int, ...] = None) -> float:
+    def get_virtual_point(self, arr, idx: Optional[Tuple[int, ...]] = None) -> float:
         """calculate the value of the virtual point outside the boundary
 
         Args:

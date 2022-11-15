@@ -13,7 +13,7 @@ vanishes.
 from __future__ import annotations
 
 from abc import ABCMeta
-from typing import TYPE_CHECKING, Any, Dict, Generator, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -191,7 +191,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         boundary_distance: float = 0,
         avoid_center: bool = False,
         coords: str = "cartesian",
-        rng: np.random.Generator = None,
+        rng: Optional[np.random.Generator] = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -407,7 +407,9 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
         else:
             return rs
 
-    def get_cartesian_grid(self, mode: str = "valid", num: int = None) -> CartesianGrid:
+    def get_cartesian_grid(
+        self, mode: str = "valid", num: Optional[int] = None
+    ) -> CartesianGrid:
         """return a Cartesian grid for this spherical one
 
         Args:

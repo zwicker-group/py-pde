@@ -7,7 +7,7 @@ Cylindrical grids with azimuthal symmetry
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -191,7 +191,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         boundary_distance: float = 0,
         avoid_center: bool = False,
         coords: str = "cartesian",
-        rng: np.random.Generator = None,
+        rng: Optional[np.random.Generator] = None,
     ) -> np.ndarray:
         """return a random point within the grid
 

@@ -4,7 +4,7 @@ A simple diffusion equation
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 import numba as nb
 import numpy as np
@@ -50,7 +50,7 @@ class WavePDE(PDEBase):
         self.speed = speed
         self.bc = bc
 
-    def get_initial_condition(self, u: ScalarField, v: ScalarField = None):
+    def get_initial_condition(self, u: ScalarField, v: Optional[ScalarField] = None):
         """create a suitable initial condition
 
         Args:
