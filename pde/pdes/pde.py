@@ -7,7 +7,7 @@ Defines a PDE class whose right hand side is given as a string
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import numba as nb
 import numpy as np
@@ -52,9 +52,9 @@ class PDE(PDEBase):
         *,
         noise: ArrayLike = 0,
         bc: BoundariesData = "auto_periodic_neumann",
-        bc_ops: Dict[str, BoundariesData] = None,
-        user_funcs: Dict[str, Callable] = None,
-        consts: Dict[str, NumberOrArray] = None,
+        bc_ops: Optional[Dict[str, BoundariesData]] = None,
+        user_funcs: Optional[Dict[str, Callable]] = None,
+        consts: Optional[Dict[str, NumberOrArray]] = None,
     ):
         r"""
         Warning:
@@ -517,7 +517,8 @@ class PDE(PDEBase):
         get_data_tuple = cache["get_data_tuple"]
 
         def chain(
-            i: int = 0, inner: Callable[[np.ndarray, float, np.ndarray], None] = None
+            i: int = 0,
+            inner: Optional[Callable[[np.ndarray, float, np.ndarray], None]] = None,
         ) -> Callable[[np.ndarray, float], np.ndarray]:
             """recursive helper function for applying all rhs"""
             # run through all functions
@@ -526,13 +527,13 @@ class PDE(PDEBase):
             if inner is None:
                 # the innermost function does not need to call a child
                 @jit
-                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray):
+                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray) -> None:
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             else:
                 # all other functions need to call one deeper in the chain
                 @jit
-                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray):
+                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray) -> None:
                     inner(data_tpl, t, out)  # type: ignore
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 

@@ -69,7 +69,7 @@ def _check_shape(shape: Union[int, Sequence[int]]) -> Tuple[int, ...]:
     if hasattr(shape, "__iter__"):
         shape_list: Sequence[int] = shape  # type: ignore
     else:
-        shape_list = [shape]  # type: ignore
+        shape_list = [shape]
 
     if len(shape_list) == 0:
         raise ValueError("Require at least one dimension")
@@ -762,7 +762,7 @@ class GridBase(metaclass=ABCMeta):
     def register_operator(
         cls,
         name: str,
-        factory_func: OperatorFactory = None,
+        factory_func: Optional[OperatorFactory] = None,
         rank_in: int = 0,
         rank_out: int = 0,
     ):
@@ -955,7 +955,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit_allocate_out(out_shape=shape_out)
             def apply_op(
-                arr: np.ndarray, out: np.ndarray = None, args=None
+                arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
             ) -> np.ndarray:
                 """applies operator to the data"""
                 # prepare input with boundary conditions
@@ -973,7 +973,7 @@ class GridBase(metaclass=ABCMeta):
             # create a numpy/scipy function to apply the operator
 
             def apply_op(
-                arr: np.ndarray, out: np.ndarray = None, args=None
+                arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
             ) -> np.ndarray:
                 """set boundary conditions and apply operator"""
                 # ensure result array is allocated
@@ -1016,7 +1016,7 @@ class GridBase(metaclass=ABCMeta):
         return np.mean(self.discretization)  # type: ignore
 
     def integrate(
-        self, data: NumberOrArray, axes: Union[int, Sequence[int]] = None
+        self, data: NumberOrArray, axes: Union[int, Sequence[int], None] = None
     ) -> NumberOrArray:
         """Integrates the discretized data over the grid
 
@@ -1251,7 +1251,7 @@ class GridBase(metaclass=ABCMeta):
     def _make_interpolator_compiled(
         self,
         *,
-        fill: Number = None,
+        fill: Optional[Number] = None,
         with_ghost_cells: bool = False,
         cell_coords: bool = False,
     ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
@@ -1635,5 +1635,5 @@ def registered_operators() -> Dict[str, List[str]]:
     return {
         name: sorted(cls.operators)
         for name, cls in GridBase._subclasses.items()
-        if not (name.endswith("Base") or hasattr(cls, "deprecated") and cls.deprecated)  # type: ignore
+        if not (name.endswith("Base") or hasattr(cls, "deprecated") and cls.deprecated)
     }

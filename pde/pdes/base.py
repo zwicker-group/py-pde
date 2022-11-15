@@ -55,7 +55,9 @@ class PDEBase(metaclass=ABCMeta):
     """bool: Flag indicating whether the right hand side is a complex-valued PDE, which
     requires all involved variables to have complex data type."""
 
-    def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator = None):
+    def __init__(
+        self, *, noise: ArrayLike = 0, rng: Optional[np.random.Generator] = None
+    ):
         """
         Args:
             noise (float or :class:`~numpy.ndarray`):
@@ -131,7 +133,7 @@ class PDEBase(metaclass=ABCMeta):
         t: float = 0,
         *,
         tol: float = 1e-7,
-        rhs_numba: Callable = None,
+        rhs_numba: Optional[Callable] = None,
         **kwargs,
     ):
         """check the numba compiled right hand side versus the numpy variant
@@ -470,7 +472,7 @@ class PDEBase(metaclass=ABCMeta):
         self,
         state: FieldBase,
         t_range: "TRangeType",
-        dt: float = None,
+        dt: Optional[float] = None,
         tracker: TrackerCollectionDataType = "auto",
         *,
         method: Union[str, "SolverBase"] = "auto",

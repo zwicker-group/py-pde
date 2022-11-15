@@ -46,7 +46,7 @@ class FieldCollection(FieldBase):
         *,
         copy_fields: bool = False,
         label: Optional[str] = None,
-        labels: Union[List[Optional[str]], _FieldLabels] = None,
+        labels: Union[List[Optional[str]], _FieldLabels, None] = None,
         dtype=None,
     ):
         """
@@ -279,7 +279,7 @@ class FieldCollection(FieldBase):
 
     @classmethod
     def from_state(
-        cls, attributes: Dict[str, Any], data: np.ndarray = None
+        cls, attributes: Dict[str, Any], data: Optional[np.ndarray] = None
     ) -> FieldCollection:
         """create a field collection from given state.
 
@@ -316,7 +316,7 @@ class FieldCollection(FieldBase):
         *,
         with_ghost_cells: bool = True,
         label: Optional[str] = None,
-        labels: Union[List[Optional[str]], _FieldLabels] = None,
+        labels: Union[List[Optional[str]], _FieldLabels, None] = None,
         dtype=None,
     ):
         """create a field collection from classes and data
@@ -410,7 +410,7 @@ class FieldCollection(FieldBase):
         grid: GridBase,
         expressions: Sequence[str],
         *,
-        label: str = None,
+        label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
         dtype=None,
     ) -> FieldCollection:
@@ -461,7 +461,7 @@ class FieldCollection(FieldBase):
         *,
         label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
-        rng: np.random.Generator = None,
+        rng: Optional[np.random.Generator] = None,
     ) -> FieldCollection:
         """create scalar fields with random values between `vmin` and `vmax`
 
@@ -544,7 +544,7 @@ class FieldCollection(FieldBase):
     def copy(
         self: FieldCollection,
         *,
-        label: str = None,
+        label: Optional[str] = None,
         dtype=None,
     ) -> FieldCollection:
         """return a copy of the data, but not of the grid
@@ -580,7 +580,7 @@ class FieldCollection(FieldBase):
         self,
         grid: GridBase,
         *,
-        fill: Number = None,
+        fill: Optional[Number] = None,
         label: Optional[str] = None,
     ) -> FieldCollection:
         """interpolate the data of this field collection to another grid.
@@ -609,7 +609,7 @@ class FieldCollection(FieldBase):
         sigma: float = 1,
         *,
         out: Optional[FieldCollection] = None,
-        label: str = None,
+        label: Optional[str] = None,
     ) -> FieldCollection:
         """applies Gaussian smoothing with the given standard deviation
 

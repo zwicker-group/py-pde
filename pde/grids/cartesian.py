@@ -8,8 +8,17 @@ Cartesian grids of arbitrary dimension.
 from __future__ import annotations
 
 import itertools
-from typing import List  # @UnusedImport
-from typing import TYPE_CHECKING, Any, Dict, Generator, Sequence, Tuple, Union
+from typing import (  # @UnusedImport
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generator,
+    List,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 
@@ -241,7 +250,7 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         *,
         boundary_distance: float = 0,
         coords: str = "cartesian",
-        rng: np.random.Generator = None,
+        rng: Optional[np.random.Generator] = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -464,7 +473,10 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
             return dist
 
     def from_polar_coordinates(
-        self, distance: np.ndarray, angle: np.ndarray, origin: np.ndarray = None
+        self,
+        distance: np.ndarray,
+        angle: np.ndarray,
+        origin: Optional[np.ndarray] = None,
     ) -> np.ndarray:
         """convert polar coordinates to Cartesian coordinates
 

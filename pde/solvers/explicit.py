@@ -222,7 +222,7 @@ class ExplicitSolver(SolverBase):
             t_start: float,
             t_end: float,
             dt_init: float,
-            dt_stats: OnlineStatistics = None,
+            dt_stats: Optional[OnlineStatistics] = None,
         ) -> Tuple[float, float, int, float]:
             """compiled inner loop for speed"""
             modifications = 0.0
@@ -409,7 +409,7 @@ class ExplicitSolver(SolverBase):
             t_start: float,
             t_end: float,
             dt_init: float,
-            dt_stats: OnlineStatistics = None,
+            dt_stats: Optional[OnlineStatistics] = None,
         ) -> Tuple[float, float, int, float]:
             """compiled inner loop for speed"""
             modifications = 0.0
@@ -552,7 +552,7 @@ class ExplicitSolver(SolverBase):
         return adaptive_stepper
 
     def make_stepper(
-        self, state: FieldBase, dt: float = None
+        self, state: FieldBase, dt: Optional[float] = None
     ) -> Callable[[FieldBase, float, float], float]:
         """return a stepper function using an explicit scheme
 

@@ -64,7 +64,7 @@ except ImportError:
 
 @fill_in_docstring
 def parse_number(
-    expression: Union[str, Number], variables: Mapping[str, Number] = None
+    expression: Union[str, Number], variables: Optional[Mapping[str, Number]] = None
 ) -> Number:
     r"""return a number compiled from an expression
 
@@ -190,10 +190,10 @@ class ExpressionBase(metaclass=ABCMeta):
     def __init__(
         self,
         expression: basic.Basic,
-        signature: Sequence[Union[str, List[str]]] = None,
+        signature: Optional[Sequence[Union[str, List[str]]]] = None,
         *,
-        user_funcs: Dict[str, Callable] = None,
-        consts: Dict[str, NumberOrArray] = None,
+        user_funcs: Optional[Dict[str, Callable]] = None,
+        consts: Optional[Dict[str, NumberOrArray]] = None,
     ):
         """
         Warning:
@@ -285,7 +285,9 @@ class ExpressionBase(metaclass=ABCMeta):
     def shape(self) -> Tuple[int, ...]:
         pass
 
-    def _check_signature(self, signature: Sequence[Union[str, List[str]]] = None):
+    def _check_signature(
+        self, signature: Optional[Sequence[Union[str, List[str]]]] = None
+    ):
         """validate the variables of the expression against the signature"""
         # get arguments of the expressions
         if self.constant:
@@ -363,7 +365,7 @@ class ExpressionBase(metaclass=ABCMeta):
     def _get_function(
         self,
         single_arg: bool = False,
-        user_funcs: Dict[str, Callable] = None,
+        user_funcs: Optional[Dict[str, Callable]] = None,
         prepare_compilation: bool = False,
     ) -> Callable[..., NumberOrArray]:
         """return function evaluating expression
@@ -500,7 +502,7 @@ class ScalarExpression(ExpressionBase):
         *,
         user_funcs: Optional[Dict[str, Callable]] = None,
         consts: Optional[Dict[str, NumberOrArray]] = None,
-        explicit_symbols: Sequence[str] = None,
+        explicit_symbols: Optional[Sequence[str]] = None,
         allow_indexed: bool = False,
     ):
         """
@@ -703,7 +705,7 @@ class TensorExpression(ExpressionBase):
         *,
         user_funcs: Optional[Dict[str, Callable]] = None,
         consts: Optional[Dict[str, NumberOrArray]] = None,
-        explicit_symbols: Sequence[str] = None,
+        explicit_symbols: Optional[Sequence[str]] = None,
     ):
         """
         Warning:
@@ -919,10 +921,10 @@ def evaluate(
     fields: Dict[str, DataFieldBase],
     *,
     bc: BoundariesData = "auto_periodic_neumann",
-    bc_ops: Dict[str, BoundariesData] = None,
-    user_funcs: Dict[str, Callable] = None,
-    consts: Dict[str, NumberOrArray] = None,
-    label: str = None,
+    bc_ops: Optional[Dict[str, BoundariesData]] = None,
+    user_funcs: Optional[Dict[str, Callable]] = None,
+    consts: Optional[Dict[str, NumberOrArray]] = None,
+    label: Optional[str] = None,
 ) -> DataFieldBase:
     """evaluate an expression involving fields
 

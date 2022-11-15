@@ -22,8 +22,8 @@ from .interrupts import IntervalData
 def napari_process(
     data_channel: mp.Queue,
     initial_data: Dict[str, Dict[str, Any]],
-    t_initial: float = None,
-    viewer_args: Dict[str, Any] = None,
+    t_initial: Optional[float] = None,
+    viewer_args: Optional[Dict[str, Any]] = None,
 ):
     """:mod:`multiprocessing.Process` running `napari <https://napari.org>`__
 
@@ -132,7 +132,7 @@ def napari_process(
 class NapariViewer:
     """allows viewing and updating data in a separate napari process"""
 
-    def __init__(self, state: FieldBase, t_initial: float = None):
+    def __init__(self, state: FieldBase, t_initial: Optional[float] = None):
         """
         Args:
             state (:class:`pde.fields.base.FieldBase`): The initial state to be shown
@@ -268,7 +268,7 @@ class InteractivePlotTracker(TrackerBase):
         self.close = close
         self.show_time = show_time
 
-    def initialize(self, state: FieldBase, info: InfoDict = None) -> float:
+    def initialize(self, state: FieldBase, info: Optional[InfoDict] = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -299,7 +299,7 @@ class InteractivePlotTracker(TrackerBase):
         """
         self._viewer.update(state, t)
 
-    def finalize(self, info: InfoDict = None) -> None:
+    def finalize(self, info: Optional[InfoDict] = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:

@@ -26,7 +26,7 @@ class FileStorage(StorageBase):
     def __init__(
         self,
         filename: str,
-        info: InfoDict = None,
+        info: Optional[InfoDict] = None,
         *,
         write_mode: str = "truncate_once",
         max_length: Optional[int] = None,
@@ -145,7 +145,7 @@ class FileStorage(StorageBase):
                 **kwargs,
             )
 
-    def _open(self, mode: str = "reading", info: InfoDict = None) -> None:
+    def _open(self, mode: str = "reading", info: Optional[InfoDict] = None) -> None:
         """open the hdf file in a particular mode
 
         Args:
@@ -308,7 +308,7 @@ class FileStorage(StorageBase):
 
         super().clear(clear_data_shape=clear_data_shape)
 
-    def start_writing(self, field: FieldBase, info: InfoDict = None) -> None:
+    def start_writing(self, field: FieldBase, info: Optional[InfoDict] = None) -> None:
         """initialize the storage for writing data
 
         Args:

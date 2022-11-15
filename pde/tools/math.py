@@ -7,7 +7,7 @@ Auxiliary mathematical functions
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import numba as nb
 import numpy as np
@@ -26,7 +26,7 @@ class SmoothData1D:
     sigma_auto_scale: float = 10
     """float: scale for setting automatic values for sigma"""
 
-    def __init__(self, x, y, sigma: float = None):
+    def __init__(self, x, y, sigma: Optional[float] = None):
         """initialize with data
 
         Args:

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Dict, List, Tuple, Type  # @UnusedImport
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type  # @UnusedImport
 
 import numba as nb
 import numpy as np
@@ -117,7 +117,7 @@ class SolverBase(metaclass=ABCMeta):
         rhs = self.pde.make_pde_rhs(state, backend=backend)
 
         if hasattr(rhs, "_backend"):
-            self.info["backend"] = rhs._backend  # type: ignore
+            self.info["backend"] = rhs._backend
         elif isinstance(rhs, nb.dispatcher.Dispatcher):
             self.info["backend"] = "numba"
         else:
@@ -151,7 +151,7 @@ class SolverBase(metaclass=ABCMeta):
         rhs = self.pde.make_sde_rhs(state, backend=backend)
 
         if hasattr(rhs, "_backend"):
-            self.info["backend"] = rhs._backend  # type: ignore
+            self.info["backend"] = rhs._backend
         elif isinstance(rhs, nb.dispatcher.Dispatcher):
             self.info["backend"] = "numba"
         else:
@@ -161,6 +161,6 @@ class SolverBase(metaclass=ABCMeta):
 
     @abstractmethod
     def make_stepper(
-        self, state, dt: float = None
+        self, state, dt: Optional[float] = None
     ) -> Callable[[FieldBase, float, float], float]:
         pass

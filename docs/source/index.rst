@@ -10,8 +10,8 @@ The `py-pde` python package provides methods and classes useful for solving
 partial differential equations (PDEs) of the form
 
 .. math::
-	\partial_t u(\boldsymbol x, t) = \mathcal D[u(\boldsymbol x, t)] 
-		+ \eta(u, \boldsymbol x, t) \;,
+    \partial_t u(\boldsymbol x, t) = \mathcal D[u(\boldsymbol x, t)] 
+        + \eta(u, \boldsymbol x, t) \;,
 
 where :math:`\mathcal D` is a (non-linear) differential operator that defines
 the time evolution of a (set of) physical fields :math:`u` with possibly

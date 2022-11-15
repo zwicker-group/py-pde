@@ -24,8 +24,7 @@ import functools
 import logging
 import sys
 import warnings
-from typing import Type  # @UnusedImport
-from typing import TYPE_CHECKING, Any, Dict, Generator
+from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Type  # @UnusedImport
 
 from ..tools.docstrings import replace_in_docstring
 
@@ -173,7 +172,7 @@ class PlotReference:
 
     __slots__ = ["ax", "element", "parameters"]
 
-    def __init__(self, ax, element: Any, parameters: Dict[str, Any] = None):
+    def __init__(self, ax, element: Any, parameters: Optional[Dict[str, Any]] = None):
         """
         Args:
             ax (:class:`matplotlib.axes.Axes`): The axes of the element
@@ -233,11 +232,11 @@ def plot_on_axes(wrapped=None, update_method=None):
 
     def wrapper(
         *args,
-        title: str = None,
-        filename: str = None,
+        title: Optional[str] = None,
+        filename: Optional[str] = None,
         action: str = "auto",
-        ax_style: Dict[str, Any] = None,
-        fig_style: Dict[str, Any] = None,
+        ax_style: Optional[Dict[str, Any]] = None,
+        fig_style: Optional[Dict[str, Any]] = None,
         ax=None,
         **kwargs,
     ):
@@ -439,11 +438,11 @@ def plot_on_figure(wrapped=None, update_method=None):
 
     def wrapper(
         *args,
-        title: str = None,
+        title: Optional[str] = None,
         constrained_layout: bool = True,
-        filename: str = None,
+        filename: Optional[str] = None,
         action: str = "auto",
-        fig_style: Dict[str, Any] = None,
+        fig_style: Optional[Dict[str, Any]] = None,
         fig=None,
         **kwargs,
     ):
@@ -572,7 +571,7 @@ class PlottingContextBase:
     """ flag indicating whether the context supports that plots can be updated
     with out redrawing the entire plot """
 
-    def __init__(self, title: str = None, show: bool = True):
+    def __init__(self, title: Optional[str] = None, show: bool = True):
         """
         Args:
             title (str): The shown in the plot
@@ -632,7 +631,7 @@ class PlottingContextBase:
 class BasicPlottingContext(PlottingContextBase):
     """basic plotting using just matplotlib"""
 
-    def __init__(self, fig_or_ax=None, title: str = None, show: bool = True):
+    def __init__(self, fig_or_ax=None, title: Optional[str] = None, show: bool = True):
         """
         Args:
             fig_or_ax:
@@ -723,7 +722,7 @@ class JupyterPlottingContext(PlottingContextBase):
 
 
 def get_plotting_context(
-    context=None, title: str = None, show: bool = True
+    context=None, title: Optional[str] = None, show: bool = True
 ) -> PlottingContextBase:
     """returns a suitable plotting context
 
@@ -790,7 +789,7 @@ def in_ipython() -> bool:
 
 @contextlib.contextmanager
 def napari_viewer(
-    grid: GridBase, run: bool = None, close: bool = False, **kwargs
+    grid: GridBase, run: Optional[bool] = None, close: bool = False, **kwargs
 ) -> Generator[napari.viewer.Viewer, None, None]:
     """creates an napari viewer for interactive plotting
 

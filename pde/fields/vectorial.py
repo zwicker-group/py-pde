@@ -38,7 +38,11 @@ class VectorField(DataFieldBase):
 
     @classmethod
     def from_scalars(
-        cls, fields: List[ScalarField], *, label: str = None, dtype: DTypeLike = None
+        cls,
+        fields: List[ScalarField],
+        *,
+        label: Optional[str] = None,
+        dtype: Optional[DTypeLike] = None,
     ) -> VectorField:
         """create a vector field from a list of ScalarFields
 
@@ -78,8 +82,8 @@ class VectorField(DataFieldBase):
         grid: GridBase,
         expressions: Sequence[str],
         *,
-        label: str = None,
-        dtype: DTypeLike = None,
+        label: Optional[str] = None,
+        dtype: Optional[DTypeLike] = None,
     ) -> VectorField:
         """create a vector field on a grid from given expressions
 
@@ -145,7 +149,7 @@ class VectorField(DataFieldBase):
     def dot(
         self,
         other: Union[VectorField, "Tensor2Field"],
-        out: Optional[Union[ScalarField, VectorField]] = None,
+        out: Union[ScalarField, VectorField, None] = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
@@ -251,7 +255,7 @@ class VectorField(DataFieldBase):
             if nb.config.DISABLE_JIT:  # @UndefinedVariable
 
                 def dot(
-                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                 ) -> np.ndarray:
                     """wrapper deciding whether the underlying function is called
                     with or without `out`."""
@@ -263,7 +267,7 @@ class VectorField(DataFieldBase):
 
                 @nb.generated_jit
                 def dot(
-                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                 ) -> np.ndarray:
                     """wrapper deciding whether the underlying function is called
                     with or without `out`."""
@@ -292,7 +296,7 @@ class VectorField(DataFieldBase):
             # create the dot product using basic numpy functions
 
             def calc(
-                a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
                 """inner function doing the actual calculation of the dot product"""
                 if a.shape == b.shape:
@@ -322,7 +326,7 @@ class VectorField(DataFieldBase):
                 # create inner function calculating the dot product using conjugate
 
                 def dot(
-                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                 ) -> np.ndarray:
                     """dot product with conjugated second operand"""
                     return calc(a, b.conjugate(), out=out)  # type: ignore
@@ -336,7 +340,11 @@ class VectorField(DataFieldBase):
         return dot
 
     def outer_product(
-        self, other: VectorField, out: "Tensor2Field" = None, *, label: str = None
+        self,
+        other: VectorField,
+        out: Optional["Tensor2Field"] = None,
+        *,
+        label: Optional[str] = None,
     ) -> "Tensor2Field":
         """calculate the outer product of this vector field with another
 
@@ -403,7 +411,7 @@ class VectorField(DataFieldBase):
             if nb.config.DISABLE_JIT:
 
                 def outer(
-                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                 ) -> np.ndarray:
                     """wrapper deciding whether the underlying function is called
                     with or without `out`."""
@@ -417,7 +425,7 @@ class VectorField(DataFieldBase):
 
                 @nb.generated_jit
                 def outer(
-                    a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                 ) -> np.ndarray:
                     """wrapper deciding whether the underlying function is called
                     with or without `out`."""
@@ -446,7 +454,7 @@ class VectorField(DataFieldBase):
             # create the dot product using basic numpy functions
 
             def outer(
-                a: np.ndarray, b: np.ndarray, out: np.ndarray = None
+                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
                 """calculates the outer product between two vector fields"""
                 if out is None:
@@ -605,7 +613,7 @@ class VectorField(DataFieldBase):
         return ScalarField(self.grid, data, label=label)
 
     def get_vector_data(
-        self, transpose: bool = False, max_points: int = None, **kwargs
+        self, transpose: bool = False, max_points: Optional[int] = None, **kwargs
     ) -> Dict[str, Any]:
         r"""return data for a vector plot of the field
 
@@ -665,7 +673,7 @@ class VectorField(DataFieldBase):
         return data
 
     def _get_napari_layer_data(  # type: ignore
-        self, max_points: int = None, args: Dict[str, Any] = None
+        self, max_points: Optional[int] = None, args: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """returns data for plotting on a single napari layer
 

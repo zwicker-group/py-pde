@@ -15,18 +15,17 @@ able to install it by running
 .. code-block:: bash
 
     pip install py-pde
-    
-    
+
 
 In order to have all features of the package available, you might also want to 
 install the following optional packages:
 
 .. code-block:: bash
 
-	pip install h5py pandas pyfftw tqdm
+    pip install h5py pandas pyfftw tqdm
 
 Moreover, :command:`ffmpeg` needs to be installed and for creating movies.    
-    
+
 
 Install using conda
 ^^^^^^^^^^^^^^^^^^^
@@ -38,8 +37,8 @@ You can thus install it using
 .. code-block:: bash
 
     conda install -c conda-forge py-pde
-    
-This installation includes all required dependencies to have all features of `py-pde`.
+
+This installation includes many dependencies to have most features of `py-pde`.
 
 
 Install from source
@@ -67,7 +66,7 @@ The simplest way to install these packages is to use the
 .. code-block:: bash
 
     pip install -r requirements.txt
-    
+
 
 Alternatively, these package can be installed via your operating system's
 package manager, e.g. using :command:`macports`, :command:`homebrew`, or
@@ -106,8 +105,8 @@ This documentation can be built by calling the :command:`make html` in the
 The final documentation will be available in :file:`docs/build/html`.
 Note that a LaTeX documentation can be build using :command:`make latexpdf`.
 
-	
-	
+
+
 Package overview
 ^^^^^^^^^^^^^^^^
 
@@ -163,4 +162,3 @@ Others can be found in the :mod:`~pde.trackers.trackers` module.
 Moreover, we provide :class:`~pde.storage.memory.MemoryStorage` and
 :class:`~pde.storage.file.FileStorage`, which can be used as trackers
 to store the intermediate state to memory and to a file, respectively. 
-

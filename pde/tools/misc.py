@@ -28,7 +28,7 @@ import json
 import os
 import unittest
 from pathlib import Path
-from typing import Any, Callable, Dict, Sequence, TypeVar, Union
+from typing import Any, Callable, Dict, Optional, Sequence, TypeVar, Union
 
 import numpy as np
 
@@ -296,7 +296,9 @@ def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
 
 
 def hdf_write_attributes(
-    hdf_path, attributes: Dict[str, Any] = None, raise_serialization_error: bool = False
+    hdf_path,
+    attributes: Optional[Dict[str, Any]] = None,
+    raise_serialization_error: bool = False,
 ) -> None:
     """write (JSON-serialized) attributes to a hdf file
 

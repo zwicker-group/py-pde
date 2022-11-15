@@ -23,8 +23,8 @@ class MemoryStorage(StorageBase):
         self,
         times: Optional[Sequence[float]] = None,
         data: Optional[List[np.ndarray]] = None,
-        field_obj: FieldBase = None,
-        info: InfoDict = None,
+        field_obj: Optional[FieldBase] = None,
+        info: Optional[InfoDict] = None,
         write_mode: str = "truncate_once",
     ):
         """
@@ -67,7 +67,7 @@ class MemoryStorage(StorageBase):
         cls,
         times: Optional[Sequence[float]] = None,
         fields: Optional[Sequence[FieldBase]] = None,
-        info: InfoDict = None,
+        info: Optional[InfoDict] = None,
         write_mode: str = "truncate_once",
     ) -> MemoryStorage:
         """create MemoryStorage from a list of fields
@@ -105,7 +105,7 @@ class MemoryStorage(StorageBase):
     def from_collection(
         cls,
         storages: Sequence[StorageBase],
-        label: str = None,
+        label: Optional[str] = None,
         *,
         rtol: float = 1.0e-5,
         atol: float = 1.0e-8,
@@ -161,7 +161,7 @@ class MemoryStorage(StorageBase):
         self.data = []
         super().clear(clear_data_shape=clear_data_shape)
 
-    def start_writing(self, field: FieldBase, info: InfoDict = None) -> None:
+    def start_writing(self, field: FieldBase, info: Optional[InfoDict] = None) -> None:
         """initialize the storage for writing data
 
         Args:
@@ -207,7 +207,7 @@ class MemoryStorage(StorageBase):
 
 
 @contextmanager
-def get_memory_storage(field: FieldBase, info: InfoDict = None):
+def get_memory_storage(field: FieldBase, info: Optional[InfoDict] = None):
     """a context manager that can be used to create a MemoryStorage
 
     Example:

@@ -124,9 +124,9 @@ class Controller:
                 self.info["successful"] = False
                 msg = f"Simulation aborted at t={t}"
                 msg_level = logging.WARNING
-                if hasattr(err, "value") and err.value:  # type: ignore
-                    self.info["stop_reason"] = err.value  # type: ignore
-                    msg += f" ({err.value})"  # type: ignore
+                if hasattr(err, "value") and err.value:
+                    self.info["stop_reason"] = err.value
+                    msg += f" ({err.value})"
                 else:
                     self.info["stop_reason"] = "Tracker raised StopIteration"
 
@@ -134,7 +134,7 @@ class Controller:
 
         return _handle_stop_iteration
 
-    def _run_single(self, state: TState, dt: float = None) -> None:
+    def _run_single(self, state: TState, dt: Optional[float] = None) -> None:
         """run the simulation
 
         Diagnostic information about the solver procedure are available in the
@@ -257,7 +257,7 @@ class Controller:
                 "Consider reducing time step."
             )
 
-    def _run_mpi_client(self, state: TState, dt: float = None) -> None:
+    def _run_mpi_client(self, state: TState, dt: Optional[float] = None) -> None:
         """loop for run the simulation on client nodes during an MPI run
 
         This function just loops the stepper advancing the sub field of the current node
@@ -288,7 +288,9 @@ class Controller:
         while t < t_end:
             t = stepper(state, t, t_end)
 
-    def run(self, initial_state: TState, dt: float = None) -> Optional[TState]:
+    def run(
+        self, initial_state: TState, dt: Optional[float] = None
+    ) -> Optional[TState]:
         """run the simulation
 
         Diagnostic information about the solver procedure are available in the

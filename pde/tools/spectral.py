@@ -12,7 +12,7 @@ Functions making use of spectral decompositions
 """
 
 
-from typing import Callable, Tuple
+from typing import Callable, Optional, Tuple
 
 import numpy as np
 
@@ -29,7 +29,7 @@ def make_colored_noise(
     dx=1.0,
     exponent: float = 0,
     scale: float = 1,
-    rng: np.random.Generator = None,
+    rng: Optional[np.random.Generator] = None,
 ) -> Callable[[], np.ndarray]:
     r"""Return a function creating an array of random values that obey
 
