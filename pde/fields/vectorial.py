@@ -255,7 +255,7 @@ class VectorField(DataFieldBase):
                     # do by simply multiplying the first elements
                     c = np.array(a.flat[0] * b.flat[0])
                     out = np.empty(b.shape[1:], dtype=c.dtype)
-                return calc(a, b, out)
+                return calc(a, b, out)  # type: ignore
 
         elif backend == "numpy":
             # create the dot product using basic numpy functions
@@ -302,7 +302,7 @@ class VectorField(DataFieldBase):
         else:
             raise ValueError(f"Undefined backend `{backend}")
 
-        return dot
+        return dot  # type: ignore
 
     def outer_product(
         self,
