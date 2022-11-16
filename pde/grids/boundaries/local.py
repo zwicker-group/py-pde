@@ -68,7 +68,7 @@ from typing import (
 
 import numba as nb
 import numpy as np
-from numba.extending import register_jitable
+from numba.extending import overload, register_jitable
 
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import address_as_void_pointer
@@ -512,7 +512,7 @@ class BCBase(metaclass=ABCMeta):
                 # idea is that users only create boundary conditions for the full grid
                 # and that the splitting onto subgrids is only done once, automatically,
                 # and without involving calls to `from_data`
-                raise ValueError("Cannot create MPI sub grid BC from data")
+                raise ValueError("Cannot create MPI subgrid BC from data")
 
             if data.grid != grid or data.axis != axis or data.rank != rank:
                 raise ValueError(f"Incompatible: {data!r} & {grid=}, {axis=}, {rank=})")
@@ -1008,8 +1008,20 @@ class UserBC(BCBase):
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
         dx = self.grid.discretization[self.axis]
 
-        @nb.generated_jit(nopython=True)
         def extract_value(values, arr: np.ndarray, idx: Tuple[int, ...]):
+            """helper function that extracts the correct value from supplied ones"""
+            if isinstance(values, (nb.types.Number, Number)):
+                # scalar was supplied => simply return it
+                return values
+            elif isinstance(arr, (nb.types.Array, np.ndarray)):
+                # array was supplied => extract value at current position
+                _, _, bc_idx = get_arr_1d(arr, idx)
+                return values[bc_idx]
+            else:
+                raise TypeError("Either a scalar or an array must be supplied")
+
+        @overload(extract_value)
+        def ol_extract_value(values, arr: np.ndarray, idx: Tuple[int, ...]):
             """helper function that extracts the correct value from supplied ones"""
             if isinstance(values, (nb.types.Number, Number)):
                 # scalar was supplied => simply return it
@@ -1026,10 +1038,7 @@ class UserBC(BCBase):
             else:
                 raise TypeError("Either a scalar or an array must be supplied")
 
-            if nb.config.DISABLE_JIT:
-                return impl(values, arr, idx)
-            else:
-                return impl
+            return impl
 
         @register_jitable
         def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args):

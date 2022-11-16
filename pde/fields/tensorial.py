@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Tuple, Uni
 
 import numba as nb
 import numpy as np
+from numba.extending import overload
 from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, GridBase
@@ -237,46 +238,41 @@ class Tensor2Field(DataFieldBase):
                             out[i] += a[i, j] * b[j]
                     return out
 
-            # build the outer function with the correct signature
-            if nb.config.DISABLE_JIT:  # @UndefinedVariable
+            def dot(
+                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            ) -> np.ndarray:
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
+                if out is None:
+                    out = np.empty(b.shape, dtype=get_common_dtype(a, b))
+                return calc(a, b, out)  # type: ignore
 
-                def dot(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if out is None:
-                        out = np.empty(b.shape, dtype=get_common_dtype(a, b))
-                    return calc(a, b, out)  # type: ignore
+            @overload(dot)
+            def ol_dot(
+                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            ) -> np.ndarray:
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
+                if isinstance(a, nb.types.Number):
+                    # simple scalar call -> do not need to allocate anything
+                    raise RuntimeError("Dot needs to be called with fields")
 
-            else:
+                elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                    # function is called without `out`
+                    dtype = get_common_numba_dtype(a, b)
 
-                @nb.generated_jit
-                def dot(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if isinstance(a, nb.types.Number):
-                        # simple scalar call -> do not need to allocate anything
-                        raise RuntimeError("Dot needs to be called with fields")
+                    def f_with_allocated_out(
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray
+                    ) -> np.ndarray:
+                        """helper function allocating output array"""
+                        out = np.empty(b.shape, dtype=dtype)
+                        return calc(a, b, out=out)  # type: ignore
 
-                    elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                        # function is called without `out`
-                        dtype = get_common_numba_dtype(a, b)
+                    return f_with_allocated_out  # type: ignore
 
-                        def f_with_allocated_out(
-                            a: np.ndarray, b: np.ndarray, out: np.ndarray
-                        ) -> np.ndarray:
-                            """helper function allocating output array"""
-                            out = np.empty(b.shape, dtype=dtype)
-                            return calc(a, b, out=out)  # type: ignore
-
-                        return f_with_allocated_out  # type: ignore
-
-                    else:
-                        # function is called with `out` argument
-                        return calc  # type: ignore
+                else:
+                    # function is called with `out` argument
+                    return calc  # type: ignore
 
         elif backend == "numpy":
             # create the dot product using basic numpy functions

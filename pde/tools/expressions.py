@@ -39,7 +39,6 @@ from typing import (
     Union,
 )
 
-import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
 import sympy
 from sympy.core import basic
@@ -52,7 +51,7 @@ from ..grids.boundaries.local import BCDataError
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .misc import Number, number, number_array
-from .numba import convert_scalar, jit
+from .numba import jit
 from .typing import NumberOrArray
 
 try:
@@ -852,19 +851,10 @@ class TensorExpression(ExpressionBase):
         variables = ", ".join(v for v in self.vars)
         shape = self._sympy_expr.shape
 
-        if nb.config.DISABLE_JIT:
-            # special path used by coverage test without jitting. This can be
-            # removed once the `convert_scalar` wrapper is obsolete
-            lines = [
-                f"    out[{str(idx + (...,))[1:-1]}] = {self._sympy_expr[idx]}"
-                for idx in np.ndindex(*self._sympy_expr.shape)
-            ]
-        else:
-            lines = [
-                f"    out[{str(idx + (...,))[1:-1]}] = "
-                f"convert_scalar({self._sympy_expr[idx]})"
-                for idx in np.ndindex(*self._sympy_expr.shape)
-            ]
+        lines = [
+            f"    out[{str(idx + (...,))[1:-1]}] = {self._sympy_expr[idx]}"
+            for idx in np.ndindex(*self._sympy_expr.shape)
+        ]
         # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
         # work with numpy 1.18, so we have the work around using np.ndindex
 
@@ -905,7 +895,6 @@ class TensorExpression(ExpressionBase):
         self._logger.debug("Code for `get_compiled_array`: %s", code)
 
         namespace = _get_namespace("numpy")
-        namespace["convert_scalar"] = convert_scalar
         namespace["builtins"] = builtins
         namespace.update(self.user_funcs)
         local_vars: Dict[str, Any] = {}

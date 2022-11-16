@@ -7,16 +7,17 @@ Helper functions for just-in-time compilation with numba
 import logging
 import os
 import warnings
-from functools import wraps
-from typing import Any, Callable, Dict, Optional, Tuple, TypeVar
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
-from numba.extending import register_jitable
+from numba.core.types import npytypes, scalars
+from numba.extending import overload, register_jitable
 from numba.typed import Dict as NumbaDict
 
 from .. import config
 from ..tools.misc import decorator_arguments
+from .typing import Number
 
 try:
     # is_jitted has been added in numba 0.53 on 2021-03-11
@@ -155,24 +156,25 @@ def _get_jit_args(parallel: bool = False, **kwargs) -> Dict[str, Any]:
     return kwargs
 
 
-if nb.config.DISABLE_JIT:
-    # use work-around for https://github.com/numba/numba/issues/4759
-    def flat_idx(arr, i):
-        """helper function allowing indexing of scalars as if they arrays"""
-        if np.isscalar(arr):
-            return arr
-        else:
-            return arr.flat[i]
+def flat_idx(arr: np.ndarray, i: int) -> Number:
+    """helper function allowing indexing of scalars as if they arrays
 
-else:
-    # compiled version that specializes correctly
-    @nb.generated_jit(nopython=True)
-    def flat_idx(arr, i):
-        """helper function allowing indexing of scalars as if they arrays"""
-        if isinstance(arr, (nb.types.Integer, nb.types.Float)):
-            return lambda arr, i: arr
-        else:
-            return lambda arr, i: arr.flat[i]
+    Args:
+        arr
+    """
+    if np.isscalar(arr):
+        return arr  # type: ignore
+    else:
+        return arr.flat[i]  # type: ignore
+
+
+@overload(flat_idx)
+def ol_flat_idx(arr: np.ndarray, i: int):
+    """helper function allowing indexing of scalars as if they arrays"""
+    if isinstance(arr, (nb.types.Integer, nb.types.Float)):
+        return lambda arr, i: arr
+    else:
+        return lambda arr, i: arr.flat[i]
 
 
 @decorator_arguments
@@ -207,182 +209,6 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
     JIT_COUNT.increment()
 
     return nb.jit(signature, **jit_kwargs)(function)  # type: ignore
-
-
-@decorator_arguments
-def jit_allocate_out(
-    func: Callable,
-    parallel: bool = False,
-    out_shape: Optional[Tuple[int, ...]] = None,
-    num_args: int = 1,
-    **kwargs,
-) -> Callable:
-    """Decorator that compiles a function with allocating an output array.
-
-    This decorator compiles a function that takes the arguments `arr` and `out`. The
-    point of this decorator is to make the `out` array optional by supplying an empty
-    array of the same shape as `arr` if necessary. This is implemented efficiently by
-    using :func:`numba.generated_jit`.
-
-    Args:
-        func:
-            The function to be compiled
-        parallel (bool):
-            Determines whether the function is jitted with parallel=True.
-        out_shape (tuple):
-            Determines the shape of the `out` array. If omitted, the same shape as the
-            input array is used.
-        num_args (int, optional):
-            Determines the number of input arguments of the function.
-        **kwargs:
-            Additional arguments used in :func:`numba.jit`
-
-    Returns:
-        The decorated function
-    """
-    # TODO: Remove `num_args` and use inspection on `func` instead
-
-    if nb.config.DISABLE_JIT:
-        # jitting is disabled => return generic python function
-
-        if num_args == 1:
-
-            def f_arg1_with_allocated_out(arr, out=None, args=None):
-                """helper function allocating output array"""
-                if out is None:
-                    if out_shape is None:
-                        out = np.empty_like(arr)
-                    else:
-                        out = np.empty(out_shape, dtype=arr.dtype)
-                return func(arr, out, args=args)
-
-            return f_arg1_with_allocated_out
-
-        elif num_args == 2:
-
-            def f_arg2_with_allocated_out(a, b, out=None, args=None):
-                """helper function allocating output array"""
-                if out is None:
-                    assert a.shape == b.shape
-                    if out_shape is None:
-                        out = np.empty_like(a)
-                    else:
-                        out = np.empty(out_shape, dtype=a.dtype)
-                return func(a, b, out, args=args)
-
-            return f_arg2_with_allocated_out
-
-        else:
-            raise NotImplementedError("Only 1 or 2 arguments are supported")
-
-    else:
-        # jitting is enabled => return specific compiled functions
-        jit_kwargs_outer = _get_jit_args(nopython=True, parallel=False, **kwargs)
-        # we need to cast `parallel` to bool since np.bool is not supported by jit
-        jit_kwargs_inner = _get_jit_args(parallel=bool(parallel), **kwargs)
-        logging.getLogger(__name__).info(
-            "Compile `%s` with %s", func.__name__, jit_kwargs_inner
-        )
-
-        if num_args == 1:
-
-            @nb.generated_jit(**jit_kwargs_outer)
-            @wraps(func)
-            def wrapper(arr, out=None, args=None):
-                """wrapper deciding whether the underlying function is called
-                with or without `out`. This uses :func:`nb.generated_jit` to
-                compile different versions of the same function
-                """
-                if isinstance(arr, nb.types.Number):
-                    raise RuntimeError(
-                        "Functions defined with an `out` keyword must not be called "
-                        "with scalar quantities."
-                    )
-                if not isinstance(arr, nb.types.Array):
-                    raise RuntimeError(
-                        "Compiled functions need to be called with numpy arrays, not "
-                        f"type {arr.__class__.__name__}"
-                    )
-
-                f_jit = register_jitable(**jit_kwargs_inner)(func)
-
-                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out`
-
-                    if out_shape is None:
-                        # we have to obtain the shape of `out` from `arr`
-                        def f_with_allocated_out(arr, out=None, args=None):
-                            """helper function allocating output array"""
-                            return f_jit(arr, out=np.empty_like(arr), args=args)
-
-                    else:
-                        # the shape of `out` is given by `out_shape`
-                        def f_with_allocated_out(arr, out=None, args=None):
-                            """helper function allocating output array"""
-                            out_arr = np.empty(out_shape, dtype=arr.dtype)
-                            return f_jit(arr, out=out_arr, args=args)
-
-                    return f_with_allocated_out
-
-                else:
-                    # function is called with `out` argument
-                    if out_shape is None:
-                        return f_jit
-
-                    else:
-
-                        def f_with_tested_out(arr, out=None, args=None):
-                            """helper function allocating output array"""
-                            assert out.shape == out_shape
-                            return f_jit(arr, out, args=args)
-
-                        return f_with_tested_out
-
-        elif num_args == 2:
-
-            @nb.generated_jit(**jit_kwargs_outer)
-            @wraps(func)
-            def wrapper(a, b, out=None, args=None):
-                """wrapper deciding whether the underlying function is called
-                with or without `out`. This uses nb.generated_jit to compile
-                different versions of the same function."""
-                if isinstance(a, nb.types.Number):
-                    # simple scalar call -> do not need to allocate anything
-                    raise RuntimeError(
-                        "Functions defined with an `out` keyword should not be called "
-                        "with scalar quantities"
-                    )
-
-                elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out`
-                    f_jit = register_jitable(**jit_kwargs_inner)(func)
-
-                    if out_shape is None:
-                        # we have to obtain the shape of `out` from `a`
-                        def f_with_allocated_out(a, b, out=None, args=None):
-                            """helper function allocating output array"""
-                            return f_jit(a, b, out=np.empty_like(a), args=args)
-
-                    else:
-                        # the shape of `out` is given by `out_shape`
-                        def f_with_allocated_out(a, b, out=None, args=None):
-                            """helper function allocating output array"""
-                            out_arr = np.empty(out_shape, dtype=a.dtype)
-                            return f_jit(a, b, out=out_arr, args=args)
-
-                    return f_with_allocated_out
-
-                else:
-                    # function is called with `out` argument
-                    return func
-
-        else:
-            raise NotImplementedError("Only 1 or 2 arguments are supported")
-
-        # increase the compilation counter by one
-        JIT_COUNT.increment()
-
-        return wrapper  # type: ignore
 
 
 if nb.config.DISABLE_JIT:
@@ -461,19 +287,6 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
     return array_constructor  # type: ignore
 
 
-@nb.generated_jit(nopython=True)
-def convert_scalar(arr):
-    """helper function that turns 0d-arrays into scalars
-
-    This helps to avoid the bug discussed in
-    https://github.com/numba/numba/issues/6000
-    """
-    if isinstance(arr, nb.types.Array) and arr.ndim == 0:
-        return lambda arr: arr[()]
-    else:
-        return lambda arr: arr
-
-
 def numba_dict(data: Optional[Dict[str, Any]] = None) -> Optional[NumbaDict]:
     """converts a python dictionary to a numba typed dictionary"""
     if data is None:
@@ -492,8 +305,6 @@ def get_common_numba_dtype(*args):
 
     Returns: numba.complex128 if any entry is complex, otherwise numba.double
     """
-    from numba.core.types import npytypes, scalars
-
     for arg in args:
         if isinstance(arg, scalars.Complex):
             return nb.complex128
