@@ -997,7 +997,7 @@ class GridBase(metaclass=ABCMeta):
         else:
             raise NotImplementedError(f"Undefined backend '{backend}'")
 
-        return apply_op
+        return apply_op  # type: ignore
 
     def slice(self, indices: Sequence[int]) -> GridBase:
         """return a subgrid of only the specified axes"""
