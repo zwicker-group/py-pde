@@ -17,10 +17,9 @@ import sys
 from numbers import Number
 from typing import TYPE_CHECKING, Union
 
-import numba as nb
 import numpy as np
 from numba.core import types
-from numba.extending import register_jitable
+from numba.extending import overload, register_jitable
 
 from .numba import jit
 
@@ -89,7 +88,15 @@ def mpi_recv(data, source, tag) -> None:
     assert status == 0
 
 
-@nb.generated_jit(nopython=True)
+@register_jitable
+def _allreduce(sendobj, recvobj, operator: Union[int, "Operator", None] = None) -> int:
+    """helper function that calls `numba_mpi.allreduce`"""
+    if operator is None:
+        return numba_mpi.allreduce(sendobj, recvobj)  # type: ignore
+    else:
+        return numba_mpi.allreduce(sendobj, recvobj, operator)  # type: ignore
+
+
 def mpi_allreduce(data, operator: Union[int, "Operator", None] = None):
     """combines data from all MPI nodes
 
@@ -105,51 +112,53 @@ def mpi_allreduce(data, operator: Union[int, "Operator", None] = None):
     Returns:
         The accumulated data
     """
-    # the following definition of `allreduce` is a workaround that allows using the
-    # numba_mpi.allreduce function without jitting. This workaround can be dropped once
-    # numba_mpi.allreduce can be called without jitting in the future.
-    if nb.config.DISABLE_JIT:
+    from mpi4py import MPI
 
-        def allreduce(sendobj, recvobj, operator=None):
-            if operator is None:
-                impl = numba_mpi.allreduce(sendobj, recvobj)
-                return impl(sendobj, recvobj)
-            else:
-                impl = numba_mpi.allreduce(sendobj, recvobj, operator)
-                return impl(sendobj, recvobj, operator)
+    if isinstance(data, Number):
+        # reduce a single number
+        sendobj = np.array([data])
+        recvobj = np.empty((1,), sendobj.dtype)
+        status = _allreduce(sendobj, recvobj, operator)
+        if status != 0:
+            raise MPI.Exception(status)
+        return recvobj[0]
+
+    elif isinstance(data, np.ndarray):
+        # reduce an array
+        recvobj = np.empty(data.shape, data.dtype)
+        status = _allreduce(data, recvobj, operator)
+        if status != 0:
+            raise MPI.Exception(status)
+        return recvobj
 
     else:
+        raise TypeError(f"Unsupported type {data.__class__.__name__}")
 
-        @register_jitable
-        def allreduce(sendobj, recvobj, operator=None):
-            if operator is None:
-                return numba_mpi.allreduce(sendobj, recvobj)
-            else:
-                return numba_mpi.allreduce(sendobj, recvobj, operator)
 
-    if isinstance(data, (types.Number, Number)):
+@overload(mpi_allreduce)
+def ol_mpi_allreduce(data, operator: Union[int, "Operator", None] = None):
+    """overload the `mpi_allreduce` function"""
+
+    if isinstance(data, types.Number):
 
         def impl(data, operator=None):
             """reduce a single number across all cores"""
             sendobj = np.array([data])
             recvobj = np.empty((1,), sendobj.dtype)
-            status = allreduce(sendobj, recvobj, operator)
+            status = _allreduce(sendobj, recvobj, operator)
             assert status == 0
             return recvobj[0]
 
-    elif isinstance(data, (types.Array, np.ndarray)):
+    elif isinstance(data, types.Array):
 
         def impl(data, operator=None):
             """reduce an array across all cores"""
             recvobj = np.empty(data.shape, data.dtype)
-            status = allreduce(data, recvobj, operator)
+            status = _allreduce(data, recvobj, operator)
             assert status == 0
             return recvobj
 
     else:
         raise TypeError(f"Unsupported type {data.__class__.__name__}")
 
-    if nb.config.DISABLE_JIT:
-        return impl(data, operator)
-    else:
-        return impl
+    return impl

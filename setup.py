@@ -20,7 +20,6 @@ with open(BASE_PATH / "README.md", "r") as fh:
 setup(
     name="py-pde",
     packages=find_packages(),
-    package_data={"pde": ["py.typed"]},
     zip_safe=False,  # this is required for mypy to find the py.typed file
     version=__version__,
     license="MIT",
@@ -45,7 +44,7 @@ setup(
         "hdf": ["h5py>=2.10"],
         "io": ["h5py>=2.10", "pandas>=1.2"],
         "interactive": ["napari>=0.4.8", "ipywidgets>=7"],
-        "mpi": ["numba-mpi>=0.18"],
+        "mpi": ["numba-mpi>=0.22", "mpi4py>=3"],
     },
     classifiers=[
         "Development Status :: 4 - Beta",

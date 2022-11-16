@@ -10,18 +10,13 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence,
 
 import numba as nb
 import numpy as np
+from numba.extending import overload, register_jitable
 from numpy.typing import DTypeLike
-
-try:
-    from numba.core.extending import register_jitable
-except ImportError:
-    # assume older numba module structure
-    from numba.extending import register_jitable
 
 from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
-from ..tools.numba import get_common_numba_dtype
+from ..tools.numba import get_common_numba_dtype, jit
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
@@ -251,46 +246,16 @@ class VectorField(DataFieldBase):
                         out[:] += a[i] * b[i]
                     return out
 
-            # build the outer function with the correct signature
-            if nb.config.DISABLE_JIT:  # @UndefinedVariable
-
-                def dot(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if out is None:
-                        out = np.empty(b.shape[1:], dtype=get_common_dtype(a, b))
-                    return calc(a, b, out)  # type: ignore
-
-            else:
-
-                @nb.generated_jit
-                def dot(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if isinstance(a, nb.types.Number):
-                        # simple scalar call -> do not need to allocate anything
-                        raise RuntimeError("Dot needs to be called with fields")
-
-                    elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                        # function is called without `out`
-                        dtype = get_common_numba_dtype(a, b)
-
-                        def f_with_allocated_out(
-                            a: np.ndarray, b: np.ndarray, out: np.ndarray
-                        ) -> np.ndarray:
-                            """helper function allocating output array"""
-                            out = np.empty(b.shape[1:], dtype=dtype)
-                            return calc(a, b, out=out)  # type: ignore
-
-                        return f_with_allocated_out  # type: ignore
-
-                    else:
-                        # function is called with `out` argument
-                        return calc  # type: ignore
+            @jit
+            def dot(
+                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            ) -> np.ndarray:
+                if out is None:
+                    # we need to determine the dtype of the calculation, which we here
+                    # do by simply multiplying the first elements
+                    c = np.array(a.flat[0] * b.flat[0])
+                    out = np.empty(b.shape[1:], dtype=c.dtype)
+                return calc(a, b, out)
 
         elif backend == "numpy":
             # create the dot product using basic numpy functions
@@ -407,48 +372,41 @@ class VectorField(DataFieldBase):
                         out[i, j, :] = a[i] * b[j]
                 return out
 
-            # build the outer function with the correct signature
-            if nb.config.DISABLE_JIT:
+            def outer(
+                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            ) -> np.ndarray:
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
+                if out is None:
+                    out = np.empty((len(a),) + b.shape, dtype=get_common_dtype(a, b))
+                return calc(a, b, out)  # type: ignore
 
-                def outer(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if out is None:
-                        out = np.empty(
-                            (len(a),) + b.shape, dtype=get_common_dtype(a, b)
-                        )
-                    return calc(a, b, out)  # type: ignore
+            @overload(outer)
+            def ol_outer(
+                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            ) -> np.ndarray:
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
+                if isinstance(a, nb.types.Number):
+                    # simple scalar call -> do not need to allocate anything
+                    raise RuntimeError("Dot needs to be called with fields")
 
-            else:
+                elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                    # function is called without `out`
+                    dtype = get_common_numba_dtype(a, b)
 
-                @nb.generated_jit
-                def outer(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if isinstance(a, nb.types.Number):
-                        # simple scalar call -> do not need to allocate anything
-                        raise RuntimeError("Dot needs to be called with fields")
+                    def f_with_allocated_out(
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray
+                    ) -> np.ndarray:
+                        """helper function allocating output array"""
+                        out = np.empty((len(a),) + b.shape, dtype=dtype)
+                        return calc(a, b, out=out)  # type: ignore
 
-                    elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                        # function is called without `out`
-                        dtype = get_common_numba_dtype(a, b)
+                    return f_with_allocated_out  # type: ignore
 
-                        def f_with_allocated_out(
-                            a: np.ndarray, b: np.ndarray, out: np.ndarray
-                        ) -> np.ndarray:
-                            """helper function allocating output array"""
-                            out = np.empty((len(a),) + b.shape, dtype=dtype)
-                            return calc(a, b, out=out)  # type: ignore
-
-                        return f_with_allocated_out  # type: ignore
-
-                    else:
-                        # function is called with `out` argument
-                        return calc  # type: ignore
+                else:
+                    # function is called with `out` argument
+                    return calc  # type: ignore
 
         elif backend == "numpy":
             # create the dot product using basic numpy functions

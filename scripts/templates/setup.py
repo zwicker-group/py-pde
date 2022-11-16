@@ -34,7 +34,7 @@ setup(
         "hdf": ["$h5py"],
         "io": ["$h5py", "$pandas"],
         "interactive": ["$napari", "$ipywidgets"],
-        "mpi": ["$numba_mpi"],
+        "mpi": ["$numba_mpi", "$mpi4py"],
     },
     classifiers=[
         "Development Status :: 4 - Beta",

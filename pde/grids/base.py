@@ -30,14 +30,13 @@ from typing import (
     Union,
 )
 
-import numba as nb
 import numpy as np
-from numba.extending import is_jitted, register_jitable
+from numba.extending import is_jitted, overload, register_jitable
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, classproperty
-from ..tools.numba import jit, jit_allocate_out
+from ..tools.numba import jit
 from ..tools.typing import (
     CellVolume,
     FloatNumerical,
@@ -953,21 +952,23 @@ class GridBase(metaclass=ABCMeta):
             if not is_jitted(operator_raw):
                 operator_raw = jit(operator_raw)
 
-            @jit_allocate_out(out_shape=shape_out)
+            @jit
             def apply_op(
                 arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
             ) -> np.ndarray:
                 """applies operator to the data"""
+                if out is None:
+                    out = np.empty(shape_out, dtype=arr.dtype)
                 # prepare input with boundary conditions
                 arr_full = np.empty(shape_in_full, dtype=arr.dtype)
                 set_valid(arr_full, arr)
                 set_ghost_cells(arr_full, args=args)
 
                 # apply operator
-                operator_raw(arr_full, out)  # type: ignore
+                operator_raw(arr_full, out)
 
                 # return valid part of the output
-                return out  # type: ignore
+                return out
 
         elif backend in {"numpy", "scipy"}:
             # create a numpy/scipy function to apply the operator
@@ -996,7 +997,7 @@ class GridBase(metaclass=ABCMeta):
         else:
             raise NotImplementedError(f"Undefined backend '{backend}'")
 
-        return apply_op  # type: ignore
+        return apply_op
 
     def slice(self, indices: Sequence[int]) -> GridBase:
         """return a subgrid of only the specified axes"""
@@ -1571,9 +1572,16 @@ class GridBase(metaclass=ABCMeta):
         # cell volume varies with position
         get_cell_volume = self.make_cell_volume_compiled(flat_index=True)
 
-        @nb.generated_jit(nopython=True)
-        def integrate_local(arr: np.ndarray) -> Callable[[np.ndarray], NumberOrArray]:
-            """integrates data over a grid"""
+        def integrate_local(arr: np.ndarray) -> NumberOrArray:
+            """integrates data over a grid using numpy"""
+            amounts = arr * self.cell_volumes
+            return amounts.sum(axis=tuple(range(-num_axes, 0, 1)))  # type: ignore
+
+        @overload(integrate_local)
+        def ol_integrate_local(
+            arr: np.ndarray,
+        ) -> Callable[[np.ndarray], NumberOrArray]:
+            """integrates data over a grid using numba"""
             if arr.ndim == num_axes:
                 # `arr` is a scalar field
                 grid_shape = self.shape
@@ -1601,15 +1609,19 @@ class GridBase(metaclass=ABCMeta):
                             total[idx] += get_cell_volume(i) * arr_comp.flat[i]
                     return total
 
-            if nb.config.DISABLE_JIT:
-                return impl(arr)  # type: ignore
-            else:
-                return impl
+            return impl
 
         # deal with MPI multiprocessing
         if self._mesh is None or len(self._mesh) == 1:
             # standard case of a single integral
-            return integrate_local  # type: ignore
+            @jit
+            def integrate_global(arr: np.ndarray) -> NumberOrArray:
+                """integrate data
+
+                Args:
+                    arr (:class:`~numpy.ndarray`): discretized data on grid
+                """
+                return integrate_local(arr)
 
         else:
             # we are in a parallel run, so we need to gather the sub-integrals from all
@@ -1618,11 +1630,15 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def integrate_global(arr: np.ndarray) -> NumberOrArray:
-                """integrates data over MPI parallelized grid"""
+                """integrate data over MPI parallelized grid
+
+                Args:
+                    arr (:class:`~numpy.ndarray`): discretized data on grid
+                """
                 integral = integrate_local(arr)
                 return mpi_allreduce(integral)  # type: ignore
 
-            return integrate_global  # type: ignore
+        return integrate_global  # type: ignore
 
 
 def registered_operators() -> Dict[str, List[str]]:
