@@ -84,7 +84,19 @@ class Boundaries(list):
         # check whether this is already the correct class
         if isinstance(boundaries, Boundaries):
             # boundaries are already in the correct format
-            assert boundaries.grid == grid
+            if boundaries.grid._mesh is not None:
+                # we need to exclude this case since otherwise we get into a rabit hole
+                # where it is not clear what grid boundary conditions belong to. The
+                # idea is that users only create boundary conditions for the full grid
+                # and that the splitting onto subgrids is only done once, automatically,
+                # and without involving calls to `from_data`
+                raise ValueError("Cannot create MPI subgrid BC from data")
+
+            if boundaries.grid != grid:
+                raise ValueError(
+                    "The grid of the supplied boundary condition is incompatible with "
+                    f"the current grid ({boundaries.grid!r} != {grid!r})"
+                )
             boundaries.check_value_rank(rank)
             return boundaries
 

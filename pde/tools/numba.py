@@ -169,9 +169,9 @@ def flat_idx(arr: np.ndarray, i: int) -> Number:
 
 
 @overload(flat_idx)
-def ol_flat_idx(arr: np.ndarray, i: int):
+def ol_flat_idx(arr, i):
     """helper function allowing indexing of scalars as if they arrays"""
-    if isinstance(arr, (nb.types.Integer, nb.types.Float)):
+    if isinstance(arr, nb.types.Number):
         return lambda arr, i: arr
     else:
         return lambda arr, i: arr.flat[i]

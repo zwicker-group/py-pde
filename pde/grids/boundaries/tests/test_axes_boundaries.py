@@ -102,7 +102,6 @@ def test_natural_boundary_conditions(cond, is_value):
         Boundaries.from_data(g, ["periodic", cond]),
     ]:
         assert isinstance(bc[0], BoundaryPeriodic)
-        print(bc[1])
         if is_value:
             assert bc[1] == BoundaryPair.from_data(g, 1, "value")
         else:

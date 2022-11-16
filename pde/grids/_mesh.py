@@ -126,9 +126,11 @@ class GridMesh:
             subgrids (nested lists of :class:`~pde.grids.base.GridBase`):
                 The nested grids representing the subdivision
         """
+        if basegrid._mesh is not None:
+            raise ValueError("Cannot subdivide a subgrid further")
         self.basegrid = basegrid
         self.subgrids = np.asarray(subgrids)
-        for subgrid in self.subgrids.flat:  # , flags=["refs_ok"]):
+        for subgrid in self.subgrids.flat:
             subgrid._mesh = self
 
         assert basegrid.num_axes == self.subgrids.ndim
@@ -190,7 +192,7 @@ class GridMesh:
 
         # subdivide the base grid according to the decomposition
         subgrids = np.empty(decomposition, dtype=object)
-        subgrids.flat[0] = grid  # seed the initial grid at the top-left
+        subgrids.flat[0] = grid.copy()  # seed the initial grid at the top-left
         idx_set: List[Any] = [0] * subgrids.ndim  # indices to extract all grids
         for axis, chunks in enumerate(decomposition):
             # iterate over all grids that have been determined already
