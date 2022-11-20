@@ -134,7 +134,7 @@ class nested_plotting_check:
 
     _is_plotting = False  # class variable keeping track of nesting
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.is_nested = None  # determines whether the this context is nested
 
     def __enter__(self):
@@ -199,7 +199,7 @@ def plot_on_axes(wrapped=None, update_method=None):
         `update_method` will allow efficient dynamical plotting::
 
             class State:
-                def __init__(self):
+                def __init__(self) -> None:
                     self.data = np.arange(8)
 
                 def _update_plot(self, reference):
@@ -398,7 +398,7 @@ def plot_on_figure(wrapped=None, update_method=None):
         `update_method` will allow efficient dynamical plotting::
 
             class State:
-                def __init__(self):
+                def __init__(self) -> None:
                     self.data = np.random.random((2, 8))
 
                 def _update_plot(self, reference):

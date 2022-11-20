@@ -165,12 +165,12 @@ class GridBase(metaclass=ABCMeta):
     operators: Set[str]
     """ set: names of all operators defined for this grid """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """initialize the grid"""
         self._logger = logging.getLogger(self.__class__.__name__)
         self._mesh: Optional[GridMesh] = None
 
-    def __init_subclass__(cls, **kwargs):  # @NoSelf
+    def __init_subclass__(cls, **kwargs) -> None:  # @NoSelf
         """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls

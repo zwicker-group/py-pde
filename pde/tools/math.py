@@ -134,7 +134,7 @@ class OnlineStatistics:
     count: int
     """int: recorded number of items"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.min = np.inf
         self.max = -np.inf
         self.mean = 0
