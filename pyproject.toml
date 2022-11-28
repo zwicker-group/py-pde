@@ -1,0 +1,112 @@
+# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
+# If you want to adjust settings in this file, change scripts/templates/pyproject.toml
+
+[project]
+name = "py-pde"
+description = "Python package for solving partial differential equations"
+authors = [
+    {name = "David Zwicker", email="david.zwicker@ds.mpg.de"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.8"
+dynamic = ["version"]
+
+keywords = ["pdes", "partial-differential-equations", "dynamical-systems"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
+
+# Requirements for setuptools
+dependencies = ["matplotlib>=3.1.0", "numba>=0.56.0", "numpy>=1.22.0", "scipy>=1.4.0", "sympy>=1.5.0", "tqdm>=4.60"]
+
+[project.optional-dependencies]
+hdf = ["h5py>=2.10"]
+io = ["h5py>=2.10", "pandas>=1.2"]
+interactive = ["napari>=0.4.8", "ipywidgets>=7"]
+mpi = ["numba-mpi>=0.22", "mpi4py>=3"]
+
+[project.urls]
+homepage = "https://github.com/zwicker-group/py-pde"
+documentation = "http://py-pde.readthedocs.io"
+repository = "https://github.com/zwicker-group/py-pde"
+
+[build-system]
+requires = [
+    "setuptools >= 35.0.2",
+    "setuptools_scm >= 2.0.0, <3",
+    "versioneer[toml] == 0.26",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+target_version = ["py38"]
+exclude = "scripts/templates"
+
+[tool.isort]
+profile = "black"
+src_paths = ["pde", "examples", "scripts", "tests"]
+known_self = "pde"
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "SELF", "LOCALFOLDER"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+filterwarnings = [
+    'ignore:.*importing the ABCs from.*:DeprecationWarning',
+    'ignore:.*IPython.utils.signatures backport for Python 2 is deprecated.*:DeprecationWarning',
+    'ignore:.*scipy.sparse.*:DeprecationWarning',
+]
+
+[tool.coverage.report]
+omit = ['*/test*']
+
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "pde/_version.py"
+versionfile_build = "pde/_version.py"
+tag_prefix = ""
+parentdir_prefix = "py-pde-"
+
+[tool.mypy]
+python_version = "3.8"
+plugins = "numpy.typing.mypy_plugin"
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "numba.*"
+ignore_missing_imports = true
+ignore_errors = false
+follow_imports = "skip"
+follow_imports_for_stubs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "h5py.*",
+    "IPython.*",
+    "ipywidgets.*",
+    "matplotlib.*",
+    "mpl_toolkits.*",
+    "mpi4py.*",
+    "napari.*",
+    "numba_mpi.*",
+    "numpy.*",
+    "pandas.*",
+    "pyfftw.*",
+    "pytest.*",
+    "qtpy.*",
+    "scipy.*",
+    "sympy.*",
+    "tqdm.*",
+]
+ignore_missing_imports = true

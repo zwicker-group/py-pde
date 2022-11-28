@@ -148,11 +148,10 @@ REQUIREMENTS = [
 ]
 
 
-SETUP_WARNING = """
-# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
-# If you want to adjust settings in this file, change scripts/templates/setup.py
-
-"""
+SETUP_WARNING = (
+    "# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN\n"
+    "# If you want to adjust settings in this file, change scripts/templates/{}\n\n"
+)
 
 
 def write_requirements_txt(
@@ -237,13 +236,19 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
         fp.writelines(content)
 
 
-def write_script(path: Path, requirements: List[Requirement], template_name: str):
-    """write script based on a template
+def write_from_template(
+    path: Path,
+    requirements: List[Requirement],
+    template_name: str,
+    fix_format: bool = False,
+):
+    """write file based on a template
 
     Args:
         path (:class:`Path`): The path where the requirements are written
         requirements (list): The requirements to be written
         template_name (str): The name of the template
+        fix_format (bool): If True, script will be formated using `black`
     """
     print(f"Write `{path}`")
 
@@ -263,10 +268,11 @@ def write_script(path: Path, requirements: List[Requirement], template_name: str
 
     # write content to file
     with open(path, "w") as fp:
-        fp.writelines(SETUP_WARNING + content)
+        fp.writelines(SETUP_WARNING.format(template_name) + content)
 
     # call black formatter on it
-    sp.check_call(["black", "-q", "-t", "py38", str(path)])
+    if fix_format:
+        sp.check_call(["black", "-q", "-t", "py38", str(path)])
 
 
 def main():
@@ -327,15 +333,16 @@ def main():
         [r for r in REQUIREMENTS if not (r.essential or r.tests_only or r.docs_only)],
     )
 
-    # write version.py
-    write_requirements_py(
-        root / "pde" / "__init__.py",
-        [r for r in REQUIREMENTS if r.essential],
+    # write setup.py
+    write_from_template(
+        root / "setup.py", [r for r in REQUIREMENTS if r.essential], "setup.py"
     )
 
-    # write setup.py
-    write_script(
-        root / "setup.py", [r for r in REQUIREMENTS if r.essential], "setup.py"
+    # write pyproject.toml
+    write_from_template(
+        root / "pyproject.toml",
+        [r for r in REQUIREMENTS if r.essential],
+        "pyproject.toml",
     )
 
 

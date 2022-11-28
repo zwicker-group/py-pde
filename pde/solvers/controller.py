@@ -9,6 +9,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
+from .. import __version__
 from ..tools import mpi
 from ..tools.numba import JIT_COUNT
 from ..trackers.base import (
@@ -16,7 +17,6 @@ from ..trackers.base import (
     TrackerCollection,
     TrackerCollectionDataType,
 )
-from ..version import __version__
 from .base import SolverBase
 
 if TYPE_CHECKING:

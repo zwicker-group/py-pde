@@ -10,5 +10,5 @@ for dir in pde examples scripts tests; do
     echo "Formatting files in ${dir}:"
 
     # black format all code
-    black -t py38 --exclude scripts/templates ../${dir}
+    black ../${dir}
 done

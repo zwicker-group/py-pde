@@ -5,7 +5,7 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     strategy:
       matrix:
         pyversion: ['3.8', '3.10']
@@ -26,4 +26,4 @@ jobs:
     - name: Test types with mypy
       continue-on-error: true
       run: |
-        python -m mypy --config-file tests/mypy.ini --pretty --package pde
+        python -m mypy --config-file pyproject.toml --pretty --package pde
