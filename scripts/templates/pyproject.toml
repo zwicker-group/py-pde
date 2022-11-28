@@ -49,6 +49,11 @@ packages = ["pde"]
 include-package-data = true
 zip-safe = false  # required for mypy to find the py.typed file
 
+[tool.setuptools.packages.find]
+include = ["pde*"]
+exclude = ["pde.tests*"]
+namespaces = false
+
 [tool.black]
 target_version = ["py38"]
 exclude = "scripts/templates"
