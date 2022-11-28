@@ -10,6 +10,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0  # https://github.com/pypa/setuptools_scm/issues/480
 
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -21,10 +23,14 @@ jobs:
         python -m pip install --upgrade pip
         pip install setuptools wheel twine versioneer[toml]==0.26
 
+    - name: Build package
+      run: python setup.py sdist bdist_wheel
+
+    - name: Check the package
+      run: twine check --strict dist/*
+
     - name: Build and publish
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
-      run: |
-        python setup.py sdist bdist_wheel
-        python -m twine upload dist/*
+      run: python -m twine upload dist/*
