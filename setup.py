@@ -1,4 +1,3 @@
-
 # THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
 # If you want to adjust settings in this file, change scripts/templates/setup.py
 

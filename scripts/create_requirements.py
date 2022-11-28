@@ -148,11 +148,10 @@ REQUIREMENTS = [
 ]
 
 
-SETUP_WARNING = """
-# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
-# If you want to adjust settings in this file, change scripts/templates/setup.py
-
-"""
+SETUP_WARNING = (
+    "# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN\n"
+    "# If you want to adjust settings in this file, change scripts/templates/{}\n\n"
+)
 
 
 def write_requirements_txt(
@@ -237,13 +236,13 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
         fp.writelines(content)
 
 
-def write_script(
+def write_from_template(
     path: Path,
     requirements: List[Requirement],
     template_name: str,
     fix_format: bool = False,
 ):
-    """write script based on a template
+    """write file based on a template
 
     Args:
         path (:class:`Path`): The path where the requirements are written
@@ -269,7 +268,7 @@ def write_script(
 
     # write content to file
     with open(path, "w") as fp:
-        fp.writelines(SETUP_WARNING + content)
+        fp.writelines(SETUP_WARNING.format(template_name) + content)
 
     # call black formatter on it
     if fix_format:
@@ -341,12 +340,12 @@ def main():
     )
 
     # write setup.py
-    write_script(
+    write_from_template(
         root / "setup.py", [r for r in REQUIREMENTS if r.essential], "setup.py"
     )
 
     # write pyproject.toml
-    write_script(
+    write_from_template(
         root / "pyproject.toml",
         [r for r in REQUIREMENTS if r.essential],
         "pyproject.toml",
