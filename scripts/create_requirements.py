@@ -237,13 +237,19 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
         fp.writelines(content)
 
 
-def write_script(path: Path, requirements: List[Requirement], template_name: str):
+def write_script(
+    path: Path,
+    requirements: List[Requirement],
+    template_name: str,
+    fix_format: bool = False,
+):
     """write script based on a template
 
     Args:
         path (:class:`Path`): The path where the requirements are written
         requirements (list): The requirements to be written
         template_name (str): The name of the template
+        fix_format (bool): If True, script will be formated using `black`
     """
     print(f"Write `{path}`")
 
@@ -266,7 +272,8 @@ def write_script(path: Path, requirements: List[Requirement], template_name: str
         fp.writelines(SETUP_WARNING + content)
 
     # call black formatter on it
-    sp.check_call(["black", "-q", "-t", "py38", str(path)])
+    if fix_format:
+        sp.check_call(["black", "-q", "-t", "py38", str(path)])
 
 
 def main():
@@ -336,6 +343,13 @@ def main():
     # write setup.py
     write_script(
         root / "setup.py", [r for r in REQUIREMENTS if r.essential], "setup.py"
+    )
+
+    # write pyproject.toml
+    write_script(
+        root / "pyproject.toml",
+        [r for r in REQUIREMENTS if r.essential],
+        "pyproject.toml",
     )
 
 

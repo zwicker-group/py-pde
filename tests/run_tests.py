@@ -91,7 +91,7 @@ def test_types(*, report: bool = False, verbose: bool = True) -> int:
         "-m",
         "mypy",
         "--config-file",
-        PACKAGE_PATH / "tests" / "mypy.ini",
+        PACKAGE_PATH / "pyproject.toml",
     ]
 
     if report:
@@ -160,7 +160,7 @@ def run_unit_tests(
         "-m",
         "pytest",  # run pytest module
         "-c",
-        "tests/pytest.ini",  # locate the configuration file
+        "pyproject.toml",  # locate the configuration file
         "-rs",  # show summary of skipped tests
         "-rw",  # show summary of warnings raised during tests
         "--import-mode=importlib",
@@ -195,7 +195,7 @@ def run_unit_tests(
     if coverage:
         args.extend(
             [
-                "--cov-config=tests/.coveragerc",  # locate the configuration file
+                "--cov-config=pyproject.toml",  # locate the configuration file
                 "--cov-report",
                 "html:tests/coverage",  # create a report in html format
                 f"--cov={PACKAGE}",  # specify in which package the coverage is measured
