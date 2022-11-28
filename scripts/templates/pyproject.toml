@@ -1,12 +1,13 @@
 [project]
-name = "Python package for solving partial differential equations"
+name = "py-pde"
+description = "Python package for solving partial differential equations"
 authors = [
     {name = "David Zwicker", email="david.zwicker@ds.mpg.de"}
 ]
-license = "MIT"
+license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.8"
-include-package-data = true
+dynamic = ["version"]
 
 keywords = ["pdes", "partial-differential-equations", "dynamical-systems"]
 classifiers = [
