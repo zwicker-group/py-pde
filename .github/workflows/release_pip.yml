@@ -26,7 +26,7 @@ jobs:
     - name: Prepare build
       run: |
         python -m build 2>&1 | tee build.log
-        exit `fgrep -i warning build.log | wc -l`
+        # exit `fgrep -i warning build.log | wc -l`
 
     - name: Build package
       run: python setup.py egg_info
