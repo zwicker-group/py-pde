@@ -27,6 +27,7 @@ from typing import (
     Sequence,
     Set,
     Tuple,
+    Type,
     Union,
 )
 
@@ -132,7 +133,7 @@ class PeriodicityError(RuntimeError):
 class GridBase(metaclass=ABCMeta):
     """Base class for all grids defining common methods and interfaces"""
 
-    _subclasses: Dict[str, "GridBase"] = {}  # all classes inheriting from this
+    _subclasses: Dict[str, Type[GridBase]] = {}  # all classes inheriting from this
     _operators: Dict[str, OperatorInfo] = {}  # all operators defined for the grid
 
     # properties that are defined in subclasses
@@ -174,7 +175,7 @@ class GridBase(metaclass=ABCMeta):
         """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
         cls._subclasses[cls.__name__] = cls
-        cls._operators: Dict[str, Callable] = {}
+        cls._operators = {}
 
     @classmethod
     def from_state(cls, state: Union[str, Dict[str, Any]]) -> GridBase:

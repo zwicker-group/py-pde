@@ -416,3 +416,24 @@ def test_anti_periodic_bcs():
     res2 = eq2.solve(field, t_range=1e3, dt=1e-3, adaptive=True)
     assert np.all(np.abs(res2.data) <= 1.0001)
     assert res2.fluctuations > 0.1
+
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_pde_const_mpi(backend):
+    """test PDE with a field constant using multiprocessing"""
+    grid = grids.UnitGrid([8])
+    eq = PDE({"u": "k"}, consts={"k": ScalarField.from_expression(grid, "x")})
+
+    args = {
+        "state": ScalarField(grid),
+        "t_range": 1,
+        "dt": 0.01,
+        "tracker": None,
+    }
+    res_a = eq.solve(backend="numpy", method="explicit", **args)
+    res_b = eq.solve(backend=backend, method="explicit_mpi", **args)
+
+    if mpi.is_main:
+        res_a.assert_field_compatible(res_b)
+        np.testing.assert_allclose(res_a.data, res_b.data)

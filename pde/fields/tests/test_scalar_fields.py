@@ -11,7 +11,9 @@ from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
 from pde.fields.tests.fixtures import iter_grids
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
+from pde.grids._mesh import GridMesh
 from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
+from pde.tools import mpi
 from pde.tools.misc import module_available, skipUnlessModule
 
 
@@ -518,3 +520,22 @@ def test_boundary_expressions_with_t():
     np.testing.assert_allclose(res.data, [0, 0, 0])
     res = field.laplace({"value_expression": "t"}, args={"t": 1})
     np.testing.assert_allclose(res.data, [2, 0, 2])
+
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("decomp", [(-1, 1), (1, -1)])
+def test_field_split(decomp):
+    """test the field splitting function in an MPI context"""
+    grid = UnitGrid([4, 4])
+    field = ScalarField.random_uniform(grid)
+
+    # basic split
+    subfield = field.split_mpi(decomposition=decomp)
+
+    # recombination
+    mesh = GridMesh.from_grid(grid, decomposition=decomp)
+    field_data = mesh.combine_field_data_mpi(subfield.data)
+    if mpi.is_main:
+        np.testing.assert_allclose(field.data, field_data)
+    else:
+        assert field_data is None
