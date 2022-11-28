@@ -333,12 +333,6 @@ def main():
         [r for r in REQUIREMENTS if not (r.essential or r.tests_only or r.docs_only)],
     )
 
-    # write version.py
-    write_requirements_py(
-        root / "pde" / "__init__.py",
-        [r for r in REQUIREMENTS if r.essential],
-    )
-
     # write setup.py
     write_from_template(
         root / "setup.py", [r for r in REQUIREMENTS if r.essential], "setup.py"
