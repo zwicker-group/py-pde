@@ -1,26 +1,16 @@
 # THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
 # If you want to adjust settings in this file, change scripts/templates/setup.py
 
-from pathlib import Path
-
 import versioneer
 from setuptools import find_packages, setup
 
 # determine the version of the package
 version = versioneer.get_version()
 
-# read the description from the README file
-BASE_PATH = Path(__file__).resolve().parent
-with open(BASE_PATH / "README.md", "r") as fh:
-    long_description = fh.read()
-
+# most arguments for setup are defined in pyproject.toml
 setup(
     packages=find_packages(),
-    include_package_data=True,  # include template files and the like
-    zip_safe=False,  # this is required for mypy to find the py.typed file
     version=version,
     cmdclass=versioneer.get_cmdclass(),
-    long_description=long_description,
-    long_description_content_type="text/markdown",
     download_url=f"https://github.com/zwicker-group/py-pde/archive/{version}.tar.gz",
 )
