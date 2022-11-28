@@ -1,14 +1,14 @@
 [project]
 name = "Python package for solving partial differential equations"
 authors = [
-    {{name = "David Zwicker", email="david.zwicker@ds.mpg.de"}}
+    {name = "David Zwicker", email="david.zwicker@ds.mpg.de"}
 ]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.8"
+include-package-data = true
 
 keywords = ["pdes", "partial-differential-equations", "dynamical-systems"]
-
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",

@@ -1,3 +1,4 @@
+
 # THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
 # If you want to adjust settings in this file, change scripts/templates/setup.py
 
@@ -20,6 +21,7 @@ with open(BASE_PATH / "README.md", "r") as fh:
 setup(
     name="py-pde",
     packages=find_packages(),
+    include_package_data=True,  # include template files and the like
     zip_safe=False,  # this is required for mypy to find the py.typed file
     version=__version__,
     license="MIT",
@@ -32,14 +34,7 @@ setup(
     download_url=DOWNLOAD_URL,
     keywords=["pdes", "partial-differential-equations", "dynamical-systems"],
     python_requires=">=3.8",
-    install_requires=[
-        "matplotlib>=3.1.0",
-        "numba>=0.56.0",
-        "numpy>=1.22.0",
-        "scipy>=1.4.0",
-        "sympy>=1.5.0",
-        "tqdm>=4.60",
-    ],
+    install_requires=["matplotlib>=3.1.0", "numba>=0.56.0", "numpy>=1.22.0", "scipy>=1.4.0", "sympy>=1.5.0", "tqdm>=4.60"],
     extras_require={
         "hdf": ["h5py>=2.10"],
         "io": ["h5py>=2.10", "pandas>=1.2"],
