@@ -51,7 +51,7 @@ zip-safe = false  # required for mypy to find the py.typed file
 
 [tool.setuptools.packages.find]
 include = ["pde*"]
-exclude = ["pde.tests*"]
+exclude = ["pde.tests*", "pde.*.tests*"]
 namespaces = false
 
 [tool.black]
