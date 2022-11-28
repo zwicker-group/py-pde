@@ -678,6 +678,39 @@ class FieldBase(metaclass=ABCMeta):
         with napari_viewer(self.grid, **viewer_args) as viewer:
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
+    def split_mpi(self: TField, decomposition: Union[int, List[int]] = -1) -> TField:
+        """splits the field onto subgrids in an MPI run
+
+        In a normal serial simulation, the method simply returns the field itself. In
+        contrast, in an MPI simulation, the field provided on the main node is split
+        onto all nodes using the given decomposition. The field data provided on all
+        other nodes is not used.
+
+        Args:
+            decomposition (list of ints):
+                Number of subdivision in each direction. Should be a list of length
+                `field.grid.num_axes` specifying the number of nodes for this axis. If
+                one value is `-1`, its value will be determined from the number of
+                available nodes. The default value decomposed the first axis using all
+                available nodes
+
+        Returns:
+            :class:`FieldBase`: The part of the field that corresponds to the subgrid
+            associated with the current MPI node.
+        """
+        from ..grids._mesh import GridMesh
+        from ..tools import mpi
+
+        if not mpi.parallel_run:
+            return self
+        if self.grid._mesh is not None:
+            raise RuntimeError("Cannot split an already split field")
+
+        # create the grid mesh using the decomposition information
+        mesh = GridMesh.from_grid(self.grid, decomposition)
+        # do the actual splitting
+        return mesh.split_field_mpi(self)
+
 
 TDataField = TypeVar("TDataField", bound="DataFieldBase")
 

@@ -384,8 +384,13 @@ class PDE(PDEBase):
             if np.isscalar(value):
                 pass  # this simple case is fine
             elif isinstance(value, DataFieldBase):
-                value.grid.assert_grid_compatible(state.grid)
-                value = value.data  # just keep the actual discretized data
+                # constant is a field, which might need to be split in MPI simulation
+                if state.grid._mesh is not None:
+                    value.grid.assert_grid_compatible(state.grid._mesh.basegrid)
+                    value = state.grid._mesh.split_field_data_mpi(value.data)
+                else:
+                    value.grid.assert_grid_compatible(state.grid)
+                    value = value.data  # just keep the actual discretized data
             else:
                 raise TypeError(f"Constant has unsupported type {value.__class__}")
 
