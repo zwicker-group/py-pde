@@ -2,6 +2,10 @@
 The py-pde package provides classes and methods for solving partial differential
 equations.
 """
+# define the version of the package
+from . import _version
+
+__version__ = _version.get_versions()["version"]
 
 # initialize the configuration
 from .tools.config import Config, environment
@@ -19,8 +23,3 @@ from .tools.config import check_package_version  # temporary import, deleted bel
 from .tools.parameters import Parameter
 from .trackers import *  # @UnusedWildImport
 from .visualization import *  # @UnusedWildImport
-
-# define the version of the package
-from . import _version
-
-__version__ = _version.get_versions()["version"]

@@ -40,7 +40,7 @@ repository = "https://github.com/zwicker-group/py-pde"
 requires = [
     "setuptools >= 35.0.2",
     "setuptools_scm >= 2.0.0, <3",
-    "versioneer[toml]",
+    "versioneer[toml] == 0.26",
 ]
 build-backend = "setuptools.build_meta"
 

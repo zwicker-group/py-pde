@@ -9,6 +9,7 @@ import logging
 import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
+from .. import __version__
 from ..tools import mpi
 from ..tools.numba import JIT_COUNT
 from ..trackers.base import (
@@ -64,8 +65,6 @@ class Controller:
                 detail. In particular, the interval at which the tracker is evaluated
                 can be chosen when creating a tracker object explicitly.
         """
-        from .. import __version__  # late import to prevent circular import
-
         self.solver = solver
         self.t_range = t_range  # type: ignore
         self.trackers = TrackerCollection.from_data(tracker)
