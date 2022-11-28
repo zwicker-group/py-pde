@@ -29,6 +29,3 @@ check_package_version("scipy", "1.4.0")
 check_package_version("sympy", "1.5.0")
 check_package_version("tqdm", "4.60")
 del check_package_version
-
-from . import _version
-__version__ = _version.get_versions()['version']
