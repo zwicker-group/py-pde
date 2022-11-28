@@ -28,10 +28,10 @@ jobs:
         export NUMBA_DISABLE_JIT=1
         export MPLBACKEND="agg"
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
-        pytest --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov=pde --runslow pde
-        mpiexec -n 2 pytest --cov-config=tests/.coveragerc --cov-report xml:report_coverage.xml --cov-append --cov=pde --use_mpi pde 
+        pytest --cov-config=pyproject.toml --cov-report xml:report_coverage.xml --cov=pde --runslow pde
+        mpiexec -n 2 pytest --cov-config=pyproject.toml --cov-report xml:report_coverage.xml --cov-append --cov=pde --use_mpi pde
 
-    - name: Upload coverage to Codecov  
+    - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
