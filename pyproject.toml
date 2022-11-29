@@ -47,13 +47,16 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-include-package-data = false
+include-package-data = true
 zip-safe = false  # required for mypy to find the py.typed file
 
 [tool.setuptools.packages.find]
 include = ["pde*"]
 exclude = ["*.tests", "*.tests.*", "tests.*", "tests"]
 namespaces = false
+
+[tool.setuptools.exclude-package-data]
+"*" = ["*.tests", "*.tests.*", "tests.*", "tests"]
 
 [tool.setuptools_scm]
 write_to = "pde/_version.py"
