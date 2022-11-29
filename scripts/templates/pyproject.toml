@@ -44,12 +44,12 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-include-package-data = true
+include-package-data = false
 zip-safe = false  # required for mypy to find the py.typed file
 
 [tool.setuptools.packages.find]
 include = ["pde*"]
-exclude = ["pde.tests*", "pde.*.tests*"]
+exclude = ["*.tests", "*.tests.*", "tests.*", "tests"]
 namespaces = false
 
 [tool.setuptools_scm]
