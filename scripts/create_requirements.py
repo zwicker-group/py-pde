@@ -8,9 +8,10 @@ import subprocess as sp
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
-from typing import List, Set
+from typing import List, Optional, Set
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
+MIN_PYTHON_VERSION = "3.8"
 
 
 @dataclass
@@ -238,37 +239,47 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
 
 def write_from_template(
     path: Path,
-    requirements: List[Requirement],
     template_name: str,
+    *,
+    requirements: Optional[List[Requirement]] = None,
     fix_format: bool = False,
+    add_warning: bool = True,
 ):
     """write file based on a template
 
     Args:
         path (:class:`Path`): The path where the requirements are written
-        requirements (list): The requirements to be written
         template_name (str): The name of the template
+        requirements (list): The requirements to be written
         fix_format (bool): If True, script will be formated using `black`
+        add_warning (bool): If True, adds a warning that file is generated
     """
     print(f"Write `{path}`")
-
-    # format requirements list
-    req_list = "[" + ", ".join('"' + ref.line(">=") + '"' for ref in requirements) + "]"
 
     # load template data
     template_path = Path(__file__).parent / "templates" / template_name
     with template_path.open("r") as fp:
         template = Template(fp.read())
 
-    # format template
-    substitutes = {"INSTALL_REQUIRES": req_list}
+    # determine template substitutes
+    substitutes = {
+        "MIN_PYTHON_VERSION": MIN_PYTHON_VERSION,
+        "MIN_PYTHON_VERSION_NODOT": MIN_PYTHON_VERSION.replace(".", ""),
+    }
+    if requirements:
+        req_list = (
+            "[" + ", ".join('"' + ref.line(">=") + '"' for ref in requirements) + "]"
+        )
+        substitutes["INSTALL_REQUIRES"] = req_list
     for ref in REQUIREMENTS:
         substitutes[ref.name.replace("-", "_")] = ref.line(">=")
     content = template.substitute(substitutes)
 
     # write content to file
     with open(path, "w") as fp:
-        fp.writelines(SETUP_WARNING.format(template_name) + content)
+        if add_warning:
+            fp.writelines(SETUP_WARNING.format(template_name))
+        fp.writelines(content)
 
     # call black formatter on it
     if fix_format:
@@ -336,9 +347,12 @@ def main():
     # write pyproject.toml
     write_from_template(
         root / "pyproject.toml",
-        [r for r in REQUIREMENTS if r.essential],
         "pyproject.toml",
+        requirements=[r for r in REQUIREMENTS if r.essential],
     )
+
+    # write pyproject.toml
+    write_from_template(root / "runtime.txt", "runtime.txt", add_warning=False)
 
 
 if __name__ == "__main__":

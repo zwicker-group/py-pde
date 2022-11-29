@@ -14,9 +14,10 @@
 import os.path
 import sys
 
-sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, ".")
-sys.path.append(os.path.abspath("../sphinx_ext/"))
+sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, os.path.abspath("../../scripts"))
+sys.path.insert(0, os.path.abspath("../sphinx_ext/"))
 
 from datetime import date
 
@@ -33,6 +34,13 @@ import pde
 version = pde.__version__.split("-")[0]
 release = pde.__version__
 
+from create_requirements import MIN_PYTHON_VERSION
+
+# make the parameters available in RST
+rst_prolog = f"""
+.. |ProjectVersion| replace:: {version}
+.. |PythonMinVersion| replace:: {MIN_PYTHON_VERSION}
+"""
 
 # -- General configuration ---------------------------------------------------
 
