@@ -16,7 +16,7 @@ import numpy as np
 from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
 from pde.grids.boundaries import Boundaries
 from pde.tools.misc import estimate_computation_speed
-from pde.tools.numba import jit, jit_allocate_out
+from pde.tools.numba import jit
 
 config["numba.multithreading"] = False
 
@@ -27,9 +27,12 @@ def custom_laplace_2d_periodic(shape, dx=1):
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
-    @jit_allocate_out(parallel=parallel)
-    def laplace(arr, out=None, args=None):
+    @jit(parallel=parallel)
+    def laplace(arr, out=None):
         """apply laplace operator to array `arr`"""
+        if out is None:
+            out = np.empty((dim_x, dim_y))
+
         for i in nb.prange(dim_x):
             im = dim_x - 1 if i == 0 else i - 1
             ip = 0 if i == dim_x - 1 else i + 1
@@ -62,9 +65,12 @@ def custom_laplace_2d_neumann(shape, dx=1):
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
-    @jit_allocate_out(parallel=parallel)
-    def laplace(arr, out=None, args=None):
+    @jit(parallel=parallel)
+    def laplace(arr, out=None):
         """apply laplace operator to array `arr`"""
+        if out is None:
+            out = np.empty((dim_x, dim_y))
+
         for i in nb.prange(dim_x):
             im = 0 if i == 0 else i - 1
             ip = dim_x - 1 if i == dim_x - 1 else i + 1
