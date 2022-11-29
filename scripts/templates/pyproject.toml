@@ -38,9 +38,8 @@ repository = "https://github.com/zwicker-group/py-pde"
 
 [build-system]
 requires = [
-    "setuptools >= 35.0.2",
-    "setuptools_scm >= 2.0.0, <3",
-    "versioneer[toml] == 0.26",
+    "setuptools>=61",
+    "setuptools_scm[toml]>=6.2",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -52,6 +51,9 @@ zip-safe = false  # required for mypy to find the py.typed file
 include = ["pde*"]
 exclude = ["pde.tests*", "pde.*.tests*"]
 namespaces = false
+
+[tool.setuptools_scm]
+write_to = "pde/_version.py"
 
 [tool.black]
 target_version = ["py38"]
@@ -73,14 +75,6 @@ filterwarnings = [
 
 [tool.coverage.report]
 omit = ['*/test*']
-
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "pde/_version.py"
-versionfile_build = "pde/_version.py"
-tag_prefix = ""
-parentdir_prefix = "py-pde-"
 
 [tool.mypy]
 python_version = "3.8"

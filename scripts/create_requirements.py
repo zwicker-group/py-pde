@@ -333,11 +333,6 @@ def main():
         [r for r in REQUIREMENTS if not (r.essential or r.tests_only or r.docs_only)],
     )
 
-    # write setup.py
-    write_from_template(
-        root / "setup.py", [r for r in REQUIREMENTS if r.essential], "setup.py"
-    )
-
     # write pyproject.toml
     write_from_template(
         root / "pyproject.toml",

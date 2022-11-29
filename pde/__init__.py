@@ -2,16 +2,27 @@
 The py-pde package provides classes and methods for solving partial differential
 equations.
 """
-# define the version of the package
-from . import _version
 
-__version__ = _version.get_versions()["version"]
+# determine the package version
+try:
+    # try reading version of the automatically generated module
+    from _version import __version__
+except ImportError:
+    # determine version automatically from CVS information
+    from importlib.metadata import version, PackageNotFoundError
+
+    try:
+        __version__ = version("pde")
+    except PackageNotFoundError:
+        # package is not installed, so we cannot determine any version
+        __version__ = "unknown"
+    del version, PackageNotFoundError  # clean name space
 
 # initialize the configuration
 from .tools.config import Config, environment
 
 config = Config()  # initialize the default configuration
-del Config  # clean the name space
+del Config  # clean name space
 
 # import all other modules that should occupy the main name space
 from .fields import *  # @UnusedWildImport
