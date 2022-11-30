@@ -4,7 +4,7 @@ from sphinx.directives.other import TocTree
 
 
 class TocTreeFilter(TocTree):
-    """directive to filter table-of-contents entries """
+    """directive to filter table-of-contents entries"""
 
     hasPat = re.compile("^\s*:(.+):(.+)$")
 
