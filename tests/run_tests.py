@@ -64,10 +64,10 @@ def test_codestyle(*, verbose: bool = True) -> int:
         path = PACKAGE_PATH / folder
 
         # format imports
-        result = sp.run(["isort", "--profile", "black", "--diff", path])
+        result = sp.run(["isort", "--diff", path])
         retcodes.append(result.returncode)
         # format rest
-        result = sp.run(["black", "-t", "py38", "--check", path])
+        result = sp.run(["black", "--check", path])
         retcodes.append(result.returncode)
 
     return _most_severe_exit_code(retcodes)
