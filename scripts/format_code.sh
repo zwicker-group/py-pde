@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
-#
 # This script formats the code of this package
-#
 
-echo "Formatting imports"
+echo "Formating import statements..."
 isort ..
 
-for dir in pde examples scripts tests; do
-    echo "Formatting files in ${dir}:"
-
-    # black format all code
-    black ../${dir}
-done
+echo "Formating source code..."
+black ..
