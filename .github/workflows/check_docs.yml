@@ -1,0 +1,15 @@
+name: "Check documentation"
+
+on: [push]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+         submodules: 'true'
+         token: ${{ secrets.ACCESS_TOKEN }}
+    - uses: ammaraskar/sphinx-action@master
+      with:
+        docs-folder: "docs/"
