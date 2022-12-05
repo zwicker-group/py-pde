@@ -651,11 +651,13 @@ class DataTracker(CallbackTracker):
 class SteadyStateTracker(TrackerBase):
     """Tracker aborting the simulation once steady state is reached
 
-    Steady state is obtained when the state does not change anymore. This is the case
-    when the derivative is close to zero. Concretely, the current state `cur` is
-    compared to the state `prev` at the previous time step. Convergence is assumed when
-    :code:`abs(prev - cur) <= dt * (atol + rtol * cur)` for all points in the state.
-    Here, `dt` denotes the time that elapsed between the two states that are compared.
+    Steady state is obtained when the state does not change anymore, i.e., when the
+    evolution rate is close to zero. If the argument `evolution_rate` is specified, it
+    is used to calculate the evolution rate directly. If it is omitted, the evolution
+    rate is estaimted by comparing the current state `cur` to the state `prev` at the
+    previous time step. In both cases, convergence is assumed when the absolute value of
+    the evolution rate falls below :code:`atol + rtol * cur` for all points. Here,
+    `atol` and `rtol` denote absolute and relative tolerances, respectively.
     """
 
     name = "steady_state"
@@ -671,7 +673,9 @@ class SteadyStateTracker(TrackerBase):
         interval: Optional[IntervalData] = None,
         atol: float = 1e-8,
         rtol: float = 1e-5,
+        *,
         progress: bool = False,
+        evolution_rate: Optional[Callable[[np.ndarray, float], np.ndarray]] = None,
     ):
         """
         Args:
@@ -686,12 +690,18 @@ class SteadyStateTracker(TrackerBase):
             progress (bool):
                 Flag indicating whether the progress towards convergence is shown
                 graphically during the simulation
+            evolution_rate (callable):
+                Function to evaluate the current evolution rate. If omitted, the
+                evolution rate is estimate from the change in the state variable, which
+                can be less accurate. A suitable form of the function is returned by
+                `eq.make_pde_rhs(state)` when `eq` is the PDE class.
         """
         if interval is None:
             interval = RealtimeInterrupts(duration=1)
         super().__init__(interval=interval)
         self.atol = atol
         self.rtol = rtol
+        self.evolution_rate = evolution_rate
         self.progress = progress and module_available("tqdm")
 
         self._progress_bar: Any = None
@@ -708,7 +718,13 @@ class SteadyStateTracker(TrackerBase):
             t (float):
                 The associated time
         """
-        if self._last_data is not None:
+        # determine the maximal rate of change
+        if self.evolution_rate is not None:
+            # Use the evolution_rate function to calculate the rate
+            evolution_rate = self.evolution_rate(field.data, t)
+            diff_abs_max = np.max(np.abs(evolution_rate))
+
+        elif self._last_data is not None:
             # Calculate maximal difference of current state to previous one. In
             # particular we calculate the absolute tolerance `diff_abs_max`, which would
             # be required for the convergence test to pass. This value should decrease
@@ -719,40 +735,41 @@ class SteadyStateTracker(TrackerBase):
             diff_abs = diff - self.rtol * self.interrupt.dt * np.abs(field.data[finite])
             diff_abs_max = np.max(diff_abs) / self.interrupt.dt
 
-            if diff_abs_max <= self.atol:
-                # simulation has converged
-                if self.progress and self._progress_bar is not None:
-                    # advance progress bar to 100%
-                    self._progress_bar.n = self._pbar_offset - np.log10(self.atol)
-                    try:
-                        self._progress_bar.disp(bar_style="success", check_delay=False)
-                    except (TypeError, AttributeError):
-                        self._progress_bar.close()
-                raise FinishedSimulation("Reached stationary state")
-
-            if self.progress:
-                # show progress of the convergence
-                if self._best_diff_max is None:
-                    # initialize the progress bar
-                    pb_cls = get_progress_bar_class()
-                    self._pbar_offset = np.log10(diff_abs_max)
-                    self._progress_bar = pb_cls(
-                        total=self._pbar_offset - np.log10(self.atol),
-                        bar_format=self.progress_bar_format,
-                    )
-                    self._best_diff_max = diff_abs_max
-
-                elif diff_abs_max < self._best_diff_max:
-                    # update progress bar if simulation got closer to convergence
-                    self._progress_bar.n = self._pbar_offset - np.log10(diff_abs_max)
-                    self._progress_bar.refresh()
-                    self._best_diff_max = diff_abs_max
-
             self._last_data[:] = field.data  # save current data for next comparison
 
         else:
             # create storage for the data
             self._last_data = field.data.copy()
+            return  # do not output anything since we don't know `diff_abs_max` yet
+
+        # check wether the simulation has converged
+        if diff_abs_max <= self.atol:
+            if self.progress and self._progress_bar is not None:
+                # advance progress bar to 100%
+                self._progress_bar.n = self._pbar_offset - np.log10(self.atol)
+                try:
+                    self._progress_bar.disp(bar_style="success", check_delay=False)
+                except (TypeError, AttributeError):
+                    self._progress_bar.close()
+            raise FinishedSimulation("Reached stationary state")
+
+        if self.progress:
+            # show progress of the convergence
+            if self._best_diff_max is None:
+                # initialize the progress bar
+                pb_cls = get_progress_bar_class()
+                self._pbar_offset = np.log10(diff_abs_max)
+                self._progress_bar = pb_cls(
+                    total=self._pbar_offset - np.log10(self.atol),
+                    bar_format=self.progress_bar_format,
+                )
+                self._best_diff_max = diff_abs_max
+
+            elif diff_abs_max < self._best_diff_max:
+                # update progress bar if simulation got closer to convergence
+                self._progress_bar.n = self._pbar_offset - np.log10(diff_abs_max)
+                self._progress_bar.refresh()
+                self._best_diff_max = diff_abs_max
 
 
 class RuntimeTracker(TrackerBase):

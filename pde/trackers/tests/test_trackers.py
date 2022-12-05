@@ -159,7 +159,19 @@ def test_steady_state_tracker():
     storage = MemoryStorage()
     c0 = ScalarField.from_expression(UnitGrid([5]), "sin(x)")
     eq = DiffusionPDE()
+
+    # use basic form
     tracker = trackers.SteadyStateTracker(atol=0.05, rtol=0.05, progress=True)
+    eq.solve(c0, 1e4, dt=0.1, tracker=[tracker, storage.tracker(interval=1e2)])
+    assert len(storage) < 20  # finished early
+
+    # use form with the evolution rate supplied
+    tracker = trackers.SteadyStateTracker(
+        atol=0.05,
+        rtol=0.05,
+        progress=True,
+        evolution_rate=eq.make_pde_rhs(c0, backend="numpy"),
+    )
     eq.solve(c0, 1e4, dt=0.1, tracker=[tracker, storage.tracker(interval=1e2)])
     assert len(storage) < 20  # finished early
 
