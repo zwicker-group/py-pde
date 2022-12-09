@@ -19,7 +19,7 @@ jobs:
       # install all requirements
       run: |
         python -m pip install --upgrade pip
-        pip install -r tests/requirements_full.txt
+        pip install -r requirements_full.txt
         pip install -r tests/requirements.txt
 
     - name: Run serial tests with pytest
@@ -27,5 +27,5 @@ jobs:
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
-        cd tests
+        cd scripts
         python run_tests.py --unit --num_cores auto --showconfig

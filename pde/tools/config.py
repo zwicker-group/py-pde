@@ -278,9 +278,8 @@ def environment() -> Dict[str, Any]:
     }
 
     # add details about optional packages
-    tests_folder = PACKAGE_PATH / "tests"
-    packages = set(packages_from_requirements(tests_folder / "requirements_full.txt"))
-    packages |= set(packages_from_requirements(tests_folder / "requirements_mpi.txt"))
+    packages = set(packages_from_requirements(PACKAGE_PATH / "requirements_full.txt"))
+    packages |= set(packages_from_requirements(PACKAGE_PATH / "requirements_mpi.txt"))
     packages -= set(packages_min)
     result["optional packages"] = get_package_versions(sorted(packages))
     if module_available("numba"):

@@ -1,5 +1,5 @@
 # THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
-# If you want to adjust settings in this file, change scripts/templates/pyproject.toml
+# If you want to adjust settings in this file, change scripts/_templates/pyproject.toml
 
 [project]
 name = "py-pde"
@@ -52,11 +52,7 @@ zip-safe = false  # required for mypy to find the py.typed file
 
 [tool.setuptools.packages.find]
 include = ["pde*"]
-exclude = ["*.tests", "*.tests.*", "tests.*", "tests"]
 namespaces = false
-
-[tool.setuptools.exclude-package-data]
-"*" = ["*.tests", "*.tests.*", "tests.*", "tests"]
 
 [tool.setuptools_scm]
 write_to = "pde/_version.py"
@@ -68,7 +64,7 @@ exclude = "scripts/templates"
 [tool.isort]
 profile = "black"
 src_paths = ["pde", "examples", "scripts", "tests"]
-known_self = "pde"
+known_self = ["pde", "fixtures"]
 sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "SELF", "LOCALFOLDER"]
 
 [tool.pytest.ini_options]
@@ -78,9 +74,6 @@ filterwarnings = [
     'ignore:.*IPython.utils.signatures backport for Python 2 is deprecated.*:DeprecationWarning',
     'ignore:.*scipy.sparse.*:DeprecationWarning',
 ]
-
-[tool.coverage.report]
-omit = ['*/test*']
 
 [tool.mypy]
 python_version = "3.8"

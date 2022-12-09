@@ -5,9 +5,9 @@
 import numpy as np
 import pytest
 
+from fixtures.fields import iter_grids
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.fields.base import FieldBase
-from pde.fields.tests.fixtures import iter_grids
 from pde.tools.misc import skipUnlessModule
 
 

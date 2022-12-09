@@ -7,12 +7,11 @@ import gc
 import numpy as np
 import pytest
 
+from fixtures.fields import get_cartesian_grid, iter_grids
 from pde.fields.base import FieldBase
 from pde.fields.scalar import ScalarField
-from pde.fields.tests.fixtures import iter_grids
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
 from pde.grids._mesh import GridMesh
-from pde.grids.tests.test_cartesian_grids import _get_cartesian_grid
 from pde.tools import mpi
 from pde.tools.misc import module_available, skipUnlessModule
 
@@ -202,7 +201,7 @@ def test_insert_polar():
 
 def test_random_harmonic():
     """test whether random harmonic fields behave correctly"""
-    grid = _get_cartesian_grid(2)  # get random Cartesian grid
+    grid = get_cartesian_grid(2)  # get random Cartesian grid
     x = ScalarField.random_harmonic(grid, modes=1)
     scaling = sum((2 * np.pi / L) ** 2 for L in grid.cuboid.size)
     y = -x.laplace("auto_periodic_neumann") / scaling

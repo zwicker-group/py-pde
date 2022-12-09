@@ -1,7 +1,7 @@
 """
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
-
+import numpy as np
 
 from pde import (
     CartesianGrid,
@@ -21,3 +21,10 @@ def iter_grids():
         yield CylindricalSymGrid(3, [-1, 2], [7, 8], periodic_z=periodic)
     yield PolarSymGrid(3, 4)
     yield SphericalSymGrid(3, 4)
+
+
+def get_cartesian_grid(dim=2, periodic=True):
+    """return a random Cartesian grid of given dimension"""
+    bounds = [[0, 1 + np.random.random()] for _ in range(dim)]
+    shape = np.random.randint(32, 64, size=dim)
+    return CartesianGrid(bounds, shape, periodic=periodic)

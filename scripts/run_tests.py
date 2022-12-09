@@ -163,7 +163,7 @@ def run_unit_tests(
         "pyproject.toml",  # locate the configuration file
         "-rs",  # show summary of skipped tests
         "-rw",  # show summary of warnings raised during tests
-        "--import-mode=importlib",
+        # "--import-mode=importlib",
     ]
 
     if runslow:
@@ -197,7 +197,7 @@ def run_unit_tests(
             [
                 "--cov-config=pyproject.toml",  # locate the configuration file
                 "--cov-report",
-                "html:tests/coverage",  # create a report in html format
+                "html:scripts/coverage",  # create a report in html format
                 f"--cov={PACKAGE}",  # specify in which package the coverage is measured
             ]
         )
@@ -206,7 +206,7 @@ def run_unit_tests(
             args.append("--cov-append")
 
     # specify the package to run
-    args.append(PACKAGE)
+    args.append("tests")
 
     # actually run the test
     return sp.run(args, env=env, cwd=PACKAGE_PATH).returncode
