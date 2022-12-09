@@ -114,7 +114,7 @@ class SolverBase(metaclass=ABCMeta):
                 f"Cannot create a deterministic stepper for a stochastic equation"
             )
 
-        rhs = self.pde.make_pde_rhs(state, backend=backend)
+        rhs = self.pde.make_pde_rhs(state, backend=backend)  # type: ignore
 
         if hasattr(rhs, "_backend"):
             self.info["backend"] = rhs._backend
@@ -148,7 +148,7 @@ class SolverBase(metaclass=ABCMeta):
             time. The function returns the deterministic evolution rate and (if
             applicable) a realization of the associated noise.
         """
-        rhs = self.pde.make_sde_rhs(state, backend=backend)
+        rhs = self.pde.make_sde_rhs(state, backend=backend)  # type: ignore
 
         if hasattr(rhs, "_backend"):
             self.info["backend"] = rhs._backend

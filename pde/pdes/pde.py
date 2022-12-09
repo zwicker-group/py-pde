@@ -19,7 +19,7 @@ from ..fields import FieldCollection, VectorField
 from ..fields.base import DataFieldBase, FieldBase
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
-from ..pdes.base import PDEBase
+from ..pdes.base import PDEBase, TState
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
 from ..tools.typing import ArrayLike, NumberOrArray
@@ -78,7 +78,7 @@ class PDE(PDEBase):
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
             noise (float or :class:`~numpy.ndarray`):
-                Magnitude of additive Gaussian white noise. The default value of zero
+                Variance of additive Gaussian white noise. The default value of zero
                 implies deterministic partial differential equations will be solved.
                 Different noise magnitudes can be supplied for each field in coupled
                 PDEs by either specifying a sequence of numbers or a dictionary with
@@ -334,9 +334,7 @@ class PDE(PDEBase):
 
         return rhs_func
 
-    def _prepare_cache(
-        self, state: FieldBase, backend: str = "numpy"
-    ) -> Dict[str, Any]:
+    def _prepare_cache(self, state: TState, backend: str = "numpy") -> Dict[str, Any]:
         """prepare the expression by setting internal variables in the cache
 
         Note that the expensive calculations in this method are only carried out if the
@@ -363,7 +361,7 @@ class PDE(PDEBase):
             raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
 
         # check whether the state is compatible with the PDE
-        num_fields = len(self.variables)
+        num_fields: int = len(self.variables)
         self.diagnostics["pde"]["num_fields"] = num_fields
         if isinstance(state, FieldCollection):
             if num_fields != len(state):
@@ -430,9 +428,9 @@ class PDE(PDEBase):
         # add extra information for field collection
         if isinstance(state, FieldCollection):
             # isscalar be False even if start == stop (e.g. vector fields)
-            isscalar = tuple(field.rank == 0 for field in state)
-            starts = tuple(slc.start for slc in state._slices)
-            stops = tuple(slc.stop for slc in state._slices)
+            isscalar: Tuple[bool, ...] = tuple(field.rank == 0 for field in state)
+            starts: Tuple[int, ...] = tuple(slc.start for slc in state._slices)
+            stops: Tuple[int, ...] = tuple(slc.stop for slc in state._slices)
 
             def get_data_tuple(state_data: np.ndarray) -> Tuple[np.ndarray, ...]:
                 """helper for turning state_data into a tuple of field data"""
@@ -452,7 +450,7 @@ class PDE(PDEBase):
         cache["state_attributes"] = state.attributes
         return cache
 
-    def evolution_rate(self, state: FieldBase, t: float = 0.0) -> FieldBase:
+    def evolution_rate(self, state: TState, t: float = 0.0) -> TState:
         """evaluate the right hand side of the PDE
 
         Args:
@@ -479,7 +477,7 @@ class PDE(PDEBase):
             # state is a collection of fields
             for i in range(len(state)):
                 data_tpl = cache["get_data_tuple"](state.data)
-                result[i].data[:] = cache["rhs_funcs"][i](*data_tpl, t)  # type: ignore
+                result[i].data[:] = cache["rhs_funcs"][i](*data_tpl, t)
 
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
@@ -560,8 +558,8 @@ class PDE(PDEBase):
         # compile the recursive chain
         return chain()
 
-    def _make_pde_rhs_numba(
-        self, state: FieldBase, **kwargs
+    def _make_pde_rhs_numba(  # type: ignore
+        self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function evaluating the right hand side of the PDE
 

@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+from scipy import stats
 
 from pde import CartesianGrid, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
 
@@ -98,3 +99,17 @@ def test_diffusion_time_dependent_bcs(backend):
 
     np.testing.assert_allclose(storage[1].data, 0)
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_diffusion_sde(backend):
+    """test scaling of noise using a stochastic diffusion equation"""
+    # we disable diffusivity to have a simple analytical solution
+    var_local, t_range = 0.35, 0.1
+    eq = DiffusionPDE(diffusivity=0, noise=var_local)
+    grid = CartesianGrid([[0, 1000]], 3700)
+    field = ScalarField(grid)
+    sol = eq.solve(field, t_range=t_range, dt=1e-4, backend=backend)
+    var_expected = var_local * t_range / grid.typical_discretization
+    dist = stats.norm(scale=np.sqrt(var_expected)).cdf
+    assert stats.kstest(np.ravel(sol.data), dist).pvalue > 0.01

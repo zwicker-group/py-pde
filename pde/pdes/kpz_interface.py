@@ -49,7 +49,7 @@ class KPZInterfacePDE(PDEBase):
             lmbda (float):
                 Parameter :math:`\lambda` for the strenth of the gradient term
             noise (float):
-                Strength of the (additive) noise term
+                Variance of the (additive) noise term
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}

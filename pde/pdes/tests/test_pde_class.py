@@ -4,6 +4,7 @@
 
 import numpy as np
 import pytest
+from scipy import stats
 
 from pde import PDE, MemoryStorage, SwiftHohenbergPDE, grids
 from pde.fields import FieldCollection, ScalarField, VectorField
@@ -191,14 +192,19 @@ def test_pde_noise(backend):
     grid = grids.UnitGrid([64, 64])
     state = FieldCollection([ScalarField(grid), ScalarField(grid)])
 
-    eq = PDE({"a": 0, "b": 0}, noise=0.5)
+    var_local = 0.5
+    eq = PDE({"a": 0, "b": 0}, noise=var_local)
     res = eq.solve(state, t_range=1, backend=backend, dt=1, tracker=None)
-    assert res.data.std() == pytest.approx(0.5, rel=0.1)
+    dist = stats.norm(scale=np.sqrt(var_local)).cdf
+    assert stats.kstest(np.ravel(res.data), dist).pvalue > 0.01
 
     eq = PDE({"a": 0, "b": 0}, noise=[0.01, 2.0])
     res = eq.solve(state, t_range=1, backend=backend, dt=1)
-    assert res.data[0].std() == pytest.approx(0.01, rel=0.1)
-    assert res.data[1].std() == pytest.approx(2.0, rel=0.1)
+
+    dist_a = stats.norm(scale=np.sqrt(0.01)).cdf
+    dist_b = stats.norm(scale=np.sqrt(2)).cdf
+    assert stats.kstest(np.ravel(res[0].data), dist_a).pvalue > 0.01
+    assert stats.kstest(np.ravel(res[1].data), dist_b).pvalue > 0.01
 
     with pytest.raises(ValueError):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
