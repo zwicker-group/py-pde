@@ -8,12 +8,12 @@ import copy
 import logging
 from abc import ABCMeta, abstractmethod
 from typing import Optional  # @UnusedImport
-from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, TypeVar, Union
 
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import FieldBase
+from ..fields.base import DataFieldBase, FieldBase
 from ..tools.numba import jit
 from ..tools.typing import ArrayLike
 from ..trackers.base import TrackerCollectionDataType
@@ -21,6 +21,9 @@ from ..trackers.base import TrackerCollectionDataType
 if TYPE_CHECKING:
     from ..solvers.base import SolverBase  # @UnusedImport
     from ..solvers.controller import TRangeType  # @UnusedImport
+
+
+TState = TypeVar("TState", FieldCollection, DataFieldBase)
 
 
 class PDEBase(metaclass=ABCMeta):
@@ -61,7 +64,7 @@ class PDEBase(metaclass=ABCMeta):
         """
         Args:
             noise (float or :class:`~numpy.ndarray`):
-                Magnitude of the additive Gaussian white noise that is supported for all
+                Variance of the additive Gaussian white noise that is supported for all
                 PDEs by default. If set to zero, a deterministic partial differential
                 equation will be solved. Different noise magnitudes can be supplied for
                 each field in coupled PDEs.
@@ -118,7 +121,7 @@ class PDEBase(metaclass=ABCMeta):
         return modify_after_step
 
     @abstractmethod
-    def evolution_rate(self, state: FieldBase, t: float = 0) -> FieldBase:
+    def evolution_rate(self, state: TState, t: float = 0) -> TState:
         pass
 
     def _make_pde_rhs_numba(
@@ -129,7 +132,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def check_rhs_consistency(
         self,
-        state: FieldBase,
+        state: TState,
         t: float = 0,
         *,
         tol: float = 1e-7,
@@ -179,7 +182,7 @@ class PDEBase(metaclass=ABCMeta):
         )
 
     def _make_pde_rhs_numba_cached(
-        self, state: FieldBase, **kwargs
+        self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function for evaluating the right hand side
 
@@ -220,7 +223,7 @@ class PDEBase(metaclass=ABCMeta):
         return rhs  # type: ignore
 
     def make_pde_rhs(
-        self, state: FieldBase, backend: str = "auto", **kwargs
+        self, state: TState, backend: str = "auto", **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """return a function for evaluating the right hand side of the PDE
 
@@ -268,8 +271,8 @@ class PDEBase(metaclass=ABCMeta):
         return rhs
 
     def noise_realization(
-        self, state: FieldBase, t: float = 0, *, label: str = "Noise realization"
-    ) -> FieldBase:
+        self, state: TState, t: float = 0, *, label: str = "Noise realization"
+    ) -> TState:
         """returns a realization for the noise
 
         Args:
@@ -284,26 +287,40 @@ class PDEBase(metaclass=ABCMeta):
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE
         """
+        result: TState
         if self.is_sde:
-            result = state.copy(label=label)
 
-            if np.isscalar(self.noise) or self.noise.size == 1:
-                # a single noise value is given for all fields
-                result.data = self.rng.normal(scale=self.noise, size=state.data.shape)
+            if isinstance(state, FieldCollection):
+                # multiple fields with potentially different noise strengths
+                result = state.copy(label=label)
+                noises_var = np.broadcast_to(self.noise, len(state))
 
-            elif isinstance(state, FieldCollection):
-                # different noise strengths, assuming one for each field
-                for f, n in zip(result, np.broadcast_to(self.noise, len(state))):  # type: ignore
-                    if n == 0:
-                        f.data = 0
+                for field, noise_var in zip(result, noises_var):
+                    if noise_var == 0:
+                        field.data.fill(0)
                     else:
-                        f.data = self.rng.normal(scale=n, size=f.data.shape)
+                        field.data = field.random_normal(  # type: ignore
+                            state.grid,
+                            std=np.sqrt(noise_var),
+                            scaling="physical",
+                            dtype=state.dtype,
+                            rng=self.rng,
+                        )
+
+            elif isinstance(state, DataFieldBase):
+                # a single field
+                noise_var = self.noise
+                result = state.random_normal(
+                    state.grid,
+                    std=np.sqrt(self.noise),
+                    scaling="physical",
+                    label=label,
+                    dtype=state.dtype,
+                    rng=self.rng,
+                )
 
             else:
-                # different noise strengths, but a single field
-                raise RuntimeError(
-                    f"Multiple noise strengths were given for the single field {state}"
-                )
+                raise TypeError
 
         else:
             # no noise
@@ -313,7 +330,7 @@ class PDEBase(metaclass=ABCMeta):
         return result
 
     def _make_noise_realization_numba(
-        self, state: FieldBase, **kwargs
+        self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """return a function for evaluating the noise term of the PDE
 
@@ -326,38 +343,44 @@ class PDEBase(metaclass=ABCMeta):
             Function determining the right hand side of the PDE
         """
         if self.is_sde:
-            data_shape = state.data.shape
+            data_shape: Tuple[int, ...] = state.data.shape
+            noise_var: float
+            cell_volume: Callable[[int], float] = state.grid.make_cell_volume_compiled(
+                flat_index=True
+            )
+            assert state.dtype == float
 
-            if np.isscalar(self.noise) or self.noise.size == 1:
-                # a single noise value is given for all fields
-                noise_strength = float(self.noise)
-
-                @jit
-                def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
-                    """helper function returning a noise realization"""
-                    return noise_strength * np.random.randn(*data_shape)
-
-            elif isinstance(state, FieldCollection):
+            if isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
-                noise_strengths = np.empty(data_shape[0])
-                noise_arr = np.broadcast_to(self.noise, len(state))
-                for i, noise in enumerate(noise_arr):
-                    noise_strengths[state._slices[i]] = noise
+                noises_var: np.ndarray = np.empty(data_shape[0])
+                for n, noise_var in enumerate(np.broadcast_to(self.noise, len(state))):
+                    noises_var[state._slices[n]] = noise_var
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
                     """helper function returning a noise realization"""
-                    out = np.random.randn(*data_shape)
-                    for i in range(data_shape[0]):
-                        # TODO: Avoid creating random numbers when noise_strengths == 0
-                        out[i] *= noise_strengths[i]
+                    out = np.empty(data_shape)
+                    for n in range(len(state_data)):
+                        if noises_var[n] == 0:
+                            out[n].fill(0)
+                        else:
+                            for i in range(state_data[n].size):
+                                scale = noises_var[n] / cell_volume(i)
+                                out[n].flat[i] = np.sqrt(scale) * np.random.randn()
                     return out
 
             else:
-                # different noise strengths, but a single field
-                raise RuntimeError(
-                    f"Multiple noise strengths were given for the single field {state}"
-                )
+                # a single noise value is given for all fields
+                noise_var = float(self.noise)
+
+                @jit
+                def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
+                    """helper function returning a noise realization"""
+                    out = np.empty(state_data.shape)
+                    for i in range(state_data.size):
+                        scale = noise_var / cell_volume(i)
+                        out.flat[i] = np.sqrt(scale) * np.random.randn()
+                    return out
 
         else:
 
@@ -369,7 +392,7 @@ class PDEBase(metaclass=ABCMeta):
         return noise_realization  # type: ignore
 
     def _make_sde_rhs_numba(
-        self, state: FieldBase, **kwargs
+        self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the noise term of the PDE
 
@@ -392,7 +415,7 @@ class PDEBase(metaclass=ABCMeta):
         return sde_rhs  # type: ignore
 
     def _make_sde_rhs_numba_cached(
-        self, state: FieldBase, **kwargs
+        self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """create a compiled function for evaluating the noise term of the PDE
 
@@ -419,7 +442,7 @@ class PDEBase(metaclass=ABCMeta):
         return sde_rhs  # type: ignore
 
     def make_sde_rhs(
-        self, state: FieldBase, backend: str = "auto", **kwargs
+        self, state: TState, backend: str = "auto", **kwargs
     ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the right hand side of the SDE
 
@@ -470,7 +493,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def solve(
         self,
-        state: FieldBase,
+        state: TState,
         t_range: "TRangeType",
         dt: Optional[float] = None,
         tracker: TrackerCollectionDataType = "auto",
@@ -478,7 +501,7 @@ class PDEBase(metaclass=ABCMeta):
         method: Union[str, "SolverBase"] = "auto",
         ret_info: bool = False,
         **kwargs,
-    ) -> Union[Optional[FieldBase], Tuple[Optional[FieldBase], Dict[str, Any]]]:
+    ) -> Union[Optional[TState], Tuple[Optional[TState], Dict[str, Any]]]:
         """solves the partial differential equation
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)

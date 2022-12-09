@@ -46,7 +46,7 @@ class KuramotoSivashinskyPDE(PDEBase):
             nu (float):
                 Parameter :math:`\nu` for the strength of the fourth-order term
             noise (float):
-                Strength of the (additive) noise term
+                Variance of the (additive) noise term
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}

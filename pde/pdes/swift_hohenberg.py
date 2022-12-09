@@ -54,10 +54,9 @@ class SwiftHohenbergPDE(PDEBase):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             bc_lap:
-                The boundary conditions applied to the second derivative of the
-                scalar field :math:`c`. If `None`, the same boundary condition
-                as `bc` is chosen. Otherwise, this supports the same options as
-                `bc`.
+                The boundary conditions applied to the second derivative of the scalar
+                field :math:`c`. If `None`, the same boundary condition as `bc` is
+                chosen. Otherwise, this supports the same options as `bc`.
         """
         super().__init__()
 

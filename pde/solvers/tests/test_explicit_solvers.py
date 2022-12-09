@@ -96,7 +96,7 @@ def test_stochastic_solvers(backend):
     """test simple version of the stochastic solver"""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1)
     eq = DiffusionPDE()
-    seq = DiffusionPDE(noise=1e-6)
+    seq = DiffusionPDE(noise=1e-10)
 
     solver1 = ExplicitSolver(eq, backend=backend)
     c1 = Controller(solver1, t_range=1, tracker=None)

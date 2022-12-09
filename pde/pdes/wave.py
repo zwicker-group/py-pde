@@ -25,7 +25,7 @@ class WavePDE(PDEBase):
         \partial_t^2 u = c^2 \nabla^2 u
 
     is implemented as two first-order equations:
-    
+
     .. math::
         \partial_t u &= v \\
         \partial_t v &= c^2 \nabla^2 u
