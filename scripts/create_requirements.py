@@ -151,7 +151,7 @@ REQUIREMENTS = [
 
 SETUP_WARNING = (
     "# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN\n"
-    "# If you want to adjust settings in this file, change scripts/templates/{}\n\n"
+    "# If you want to adjust settings in this file, change scripts/_templates/{}\n\n"
 )
 
 
@@ -257,7 +257,7 @@ def write_from_template(
     print(f"Write `{path}`")
 
     # load template data
-    template_path = Path(__file__).parent / "templates" / template_name
+    template_path = Path(__file__).parent / "_templates" / template_name
     with template_path.open("r") as fp:
         template = Template(fp.read())
 
@@ -298,7 +298,7 @@ def main():
 
     # write minimal requirements to tests folder
     write_requirements_txt(
-        root / "tests" / "requirements_min.txt",
+        root / "requirements_min.txt",
         [r for r in REQUIREMENTS if r.essential],
         relation="~=",
         comment="These are the minimal requirements used to test compatibility",
@@ -306,14 +306,14 @@ def main():
 
     # write full requirements to tests folder
     write_requirements_txt(
-        root / "tests" / "requirements_full.txt",
+        root / "requirements_full.txt",
         [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
         comment="These are the full requirements used to test all functions",
     )
 
     # write full requirements to tests folder
     write_requirements_txt(
-        root / "tests" / "requirements_mpi.txt",
+        root / "requirements_mpi.txt",
         [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
         comment="These are requirements used to test multiprocessing",
     )

@@ -5,9 +5,9 @@
 import numpy as np
 import pytest
 
+from fixtures.fields import iter_grids
 from pde import CartesianGrid, PolarSymGrid, ScalarField, Tensor2Field, UnitGrid
 from pde.fields.base import FieldBase
-from pde.fields.tests.fixtures import iter_grids
 
 
 def test_tensors_basic():

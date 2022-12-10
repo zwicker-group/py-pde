@@ -6,9 +6,9 @@ import numpy as np
 import pytest
 from scipy import ndimage
 
+from fixtures.fields import iter_grids
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.fields.base import DataFieldBase, FieldBase
-from pde.fields.tests.fixtures import iter_grids
 from pde.grids import (
     CartesianGrid,
     CylindricalSymGrid,
