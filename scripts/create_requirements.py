@@ -298,7 +298,7 @@ def main():
 
     # write minimal requirements to tests folder
     write_requirements_txt(
-        root / "requirements_min.txt",
+        root / "tests" / "requirements_min.txt",
         [r for r in REQUIREMENTS if r.essential],
         relation="~=",
         comment="These are the minimal requirements used to test compatibility",
@@ -306,14 +306,14 @@ def main():
 
     # write full requirements to tests folder
     write_requirements_txt(
-        root / "requirements_full.txt",
+        root / "tests" / "requirements_full.txt",
         [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
         comment="These are the full requirements used to test all functions",
     )
 
     # write full requirements to tests folder
     write_requirements_txt(
-        root / "requirements_mpi.txt",
+        root / "tests" / "requirements_mpi.txt",
         [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
         comment="These are requirements used to test multiprocessing",
     )
