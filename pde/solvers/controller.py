@@ -245,8 +245,8 @@ class Controller:
         self._logger.log(msg_level, msg)
         if profiler["tracker"] > max(profiler["solver"], 1):
             self._logger.warning(
-                f"Spent more time on handling trackers ({profiler['tracker']}) than on "
-                f"the actual simulation ({profiler['solver']})"
+                f"Spent more time on handling trackers ({profiler['tracker']:.3g}) "
+                f"than on the actual simulation ({profiler['solver']:.3g})"
             )
 
         # check potential state modifications and throw a warning if they are detected
