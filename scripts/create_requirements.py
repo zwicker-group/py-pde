@@ -29,7 +29,7 @@ class Requirement:
     @property
     def short_version(self) -> str:
         """str: simplified version string"""
-        version = self.version
+        version = self.version.split(",")[0]  # only use the first part
         processing = True
         while processing:
             if version.endswith(".0"):
@@ -66,7 +66,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="numpy",
-        version="1.22.0",
+        version="1.22.0,<1.24",
         usage="Handling numerical data",
         essential=True,
     ),
