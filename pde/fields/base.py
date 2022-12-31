@@ -1785,13 +1785,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 The method for extracting scalars as described in
                 :meth:`DataFieldBase.to_scalar`.
             transpose (bool):
-                Determines whether the transpose of the data should is plotted
+                Determines whether the transpose of the data is plotted
             \**kwargs:
-                Additional keyword arguments that affect the image. For instance, some
-                fields support a `scalar` argument that determines how they are
-                converted to a scalar. Non-Cartesian grids might support a
-                `performance_goal` argument to influence how an image is created from
-                the raw data. Finally, the remaining arguments are are passed to
+                Additional keyword arguments that affect the image. Non-Cartesian grids
+                might support `performance_goal` to influence how an image is created
+                from raw data. Finally, remaining arguments are passed to
                 :func:`matplotlib.pyplot.imshow` to affect the appearance.
 
         Returns:
@@ -1982,11 +1980,40 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             {PLOT_ARGS}
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual
-                plotting function.
+                plotting function determined by `kind`.
 
         Returns:
-            :class:`PlotReference`: Instance that contains information to update
-            the plot with new data later.
+            :class:`~pde.tools.plotting.PlotReference`: Instance that contains
+            information to update the plot with new data later.
+
+        Tip:
+            Typical additional arguments for the various plot kinds include
+
+            * :code:`kind == "line"`:
+
+              - `scalar`: sets method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
+              - `extract`: method used for extracting the line data.
+              - `ylabel`: Label of the y-axis. If omitted, the label is chosen
+                automatically from the data field.
+              - Additional arguments are passed to :func:`matplotlib.pyplot.plot`
+
+            * :code:`kind == "image"`:
+
+              - `colorbar`: Determines whether a colorbar is shown
+              - `scalar`: sets method for extracting scalars as described in
+                 :meth:`DataFieldBase.to_scalar`.
+              - `transpose` determines whether the transpose of the data is plotted
+              - Most remaining arguments are passed to :func:`matplotlib.pyplot.imshow`
+
+            * :code:`kind == `"vector"`:
+
+              - `method` can be either `quiver` or `streamplot`
+              - `transpose` determines whether the transpose of the data is plotted
+              - `max_points` sets max. number of points along each axis in quiver plots
+              - Additional arguments are passed to :func:`matplotlib.pyplot.quiver` or
+                :func:`matplotlib.pyplot.streamplot`.
+
         """
         # determine the correct kind of plotting
         if kind == "auto":
