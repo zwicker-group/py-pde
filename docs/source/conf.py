@@ -27,6 +27,7 @@ project = "py-pde"
 module_name = "pde"
 author = "Zwicker Group"
 copyright = f"{date.today().year}, {author}"  # @ReservedAssignment
+html_logo = "_images/logo_small.png"
 
 # Determine the version from the actual package
 import pde
@@ -103,6 +104,7 @@ html_theme_options = {
     "collapse_navigation": False,
     "sticky_navigation": True,
     "navigation_depth": 4,
+    "logo_only": True,
     #     'includehidden': True,
     #     'titles_only': False
 }
