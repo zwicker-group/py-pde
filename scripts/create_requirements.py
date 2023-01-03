@@ -135,7 +135,7 @@ REQUIREMENTS = [
     Requirement(name="Sphinx", version="4", docs_only=True),
     Requirement(name="sphinx-autodoc-annotation", version="1.0", docs_only=True),
     Requirement(name="sphinx-gallery", version="0.6", docs_only=True),
-    Requirement(name="sphinx-rtd-theme", version="0.4", docs_only=True),
+    Requirement(name="sphinx-rtd-theme", version="1", docs_only=True),
     Requirement(name="Pillow", version="7.0", docs_only=True),
     # for tests only
     Requirement(name="jupyter_contrib_nbextensions", version="0.5", tests_only=True),
