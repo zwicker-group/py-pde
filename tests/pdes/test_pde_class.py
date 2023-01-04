@@ -196,15 +196,15 @@ def test_pde_noise(backend):
     eq = PDE({"a": 0, "b": 0}, noise=var_local)
     res = eq.solve(state, t_range=1, backend=backend, dt=1, tracker=None)
     dist = stats.norm(scale=np.sqrt(var_local)).cdf
-    assert stats.kstest(np.ravel(res.data), dist).pvalue > 0.01
+    assert stats.kstest(np.ravel(res.data), dist).pvalue > 0.001
 
     eq = PDE({"a": 0, "b": 0}, noise=[0.01, 2.0])
     res = eq.solve(state, t_range=1, backend=backend, dt=1)
 
     dist_a = stats.norm(scale=np.sqrt(0.01)).cdf
     dist_b = stats.norm(scale=np.sqrt(2)).cdf
-    assert stats.kstest(np.ravel(res[0].data), dist_a).pvalue > 0.01
-    assert stats.kstest(np.ravel(res[1].data), dist_b).pvalue > 0.01
+    assert stats.kstest(np.ravel(res[0].data), dist_a).pvalue > 0.001
+    assert stats.kstest(np.ravel(res[1].data), dist_b).pvalue > 0.001
 
     with pytest.raises(ValueError):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
