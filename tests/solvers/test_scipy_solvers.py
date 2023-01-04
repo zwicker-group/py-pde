@@ -4,11 +4,11 @@
 
 import numpy as np
 
-from pde import DiffusionPDE, ScalarField, UnitGrid
+from pde import PDE, DiffusionPDE, FieldCollection, ScalarField, UnitGrid
 from pde.solvers import Controller, ScipySolver
 
 
-def test_no_dt():
+def test_scipy_no_dt():
     """test scipy solver without timestep"""
     grid = UnitGrid([16])
     field = ScalarField.random_uniform(grid, -1, 1)
@@ -21,3 +21,13 @@ def test_no_dt():
     s2 = c2.run(field)
 
     np.testing.assert_allclose(s1.data, s2.data, rtol=1e-3, atol=1e-3)
+
+
+def test_scipy_field_collection():
+    """test scipy solver with field collection"""
+    grid = UnitGrid([2])
+    field = FieldCollection.from_scalar_expressions(grid, ["x", "0"])
+    eq = PDE({"a": "1", "b": "a"})
+
+    res = eq.solve(field, t_range=1, dt=1e-2, method="scipy")
+    np.testing.assert_allclose(res.data, np.array([[1.5, 2.5], [1.0, 2.0]]))
