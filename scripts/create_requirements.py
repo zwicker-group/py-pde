@@ -140,6 +140,7 @@ REQUIREMENTS = [
     # for tests only
     Requirement(name="jupyter_contrib_nbextensions", version="0.5", tests_only=True),
     Requirement(name="black", version="19.*", tests_only=True),
+    Requirement(name="importlib-metadata", version="5", tests_only=True),
     Requirement(name="isort", version="5.1", tests_only=True),
     Requirement(name="mypy", version="0.770", tests_only=True),
     Requirement(name="pyinstrument", version="3", tests_only=True),

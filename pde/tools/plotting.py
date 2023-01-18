@@ -107,8 +107,14 @@ def add_scaled_colorbar(
     cbar = ax.figure.colorbar(axes_image, cax=cax, **kwargs)
 
     # disable the offset that matplotlib sometimes shows
-    cax.get_xaxis().get_major_formatter().set_useOffset(False)
-    cax.get_yaxis().get_major_formatter().set_useOffset(False)
+    try:
+        cax.get_xaxis().get_major_formatter().set_useOffset(False)
+    except AttributeError:
+        pass  # can happen for logarithmically formatted axes
+    try:
+        cax.get_yaxis().get_major_formatter().set_useOffset(False)
+    except AttributeError:
+        pass  # can happen for logarithmically formatted axes
 
     if label:
         cbar.set_label(label)
