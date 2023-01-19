@@ -45,7 +45,8 @@ except ImportError:
     if int(os.environ.get("PMI_SIZE", "1")) > 1:
         # environment variable indicates that we are in a parallel program
         sys.exit(
-            "WARNING: Detected multiprocessing run, but could not load `numba_mpi`"
+            "WARNING: Detected multiprocessing run, but could not import python "
+            "package `numba_mpi`"
         )
 
 else:
