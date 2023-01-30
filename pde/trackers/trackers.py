@@ -262,7 +262,7 @@ class PlotTracker(TrackerBase):
     This tracker can be used to create movies from simulations or to simply update a
     single image file on the fly (i.e. to monitor simulations running on a cluster). The
     default values of this tracker are chosen with regular output to a file in mind.
-    
+
     Example:
         To create a movie while running the simulation, you can use
 
@@ -309,7 +309,7 @@ class PlotTracker(TrackerBase):
                 Determines whether the plot is shown while the simulation is running. If
                 set to `None`, the images are only shown if neither `output_file` nor
                 `movie` is set, otherwise they are kept hidden. Note that showing the
-                plot can slow down a simulation severely. 
+                plot can slow down a simulation severely.
             max_fps (float):
                 Determines the maximal rate (frames per second) at which the plots are
                 updated in real time during the simulation. Some plots are skipped if
