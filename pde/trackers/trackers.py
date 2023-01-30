@@ -259,10 +259,20 @@ class PrintTracker(TrackerBase):
 class PlotTracker(TrackerBase):
     """Tracker plotting data on screen, to files, or writes a movie
 
-    This tracker can be used to create movies from simulations or to simply
-    update a single image file on the fly (i.e. to monitor simulations running
-    on a cluster). The default values of this tracker are chosen with regular
-    output to a file in mind.
+    This tracker can be used to create movies from simulations or to simply update a
+    single image file on the fly (i.e. to monitor simulations running on a cluster). The
+    default values of this tracker are chosen with regular output to a file in mind.
+
+    Example:
+        To create a movie while running the simulation, you can use
+
+        .. code-block:: python
+
+            movie_tracker = PlotTracker(interval=10, movie="my_movie.mp4")
+            eq.solve(..., tracker=movie_tracker)
+
+        This will create the file `my_movie.mp4` during the simulation. Note that you
+        can display the frames interactively by setting :code:`show=True`.
     """
 
     @fill_in_docstring
@@ -282,25 +292,24 @@ class PlotTracker(TrackerBase):
             interval:
                 {ARG_TRACKER_INTERVAL}
             title (str or callable):
-                Title text of the figure. If this is a string, it is shown with
-                a potential placeholder named `time` being replaced by the
-                current simulation time. Conversely, if `title` is a function,
-                it is called with the current state and the time as arguments.
-                This function is expected to return a string.
+                Title text of the figure. If this is a string, it is shown with a
+                potential placeholder named `time` being replaced by the current
+                simulation time. Conversely, if `title` is a function, it is called with
+                the current state and the time as arguments. This function is expected
+                to return a string.
             output_file (str, optional):
-                Specifies a single image file, which is updated periodically, so
-                that the progress can be monitored (e.g. on a compute cluster)
+                Specifies a single image file, which is updated periodically, so that
+                the progress can be monitored (e.g. on a compute cluster)
             movie (str or :class:`~pde.visualization.movies.Movie`):
-                Create a movie. If a filename is given, all frames are written
-                to this file in the format deduced from the extension after the
-                simulation ran. If a :class:`~pde.visualization.movies.Movie` is
-                supplied, frames are appended to the instance.
+                Create a movie. If a filename is given, all frames are written to this
+                file in the format deduced from the extension after the simulation ran.
+                If a :class:`~pde.visualization.movies.Movie` is supplied, frames are
+                appended to the instance.
             show (bool, optional):
-                Determines whether the plot is shown while the simulation is
-                running. If `False`, the files are created in the background.
-                This option can slow down a simulation severely. For the default
-                value of `None`, the images are only shown if neither
-                `output_file` nor `movie` is set.
+                Determines whether the plot is shown while the simulation is running. If
+                set to `None`, the images are only shown if neither `output_file` nor
+                `movie` is set, otherwise they are kept hidden. Note that showing the
+                plot can slow down a simulation severely.
             max_fps (float):
                 Determines the maximal rate (frames per second) at which the plots are
                 updated in real time during the simulation. Some plots are skipped if
@@ -308,20 +317,19 @@ class PlotTracker(TrackerBase):
                 `math.inf`) can be used to ensure every frame is drawn, which might
                 penalizes the overall performance.
             plot_args (dict):
-                Extra arguments supplied to the plot call. For example, this can
-                be used to specify axes ranges when a single panel is shown. For
-                instance, the value `{'ax_style': {'ylim': (0, 1)}}` enforces
-                the y-axis to lie between 0 and 1.
+                Extra arguments supplied to the plot call. For example, this can be used
+                to specify axes ranges when a single panel is shown. For instance, the
+                value :code:`{'ax_style': {'ylim': (0, 1)}}` enforces the y-axis to lie
+                between 0 and 1.
 
         Note:
-            If an instance of :class:`~pde.visualization.movies.Movie` is given
-            as the `movie` argument, it can happen that the movie is not written
-            to the file when the simulation ends. This is because, the movie
-            could still be extended by appending frames. To write the movie to
-            a file call its :meth:`~pde.visualization.movies.Movie.save` method.
-            Beside adding frames before and after the simulation, an explicit
-            movie object can also be used to adjust the output, e.g., by setting
-            the `dpi` argument or the `frame_rate`.
+            If an instance of :class:`~pde.visualization.movies.Movie` is given as the
+            `movie` argument, it can happen that the movie is not written to the file
+            when the simulation ends. This is because, the movie could still be extended
+            by appending frames. To write the movie to a file call its
+            :meth:`~pde.visualization.movies.Movie.save` method. Beside adding frames
+            before and after the simulation, an explicit movie object can also be used
+            to adjust the output, e.g., by setting the `dpi` argument or `frame_rate`.
         """
         from ..visualization.movies import Movie  # @Reimport
 
@@ -535,6 +543,21 @@ class LivePlotTracker(PlotTracker):
 class DataTracker(CallbackTracker):
     """Tracker storing custom data obtained by calling a function
 
+    Example:
+        The data tracker can be used to gather statistics during the run
+
+        .. code-block:: python
+
+            def get_statistics(state, time):
+                return {"mean": state.data.mean(), "variance": state.data.var()}
+
+            data_tracker = DataTracker(get_statistics, interval=10)
+
+        Adding :code:`data_tracker` to the simulation will gather the statistics every
+        10 time units. After the simulation, the final result will be accessable via the
+        :attr:`data` attribute or conveniently as a pandas from the :attr:`dataframe`
+        attribute.
+
     Attributes:
         times (list):
             The time points at which the data is stored
@@ -681,8 +704,8 @@ class SteadyStateTracker(TrackerBase):
         Args:
             interval:
                 {ARG_TRACKER_INTERVAL}
-                The default value `None` checks for the steady state
-                approximately every (real) second.
+                The default value `None` checks for the steady state approximately every
+                (real) second.
             atol (float):
                 Absolute tolerance that must be reached to abort the simulation
             rtol (float):
@@ -780,11 +803,10 @@ class RuntimeTracker(TrackerBase):
         """
         Args:
             max_runtime (float or str):
-                The maximal runtime of the simulation. If the runtime is
-                exceeded, the simulation is interrupted. Values can be either
-                given as a number (interpreted as seconds) or as a string, which
-                is then parsed using the function
-                :func:`~pde.tools.parse_duration.parse_duration`.
+                The maximal runtime of the simulation. If the runtime is exceeded, the
+                simulation is interrupted. Values can be either given as a number
+                (interpreted as seconds) or as a string, which is then parsed using the
+                function :func:`~pde.tools.parse_duration.parse_duration`.
             interval:
                 {ARG_TRACKER_INTERVAL}
         """
@@ -835,8 +857,8 @@ class ConsistencyTracker(TrackerBase):
         Args:
             interval:
                 {ARG_TRACKER_INTERVAL}
-                The default value `None` checks for consistency approximately
-                every (real) second.
+                The default value `None` checks for consistency approximately every
+                (real) second.
         """
         if interval is None:
             interval = RealtimeInterrupts(duration=1)
