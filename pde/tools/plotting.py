@@ -596,7 +596,7 @@ class PlottingContextBase:
         if self.fig is not None:
             import matplotlib.pyplot as plt
 
-            plt.figure(self.fig.number)
+            self.fig = plt.figure(self.fig.number)
 
     def __exit__(self, *exc):
         if self.initial_plot or not self.supports_update:

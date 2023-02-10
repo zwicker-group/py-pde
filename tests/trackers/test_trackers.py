@@ -28,7 +28,11 @@ def test_plot_tracker(tmp_path):
     state = ScalarField.random_uniform(grid)
     eq = DiffusionPDE()
     tracker = trackers.PlotTracker(
-        output_file=output_file, title=get_title, interval=0.1, show=False
+        output_file=output_file,
+        title=get_title,
+        interval=0.1,
+        show=False,
+        tight_layout=True,
     )
 
     eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
@@ -44,7 +48,9 @@ def test_plot_movie_tracker(tmp_path):
     grid = UnitGrid([4, 4])
     state = ScalarField.random_uniform(grid)
     eq = DiffusionPDE()
-    tracker = trackers.PlotTracker(movie=output_file, interval=0.1, show=False)
+    tracker = trackers.PlotTracker(
+        movie=output_file, interval=0.1, show=False, tight_layout=True
+    )
 
     eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
 
