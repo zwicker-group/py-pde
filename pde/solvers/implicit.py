@@ -1,6 +1,6 @@
 """
 Defines an implicit solver
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
@@ -40,9 +40,9 @@ class ImplicitSolver(SolverBase):
             maxerror (float):
                 The maximal error that is permitted in each step
             backend (str):
-                Determines how the function is created. Accepted  values are
-                'numpy` and 'numba'. Alternatively, 'auto' lets the code decide
-                for the most optimal backend.
+                Determines how the function is created. Accepted  values are 'numpy` and
+                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
+                backend.
         """
         super().__init__(pde)
         self.maxiter = maxiter
@@ -52,20 +52,20 @@ class ImplicitSolver(SolverBase):
     def make_stepper(
         self, state: FieldBase, dt=None
     ) -> Callable[[FieldBase, float, float], float]:
-        """return a stepper function using an implicit scheme
+        """return a stepper function using an implicit Euler scheme
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other
-                information can be extracted
+                An example for the state from which the grid and other information can
+                be extracted
             dt (float):
-                Time step of the explicit stepping. If `None`, this solver
-                specifies 1e-3 as a default value.
+                Time step of the explicit stepping. If `None`, this solver specifies
+                1e-3 as a default value.
 
         Returns:
-            Function that can be called to advance the `state` from time
-            `t_start` to time `t_end`. The function call signature is
-            `(state: numpy.ndarray, t_start: float, t_end: float)`
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
         """
         if self.pde.is_sde:
             raise RuntimeError("Cannot use implicit stepper with stochastic equation")
@@ -141,7 +141,7 @@ class ImplicitSolver(SolverBase):
             inner_stepper = jit(sig)(inner_stepper)
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """use Euler stepping to advance `state` from `t_start` to `t_end`"""
+            """use implicit Euler scheme to advance `state` from `t_start` to `t_end`"""
             # calculate number of steps (which is at least 1)
             steps = max(1, int(np.ceil((t_end - t_start) / dt)))
             t_last, nfev = inner_stepper(state.data, t_start, steps)

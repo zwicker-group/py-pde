@@ -111,7 +111,7 @@ Taken together, a minimal example reads
    eq = DiffusionPDE(diffusivity=0.1)
    result = eq.solve(state, t_range=10, dt=0.1, method="explicit_mpi")
 
-   if result is not None:
+   if result is not None:  # restrict the output to the main node
       result.plot()
 
 Saving this script as `multiprocessing.py`, we can evoke a parallel simulation using

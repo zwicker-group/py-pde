@@ -20,7 +20,10 @@ from .explicit import ExplicitSolver
 class ExplicitMPISolver(ExplicitSolver):
     """class for solving partial differential equations explicitly using MPI
 
-    This solver can only be used if MPI is properly installed.
+    Warning:
+        This solver can only be used if MPI is properly installed. In particular, python
+        scripts then need to be started using :code:`mpirun` or :code:`mpiexec`. Please
+        refer to the documentation of your MPI distribution for details.
 
     The main idea of the solver is to take the full initial state in the main node
     (ID 0) and split the grid into roughly equal subgrids. The main node then
@@ -34,8 +37,39 @@ class ExplicitMPISolver(ExplicitSolver):
     are only handled on the main node.
 
     Warning:
-        `modify_after_step` can only be used to do local modifications since the field
-        data supplied to the function is local to each MPI node.
+        The function providing the right hand side of the PDE needs to support MPI. This
+        is automatically the case for local evaluations (which only use the field value
+        at the current position), for the differential operators provided by :mod:`pde`,
+        and integration of fields. Similarly, `modify_after_step` can only be used to do
+        local modifications since the field data supplied to the function is local to
+        each MPI node.
+
+    Example:
+        A minimal example using the MPI solver is
+
+        .. code-block:: python
+
+           from pde import DiffusionPDE, ScalarField, UnitGrid
+
+           grid = UnitGrid([64, 64])
+           state = ScalarField.random_uniform(grid, 0.2, 0.3)
+
+           eq = DiffusionPDE(diffusivity=0.1)
+           result = eq.solve(state, t_range=10, dt=0.1, method="explicit_mpi")
+
+           if result is not None:  # restrict the output to the main node
+              result.plot()
+
+        Saving this script as `multiprocessing.py`, a parallel simulation is started by
+
+        .. code-block:: bash
+
+            mpiexec -n 2 python3 multiprocessing.py
+
+        Here, the number `2` determines the number of cores that will be used. Note that
+        macOS might require an additional hint on how to connect the processes even
+        when they are run on the same machine (e.g., your workstation). It might help to
+        run :code:`mpiexec -n 2 -host localhost python3 multiprocessing.py` in this case
     """
 
     name = "explicit_mpi"

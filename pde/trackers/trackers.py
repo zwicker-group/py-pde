@@ -284,6 +284,7 @@ class PlotTracker(TrackerBase):
         output_file: Optional[str] = None,
         movie: Union[str, Path, "Movie", None] = None,
         show: Optional[bool] = None,
+        tight_layout: bool = False,
         max_fps: float = math.inf,
         plot_args: Optional[Dict[str, Any]] = None,
     ):
@@ -310,6 +311,8 @@ class PlotTracker(TrackerBase):
                 set to `None`, the images are only shown if neither `output_file` nor
                 `movie` is set, otherwise they are kept hidden. Note that showing the
                 plot can slow down a simulation severely.
+            tight_layout (bool):
+                Determines whether :func:`~matplotlib.pyplot.tight_layout` is used.
             max_fps (float):
                 Determines the maximal rate (frames per second) at which the plots are
                 updated in real time during the simulation. Some plots are skipped if
@@ -337,6 +340,7 @@ class PlotTracker(TrackerBase):
         super().__init__(interval=interval)
         self.title = title
         self.output_file = output_file
+        self.tight_layout = tight_layout
         self.max_fps = max_fps
 
         self.plot_args = {} if plot_args is None else plot_args.copy()
@@ -380,6 +384,8 @@ class PlotTracker(TrackerBase):
             float: The first time the tracker needs to handle data
         """
         # initialize the plotting context
+        import matplotlib.pyplot as plt
+
         from ..tools.plotting import get_plotting_context
 
         self._context = get_plotting_context(title="Initializing...", show=self.show)
@@ -387,6 +393,8 @@ class PlotTracker(TrackerBase):
         # do the actual plotting
         with self._context:
             self._plot_reference = state.plot(**self.plot_args)
+            if self.tight_layout:
+                plt.gcf().tight_layout()
 
         if self._context.supports_update:
             # the context supports reusing figures
@@ -426,6 +434,8 @@ class PlotTracker(TrackerBase):
             t (float):
                 The associated time
         """
+        import matplotlib.pyplot as plt
+
         if not self._write_images:
             # check whether we can skip this image
             time_passed = time.monotonic() - self._last_update
@@ -444,19 +454,23 @@ class PlotTracker(TrackerBase):
                 update_func = getattr(state, state.plot.update_method)  # type: ignore
                 update_func(self._plot_reference)
 
-            elif self._update_method == "update_fig":
-                fig = self._context.fig
-                fig.clf()  # type: ignore
-                state.plot(fig=fig, **self.plot_args)
-
             elif self._update_method == "update_ax":
                 fig = self._context.fig
                 fig.clf()  # type: ignore
                 ax = fig.add_subplot(1, 1, 1)  # type: ignore
                 state.plot(ax=ax, **self.plot_args)
 
+            elif self._update_method == "update_fig":
+                fig = self._context.fig
+                fig.clf()  # type: ignore
+                state.plot(fig=fig, **self.plot_args)
+                if self.tight_layout:
+                    plt.gcf().tight_layout()
+
             elif self._update_method == "replot":
                 state.plot(**self.plot_args)
+                if self.tight_layout:
+                    plt.gcf().tight_layout()
 
             else:
                 raise RuntimeError(f"Unknown update method `{self._update_method}`")

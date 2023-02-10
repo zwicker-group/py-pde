@@ -13,10 +13,10 @@ partial differential equations (PDEs) of the form
     \partial_t u(\boldsymbol x, t) = \mathcal D[u(\boldsymbol x, t)] 
         + \eta(u, \boldsymbol x, t) \;,
 
-where :math:`\mathcal D` is a (non-linear) differential operator that defines
-the time evolution of a (set of) physical fields :math:`u` with possibly
-tensorial character, which depend on spatial coordinates :math:`\boldsymbol x`
-and time :math:`t`.
+where :math:`\mathcal D` is a (non-linear) operator containing spatial derivatives that
+defines the time evolution of a (set of) physical fields :math:`u` with possibly
+tensorial character, which depend on spatial coordinates :math:`\boldsymbol x` and time
+:math:`t`.
 The framework also supports stochastic differential equations in the Itô
 representation, where the noise is represented by :math:`\eta` above.
 

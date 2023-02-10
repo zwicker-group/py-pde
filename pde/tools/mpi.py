@@ -1,6 +1,10 @@
 """
 Auxillary functions and variables for dealing with MPI multiprocessing
 
+Warning:
+    These functions are mostly no-ops unless MPI is properly installed and python code
+    was started using :code:`mpirun` or :code:`mpiexec`. Please refer to the
+    documentation of your MPI distribution for details.
 
 .. autosummary::
    :nosignatures:
