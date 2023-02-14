@@ -24,6 +24,15 @@ def iter_grids():
     yield grids.SphericalSymGrid(3, 4)
 
 
+@pytest.mark.parametrize("grid", iter_grids())
+def test_basic_grid_properties(grid):
+    """test basic grid properties"""
+    with pytest.raises(AttributeError):
+        grid.periodic = True
+    with pytest.raises(AttributeError):
+        grid.shape = 12
+
+
 def test_discretize():
     """test the discretize function"""
     x_min = np.random.uniform(0, 1)

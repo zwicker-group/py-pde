@@ -123,14 +123,14 @@ class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
         self.num_axes = self.dim
 
         if isinstance(periodic, (bool, np.bool_)):
-            self.periodic = [bool(periodic)] * self.dim
+            self._periodic = [bool(periodic)] * self.dim
         elif len(periodic) != self.dim:
             raise DimensionError(
                 "Number of axes with specified periodicity does not match grid "
                 f"dimension ({len(periodic)} != {self.dim})"
             )
         else:
-            self.periodic = list(periodic)
+            self._periodic = list(periodic)
 
         if self.dim <= 3:
             self.axes = list("xyz"[: self.dim])

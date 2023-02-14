@@ -1026,8 +1026,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 \delta(\boldsymbol k - \boldsymbol k’)
 
         in spectral space, where :math:`\boldsymbol k` is the wave vector. The special
-        case :math:`\nu = 0` corresponds to white noise. Note that the components of
-        vector or tensor fields are uncorrelated.
+        case :math:`\nu = 0` corresponds to white noise. Note that the spatial
+        correlations always assume periodic boundary conditions (even if the underlying
+        grid does not) and that the components of tensor fields are uncorrelated.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):

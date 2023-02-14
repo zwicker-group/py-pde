@@ -72,7 +72,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equ
     points.
     """
 
-    periodic = [False]  # the radial axis is not periodic
+    _periodic = [False]  # the radial axis is not periodic
     num_axes = 1  # the number of independent axes
 
     boundary_names = {"inner": (0, False), "outer": (0, True)}
