@@ -37,16 +37,17 @@ def make_colored_noise(
         \langle c(\boldsymbol k) c(\boldsymbol k’) \rangle =
             \Gamma^2 |\boldsymbol k|^\nu \delta(\boldsymbol k-\boldsymbol k’)
 
-    in spectral space on a Cartesian grid. The special case :math:`\nu = 0`
-    corresponds to white noise.
+    in spectral space on a Cartesian grid. The special case :math:`\nu = 0` corresponds
+    to white noise. For simplicity, the correlations respect periodic boundary
+    conditions.
 
     Args:
         shape (tuple of ints):
-            Number of supports points in each spatial dimension. The number of
-            the list defines the spatial dimension.
+            Number of supports points in each spatial dimension. The number of the list
+            defines the spatial dimension.
         dx (float or list of floats):
-            Discretization along each dimension. A uniform discretization in
-            each direction can be indicated by a single number.
+            Discretization along each dimension. A uniform discretization in each
+            direction can be indicated by a single number.
         exponent:
             Exponent :math:`\nu` of the power spectrum
         scale:

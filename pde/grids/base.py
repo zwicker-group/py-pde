@@ -153,13 +153,12 @@ class GridBase(metaclass=ABCMeta):
     """list: axes that not described explicitly"""
     num_axes: int
     """int: Number of axes that are *not* assumed symmetrically"""
-    periodic: List[bool]
-    """list: Flags that describe which axes are periodic"""
 
     # mandatory, immutable, private attributes
     _axes_bounds: Tuple[Tuple[float, float], ...]
     _axes_coords: Tuple[np.ndarray, ...]
     _discretization: np.ndarray
+    _periodic: List[bool]
     _shape: Tuple[int, ...]
 
     # to help sphinx, we here list docstrings for classproperties
@@ -206,6 +205,11 @@ class GridBase(metaclass=ABCMeta):
         periodic: Sequence[bool],
     ) -> GridBase:
         raise NotImplementedError
+
+    @property
+    def periodic(self) -> List[bool]:
+        """list: Flags that describe which axes are periodic"""
+        return self._periodic
 
     @property
     def axes_bounds(self) -> Tuple[Tuple[float, float], ...]:
@@ -415,19 +419,25 @@ class GridBase(metaclass=ABCMeta):
         return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return the vector pointing from p1 to p2
+        """return vector(s) pointing from p1 to p2
 
         In case of periodic boundary conditions, the shortest vector is returned.
+
+        Warning:
+            This function assumes a Cartesian coordinate system and might thus not work
+            for curvilinear coordinates.
 
         Args:
             p1 (:class:`~numpy.ndarray`): First point(s)
             p2 (:class:`~numpy.ndarray`): Second point(s)
 
         Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points
-            with periodic  boundary conditions applied.
+            :class:`~numpy.ndarray`: The difference vectors between the points with
+            periodic  boundary conditions applied.
         """
         diff = np.atleast_1d(p2) - np.atleast_1d(p1)
+        assert diff.shape[-1] == self.num_axes
+
         for i, periodic in enumerate(self.periodic):
             if periodic:
                 size = self.axes_bounds[i][1] - self.axes_bounds[i][0]
@@ -438,6 +448,10 @@ class GridBase(metaclass=ABCMeta):
         """Calculate the distance between two points given in real coordinates
 
         This takes periodic boundary conditions into account if necessary.
+
+        Warning:
+            This function calculates the Euclidean distance and might thus give wrong
+            results for coordinates given in curvilinear coordinate systems.
 
         Args:
             p1 (:class:`~numpy.ndarray`): First position

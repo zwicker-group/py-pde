@@ -22,20 +22,19 @@ dynamical systems in physics. The focus of the package lies on easy usage to
 explore the behavior of PDEs. However, core computations can be compiled
 transparently using numba for speed.
 
-[Try it out online!](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
+[Try it online!](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
 
 
 Installation
 ------------
 
-`py-pde` is available on `pypi`, so you should be able to install it through
-`pip`:
+`py-pde` is available on `pypi`, so you should be able to install it through `pip`:
 
 ```bash
 pip install py-pde
 ```
 
-In order to have all features of the package available, you might also want to 
+In order to have all features of the package available, you might want to 
 install the following optional packages:
 
 ```bash

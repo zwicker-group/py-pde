@@ -97,7 +97,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
                 "Lower and upper value of the axial coordinate must be specified"
             )
         self._periodic_z: bool = bool(periodic_z)  # might cast from np.bool_
-        self.periodic = [False, self._periodic_z]
+        self._periodic = [False, self._periodic_z]
 
         # radial discretization
         dr = radius / self.shape[0]
