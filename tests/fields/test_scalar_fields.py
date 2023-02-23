@@ -487,12 +487,12 @@ def test_generic_derivatives(grid):
     # iterate over all grid axes
     for axis_id, axis in enumerate(grid.axes):
         # test first derivatives
-        sf_deriv = sf._apply_operator(f"d_d{axis}", bc="auto_periodic_neumann")
+        sf_deriv = sf.apply_operator(f"d_d{axis}", bc="auto_periodic_neumann")
         assert isinstance(sf_deriv, ScalarField)
         np.testing.assert_allclose(sf_deriv.data, sf_grad.data[axis_id])
 
         # accumulate second derivatives for Laplacian
-        sf_lap += sf._apply_operator(f"d2_d{axis}2", bc="auto_periodic_neumann")
+        sf_lap += sf.apply_operator(f"d2_d{axis}2", bc="auto_periodic_neumann")
 
     sf_laplace = sf.laplace("auto_periodic_neumann")
     if isinstance(grid, CartesianGrid):

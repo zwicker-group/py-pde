@@ -347,7 +347,7 @@ class Tensor2Field(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        return self._apply_operator("tensor_divergence", bc=bc, out=out, **kwargs)  # type: ignore
+        return self.apply_operator("tensor_divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
     @property
     def integral(self) -> np.ndarray:

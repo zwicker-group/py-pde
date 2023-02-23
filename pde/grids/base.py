@@ -36,7 +36,7 @@ from numba.extending import is_jitted, overload, register_jitable
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number, classproperty
+from ..tools.misc import Number, classproperty, hybridmethod
 from ..tools.numba import jit
 from ..tools.typing import (
     CellVolume,
@@ -827,13 +827,31 @@ class GridBase(metaclass=ABCMeta):
             # method is used directly
             register_operator(factory_func)
 
-    @classproperty  # type: ignore
+    @hybridmethod  # type: ignore
+    @property
     def operators(cls) -> Set[str]:  # @NoSelf
         """set: all operators defined for this class"""
         result = set()
+        # add all customly defined operators
         classes = inspect.getmro(cls)[:-1]  # type: ignore
         for anycls in classes:
             result |= set(anycls._operators.keys())  # type: ignore
+        if hasattr(cls, "axes"):
+            for ax in cls.axes:
+                result |= {f"d_d{ax}", f"d2_d{ax}2"}
+        return result
+
+    @operators.instancemethod
+    @property
+    def operators(self) -> Set[str]:
+        """set: all operators defined for this instance"""
+        # get all operators registered on the class
+        result = self.__class__.operators
+        if not hasattr(self.__class__, "axes"):
+            # add operators calculating derivate along a coordinate for the case where
+            # the axes argument is only defined on instances
+            for ax in self.axes:
+                result |= {f"d_d{ax}", f"d2_d{ax}2"}
         return result
 
     def _get_operator_info(self, operator: Union[str, OperatorInfo]) -> OperatorInfo:

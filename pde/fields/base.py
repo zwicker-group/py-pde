@@ -1522,7 +1522,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise AssertionError("Rank must be non-negative")
 
     @fill_in_docstring
-    def _apply_operator(
+    def apply_operator(
         self,
         operator: str,
         bc: Optional[BoundariesData],
@@ -1532,23 +1532,25 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         args: Optional[Dict[str, Any]] = None,
         **kwargs,
     ) -> DataFieldBase:
-        r"""apply an operator and return result as a field
+        r"""apply a (differential) operator and return result as a field
 
         Args:
             operator (str):
-                An identifier determining the registered on the grid.
+                An identifier determining the operator. Note that not all grids support
+                the same operators.
             bc:
-                The boundary conditions applied to the field.
+                Boundary conditions applied to the field before applying the operator.
                 {ARG_BOUNDARIES_OPTIONAL}
-            out (ScalarField, optional):
-                Optional scalar field to which the  result is written.
+            out (:class:`DataFieldBase`, optional):
+                Optional field to which the  result is written.
             label (str, optional):
                 Name of the returned field
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 
         Returns:
-            Field with new data. This is stored at `out` if given.
+            Field data after applying the operator. This field is identical to `out` if
+            this argument was specified.
         """
         # get information about the operator
         operator_info = self.grid._get_operator_info(operator)
@@ -1571,6 +1573,46 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         op_raw(self._data_full, out.data)
 
         return out
+
+    @fill_in_docstring
+    def _apply_operator(
+        self,
+        operator: str,
+        bc: Optional[BoundariesData],
+        out: Optional[DataFieldBase] = None,
+        *,
+        label: Optional[str] = None,
+        args: Optional[Dict[str, Any]] = None,
+        **kwargs,
+    ) -> DataFieldBase:
+        r"""apply a (differential) operator and return result as a field
+
+        Args:
+            operator (str):
+                An identifier determining the operator. Note that not all grids support
+                the same operators.
+            bc:
+                Boundary conditions applied to the field before applying the operator.
+                {ARG_BOUNDARIES_OPTIONAL}
+            out (:class:`DataFieldBase`, optional):
+                Optional field to which the  result is written.
+            label (str, optional):
+                Name of the returned field
+            **kwargs:
+                Additional arguments affecting how the operator behaves.
+
+        Returns:
+            Field data after applying the operator. This field is identical to `out` if
+            this argument was specified.
+        """
+        # deprecated on 2023-02-23
+        warnings.warn(
+            "`apply_operator` is deprecated. Use `apply_operator` instead",
+            DeprecationWarning,
+        )
+        return self.apply_operator(
+            operator, bc, out=out, label=label, args=args, **kwargs
+        )
 
     def smooth(
         self: TDataField,

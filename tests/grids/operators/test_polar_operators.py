@@ -65,7 +65,7 @@ def test_small_annulus_polar(op_name, field):
     f = field.random_uniform(grids[0])
 
     res = [
-        field(g, data=f.data)._apply_operator(op_name, "auto_periodic_neumann")
+        field(g, data=f.data).apply_operator(op_name, "auto_periodic_neumann")
         for g in grids
     ]
 
