@@ -9,7 +9,12 @@ import numpy as np
 import pytest
 
 from pde import grids
-from pde.grids.base import GridBase, discretize_interval, registered_operators
+from pde.grids.base import (
+    GridBase,
+    OperatorInfo,
+    discretize_interval,
+    registered_operators,
+)
 from pde.tools.misc import skipUnlessModule
 
 
@@ -139,6 +144,17 @@ def test_operators(grid):
     grid.register_operator("noop", make_op)
     assert "noop" in grid.operators
     del grid._operators["noop"]  # reset original state
+
+    # test all instance operators
+    for op in grid.operators:
+        assert isinstance(grid._get_operator_info(op), OperatorInfo)
+
+
+def test_cartesian_operator_infos():
+    """test special case of cartesian operators"""
+    assert "d_dx" not in grids.UnitGrid.operators
+    assert "d_dx" in grids.UnitGrid([2]).operators
+    assert "d_dy" not in grids.UnitGrid([2]).operators
 
 
 def test_registered_operators():

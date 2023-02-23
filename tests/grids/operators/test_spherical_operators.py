@@ -53,7 +53,7 @@ def test_conservative_sph():
     # test double divergence of tensor field
     expressions = [[expr, 0, 0], [0, expr, 0], [0, 0, expr]]
     tf = Tensor2Field.from_expression(grid, expressions)
-    res = tf._apply_operator(
+    res = tf.apply_operator(
         "tensor_double_divergence", bc="derivative", conservative=True
     )
     assert res.integral == pytest.approx(0, abs=1e-3)
@@ -80,7 +80,7 @@ def test_small_annulus_sph(op_name, field):
         f.data[1] = 0
 
     res = [
-        field(g, data=f.data)._apply_operator(op_name, "auto_periodic_neumann")
+        field(g, data=f.data).apply_operator(op_name, "auto_periodic_neumann")
         for g in grids
     ]
 
@@ -248,7 +248,7 @@ def test_tensor_div_div_analytical():
     tf = Tensor2Field.from_expression(
         grid, [["r**4", 0, 0], [0, "r**3", 0], [0, 0, "r**3"]]
     )
-    res = tf._apply_operator("tensor_double_divergence", bc="curvature")
+    res = tf.apply_operator("tensor_double_divergence", bc="curvature")
     expect = ScalarField.from_expression(grid, "2 * r * (15 * r - 4)")
     np.testing.assert_allclose(res.data[1:-1], expect.data[1:-1], rtol=0.01)
 
@@ -262,7 +262,7 @@ def test_tensor_div_div(conservative):
 
     # test radial part
     tf = Tensor2Field.from_expression(grid, [[expr, 0, 0], [0, 0, 0], [0, 0, 0]])
-    res = tf._apply_operator(
+    res = tf.apply_operator(
         "tensor_double_divergence", bc=bc, conservative=conservative
     )
     est = tf.divergence(bc).divergence(bc)
@@ -270,7 +270,7 @@ def test_tensor_div_div(conservative):
 
     # test angular part
     tf = Tensor2Field.from_expression(grid, [[0, 0, 0], [0, expr, 0], [0, 0, expr]])
-    res = tf._apply_operator(
+    res = tf.apply_operator(
         "tensor_double_divergence", bc=bc, conservative=conservative
     )
     est = tf.divergence(bc).divergence(bc)
