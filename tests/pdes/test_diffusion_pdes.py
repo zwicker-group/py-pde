@@ -95,7 +95,14 @@ def test_diffusion_time_dependent_bcs(backend):
     eq = DiffusionPDE(bc={"value_expression": "Heaviside(t - 1.5)"})
 
     storage = MemoryStorage()
-    eq.solve(field, t_range=10, dt=1e-2, backend=backend, tracker=storage.tracker(1))
+    eq.solve(
+        field,
+        t_range=10,
+        dt=1e-2,
+        adaptive=True,
+        backend=backend,
+        tracker=storage.tracker(1),
+    )
 
     np.testing.assert_allclose(storage[1].data, 0)
     np.testing.assert_allclose(storage[-1].data, 1, rtol=1e-3)

@@ -23,27 +23,45 @@ def test_writing_to_storage(tmp_path):
     assert len(data) == 3
 
 
-def test_inhomogeneous_bcs():
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_inhomogeneous_bcs_1(backend):
     """test simulation with inhomogeneous boundary conditions"""
-    # single coordinate
     grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], [32, 2], periodic=[True, False])
     state = ScalarField(grid)
-    pde = DiffusionPDE(
-        bc=["auto_periodic_neumann", {"type": "value", "value": "sin(x)"}]
-    )
-    sol = pde.solve(state, t_range=1e1, dt=1e-2, tracker=None)
+    eq = DiffusionPDE(bc=["auto_periodic_neumann", {"value": "sin(x)"}])
+    sol = eq.solve(state, t_range=1e1, dt=1e-2, backend=backend, tracker=None)
     data = sol.get_line_data(extract="project_x")
     np.testing.assert_almost_equal(
         data["data_y"], 0.9 * np.sin(data["data_x"]), decimal=2
     )
 
-    # double coordinate
+
+def test_inhomogeneous_bcs_2():
+    """test simulation with inhomogeneous boundary conditions"""
     grid = CartesianGrid([[0, 1], [0, 1]], [8, 8], periodic=False)
     state = ScalarField(grid)
-    pde = DiffusionPDE(bc={"type": "value", "value": "x + y"})
-    sol = pde.solve(state, t_range=1e1, dt=1e-3, tracker=None)
+    eq = DiffusionPDE(bc={"value": "x + y"})
+    sol = eq.solve(state, t_range=1e1, dt=1e-3, tracker=None)
     expect = ScalarField.from_expression(grid, "x + y")
     np.testing.assert_almost_equal(sol.data, expect.data)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_inhomogeneous_bcs_func(backend):
+    """test simulation with inhomogeneous boundary conditions"""
+    grid = CartesianGrid([[-5, 5], [-5, 5]], 32)
+    field = ScalarField(grid)
+
+    def bc_value(adjacent_value, dx, x, y, t):
+        return np.sign(x)
+
+    bc_x = "derivative"
+    bc_y = ["derivative", {"value_expression": bc_value}]
+
+    eq = DiffusionPDE(bc=[bc_x, bc_y])
+    res = eq.solve(field, t_range=10, dt=0.01, adaptive=True, backend=backend)
+    assert np.all(res.data[:16] < 0)
+    assert np.all(res.data[16:] > 0)
 
 
 @pytest.mark.multiprocessing

@@ -28,10 +28,11 @@ Finally, there are more specialized classes, which offer greater flexibility, bu
 also require a slightly deeper understanding for proper use:
 
 * :class:`~pde.grids.boundaries.local.ExpressionValueBC`:
-  Imposing the value of a field at the boundary based on a mathematical expression
-* :class:`~pde.grids.boundaries.local.NeumannBC`:
+  Imposing the value of a field at the boundary based on a mathematical expression or a
+  python function.
+* :class:`~pde.grids.boundaries.local.ExpressionDerivativeBC`:
   Imposing the derivative of a field in the outward normal direction at the boundary
-  based on a mathematical expression
+  based on a mathematical expression or a python function.
 * :class:`~pde.grids.boundaries.local.UserBC`:
   Allows full control for setting virtual points, values, or derivatives. The boundary
   conditions are never enforced automatically. It is thus the user's responsibility to
@@ -71,7 +72,7 @@ import numpy as np
 from numba.extending import overload, register_jitable
 
 from ...tools.docstrings import fill_in_docstring
-from ...tools.numba import address_as_void_pointer
+from ...tools.numba import address_as_void_pointer, jit
 from ...tools.typing import (
     AdjacentEvaluator,
     FloatNumerical,
@@ -1100,10 +1101,10 @@ class ExpressionBC(BCBase):
         upper: bool,
         *,
         rank: int = 0,
-        value: Union[float, str] = 0,
+        value: Union[float, str, Callable] = 0,
         target: str = "virtual_point",
     ):
-        """
+        r"""
         Warning:
             {WARNING_EXEC}
 
@@ -1118,8 +1119,13 @@ class ExpressionBC(BCBase):
                 of the local normal vector of the boundary.
             rank (int):
                 The tensorial rank of the field for this boundary condition
-            value (float or str):
+            value (float or str or callable):
                 An expression that determines the value of the boundary condition.
+                Alternatively, this can be a (jitable, vectorized) function with
+                signature `(adjacent_value, dx, *coords, t)` that determines the value
+                of `target` from the closest field value `adjacent_value`, the spatial
+                discretization `dx` in the direction perpendicular to the wall, the
+                spatial coordinates of the wall point, and time `t`.
             target (str):
                 Selects which value is actually set. Possible choices include `value`,
                 `derivative`, and `virtual_point`.
@@ -1131,43 +1137,88 @@ class ExpressionBC(BCBase):
                 "Expression boundary conditions only work for scalar conditions"
             )
 
-        # determine the full expression for setting the value of the virtual point
+        # store data for later use
         self._input: Dict[str, Any] = {"expression": value, "target": target}
-        if target == "virtual_point":
-            expression = value
-        elif target == "value":
-            expression = f"2 * ({value}) - value"
-        elif target == "derivative":
-            expression = f"dx * ({value}) + value"
-        else:
-            raise ValueError(f"Unknown target `{target}` for expression")
-
-        # parse this expression
-        from pde.tools.expressions import ScalarExpression
-
         signature = ["value", "dx"] + grid.axes + ["t"]
-        self._expr = ScalarExpression(expression, signature=signature)
+
+        if callable(value):
+            # `value` is a callable function
+            self._is_func = True
+            value_func = register_jitable(value)
+
+            if target == "virtual_point":
+                self._func = value_func
+
+            elif target == "value":
+
+                @register_jitable
+                def virtual_from_value(adjacent_value, *args):
+                    return 2 * value_func(adjacent_value, *args) - adjacent_value
+
+                self._func = virtual_from_value
+
+            elif target == "derivative":
+
+                @register_jitable
+                def virtual_from_derivative(adjacent_value, dx, *args):
+                    return dx * value_func(adjacent_value, dx, *args) + adjacent_value
+
+                self._func = virtual_from_derivative
+
+            else:
+                raise ValueError(f"Unknown target `{target}` for expression")
+
+        else:
+            # `value` is an expression
+            self._is_func = False
+            if target == "virtual_point":
+                expression = value
+            elif target == "value":
+                expression = f"2 * ({value}) - value"
+            elif target == "derivative":
+                expression = f"dx * ({value}) + value"
+            else:
+                raise ValueError(f"Unknown target `{target}` for expression")
+
+            # parse this expression
+            from pde.tools.expressions import ScalarExpression
+
+            self._func = ScalarExpression(expression, signature=signature)
 
         # quickly check whether the expression was parsed correctly
         test_value = np.zeros((self.grid.dim,) * self.rank)
         dx = self.grid.discretization[self.axis]
         coords = tuple(bounds[0] for bounds in grid.axes_bounds)
         try:
-            self._expr(test_value, dx, *coords, t=0)
+            self._func(test_value, dx, *coords, 0)
         except Exception as err:
-            raise BCDataError(
-                f"Could not evaluate BC expression `{expression}` with signature "
-                f"{signature}.\nEncountered error: {err}"
-            )
+            if self._is_func:
+                raise BCDataError(
+                    f"Could not evaluate Bc function. Expected signature "
+                    f"{signature}.\nEncountered error: {err}"
+                )
+            else:
+                raise BCDataError(
+                    f"Could not evaluate BC expression `{expression}` with signature "
+                    f"{signature}.\nEncountered error: {err}"
+                )
 
     def _repr_value(self):
-        return [f'{self._input["target"]}="{self._input["expression"]}"']
+        if self._is_func:
+            return [f'{self._input["target"]}=<function>']
+        else:
+            return [f'{self._input["target"]}="{self._input["expression"]}"']
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """return mathematical representation of the boundary condition"""
         axis_name = self.grid.axes[self.axis]
         target = self._input["target"]
-        expression = self._input["expression"]
+
+        if self._is_func:
+            expression = "<function>"
+        else:
+            expression = self._input["expression"]
+
         field = self._field_repr(field_name)
         if target == "virtual_point":
             return f"{field} = {expression}   @ virtual point"
@@ -1261,7 +1312,7 @@ class ExpressionBC(BCBase):
         coords = np.moveaxis(coords, -1, 0)  # point coordinates to first axis
 
         if args is None:
-            if self._expr.depends_on("t"):
+            if not self._is_func and self._func.depends_on("t"):
                 raise RuntimeError(
                     "Require value for `t` for time-dependent BC. The value must be "
                     "passed explicitly via `args` when calling a differential operator."
@@ -1271,7 +1322,7 @@ class ExpressionBC(BCBase):
             t = float(args["t"])
 
         # calculate the virtual points
-        data_full[tuple(idx_write)] = self._expr(values, dx, *coords, t)
+        data_full[tuple(idx_write)] = self._func(values, dx, *coords, t)
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         """returns a function evaluating the value at the virtual support point
@@ -1285,11 +1336,16 @@ class ExpressionBC(BCBase):
         dx = self.grid.discretization[self.axis]
         num_axes = self.grid.num_axes
         get_arr_1d = _make_get_arr_1d(num_axes, self.axis)
-        time_dependent = self._expr.depends_on("t")
         bc_coords = self.grid._boundary_coordinates(axis=self.axis, upper=self.upper)
         bc_coords = np.moveaxis(bc_coords, -1, 0)  # point coordinates to first axis
-        func = self._expr.get_compiled()
         assert num_axes <= 3
+
+        if self._is_func:
+            warn_if_time_not_set = False
+            func = jit(self._func)
+        else:
+            warn_if_time_not_set = self._func.depends_on("t")
+            func = self._func.get_compiled()
 
         @register_jitable
         def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
@@ -1300,7 +1356,7 @@ class ExpressionBC(BCBase):
 
             # extract time for handling time-dependent BCs
             if args is None or "t" not in args:
-                if time_dependent:
+                if warn_if_time_not_set:
                     raise RuntimeError(
                         "Require value for `t` for time-dependent BC. The value must "
                         "be passed explicitly via `args` when calling a differential "
@@ -1334,7 +1390,6 @@ class ExpressionValueBC(ExpressionBC):
 
     names = ["value_expression", "value_expr"]
 
-    @fill_in_docstring
     def __init__(
         self,
         grid: GridBase,
@@ -1342,31 +1397,12 @@ class ExpressionValueBC(ExpressionBC):
         upper: bool,
         *,
         rank: int = 0,
-        value: Union[float, str] = 0,
+        value: Union[float, str, Callable] = 0,
         target: str = "value",
     ):
-        """
-        Warning:
-            {WARNING_EXEC}
-
-        Args:
-            grid (:class:`~pde.grids.base.GridBase`):
-                The grid for which the boundary conditions are defined
-            axis (int):
-                The axis to which this boundary condition is associated
-            upper (bool):
-                Flag indicating whether this boundary condition is associated with the
-                upper side of an axis or not. In essence, this determines the direction
-                of the local normal vector of the boundary.
-            rank (int):
-                The tensorial rank of the field for this boundary condition
-            value (float or str):
-                An expression that determines the value of the boundary condition.
-            target (str):
-                Selects which value is actually set. Possible choices include `value`,
-                `derivative`, and `virtual_point`.
-        """
         super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
+
+    __init__.__doc__ = ExpressionBC.__init__.__doc__
 
 
 class ExpressionDerivativeBC(ExpressionBC):
@@ -1380,7 +1416,6 @@ class ExpressionDerivativeBC(ExpressionBC):
 
     names = ["derivative_expression", "derivative_expr"]
 
-    @fill_in_docstring
     def __init__(
         self,
         grid: GridBase,
@@ -1388,31 +1423,12 @@ class ExpressionDerivativeBC(ExpressionBC):
         upper: bool,
         *,
         rank: int = 0,
-        value: Union[float, str] = 0,
+        value: Union[float, str, Callable] = 0,
         target: str = "derivative",
     ):
-        """
-        Warning:
-            {WARNING_EXEC}
-
-        Args:
-            grid (:class:`~pde.grids.base.GridBase`):
-                The grid for which the boundary conditions are defined
-            axis (int):
-                The axis to which this boundary condition is associated
-            upper (bool):
-                Flag indicating whether this boundary condition is associated with the
-                upper side of an axis or not. In essence, this determines the direction
-                of the local normal vector of the boundary.
-            rank (int):
-                The tensorial rank of the field for this boundary condition
-            value (float or str):
-                An expression that determines the value of the boundary condition.
-            target (str):
-                Selects which value is actually set. Possible choices include `value`,
-                `derivative`, and `virtual_point`.
-        """
         super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
+
+    __init__.__doc__ = ExpressionBC.__init__.__doc__
 
 
 class ConstBCBase(BCBase):

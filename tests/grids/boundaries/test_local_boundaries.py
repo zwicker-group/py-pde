@@ -275,24 +275,35 @@ def test_inhomogeneous_bcs_2d():
 def test_expression_bc_setting(expr):
     """test boundary conditions that use an expression"""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
+
+    if expr == "1":
+
+        def func(adjacent_value, dx, x, y, t):
+            return 1
+
+    elif expr == "x + y**2":
+
+        def func(adjacent_value, dx, x, y, t):
+            return x + y**2
+
     bc1 = grid.get_boundary_conditions({"value": expr})
-    bc2 = grid.get_boundary_conditions({"virtual_point": f"2 * ({expr}) - value"})
+    bc2 = grid.get_boundary_conditions({"value_expression": expr})
+    bc3 = grid.get_boundary_conditions({"value_expression": func})
+    bc4 = grid.get_boundary_conditions({"virtual_point": f"2 * ({expr}) - value"})
+    bcs = [bc1, bc2, bc3, bc4]
 
     field = ScalarField.random_uniform(grid)
+    f_ref = field.copy()
+    f_ref.set_ghost_cells(bc1)
 
-    f1 = field.copy()
-    f1.set_ghost_cells(bc1)
-    f2 = field.copy()
-    f2.set_ghost_cells(bc2)
+    for bc in bcs:
+        f1 = field.copy()
+        f1.set_ghost_cells(bc)
+        np.testing.assert_almost_equal(f_ref._data_full, f1._data_full)
 
-    f3 = field.copy()
-    bc1.make_ghost_cell_setter()(f3._data_full)
-    f4 = field.copy()
-    bc2.make_ghost_cell_setter()(f4._data_full)
-
-    np.testing.assert_almost_equal(f1._data_full, f2._data_full)
-    np.testing.assert_almost_equal(f1._data_full, f3._data_full)
-    np.testing.assert_almost_equal(f1._data_full, f4._data_full)
+        f2 = field.copy()
+        bc.make_ghost_cell_setter()(f2._data_full)
+        np.testing.assert_almost_equal(f_ref._data_full, f2._data_full)
 
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
@@ -314,9 +325,14 @@ def test_expression_bc_operator(dim):
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_value(dim):
     """test boundary conditions that use an expression to calculate the value"""
+
+    def unity(*args):
+        return 1
+
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"value": 1})
     bc2 = grid.get_boundary_conditions({"value_expression": "1"})
+    bc3 = grid.get_boundary_conditions({"value_expression": unity})
     assert "field" in bc2.get_mathematical_representation("field")
 
     field = ScalarField(grid, 1)
@@ -324,15 +340,22 @@ def test_expression_bc_value(dim):
     result = field.laplace(bc1)
     np.testing.assert_allclose(result.data, 0.0)
     result = field.laplace(bc2)
+    np.testing.assert_allclose(result.data, 0.0)
+    result = field.laplace(bc3)
     np.testing.assert_allclose(result.data, 0.0)
 
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_derivative(dim):
     """test boundary conditions that use an expression to calculate the derivative"""
+
+    def zeros(*args):
+        return 0
+
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"derivative": 0})
     bc2 = grid.get_boundary_conditions({"derivative_expression": "0"})
+    bc3 = grid.get_boundary_conditions({"derivative_expression": zeros})
     assert "field" in bc2.get_mathematical_representation("field")
 
     field = ScalarField(grid, 1)
@@ -340,6 +363,8 @@ def test_expression_bc_derivative(dim):
     result = field.laplace(bc1)
     np.testing.assert_allclose(result.data, 0.0)
     result = field.laplace(bc2)
+    np.testing.assert_allclose(result.data, 0.0)
+    result = field.laplace(bc3)
     np.testing.assert_allclose(result.data, 0.0)
 
 
