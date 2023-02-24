@@ -1188,7 +1188,7 @@ class ExpressionBC(BCBase):
         # quickly check whether the expression was parsed correctly
         test_value = np.zeros((self.grid.dim,) * self.rank)
         dx = self.grid.discretization[self.axis]
-        coords = tuple(bounds[0] for bounds in grid.axes_bounds)
+        coords = np.moveaxis(self.grid._boundary_coordinates(axis, upper), -1, 0)
         try:
             self._func(test_value, dx, *coords, 0)
         except Exception as err:
