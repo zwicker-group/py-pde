@@ -19,7 +19,7 @@ conditions for each axes:
 
     field = ScalarField(UnitGrid([16, 16], periodic=[True, False]))
     field.laplace(bc=[bc_x, bc_y])
-    
+
 If an axis is periodic (like the first one in the example above), the only valid
 boundary conditions are 'periodic' and its cousin 'anti-periodic', which imposes
 opposite signs on both sides. For non-periodic axes (e.g., the second axis),
@@ -31,7 +31,7 @@ derivative in the normal direction (specified by `{'derivative': DERIV}`). The s
 choices for the example above could be
 
 .. code-block:: python
-    
+
     bc_x = "periodic"
     bc_y = ({"value": 2}, {"derivative": -1})
 
@@ -43,14 +43,14 @@ given as a string that can be parsed by `sympy`. They can depend on all coordina
 the grid. An alternative boundary condition to the example above could thus read
 
 .. code-block:: python
-    
+
     bc_y = ({"value": "y**2"}, {"derivative": "-sin(x)"})
 
 
 Warning:
     To interpret arbitrary expressions, the package uses :func:`exec`. It
     should therefore not be used in a context where malicious input could occur.
-    
+
 Inhomogeneous values can also be specified by directly supplying an array, whose shape
 needs to be compatible with the boundary, i.e., it needs to have the same shape as the
 grid but with the dimension of the axis along which the boundary is specified removed. 
@@ -59,7 +59,7 @@ The package also supports mixed boundary conditions (depending on both the value
 and the derivative of the field) and imposing a second derivative. An example is
 
 .. code-block:: python
-    
+
     bc_y = ({"type": "mixed", "value": 2, "const": 7},
             {"curvature": 2})
 
@@ -87,10 +87,10 @@ conditions for periodic axis and a vanishing derivative or value otherwise. For 
 
     field = ScalarField(UnitGrid([16, 16], periodic=[True, False]))
     field.laplace(bc="auto_periodic_neumann")
-    
+
 enforces periodic boundary conditions on the first axis, while the second one
 has standard Neumann conditions.
-    
+
 Note:
     Derivatives are given relative to the outward normal vector, such that positive
     derivatives correspond to a function that increases across the boundary. 
@@ -106,19 +106,20 @@ The :mod:`~pde.grids.boundaries` package defines the following classes:
 * :class:`~pde.grids.boundaries.local.DirichletBC`:
   Imposing a constant value of the field at the boundary
 * :class:`~pde.grids.boundaries.local.ExpressionValueBC`:
-  Imposing the value of the field at the boundary given by an expression
+  Imposing the value of the field at the boundary given by an expression or a python
+  function
 * :class:`~pde.grids.boundaries.local.NeumannBC`:
   Imposing a constant derivative of the field in the outward normal direction at the
   boundary
 * :class:`~pde.grids.boundaries.local.ExpressionDerivativeBC`:
   Imposing the derivative of the field in the outward normal direction at the
-  boundary given by an expression
+  boundary given by an expression or a python function
 * :class:`~pde.grids.boundaries.local.MixedBC`:
   Imposing the derivative of the field in the outward normal direction proportional to
   its value at the boundary  
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing a constant second derivative (curvature) of the field at the boundary
-  
+
 
 There are corresponding classes that only affect the normal component of a field, which
 can be useful when dealing with vector and tensor fields:

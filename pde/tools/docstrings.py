@@ -25,7 +25,7 @@ DOCSTRING_REPLACEMENTS = {
        """,
     "ARG_BOUNDARIES": """
         Boundary conditions are generally given as a list with one condition for each
-        axis. For periodic axis, only periodic boundary conditions are allowed
+        axis. For periodic axes, only periodic boundary conditions are allowed
         (indicated by 'periodic' and 'anti-periodic'). For non-periodic axes, different
         boundary conditions can be specified for the lower and upper end (using a tuple
         of two conditions). For instance, Dirichlet conditions enforcing a value NUM
