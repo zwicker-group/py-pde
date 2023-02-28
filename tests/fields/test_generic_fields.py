@@ -525,52 +525,46 @@ def test_vector_from_scalars():
         VectorField.from_scalars([s1, s2, s1])
 
 
-def test_dot_product():
+@pytest.mark.parametrize(
+    "grid", [UnitGrid([3, 2]), UnitGrid([3]), CylindricalSymGrid(1, (0, 2), 3)]
+)
+def test_dot_product(grid):
     """test dot products between vectors and tensors"""
-    g = UnitGrid([3, 2])
-    vf = VectorField.random_normal(g)
-    tf = Tensor2Field.random_normal(g)
-    v_dot = vf.make_dot_operator()
-    t_dot = tf.make_dot_operator()
+    vf = VectorField.random_normal(grid)
+    tf = Tensor2Field.random_normal(grid)
+    dot = vf.make_dot_operator()
 
     expected = np.einsum("i...,i...->...", vf.data, vf.data)
     np.testing.assert_allclose((vf @ vf).data, expected)
-    np.testing.assert_allclose(v_dot(vf.data, vf.data), expected)
+    np.testing.assert_allclose(dot(vf.data, vf.data), expected)
 
     expected = np.einsum("i...,i...->...", vf.data, tf.data)
     np.testing.assert_allclose((vf @ tf).data, expected)
-    np.testing.assert_allclose(v_dot(vf.data, tf.data), expected)
+    np.testing.assert_allclose(dot(vf.data, tf.data), expected)
 
     expected = np.einsum("ji...,i...->j...", tf.data, vf.data)
     np.testing.assert_allclose((tf @ vf).data, expected)
-    np.testing.assert_allclose(t_dot(tf.data, vf.data), expected)
+    np.testing.assert_allclose(dot(tf.data, vf.data), expected)
 
     expected = np.einsum("ij...,jk...->ik...", tf.data, tf.data)
     np.testing.assert_allclose((tf @ tf).data, expected)
-    np.testing.assert_allclose(t_dot(tf.data, tf.data), expected)
+    np.testing.assert_allclose(dot(tf.data, tf.data), expected)
 
     # test non-sensical dot product
-    sf = ScalarField.random_normal(g)
+    sf = ScalarField.random_normal(grid)
     # vector dot
     with pytest.raises(TypeError):
         vf @ sf
     with pytest.raises(TypeError):
-        v_dot(vf.data, sf.data)
-    with pytest.raises(TypeError):
-        v_dot(sf.data, vf.data)
-    with pytest.raises(TypeError):
-        v_dot(tf.data, vf.data)
-    # tensor dot
-    with pytest.raises(TypeError):
         tf @ sf
     with pytest.raises(TypeError):
-        t_dot(tf.data, sf.data)
+        dot(vf.data, sf.data)
     with pytest.raises(TypeError):
-        t_dot(sf.data, tf.data)
+        dot(sf.data, vf.data)
     with pytest.raises(TypeError):
-        t_dot(vf.data, tf.data)
+        dot(tf.data, sf.data)
     with pytest.raises(TypeError):
-        t_dot(vf.data, vf.data)
+        dot(sf.data, tf.data)
 
 
 @pytest.mark.parametrize("grid", iter_grids())

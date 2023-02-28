@@ -186,7 +186,8 @@ def test_tensor_invariants():
         )
 
 
-def test_complex_tensors():
+@pytest.mark.parametrize("backend", ["numba", "numpy"])
+def test_complex_tensors(backend):
     """test some complex tensor fields"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     shape = (2, 2, 2) + grid.shape
@@ -195,20 +196,19 @@ def test_complex_tensors():
     t2 = Tensor2Field(grid, numbers[1])
     assert t1.is_complex and t2.is_complex
 
-    for backend in ["numba", "numpy"]:
-        dot_op = t1.make_dot_operator(backend)
+    dot_op = t1.make_dot_operator(backend)
 
-        # test dot product
-        res = dot_op(t1.data, t2.data)
-        for t in (t1 @ t2, t1.dot(t2)):
-            assert isinstance(t, Tensor2Field)
-            assert t.grid is grid
-            np.testing.assert_allclose(t.data, res)
+    # test dot product
+    res = dot_op(t1.data, t2.data)
+    for t in (t1 @ t2, t1.dot(t2)):
+        assert isinstance(t, Tensor2Field)
+        assert t.grid is grid
+        np.testing.assert_allclose(t.data, res)
 
-        # test without conjugate
-        dot_op = t1.make_dot_operator(backend, conjugate=False)
-        res = t1.dot(t2, conjugate=False)
-        np.testing.assert_allclose(dot_op(t1.data, t2.data), res.data)
+    # test without conjugate
+    dot_op = t1.make_dot_operator(backend, conjugate=False)
+    res = t1.dot(t2, conjugate=False)
+    np.testing.assert_allclose(dot_op(t1.data, t2.data), res.data)
 
 
 def test_from_expressions():
