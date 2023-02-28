@@ -16,7 +16,7 @@ from numpy.typing import DTypeLike
 from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
-from ..tools.numba import get_common_numba_dtype, jit
+from ..tools.numba import get_common_numba_dtype
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
@@ -229,7 +229,7 @@ class VectorField(DataFieldBase):
 
                 @register_jitable
                 def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """calculate dot product between fields `a` and `b`"""
+                    """calculate complex dot product between fields `a` and `b`"""
                     out[:] = a[0] * b[0].conjugate()  # overwrite potential data in out
                     for i in range(1, dim):
                         out[:] += a[i] * b[i].conjugate()
@@ -240,22 +240,64 @@ class VectorField(DataFieldBase):
 
                 @register_jitable
                 def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """calculate dot product between fields `a` and `b`"""
+                    """calculate real dot product between fields `a` and `b`"""
                     out[:] = a[0] * b[0]  # overwrite potential data in out
                     for i in range(1, dim):
                         out[:] += a[i] * b[i]
                     return out
 
-            @jit
             def dot(
                 a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
+                """calculate dot product between vector field `a` and field `b`"""
+                if a.ndim != 1 + dim:
+                    raise TypeError("Left item in dot product must be vector field")
+                if not (a.shape == b.shape or a.shape == b.shape[1:]):
+                    raise TypeError("Right item in dot must be vector or tensor field")
+                # assert a.shape == b.shape and a.shape == b.shape[1:]
+
                 if out is None:
                     # we need to determine the dtype of the calculation, which we here
                     # do by simply multiplying the first elements
                     c = np.array(a.flat[0] * b.flat[0])
                     out = np.empty(b.shape[1:], dtype=c.dtype)
                 return calc(a, b, out)  # type: ignore
+
+            @overload(dot)
+            def ol_dot(
+                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            ) -> np.ndarray:
+                """wrapper deciding whether the underlying function is called
+                with or without `out`."""
+                if isinstance(a, nb.types.Number):
+                    # simple scalar call -> do not need to allocate anything
+                    raise RuntimeError("`dot` needs to be called with fields")
+
+                elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                    # function is called without `out`
+                    dtype = get_common_numba_dtype(a, b)
+
+                    def f_with_allocated_out(
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray
+                    ) -> np.ndarray:
+                        """helper function allocating output array"""
+                        if a.ndim != 1 + dim:
+                            raise TypeError(
+                                "Left item in dot product must be vector field"
+                            )
+                        if not (a.shape == b.shape or a.shape == b.shape[1:]):
+                            raise TypeError(
+                                "Right item in dot must be vector or tensor field"
+                            )
+
+                        out = np.empty(b.shape[1:], dtype=dtype)
+                        return calc(a, b, out=out)  # type: ignore
+
+                    return f_with_allocated_out  # type: ignore
+
+                else:
+                    # function is called with `out` argument
+                    return calc  # type: ignore
 
         elif backend == "numpy":
             # create the dot product using basic numpy functions
@@ -264,6 +306,9 @@ class VectorField(DataFieldBase):
                 a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
                 """inner function doing the actual calculation of the dot product"""
+                if a.ndim != 1 + dim:
+                    raise TypeError("Left item in dot product must be vector field")
+
                 if a.shape == b.shape:
                     # dot product between vector and vector
                     if out is None:
@@ -285,7 +330,7 @@ class VectorField(DataFieldBase):
                         return np.einsum("i...,ij...->j...", a, b, out=out)
 
                 else:
-                    raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
+                    raise TypeError(f"Unsupported shapes ({a.shape}, {b.shape})")
 
             if conjugate:
                 # create inner function calculating the dot product using conjugate
@@ -302,7 +347,7 @@ class VectorField(DataFieldBase):
         else:
             raise ValueError(f"Undefined backend `{backend}")
 
-        return dot  # type: ignore
+        return dot
 
     def outer_product(
         self,
