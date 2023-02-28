@@ -549,6 +549,29 @@ def test_dot_product():
     np.testing.assert_allclose((tf @ tf).data, expected)
     np.testing.assert_allclose(t_dot(tf.data, tf.data), expected)
 
+    # test non-sensical dot product
+    sf = ScalarField.random_normal(g)
+    # vector dot
+    with pytest.raises(TypeError):
+        vf @ sf
+    with pytest.raises(TypeError):
+        v_dot(vf.data, sf.data)
+    with pytest.raises(TypeError):
+        v_dot(sf.data, vf.data)
+    with pytest.raises(TypeError):
+        v_dot(tf.data, vf.data)
+    # tensor dot
+    with pytest.raises(TypeError):
+        tf @ sf
+    with pytest.raises(TypeError):
+        t_dot(tf.data, sf.data)
+    with pytest.raises(TypeError):
+        t_dot(sf.data, tf.data)
+    with pytest.raises(TypeError):
+        t_dot(vf.data, tf.data)
+    with pytest.raises(TypeError):
+        t_dot(vf.data, vf.data)
+
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_complex_operator(grid):

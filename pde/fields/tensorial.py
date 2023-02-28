@@ -241,8 +241,12 @@ class Tensor2Field(DataFieldBase):
             def dot(
                 a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
-                """wrapper deciding whether the underlying function is called
-                with or without `out`."""
+                """calculate dot product between tensor field `a` and field `b`"""
+                if a.ndim != 2 + dim:
+                    raise TypeError("Left item in dot must be tensor field")
+                if not (a.shape == b.shape or a.shape[1:] == b.shape):
+                    raise TypeError("Right item in dot must be vector or scalar field")
+
                 if out is None:
                     out = np.empty(b.shape, dtype=get_common_dtype(a, b))
                 return calc(a, b, out)  # type: ignore
@@ -255,7 +259,7 @@ class Tensor2Field(DataFieldBase):
                 with or without `out`."""
                 if isinstance(a, nb.types.Number):
                     # simple scalar call -> do not need to allocate anything
-                    raise RuntimeError("Dot needs to be called with fields")
+                    raise RuntimeError("`dot` needs to be called with fields")
 
                 elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # function is called without `out`
@@ -265,6 +269,12 @@ class Tensor2Field(DataFieldBase):
                         a: np.ndarray, b: np.ndarray, out: np.ndarray
                     ) -> np.ndarray:
                         """helper function allocating output array"""
+                        if a.ndim != 2 + dim:
+                            raise TypeError(
+                                "Left item in dot product must be tensor field"
+                            )
+                        assert a.shape == b.shape or a.shape[1:] == b.shape
+
                         out = np.empty(b.shape, dtype=dtype)
                         return calc(a, b, out=out)  # type: ignore
 
@@ -281,6 +291,9 @@ class Tensor2Field(DataFieldBase):
                 a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
                 """calculate dot product between two tensors"""
+                if a.ndim != 2 + dim:
+                    raise TypeError("Left item in dot product must be tensor field")
+
                 if a.shape == b.shape:
                     # dot product between tensor and tensor
                     if out is None:
@@ -302,7 +315,7 @@ class Tensor2Field(DataFieldBase):
                         return np.einsum("ij...,j...->i...", a, b, out=out)
 
                 else:
-                    raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
+                    raise TypeError(f"Unsupported shapes ({a.shape}, {b.shape})")
 
             if conjugate:
                 # create inner function calculating the dot product using conjugate
