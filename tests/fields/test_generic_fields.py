@@ -2,6 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import numba as nb
 import numpy as np
 import pytest
 from scipy import ndimage
@@ -557,13 +558,13 @@ def test_dot_product(grid):
         vf @ sf
     with pytest.raises(TypeError):
         tf @ sf
-    with pytest.raises(TypeError):
+    with pytest.raises((TypeError, nb.errors.TypingError)):
         dot(vf.data, sf.data)
-    with pytest.raises(TypeError):
+    with pytest.raises((TypeError, nb.errors.TypingError)):
         dot(sf.data, vf.data)
-    with pytest.raises(TypeError):
+    with pytest.raises((TypeError, nb.errors.TypingError)):
         dot(tf.data, sf.data)
-    with pytest.raises(TypeError):
+    with pytest.raises((TypeError, nb.errors.TypingError)):
         dot(sf.data, tf.data)
 
 
