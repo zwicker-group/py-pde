@@ -214,16 +214,16 @@ def test_pde_noise(backend):
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_spatial_args(backend):
     """test PDE with spatial dependence"""
-    field = ScalarField(grids.UnitGrid([2]))
+    field = ScalarField(grids.UnitGrid([4]))
 
     eq = PDE({"a": "x"})
     rhs = eq.make_pde_rhs(field, backend=backend)
-    np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.5, 1.5]))
+    np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.5, 1.5, 2.5, 3.5]))
 
-    # test combination of spatial dependence and differential oeprators
+    # test combination of spatial dependence and differential operators
     eq = PDE({"a": "dot(gradient(x), gradient(a))"})
     rhs = eq.make_pde_rhs(field, backend=backend)
-    np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.0, 0.0]))
+    np.testing.assert_allclose(rhs(field.data, 0.0), np.array([0.0, 0.0, 0.0, 0.0]))
 
     # test invalid spatial dependence
     eq = PDE({"a": "x + y"})

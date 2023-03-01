@@ -31,12 +31,13 @@ from typing import (
     Union,
 )
 
+import numba as nb
 import numpy as np
 from numba.extending import is_jitted, overload, register_jitable
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import Number, classproperty, hybridmethod
+from ..tools.misc import Number, hybridmethod
 from ..tools.numba import jit
 from ..tools.typing import (
     CellVolume,
@@ -977,60 +978,96 @@ class GridBase(metaclass=ABCMeta):
         shape_in_full = (self.dim,) * operator.rank_in + self._shape_full
         shape_out = (self.dim,) * operator.rank_out + self.shape
 
+        # define numpy version of the operator
+        def apply_op(
+            arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
+        ) -> np.ndarray:
+            """set boundary conditions and apply operator"""
+            # ensure result array is allocated
+            if out is None:
+                out = np.empty(shape_out, dtype=arr.dtype)
+            else:
+                assert out.shape == shape_out
+
+            # prepare input with boundary conditions
+            arr_full = np.empty(shape_in_full, dtype=arr.dtype)
+            arr_full[(...,) + self._idx_valid] = arr
+            bcs.set_ghost_cells(arr_full, args=args)
+
+            # apply operator
+            operator_raw(arr_full, out)
+
+            # return valid part of the output
+            return out
+
+        if backend in {"numpy", "scipy"}:
+            return apply_op
+
         if backend == "numba":
-            # create a compiled function to apply the operator
+            # overload `apply_op` and return  numba-compiled function
             set_ghost_cells = bcs.make_ghost_cell_setter()
             set_valid = self._make_set_valid()
 
             if not is_jitted(operator_raw):
                 operator_raw = jit(operator_raw)
 
-            @jit
-            def apply_op(
+            @overload(apply_op)
+            def apply_op_ol(
                 arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
             ) -> np.ndarray:
-                """applies operator to the data"""
-                if out is None:
-                    out = np.empty(shape_out, dtype=arr.dtype)
-                # prepare input with boundary conditions
-                arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                set_valid(arr_full, arr)
-                set_ghost_cells(arr_full, args=args)
+                """make numba implementation of the operator"""
+                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                    # need to allocate memory for `out`
 
-                # apply operator
-                operator_raw(arr_full, out)
+                    def apply_op_impl(
+                        arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
+                    ) -> np.ndarray:
+                        """allocates `out` and applies operator to the data"""
+                        out = np.empty(shape_out, dtype=arr.dtype)
+                        # prepare input with boundary conditions
+                        arr_full = np.empty(shape_in_full, dtype=arr.dtype)
+                        set_valid(arr_full, arr)
+                        set_ghost_cells(arr_full, args=args)
 
-                # return valid part of the output
-                return out
+                        # apply operator
+                        operator_raw(arr_full, out)
 
-        elif backend in {"numpy", "scipy"}:
-            # create a numpy/scipy function to apply the operator
+                        # return valid part of the output
+                        return out
 
-            def apply_op(
+                else:
+                    # resuse provided `out`
+
+                    def apply_op_impl(  # type: ignore
+                        arr: np.ndarray, out: np.ndarray, args=None
+                    ) -> np.ndarray:
+                        """applies operator to the data wihtout allocating out"""
+                        # prepare input with boundary conditions
+                        arr_full = np.empty(shape_in_full, dtype=arr.dtype)
+                        set_valid(arr_full, arr)
+                        set_ghost_cells(arr_full, args=args)
+
+                        # apply operator
+                        operator_raw(arr_full, out)
+
+                        # return valid part of the output
+                        return out
+
+                return apply_op_impl  # type: ignore
+
+            @jit
+            def apply_op_compiled(
                 arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
             ) -> np.ndarray:
                 """set boundary conditions and apply operator"""
-                # ensure result array is allocated
-                if out is None:
-                    out = np.empty(shape_out, dtype=arr.dtype)
-                else:
-                    assert out.shape == shape_out
+                return apply_op(arr, out, args)
 
-                # prepare input with boundary conditions
-                arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                arr_full[(...,) + self._idx_valid] = arr
-                bcs.set_ghost_cells(arr_full, args=args)
-
-                # apply operator
-                operator_raw(arr_full, out)
-
-                # return valid part of the output
-                return out
+            # return the compiled versions of the operator
+            return apply_op_compiled  # type: ignore
 
         else:
+            # simply return the operator if the backend was `numba` or `scipy`
             raise NotImplementedError(f"Undefined backend '{backend}'")
-
-        return apply_op  # type: ignore
 
     def slice(self, indices: Sequence[int]) -> GridBase:
         """return a subgrid of only the specified axes"""

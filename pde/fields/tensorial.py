@@ -6,17 +6,14 @@ Defines a tensorial field of rank 2 over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple, Union
 
-import numba as nb
 import numpy as np
-from numba.extending import overload
 from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
-from ..tools.numba import get_common_numba_dtype, jit
 from ..tools.plotting import PlotReference, plot_on_figure
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
@@ -186,153 +183,6 @@ class Tensor2Field(DataFieldBase):
         return out
 
     __matmul__ = dot  # support python @-syntax for matrix multiplication
-
-    def make_dot_operator(
-        self, backend: str = "numba", *, conjugate: bool = True
-    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
-        """return operator calculating the dot product involving vector fields
-
-        This supports both products between two vectors as well as products
-        between a vector and a tensor.
-
-        Warning:
-            This function does not check types or dimensions.
-
-        Args:
-            conjugate (bool):
-                Whether to use the complex conjugate for the second operand
-
-        Returns:
-            function that takes two instance of :class:`~numpy.ndarray`, which
-            contain the discretized data of the two operands. An optional third
-            argument can specify the output array to which the result is
-            written. Note that the returned function is jitted with numba for
-            speed.
-        """
-        dim = self.grid.dim
-
-        if backend == "numba":
-            # create the dot product using a numba compiled function
-
-            if conjugate:
-                # create inner function calculating the dot product using conjugate
-
-                @jit
-                def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """calculate dot product between fields `a` and `b`"""
-                    for i in range(dim):
-                        out[i] = a[i, 0] * b[0].conjugate()  # overwrite data in out
-                        for j in range(1, dim):
-                            out[i] += a[i, j] * b[j].conjugate()
-                    return out
-
-            else:
-                # create the inner function calculating the dot product
-
-                @jit
-                def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """calculate dot product between fields `a` and `b`"""
-                    for i in range(dim):
-                        out[i] = a[i, 0] * b[0]  # overwrite potential data in out
-                        for j in range(1, dim):
-                            out[i] += a[i, j] * b[j]
-                    return out
-
-            def dot(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-            ) -> np.ndarray:
-                """calculate dot product between tensor field `a` and field `b`"""
-                if a.ndim != 2 + dim:
-                    raise TypeError("Left item in dot must be tensor field")
-                if not (a.shape == b.shape or a.shape[1:] == b.shape):
-                    raise TypeError("Right item in dot must be vector or scalar field")
-
-                if out is None:
-                    out = np.empty(b.shape, dtype=get_common_dtype(a, b))
-                return calc(a, b, out)  # type: ignore
-
-            @overload(dot)
-            def ol_dot(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-            ) -> np.ndarray:
-                """wrapper deciding whether the underlying function is called
-                with or without `out`."""
-                if isinstance(a, nb.types.Number):
-                    # simple scalar call -> do not need to allocate anything
-                    raise RuntimeError("`dot` needs to be called with fields")
-
-                elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out`
-                    dtype = get_common_numba_dtype(a, b)
-
-                    def f_with_allocated_out(
-                        a: np.ndarray, b: np.ndarray, out: np.ndarray
-                    ) -> np.ndarray:
-                        """helper function allocating output array"""
-                        if a.ndim != 2 + dim:
-                            raise TypeError(
-                                "Left item in dot product must be tensor field"
-                            )
-                        assert a.shape == b.shape or a.shape[1:] == b.shape
-
-                        out = np.empty(b.shape, dtype=dtype)
-                        return calc(a, b, out=out)  # type: ignore
-
-                    return f_with_allocated_out  # type: ignore
-
-                else:
-                    # function is called with `out` argument
-                    return calc  # type: ignore
-
-        elif backend == "numpy":
-            # create the dot product using basic numpy functions
-
-            def calc(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-            ) -> np.ndarray:
-                """calculate dot product between two tensors"""
-                if a.ndim != 2 + dim:
-                    raise TypeError("Left item in dot product must be tensor field")
-
-                if a.shape == b.shape:
-                    # dot product between tensor and tensor
-                    if out is None:
-                        # TODO: Remove this construct once we make numpy 1.20 a minimal
-                        # requirement. Earlier version of numpy do not support out=None
-                        # correctly and we thus had to use this work-around
-                        return np.einsum("ij...,jk...->ik...", a, b)  # type: ignore
-                    else:
-                        return np.einsum("ij...,jk...->ik...", a, b, out=out)
-
-                elif a.shape[1:] == b.shape:
-                    # dot product between tensor and vector
-                    if out is None:
-                        # TODO: Remove this construct once we make numpy 1.20 a minimal
-                        # requirement. Earlier version of numpy do not support out=None
-                        # correctly and we thus had to use this work-around
-                        return np.einsum("ij...,j...->i...", a, b)  # type: ignore
-                    else:
-                        return np.einsum("ij...,j...->i...", a, b, out=out)
-
-                else:
-                    raise TypeError(f"Unsupported shapes ({a.shape}, {b.shape})")
-
-            if conjugate:
-                # create inner function calculating the dot product using conjugate
-
-                def dot(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """calculate dot product with conjugated second operand"""
-                    return calc(a, b.conjugate(), out=out)  # type: ignore
-
-            else:
-                dot = calc
-
-        else:
-            raise ValueError(f"Undefined backend `{backend}")
-
-        return dot
 
     @fill_in_docstring
     def divergence(
