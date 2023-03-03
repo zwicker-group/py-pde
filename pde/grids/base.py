@@ -1043,12 +1043,12 @@ class GridBase(metaclass=ABCMeta):
                 else:
                     # reuse provided `out` array
 
-                    def apply_op_impl(  # type: ignore
+                    def apply_op_impl(
                         arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
                     ) -> np.ndarray:
                         """applies operator to the data wihtout allocating out"""
                         assert arr.shape == shape_in_valid
-                        assert out.shape == shape_out
+                        assert out.shape == shape_out  # type: ignore
 
                         # prepare input with boundary conditions
                         arr_full = np.empty(shape_in_full, dtype=arr.dtype)
@@ -1056,10 +1056,10 @@ class GridBase(metaclass=ABCMeta):
                         set_ghost_cells(arr_full, args=args)
 
                         # apply operator
-                        operator_raw(arr_full, out)
+                        operator_raw(arr_full, out)  # type: ignore
 
                         # return valid part of the output
-                        return out
+                        return out  # type: ignore
 
                 return apply_op_impl  # type: ignore
 

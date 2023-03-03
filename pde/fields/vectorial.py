@@ -16,7 +16,7 @@ from numpy.typing import DTypeLike
 from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
-from ..tools.numba import get_common_numba_dtype
+from ..tools.numba import get_common_numba_dtype, jit
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
@@ -250,75 +250,91 @@ class VectorField(DataFieldBase):
             specify the output array to which the result is written. Note that the
             returned function is jitted with numba for speed.
         """
-        dim = self.grid.dim
 
-        if backend == "numba":
-            # create the dot product using a numba compiled function
+        def outer(
+            a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+        ) -> np.ndarray:
+            """calculate the outer product using numpy"""
+            return np.einsum("i...,j...->ij...", a, b, out=out)
 
-            # create the inner function calculating the dot product
+        if backend == "numpy":
+            # return the bare dot operator without the numba-overloaded version
+            return outer
+
+        elif backend == "numba":
+            # overload `outer` with a numba-compiled version
+
+            dim = self.grid.dim
+            num_axes = self.grid.num_axes
+
+            def check_rank(arr: Union[nb.types.Type, nb.types.Optional]) -> None:
+                """determine rank of field with type `arr`"""
+                arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
+                if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
+                    raise nb.errors.TypingError(
+                        f"Arguments must be array, not  {arr_typ.__class__}"
+                    )
+                assert arr_typ.ndim == 1 + num_axes
+
+            # create the inner function calculating the outer product
             @register_jitable
             def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                """calculate dot product between fields `a` and `b`"""
+                """calculate outer product between fields `a` and `b`"""
                 for i in range(0, dim):
                     for j in range(0, dim):
                         out[i, j, :] = a[i] * b[j]
                 return out
 
-            def outer(
+            @overload(outer, inline="always")
+            def outer_ol(
                 a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
-                """wrapper deciding whether the underlying function is called
-                with or without `out`."""
-                if out is None:
-                    out = np.empty((len(a),) + b.shape, dtype=get_common_dtype(a, b))
-                return calc(a, b, out)  # type: ignore
+                """numba implementation to calculate outer product between two fields"""
+                # get (and check) rank of the input arrays
+                check_rank(a)
+                check_rank(b)
+                in_shape = (dim,) + self.grid.shape
+                out_shape = (dim, dim) + self.grid.shape
 
-            @overload(outer)
-            def ol_outer(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-            ) -> np.ndarray:
-                """wrapper deciding whether the underlying function is called
-                with or without `out`."""
-                if isinstance(a, nb.types.Number):
-                    # simple scalar call -> do not need to allocate anything
-                    raise RuntimeError("Dot needs to be called with fields")
-
-                elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out`
+                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                    # function is called without `out` -> allocate memory
                     dtype = get_common_numba_dtype(a, b)
 
-                    def f_with_allocated_out(
-                        a: np.ndarray, b: np.ndarray, out: np.ndarray
+                    def outer_impl(
+                        a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                     ) -> np.ndarray:
                         """helper function allocating output array"""
-                        out = np.empty((len(a),) + b.shape, dtype=dtype)
-                        return calc(a, b, out=out)  # type: ignore
-
-                    return f_with_allocated_out  # type: ignore
+                        assert a.shape == b.shape == in_shape
+                        out = np.empty(out_shape, dtype=dtype)
+                        calc(a, b, out)
+                        return out
 
                 else:
-                    # function is called with `out` argument
-                    return calc  # type: ignore
+                    # function is called with `out` argument -> reuse `out` array
 
-        elif backend == "numpy":
-            # create the dot product using basic numpy functions
+                    def outer_impl(
+                        a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                    ) -> np.ndarray:
+                        """helper function without allocating output array"""
+                        # check input
+                        assert a.shape == b.shape == in_shape
+                        assert out.shape == out_shape  # type: ignore
+                        calc(a, b, out)
+                        return out  # type: ignore
 
-            def outer(
+                return outer_impl  # type: ignore
+
+            @jit
+            def outer_compiled(
                 a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
-                """calculates the outer product between two vector fields"""
-                if out is None:
-                    # TODO: Remove this construct once we make numpy 1.20 a minimal
-                    # requirement. Earlier version of numpy do not support out=None
-                    # correctly and we thus had to use this work-around
-                    return np.einsum("i...,j...->ij...", a, b)  # type: ignore
-                else:
-                    return np.einsum("i...,j...->ij...", a, b, out=out)
+                """numba implementation to calculate outer product between two fields"""
+                return outer(a, b, out)
+
+            return outer_compiled  # type: ignore
 
         else:
-            raise ValueError(f"Undefined backend `{backend}")
-
-        return outer
+            raise ValueError(f"Unsupported backend `{backend}")
 
     @fill_in_docstring
     def divergence(
