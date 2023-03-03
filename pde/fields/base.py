@@ -1669,6 +1669,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 raise TypeError(f"Unsupported shapes ({a.shape}, {b.shape})")
 
         if backend == "numpy":
+            # return the bare dot operator without the numba-overloaded version
             return dot
 
         elif backend == "numba":
@@ -1686,7 +1687,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     raise TypeError("Fields in dot product must have rank >= 1")
                 return rank  # type: ignore
 
-            @overload(dot)
+            @overload(dot, inline="always")
             def dot_ol(
                 a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
             ) -> np.ndarray:
@@ -1735,29 +1736,35 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     raise NotImplementedError("Inner product for these ranks")
 
                 if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                    # function is called without `out`
+                    # function is called without `out` -> allocate memory
                     rank_out = rank_a + rank_b - 2
-                    shape = (dim,) * rank_out + self.grid.shape
+                    a_shape = (dim,) * rank_a + self.grid.shape
+                    b_shape = (dim,) * rank_b + self.grid.shape
+                    out_shape = (dim,) * rank_out + self.grid.shape
                     dtype = get_common_numba_dtype(a, b)
 
                     def dot_impl(
                         a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                     ) -> np.ndarray:
                         """helper function allocating output array"""
-                        # assert a.shape[rank_a:] == b.shape[rank_b:]
-                        out = np.empty(shape, dtype=dtype)
-                        calc(a, b, out=out)
+                        assert a.shape == a_shape
+                        assert b.shape == b_shape
+                        out = np.empty(out_shape, dtype=dtype)
+                        calc(a, b, out)
                         return out
 
                 else:
-                    # function is called with `out` argument
-                    def dot_impl(  # type: ignore
-                        a: np.ndarray, b: np.ndarray, out: np.ndarray
+                    # function is called with `out` argument -> reuse `out` array
+
+                    def dot_impl(
+                        a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
                     ) -> np.ndarray:
                         """helper function without allocating output array"""
-                        # assert a.shape[rank_a:] == b.shape[rank_b:]
+                        assert a.shape == a_shape
+                        assert b.shape == b_shape
+                        assert out.shape == out_shape  # type: ignore
                         calc(a, b, out)
-                        return out
+                        return out  # type: ignore
 
                 return dot_impl  # type: ignore
 
