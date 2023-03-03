@@ -975,6 +975,7 @@ class GridBase(metaclass=ABCMeta):
         bcs = self.get_boundary_conditions(bc, rank=operator.rank_in)
 
         # calculate shapes of the full data
+        shape_in_valid = (self.dim,) * operator.rank_in + self.shape
         shape_in_full = (self.dim,) * operator.rank_in + self._shape_full
         shape_out = (self.dim,) * operator.rank_out + self.shape
 
@@ -983,7 +984,8 @@ class GridBase(metaclass=ABCMeta):
             arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
         ) -> np.ndarray:
             """set boundary conditions and apply operator"""
-            # ensure result array is allocated
+            assert arr.shape == shape_in_valid
+            # ensure `out` array is allocated
             if out is None:
                 out = np.empty(shape_out, dtype=arr.dtype)
             else:
@@ -1001,17 +1003,18 @@ class GridBase(metaclass=ABCMeta):
             return out
 
         if backend in {"numpy", "scipy"}:
+            # return the bare operator without the numba-overloaded version
             return apply_op
 
-        if backend == "numba":
-            # overload `apply_op` and return  numba-compiled function
+        elif backend == "numba":
+            # overload `apply_op` with numba-compiled version
             set_ghost_cells = bcs.make_ghost_cell_setter()
             set_valid = self._make_set_valid()
 
             if not is_jitted(operator_raw):
                 operator_raw = jit(operator_raw)
 
-            @overload(apply_op)
+            @overload(apply_op, inline="always")
             def apply_op_ol(
                 arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
             ) -> np.ndarray:
@@ -1023,6 +1026,8 @@ class GridBase(metaclass=ABCMeta):
                         arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
                     ) -> np.ndarray:
                         """allocates `out` and applies operator to the data"""
+                        assert arr.shape == shape_in_valid
+
                         out = np.empty(shape_out, dtype=arr.dtype)
                         # prepare input with boundary conditions
                         arr_full = np.empty(shape_in_full, dtype=arr.dtype)
@@ -1036,12 +1041,15 @@ class GridBase(metaclass=ABCMeta):
                         return out
 
                 else:
-                    # resuse provided `out`
+                    # reuse provided `out` array
 
                     def apply_op_impl(  # type: ignore
-                        arr: np.ndarray, out: np.ndarray, args=None
+                        arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
                     ) -> np.ndarray:
                         """applies operator to the data wihtout allocating out"""
+                        assert arr.shape == shape_in_valid
+                        assert out.shape == shape_out
+
                         # prepare input with boundary conditions
                         arr_full = np.empty(shape_in_full, dtype=arr.dtype)
                         set_valid(arr_full, arr)
