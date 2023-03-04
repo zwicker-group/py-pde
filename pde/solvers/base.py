@@ -10,12 +10,12 @@ import logging
 from abc import ABCMeta, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type  # @UnusedImport
 
-import numba as nb
 import numpy as np
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from ..tools.misc import classproperty
+from ..tools.numba import is_jitted
 
 
 class SolverBase(metaclass=ABCMeta):
@@ -118,7 +118,7 @@ class SolverBase(metaclass=ABCMeta):
 
         if hasattr(rhs, "_backend"):
             self.info["backend"] = rhs._backend
-        elif isinstance(rhs, nb.dispatcher.Dispatcher):
+        elif is_jitted(rhs):
             self.info["backend"] = "numba"
         else:
             self.info["backend"] = "undetermined"
@@ -152,7 +152,7 @@ class SolverBase(metaclass=ABCMeta):
 
         if hasattr(rhs, "_backend"):
             self.info["backend"] = rhs._backend
-        elif isinstance(rhs, nb.dispatcher.Dispatcher):
+        elif is_jitted(rhs):
             self.info["backend"] = "numba"
         else:
             self.info["backend"] = "undetermined"
