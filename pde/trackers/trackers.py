@@ -332,7 +332,15 @@ class PlotTracker(TrackerBase):
             by appending frames. To write the movie to a file call its
             :meth:`~pde.visualization.movies.Movie.save` method. Beside adding frames
             before and after the simulation, an explicit movie object can also be used
-            to adjust the output, e.g., by setting the `dpi` argument or `frame_rate`.
+            to adjust the output. For instance, the following example code creates a
+            movie with a framerate of 15, a resolution of 200 dpi, and a bitrate of 6000
+            kilobits per second:
+
+            .. code-block:: python
+
+                movie = Movie("movie.mp4", framerate=15, dpi=200, bitrate=6000)
+                eq.solve(..., tracker=PlotTracker(1, movie=movie))
+                movie.save()
         """
         from ..visualization.movies import Movie  # @Reimport
 
