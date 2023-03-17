@@ -2,7 +2,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import glob
 import os
 import subprocess as sp
 import sys
@@ -14,11 +13,9 @@ import pytest
 from pde.tools.misc import module_available, skipUnlessModule
 from pde.visualization.movies import Movie
 
-PACKAGE_PATH = Path(__file__).resolve().parents[2]
-EXAMPLES = glob.glob(str(PACKAGE_PATH / "examples" / "*.py"))
-NOTEBOOKS = glob.glob(
-    str(PACKAGE_PATH / "examples" / "jupyter" / "*.ipynb")
-) + glob.glob(str(PACKAGE_PATH / "examples" / "tutorial" / "*.ipynb"))
+PACKAGE_PATH = Path(__file__).resolve().parents[1]
+EXAMPLES = (PACKAGE_PATH / "examples").glob("*.py")
+NOTEBOOKS = (PACKAGE_PATH / "examples").glob("**/*.ipynb")
 
 SKIP_EXAMPLES: List[str] = []
 if not Movie.is_available():
@@ -33,12 +30,12 @@ if not module_available("h5py"):
 @pytest.mark.no_cover
 @pytest.mark.skipif(sys.platform == "win32", reason="Assumes unix setup")
 @pytest.mark.parametrize("path", EXAMPLES)
-def test_example(path):
+def test_example_scripts(path):
     """runs an example script given by path"""
     # check whether this test needs to be run
-    if os.path.basename(path).startswith("_"):
+    if path.name.startswith("_"):
         pytest.skip("skip examples starting with an underscore")
-    if any(name in path for name in SKIP_EXAMPLES):
+    if any(name in str(path) for name in SKIP_EXAMPLES):
         pytest.skip(f"Skip test {path}")
 
     # run the actual test in a separate python process
@@ -72,7 +69,7 @@ def test_example(path):
 @pytest.mark.parametrize("path", NOTEBOOKS)
 def test_jupyter_notebooks(path, tmp_path):
     """run the jupyter notebooks"""
-    if os.path.basename(path).startswith("_"):
+    if path.name.startswith("_"):
         pytest.skip("skip examples starting with an underscore")
 
     # adjust python environment
