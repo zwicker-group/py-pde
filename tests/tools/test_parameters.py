@@ -90,28 +90,28 @@ def test_parameters():
 def test_parameters_simple():
     """test adding parameters using a simple dictionary"""
 
-    class Test(Parameterized):
+    class TestSimple(Parameterized):
         parameters_default = {"a": 1}
 
-    t = Test()
+    t = TestSimple()
     assert t.parameters["a"] == 1
 
 
 def test_parameter_help(monkeypatch, capsys):
     """test how parameters are shown"""
 
-    class Test1(Parameterized):
+    class TestHelp1(Parameterized):
         parameters_default = [DeprecatedParameter("a", 1, int, "random string")]
 
-    class Test2(Test1):
+    class TestHelp2(TestHelp1):
         parameters_default = [Parameter("b", 2, int, "another word")]
 
-    t = Test2()
+    t = TestHelp2()
     for in_jupyter in [False, True]:
         monkeypatch.setattr("pde.tools.output.in_jupyter_notebook", lambda: in_jupyter)
 
         for flags in itertools.combinations_with_replacement([True, False], 3):
-            Test2.show_parameters(*flags)
+            TestHelp2.show_parameters(*flags)
             o1, e1 = capsys.readouterr()
             t.show_parameters(*flags)
             o2, e2 = capsys.readouterr()
@@ -122,18 +122,18 @@ def test_parameter_help(monkeypatch, capsys):
 def test_hidden_parameter():
     """test how hidden parameters are handled"""
 
-    class Test1(Parameterized):
+    class TestHidden1(Parameterized):
         parameters_default = [Parameter("a", 1), Parameter("b", 2)]
 
-    assert Test1().parameters == {"a": 1, "b": 2}
+    assert TestHidden1().parameters == {"a": 1, "b": 2}
 
-    class Test2(Test1):
+    class TestHidden2(TestHidden1):
         parameters_default = [HideParameter("b")]
 
-    class Test2a(Parameterized):
+    class TestHidden2a(Parameterized):
         parameters_default = [Parameter("a", 1), Parameter("b", 2, hidden=True)]
 
-    for t_class in [Test2, Test2a]:
+    for t_class in [TestHidden2, TestHidden2a]:
         assert "b" not in t_class.get_parameters()
         assert len(t_class.get_parameters()) == 1
         assert len(t_class.get_parameters(include_hidden=True)) == 2
@@ -143,10 +143,10 @@ def test_hidden_parameter():
         with pytest.raises(ValueError):
             t2._parse_parameters({"b": 2}, check_validity=True, allow_hidden=False)
 
-    class Test3(Test1):
+    class TestHidden3(TestHidden1):
         parameters_default = [Parameter("b", 3)]
 
-    t3 = Test3()
+    t3 = TestHidden3()
     assert t3.parameters == {"a": 1, "b": 3}
     assert t3.get_parameter_default("b") == 3
 
@@ -155,40 +155,40 @@ def test_convert_default_values(caplog):
     """test how default values are handled"""
     caplog.set_level(logging.WARNING)
 
-    class Test1(Parameterized):
+    class TestConvert1(Parameterized):
         parameters_default = [Parameter("a", 1, float)]
 
-    t1 = Test1()
+    t1 = TestConvert1()
     assert "Default value" not in caplog.text
     assert isinstance(t1.parameters["a"], float)
 
-    class Test2(Parameterized):
+    class TestConvert2(Parameterized):
         parameters_default = [Parameter("a", np.arange(3), np.array)]
 
-    t2 = Test2()
+    t2 = TestConvert2()
     np.testing.assert_equal(t2.parameters["a"], np.arange(3))
 
-    class Test3(Parameterized):
+    class TestConvert3(Parameterized):
         parameters_default = [Parameter("a", [0, 1, 2], np.array)]
 
-    t3 = Test3()
+    t3 = TestConvert3()
     np.testing.assert_equal(t3.parameters["a"], np.arange(3))
 
     caplog.clear()
 
-    class Test4(Parameterized):
+    class TestConvert4(Parameterized):
         parameters_default = [Parameter("a", 1, str)]
 
-    t4 = Test4()
+    t4 = TestConvert4()
     assert len(caplog.records) == 1
     assert "Default value" in caplog.text
     np.testing.assert_equal(t4.parameters["a"], "1")
 
     caplog.clear()
 
-    class Test5(Parameterized):
+    class TestConvert5(Parameterized):
         parameters_default = [Parameter("a", math.nan, float)]
 
-    t5 = Test5()
+    t5 = TestConvert5()
     assert len(caplog.records) == 0
     assert t5.parameters["a"] is math.nan

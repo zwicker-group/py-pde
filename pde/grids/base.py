@@ -13,6 +13,7 @@ import itertools
 import json
 import logging
 import math
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import (
     TYPE_CHECKING,
@@ -174,7 +175,10 @@ class GridBase(metaclass=ABCMeta):
     def __init_subclass__(cls, **kwargs) -> None:  # @NoSelf
         """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
-        cls._subclasses[cls.__name__] = cls
+        if cls is not GridBase:
+            if cls.__name__ in cls._subclasses:
+                warnings.warn(f"Redefining class {cls.__name__}")
+            cls._subclasses[cls.__name__] = cls
         cls._operators = {}
 
     @classmethod
