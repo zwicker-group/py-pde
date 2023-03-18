@@ -7,6 +7,7 @@ Package that contains base classes for solvers
 from __future__ import annotations
 
 import logging
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type  # @UnusedImport
 
@@ -39,7 +40,10 @@ class SolverBase(metaclass=ABCMeta):
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
-        cls._subclasses[cls.__name__] = cls
+        if cls is not SolverBase:
+            if cls.__name__ in cls._subclasses:
+                warnings.warn(f"Redefining class {cls.__name__}")
+            cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
             if cls.name in cls._subclasses:
                 logging.warning(f"Solver with name {cls.name} is already registered")

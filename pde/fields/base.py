@@ -90,7 +90,11 @@ class FieldBase(metaclass=ABCMeta):
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """register all subclassess to reconstruct them later"""
         super().__init_subclass__(**kwargs)
-        cls._subclasses[cls.__name__] = cls
+
+        if cls is not FieldBase:
+            if cls.__name__ in cls._subclasses:
+                warnings.warn(f"Redefining class {cls.__name__}")
+            cls._subclasses[cls.__name__] = cls
 
     @property
     def data(self) -> np.ndarray:

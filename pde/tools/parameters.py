@@ -18,6 +18,7 @@ One aim is to allow easy management of inheritance of parameters.
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import Any, Dict, Optional, Sequence, Type, Union
 
 import numpy as np
@@ -201,6 +202,8 @@ class Parameterized:
         # register the subclasses
         super().__init_subclass__(**kwargs)
         if cls is not Parameterized:
+            if cls.__name__ in cls._subclasses:
+                warnings.warn(f"Redefining class {cls.__name__}")
             cls._subclasses[cls.__name__] = cls
 
     @classmethod

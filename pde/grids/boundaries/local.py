@@ -52,6 +52,7 @@ from __future__ import annotations
 
 import logging
 import math
+import warnings
 from abc import ABCMeta, abstractmethod
 from numbers import Number
 from typing import (
@@ -293,10 +294,15 @@ class BCBase(metaclass=ABCMeta):
     def __init_subclass__(cls, **kwargs):  # @NoSelf
         """register all subclasses to reconstruct them later"""
         super().__init_subclass__(**kwargs)
-        cls._subclasses[cls.__name__] = cls
-        if hasattr(cls, "names"):
-            for name in cls.names:
-                cls._conditions[name] = cls
+
+        if cls is not BCBase:
+            if cls.__name__ in cls._subclasses:
+                warnings.warn(f"Redefining class {cls.__name__}")
+            cls._subclasses[cls.__name__] = cls
+
+            if hasattr(cls, "names"):
+                for name in cls.names:
+                    cls._conditions[name] = cls
 
     @property
     def periodic(self) -> bool:
