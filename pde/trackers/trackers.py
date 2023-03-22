@@ -752,7 +752,8 @@ class SteadyStateTracker(TrackerBase):
         self._progress_bar: Any = None
         self._pbar_offset: float = 0  # required for calculating progress
         self._last_data: Optional[np.ndarray] = None
-        self._best_diff_max: Optional[np.ndarray] = None
+        self._last_time: Optional[float] = None
+        self._best_rate_max: Optional[np.ndarray] = None
 
     def handle(self, field: FieldBase, t: float) -> None:
         """handle data supplied to this tracker
@@ -763,32 +764,35 @@ class SteadyStateTracker(TrackerBase):
             t (float):
                 The associated time
         """
+        finite = np.isfinite(field.data)  # ignore infinite and nan data
+
         # determine the maximal rate of change
         if self.evolution_rate is not None:
-            # Use the evolution_rate function to calculate the rate
-            evolution_rate = self.evolution_rate(field.data, t)
-            diff_abs_max = np.max(np.abs(evolution_rate))
+            # use the evolution_rate function to calculate the rate
+            evolution_rate = self.evolution_rate(field.data, t)[finite]
 
         elif self._last_data is not None:
-            # Calculate maximal difference of current state to previous one. In
-            # particular we calculate the absolute tolerance `diff_abs_max`, which would
-            # be required for the convergence test to pass. This value should decrease
-            # over time and give us an estimate for when convergence will be reached.
-            # Note that atol and rtol are scaled with dt to make test independent of dt.
-            finite = np.isfinite(field.data)  # ignore infinite and nan data
-            diff = np.abs(self._last_data[finite] - field.data[finite])
-            diff_abs = diff - self.rtol * self.interrupt.dt * np.abs(field.data[finite])
-            diff_abs_max = np.max(diff_abs) / self.interrupt.dt
+            # get evolution rate from the difference of current state to previous one
+            diff = self._last_data[finite] - field.data[finite]
+            evolution_rate = diff / (t - self._last_time)  # type: ignore
 
-            self._last_data[:] = field.data  # save current data for next comparison
+            # save current data for next comparison
+            self._last_data[:] = field.data
+            self._last_time = t
 
         else:
             # create storage for the data
             self._last_data = field.data.copy()
-            return  # do not output anything since we don't know `diff_abs_max` yet
+            self._last_time = t
+            return  # do not output anything since we don't know `evolution_rate` yet
+
+        # calculate the maximal deviation of the evolution rate from zero, subtracting
+        # the relative tolerance with respect to the field values
+        rate_abs = np.abs(evolution_rate) - self.rtol * np.abs(field.data[finite])
+        rate_abs_max = np.max(rate_abs)
 
         # check wether the simulation has converged
-        if diff_abs_max <= self.atol:
+        if rate_abs_max <= self.atol:
             if self.progress and self._progress_bar is not None:
                 # advance progress bar to 100%
                 self._progress_bar.n = self._pbar_offset - np.log10(self.atol)
@@ -800,21 +804,21 @@ class SteadyStateTracker(TrackerBase):
 
         if self.progress:
             # show progress of the convergence
-            if self._best_diff_max is None:
+            if self._best_rate_max is None:
                 # initialize the progress bar
                 pb_cls = get_progress_bar_class()
-                self._pbar_offset = np.log10(diff_abs_max)
+                self._pbar_offset = np.log10(rate_abs_max)
                 self._progress_bar = pb_cls(
                     total=self._pbar_offset - np.log10(self.atol),
                     bar_format=self.progress_bar_format,
                 )
-                self._best_diff_max = diff_abs_max
+                self._best_rate_max = rate_abs_max
 
-            elif diff_abs_max < self._best_diff_max:
+            elif rate_abs_max < self._best_rate_max:
                 # update progress bar if simulation got closer to convergence
-                self._progress_bar.n = self._pbar_offset - np.log10(diff_abs_max)
+                self._progress_bar.n = self._pbar_offset - np.log10(rate_abs_max)
                 self._progress_bar.refresh()
-                self._best_diff_max = diff_abs_max
+                self._best_rate_max = rate_abs_max
 
 
 class RuntimeTracker(TrackerBase):
