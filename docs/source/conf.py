@@ -54,6 +54,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.inheritance_diagram",
+    "sphinxcontrib.jquery",
     "sphinx_gallery.gen_gallery",
     # our own extensions
     "toctree_filter",
