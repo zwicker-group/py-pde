@@ -60,71 +60,71 @@ def napari_process(
     if viewer_args is None:
         viewer_args = {}
 
-    # start napari Qt GUI
-    with napari.gui_qt():
+    # create and initialize the viewer
+    viewer = napari.Viewer(**viewer_args)
+    napari_add_layers(viewer, initial_data)
 
-        # create and initialize the viewer
-        viewer = napari.Viewer(**viewer_args)
-        napari_add_layers(viewer, initial_data)
+    # add time if given
+    if t_initial is not None:
+        from qtpy.QtWidgets import QLabel
 
-        # add time if given
-        if t_initial is not None:
-            from qtpy.QtWidgets import QLabel
+        label = QLabel()
+        label.setText(f"Time: {t_initial}")
+        viewer.window.add_dock_widget(label)
+    else:
+        label = None
 
-            label = QLabel()
-            label.setText(f"Time: {t_initial}")
-            viewer.window.add_dock_widget(label)
+    def check_signal(msg: Optional[str]):
+        """helper function that processes messages by the listener thread"""
+        if msg is None:
+            return  # do nothing
+        elif msg == "close":
+            viewer.close()
         else:
-            label = None
+            raise RuntimeError(f"Unknown message from listener: {msg}")
 
-        def check_signal(msg: Optional[str]):
-            """helper function that processes messages by the listener thread"""
-            if msg is None:
-                return  # do nothing
-            elif msg == "close":
-                viewer.close()
-            else:
-                raise RuntimeError(f"Unknown message from listener: {msg}")
+    @thread_worker(connect={"yielded": check_signal})
+    def update_listener():
+        """helper thread that listens to the data_channel"""
+        logger.info("Start napari thread to receive data")
 
-        @thread_worker(connect={"yielded": check_signal})
-        def update_listener():
-            """helper thread that listens to the data_channel"""
-            logger.info("Start napari thread to receive data")
-
-            # infinite loop waiting for events in the queue
+        # infinite loop waiting for events in the queue
+        while True:
+            # get all items from the queue and display the last update
+            update_data = None  # nothing to update yet
             while True:
-                # get all items from the queue and display the last update
-                update_data = None  # nothing to update yet
-                while True:
-                    time.sleep(0.02)  # read queue with 50 fps
-                    try:
-                        action, data = data_channel.get(block=False)
-                    except queue.Empty:
-                        break
+                time.sleep(0.02)  # read queue with 50 fps
+                try:
+                    action, data = data_channel.get(block=False)
+                except queue.Empty:
+                    break
 
-                    if action == "close":
-                        logger.info("Forced closing of napari...")
-                        yield "close"  # signal to napari process to shut down
-                        break
-                    elif action == "update":
-                        update_data = data
-                        # continue running until the queue is empty
-                    else:
-                        logger.warning(f"Unexpected action: {action}")
+                if action == "close":
+                    logger.info("Forced closing of napari...")
+                    yield "close"  # signal to napari process to shut down
+                    break
+                elif action == "update":
+                    update_data = data
+                    # continue running until the queue is empty
+                else:
+                    logger.warning(f"Unexpected action: {action}")
 
-                # update napari view when there is data
-                if update_data is not None:
-                    logger.debug(f"Update napari layer...")
-                    layer_data, t = update_data
-                    if label is not None:
-                        label.setText(f"Time: {t}")
-                    for name, layer_data in layer_data.items():
-                        viewer.layers[name].data = layer_data["data"]
+            # update napari view when there is data
+            if update_data is not None:
+                logger.debug(f"Update napari layer...")
+                layer_data, t = update_data
+                if label is not None:
+                    label.setText(f"Time: {t}")
+                for name, layer_data in layer_data.items():
+                    viewer.layers[name].data = layer_data["data"]
 
-                yield
+            yield
 
-        # start worker thread that listens to the data_channel
-        update_listener()
+    # start worker thread that listens to the data_channel
+    update_listener()
+
+    # start napari
+    napari.run()
 
     logger.info("Shutting down napari process")
 
