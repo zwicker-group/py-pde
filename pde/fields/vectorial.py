@@ -77,6 +77,8 @@ class VectorField(DataFieldBase):
         grid: GridBase,
         expressions: Sequence[str],
         *,
+        user_funcs: Optional[Dict[str, Callable]] = None,
+        consts: Optional[Dict[str, NumberOrArray]] = None,
         label: Optional[str] = None,
         dtype: Optional[DTypeLike] = None,
     ) -> VectorField:
@@ -95,6 +97,13 @@ class VectorField(DataFieldBase):
                 functions and they may depend on the axes labels of the grid.
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
+            user_funcs (dict, optional):
+                A dictionary with user defined functions that can be used in the
+                expression
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
@@ -110,13 +119,18 @@ class VectorField(DataFieldBase):
             )
 
         # obtain the coordinates of the grid points
-        points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
+        points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
         # evaluate all vector components at all points
         data = []
         for expression in expressions:
-            expr = ScalarExpression(expression=expression, signature=grid.axes)
-            values = np.broadcast_to(expr(**points), grid.shape)
+            expr = ScalarExpression(
+                expression=expression,
+                signature=grid.axes,
+                user_funcs=user_funcs,
+                consts=consts,
+            )
+            values = np.broadcast_to(expr(*points), grid.shape)
             data.append(values)
 
         # create vector field from the data

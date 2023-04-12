@@ -410,6 +410,8 @@ class FieldCollection(FieldBase):
         grid: GridBase,
         expressions: Sequence[str],
         *,
+        user_funcs: Optional[Dict[str, Callable]] = None,
+        consts: Optional[Dict[str, NumberOrArray]] = None,
         label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
         dtype=None,
@@ -429,6 +431,13 @@ class FieldCollection(FieldBase):
                 and they may depend on the axes labels of the grid.
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
+            user_funcs (dict, optional):
+                A dictionary with user defined functions that can be used in the
+                expression
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
             label (str, optional):
                 Name of the whole collection
             labels (list of str, optional):
@@ -444,8 +453,15 @@ class FieldCollection(FieldBase):
 
         # evaluate all expressions at all points
         fields = [
-            ScalarField.from_expression(grid, expression, label=labels[i], dtype=dtype)
-            for i, expression in enumerate(expressions)
+            ScalarField.from_expression(
+                grid,
+                expression,
+                user_funcs=user_funcs,
+                consts=consts,
+                label=sublabel,
+                dtype=dtype,
+            )
+            for expression, sublabel in zip(expressions, labels)
         ]
 
         # create vector field from the data

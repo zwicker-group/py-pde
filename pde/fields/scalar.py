@@ -8,8 +8,7 @@ from __future__ import annotations
 
 import numbers
 from pathlib import Path
-from typing import List  # @UnusedImport
-from typing import TYPE_CHECKING, Callable, Dict, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -18,6 +17,7 @@ from ..grids import CartesianGrid, UnitGrid
 from ..grids.base import DomainError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number
+from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 
 if TYPE_CHECKING:
@@ -37,6 +37,8 @@ class ScalarField(DataFieldBase):
         grid: GridBase,
         expression: str,
         *,
+        user_funcs: Optional[Dict[str, Callable]] = None,
+        consts: Optional[Dict[str, NumberOrArray]] = None,
         label: Optional[str] = None,
         dtype: Optional[DTypeLike] = None,
     ) -> ScalarField:
@@ -54,6 +56,13 @@ class ScalarField(DataFieldBase):
                 functions and it may depend on the axes labels of the grid.
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
+            user_funcs (dict, optional):
+                A dictionary with user defined functions that can be used in the
+                expression
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
@@ -62,17 +71,24 @@ class ScalarField(DataFieldBase):
         """
         from ..tools.expressions import ScalarExpression
 
-        expr = ScalarExpression(expression=expression, signature=grid.axes)
-        points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
+        # parse the expression
+        expr = ScalarExpression(
+            expression=expression,
+            signature=grid.axes,
+            user_funcs=user_funcs,
+            consts=consts,
+        )
+        # obtain the coordinates of the grid points
+        points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
         try:
             # try evaluating the expression using a vectorized call
-            data = expr(**points)
+            data = expr(*points)
         except ValueError:
             # if this fails, evaluate expression point-wise
             data = np.empty(grid.shape)
             for cells in np.ndindex(*grid.shape):
-                data[cells] = expr(grid.cell_coords[cells])
+                data[cells] = expr(*grid.cell_coords[cells])
 
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
