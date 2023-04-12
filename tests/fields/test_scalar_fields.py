@@ -232,6 +232,15 @@ def test_from_expression():
     assert sf.label == "abc"
     np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
 
+    def f(x, y):
+        return x * y
+
+    sf = ScalarField.from_expression(grid, "f(x, y)", user_funcs={"f": f})
+    np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
+
+    sf = ScalarField.from_expression(grid, "c", consts={"c": [0.25, 0.75]})
+    np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
+
 
 @skipUnlessModule("matplotlib")
 def test_from_image(tmp_path):

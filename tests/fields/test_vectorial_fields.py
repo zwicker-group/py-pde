@@ -188,6 +188,19 @@ def test_from_expressions():
     with pytest.raises(ValueError):
         VectorField.from_expression(grid, ["x"] * 3)
 
+    # user functions and constants
+    def f(x, y):
+        return x**2
+
+    vf = VectorField.from_expression(
+        grid,
+        ["f(x, y)", "xy"],
+        user_funcs={"f": f},
+        consts={"xy": np.outer(*grid.axes_coords)},
+    )
+    np.testing.assert_allclose(vf.data[0], xs**2)
+    np.testing.assert_allclose(vf.data[1], xs * ys)
+
 
 def test_vector_plot_quiver_reduction():
     """test whether quiver plots reduce the resolution"""
