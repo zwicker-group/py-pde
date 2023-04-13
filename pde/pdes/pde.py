@@ -254,8 +254,9 @@ class PDE(PDEBase):
                 bc_var, bc_func = bc_key.split(":")
                 var_match = bc_var == var or bc_var == "*"
                 func_match = bc_func == func or bc_func == "*"
-                if var_match and func_match:
-                    break  # found a matching boundary condition
+                if var_match and func_match:  # found a matching boundary condition
+                    self.diagnostics["pde"]["bcs_used"].add(bc_key)  # register it
+                    break  # continue with this BC
             else:
                 raise RuntimeError(
                     "Could not find suitable boundary condition for function "
@@ -272,6 +273,12 @@ class PDE(PDEBase):
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
+            except Exception as err:
+                err.args += (
+                    f"Problems in boundary condition `{bc}` for operator `{func}` in "
+                    f"PDE for `{var}`",
+                )
+                raise err
 
             # add `bc_args` as an argument to the call of the operators to be able
             # to pass additional information, like time
@@ -420,10 +427,16 @@ class PDE(PDEBase):
 
         # Create the right hand sides for all variables. It is important to do this in a
         # separate function, so the closures work reliably
+        self.diagnostics["pde"]["bcs_used"] = set()  # keep track of the used BCs
         cache["rhs_funcs"] = [
             self._compile_rhs_single(var, ops_general.copy(), state, backend)
             for var in self.variables
         ]
+
+        # check whether there are boundary conditions that have not been used
+        bcs_left = set(self.bcs.keys()) - self.diagnostics["pde"]["bcs_used"] - {"*:*"}
+        if bcs_left:
+            self._logger.warning("Unused BCs: %s", list(sorted(bcs_left)))
 
         # add extra information for field collection
         if isinstance(state, FieldCollection):
