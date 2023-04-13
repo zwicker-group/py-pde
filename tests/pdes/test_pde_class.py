@@ -2,6 +2,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import logging
+
 import numpy as np
 import pytest
 from scipy import stats
@@ -359,6 +361,19 @@ def test_pde_bcs(bc):
 
     res_a.assert_field_compatible(res_b)
     np.testing.assert_allclose(res_a.data, res_b.data)
+
+
+def test_pde_bcs_warning(caplog):
+    """test whether a warning is thrown correctly"""
+    with caplog.at_level(logging.WARNING):
+        eq = PDE({"u": "laplace(u)"}, bc_ops={"u:gradient": "value"})
+        eq.evolution_rate(ScalarField(grids.UnitGrid([6])))
+    assert "gradient" in caplog.text
+
+    with caplog.at_level(logging.WARNING):
+        eq = PDE({"u": "laplace(u)"}, bc_ops={"v:laplace": "value"})
+        eq.evolution_rate(ScalarField(grids.UnitGrid([6])))
+    assert "Unused" in caplog.text
 
 
 @pytest.mark.parametrize("bc", ["asdf", [{"value": 1}] * 3])

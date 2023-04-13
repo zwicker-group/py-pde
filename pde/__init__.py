@@ -16,7 +16,7 @@ except ImportError:
     except PackageNotFoundError:
         # package is not installed, so we cannot determine any version
         __version__ = "unknown"
-    del version, PackageNotFoundError  # clean name space
+    del PackageNotFoundError, version  # clean name space
 
 # initialize the configuration
 from .tools.config import Config, environment
@@ -30,7 +30,6 @@ from .grids import *  # @UnusedWildImport
 from .pdes import *  # @UnusedWildImport
 from .solvers import *  # @UnusedWildImport
 from .storage import *  # @UnusedWildImport
-from .tools.config import check_package_version  # temporary import, deleted below
 from .tools.parameters import Parameter
 from .trackers import *  # @UnusedWildImport
 from .visualization import *  # @UnusedWildImport
