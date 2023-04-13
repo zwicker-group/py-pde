@@ -622,7 +622,6 @@ class BCBase(metaclass=ABCMeta):
                     data_full[..., vp_idx] = val
 
         elif self.grid.num_axes == 2:  # 2d grid
-
             if self.axis == 0:
                 num_y = self.grid.shape[1]
 
@@ -652,7 +651,6 @@ class BCBase(metaclass=ABCMeta):
                             data_full[..., i + 1, vp_idx] = val
 
         elif self.grid.num_axes == 3:  # 3d grid
-
             if self.axis == 0:
                 num_y, num_z = self.grid.shape[1:]
 

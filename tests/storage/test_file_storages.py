@@ -37,7 +37,6 @@ def test_storage_persistence(collection, tmp_path):
     # write some data
     for write_mode in ["append", "truncate_once", "truncate"]:
         with FileStorage(path, info={"a": 1}, write_mode=write_mode) as writer:
-
             # first batch
             writer.start_writing(state, info={"b": 2})
             scalar.data = np.arange(dim)

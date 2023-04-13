@@ -25,6 +25,7 @@ from pde import CartesianGrid, DiffusionPDE, ScalarField
 grid = CartesianGrid([[-5, 5], [-5, 5]], 32)
 field = ScalarField(grid)
 
+
 # define the boundary conditions, which here are calculated from a function
 def bc_value(adjacent_value, dx, x, y, t):
     """return boundary value"""

@@ -331,7 +331,6 @@ def test_method_cache(serializer, cache_factory):
     # that clearing the cache works
     obj1, obj2 = CacheTest(), CacheTest()
     for k, obj in enumerate([obj1, obj2, obj1]):
-
         # clear the cache before the first and the last pass
         if k == 0 or k == 2:
             CacheTest.cached.clear_cache_of_obj(obj)
@@ -392,6 +391,7 @@ def test_method_cache(serializer, cache_factory):
 @pytest.mark.parametrize("cache_factory", [None, "get_finite_dict"])
 def test_method_cache_extra_args(serializer, cache_factory):
     """test extra arguments in the cached_method decorator"""
+
     # create test class
     class CacheTest:
         """class for testing caching"""
@@ -439,6 +439,7 @@ def test_method_cache_extra_args(serializer, cache_factory):
 @pytest.mark.parametrize("ignore_args", ["display", ["display"]])
 def test_method_cache_ignore(serializer, cache_factory, ignore_args):
     """test ignored parameters of the cached_method decorator"""
+
     # create test class
     class CacheTest:
         """class for testing caching"""
