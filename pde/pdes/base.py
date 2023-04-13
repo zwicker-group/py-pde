@@ -289,7 +289,6 @@ class PDEBase(metaclass=ABCMeta):
         """
         result: TState
         if self.is_sde:
-
             if isinstance(state, FieldCollection):
                 # multiple fields with potentially different noise strengths
                 result = state.copy(label=label)

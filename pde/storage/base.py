@@ -395,8 +395,8 @@ class StorageBase(metaclass=ABCMeta):
 
         # extract the actual memory
         return MemoryStorage(
-            times=self.times[i_start:i_end],  # type: ignore
-            data=self.data[i_start:i_end],  # type: ignore
+            times=self.times[i_start:i_end],
+            data=self.data[i_start:i_end],
             field_obj=self._field,
             info=self.info,
         )

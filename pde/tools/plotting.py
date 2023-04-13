@@ -290,10 +290,8 @@ def plot_on_axes(wrapped=None, update_method=None):
 
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
-
             # disable interactive plotting temporarily
             with disable_interactive():
-
                 if ax is None:
                     # create new figure
                     backend = mpl.get_backend()
@@ -485,10 +483,8 @@ def plot_on_figure(wrapped=None, update_method=None):
 
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
-
             # disable interactive plotting temporarily
             with disable_interactive():
-
                 if fig is None:
                     # create new figure
                     backend = mpl.get_backend()
