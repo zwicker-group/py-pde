@@ -9,8 +9,14 @@ import numpy as np
 import pytest
 
 from pde import ScalarField, Tensor2Field, UnitGrid, VectorField
-from pde.tools.expressions import *
-from pde.tools.expressions import BCDataError, parse_expr_guarded
+from pde.tools.expressions import (
+    BCDataError,
+    ScalarExpression,
+    TensorExpression,
+    evaluate,
+    parse_expr_guarded,
+    parse_number,
+)
 
 
 def test_parse_number():
@@ -364,8 +370,7 @@ def test_evaluate_func_vector():
 
 def test_evaluate_func_invalid():
     """test the evaluate function with invalid data"""
-    grid = UnitGrid([3])
-    field = ScalarField.from_expression(grid, "x")
+    field = ScalarField.from_expression(UnitGrid([3]), "x")
 
     with pytest.raises(ValueError):
         evaluate("x", {})
@@ -382,3 +387,16 @@ def test_evaluate_func_invalid():
 
     with pytest.raises(RuntimeError):
         evaluate("a + b", {"a": field})
+
+
+def test_evaluate_func_bcs_warning(caplog):
+    """test whether a warning is thrown correctly"""
+    field = ScalarField.from_expression(UnitGrid([3]), "x")
+
+    with caplog.at_level(logging.WARNING):
+        evaluate("laplace(u)", {"u": field}, bc_ops={"u:gradient": "value"})
+    assert "gradient" in caplog.text
+
+    with caplog.at_level(logging.WARNING):
+        evaluate("laplace(u)", {"u": field}, bc_ops={"v:laplace": "value"})
+    assert "Unused" in caplog.text
