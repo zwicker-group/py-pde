@@ -1003,6 +1003,7 @@ def evaluate(
         raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
 
     # obtain the (differential) operators
+    bcs_used = set()
     ops: Dict[str, Callable] = {}
     for func in operators:
         if func == "dot" or func == "inner":
@@ -1017,8 +1018,9 @@ def evaluate(
         else:
             # determine boundary conditions for this operator and variable
             for bc_key, bc in bcs.items():
-                if bc_key == func or bc_key == "*":
-                    break  # found a matching boundary condition
+                if bc_key == func or bc_key == "*":  # found a matching condition
+                    bcs_used.add(bc_key)  # mark it as being used
+                    break
             else:
                 raise RuntimeError(
                     f"Could not find suitable boundary condition for function `{func}`"
@@ -1037,6 +1039,11 @@ def evaluate(
                 # any other exception should signal that the operator is not defined, so
                 # we (almost) silently assume that sympy defines the operator
                 logger.info("Assuming that sympy knows undefined operator `%s`", func)
+
+    # check whether there are boundary conditions that have not been used
+    bcs_left = set(bcs.keys()) - bcs_used - {"*:*"}
+    if bcs_left:
+        logger.warning("Unused BCs: %s", list(sorted(bcs_left)))
 
     # obtain the function to calculate the right hand side
     signature = tuple(fields.keys()) + ("none", "bc_args")
