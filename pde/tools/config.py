@@ -83,30 +83,8 @@ class Config(collections.UserDict):
             self.update(items)
         self.mode = mode
 
-    def _translate_deprecated_key(self, key: str) -> str:
-        """helper function that allows using deprecated config items"""
-        # the depreciations have been introduced on 2022-09-04 and are scheduled to be
-        # removed after 2023-03-04
-        if key == "numba.parallel":
-            warnings.warn(
-                "Option `numba.parallel` has been renamed to `numba.multithreading`",
-                DeprecationWarning,
-            )
-            return "numba.multithreading"
-
-        elif key == "numba.parallel_threshold":
-            warnings.warn(
-                "Option `numba.parallel_threshold` has been renamed to "
-                "`numba.multithreading_threshold`",
-                DeprecationWarning,
-            )
-            return "numba.multithreading_threshold"
-
-        return key
-
     def __getitem__(self, key: str):
         """retrieve item `key`"""
-        key = self._translate_deprecated_key(key)
         parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
@@ -115,7 +93,6 @@ class Config(collections.UserDict):
 
     def __setitem__(self, key: str, value):
         """update item `key` with `value`"""
-        key = self._translate_deprecated_key(key)
         if self.mode == "insert":
             self.data[key] = value
 
@@ -136,7 +113,6 @@ class Config(collections.UserDict):
 
     def __delitem__(self, key: str):
         """removes item `key`"""
-        key = self._translate_deprecated_key(key)
         if self.mode == "insert":
             del self.data[key]
         else:
@@ -290,7 +266,7 @@ def environment() -> Dict[str, Any]:
         result["numba environment"] = numba_environment()
 
     # add information about MPI environment
-    if mpi.size > 1:
+    if mpi.initialized:
         result["multiprocessing"] = {"initialized": True, "size": mpi.size}
     else:
         result["multiprocessing"] = {"initialized": False}
