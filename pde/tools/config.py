@@ -235,7 +235,7 @@ def environment() -> Dict[str, Any]:
     from .numba import numba_environment
     from .plotting import get_plotting_context
 
-    PACKAGE_PATH = Path(__file__).resolve().parents[2]
+    RESOURCE_PATH = Path(__file__).resolve().parents[1] / "tools" / "resources"
 
     result: Dict[str, Any] = {}
     result["package version"] = package_version
@@ -246,7 +246,7 @@ def environment() -> Dict[str, Any]:
     result["config"] = config.to_dict()
 
     # add details for mandatory packages
-    packages_min = packages_from_requirements(PACKAGE_PATH / "requirements.txt")
+    packages_min = packages_from_requirements(RESOURCE_PATH / "requirements_basic.txt")
     result["mandatory packages"] = get_package_versions(packages_min)
     result["matplotlib environment"] = {
         "backend": mpl.get_backend(),
@@ -254,12 +254,8 @@ def environment() -> Dict[str, Any]:
     }
 
     # add details about optional packages
-    packages = set(
-        packages_from_requirements(PACKAGE_PATH / "tests" / "requirements_full.txt")
-    )
-    packages |= set(
-        packages_from_requirements(PACKAGE_PATH / "tests" / "requirements_mpi.txt")
-    )
+    packages = set(packages_from_requirements(RESOURCE_PATH / "requirements_full.txt"))
+    packages |= set(packages_from_requirements(RESOURCE_PATH / "requirements_mpi.txt"))
     packages -= set(packages_min)
     result["optional packages"] = get_package_versions(sorted(packages))
     if module_available("numba"):

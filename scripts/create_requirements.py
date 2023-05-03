@@ -174,6 +174,7 @@ def write_requirements_txt(
         comment (str): An optional comment on top of the requirements file
     """
     print(f"Write `{path}`")
+    path.parent.mkdir(exist_ok=True, parents=True)  # ensure path exists
     with open(path, "w") as fp:
         if comment:
             fp.write(f"# {comment}\n")
@@ -296,6 +297,12 @@ def main():
         root / "requirements.txt",
         [r for r in REQUIREMENTS if r.essential],
     )
+    # write basic requirements
+    write_requirements_txt(
+        root / "pde" / "tools" / "resources" / "requirements_basic.txt",
+        [r for r in REQUIREMENTS if r.essential],
+        comment="These are the basic requirements for the package",
+    )
 
     # write minimal requirements to tests folder
     write_requirements_txt(
@@ -311,12 +318,23 @@ def main():
         [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
         comment="These are the full requirements used to test all functions",
     )
+    # write full requirements to tests folder
+    write_requirements_txt(
+        root / "pde" / "tools" / "resources" / "requirements_full.txt",
+        [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
+        comment="These are the full requirements used to test all functions",
+    )
 
     # write full requirements to tests folder
     write_requirements_txt(
         root / "tests" / "requirements_mpi.txt",
         [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
         comment="These are requirements used to test multiprocessing",
+    )
+    write_requirements_txt(
+        root / "pde" / "tools" / "resources" / "requirements_mpi.txt",
+        [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
+        comment="These are requirements for supporting multiprocessing",
     )
 
     # write requirements to tests folder
