@@ -4,7 +4,7 @@
 
 import pytest
 
-from pde.tools.config import Config, environment
+from pde.tools.config import Config, environment, packages_from_requirements
 
 
 def test_environment():
@@ -84,3 +84,10 @@ def test_config_contexts():
         assert c["numba.multithreading_threshold"] == 0
 
     assert c["numba.multithreading_threshold"] > 0
+
+
+def test_packages_from_requirements():
+    """test the packages_from_requirements function"""
+    results = packages_from_requirements("file_not_existing")
+    assert len(results) == 1
+    assert "Could not open" in results[0] and "file_not_existing" in results[0]
