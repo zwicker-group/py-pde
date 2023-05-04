@@ -210,14 +210,18 @@ def packages_from_requirements(requirements_file: Union[Path, str]) -> List[str]
         list of package names
     """
     result = []
-    with open(requirements_file) as fp:
-        for line in fp:
-            line_s = line.strip()
-            if line_s.startswith("#"):
-                continue
-            res = re.search(r"[a-zA-Z0-9_\-]+", line_s)
-            if res:
-                result.append(res.group(0))
+    try:
+        with open(requirements_file) as fp:
+            for line in fp:
+                line_s = line.strip()
+                if line_s.startswith("#"):
+                    continue
+                res = re.search(r"[a-zA-Z0-9_\-]+", line_s)
+                if res:
+                    result.append(res.group(0))
+    except FileNotFoundError:
+        result.append(f"Could not open {requirements_file:s}")
+
     return result
 
 
