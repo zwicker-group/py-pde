@@ -22,6 +22,7 @@ import numpy as np
 from numba.extending import register_jitable
 
 from ... import config
+from ...tools.misc import module_available
 from ...tools.numba import jit
 from ...tools.typing import OperatorType
 from ..boundaries import Boundaries
@@ -30,7 +31,7 @@ from .common import make_general_poisson_solver, uniform_discretization
 
 
 def _get_laplace_matrix_1d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for laplace operator on a 1d Cartesian grid
+    """get sparse matrix for Laplace operator on a 1d Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -72,7 +73,7 @@ def _get_laplace_matrix_1d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for laplace operator on a 2d Cartesian grid
+    """get sparse matrix for Laplace operator on a 2d Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -141,7 +142,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for laplace operator on a 1d Cartesian grid
+    """get sparse matrix for Laplace operator on a 1d Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -321,7 +322,7 @@ def _make_derivative2(grid: CartesianGrid, axis: int = 0) -> OperatorType:
 
 
 def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:
-    """make a laplace operator using the scipy module
+    """make a Laplace operator using the scipy module
 
     This only supports uniform discretizations.
 
@@ -337,7 +338,7 @@ def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:
     scaling = uniform_discretization(grid) ** -2
 
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply laplace operator to array `arr`"""
+        """apply Laplace operator to array `arr`"""
         assert arr.shape == grid._shape_full
         valid = (...,) + (slice(1, -1),) * grid.dim
         with np.errstate(all="ignore"):
@@ -348,7 +349,7 @@ def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:
 
 
 def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
-    """make a 1d laplace operator using numba compilation
+    """make a 1d Laplace operator using numba compilation
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -362,7 +363,7 @@ def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
 
     @jit
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply laplace operator to array `arr`"""
+        """apply Laplace operator to array `arr`"""
         for i in range(1, dim_x + 1):
             out[i - 1] = (arr[i - 1] - 2 * arr[i] + arr[i + 1]) * scale
 
@@ -370,7 +371,7 @@ def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
 
 
 def _make_laplace_numba_2d(grid: CartesianGrid) -> OperatorType:
-    """make a 2d laplace operator using numba compilation
+    """make a 2d Laplace operator using numba compilation
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -387,7 +388,7 @@ def _make_laplace_numba_2d(grid: CartesianGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply laplace operator to array `arr`"""
+        """apply Laplace operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 lap_x = (arr[i - 1, j] - 2 * arr[i, j] + arr[i + 1, j]) * scale_x
@@ -398,7 +399,7 @@ def _make_laplace_numba_2d(grid: CartesianGrid) -> OperatorType:
 
 
 def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorType:
-    """make a 3d laplace operator using numba compilation
+    """make a 3d Laplace operator using numba compilation
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -415,7 +416,7 @@ def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply laplace operator to array `arr`"""
+        """apply Laplace operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 for k in range(1, dim_z + 1):
@@ -428,15 +429,67 @@ def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorType:
     return laplace  # type: ignore
 
 
+def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
+    """make a 1d spectral Laplace operator using numba compilation
+
+    Args:
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
+            The grid for which the operator is created
+
+    Returns:
+        A function that can be applied to an array of values
+    """
+    from scipy import fft
+
+    assert module_available("rocket_fft")
+    assert grid.periodic[0]  # we currently only support periodic grid
+    ks = 2 * np.pi * fft.fftfreq(grid.shape[0], grid.discretization[0])
+    factor = -(ks**2)
+
+    @jit
+    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+        """apply Laplace operator to array `arr`"""
+        # TODO: support complex fields (by not casting to `real`
+        out[:] = fft.ifft(factor * fft.fft(arr[1:-1])).real
+
+    return laplace  # type: ignore
+
+
+def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
+    """make a 2d spectral Laplace operator using numba compilation
+
+    Args:
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
+            The grid for which the operator is created
+
+    Returns:
+        A function that can be applied to an array of values
+    """
+    from scipy import fft
+
+    assert module_available("rocket_fft")
+    assert all(grid.periodic)  # we currently only support periodic grid
+    ks = [fft.fftfreq(grid.shape[i], grid.discretization[i]) for i in range(2)]
+    factor = -4 * np.pi**2 * (ks[0][:, None] ** 2 + ks[1][None, :] ** 2)
+
+    @jit
+    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+        """apply Laplace operator to array `arr`"""
+        # TODO: support complex fields (by not casting to `real`
+        out[:] = fft.ifft2(factor * fft.fft2(arr[1:-1, 1:-1])).real
+
+    return laplace  # type: ignore
+
+
 @CartesianGrid.register_operator("laplace", rank_in=0, rank_out=0)
 def make_laplace(grid: CartesianGrid, backend: str = "auto") -> OperatorType:
-    """make a laplace operator on a Cartesian grid
+    """make a Laplace operator on a Cartesian grid
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
-            Backend used for calculating the laplace operator. If backend='auto', a
+            Backend used for calculating the Laplace operator. If backend='auto', a
             suitable backend is chosen automatically.
 
     Returns:
@@ -460,7 +513,17 @@ def make_laplace(grid: CartesianGrid, backend: str = "auto") -> OperatorType:
             laplace = _make_laplace_numba_3d(grid)
         else:
             raise NotImplementedError(
-                f"Numba laplace operator not implemented for {dim:d} dimensions"
+                f"Numba Laplace operator not implemented for {dim:d} dimensions"
+            )
+
+    elif backend == "numba-spectral":
+        if dim == 1:
+            laplace = _make_laplace_numba_spectral_1d(grid)
+        elif dim == 2:
+            laplace = _make_laplace_numba_spectral_2d(grid)
+        else:
+            raise NotImplementedError(
+                f"Spectral Laplace operator not implemented for {dim:d} dimensions"
             )
 
     # elif backend == "matrix":
@@ -1045,7 +1108,7 @@ def make_vector_laplace(grid: CartesianGrid, backend: str = "numba") -> Operator
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
-            Backend used for calculating the vector laplace operator.
+            Backend used for calculating the vector Laplace operator.
 
     Returns:
         A function that can be applied to an array of values

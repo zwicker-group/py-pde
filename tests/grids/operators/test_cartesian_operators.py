@@ -10,6 +10,7 @@ from scipy import ndimage
 
 from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.grids.operators import cartesian as ops
+from pde.tools.misc import skipUnlessModule
 
 π = np.pi
 
@@ -65,62 +66,74 @@ def test_singular_dimensions_3d(periodic):
         np.testing.assert_allclose(expected, res)
 
 
-def test_laplace_1d():
+@pytest.mark.parametrize("periodic", [True, False])
+def test_laplace_1d(periodic):
     """test the implementation of the laplace operator"""
-    for periodic in [True, False]:
-        bcs = _get_random_grid_bcs(1, periodic=periodic)
-        field = ScalarField.random_uniform(bcs.grid)
-        l1 = field.laplace(bcs, backend="scipy")
-        l2 = field.laplace(bcs, backend="numba")
-        np.testing.assert_allclose(l1.data, l2.data)
+    bcs = _get_random_grid_bcs(1, periodic=periodic)
+    field = ScalarField.random_colored(bcs.grid, -6)
+    l1 = field.laplace(bcs, backend="scipy")
+    l2 = field.laplace(bcs, backend="numba")
+    np.testing.assert_allclose(l1.data, l2.data)
 
 
-def test_laplace_2d():
+@skipUnlessModule("rocket_fft")
+@pytest.mark.parametrize("ndim", [1, 2])
+def test_laplace_spectral(ndim):
+    """test the implementation of the spectral laplace operator"""
+    shape = np.c_[np.random.uniform(-10, -20, ndim), np.random.uniform(10, 20, ndim)]
+    grid = CartesianGrid(shape, 30, periodic=True)
+    field = ScalarField.random_colored(grid, -8)
+    field /= field.fluctuations
+    l1 = field.laplace("periodic", backend="numba")
+    l2 = field.laplace("periodic", backend="numba-spectral")
+    np.testing.assert_allclose(l1.data, l2.data, atol=1e-1, rtol=1e-2)
+
+
+@pytest.mark.parametrize("periodic", [True, False])
+def test_laplace_2d(periodic):
     """test the implementation of the laplace operator"""
-    for periodic in [True, False]:
-        bcs = _get_random_grid_bcs(2, dx="uniform", periodic=periodic)
-        a = np.random.random(bcs.grid.shape)  # test data
+    bcs = _get_random_grid_bcs(2, dx="uniform", periodic=periodic)
+    a = np.random.random(bcs.grid.shape)  # test data
 
-        dx = np.mean(bcs.grid.discretization)
-        kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]]) / dx**2
-        res = ndimage.convolve(a, kernel, mode="wrap" if periodic else "reflect")
+    dx = np.mean(bcs.grid.discretization)
+    kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]]) / dx**2
+    res = ndimage.convolve(a, kernel, mode="wrap" if periodic else "reflect")
 
-        field = ScalarField(bcs.grid, data=a)
-        l1 = field.laplace(bcs, backend="scipy")
-        np.testing.assert_allclose(l1.data, res)
+    field = ScalarField(bcs.grid, data=a)
+    l1 = field.laplace(bcs, backend="scipy")
+    np.testing.assert_allclose(l1.data, res)
 
-        l2 = field.laplace(bcs, backend="numba")
-        np.testing.assert_allclose(l2.data, res)
-
-
-def test_laplace_2d_nonuniform():
-    """test the implementation of the laplace operator for
-    non-uniform coordinates"""
-    for periodic in [True, False]:
-        bcs = _get_random_grid_bcs(ndim=2, dx="random", periodic=periodic)
-
-        dx = bcs.grid.discretization
-        kernel_x = np.array([1, -2, 1]) / dx[0] ** 2
-        kernel_y = np.array([1, -2, 1]) / dx[1] ** 2
-        a = np.random.random(bcs.grid.shape)
-
-        mode = "wrap" if periodic else "reflect"
-        res = ndimage.convolve1d(a, kernel_x, axis=0, mode=mode)
-        res += ndimage.convolve1d(a, kernel_y, axis=1, mode=mode)
-
-        field = ScalarField(bcs.grid, data=a)
-        lap = field.laplace(bcs, backend="numba")
-        np.testing.assert_allclose(lap.data, res)
+    l2 = field.laplace(bcs, backend="numba")
+    np.testing.assert_allclose(l2.data, res)
 
 
-def test_laplace_3d():
+@pytest.mark.parametrize("periodic", [True, False])
+def test_laplace_2d_nonuniform(periodic):
+    """test the implementation of the laplace operator for non-uniform coordinates"""
+    bcs = _get_random_grid_bcs(ndim=2, dx="random", periodic=periodic)
+
+    dx = bcs.grid.discretization
+    kernel_x = np.array([1, -2, 1]) / dx[0] ** 2
+    kernel_y = np.array([1, -2, 1]) / dx[1] ** 2
+    a = np.random.random(bcs.grid.shape)
+
+    mode = "wrap" if periodic else "reflect"
+    res = ndimage.convolve1d(a, kernel_x, axis=0, mode=mode)
+    res += ndimage.convolve1d(a, kernel_y, axis=1, mode=mode)
+
+    field = ScalarField(bcs.grid, data=a)
+    lap = field.laplace(bcs, backend="numba")
+    np.testing.assert_allclose(lap.data, res)
+
+
+@pytest.mark.parametrize("periodic", [True, False])
+def test_laplace_3d(periodic):
     """test the implementation of the laplace operator"""
-    for periodic in [True, False]:
-        bcs = _get_random_grid_bcs(ndim=3, dx="uniform", periodic=periodic)
-        field = ScalarField.random_uniform(bcs.grid)
-        l1 = field.laplace(bcs, backend="scipy")
-        l2 = field.laplace(bcs, backend="numba")
-        np.testing.assert_allclose(l1.data, l2.data)
+    bcs = _get_random_grid_bcs(ndim=3, dx="uniform", periodic=periodic)
+    field = ScalarField.random_uniform(bcs.grid)
+    l1 = field.laplace(bcs, backend="scipy")
+    l2 = field.laplace(bcs, backend="numba")
+    np.testing.assert_allclose(l1.data, l2.data)
 
 
 def test_gradient_1d():
@@ -143,26 +156,26 @@ def test_gradient_1d():
 
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
-def test_gradient_cart(ndim):
+@pytest.mark.parametrize("periodic", [True, False])
+def test_gradient_cart(ndim, periodic):
     """test different gradient operators"""
-    for periodic in [True, False]:
-        bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic)
-        field = ScalarField.random_uniform(bcs.grid)
-        res1 = field.gradient(bcs, backend="scipy").data
-        res2 = field.gradient(bcs, backend="numba").data
-        assert res1.shape == (ndim,) + bcs.grid.shape
-        np.testing.assert_allclose(res1, res2)
+    bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic)
+    field = ScalarField.random_uniform(bcs.grid)
+    res1 = field.gradient(bcs, backend="scipy").data
+    res2 = field.gradient(bcs, backend="numba").data
+    assert res1.shape == (ndim,) + bcs.grid.shape
+    np.testing.assert_allclose(res1, res2)
 
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
-def test_divergence_cart(ndim):
+@pytest.mark.parametrize("periodic", [True, False])
+def test_divergence_cart(ndim, periodic):
     """test different divergence operators"""
-    for periodic in [True, False]:
-        bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic, rank=1)
-        field = VectorField.random_uniform(bcs.grid)
-        res1 = field.divergence(bcs, backend="scipy").data
-        res2 = field.divergence(bcs, backend="numba").data
-        np.testing.assert_allclose(res1, res2)
+    bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic, rank=1)
+    field = VectorField.random_uniform(bcs.grid)
+    res1 = field.divergence(bcs, backend="scipy").data
+    res2 = field.divergence(bcs, backend="numba").data
+    np.testing.assert_allclose(res1, res2)
 
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
