@@ -465,7 +465,7 @@ class ScalarField(DataFieldBase):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES_OPTIONAL}
             label (str):
-                Label of the returned grid
+                Label of the returned field
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: The field on the boundary
