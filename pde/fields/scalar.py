@@ -329,16 +329,15 @@ class ScalarField(DataFieldBase):
 
         Args:
             position (dict):
-                Determines the location of the slice using a dictionary
-                supplying coordinate values for a subset of axes. Axes not
-                mentioned in the dictionary are retained and form the slice.
-                For instance, in a 2d Cartesian grid, `position = {'x': 1}`
-                slices along the y-direction at x=1. Additionally, the special
-                positions 'low', 'mid', and 'high' are supported to reference
-                relative positions along the axis.
+                Determines the location of the slice using a dictionary supplying
+                coordinate values for a subset of axes. Axes not mentioned in the
+                dictionary are retained and form the slice. For instance, in a 2d
+                Cartesian grid, `position = {'x': 1}` slices along the y-direction at
+                x=1. Additionally, the special positions 'low', 'mid', and 'high' are
+                supported to reference relative positions along the axis.
             method (str):
-                The method used for slicing. `nearest` takes data from cells
-                defined on the grid.
+                The method used for slicing. `nearest` takes data from cells defined on
+                the grid.
             label (str, optional):
                 The label of the returned field
 

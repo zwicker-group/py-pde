@@ -261,6 +261,27 @@ class AdaptiveSolverBase(SolverBase):
 
         return adjust_dt
 
+    def _make_paired_stepper(self, state):
+        # obtain functions determining how the PDE is evolved
+        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
+
+        def paired_stepper(
+            state_data: np.ndarray, t: float, dt: float
+        ) -> Tuple[np.ndarray, np.ndarray]:
+            """basic stepper to estimate error"""
+            rate = rhs_pde(state_data, t)
+
+            # single step with dt
+            k1 = state_data + dt * rate
+
+            # double step with half the time step
+            k2 = state_data + 0.5 * dt * rate
+            k2 += 0.5 * dt * rhs_pde(k2, t + 0.5 * dt)
+
+            return k1, k2
+
+        return paired_stepper
+
     def _make_adaptive_stepper(
         self,
         state: FieldBase,
