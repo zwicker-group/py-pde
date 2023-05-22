@@ -8,24 +8,18 @@ from typing import Callable, Optional, Tuple
 
 import numba as nb
 import numpy as np
-from numba.extending import register_jitable
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.numba import jit
-from .base import SolverBase
+from .base import AdaptiveSolverBase
 
 
-class ExplicitSolver(SolverBase):
+class ExplicitSolver(AdaptiveSolverBase):
     """class for solving partial differential equations explicitly"""
 
     name = "explicit"
-
-    dt_min: float = 1e-10
-    """float: minimal time step that the adaptive solver will use"""
-    dt_max: float = 1e10
-    """float: maximal time step that the adaptive solver will use"""
 
     def __init__(
         self,
@@ -55,66 +49,9 @@ class ExplicitSolver(SolverBase):
                 adaptive time stepping to choose a time step which is small enough so
                 the truncation error of a single step is below `tolerance`.
         """
-        super().__init__(pde)
+        super().__init__(pde, backend=backend, tolerance=tolerance)
         self.scheme = scheme
-        self.backend = backend
         self.adaptive = adaptive
-        self.tolerance = tolerance
-
-    def _make_error_synchronizer(self) -> Callable[[float], float]:
-        """return helper function that synchronizes errors between multiple processes"""
-
-        @register_jitable
-        def synchronize_errors(error: float) -> float:
-            return error
-
-        return synchronize_errors  # type: ignore
-
-    def _make_dt_adjuster(self) -> Callable[[float, float, float], float]:
-        """return a function that can be used to adjust time steps"""
-        dt_min = self.dt_min
-        dt_min_err = f"Time step below {dt_min}"
-        dt_max = self.dt_max
-
-        def adjust_dt(dt: float, error_rel: float, t: float) -> float:
-            """helper function that adjust the time step
-
-            Args:
-                dt (float): Current time step
-                error_rel (float): Current (normalized) error estimate
-                t (float): Current time point
-
-            Returns:
-                float: Time step of the next iteration
-            """
-            # adjust the time step
-            if error_rel < 0.00057665:
-                # error was very small => maximal increase in dt
-                # The constant on the right hand side of the comparison is chosen to
-                # agree with the equation for adjusting dt below
-                dt *= 4.0
-            elif np.isnan(error_rel):
-                # state contained NaN => decrease time step strongly
-                dt *= 0.25
-            else:
-                # otherwise, adjust time step according to error
-                dt *= max(0.9 * error_rel**-0.2, 0.1)
-
-            # limit time step to permissible bracket
-            if dt > dt_max:
-                dt = dt_max
-            elif dt < dt_min:
-                if np.isnan(error_rel):
-                    raise RuntimeError("Encountered NaN during simulation")
-                else:
-                    raise RuntimeError(dt_min_err)
-
-            return dt
-
-        if self.backend == "numba":
-            adjust_dt = jit(adjust_dt)
-
-        return adjust_dt
 
     def _make_fixed_euler_stepper(
         self, state: FieldBase, dt: float
@@ -184,6 +121,49 @@ class ExplicitSolver(SolverBase):
         return stepper
 
     def _make_adaptive_euler_stepper(
+        self, state: FieldBase
+    ) -> Callable[
+        [np.ndarray, float, float, float, Optional[OnlineStatistics]],
+        Tuple[float, float, int, float],
+    ]:
+        """make an adaptive Euler stepper
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        if self.pde.is_sde:
+            raise RuntimeError(
+                "Cannot use adaptive Euler stepper with stochastic equation"
+            )
+
+        # obtain functions determining how the PDE is evolved
+        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
+
+        def paired_stepper(
+            state_data: np.ndarray, t: float, dt: float
+        ) -> Tuple[np.ndarray, np.ndarray]:
+            """basic stepper to estimate error"""
+            rate = rhs_pde(state_data, t)
+
+            # single step with dt
+            k1 = state_data + dt * rate
+
+            # double step with half the time step
+            k2 = state_data + 0.5 * dt * rate
+            k2 += 0.5 * dt * rhs_pde(k2, t + 0.5 * dt)
+
+            return k1, k2
+
+        return self._make_adaptive_stepper(state, paired_stepper)
+
+    def _make_adaptive_euler_stepper_old(
         self, state: FieldBase
     ) -> Callable[
         [np.ndarray, float, float, float, Optional[OnlineStatistics]],
@@ -479,7 +459,7 @@ class ExplicitSolver(SolverBase):
         self._logger.info(f"Initialized adaptive Runge-Kutta-Fehlberg stepper")
         return stepper
 
-    def _make_fixed_stepper(
+    def _make_fixed_explicit_stepper(
         self, state: FieldBase, dt: float
     ) -> Callable[[np.ndarray, float, int], Tuple[float, float]]:
         """return a stepper function using an explicit scheme with fixed time steps
@@ -506,7 +486,7 @@ class ExplicitSolver(SolverBase):
         self.info["dt_adaptive"] = False
         return fixed_stepper
 
-    def _make_adaptive_stepper(
+    def _make_adaptive_explicit_stepper(
         self, state: FieldBase, dt: float
     ) -> Callable[
         [np.ndarray, float, float, float, OnlineStatistics],
@@ -537,7 +517,7 @@ class ExplicitSolver(SolverBase):
                 f"Explicit adaptive scheme `{self.scheme}` is not supported"
             )
 
-        if self.backend == "numba":
+        if self.backend == "numba" and not nb.config.DISABLE_JIT:
             # compile inner stepper
             sig_adaptive = (
                 nb.typeof(state.data),
@@ -589,7 +569,7 @@ class ExplicitSolver(SolverBase):
         if self.adaptive:
             # create stepper with adaptive steps
             self.info["dt_statistics"] = OnlineStatistics()
-            adaptive_stepper = self._make_adaptive_stepper(state, dt_float)
+            adaptive_stepper = self._make_adaptive_explicit_stepper(state, dt_float)
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
@@ -606,7 +586,7 @@ class ExplicitSolver(SolverBase):
 
         else:
             # create stepper with fixed steps
-            fixed_stepper = self._make_fixed_stepper(state, dt_float)
+            fixed_stepper = self._make_fixed_explicit_stepper(state, dt_float)
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float

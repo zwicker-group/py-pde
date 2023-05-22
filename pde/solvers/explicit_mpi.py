@@ -182,7 +182,7 @@ class ExplicitMPISolver(ExplicitSolver):
         if self.adaptive:
             # create stepper with adaptive steps
             self.info["dt_statistics"] = OnlineStatistics()
-            adaptive_stepper = self._make_adaptive_stepper(sub_state, dt)
+            adaptive_stepper = self._make_adaptive_explicit_stepper(sub_state, dt)
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
@@ -216,7 +216,7 @@ class ExplicitMPISolver(ExplicitSolver):
 
         else:
             # create stepper with fixed steps
-            fixed_stepper = self._make_fixed_stepper(sub_state, dt)
+            fixed_stepper = self._make_fixed_explicit_stepper(sub_state, dt)
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
