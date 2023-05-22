@@ -119,7 +119,7 @@ def test_stochastic_adaptive_solver(caplog):
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1)
     eq = DiffusionPDE(noise=1e-6)
 
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(RuntimeError):
         solver = ExplicitSolver(eq, backend="numpy", adaptive=True)
         c = Controller(solver, t_range=1, tracker=None)
         c.run(field, dt=1e-2)

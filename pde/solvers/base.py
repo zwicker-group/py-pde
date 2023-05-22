@@ -1,5 +1,8 @@
 """
-Package that contains base classes for solvers
+Package that contains base classes for solvers.
+
+Beside the abstract base class defining the interfaces, we also provide
+:class:`AdaptiveSolverBase`, which contains methods for implementing adaptive solvers.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
@@ -206,6 +209,11 @@ class AdaptiveSolverBase(SolverBase):
         self.backend = backend
         self.tolerance = tolerance
 
+    @property
+    def _compiled(self) -> bool:
+        """bool: indicates whether functions need to be compiled"""
+        return self.backend == "numba" and not nb.config.DISABLE_JIT
+
     def _make_error_synchronizer(self) -> Callable[[float], float]:
         """return helper function that synchronizes errors between multiple processes"""
 
@@ -256,7 +264,7 @@ class AdaptiveSolverBase(SolverBase):
 
             return dt
 
-        if self.backend == "numba":
+        if self._compiled:
             adjust_dt = jit(adjust_dt)
 
         return adjust_dt
@@ -321,9 +329,8 @@ class AdaptiveSolverBase(SolverBase):
         adjust_dt = self._make_dt_adjuster()
         tolerance = self.tolerance
         dt_min = self.dt_min
-        compiled = self.backend == "numba" and not nb.config.DISABLE_JIT
 
-        if compiled:
+        if compiled := self._compiled:
             # compile paired stepper
             sig_paired_stepper = (nb.typeof(state.data), nb.double, nb.double)
             paired_stepper = jit(sig_paired_stepper)(paired_stepper)

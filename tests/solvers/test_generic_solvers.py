@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde import PDE, DiffusionPDE, FieldCollection, ScalarField, UnitGrid
+from pde import PDE, DiffusionPDE, FieldCollection, MemoryStorage, ScalarField, UnitGrid
 from pde.solvers import (
     Controller,
     ExplicitSolver,
@@ -13,6 +13,7 @@ from pde.solvers import (
     ScipySolver,
     registered_solvers,
 )
+from pde.solvers.base import AdaptiveSolverBase
 
 
 def test_solver_registration():
@@ -65,3 +66,24 @@ def test_solvers_complex(backend):
         controller = Controller(solver, t_range=1e-2, tracker=None)
         res_c = controller.run(c, dt=1e-3)
         np.testing.assert_allclose(res_c.data, exp_c, rtol=1e-3, atol=1e-3)
+
+
+def test_basic_adaptive_solver():
+    """test basic adaptive solvers"""
+    grid = UnitGrid([4])
+    y0 = np.array([1e-3, 1e-3, 1e3, 1e3])
+    field = ScalarField(grid, y0)
+    eq = PDE({"c": "c"})
+
+    dt = 0.1
+
+    solver = AdaptiveSolverBase(eq, tolerance=1e-1)
+    storage = MemoryStorage()
+    controller = Controller(solver, t_range=10.1, tracker=storage.tracker(1.0))
+    res = controller.run(field, dt=dt)
+
+    np.testing.assert_allclose(res.data, y0 * np.exp(10.1), rtol=0.02)
+    assert solver.info["steps"] != pytest.approx(10.1 / dt, abs=1)
+    assert solver.info["dt_adaptive"]
+    assert solver.info["dt_statistics"]["min"] < 0.0005
+    assert np.allclose(storage.times, np.arange(11))
