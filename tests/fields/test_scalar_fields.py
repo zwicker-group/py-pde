@@ -31,6 +31,9 @@ def test_interpolation_singular():
         val = field.get_boundary_values(axis=0, upper=upper, bc=[{"value": 1}])
         assert val == pytest.approx(1)
 
+        b_field = field.get_boundary_field((0, upper), bc=[{"value": 1}])
+        assert b_field.data == pytest.approx(1)
+
 
 def test_interpolation_edge():
     """test interpolation close to the boundary"""
@@ -352,6 +355,12 @@ def test_boundary_interpolation_1d():
         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(val, bndry_val)
 
+        b_field = field.get_boundary_field(bndry, bc={"value": bndry_val})
+        np.testing.assert_allclose(b_field.data, bndry_val)
+
+    b_field = field.get_boundary_field("right", bc={"value": bndry_val})
+    np.testing.assert_allclose(b_field.data, bndry_val)
+
 
 def test_boundary_interpolation_2d():
     """test boundary interpolation for 2d fields"""
@@ -363,6 +372,12 @@ def test_boundary_interpolation_2d():
     for bndry in grid._iter_boundaries():
         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(val, bndry_val)
+
+        b_field = field.get_boundary_field(bndry, bc={"value": bndry_val})
+        np.testing.assert_allclose(b_field.data, bndry_val)
+
+    b_field = field.get_boundary_field("left", bc={"value": bndry_val})
+    np.testing.assert_allclose(b_field.data, bndry_val)
 
 
 def test_numpy_ufuncs():

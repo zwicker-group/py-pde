@@ -251,6 +251,30 @@ class GridBase(metaclass=ABCMeta):
             return key
         raise IndexError("Index must be an integer or the name of an axes")
 
+    def _get_boundary_index(
+        self, index: Union[str, Tuple[int, bool]]
+    ) -> Tuple[int, bool]:
+        """return the index of a boundary belonging to an axis
+
+        Args:
+            index (str or tuple):
+                Index specifying the boundary. Can be either a string given in
+                :attr:`~pde.grids.base.GridBase.boundary_names`, like :code:`"left"`, or
+                a tuple of the axis index perpendicular to the boundary and a boolean
+                specifying whether the boundary is at the upper side of the axis or not,
+                e.g., :code:`(1, True)`.
+
+        Returns:
+            Tuple: axis index perpendicular to the boundary and a boolean specifying
+                whether the boundary is at the upper side of the axis or not.
+        """
+        if isinstance(index, str):
+            # assume that the index is a known identifier
+            axis, upper = self.boundary_names[index]
+        else:
+            axis, upper = index
+        return axis, upper
+
     @property
     def discretization(self) -> np.ndarray:
         """:class:`numpy.array`: the linear size of a cell along each axis"""

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numbers
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -327,18 +327,23 @@ class ScalarField(DataFieldBase):
     ) -> ScalarField:
         """slice data at a given position
 
+        Note:
+            This method should not be used to evaluate fields right at the boundary
+            since it does not respect boundary conditions. Use
+            :meth:`~ScalarField.get_boundary_field` to obtain the values directly on the
+            boundary.
+
         Args:
             position (dict):
-                Determines the location of the slice using a dictionary
-                supplying coordinate values for a subset of axes. Axes not
-                mentioned in the dictionary are retained and form the slice.
-                For instance, in a 2d Cartesian grid, `position = {'x': 1}`
-                slices along the y-direction at x=1. Additionally, the special
-                positions 'low', 'mid', and 'high' are supported to reference
-                relative positions along the axis.
+                Determines the location of the slice using a dictionary supplying
+                coordinate values for a subset of axes. Axes not mentioned in the
+                dictionary are retained and form the slice. For instance, in a 2d
+                Cartesian grid, `position = {'x': 1}` slices along the y-direction at
+                x=1. Additionally, the special positions 'low', 'mid', and 'high' are
+                supported to reference relative positions along the axis.
             method (str):
-                The method used for slicing. `nearest` takes data from cells
-                defined on the grid.
+                The method used for slicing. Currently, we only support `nearest`, which
+                takes data from cells defined on the grid.
             label (str, optional):
                 The label of the returned field
 
@@ -438,3 +443,42 @@ class ScalarField(DataFieldBase):
             raise ValueError(f"Unknown method `{scalar}` for `to_scalar`")
 
         return ScalarField(grid=self.grid, data=data, label=label)
+
+    @fill_in_docstring
+    def get_boundary_field(
+        self,
+        index: Union[str, Tuple[int, bool]],
+        bc: Optional[BoundariesData] = None,
+        *,
+        label: Optional[str] = None,
+    ) -> DataFieldBase:
+        """get the field on the specified boundary
+
+        Args:
+            index (str or tuple):
+                Index specifying the boundary. Can be either a string given in
+                :attr:`~pde.grids.base.GridBase.boundary_names`, like :code:`"left"`, or
+                a tuple of the axis index perpendicular to the boundary and a boolean
+                specifying whether the boundary is at the upper side of the axis or not,
+                e.g., :code:`(1, True)`.
+            bc:
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES_OPTIONAL}
+            label (str):
+                Label of the returned grid
+
+        Returns:
+            :class:`~numpy.ndarray`: The discretized values on the boundary
+        """
+        axis, upper = self.grid._get_boundary_index(index)
+        data = self.get_boundary_values(axis, upper, bc)
+
+        boundary_axes = tuple(i for i in range(self.grid.num_axes) if i != axis)
+        if boundary_axes:
+            # the boundary is an actual field (the original grid had more than 2 axes)
+            grid = self.grid.slice(boundary_axes)
+        else:
+            # the boundary is a singular point => return a UnitGrid
+            grid = UnitGrid([1])
+
+        return self.__class__(grid=grid, data=data, label=label, dtype=self.dtype)
