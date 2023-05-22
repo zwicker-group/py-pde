@@ -120,49 +120,6 @@ class ExplicitSolver(AdaptiveSolverBase):
 
         return stepper
 
-    def _make_adaptive_euler_stepper(
-        self, state: FieldBase
-    ) -> Callable[
-        [np.ndarray, float, float, float, Optional[OnlineStatistics]],
-        Tuple[float, float, int, float],
-    ]:
-        """make an adaptive Euler stepper
-
-        Args:
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-
-        Returns:
-            Function that can be called to advance the `state` from time `t_start` to
-            time `t_end`. The function call signature is `(state: numpy.ndarray,
-            t_start: float, t_end: float)`
-        """
-        if self.pde.is_sde:
-            raise RuntimeError(
-                "Cannot use adaptive Euler stepper with stochastic equation"
-            )
-
-        # obtain functions determining how the PDE is evolved
-        rhs_pde = self._make_pde_rhs(state, backend=self.backend)
-
-        def paired_stepper(
-            state_data: np.ndarray, t: float, dt: float
-        ) -> Tuple[np.ndarray, np.ndarray]:
-            """basic stepper to estimate error"""
-            rate = rhs_pde(state_data, t)
-
-            # single step with dt
-            k1 = state_data + dt * rate
-
-            # double step with half the time step
-            k2 = state_data + 0.5 * dt * rate
-            k2 += 0.5 * dt * rhs_pde(k2, t + 0.5 * dt)
-
-            return k1, k2
-
-        return self._make_adaptive_stepper(state, paired_stepper)
-
     def _make_adaptive_euler_stepper_old(
         self, state: FieldBase
     ) -> Callable[
@@ -486,50 +443,51 @@ class ExplicitSolver(AdaptiveSolverBase):
         self.info["dt_adaptive"] = False
         return fixed_stepper
 
-    def _make_adaptive_explicit_stepper(
-        self, state: FieldBase, dt: float
-    ) -> Callable[
-        [np.ndarray, float, float, float, OnlineStatistics],
-        Tuple[float, float, int, float],
-    ]:
-        """return a stepper function using an explicit scheme with fixed time steps
-
-        Args:
-            state (:class:`~pde.fields.base.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            dt (float):
-                Initial time step of the adaptive explicit stepping
-        """
-        if self.pde.is_sde:
-            raise NotImplementedError(
-                "Adaptive stochastic stepping is not implemented. Use a fixed time "
-                "step instead."
-            )
-        self.info["stochastic"] = False
-
-        if self.scheme == "euler":
-            adaptive_stepper = self._make_adaptive_euler_stepper(state)
-        elif self.scheme in {"runge-kutta", "rk", "rk45"}:
-            adaptive_stepper = self._make_rkf_stepper(state)
-        else:
-            raise ValueError(
-                f"Explicit adaptive scheme `{self.scheme}` is not supported"
-            )
-
-        if self.backend == "numba" and not nb.config.DISABLE_JIT:
-            # compile inner stepper
-            sig_adaptive = (
-                nb.typeof(state.data),
-                nb.double,
-                nb.double,
-                nb.double,
-                nb.typeof(self.info["dt_statistics"]),
-            )
-            adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
-
-        self.info["dt_adaptive"] = True
-        return adaptive_stepper
+    #
+    # def _make_adaptive_stepper(
+    #     self, state: FieldBase, dt: float
+    # ) -> Callable[
+    #     [np.ndarray, float, float, float, OnlineStatistics],
+    #     Tuple[float, float, int, float],
+    # ]:
+    #     """return a stepper function using an explicit scheme with fixed time steps
+    #
+    #     Args:
+    #         state (:class:`~pde.fields.base.FieldBase`):
+    #             An example for the state from which the grid and other information can
+    #             be extracted
+    #         dt (float):
+    #             Initial time step of the adaptive explicit stepping
+    #     """
+    #     if self.pde.is_sde:
+    #         raise NotImplementedError(
+    #             "Adaptive stochastic stepping is not implemented. Use a fixed time "
+    #             "step instead."
+    #         )
+    #     self.info["stochastic"] = False
+    #
+    #     if self.scheme == "euler":
+    #         adaptive_stepper = self._make_adaptive_euler_stepper(state)
+    #     elif self.scheme in {"runge-kutta", "rk", "rk45"}:
+    #         adaptive_stepper = self._make_rkf_stepper(state)
+    #     else:
+    #         raise ValueError(
+    #             f"Explicit adaptive scheme `{self.scheme}` is not supported"
+    #         )
+    #
+    #     if self.backend == "numba" and not nb.config.DISABLE_JIT:
+    #         # compile inner stepper
+    #         sig_adaptive = (
+    #             nb.typeof(state.data),
+    #             nb.double,
+    #             nb.double,
+    #             nb.double,
+    #             nb.typeof(self.info["dt_statistics"]),
+    #         )
+    #         adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
+    #
+    #     self.info["dt_adaptive"] = True
+    #     return adaptive_stepper
 
     def make_stepper(
         self, state: FieldBase, dt: Optional[float] = None
@@ -549,16 +507,18 @@ class ExplicitSolver(AdaptiveSolverBase):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
+        if self.adaptive:
+            return super().make_stepper(state, dt)
+
         # support `None` as a default value, so the controller can signal that
         # the solver should use a default time step
         if dt is None:
             dt = 1e-3
-            if not self.adaptive:
-                self._logger.warning(
-                    "Explicit stepper with a fixed time step did not receive any "
-                    f"initial value for `dt`. Using dt={dt}, but specifying a value or "
-                    "enabling adaptive stepping is advisable."
-                )
+            self._logger.warning(
+                "Explicit stepper with a fixed time step did not receive any "
+                f"initial value for `dt`. Using dt={dt}, but specifying a value or "
+                "enabling adaptive stepping is advisable."
+            )
         dt_float = float(dt)  # explicit casting to help type checking
 
         self.info["dt"] = dt_float
@@ -566,37 +526,16 @@ class ExplicitSolver(AdaptiveSolverBase):
         self.info["scheme"] = self.scheme
         self.info["state_modifications"] = 0.0
 
-        if self.adaptive:
-            # create stepper with adaptive steps
-            self.info["dt_statistics"] = OnlineStatistics()
-            adaptive_stepper = self._make_adaptive_explicit_stepper(state, dt_float)
+        # create stepper with fixed steps
+        fixed_stepper = self._make_fixed_explicit_stepper(state, dt_float)
 
-            def wrapped_stepper(
-                state: FieldBase, t_start: float, t_end: float
-            ) -> float:
-                """advance `state` from `t_start` to `t_end` using adaptive steps"""
-                nonlocal dt_float  # `dt_float` stores value for the next call
-
-                t_last, dt_float, steps, modifications = adaptive_stepper(
-                    state.data, t_start, t_end, dt_float, self.info["dt_statistics"]
-                )
-                self.info["steps"] += steps
-                self.info["state_modifications"] += modifications
-                return t_last
-
-        else:
-            # create stepper with fixed steps
-            fixed_stepper = self._make_fixed_explicit_stepper(state, dt_float)
-
-            def wrapped_stepper(
-                state: FieldBase, t_start: float, t_end: float
-            ) -> float:
-                """advance `state` from `t_start` to `t_end` using fixed steps"""
-                # calculate number of steps (which is at least 1)
-                steps = max(1, int(np.ceil((t_end - t_start) / dt_float)))
-                t_last, modifications = fixed_stepper(state.data, t_start, steps)
-                self.info["steps"] += steps
-                self.info["state_modifications"] += modifications
-                return t_last
+        def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
+            """advance `state` from `t_start` to `t_end` using fixed steps"""
+            # calculate number of steps (which is at least 1)
+            steps = max(1, int(np.ceil((t_end - t_start) / dt_float)))
+            t_last, modifications = fixed_stepper(state.data, t_start, steps)
+            self.info["steps"] += steps
+            self.info["state_modifications"] += modifications
+            return t_last
 
         return wrapped_stepper

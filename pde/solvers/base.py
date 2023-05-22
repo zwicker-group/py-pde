@@ -261,7 +261,19 @@ class AdaptiveSolverBase(SolverBase):
 
         return adjust_dt
 
-    def _make_paired_stepper(self, state):
+    def _make_paired_stepper(
+        self, state: FieldBase
+    ) -> Callable[[np.ndarray, float, float], Tuple[np.ndarray, np.ndarray]]:
+        """make the inner stepper that uses a full and two half steps
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+        """
+        if self.pde.is_sde:
+            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+
         # obtain functions determining how the PDE is evolved
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
 
@@ -283,11 +295,7 @@ class AdaptiveSolverBase(SolverBase):
         return paired_stepper
 
     def _make_adaptive_stepper(
-        self,
-        state: FieldBase,
-        paired_stepper: Callable[
-            [np.ndarray, float, float], Tuple[np.ndarray, np.ndarray]
-        ],
+        self, state: FieldBase
     ) -> Callable[
         [np.ndarray, float, float, float, Optional[OnlineStatistics]],
         Tuple[float, float, int, float],
@@ -298,9 +306,6 @@ class AdaptiveSolverBase(SolverBase):
             state (:class:`~pde.fields.base.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted
-            paired_stepper (callable):
-                (Compiled) function that advances the state in two different ways to be
-                able to estimate the error.
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -308,6 +313,7 @@ class AdaptiveSolverBase(SolverBase):
             t_start: float, t_end: float)`
         """
         # obtain functions determining how the PDE is evolved
+        paired_stepper = self._make_paired_stepper(state)
         modify_after_step = jit(self.pde.make_modify_after_step(state))
 
         # obtain auxiliary functions
@@ -375,3 +381,49 @@ class AdaptiveSolverBase(SolverBase):
 
         self._logger.info(f"Initialized adaptive stepper")
         return stepper
+
+    def make_stepper(
+        self, state: FieldBase, dt: Optional[float] = None
+    ) -> Callable[[FieldBase, float, float], float]:
+        """return a stepper function using an explicit scheme
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step of the explicit stepping. If `None`, this solver specifies
+                1e-3 as a default value.
+
+        Returns:
+            Function that can be called to advance the `state` from time `t_start` to
+            time `t_end`. The function call signature is `(state: numpy.ndarray,
+            t_start: float, t_end: float)`
+        """
+        # support `None` as a default value, so the controller can signal that
+        # the solver should use a default time step
+        if dt is None:
+            dt = 1e-3  # use an explicit value
+        dt_float = float(dt)  # explicit casting to help type checking
+
+        self.info["dt"] = dt_float
+        self.info["dt_adaptive"] = True
+        self.info["steps"] = 0
+        self.info["state_modifications"] = 0.0
+
+        # create stepper with adaptive steps
+        self.info["dt_statistics"] = OnlineStatistics()
+        adaptive_stepper = self._make_adaptive_stepper(state)
+
+        def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
+            """advance `state` from `t_start` to `t_end` using adaptive steps"""
+            nonlocal dt_float  # `dt_float` stores value for the next call
+
+            t_last, dt_float, steps, modifications = adaptive_stepper(
+                state.data, t_start, t_end, dt_float, self.info["dt_statistics"]
+            )
+            self.info["steps"] += steps
+            self.info["state_modifications"] += modifications
+            return t_last
+
+        return wrapped_stepper
