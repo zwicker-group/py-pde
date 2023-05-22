@@ -451,7 +451,7 @@ class ScalarField(DataFieldBase):
         bc: Optional[BoundariesData] = None,
         *,
         label: Optional[str] = None,
-    ) -> DataFieldBase:
+    ) -> ScalarField:
         """get the field on the specified boundary
 
         Args:
@@ -468,7 +468,7 @@ class ScalarField(DataFieldBase):
                 Label of the returned grid
 
         Returns:
-            :class:`~numpy.ndarray`: The discretized values on the boundary
+            :class:`~pde.fields.scalar.ScalarField`: The field on the boundary
         """
         axis, upper = self.grid._get_boundary_index(index)
         data = self.get_boundary_values(axis, upper, bc)
