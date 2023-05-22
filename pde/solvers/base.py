@@ -12,6 +12,7 @@ from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type  # @UnusedImport
 
+import numba as nb
 import numpy as np
 from numba.extending import register_jitable
 
@@ -293,7 +294,12 @@ class AdaptiveSolverBase(SolverBase):
         adjust_dt = self._make_dt_adjuster()
         tolerance = self.tolerance
         dt_min = self.dt_min
-        compiled = self.backend == "numba"
+        compiled = self.backend == "numba" and not nb.config.DISABLE_JIT
+
+        if compiled:
+            # compile paired stepper
+            sig_paired_stepper = (nb.typeof(state.data), nb.double, nb.double)
+            paired_stepper = jit(sig_paired_stepper)(paired_stepper)
 
         def stepper(
             state_data: np.ndarray,
