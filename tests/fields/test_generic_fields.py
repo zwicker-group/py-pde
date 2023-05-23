@@ -76,55 +76,60 @@ def test_shapes_nfields(num, grid):
     assert field.grid == field_c.grid
 
 
-def test_arithmetics():
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+def test_arithmetics(field_class):
     """test simple arithmetics for fields"""
     grid = UnitGrid([2, 2])
-    for cls in (ScalarField, VectorField, Tensor2Field):
-        f1 = cls(grid, data=1)
-        f2 = cls(grid, data=2)
-        assert isinstance(str(f1), str)
-        np.testing.assert_allclose(f1.data, 1)
+    f1 = field_class(grid, data=1)
+    f2 = field_class(grid, data=2)
+    assert isinstance(str(f1), str)
+    np.testing.assert_allclose(f1.data, 1)
 
-        np.testing.assert_allclose((-f1).data, -1)
+    np.testing.assert_allclose((-f1).data, -1)
 
-        # test addition
-        np.testing.assert_allclose((f1 + 1).data, 2)
-        np.testing.assert_allclose((1 + f1).data, 2)
-        f1 += 1
-        np.testing.assert_allclose(f1.data, 2)
-        np.testing.assert_allclose((f1 + f2).data, 4)
+    # test addition
+    np.testing.assert_allclose((f1 + 1).data, 2)
+    np.testing.assert_allclose((1 + f1).data, 2)
+    f1 += 1
+    np.testing.assert_allclose(f1.data, 2)
+    np.testing.assert_allclose((f1 + f2).data, 4)
 
-        # test subtraction
-        np.testing.assert_allclose((f1 - 1).data, 1)
-        np.testing.assert_allclose((1 - f1).data, -1)
-        f1 -= 1
-        np.testing.assert_allclose(f1.data, 1)
-        np.testing.assert_allclose((f1 - f2).data, -1)
+    # test subtraction
+    np.testing.assert_allclose((f1 - 1).data, 1)
+    np.testing.assert_allclose((1 - f1).data, -1)
+    f1 -= 1
+    np.testing.assert_allclose(f1.data, 1)
+    np.testing.assert_allclose((f1 - f2).data, -1)
 
-        # test multiplication
-        np.testing.assert_allclose((f1 * 2).data, 2)
-        np.testing.assert_allclose((2 * f1).data, 2)
-        f1 *= 2
-        np.testing.assert_allclose(f1.data, 2)
+    # test multiplication
+    np.testing.assert_allclose((f1 * 2).data, 2)
+    np.testing.assert_allclose((2 * f1).data, 2)
+    f1 *= 2
+    np.testing.assert_allclose(f1.data, 2)
 
-        # test division
-        np.testing.assert_allclose((f1 / 2).data, 1)
-        f1.data = 4
-        np.testing.assert_allclose((2 / f1).data, 0.5)
-        f1 /= 2
-        np.testing.assert_allclose(f1.data, 2)
+    # test division
+    np.testing.assert_allclose((f1 / 2).data, 1)
+    f1.data = 4
+    np.testing.assert_allclose((2 / f1).data, 0.5)
+    f1 /= 2
+    np.testing.assert_allclose(f1.data, 2)
 
-        # test power
-        f1.data = 2
-        np.testing.assert_allclose((f1**3).data, 8)
-        f1 **= 3
-        np.testing.assert_allclose(f1.data, 8)
+    # test power
+    f1.data = 2
+    np.testing.assert_allclose((f1**3).data, 8)
+    f1 **= 3
+    np.testing.assert_allclose(f1.data, 8)
 
-        # test applying a function
-        f1.data = 2
-        np.testing.assert_allclose(f1.apply(lambda x: x**3).data, 8)
-        f1.apply(lambda x: x**3, out=f1)
-        np.testing.assert_allclose(f1.data, 8)
+    # test applying a function
+    f1.data = 2
+    np.testing.assert_allclose(f1.apply(lambda x: x**3).data, 8)
+    np.testing.assert_allclose(f1.apply("c**3").data, 8)
+    f1_out = f1.copy()
+    f1.apply(lambda x: x**3, out=f1_out)
+    np.testing.assert_allclose(f1_out.data, 8)
+    f1_out = f1.copy()
+    f1.apply("c**3", out=f1_out)
+    np.testing.assert_allclose(f1_out.data, 8)
 
 
 def test_scalar_arithmetics():
@@ -160,39 +165,39 @@ def test_scalar_arithmetics():
             s *= f
 
 
-def test_data_managment():
+@pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
+def test_data_managment(field_class):
     """test how data is set"""
     grid = UnitGrid([2, 2])
-    for cls in (ScalarField, VectorField, Tensor2Field):
-        s1 = cls(grid, data=1)
-        np.testing.assert_allclose(s1.data, 1)
+    s1 = field_class(grid, data=1)
+    np.testing.assert_allclose(s1.data, 1)
 
-        s2 = cls(grid)
-        np.testing.assert_allclose(s2.data, 0)
+    s2 = field_class(grid)
+    np.testing.assert_allclose(s2.data, 0)
 
-        c = FieldCollection([s1, s2])
-        s1.data = 0
-        np.testing.assert_allclose(c.data, 0)
+    c = FieldCollection([s1, s2])
+    s1.data = 0
+    np.testing.assert_allclose(c.data, 0)
 
-        c.data = 2
-        np.testing.assert_allclose(s1.data, 2)
-        np.testing.assert_allclose(s2.data, 2)
+    c.data = 2
+    np.testing.assert_allclose(s1.data, 2)
+    np.testing.assert_allclose(s2.data, 2)
 
-        c.data += 1
-        np.testing.assert_allclose(s1.data, 3)
-        np.testing.assert_allclose(s2.data, 3)
+    c.data += 1
+    np.testing.assert_allclose(s1.data, 3)
+    np.testing.assert_allclose(s2.data, 3)
 
-        c[0].data += 2  # reference to s1
-        c[1].data *= 2  # reference to s2
-        np.testing.assert_allclose(s1.data, 5)
-        np.testing.assert_allclose(s2.data, 6)
+    c[0].data += 2  # reference to s1
+    c[1].data *= 2  # reference to s2
+    np.testing.assert_allclose(s1.data, 5)
+    np.testing.assert_allclose(s2.data, 6)
 
-        c[0] = s2
-        np.testing.assert_allclose(c.data, 6)
+    c[0] = s2
+    np.testing.assert_allclose(c.data, 6)
 
-        # nested collections
-        with pytest.raises(RuntimeError):
-            FieldCollection([c])
+    # nested collections
+    with pytest.raises(RuntimeError):
+        FieldCollection([c])
 
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
@@ -376,18 +381,18 @@ def test_simple_plotting(grid):
             f.plot(kind="streamplot", action="close")
 
 
-def test_random_uniform():
+@pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
+def test_random_uniform(field_cls):
     """test whether random uniform fields behave correctly"""
     grid = UnitGrid([256, 256])
-    for field_cls in [ScalarField, VectorField, Tensor2Field]:
-        a = np.random.random()
-        b = 2 + np.random.random()
-        f = field_cls.random_uniform(grid, a, b)
-        assert np.mean(f.average) == pytest.approx((a + b) / 2, rel=0.02)
-        assert np.std(f.data) == pytest.approx(0.288675 * (b - a), rel=0.1)
+    a = np.random.random()
+    b = 2 + np.random.random()
+    f = field_cls.random_uniform(grid, a, b)
+    assert np.mean(f.average) == pytest.approx((a + b) / 2, rel=0.02)
+    assert np.std(f.data) == pytest.approx(0.288675 * (b - a), rel=0.1)
 
-        np.testing.assert_allclose(f.real.data, f.data)
-        np.testing.assert_allclose(f.imag.data, 0)
+    np.testing.assert_allclose(f.real.data, f.data)
+    np.testing.assert_allclose(f.imag.data, 0)
 
 
 def test_random_uniform_types():
@@ -404,16 +409,16 @@ def test_random_uniform_types():
     assert ScalarField.random_uniform(grid, 0 + 0j, 1 + 0j).dtype == np.dtype(complex)
 
 
-def test_random_normal():
+@pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
+def test_random_normal(field_cls):
     """test whether random normal fields behave correctly"""
     grid = UnitGrid([256, 256])
-    for field_cls in [ScalarField, VectorField, Tensor2Field]:
-        m = np.random.random()
-        s = 1 + np.random.random()
-        for scaling in ["none", "physical"]:
-            f = field_cls.random_normal(grid, mean=m, std=s, scaling=scaling)
-            assert np.mean(f.average) == pytest.approx(m, rel=0.1, abs=0.1)
-            assert np.std(f.data) == pytest.approx(s, rel=0.1, abs=0.1)
+    m = np.random.random()
+    s = 1 + np.random.random()
+    for scaling in ["none", "physical"]:
+        f = field_cls.random_normal(grid, mean=m, std=s, scaling=scaling)
+        assert np.mean(f.average) == pytest.approx(m, rel=0.1, abs=0.1)
+        assert np.std(f.data) == pytest.approx(s, rel=0.1, abs=0.1)
 
 
 def test_random_normal_types():
@@ -463,20 +468,20 @@ def test_random_rng():
         np.testing.assert_allclose(f1.data, f2.data)
 
 
-def test_fluctuations():
+@pytest.mark.parametrize("dim", [1, 2])
+@pytest.mark.parametrize("size", [256, 512])
+def test_fluctuations(dim, size):
     """test the scaling of fluctuations"""
-    for dim in [1, 2]:
-        for size in [256, 512]:
-            if dim == 1:
-                size **= 2
-            grid = CartesianGrid([[0, 1]] * dim, [size] * dim)
-            std = 1 + np.random.random()
-            for field_cls in [ScalarField, VectorField, Tensor2Field]:
-                s = field_cls.random_normal(
-                    grid, mean=np.random.random(), std=std, scaling="physical"
-                )
-                expect = np.full([dim] * field_cls.rank, std)
-                np.testing.assert_allclose(s.fluctuations, expect, rtol=0.1)
+    if dim == 1:
+        size **= 2
+    grid = CartesianGrid([[0, 1]] * dim, [size] * dim)
+    std = 1 + np.random.random()
+    for field_cls in [ScalarField, VectorField, Tensor2Field]:
+        s = field_cls.random_normal(
+            grid, mean=np.random.random(), std=std, scaling="physical"
+        )
+        expect = np.full([dim] * field_cls.rank, std)
+        np.testing.assert_allclose(s.fluctuations, expect, rtol=0.1)
 
 
 def test_smoothing():
