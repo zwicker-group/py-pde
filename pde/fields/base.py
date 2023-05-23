@@ -615,33 +615,66 @@ class FieldBase(metaclass=ABCMeta):
 
     def apply(
         self: TField,
-        func: Callable,
+        func: Union[Callable, str],
         out: Optional[TField] = None,
+        *,
         label: Optional[str] = None,
+        evaluate_args: Optional[Dict[str, Any]] = None,
     ) -> TField:
-        """applies a function to the data and returns it as a field
+        """applies a function/expression to the data and returns it as a field
 
         Args:
             func (callable or str):
-                The (vectorized) function being applied to the data or the name
-                of an operator that is defined for the grid of this field.
+                The (vectorized) function being applied to the data or an expression
+                that can be parsed using sympy (:func:`~pde.tools.expression.evaluate`
+                is used in this case). The local field values can be accessed using the
+                field labels for a field collection and via the variable `c` otherwise.
             out (FieldBase, optional):
                 Optional field into which the data is written
             label (str, optional):
                 Name of the returned field
+            evaluate_args (dict):
+                Additional arguments passed to :func:`~pde.tools.expression.evaluate`.
+                Only used when `func` is a string.
 
         Returns:
-            Field with new data. This is stored at `out` if given.
+            Field with new data. This is identical to `out` if it was given.
         """
-        if out is None:
-            out = self.copy(label=label)
-            out.data = func(self.data)
+        if isinstance(func, str):
+            # function is given as an expression that will be evaluated
+            from ..tools.expressions import evaluate
+            from .collection import FieldCollection
+
+            if evaluate_args is None:
+                evaluate_args = {}
+            if isinstance(self, DataFieldBase):
+                result = evaluate(func, {"c": self}, **evaluate_args)
+            elif isinstance(self, FieldCollection):
+                result = evaluate(func, self, **evaluate_args)
+            else:
+                raise TypeError("self must be DataFieldBase or FieldCollection")
+
+            if out is None:
+                out = result  # type: ignore
+            else:
+                result.assert_field_compatible(out)
+                out.data[...] = result.data
+
+        elif callable(func):
+            # function should directly be applied to the data
+            if out is None:
+                out = self.copy(label=label)
+            else:
+                self.assert_field_compatible(out)
+            out.data[...] = func(self.data)
+
         else:
-            self.assert_field_compatible(out)
-            out.data[:] = func(self.data)
-            if label:
-                out.label = label
-        return out
+            raise TypeError("`func` must be string or callable")
+
+        assert isinstance(out, FieldBase)
+        if label:
+            out.label = label
+        return out  # type: ignore
 
     @abstractmethod
     def get_line_data(
