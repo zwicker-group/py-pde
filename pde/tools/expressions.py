@@ -46,6 +46,7 @@ from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
 from ..fields.base import DataFieldBase, FieldBase
+from ..fields.collection import FieldCollection
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from .cache import cached_method, cached_property
@@ -907,7 +908,7 @@ class TensorExpression(ExpressionBase):
 @fill_in_docstring
 def evaluate(
     expression: str,
-    fields: Dict[str, DataFieldBase],
+    fields: Union[Dict[str, DataFieldBase], FieldCollection],
     *,
     bc: BoundariesData = "auto_periodic_neumann",
     bc_ops: Optional[Dict[str, BoundariesData]] = None,
@@ -932,8 +933,10 @@ def evaluate(
             expression, and `outer(field1, field2)` calculates an outer product.
             More information can be found in the
             :ref:`expression documentation <documentation-expressions>`.
-        fields (dict):
-            Dictionary of the fields involved in the expression.
+        fields (dict or :class:`~pde.fields.collection.FieldCollection`):
+            Dictionary of the fields involved in the expression. The dictionary keys
+            specify the field names allowed in `expression`. Alternatively, `fields` can
+            be a :class:`~pde.fields.collection.FieldCollection` with unique labels.
         bc:
             Boundary conditions for the operators used in the expression. The conditions
             here are applied to all operators that do not have a specialized condition
@@ -966,6 +969,18 @@ def evaluate(
     if consts is None:
         consts = {}
 
+    # get keys and values from input
+    if isinstance(fields, FieldCollection):
+        fields_keys = fields.labels
+        fields_values = fields.fields
+        if len(set(fields_keys)) != len(fields_values):
+            raise RuntimeError("Field names need to be unique")
+    elif isinstance(fields, dict):
+        fields_keys = fields.keys()  # type: ignore
+        fields_values = fields.values()  # type: ignore
+    else:
+        raise TypeError("`fields` must be dict or FieldCollection")
+
     # turn the expression strings into sympy expressions
     expr = ScalarExpression(expression, user_funcs=user_funcs, consts=consts)
 
@@ -987,7 +1002,7 @@ def evaluate(
 
     # check whether all fields have the same grid
     grid = None
-    for field in fields.values():
+    for field in fields_values:
         if grid is None:
             grid = field.grid
         else:
@@ -998,7 +1013,7 @@ def evaluate(
     # prepare the differential operators
 
     # check whether PDE has variables with same names as grid axes
-    name_overlap = set(fields) & set(grid.axes)
+    name_overlap = set(fields_keys) & set(grid.axes)
     if name_overlap:
         raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
 
@@ -1041,12 +1056,12 @@ def evaluate(
                 logger.info("Assuming that sympy knows undefined operator `%s`", func)
 
     # check whether there are boundary conditions that have not been used
-    bcs_left = set(bcs.keys()) - bcs_used - {"*:*"}
+    bcs_left = set(bcs.keys()) - bcs_used - {"*:*", "*"}
     if bcs_left:
         logger.warning("Unused BCs: %s", list(sorted(bcs_left)))
 
     # obtain the function to calculate the right hand side
-    signature = tuple(fields.keys()) + ("none", "bc_args")
+    signature = tuple(fields_keys) + ("none", "bc_args")
 
     # check whether this function depends on additional input
     if any(expr.depends_on(c) for c in grid.axes):
@@ -1073,7 +1088,7 @@ def evaluate(
     logger.info("Expression has signature %s", signature)
 
     # extract input field data and calculate result
-    field_data = [field.data for field in fields.values()]
+    field_data = [field.data for field in fields_values]
 
     # calculate the result of the expression
     func = expr._get_function(single_arg=False, user_funcs=ops)

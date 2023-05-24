@@ -8,7 +8,7 @@ import numba as nb
 import numpy as np
 import pytest
 
-from pde import ScalarField, Tensor2Field, UnitGrid, VectorField
+from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.tools.expressions import (
     BCDataError,
     ScalarExpression,
@@ -400,3 +400,22 @@ def test_evaluate_func_bcs_warning(caplog):
     with caplog.at_level(logging.WARNING):
         evaluate("laplace(u)", {"u": field}, bc_ops={"v:laplace": "value"})
     assert "Unused" in caplog.text
+
+
+def test_evaluate_func_collection():
+    """test the evaluate function with a field collection"""
+    grid = UnitGrid([3])
+    field = ScalarField.from_expression(grid, "x")
+    vec = VectorField.from_expression(grid, ["x"])
+    col = FieldCollection.from_dict({"v": vec, "a": field})
+
+    res = evaluate("inner(v, v)", col)
+    assert isinstance(res, ScalarField)
+    np.testing.assert_almost_equal(res.data, grid.axes_coords[0] ** 2)
+
+    assert isinstance(evaluate("gradient(a)", col), VectorField)
+    assert isinstance(evaluate("a * v", col), VectorField)
+
+    with pytest.raises(RuntimeError):
+        col.labels = ["a", "a"]
+        evaluate("1", col)

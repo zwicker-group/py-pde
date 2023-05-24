@@ -300,3 +300,13 @@ def test_from_data():
     )
     assert f3.labels == ["c", "d"]
     np.testing.assert_allclose(f1.data, f2.data)
+
+
+def test_collection_apply():
+    """test the `apply` method"""
+    grid = UnitGrid([3, 5])
+    s = ScalarField(grid, 2, label="s1")
+    v = VectorField.random_uniform(grid, label="v2")
+    f1 = FieldCollection([s, v])
+
+    np.testing.assert_allclose(f1.apply("s1 * v2").data, v.data * 2)
