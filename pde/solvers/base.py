@@ -405,7 +405,9 @@ class AdaptiveSolverBase(SolverBase):
             raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
 
         single_step = self._make_single_step_variable_dt(state)
-        compiled = self._compiled
+        if compiled := self._compiled:
+            sig_single_step = (nb.typeof(state.data), nb.double, nb.double)
+            single_step = jit(sig_single_step)(single_step)
 
         def single_step_error_estimate(
             state_data: np.ndarray, t: float, dt: float
