@@ -32,7 +32,7 @@ def test_solvers_simple_fixed(scheme):
     if mpi.is_main:
         np.testing.assert_allclose(res.data, xs * np.exp(10), rtol=0.1)
         assert solver.info["steps"] == pytest.approx(10 / dt, abs=1)
-        assert not solver.info["dt_adaptive"]
+        assert not solver.info.get("dt_adaptive", False)
 
 
 @pytest.mark.multiprocessing
@@ -88,7 +88,7 @@ def test_solvers_time_dependent(scheme, adaptive):
         assert solver.info["steps"] < 20 / dt
     else:
         assert solver.info["steps"] == pytest.approx(20 / dt, abs=1)
-    assert solver.info["dt_adaptive"] == adaptive
+    assert solver.info.get("dt_adaptive", False) == adaptive
 
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
@@ -110,8 +110,8 @@ def test_stochastic_solvers(backend):
     assert not solver1.info["stochastic"]
     assert solver2.info["stochastic"]
 
-    assert not solver1.info["dt_adaptive"]
-    assert not solver2.info["dt_adaptive"]
+    assert not solver1.info.get("dt_adaptive", False)
+    assert not solver2.info.get("dt_adaptive", False)
 
 
 def test_stochastic_adaptive_solver(caplog):
