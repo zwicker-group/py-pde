@@ -73,7 +73,7 @@ pre-defined in the module :mod:`pde.pdes`.
 Moreover, the special class :class:`~pde.pdes.pde.PDE` allows defining PDEs by simply
 specifying the expression on their right hand side.
 To see how this works in practice, let us consider the `Kuramoto–Sivashinsky equation 
-<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_,     
+<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_,
 :math:`\partial_t u = - \nabla^4 u - \nabla^2 u - \frac{1}{2} |\nabla u|^2`,
 which describes the time evolution of a scalar field :math:`u`.
 A simple implementation of this equation reads 

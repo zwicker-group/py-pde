@@ -31,7 +31,7 @@ Vectorial boundary conditions, e.g., to calculate the vector gradient or tensor
 divergence, can have vectorial values for the boundary condition.
 Generally, only the normal components at a boundary need to be specified if an operator
 reduces the rank of a field, e.g., for divergences. Otherwise, e.g., for gradients and
-Laplacians, the full field needs to be specified at the boundary.  
+Laplacians, the full field needs to be specified at the boundary.
 
 Boundary values that depend on space can be set by specifying a mathematical expression,
 which may depend on the coordinates of all axes:
