@@ -34,8 +34,7 @@ class ScipySolver(SolverBase):
             **kwargs:
                 All extra arguments are forwarded to :func:`scipy.integrate.solve_ivp`.
         """
-        super().__init__(pde)
-        self.backend = backend
+        super().__init__(pde, backend=backend)
         self.solver_params = kwargs
 
     def make_stepper(
@@ -80,8 +79,7 @@ class ScipySolver(SolverBase):
             return y  # type: ignore
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """use scipy.integrate.odeint to advance `state` from `t_start` to
-            `t_end`"""
+            """use scipy.integrate.odeint to advance `state` from `t_start` to `t_end`"""
             if dt is not None:
                 self.solver_params["first_step"] = min(t_end - t_start, dt)
 
@@ -97,9 +95,7 @@ class ScipySolver(SolverBase):
             return sol.t[0]  # type: ignore
 
         if dt:
-            self._logger.info(
-                f"Initialized {self.__class__.__name__} stepper with dt=%g", dt
-            )
+            self._logger.info(f"Init {self.__class__.__name__} stepper with dt=%g", dt)
         else:
-            self._logger.info(f"Initialized {self.__class__.__name__} stepper")
+            self._logger.info(f"Init {self.__class__.__name__} stepper")
         return stepper

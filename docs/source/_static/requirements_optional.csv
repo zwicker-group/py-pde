@@ -6,3 +6,4 @@ napari,0.4.8,Displaying images interactively
 numba-mpi,0.22,Parallel processing using MPI+numba
 pandas,1.2,Handling tabular data
 pyfftw,0.12,Faster Fourier transforms
+rocket-fft,0.2,Numba-compiled fast Fourier transforms

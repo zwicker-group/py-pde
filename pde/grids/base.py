@@ -1034,7 +1034,7 @@ class GridBase(metaclass=ABCMeta):
             # return the bare operator without the numba-overloaded version
             return apply_op
 
-        elif backend == "numba":
+        elif backend.startswith("numba"):
             # overload `apply_op` with numba-compiled version
             set_ghost_cells = bcs.make_ghost_cell_setter()
             set_valid = self._make_set_valid()

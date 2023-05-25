@@ -108,6 +108,12 @@ REQUIREMENTS = [
         collections={"full"},
     ),
     Requirement(
+        name="rocket-fft",
+        version="0.2",
+        usage="Numba-compiled fast Fourier transforms",
+        collections={"full"},
+    ),
+    Requirement(
         name="ipywidgets",
         version="7",
         usage="Jupyter notebook support",
