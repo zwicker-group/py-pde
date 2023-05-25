@@ -387,6 +387,7 @@ class AdaptiveSolverBase(SolverBase):
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
 
         def single_step(state_data: np.ndarray, t: float, dt: float) -> np.ndarray:
+            """basic implementation of Euler scheme"""
             return state_data + dt * rhs_pde(state_data, t)  # type: ignore
 
         return single_step
