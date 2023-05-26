@@ -233,11 +233,11 @@ def test_noncartesian_grids(grid, decomposition):
         "backend": "numpy",
         "tracker": None,
     }
-    res = eq.solve(method="explicit_mpi", decomposition=decomposition, **args)
+    res = eq.solve(solver="explicit_mpi", decomposition=decomposition, **args)
 
     if mpi.is_main:
         # check results in the main process
-        expect = eq.solve(method="explicit", **args)
+        expect = eq.solve(solver="explicit", **args)
         np.testing.assert_allclose(res.data, expect.data)
 
 

@@ -21,7 +21,7 @@ grid = UnitGrid([64, 64])  # generate grid
 state = ScalarField.random_uniform(grid, 0.2, 0.3)  # generate initial condition
 
 eq = DiffusionPDE(diffusivity=0.1)  # define the pde
-result = eq.solve(state, t_range=10, dt=0.1, method="explicit_mpi")
+result = eq.solve(state, t_range=10, dt=0.1, solver="explicit_mpi")
 
 if result is not None:  # check whether we are on the main core
     result.plot()

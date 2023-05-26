@@ -6,9 +6,9 @@ Base class for defining partial differential equations
 
 import copy
 import logging
+import warnings
 from abc import ABCMeta, abstractmethod
-from typing import Optional  # @UnusedImport
-from typing import TYPE_CHECKING, Any, Callable, Dict, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -29,10 +29,10 @@ TState = TypeVar("TState", FieldCollection, DataFieldBase)
 class PDEBase(metaclass=ABCMeta):
     """base class for defining partial differential equations (PDEs)
 
-    Custom PDEs can be implemented by specifying their evolution rate. In the simple
-    case of deterministic PDEs, the methods :meth:`PDEBase.evolution_rate` and
-    :meth:`PDEBase._make_pde_rhs_numba` need to be overwritten for the `numpy` and
-    `numba` backend, respectively.
+    Custom PDEs can be implemented by subclassing :class:`PDEBase` to specify the
+    evolution rate. In the simple case of deterministic PDEs, the methods
+    :meth:`PDEBase.evolution_rate` and :meth:`PDEBase._make_pde_rhs_numba` need to be
+    overwritten for supporting the `numpy` and `numba` backend, respectively.
     """
 
     diagnostics: Dict[str, Any]
@@ -497,7 +497,7 @@ class PDEBase(metaclass=ABCMeta):
         dt: Optional[float] = None,
         tracker: TrackerCollectionDataType = "auto",
         *,
-        method: Union[str, "SolverBase"] = "auto",
+        solver: Union[str, "SolverBase"] = "explicit",
         ret_info: bool = False,
         **kwargs,
     ) -> Union[Optional[TState], Tuple[Optional[TState], Dict[str, Any]]]:
@@ -519,10 +519,7 @@ class PDEBase(metaclass=ABCMeta):
                 interpreted as `t_end` and the time range is assumed to be `(0, t_end)`.
             dt (float):
                 Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen. In particular, if
-                `method == 'auto'`, :class:`~pde.solvers.ScipySolver` with an automatic,
-                adaptive time step provided by scipy is used. This is a flexible choice,
-                but can also result in unstable or slow simulations. If an adaptive
+                based on the stepper will be chosen. If an adaptive
                 stepper is used (supported by :class:`~pde.solvers.ScipySolver` and
                 :class:`~pde.solvers.ExplicitSolver`), the value given here sets the
                 initial time step.
@@ -538,15 +535,13 @@ class PDEBase(metaclass=ABCMeta):
                 where all options are explained in detail. In particular, the interval
                 at which the tracker is evaluated can be chosen when creating a tracker
                 object explicitly.
-            method (:class:`~pde.solvers.base.SolverBase` or str):
+            solver (:class:`~pde.solvers.base.SolverBase` or str):
                 Specifies the method for solving the differential equation. This can
                 either be an instance of :class:`~pde.solvers.base.SolverBase` or a
                 descriptive name like 'explicit' or 'scipy'. The valid names are given
-                by :meth:`pde.solvers.registered_solvers`. The default value 'auto'
-                selects :class:`~pde.solvers.ScipySolver` if `dt` is not specified and
-                :class:`~pde.solvers.explicit.ExplicitSolver` otherwise.
-                Details of the solvers and additional features (like adaptive time
-                steps) are explained in their documentation.
+                by :meth:`pde.solvers.registered_solvers`. Details of the solvers and
+                additional features (like adaptive time steps) are explained in
+                :mod:`~pde.solvers`.
             ret_info (bool):
                 Flag determining whether diagnostic information about the solver process
                 should be returned. Note that the same information is also available
@@ -569,28 +564,28 @@ class PDEBase(metaclass=ABCMeta):
         from ..solvers import Controller
         from ..solvers.base import SolverBase  # @Reimport
 
-        if method == "auto":
-            if dt is not None or kwargs.get("adaptive", False):
-                method = "explicit"
-            else:
-                method = "scipy"
+        # support deprecated argument (deprecated on 2023-05-26)
+        if "method" in kwargs:
+            warnings.warn(
+                "Argument `method` has been renamed to `solver` in `solve`",
+                DeprecationWarning,
+            )
+            solver = kwargs.pop("method")
 
         # create solver instance
-        if callable(method):
-            solver = method(pde=self, **kwargs)
-            if not isinstance(solver, SolverBase):
-                self._logger.warning(
-                    "Solver is not an instance of `SolverBase`. Specified wrong method?"
-                )
+        if callable(solver):
+            solver_obj = solver(pde=self, **kwargs)
+            if not isinstance(solver_obj, SolverBase):
+                self._logger.warning("Solver is not an instance of `SolverBase`.")
 
-        elif isinstance(method, str):
-            solver = SolverBase.from_name(method, pde=self, **kwargs)
+        elif isinstance(solver, str):
+            solver_obj = SolverBase.from_name(solver, pde=self, **kwargs)
 
         else:
-            raise TypeError(f"Method {method} is not supported")
+            raise TypeError(f"Solver {solver} is not supported")
 
         # create controller instance
-        controller = Controller(solver, t_range=t_range, tracker=tracker)
+        controller = Controller(solver_obj, t_range=t_range, tracker=tracker)
 
         # run the simulation
         final_state = controller.run(state, dt)

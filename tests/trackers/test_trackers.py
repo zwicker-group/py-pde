@@ -189,7 +189,7 @@ def test_small_tracker_dt():
     eq = DiffusionPDE()
     c0 = ScalarField.random_uniform(UnitGrid([4, 4]), 0.1, 0.2)
     eq.solve(
-        c0, 1e-2, dt=1e-3, method="explicit", tracker=storage.tracker(interval=1e-4)
+        c0, 1e-2, dt=1e-3, solver="explicit", tracker=storage.tracker(interval=1e-4)
     )
     assert len(storage) == 11
 

@@ -28,7 +28,7 @@ def test_solver_in_pde_class():
     """test whether solver instances can be used in pde instances"""
     field = ScalarField.random_uniform(UnitGrid([16, 16]), -1, 1)
     eq = DiffusionPDE()
-    eq.solve(field, t_range=1, method=ScipySolver, tracker=None)
+    eq.solve(field, t_range=1, solver=ScipySolver, tracker=None)
 
 
 @pytest.mark.parametrize("solver_class", [ExplicitSolver, ImplicitSolver, ScipySolver])

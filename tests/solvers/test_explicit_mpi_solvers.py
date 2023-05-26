@@ -30,15 +30,15 @@ def test_simple_pde_mpi(scheme, decomposition):
         "ret_info": True,
     }
     res1, info1 = eq.solve(
-        backend="numpy", method="explicit_mpi", decomposition=decomposition, **args
+        backend="numpy", solver="explicit_mpi", decomposition=decomposition, **args
     )
     res2, info2 = eq.solve(
-        backend="numba", method="explicit_mpi", decomposition=decomposition, **args
+        backend="numba", solver="explicit_mpi", decomposition=decomposition, **args
     )
 
     if mpi.is_main:
         # check results in the main process
-        expect, _ = eq.solve(backend="numpy", method="explicit", **args)
+        expect, _ = eq.solve(backend="numpy", solver="explicit", **args)
         np.testing.assert_allclose(res1.data, expect.data)
         np.testing.assert_allclose(res2.data, expect.data)
 
