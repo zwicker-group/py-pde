@@ -29,6 +29,9 @@ from ..tools.numba import is_jitted, jit
 class SolverBase(metaclass=ABCMeta):
     """base class for solvers"""
 
+    dt_default: float = 1e-3
+    """float: default time step used if no time step was specified"""
+
     _modify_state_after_step: bool = True
     """bool: flag choosing whether the `modify_after_step` hook of the PDE is called"""
 
@@ -47,10 +50,9 @@ class SolverBase(metaclass=ABCMeta):
         """
         self.pde = pde
         self.backend = backend
-        self.info: Dict[str, Any] = {
-            "class": self.__class__.__name__,
-            "pde_class": self.pde.__class__.__name__,
-        }
+        self.info: Dict[str, Any] = {"class": self.__class__.__name__}
+        if self.pde:
+            self.info["pde_class"] = self.pde.__class__.__name__
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
@@ -160,7 +162,7 @@ class SolverBase(metaclass=ABCMeta):
             time. The function returns the deterministic evolution rate and (if
             applicable) a realization of the associated noise.
         """
-        if self.pde.is_sde:
+        if getattr(self.pde, "is_sde"):
             raise RuntimeError(
                 f"Cannot create a deterministic stepper for a stochastic equation"
             )
@@ -237,6 +239,7 @@ class SolverBase(metaclass=ABCMeta):
                 Time step of the explicit stepping.
         """
         single_step = self._make_single_step_fixed_dt(state, dt)
+        modify_state_after_step = self._modify_state_after_step
         modify_after_step = self._make_modify_after_step(state)
 
         if self._compiled:
@@ -252,7 +255,8 @@ class SolverBase(metaclass=ABCMeta):
                 # calculate the right hand side
                 t = t_start + i * dt
                 single_step(state_data, t)
-                modifications += modify_after_step(state_data)
+                if modify_state_after_step:
+                    modifications += modify_after_step(state_data)
 
             return t + dt, modifications
 
@@ -272,8 +276,7 @@ class SolverBase(metaclass=ABCMeta):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step of the explicit stepping. If `None`, this solver specifies
-                1e-3 as a default value.
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`)
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -283,7 +286,7 @@ class SolverBase(metaclass=ABCMeta):
         # support `None` as a default value, so the controller can signal that
         # the solver should use a default time step
         if dt is None:
-            dt = 1e-3
+            dt = self.dt_default
             self._logger.warning(
                 "Explicit stepper with a fixed time step did not receive any "
                 f"initial value for `dt`. Using dt={dt}, but specifying a value or "
@@ -293,8 +296,10 @@ class SolverBase(metaclass=ABCMeta):
 
         self.info["dt"] = dt_float
         self.info["steps"] = 0
-        self.info["stochastic"] = self.pde.is_sde
         self.info["state_modifications"] = 0.0
+        self.info["stochastic"] = getattr(self.pde, "is_sde", False)
+        # we don't access self.pde directly since we might want to reuse the solver
+        # infrastructure for more general cases where a PDE is not defined
 
         # create stepper with fixed steps
         fixed_stepper = self._make_fixed_stepper(state, dt_float)
@@ -430,7 +435,7 @@ class AdaptiveSolverBase(SolverBase):
                 An example for the state from which the grid and other information can
                 be extracted
         """
-        if self.pde.is_sde:
+        if getattr(self.pde, "is_sde"):
             raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
 
         single_step = self._make_single_step_variable_dt(state)
@@ -485,6 +490,7 @@ class AdaptiveSolverBase(SolverBase):
         # obtain functions determining how the PDE is evolved
         single_step_error = self._make_single_step_error_estimate(state)
         modify_after_step = self._make_modify_after_step(state)
+        modify_state_after_step = self._modify_state_after_step
         sync_errors = self._make_error_synchronizer()
 
         # obtain auxiliary functions
@@ -525,7 +531,8 @@ class AdaptiveSolverBase(SolverBase):
                     steps += 1
                     t += dt_step
                     state_data[...] = new_state
-                    modifications += modify_after_step(state_data)
+                    if modify_state_after_step:
+                        modifications += modify_after_step(state_data)
                     if dt_stats is not None:
                         dt_stats.add(dt_step)
 
@@ -561,8 +568,8 @@ class AdaptiveSolverBase(SolverBase):
                 An example for the state from which the grid and other information can
                 be extracted
             dt (float):
-                Time step of the explicit stepping. If `None`, this solver specifies
-                1e-3 as a default value.
+                Time step used (Uses :attr:`SolverBase.dt_default` if `None`). This sets
+                the initial time step for adaptive solvers.
 
         Returns:
             Function that can be called to advance the `state` from time `t_start` to
@@ -576,14 +583,14 @@ class AdaptiveSolverBase(SolverBase):
         # support `None` as a default value, so the controller can signal that
         # the solver should use a default time step
         if dt is None:
-            dt_float = 1e-3
+            dt_float = self.dt_default
         else:
             dt_float = float(dt)  # explicit casting to help type checking
 
         self.info["dt"] = dt_float
         self.info["dt_adaptive"] = True
         self.info["steps"] = 0
-        self.info["stochastic"] = self.pde.is_sde
+        self.info["stochastic"] = getattr(self.pde, "is_sde", False)
         self.info["state_modifications"] = 0.0
 
         # create stepper with adaptive steps
