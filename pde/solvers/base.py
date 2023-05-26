@@ -29,7 +29,11 @@ from ..tools.numba import is_jitted, jit
 class SolverBase(metaclass=ABCMeta):
     """base class for solvers"""
 
-    _subclasses: Dict[str, Type[SolverBase]] = {}  # all inheriting classes
+    _modify_state_after_step: bool = True
+    """bool: flag choosing whether the `modify_after_step` hook of the PDE is called"""
+
+    _subclasses: Dict[str, Type[SolverBase]] = {}
+    """dict: dictionary of all inheriting classes"""
 
     def __init__(self, pde: PDEBase, *, backend: str = "auto"):
         """
@@ -106,6 +110,32 @@ class SolverBase(metaclass=ABCMeta):
     def _compiled(self) -> bool:
         """bool: indicates whether functions need to be compiled"""
         return self.backend == "numba" and not nb.config.DISABLE_JIT
+
+    def _make_modify_after_step(
+        self, state: FieldBase
+    ) -> Callable[[np.ndarray], float]:
+        """create a function that modifies a state after each step
+
+        A noop function will be returned if `_modify_state_after_step` is `False`,
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted.
+        """
+        if self._modify_state_after_step:
+            modify_after_step = jit(self.pde.make_modify_after_step(state))
+
+        else:
+
+            def modify_after_step(state_data: np.ndarray) -> float:
+                return 0
+
+        if self._compiled:
+            sig_modify = (nb.typeof(state.data),)
+            modify_after_step = jit(sig_modify)(modify_after_step)
+
+        return modify_after_step  # type: ignore
 
     def _make_pde_rhs(
         self, state: FieldBase, backend: str = "auto"
@@ -207,19 +237,17 @@ class SolverBase(metaclass=ABCMeta):
                 Time step of the explicit stepping.
         """
         single_step = self._make_single_step_fixed_dt(state, dt)
-        modify_after_step = jit(self.pde.make_modify_after_step(state))
+        modify_after_step = self._make_modify_after_step(state)
 
         if self._compiled:
             sig_single_step = (nb.typeof(state.data), nb.double)
             single_step = jit(sig_single_step)(single_step)
-            sig_modify = (nb.typeof(state.data),)
-            modify_after_step = jit(sig_modify)(modify_after_step)
 
         def fixed_stepper(
             state_data: np.ndarray, t_start: float, steps: int
         ) -> Tuple[float, float]:
             """perform `steps` steps with fixed time steps"""
-            modifications = 0
+            modifications = 0.0
             for i in range(steps):
                 # calculate the right hand side
                 t = t_start + i * dt
@@ -456,7 +484,7 @@ class AdaptiveSolverBase(SolverBase):
         """
         # obtain functions determining how the PDE is evolved
         single_step_error = self._make_single_step_error_estimate(state)
-        modify_after_step = self.pde.make_modify_after_step(state)
+        modify_after_step = self._make_modify_after_step(state)
         sync_errors = self._make_error_synchronizer()
 
         # obtain auxiliary functions
@@ -468,8 +496,6 @@ class AdaptiveSolverBase(SolverBase):
             # compile paired stepper
             sig_stepper = (nb.typeof(state.data), nb.double, nb.double)
             single_step_error = jit(sig_stepper)(single_step_error)
-            sig_modify = (nb.typeof(state.data),)
-            modify_after_step = jit(sig_modify)(modify_after_step)
 
         def adaptive_stepper(
             state_data: np.ndarray,
