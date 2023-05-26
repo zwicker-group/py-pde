@@ -310,7 +310,7 @@ class Controller:
             node will return the state. All other nodes return None.
         """
         # copy the initial state to not modify the supplied one
-        if hasattr(self.solver, "pde") and self.solver.pde.complex_valued:
+        if getattr(self.solver, "pde") and self.solver.pde.complex_valued:
             self._logger.info("Convert state to complex numbers")
             state: TState = initial_state.copy(dtype=complex)
         else:
