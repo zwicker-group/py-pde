@@ -29,5 +29,5 @@ def test_scipy_field_collection():
     field = FieldCollection.from_scalar_expressions(grid, ["x", "0"])
     eq = PDE({"a": "1", "b": "a"})
 
-    res = eq.solve(field, t_range=1, dt=1e-2, method="scipy")
+    res = eq.solve(field, t_range=1, dt=1e-2, solver="scipy")
     np.testing.assert_allclose(res.data, np.array([[1.5, 2.5], [1.0, 2.0]]))

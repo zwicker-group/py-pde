@@ -131,9 +131,9 @@ def test_unsupported_stochastic_solvers():
     eq = DiffusionPDE(noise=1)
 
     with pytest.raises(RuntimeError):
-        eq.solve(field, 1, method="explicit", scheme="runge-kutta", tracker=None)
+        eq.solve(field, 1, solver="explicit", scheme="runge-kutta", tracker=None)
     with pytest.raises(RuntimeError):
-        eq.solve(field, 1, method="scipy", scheme="runge-kutta", tracker=None)
+        eq.solve(field, 1, solver="scipy", scheme="runge-kutta", tracker=None)
 
 
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
@@ -158,7 +158,7 @@ def test_adaptive_solver_nan(scheme):
         field,
         1,
         dt=0.1,
-        method="explicit",
+        solver="explicit",
         scheme=scheme,
         backend="numpy",
         adaptive=True,

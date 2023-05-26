@@ -102,18 +102,18 @@ def test_custom_pde_mpi(caplog):
         "ret_info": True,
     }
 
-    res1, info1 = eq.solve(backend="numpy", method="explicit_mpi", **args)
+    res1, info1 = eq.solve(backend="numpy", solver="explicit_mpi", **args)
     if mpi.is_main:
         assert "significant state modifications" in caplog.text
         caplog.clear()
 
-    res2, info2 = eq.solve(backend="numba", method="explicit_mpi", **args)
+    res2, info2 = eq.solve(backend="numba", solver="explicit_mpi", **args)
     if mpi.is_main:
         assert "significant state modifications" in caplog.text
 
     if mpi.is_main:
         # check results in the main process
-        expect, info3 = eq.solve(backend="numpy", method="explicit", **args)
+        expect, info3 = eq.solve(backend="numpy", solver="explicit", **args)
 
         np.testing.assert_allclose(res1.data, expect.data)
         np.testing.assert_allclose(res2.data, expect.data)

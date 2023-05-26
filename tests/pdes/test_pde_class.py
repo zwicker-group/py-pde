@@ -29,7 +29,8 @@ def test_pde_critical_input():
     grid = grids.UnitGrid([4])
     eq = PDE({"E": 1})
     res = eq.solve(ScalarField(grid), t_range=2)
-    np.testing.assert_allclose(res.data, 2)
+    t_final = eq.diagnostics["controller"]["t_final"]
+    np.testing.assert_allclose(res.data, t_final)
 
     with pytest.raises(ValueError):
         PDE({"t": 1})
@@ -98,8 +99,8 @@ def test_pde_vector_mpi():
         "dt": 0.01,
         "tracker": None,
     }
-    res_a = eq.solve(backend="numpy", method="explicit_mpi", **args)
-    res_b = eq.solve(backend="numba", method="explicit_mpi", **args)
+    res_a = eq.solve(backend="numpy", solver="explicit_mpi", **args)
+    res_b = eq.solve(backend="numba", solver="explicit_mpi", **args)
 
     if mpi.is_main:
         res_a.assert_field_compatible(res_b)
@@ -282,12 +283,12 @@ def test_pde_complex_mpi():
         "tracker": None,
         "ret_info": True,
     }
-    res1, info1 = eq.solve(backend="numpy", method="explicit_mpi", **args)
-    res2, info2 = eq.solve(backend="numba", method="explicit_mpi", **args)
+    res1, info1 = eq.solve(backend="numpy", solver="explicit_mpi", **args)
+    res2, info2 = eq.solve(backend="numba", solver="explicit_mpi", **args)
 
     if mpi.is_main:
         # check results in the main process
-        expect, _ = eq.solve(backend="numpy", method="explicit", **args)
+        expect, _ = eq.solve(backend="numpy", solver="explicit", **args)
 
         assert res1.is_complex
         np.testing.assert_allclose(res1.data, expect.data)
@@ -415,7 +416,7 @@ def test_pde_integral(backend):
 
     # test evolution
     for method in ["scipy", "explicit"]:
-        res = eq.solve(field, t_range=1000, method=method, tracker=None)
+        res = eq.solve(field, t_range=1000, solver=method, tracker=None)
         assert res.integral == pytest.approx(0, abs=1e-2)
         np.testing.assert_allclose(res.data, field.data - field.magnitude, atol=1e-3)
 
@@ -452,8 +453,8 @@ def test_pde_const_mpi(backend):
         "dt": 0.01,
         "tracker": None,
     }
-    res_a = eq.solve(backend="numpy", method="explicit", **args)
-    res_b = eq.solve(backend=backend, method="explicit_mpi", **args)
+    res_a = eq.solve(backend="numpy", solver="explicit", **args)
+    res_b = eq.solve(backend=backend, solver="explicit_mpi", **args)
 
     if mpi.is_main:
         res_a.assert_field_compatible(res_b)

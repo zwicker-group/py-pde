@@ -4,6 +4,7 @@
 
 import collections
 import copy
+import gc
 import sys
 
 import numpy as np
@@ -496,16 +497,20 @@ def test_cache_clearing():
 
     for clear_cache in (t.clear_cache, t.clear_specific):
         t.calc(100)
+        gc.collect()
         mem1 = deep_getsizeof(t)
         assert mem1 > mem0
         t.calc(200)
+        gc.collect()
         mem2 = deep_getsizeof(t)
         assert mem2 > mem1
         t.calc(100)
+        gc.collect()
         mem3 = deep_getsizeof(t)
         assert mem3 == mem2
 
         clear_cache()
+        gc.collect()
         mem4 = deep_getsizeof(t)
         assert mem4 >= mem0
         assert mem1 >= mem4
