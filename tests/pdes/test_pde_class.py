@@ -192,7 +192,7 @@ def test_custom_operators():
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_noise(backend):
     """test noise operator on PDE class"""
-    grid = grids.UnitGrid([64, 64])
+    grid = grids.UnitGrid([128, 128])
     state = FieldCollection([ScalarField(grid), ScalarField(grid)])
 
     var_local = 0.5
