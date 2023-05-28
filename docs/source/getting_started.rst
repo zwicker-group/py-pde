@@ -1,8 +1,10 @@
 Getting started
 ===============
 
-This `py-pde` package is developed for python |PythonMinVersion| and higher.
-The code is tested under Linux, Windows, and macOS.
+The `py-pde` package is developed for python |PythonMinVersion| and has been tested up
+to version |PythonMaxVersion| under Linux, Windows, and macOS.
+Before you can start using the package, you need to install it using one of the
+following methods.
 
 
 Install using pip
