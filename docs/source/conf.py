@@ -35,12 +35,13 @@ import pde
 version = pde.__version__.split("-")[0]
 release = pde.__version__
 
-from create_requirements import MIN_PYTHON_VERSION
+from create_requirements import MIN_PYTHON_VERSION, MAX_PYTHON_VERSION
 
 # make the parameters available in RST
 rst_prolog = f"""
 .. |ProjectVersion| replace:: {version}
 .. |PythonMinVersion| replace:: {MIN_PYTHON_VERSION}
+.. |PythonMaxVersion| replace:: {MAX_PYTHON_VERSION}
 """
 
 # -- General configuration ---------------------------------------------------
