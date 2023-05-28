@@ -12,6 +12,7 @@ from typing import List, Optional, Set
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 MIN_PYTHON_VERSION = "3.8"
+MAX_PYTHON_VERSION = "3.11"
 
 
 @dataclass
@@ -273,6 +274,7 @@ def write_from_template(
     substitutes = {
         "MIN_PYTHON_VERSION": MIN_PYTHON_VERSION,
         "MIN_PYTHON_VERSION_NODOT": MIN_PYTHON_VERSION.replace(".", ""),
+        "MAX_PYTHON_VERSION": MAX_PYTHON_VERSION,
     }
     if requirements:
         req_list = (
