@@ -732,8 +732,10 @@ class _MPIBC(BCBase):
                 The MPI node (the subgrid ID) this BC is associated with
         """
         super().__init__(mesh[node_id], axis, upper, rank=rank)
-        self._neighbor_id = mesh.get_neighbor(axis, upper, node_id=node_id)
-        assert self._neighbor_id is not None
+        neighbor_id = mesh.get_neighbor(axis, upper, node_id=node_id)
+        if neighbor_id is None:
+            raise RuntimeError("No neighboring cell for this boundary")
+        self._neighbor_id = neighbor_id
         self._mpi_flag = mesh.get_boundary_flag(self._neighbor_id, upper)
 
         # determine indices for reading and writing data
@@ -1818,7 +1820,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         if self.homogeneous:
 
-            @nb.jit
+            @jit()
             def virtual_point(
                 arr: np.ndarray, idx: Tuple[int, ...], args=None
             ) -> float:
@@ -1832,7 +1834,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         else:
 
-            @nb.jit
+            @jit
             def virtual_point(
                 arr: np.ndarray, idx: Tuple[int, ...], args=None
             ) -> float:

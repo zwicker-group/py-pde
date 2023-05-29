@@ -150,7 +150,7 @@ def run_unit_tests(
         # run pytest using MPI with two cores
         args = ["mpiexec", "-n", "2"]
         if sys.platform == "darwin":
-            args += ["-host", "localhost"]
+            args += ["-host", "localhost:2"]
     else:
         args = []
 
@@ -171,6 +171,10 @@ def run_unit_tests(
     if runinteractive:
         args.append("--runinteractive")  # also run interactive tests
     if use_mpi:
+        try:
+            import numba_mpi  # @UnusedImport
+        except ImportError:
+            raise RuntimeError("Moduled `numba_mpi` is required to test with MPI")
         args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
 
     # fail early if requested
