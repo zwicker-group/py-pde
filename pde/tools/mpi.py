@@ -54,51 +54,48 @@ else:
     size = MPI.COMM_WORLD.size
     rank = MPI.COMM_WORLD.rank
 
+    class _OperatorRegistry:
+        """collection of operators that MPI supports"""
+
+        _name_ids: Dict[str, int]
+        _ids_operators: Dict[int, MPI.Op]
+
+        def __init__(self):
+            self._name_ids = {}
+            self._ids_operators = {}
+
+        def register(self, name: str, op: MPI.Op):
+            op_id = int(MPI._addressof(op))
+            self._name_ids[name] = op_id
+            self._ids_operators[op_id] = op
+
+        def id(self, name_or_id: Union[int, str]) -> int:
+            if isinstance(name_or_id, int):
+                return name_or_id
+            else:
+                return self._name_ids[name_or_id]
+
+        def operator(self, name_or_id: Union[int, str]) -> MPI.Op:
+            if isinstance(name_or_id, str):
+                name_or_id = self._name_ids[name_or_id]
+            return self._ids_operators[name_or_id]
+
+        def __getattr__(self, name: str):
+            try:
+                return self._name_ids[name]
+            except KeyError:
+                raise AttributeError
+
+    Operator = _OperatorRegistry()
+    Operator.register("MAX", MPI.MAX)
+    Operator.register("MIN", MPI.MIN)
+    Operator.register("SUM", MPI.SUM)
 
 parallel_run: bool = size > 1
 """bool: Flag indicating whether the current run is using multiprocessing"""
 
 is_main: bool = rank == 0
 """bool: Flag indicating whether the current process is the main process (with ID 0)"""
-
-
-class _OperatorRegistry:
-    """collection of operators that MPI supports"""
-
-    _name_ids: Dict[str, int]
-    _ids_operators: Dict[int, MPI.Op]
-
-    def __init__(self):
-        self._name_ids = {}
-        self._ids_operators = {}
-
-    def register(self, name: str, op: MPI.Op):
-        op_id = int(MPI._addressof(op))
-        self._name_ids[name] = op_id
-        self._ids_operators[op_id] = op
-
-    def id(self, name_or_id: Union[int, str]) -> int:
-        if isinstance(name_or_id, int):
-            return name_or_id
-        else:
-            return self._name_ids[name_or_id]
-
-    def operator(self, name_or_id: Union[int, str]) -> MPI.Op:
-        if isinstance(name_or_id, str):
-            name_or_id = self._name_ids[name_or_id]
-        return self._ids_operators[name_or_id]
-
-    def __getattr__(self, name: str):
-        try:
-            return self._name_ids[name]
-        except KeyError:
-            raise AttributeError
-
-
-Operator = _OperatorRegistry()
-Operator.register("MAX", MPI.MAX)
-Operator.register("MIN", MPI.MIN)
-Operator.register("SUM", MPI.SUM)
 
 
 def mpi_send(data, dest: int, tag: int) -> None:
