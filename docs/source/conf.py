@@ -35,7 +35,7 @@ import pde
 version = pde.__version__.split("-")[0]
 release = pde.__version__
 
-from create_requirements import MIN_PYTHON_VERSION, MAX_PYTHON_VERSION
+from create_requirements import MAX_PYTHON_VERSION, MIN_PYTHON_VERSION
 
 # make the parameters available in RST
 rst_prolog = f"""

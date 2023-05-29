@@ -34,10 +34,14 @@ class Controller:
     care of trackers that analyze and modify the state periodically.
     """
 
-    # set a function to determine the current time for profiling purposes. We generally
-    # use the more accurate time.process_time, but better performance may be obtained by
-    # the faster time.time. This will only affect simulations with many iterations.
-    get_current_time = time.process_time
+    diagnostics: Dict[str, Any]
+    """dict: diagnostic information (available after simulation finished)"""
+
+    _get_current_time: Callable = time.process_time
+    """callable: function to determine the current time for profiling purposes. We
+    generally use the more accurate :func:`time.process_time`, but better performance
+    may be obtained by the faster :func:`time.time`. This will only affect simulations
+    with many iterations."""
 
     def __init__(
         self,
@@ -71,7 +75,7 @@ class Controller:
 
         # initialize some diagnostic information
         self.info: Dict[str, Any] = {}
-        self.diagnostics: Dict[str, Any] = {
+        self.diagnostics = {
             "controller": self.info,
             "package_version": __version__,
         }
@@ -149,7 +153,7 @@ class Controller:
         """
         # gather basic information
         t_start, t_end = self.t_range
-        get_time = self.get_current_time  # type: ignore
+        get_time = self._get_current_time
 
         # initialize solver information
         self.info["t_start"] = t_start
@@ -293,11 +297,11 @@ class Controller:
     ) -> Optional[TState]:
         """run the simulation
 
-        Diagnostic information about the solver procedure are available in the
-        `diagnostics` property of the instance after this function has been called.
+        Diagnostic information about the solver are available in the
+        :attr:`~Controller.diagnostics` property after this function has been called.
 
         Args:
-            state:
+            initial_state (:class:`~pde.fields.base.FieldBase`):
                 The initial state of the simulation. This state will be copied and thus
                 not modified by the simulation. Instead, the final state will be
                 returned and trackers can be used to record intermediate states.

@@ -13,7 +13,8 @@ from pde.tools import mpi
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
-def test_solvers_simple_fixed(scheme):
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_solvers_simple_fixed(scheme, backend):
     """test explicit solvers"""
     grid = UnitGrid([4])
     xs = grid.axes_coords[0]
@@ -23,9 +24,9 @@ def test_solvers_simple_fixed(scheme):
     dt = 0.001 if scheme == "euler" else 0.01
 
     if mpi.parallel_run:
-        solver = ExplicitMPISolver(eq, scheme=scheme, adaptive=False)
+        solver = ExplicitMPISolver(eq, scheme=scheme, backend=backend, adaptive=False)
     else:
-        solver = ExplicitSolver(eq, scheme=scheme, adaptive=False)
+        solver = ExplicitSolver(eq, scheme=scheme, backend=backend, adaptive=False)
     controller = Controller(solver, t_range=10.0, tracker=None)
     res = controller.run(field, dt=dt)
 
@@ -37,7 +38,8 @@ def test_solvers_simple_fixed(scheme):
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
-def test_solvers_simple_adaptive(scheme):
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_solvers_simple_adaptive(scheme, backend):
     """test explicit solvers"""
     grid = UnitGrid([4])
     y0 = np.array([1e-3, 1e-3, 1e3, 1e3])
@@ -46,10 +48,11 @@ def test_solvers_simple_adaptive(scheme):
 
     dt = 0.1 if scheme == "euler" else 1
 
+    args = {"scheme": scheme, "backend": backend, "adaptive": True, "tolerance": 1e-1}
     if mpi.parallel_run:
-        solver = ExplicitMPISolver(eq, scheme=scheme, adaptive=True, tolerance=1e-1)
+        solver = ExplicitMPISolver(eq, **args)
     else:
-        solver = ExplicitSolver(eq, scheme=scheme, adaptive=True, tolerance=1e-1)
+        solver = ExplicitSolver(eq, **args)
     storage = MemoryStorage()
     controller = Controller(solver, t_range=10.1, tracker=storage.tracker(1.0))
     res = controller.run(field, dt=dt)
@@ -139,6 +142,9 @@ def test_unsupported_stochastic_solvers():
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
 def test_adaptive_solver_nan(scheme):
     """test whether the adaptive solver can treat nans"""
+    # Note for programmer: A similar test for the `numba` backend is difficult to
+    # implement, since we only want to fail very rarely. We tried doing it with random
+    # failure, but this often resulted in hitting the minimal time step.
 
     class MockPDE(PDEBase):
         """simple PDE which returns NaN every 5 evaluations"""
@@ -160,7 +166,7 @@ def test_adaptive_solver_nan(scheme):
         dt=0.1,
         solver="explicit",
         scheme=scheme,
-        backend="numpy",
+        tracker=None,
         adaptive=True,
         ret_info=True,
     )

@@ -18,14 +18,12 @@ Warning:
 
 import os
 import sys
-from numbers import Number
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Dict, Union
 
+import numba as nb
 import numpy as np
-from numba.core import types
+from numba import types
 from numba.extending import overload, register_jitable
-
-from .numba import jit
 
 if TYPE_CHECKING:
     from numba_mpi import Operator  # @UnusedImport
@@ -42,8 +40,7 @@ rank: int = 0
 
 # read state of the current MPI node
 try:
-    import numba_mpi
-
+    from mpi4py import MPI
 except ImportError:
     # package `numba_mpi` could not be loaded
     if int(os.environ.get("PMI_SIZE", "1")) > 1:
@@ -52,12 +49,11 @@ except ImportError:
             "WARNING: Detected multiprocessing run, but could not import python "
             "package `numba_mpi`"
         )
-
 else:
-    # we have access to MPI
-    initialized = numba_mpi.initialized()
-    size = numba_mpi.size()
-    rank = numba_mpi.rank()
+    initialized = MPI.Is_initialized()
+    size = MPI.COMM_WORLD.size
+    rank = MPI.COMM_WORLD.rank
+
 
 parallel_run: bool = size > 1
 """bool: Flag indicating whether the current run is using multiprocessing"""
@@ -66,7 +62,45 @@ is_main: bool = rank == 0
 """bool: Flag indicating whether the current process is the main process (with ID 0)"""
 
 
-@jit
+class _OperatorRegistry:
+    """collection of operators that MPI supports"""
+
+    _name_ids: Dict[str, int]
+    _ids_operators: Dict[int, MPI.Op]
+
+    def __init__(self):
+        self._name_ids = {}
+        self._ids_operators = {}
+
+    def register(self, name: str, op: MPI.Op):
+        op_id = int(MPI._addressof(op))
+        self._name_ids[name] = op_id
+        self._ids_operators[op_id] = op
+
+    def id(self, name_or_id: Union[int, str]) -> int:
+        if isinstance(name_or_id, int):
+            return name_or_id
+        else:
+            return self._name_ids[name_or_id]
+
+    def operator(self, name_or_id: Union[int, str]) -> MPI.Op:
+        if isinstance(name_or_id, str):
+            name_or_id = self._name_ids[name_or_id]
+        return self._ids_operators[name_or_id]
+
+    def __getattr__(self, name: str):
+        try:
+            return self._name_ids[name]
+        except KeyError:
+            raise AttributeError
+
+
+Operator = _OperatorRegistry()
+Operator.register("MAX", MPI.MAX)
+Operator.register("MIN", MPI.MIN)
+Operator.register("SUM", MPI.SUM)
+
+
 def mpi_send(data, dest: int, tag: int) -> None:
     """send data to another MPI node
 
@@ -75,11 +109,22 @@ def mpi_send(data, dest: int, tag: int) -> None:
         dest (int): The ID of the receiving node
         tag (int): A numeric tag identifying the message
     """
-    status = numba_mpi.send(data, dest, tag)
-    assert status == 0
+    MPI.COMM_WORLD.send(data, dest=dest, tag=tag)
 
 
-@jit()
+@overload(mpi_send)
+def ol_mpi_send(data, dest: int, tag: int):
+    """overload the `mpi_send` function"""
+    import numba_mpi
+
+    def impl(data, dest: int, tag: int) -> None:
+        """reduce a single number across all cores"""
+        status = numba_mpi.send(data, dest, tag)
+        assert status == 0
+
+    return impl
+
+
 def mpi_recv(data, source, tag) -> None:
     """receive data from another MPI node
 
@@ -89,20 +134,30 @@ def mpi_recv(data, source, tag) -> None:
         tag (int): A numeric tag identifying the message
 
     """
-    status = numba_mpi.recv(data, source, tag)
-    assert status == 0
+    data[...] = MPI.COMM_WORLD.recv(source=source, tag=tag)
 
 
-@register_jitable
-def _allreduce(sendobj, recvobj, operator: Union[int, "Operator", None] = None) -> int:
-    """helper function that calls `numba_mpi.allreduce`"""
-    if operator is None:
-        return numba_mpi.allreduce(sendobj, recvobj)  # type: ignore
-    else:
-        return numba_mpi.allreduce(sendobj, recvobj, operator)  # type: ignore
+@overload(mpi_recv)
+def ol_mpi_recv(data, source: int, tag: int):
+    """overload the `mpi_recv` function"""
+    import numba_mpi
+
+    def impl(data, source: int, tag: int) -> None:
+        """receive data from another MPI node
+
+        Args:
+            data: A buffer into which the received data is written
+            dest (int): The ID of the sending node
+            tag (int): A numeric tag identifying the message
+
+        """
+        status = numba_mpi.recv(data, source, tag)
+        assert status == 0
+
+    return impl
 
 
-def mpi_allreduce(data, operator: Union[int, "Operator", None] = None):
+def mpi_allreduce(data, operator: Union[int, str, None] = None):
     """combines data from all MPI nodes
 
     Note that complex datatypes and user-defined functions are not properly supported.
@@ -117,36 +172,37 @@ def mpi_allreduce(data, operator: Union[int, "Operator", None] = None):
     Returns:
         The accumulated data
     """
-    from mpi4py import MPI
-
-    if isinstance(data, Number):
-        # reduce a single number
-        sendobj = np.array([data])
-        recvobj = np.empty((1,), sendobj.dtype)
-        status = _allreduce(sendobj, recvobj, operator)
-        if status != 0:
-            raise MPI.Exception(status)
-        return recvobj[0]
-
-    elif isinstance(data, np.ndarray):
-        # reduce an array
-        recvobj = np.empty(data.shape, data.dtype)
-        status = _allreduce(data, recvobj, operator)
-        if status != 0:
-            raise MPI.Exception(status)
-        return recvobj
-
+    if operator:
+        return MPI.COMM_WORLD.allreduce(data, op=Operator.operator(operator))
     else:
-        raise TypeError(f"Unsupported type {data.__class__.__name__}")
+        return MPI.COMM_WORLD.allreduce(data)
 
 
 @overload(mpi_allreduce)
-def ol_mpi_allreduce(data, operator: Union[int, "Operator", None] = None):
+def ol_mpi_allreduce(data, operator: Union[int, str, None] = None):
     """overload the `mpi_allreduce` function"""
+    import numba_mpi
+
+    if operator is None or isinstance(operator, nb.types.NoneType):
+        op_id = -1  # value will not be used
+    elif isinstance(operator, nb.types.misc.StringLiteral):
+        op_id = Operator.id(operator.literal_value)
+    elif isinstance(operator, nb.types.misc.Literal):
+        op_id = int(operator)
+    else:
+        raise RuntimeError("`operator` must be a literal type")
+
+    @register_jitable
+    def _allreduce(sendobj, recvobj, operator: Union[int, str, None] = None) -> int:
+        """helper function that calls `numba_mpi.allreduce`"""
+        if operator is None:
+            return numba_mpi.allreduce(sendobj, recvobj)  # type: ignore
+        else:
+            return numba_mpi.allreduce(sendobj, recvobj, op_id)  # type: ignore
 
     if isinstance(data, types.Number):
 
-        def impl(data, operator=None):
+        def impl(data, operator: Union[int, str, None] = None):
             """reduce a single number across all cores"""
             sendobj = np.array([data])
             recvobj = np.empty((1,), sendobj.dtype)
@@ -156,7 +212,7 @@ def ol_mpi_allreduce(data, operator: Union[int, "Operator", None] = None):
 
     elif isinstance(data, types.Array):
 
-        def impl(data, operator=None):
+        def impl(data, operator: Union[int, str, None] = None):
             """reduce an array across all cores"""
             recvobj = np.empty(data.shape, data.dtype)
             status = _allreduce(data, recvobj, operator)

@@ -60,7 +60,7 @@ def pytest_collection_modifyitems(config, items):
     runslow = config.getoption("--runslow", default=False)
     runinteractive = config.getoption("--runinteractive", default=False)
     use_mpi = config.getoption("--use_mpi", default=False)
-    has_numba_mpi = module_available("numba_mpi")
+    has_numba_mpi = module_available("numba_mpi") and module_available("mpi4py")
 
     # prepare markers
     skip_cov = pytest.mark.skip(reason="skipped during coverage run")

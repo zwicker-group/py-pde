@@ -123,7 +123,7 @@ Saving this script as `multiprocessing.py`, we can evoke a parallel simulation u
 Here, the number `2` determines the number of cores that will be used.
 Note that macOS might require an additional hint on how to connect the processes even
 when they are run on the same machine (e.g., your workstation). It might help to run
-:code:`mpiexec -n 2 -host localhost python3 multiprocessing.py` in this case.
+:code:`mpiexec -n 2 -host localhost:2 python3 multiprocessing.py` in this case.
 
 In the example above, two python processes will start in parallel and run independently
 at first.
