@@ -5,10 +5,10 @@ on: [push]
 jobs:
   build:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
         pyversion: ['3.8', '3.11']
+    timeout-minutes: 30
 
     steps:
     - uses: actions/checkout@v3

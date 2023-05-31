@@ -8,6 +8,8 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest]  # windows-latest
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python
@@ -27,6 +29,5 @@ jobs:
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
-        pip install pytest pytest-cov
         cd scripts
-        python run_tests.py --unit --num_cores auto --showconfig
+        python run_tests.py --unit --runslow --num_cores auto --showconfig

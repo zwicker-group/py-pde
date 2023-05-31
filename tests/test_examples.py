@@ -15,7 +15,7 @@ from pde.visualization.movies import Movie
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 EXAMPLES = (PACKAGE_PATH / "examples").glob("*.py")
-NOTEBOOKS = (PACKAGE_PATH / "examples").glob("**/*.ipynb")
+NOTEBOOKS = (PACKAGE_PATH / "examples").glob("*/*.ipynb")
 
 SKIP_EXAMPLES: List[str] = []
 if not Movie.is_available():
