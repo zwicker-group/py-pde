@@ -20,6 +20,8 @@ NOTEBOOKS = (PACKAGE_PATH / "examples").glob("*/*.ipynb")
 SKIP_EXAMPLES: List[str] = []
 if not Movie.is_available():
     SKIP_EXAMPLES.extend(["make_movie_live.py", "make_movie_storage.py"])
+if not module_available("mpi4py"):
+    SKIP_EXAMPLES.extend(["mpi_parallel_run"])
 if not module_available("napari"):
     SKIP_EXAMPLES.extend(["tracker_interactive", "show_3d_field_interactively"])
 if not module_available("h5py"):
