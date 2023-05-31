@@ -46,6 +46,12 @@ also require a slightly deeper understanding for proper use:
 Note that derivatives are generally given in the direction of the outward normal vector,
 such that positive derivatives correspond to a function that increases across the
 boundary.
+
+
+**Inheritance structure of the classes:**
+
+.. inheritance-diagram:: pde.grids.boundaries.local
+   :parts: 1
 """
 
 from __future__ import annotations
