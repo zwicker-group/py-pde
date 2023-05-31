@@ -195,41 +195,52 @@ class ExplicitSolver(AdaptiveSolverBase):
             """adaptive stepper that advances the state in time"""
             modifications = 0.0
             dt_opt = dt_init
-            t = t_start
-            calculate_rate = True  # flag stating whether to calculate rate for time t
+            rate = rhs_pde(state_data, t_start)  # calculate initial rate
+
             steps = 0
+            t = t_start
             while True:
                 # use a smaller (but not too small) time step if close to t_end
                 dt_step = max(min(dt_opt, t_end - t), dt_min)
 
-                if calculate_rate:
-                    rate = rhs_pde(state_data, t)
-                    calculate_rate = False
-                # else: rate is reused from last (failed) iteration
+                # do single step with dt
+                step_large = state_data + dt_step * rate
 
-                # single step with dt
-                k1 = state_data + dt_step * rate
+                # do double step with half the time step
+                step_small = state_data + 0.5 * dt_step * rate
 
-                # double step with half the time step
-                k2 = state_data + 0.5 * dt_step * rate
-                k2 += 0.5 * dt_step * rhs_pde(k2, t + 0.5 * dt_step)
+                try:
+                    # calculate rate at the midpoint of the double step
+                    rate_midpoint = rhs_pde(step_small, t + 0.5 * dt_step)
+                except Exception:
+                    # an exception likely signals that rate could not be calculated
+                    error_rel = np.nan
+                else:
+                    # advance to end of double step
+                    step_small += 0.5 * dt_step * rate_midpoint
 
-                # calculate maximal error
-                error = np.abs(k1 - k2).max()
-                error_rel = error / tolerance  # normalize error to given tolerance
+                    # calculate maximal error
+                    error = np.abs(step_large - step_small).max()
+                    error_rel = error / tolerance  # normalize error to given tolerance
 
                 # synchronize the error between all processes (if necessary)
                 error_rel = sync_errors(error_rel)
 
-                # do the step if the error is sufficiently small
-                if error_rel <= 1:
-                    steps += 1
-                    t += dt_step
-                    state_data[...] = k2
-                    modifications += modify_after_step(state_data)
-                    calculate_rate = True
-                    if dt_stats is not None:
-                        dt_stats.add(dt_step)
+                if error_rel <= 1:  # error is sufficiently small
+                    try:
+                        # calculating the rate at putative new step
+                        rate = rhs_pde(step_small, t)
+                    except Exception:
+                        # calculating the rate failed => retry with smaller dt
+                        error_rel = np.nan
+                    else:
+                        # everything worked => do the step
+                        steps += 1
+                        t += dt_step
+                        state_data[...] = step_small
+                        modifications += modify_after_step(state_data)
+                        if dt_stats is not None:
+                            dt_stats.add(dt_step)
 
                 if t < t_end:
                     # adjust the time step and continue

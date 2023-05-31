@@ -336,6 +336,10 @@ class AdaptiveSolverBase(SolverBase):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved
+            backend (str):
+                Determines how the function is created. Accepted  values are 'numpy` and
+                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
+                backend.
             adaptive (bool):
                 When enabled, the time step is adjusted during the simulation using the
                 error tolerance set with `tolerance`.
@@ -360,11 +364,14 @@ class AdaptiveSolverBase(SolverBase):
     def _make_dt_adjuster(self) -> Callable[[float, float], float]:
         """return a function that can be used to adjust time steps"""
         dt_min = self.dt_min
+        dt_min_nan_err = f"Encountered NaN even though dt < {dt_min}"
         dt_min_err = f"Time step below {dt_min}"
         dt_max = self.dt_max
 
         def adjust_dt(dt: float, error_rel: float) -> float:
             """helper function that adjust the time step
+
+            The goal is to keep the relative error `error_rel` close to 1.
 
             Args:
                 dt (float): Current time step
@@ -391,7 +398,7 @@ class AdaptiveSolverBase(SolverBase):
                 dt = dt_max
             elif dt < dt_min:
                 if np.isnan(error_rel):
-                    raise RuntimeError("Encountered NaN during simulation")
+                    raise RuntimeError(dt_min_nan_err)
                 else:
                     raise RuntimeError(dt_min_err)
 
