@@ -65,7 +65,7 @@ def test_example_scripts(path):
 
 @pytest.mark.slow
 @pytest.mark.no_cover
-@skipUnlessModule("jupyter")
+@skipUnlessModule(["h5py", "jupyter", "nbconvert"])
 @pytest.mark.parametrize("path", NOTEBOOKS)
 def test_jupyter_notebooks(path, tmp_path):
     """run the jupyter notebooks"""
