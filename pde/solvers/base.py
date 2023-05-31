@@ -455,15 +455,7 @@ class AdaptiveSolverBase(SolverBase):
             k2 = single_step(k2a, t + 0.5 * dt, 0.5 * dt)
 
             # calculate maximal error
-            if compiled:
-                error = 0.0
-                for i in range(state_data.size):
-                    # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
-                    # while `max(0, np.nan) == 0`. To propagate NaNs in the
-                    # evaluation, we thus need to use the following order:
-                    error = max(abs(k1.flat[i] - k2.flat[i]), error)
-            else:
-                error = np.abs(k1 - k2).max()
+            error = np.abs(k1 - k2).max()
 
             return k2, error
 
