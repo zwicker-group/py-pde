@@ -184,7 +184,6 @@ class ExplicitSolver(AdaptiveSolverBase):
         adjust_dt = self._make_dt_adjuster()
         tolerance = self.tolerance
         dt_min = self.dt_min
-        compiled = self._compiled
 
         def adaptive_stepper(
             state_data: np.ndarray,
@@ -196,49 +195,52 @@ class ExplicitSolver(AdaptiveSolverBase):
             """adaptive stepper that advances the state in time"""
             modifications = 0.0
             dt_opt = dt_init
-            t = t_start
-            calculate_rate = True  # flag stating whether to calculate rate for time t
+            rate = rhs_pde(state_data, t_start)  # calculate initial rate
+
             steps = 0
+            t = t_start
             while True:
                 # use a smaller (but not too small) time step if close to t_end
                 dt_step = max(min(dt_opt, t_end - t), dt_min)
 
-                if calculate_rate:
-                    rate = rhs_pde(state_data, t)
-                    calculate_rate = False
-                # else: rate is reused from last (failed) iteration
+                # do single step with dt
+                step_large = state_data + dt_step * rate
 
-                # single step with dt
-                k1 = state_data + dt_step * rate
+                # do double step with half the time step
+                step_small = state_data + 0.5 * dt_step * rate
 
-                # double step with half the time step
-                k2 = state_data + 0.5 * dt_step * rate
-                k2 += 0.5 * dt_step * rhs_pde(k2, t + 0.5 * dt_step)
-
-                # calculate maximal error
-                if compiled:
-                    error = 0.0
-                    for i in range(state_data.size):
-                        # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
-                        # while `max(0, np.nan) == 0`. To propagate NaNs in the
-                        # evaluation, we thus need to use the following order:
-                        error = max(abs(k1.flat[i] - k2.flat[i]), error)
+                try:
+                    # calculate rate at the midpoint of the double step
+                    rate_midpoint = rhs_pde(step_small, t + 0.5 * dt_step)
+                except Exception:
+                    # an exception likely signals that rate could not be calculated
+                    error_rel = np.nan
                 else:
-                    error = np.abs(k1 - k2).max()
-                error_rel = error / tolerance  # normalize error to given tolerance
+                    # advance to end of double step
+                    step_small += 0.5 * dt_step * rate_midpoint
+
+                    # calculate maximal error
+                    error = np.abs(step_large - step_small).max()
+                    error_rel = error / tolerance  # normalize error to given tolerance
 
                 # synchronize the error between all processes (if necessary)
                 error_rel = sync_errors(error_rel)
 
-                # do the step if the error is sufficiently small
-                if error_rel <= 1:
-                    steps += 1
-                    t += dt_step
-                    state_data[...] = k2
-                    modifications += modify_after_step(state_data)
-                    calculate_rate = True
-                    if dt_stats is not None:
-                        dt_stats.add(dt_step)
+                if error_rel <= 1:  # error is sufficiently small
+                    try:
+                        # calculating the rate at putative new step
+                        rate = rhs_pde(step_small, t)
+                    except Exception:
+                        # calculating the rate failed => retry with smaller dt
+                        error_rel = np.nan
+                    else:
+                        # everything worked => do the step
+                        steps += 1
+                        t += dt_step
+                        state_data[...] = step_small
+                        modifications += modify_after_step(state_data)
+                        if dt_stats is not None:
+                            dt_stats.add(dt_step)
 
                 if t < t_end:
                     # adjust the time step and continue
@@ -282,8 +284,6 @@ class ExplicitSolver(AdaptiveSolverBase):
 
         # obtain functions determining how the PDE is evolved
         rhs = self._make_pde_rhs(state, backend=self.backend)
-
-        compiled = self._compiled
 
         # use Runge-Kutta-Fehlberg method
         # define coefficients for RK4(5), formula 2 Table III in Fehlberg
@@ -341,23 +341,8 @@ class ExplicitSolver(AdaptiveSolverBase):
             )
 
             # estimate the maximal error
-            if compiled:
-                error = 0.0
-                for i in range(state_data.size):
-                    error_local = abs(
-                        r1 * k1.flat[i]
-                        + r3 * k3.flat[i]
-                        + r4 * k4.flat[i]
-                        + r5 * k5.flat[i]
-                        + r6 * k6.flat[i]
-                    )
-                    # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
-                    # while `max(0, np.nan) == 0`. To propagate NaNs in the evaluation,
-                    # we thus need to use the following order:
-                    error = max(error_local, error)  # type: ignore
-            else:
-                error_local = r1 * k1 + r3 * k3 + r4 * k4 + r5 * k5 + r6 * k6
-                error = np.abs(error_local).max()
+            error_local = r1 * k1 + r3 * k3 + r4 * k4 + r5 * k5 + r6 * k6
+            error = np.abs(error_local).max()
 
             state_new = state_data + c1 * k1 + c3 * k3 + c4 * k4 + c5 * k5
             return state_new, error

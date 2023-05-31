@@ -16,14 +16,14 @@ The module currently supports the following standard boundary conditions:
   value at the boundary  
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing the second derivative (curvature) of a field at the boundary
-  
+
 There are also variants of these boundary conditions that only affect the normal
 components of a vector or tensor field:
 :class:`~pde.grids.boundaries.local.NormalDirichletBC`,
 :class:`~pde.grids.boundaries.local.NormalNeumannBC`,
 :class:`~pde.grids.boundaries.local.NormalMixedBC`, and
 :class:`~pde.grids.boundaries.local.NormalCurvatureBC`.
-  
+
 Finally, there are more specialized classes, which offer greater flexibility, but might
 also require a slightly deeper understanding for proper use:
 
@@ -1820,7 +1820,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         if self.homogeneous:
 
-            @jit()
+            @jit
             def virtual_point(
                 arr: np.ndarray, idx: Tuple[int, ...], args=None
             ) -> float:

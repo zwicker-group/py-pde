@@ -336,6 +336,10 @@ class AdaptiveSolverBase(SolverBase):
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
                 The instance describing the pde that needs to be solved
+            backend (str):
+                Determines how the function is created. Accepted  values are 'numpy` and
+                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
+                backend.
             adaptive (bool):
                 When enabled, the time step is adjusted during the simulation using the
                 error tolerance set with `tolerance`.
@@ -360,11 +364,14 @@ class AdaptiveSolverBase(SolverBase):
     def _make_dt_adjuster(self) -> Callable[[float, float], float]:
         """return a function that can be used to adjust time steps"""
         dt_min = self.dt_min
+        dt_min_nan_err = f"Encountered NaN even though dt < {dt_min}"
         dt_min_err = f"Time step below {dt_min}"
         dt_max = self.dt_max
 
         def adjust_dt(dt: float, error_rel: float) -> float:
             """helper function that adjust the time step
+
+            The goal is to keep the relative error `error_rel` close to 1.
 
             Args:
                 dt (float): Current time step
@@ -391,7 +398,7 @@ class AdaptiveSolverBase(SolverBase):
                 dt = dt_max
             elif dt < dt_min:
                 if np.isnan(error_rel):
-                    raise RuntimeError("Encountered NaN during simulation")
+                    raise RuntimeError(dt_min_nan_err)
                 else:
                     raise RuntimeError(dt_min_err)
 
@@ -439,7 +446,7 @@ class AdaptiveSolverBase(SolverBase):
             raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
 
         single_step = self._make_single_step_variable_dt(state)
-        if compiled := self._compiled:
+        if self._compiled:
             sig_single_step = (nb.typeof(state.data), nb.double, nb.double)
             single_step = jit(sig_single_step)(single_step)
 
@@ -455,15 +462,7 @@ class AdaptiveSolverBase(SolverBase):
             k2 = single_step(k2a, t + 0.5 * dt, 0.5 * dt)
 
             # calculate maximal error
-            if compiled:
-                error = 0.0
-                for i in range(state_data.size):
-                    # max() has the weird behavior that `max(np.nan, 0)` is `np.nan`
-                    # while `max(0, np.nan) == 0`. To propagate NaNs in the
-                    # evaluation, we thus need to use the following order:
-                    error = max(abs(k1.flat[i] - k2.flat[i]), error)
-            else:
-                error = np.abs(k1 - k2).max()
+            error = np.abs(k1 - k2).max()
 
             return k2, error
 
