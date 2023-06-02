@@ -30,10 +30,10 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         :nowrap:
 
         \begin{align*}
-            r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
-            \quad \text{for} \quad i = 0, \ldots, N - 1
-            \quad \text{with} \quad
-                \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N}
+            r_i &= R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
+            &&\quad \text{for} \quad i = 0, \ldots, N_r - 1
+            &&\quad \text{with} \quad
+                \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N_r}
         \\
             z_j &= z_\mathrm{min} + \left(j + \frac12\right) \Delta z
             &&\quad \text{for} \quad j = 0, \ldots, N_z - 1
