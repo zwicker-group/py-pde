@@ -49,6 +49,21 @@ def test_divergence_field_cyl():
         s.data[1:-1, 1:-1], res.data[1:-1, 1:-1], rtol=0.1, atol=0.1
     )
 
+    # test with inner hole in cylindrical grid
+    grid2 = CylindricalSymGrid(
+        (np.pi, 2 * np.pi), [0, 2 * np.pi], [8, 32], periodic_z=True
+    )
+    v2 = VectorField.from_expression(grid2, ["cos(r) + sin(z)**2", "z * cos(r)**2", 0])
+    s2 = v2.divergence(bc="auto_periodic_neumann")
+    assert s2.data.shape == grid2.shape
+    res2 = ScalarField.from_expression(
+        grid2, "cos(r)**2 - sin(r) + (cos(r) + sin(z)**2) / r"
+    )
+    np.testing.assert_allclose(res2.data[1:-1, 1:-1], res.data[9:-1, 1:-1])
+    np.testing.assert_allclose(
+        s2.data[1:-1, 1:-1], res2.data[1:-1, 1:-1], rtol=0.1, atol=0.1
+    )
+
 
 def test_vector_gradient_divergence_field_cyl():
     """test the divergence operator"""

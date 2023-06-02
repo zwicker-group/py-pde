@@ -10,8 +10,7 @@ This module implements differential operators on cylindrical grids
    make_vector_gradient
    make_vector_laplace
    make_tensor_divergence
-   
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

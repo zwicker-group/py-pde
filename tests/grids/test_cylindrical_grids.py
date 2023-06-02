@@ -9,32 +9,40 @@ from pde import CartesianGrid, CylindricalSymGrid, ScalarField
 from pde.grids.boundaries.local import NeumannBC
 
 
-def test_cylindrical_grid():
+@pytest.mark.parametrize("periodic", [True, False])
+@pytest.mark.parametrize("r_inner", [0, 2])
+def test_cylindrical_grid(periodic, r_inner):
     """test simple cylindrical grid"""
-    for periodic in [True, False]:
-        grid = CylindricalSymGrid(4, (-1, 2), (8, 9), periodic_z=periodic)
+    grid = CylindricalSymGrid((r_inner, 4), (-1, 2), (8, 9), periodic_z=periodic)
+    if r_inner == 0:
+        assert grid == CylindricalSymGrid(4, (-1, 2), (8, 9), periodic_z=periodic)
+    rs, zs = grid.axes_coords
 
-        assert grid.dim == 3
-        assert grid.numba_type == "f8[:, :]"
-        assert grid.shape == (8, 9)
-        assert grid.length == pytest.approx(3)
+    assert grid.dim == 3
+    assert grid.numba_type == "f8[:, :]"
+    assert grid.shape == (8, 9)
+    assert grid.length == pytest.approx(3)
+    assert grid.discretization[1] == pytest.approx(1 / 3)
+    assert grid.volume == pytest.approx(3 * np.pi * (4**2 - r_inner**2))
+    assert not grid.uniform_cell_volumes
+    assert grid.volume == pytest.approx(grid.integrate(1))
+    np.testing.assert_allclose(zs, np.linspace(-1 + 1 / 6, 2 - 1 / 6, 9))
+
+    if r_inner == 0:
         assert grid.discretization[0] == pytest.approx(0.5)
-        assert grid.discretization[1] == pytest.approx(1 / 3)
         np.testing.assert_array_equal(grid.discretization, np.array([0.5, 1 / 3]))
-        assert not grid.uniform_cell_volumes
-        assert grid.volume == pytest.approx(np.pi * 4**2 * 3)
-        assert grid.volume == pytest.approx(grid.integrate(1))
-
-        rs, zs = grid.axes_coords
         np.testing.assert_allclose(rs, np.linspace(0.25, 3.75, 8))
-        np.testing.assert_allclose(zs, np.linspace(-1 + 1 / 6, 2 - 1 / 6, 9))
+    else:
+        assert grid.discretization[0] == pytest.approx(0.25)
+        np.testing.assert_array_equal(grid.discretization, np.array([0.25, 1 / 3]))
+        np.testing.assert_allclose(rs, np.linspace(2.125, 3.875, 8))
 
-        assert grid.contains_point(grid.get_random_point(coords="cartesian"))
-        ps = [grid.get_random_point(coords="cartesian") for _ in range(2)]
-        assert all(grid.contains_point(ps))
-        ps = grid.get_random_point(coords="cartesian", boundary_distance=1.49)
-        assert grid.contains_point(ps)
-        assert "laplace" in grid.operators
+    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
+    ps = [grid.get_random_point(coords="cartesian") for _ in range(2)]
+    assert all(grid.contains_point(ps))
+    ps = grid.get_random_point(coords="cartesian", boundary_distance=1.49)
+    assert grid.contains_point(ps)
+    assert "laplace" in grid.operators
 
 
 def test_cylindrical_to_cartesian():
@@ -52,7 +60,7 @@ def test_cylindrical_to_cartesian():
     np.testing.assert_allclose(pf_cart1.data, pf_cart2.data, atol=0.1)
 
 
-def test_setting_domain_cylindrical():
+def test_setting_boundary_conditions():
     """test various versions of settings bcs for cylindrical grids"""
     grid = CylindricalSymGrid(1, [0, 1], [2, 2], periodic_z=False)
     grid.get_boundary_conditions("auto_periodic_neumann")
@@ -63,6 +71,10 @@ def test_setting_domain_cylindrical():
         grid.get_boundary_conditions(["derivative"] * 3)
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions(["derivative", "periodic"])
+
+    b_inner = NeumannBC(grid, 0, upper=False)
+    assert grid.get_boundary_conditions("auto_periodic_neumann")[0].low == b_inner
+    assert grid.get_boundary_conditions({"value": 2})[0].low != b_inner
 
     grid = CylindricalSymGrid(1, [0, 1], [2, 2], periodic_z=True)
     grid.get_boundary_conditions("auto_periodic_neumann")
@@ -80,12 +92,3 @@ def test_polar_conversion(periodic):
     assert np.any(dists < 0.11)
     assert np.all(dists <= np.sqrt(2))
     assert np.any(dists > 0.8 * np.sqrt(2))
-
-
-def test_setting_boundary_conditions():
-    """test setting some boundary conditions"""
-    grid = CylindricalSymGrid(1, [0, 1], 3)
-    b_inner = NeumannBC(grid, 0, upper=False)
-
-    assert grid.get_boundary_conditions("auto_periodic_neumann")[0].low == b_inner
-    assert grid.get_boundary_conditions({"value": 2})[0].low != b_inner

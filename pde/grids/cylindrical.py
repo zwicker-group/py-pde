@@ -30,9 +30,10 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         :nowrap:
 
         \begin{align*}
-            r_i &= \left(i + \frac12\right) \Delta r
-            &&\quad \text{for} \quad i = 0, \ldots, N_r - 1
-            &&\quad \text{with} \quad \Delta r = \frac{R}{N_r}
+            r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
+            \quad \text{for} \quad i = 0, \ldots, N - 1
+            \quad \text{with} \quad
+                \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N}
         \\
             z_j &= z_\mathrm{min} + \left(j + \frac12\right) \Delta z
             &&\quad \text{for} \quad j = 0, \ldots, N_z - 1
@@ -40,10 +41,12 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
                 \quad \Delta z = \frac{z_\mathrm{max} - z_\mathrm{min}}{N_z}
         \end{align*}
 
-    where :math:`R` is the radius of the cylindrical grid, :math:`z_\mathrm{min}` and
-    :math:`z_\mathrm{max}` denote the respective lower and upper bounds of the axial
-    direction, so that :math:`z_\mathrm{max} - z_\mathrm{min}` is the total height. The
-    two axes are discretized by :math:`N_r` and :math:`N_z` support points, respectively.
+    where :math:`R_\mathrm{outer}` is the outer radius of the grid,
+    :math:`R_\mathrm{inner}` corresponds to a possible inner radius (which is
+    zero by default), and :math:`z_\mathrm{min}` and :math:`z_\mathrm{max}` denote the
+    respective lower and upper bounds of the axial direction, so that
+    :math:`z_\mathrm{max} - z_\mathrm{min}` is the total height. The two axes are
+    discretized by :math:`N_r` and :math:`N_z` support points, respectively.
 
     Warning:
         The order of components in the vector and tensor fields defined on this grid is
@@ -67,15 +70,17 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
 
     def __init__(
         self,
-        radius: float,
+        radius: Union[float, Tuple[float, float]],
         bounds_z: Tuple[float, float],
         shape: Union[int, Sequence[int]],
         periodic_z: bool = False,
     ):
         """
         Args:
-            radius (float):
-                The radius of the cylinder
+            radius (float or tuple of floats):
+                radius :math:`R_\mathrm{outer}` in case a simple float is given.
+                If a tuple is supplied it is interpreted as the inner and outer
+                radius, :math:`(R_\mathrm{inner}, R_\mathrm{outer})`.
             bounds_z (tuple):
                 The lower and upper bound of the z-axis
             shape (tuple):
@@ -100,16 +105,25 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         self._periodic = [False, self._periodic_z]
 
         # radial discretization
-        dr = radius / self.shape[0]
-        rs = (np.arange(self.shape[0]) + 0.5) * dr
-        assert np.isclose(rs[-1] + dr / 2, radius)
+        try:
+            r_inner, r_outer = radius  # type: ignore
+        except TypeError:
+            r_inner, r_outer = 0, float(radius)  # type: ignore
+
+        if r_inner < 0:
+            raise ValueError("Inner radius must be positive")
+        if r_inner >= r_outer:
+            raise ValueError("Outer radius must be larger than inner radius")
+
+        # radial discretization
+        rs, dr = discretize_interval(r_inner, r_outer, self.shape[0])
 
         # axial discretization
         zs, dz = discretize_interval(*bounds_z, self.shape[1])
         assert np.isclose(zs[-1] + dz / 2, bounds_z[1])
 
         self._axes_coords = (rs, zs)
-        self._axes_bounds = ((0.0, radius), tuple(bounds_z))  # type: ignore
+        self._axes_bounds = ((r_inner, r_outer), tuple(bounds_z))  # type: ignore
         self._discretization = np.array((dr, dz))
 
     @property
@@ -171,9 +185,18 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         return cls(radii[1], bounds_z, shape, periodic_z=periodic[1])
 
     @property
-    def radius(self) -> float:
-        """float: radius of the cylinder"""
-        return self.axes_bounds[0][1]
+    def has_hole(self) -> bool:
+        """returns whether the inner radius is larger than zero"""
+        return self.axes_bounds[0][0] > 0
+
+    @property
+    def radius(self) -> Union[float, Tuple[float, float]]:
+        """float: radius of the sphere"""
+        r_inner, r_outer = self.axes_bounds[0]
+        if r_inner == 0:
+            return r_outer
+        else:
+            return r_inner, r_outer
 
     @property
     def length(self) -> float:
@@ -183,7 +206,8 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     @property
     def volume(self) -> float:
         """float: total volume of the grid"""
-        return float(np.pi * self.radius**2 * self.length)
+        r_inner, r_outer = self.axes_bounds[0]
+        return float(np.pi * self.length * (r_outer**2 - r_inner**2))
 
     def get_random_point(
         self,
@@ -218,14 +242,13 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             rng = np.random.default_rng()
 
         # handle the boundary distance
-        r_min = boundary_distance if avoid_center else 0
-        r_max = self.radius - boundary_distance
-        z_min, z_max = self.axes_bounds[1]
-        if boundary_distance != 0:
-            z_min += boundary_distance
-            z_max -= boundary_distance
-            if r_max <= r_min or z_max <= z_min:
-                raise RuntimeError("Random points would be too close to boundary")
+        r_inner, r_outer = self.axes_bounds[0]
+        r_min = r_inner + boundary_distance if avoid_center else r_inner
+        r_max = r_outer - boundary_distance
+        z_min = self.axes_bounds[1][0] + boundary_distance
+        z_max = self.axes_bounds[1][1] - boundary_distance
+        if r_max <= r_min or z_max <= z_min:
+            raise RuntimeError("Random points would be too close to boundary")
 
         # create random point
         r = np.sqrt(rng.uniform(r_min**2, r_max**2))
@@ -306,11 +329,19 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             for plotting.
         """
         bounds_r, bounds_z = self.axes_bounds
+
+        if self.has_hole:
+            image_data = data
+            extent = (bounds_r[0], bounds_r[1], bounds_z[0], bounds_z[1])
+        else:
+            image_data = np.vstack((data[::-1, :], data))
+            extent = (-bounds_r[1], bounds_r[1], bounds_z[0], bounds_z[1])
+
         return {
-            "data": np.vstack((data[::-1, :], data)),
+            "data": image_data,
             "x": self.axes_coords[0],
             "y": self.axes_coords[1],
-            "extent": (-bounds_r[1], bounds_r[1], bounds_z[0], bounds_z[1]),
+            "extent": extent,
             "label_x": self.axes[0],
             "label_y": self.axes[1],
         }
@@ -341,9 +372,9 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     def cell_volume_data(self) -> Tuple[np.ndarray, float]:
         """:class:`~numpy.ndarray`: the volumes of all cells"""
         dr, dz = self.discretization
-        rs = np.arange(self.shape[0] + 1) * dr
-        areas = np.pi * rs**2
-        r_vols = np.diff(areas).reshape(self.shape[0], 1)
+        rs = self.axes_coords[0]
+        r_vols = 2 * np.pi * dr * rs
+        # same as r_vols = np.pi * ((rs + dr / 2) ** 2 - (rs - dr / 2)**2)
         return (r_vols, dz)
 
     def point_to_cartesian(
@@ -437,10 +468,11 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             :class:`pde.grids.cartesian.CartesianGrid`: The requested grid
         """
         # Pick the grid instance
+        radius_outer = self.axes_bounds[0][1]
         if mode == "valid":
-            bounds = self.radius / np.sqrt(self.dim)
+            bounds = radius_outer / np.sqrt(self.dim)
         elif mode == "full":
-            bounds = self.radius
+            bounds = radius_outer
         else:
             raise ValueError(f"Unsupported mode `{mode}`")
 
