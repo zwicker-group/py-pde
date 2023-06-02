@@ -311,7 +311,7 @@ class PDEBase(metaclass=ABCMeta):
                 noise_var = self.noise
                 result = state.random_normal(
                     state.grid,
-                    std=np.sqrt(self.noise),
+                    std=np.sqrt(self.noise),  # type: ignore
                     scaling="physical",
                     label=label,
                     dtype=state.dtype,
