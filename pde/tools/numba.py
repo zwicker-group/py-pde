@@ -138,24 +138,6 @@ def numba_environment() -> Dict[str, Any]:
     }
 
 
-def _get_jit_args(parallel: bool = False, **kwargs) -> Dict[str, Any]:
-    """return arguments for the :func:`nb.jit` with default values
-
-    Args:
-        parallel (bool): Allow parallel compilation of the function
-        **kwargs: Additional arguments to `nb.jit`
-
-    Returns:
-        dict: Keyword arguments that can directly be used in :func:`nb.jit`
-    """
-    kwargs.setdefault("fastmath", config["numba.fastmath"])
-    kwargs.setdefault("debug", config["numba.debug"])
-
-    # make sure parallel numba is only enabled in restricted cases
-    kwargs["parallel"] = parallel and config["numba.multithreading"]
-    return kwargs
-
-
 def flat_idx(arr: np.ndarray, i: int) -> Number:
     """helper function allowing indexing of scalars as if they arrays
 
@@ -195,20 +177,23 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
 
     # prepare the compilation arguments
     kwargs.setdefault("nopython", True)
-    jit_kwargs = _get_jit_args(parallel=parallel, **kwargs)
+    kwargs.setdefault("fastmath", config["numba.fastmath"])
+    kwargs.setdefault("debug", config["numba.debug"])
+    # make sure parallel numba is only enabled in restricted cases
+    kwargs["parallel"] = parallel and config["numba.multithreading"]
 
     # log some details
     logger = logging.getLogger(__name__)
     name = function.__name__
     if kwargs["nopython"]:  # standard case
-        logger.info("Compile `%s` with parallel=%s", name, jit_kwargs["parallel"])
+        logger.info("Compile `%s` with parallel=%s", name, kwargs["parallel"])
     else:  # this might imply numba falls back to object mode
         logger.warning("Compile `%s` with nopython=False", name)
 
     # increase the compilation counter by one
     JIT_COUNT.increment()
 
-    return nb.jit(signature, **jit_kwargs)(function)  # type: ignore
+    return nb.jit(signature, **kwargs)(function)  # type: ignore
 
 
 if nb.config.DISABLE_JIT:
