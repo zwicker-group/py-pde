@@ -9,8 +9,7 @@ This module implements differential operators on spherical grids
    make_divergence
    make_vector_gradient
    make_tensor_divergence
-   
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
