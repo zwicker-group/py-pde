@@ -75,7 +75,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         shape: Union[int, Sequence[int]],
         periodic_z: bool = False,
     ):
-        """
+        r"""
         Args:
             radius (float or tuple of floats):
                 radius :math:`R_\mathrm{outer}` in case a simple float is given.
