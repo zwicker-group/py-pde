@@ -177,7 +177,13 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
 
     # prepare the compilation arguments
     kwargs.setdefault("nopython", True)
-    kwargs.setdefault("fastmath", config["numba.fastmath"])
+    if config["numba.fastmath"] is True:
+        # enable some (but not all) fastmath flags. We skip the flags that affect
+        # handling of infinities and NaN for safety by default. Use "fast" to enable all
+        # fastmath flags; see https://llvm.org/docs/LangRef.html#fast-math-flags
+        kwargs.setdefault("fastmath", {"nsz", "arcp", "contract", "afn", "reassoc"})
+    else:
+        kwargs.setdefault("fastmath", config["numba.fastmath"])
     kwargs.setdefault("debug", config["numba.debug"])
     # make sure parallel numba is only enabled in restricted cases
     kwargs["parallel"] = parallel and config["numba.multithreading"]

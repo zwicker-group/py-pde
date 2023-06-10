@@ -32,28 +32,31 @@ DEFAULT_CONFIG: List[Parameter] = [
         "numba.debug",
         False,
         bool,
-        "Determines whether numba used the debug mode for compilation. If enabled, "
+        "Determines whether numba uses the debug mode for compilation. If enabled, "
         "this emits extra information that might be useful for debugging.",
     ),
     Parameter(
         "numba.fastmath",
         True,
         bool,
-        "Determines whether the fastmath flag is set during compilation. This affects "
-        "the precision of the mathematical calculations.",
+        "Determines whether the fastmath flag is set during compilation. If enabled, "
+        "some mathematical operations might be faster, but less precise. This flag "
+        "does not affect infinity detection and NaN handling.",
     ),
     Parameter(
         "numba.multithreading",
         True,
         bool,
-        "Determines whether multiple threads are used in numba-compiled code.",
+        "Determines whether multiple threads are used in numba-compiled code. Enabling "
+        "this option accelerates a small subset of operators applied to fields defined "
+        "on large grids.",
     ),
     Parameter(
         "numba.multithreading_threshold",
         256**2,
         int,
-        "Minimal number of support points before multithreading is enabled in numba "
-        "compilations.",
+        "Minimal number of support points of grids before multithreading is enabled in "
+        "numba compilations. Has no effect when `numba.multithreading` is `False`.",
     ),
 ]
 
