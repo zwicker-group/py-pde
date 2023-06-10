@@ -8,7 +8,7 @@ Here, we chose the `Korteweg-de Vries equation
 
 .. math::
     \partial_t \phi = 6 \phi \partial_x \phi - \partial_x^3 \phi
-    
+
 which we implement using the :class:`~pde.pdes.pde.PDE`.
 """
 

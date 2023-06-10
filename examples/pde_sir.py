@@ -12,7 +12,7 @@ individuals:
     \partial_t s &= D \nabla^2 s - \beta is \\
     \partial_t i &= D \nabla^2 i + \beta is - \gamma i \\
     \partial_t r &= D \nabla^2 r + \gamma i
-    
+
 Here, :math:`D` is the diffusivity, :math:`\beta` the infection rate, and
 :math:`\gamma` the recovery rate.
 """

@@ -9,7 +9,7 @@ This example implements the `Brusselator
 
     \partial_t u &= D_0 \nabla^2 u + a - (1 + b) u + v u^2 \\
     \partial_t v &= D_1 \nabla^2 v + b u - v u^2
-    
+
 Here, :math:`D_0` and :math:`D_1` are the respective diffusivity and the
 parameters :math:`a` and :math:`b` are related to reaction rates.
 
