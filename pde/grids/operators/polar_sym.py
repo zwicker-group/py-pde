@@ -44,7 +44,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
     # calculate preliminary quantities
     dim_r = grid.shape[0]
     dr = grid.discretization[0]
-    rs = grid.axes_coords[0]
+    factor_r = 1 / (2 * grid.axes_coords[0] * dr)
     dr_2 = 1 / dr**2
 
     @jit
@@ -52,7 +52,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
         """apply laplace operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
             out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr_2
-            out[i - 1] += (arr[i + 1] - arr[i - 1]) / (2 * rs[i - 1] * dr)
+            out[i - 1] += (arr[i + 1] - arr[i - 1]) * factor_r[i - 1]
 
     return laplace  # type: ignore
 

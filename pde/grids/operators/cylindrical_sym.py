@@ -40,7 +40,9 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
     """
     # calculate preliminary quantities
     dim_r, dim_z = grid.shape
+    dr = grid.discretization[0]
     dr_2, dz_2 = 1 / grid.discretization**2
+    factor_r = 1 / (2 * grid.axes_coords[0] * dr)
 
     # use processing for large enough arrays
     parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
@@ -54,7 +56,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
                 arr_r_l, arr_r_h = arr[i - 1, j], arr[i + 1, j]
                 out[i - 1, j - 1] = (
                     (arr_r_h - 2 * arr[i, j] + arr_r_l) * dr_2
-                    + (arr_r_h - arr_r_l) / (2 * i - 1) * dr_2
+                    + (arr_r_h - arr_r_l) * factor_r[i - 1]
                     + (arr_z_l - 2 * arr[i, j] + arr_z_h) * dz_2
                 )
 
