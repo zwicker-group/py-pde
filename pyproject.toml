@@ -9,7 +9,7 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.8,<=3.11"
+requires-python = ">=3.8,<3.12"
 dynamic = ["version"]
 
 keywords = ["pdes", "partial-differential-equations", "dynamical-systems"]

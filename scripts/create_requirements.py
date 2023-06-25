@@ -270,11 +270,16 @@ def write_from_template(
     with template_path.open("r") as fp:
         template = Template(fp.read())
 
+    # parse python version
+    major, minor = MAX_PYTHON_VERSION.split(".")
+    minor_next = int(minor) + 1
+
     # determine template substitutes
     substitutes = {
         "MIN_PYTHON_VERSION": MIN_PYTHON_VERSION,
         "MIN_PYTHON_VERSION_NODOT": MIN_PYTHON_VERSION.replace(".", ""),
         "MAX_PYTHON_VERSION": MAX_PYTHON_VERSION,
+        "MAX_PYTHON_VERSION_NEXT": f"{major}.{minor_next}",
     }
     if requirements:
         req_list = (
