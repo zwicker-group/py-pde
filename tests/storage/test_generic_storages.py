@@ -258,3 +258,45 @@ def test_storage_mpi(storage_factory):
     if mpi.is_main:
         assert res.integral == pytest.approx(field.integral)
         assert len(storage) == 11
+
+
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
+def test_storing_transformation_collection(storage_factory):
+    """test transformation yielding field collections in storage classes"""
+    grid = UnitGrid([8])
+    field = ScalarField.random_normal(grid).smooth(1)
+
+    def trans1(field, t):
+        return FieldCollection([field, 2 * field + t])
+
+    storage = storage_factory()
+    eq = DiffusionPDE()
+    trackers = [storage.tracker(0.01, transformation=trans1)]
+    eq.solve(
+        field,
+        t_range=0.1,
+        dt=0.001,
+        backend="numpy",
+        tracker=trackers,
+    )
+
+    assert storage.has_collection
+    for t, sol in storage.items():
+        a, a2 = sol
+        np.testing.assert_allclose(a2.data, 2 * a.data + t)
+
+
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
+def test_storing_transformation_scalar(storage_factory):
+    """test transformations yielding scalar fields in storage classes"""
+    grid = UnitGrid([8])
+    field = ScalarField.random_normal(grid).smooth(1)
+
+    storage = storage_factory()
+    eq = DiffusionPDE(diffusivity=0)
+    trackers = [storage.tracker(0.01, transformation=lambda f: f**2)]
+    eq.solve(field, t_range=0.1, dt=0.001, backend="numpy", tracker=trackers)
+
+    assert not storage.has_collection
+    for sol in storage:
+        np.testing.assert_allclose(sol.data, field.data**2)

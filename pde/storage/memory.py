@@ -23,8 +23,9 @@ class MemoryStorage(StorageBase):
         self,
         times: Optional[Sequence[float]] = None,
         data: Optional[List[np.ndarray]] = None,
-        field_obj: Optional[FieldBase] = None,
+        *,
         info: Optional[InfoDict] = None,
+        field_obj: Optional[FieldBase] = None,
         write_mode: str = "truncate_once",
     ):
         """

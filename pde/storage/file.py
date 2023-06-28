@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, Tuple  # @UnusedImport
+from typing import Any, Optional, Tuple
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -26,8 +26,8 @@ class FileStorage(StorageBase):
     def __init__(
         self,
         filename: str,
-        info: Optional[InfoDict] = None,
         *,
+        info: Optional[InfoDict] = None,
         write_mode: str = "truncate_once",
         max_length: Optional[int] = None,
         compression: bool = True,
