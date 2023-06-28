@@ -263,7 +263,6 @@ def test_storage_mpi(storage_factory):
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
 def test_storing_transformation(storage_factory):
     """test transformation in storage classes"""
-    eq = DiffusionPDE()
     grid = UnitGrid([8])
     field = ScalarField.random_normal(grid).smooth(1)
 
@@ -271,6 +270,7 @@ def test_storing_transformation(storage_factory):
         return FieldCollection([field, 2 * field + t])
 
     storage = storage_factory()
+    eq = DiffusionPDE()
     eq.solve(
         field,
         t_range=0.1,
@@ -279,22 +279,21 @@ def test_storing_transformation(storage_factory):
         tracker=[storage.tracker(0.01, transformation=trans1)],
     )
 
+    assert storage.has_collection
     for t, sol in storage.items():
         a, a2 = sol
         np.testing.assert_allclose(a2.data, 2 * a.data + t)
 
-    def trans2(field):
-        return FieldCollection([field, field**2])
-
     storage2 = storage_factory()
-    eq.solve(
+    eq2 = DiffusionPDE(diffusivity=0)
+    eq2.solve(
         field,
         t_range=0.1,
         dt=0.001,
         backend="numpy",
-        tracker=[storage2.tracker(0.01, transformation=trans2)],
+        tracker=[storage2.tracker(0.01, transformation=lambda f: f**2)],
     )
 
+    assert not storage2.has_collection
     for t, sol in storage2.items():
-        a, a2 = sol
-        np.testing.assert_allclose(a2.data, a.data**2)
+        np.testing.assert_allclose(sol.data, field.data**2)
