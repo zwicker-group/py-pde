@@ -266,18 +266,30 @@ class StorageBase(metaclass=ABCMeta):
 
     @fill_in_docstring
     def tracker(
-        self, interval: Union[int, float, InterruptsBase] = 1
+        self,
+        interval: Union[int, float, InterruptsBase] = 1,
+        *,
+        transformation: Optional[Callable[[FieldBase, float], FieldBase]] = None,
     ) -> "StorageTracker":
         """create object that can be used as a tracker to fill this storage
 
         Args:
             interval:
                 {ARG_TRACKER_INTERVAL}
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then stored. This allows to store derived
+                quantities of the field during calculations. The argument needs to be a
+                callable function taking 1 or 2 arguments. The first argument always is
+                the current field, while the optional second argument is the associated
+                time.
 
         Returns:
             :class:`StorageTracker`: The tracker that fills the current storage
         """
-        return StorageTracker(storage=self, interval=interval)
+        return StorageTracker(
+            storage=self, interval=interval, transformation=transformation
+        )
 
     def start_writing(self, field: FieldBase, info: Optional[InfoDict] = None) -> None:
         """initialize the storage for writing data
@@ -494,16 +506,41 @@ class StorageTracker(TrackerBase):
     """
 
     @fill_in_docstring
-    def __init__(self, storage, interval: IntervalData = 1):
+    def __init__(
+        self,
+        storage,
+        interval: IntervalData = 1,
+        *,
+        transformation: Optional[Callable[[FieldBase, float], FieldBase]] = None,
+    ):
         """
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
                 Storage instance to which the data is written
             interval:
                 {ARG_TRACKER_INTERVAL}
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then stored. This allows to store derived
+                quantities of the field during calculations. The argument needs to be a
+                callable function taking 1 or 2 arguments. The first argument always is
+                the current field, while the optional second argument is the associated
+                time.
         """
         super().__init__(interval=interval)
         self.storage = storage
+        if transformation is not None and not callable(transformation):
+            raise TypeError("`transformation` must be callable")
+        self.transformation = transformation
+
+    def _transform(self, field: FieldBase, t: float) -> FieldBase:
+        """transforms the field according to the defined transformation"""
+        if self.transformation is None:
+            return field
+        elif self.transformation.__code__.co_argcount == 1:
+            return self.transformation(field)  # type: ignore
+        else:
+            return self.transformation(field, t)
 
     def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
         """
@@ -517,7 +554,7 @@ class StorageTracker(TrackerBase):
             float: The first time the tracker needs to handle data
         """
         result = super().initialize(field, info)
-        self.storage.start_writing(field, info)
+        self.storage.start_writing(self._transform(field, 0), info)
         return result
 
     def handle(self, field: FieldBase, t: float) -> None:
@@ -528,7 +565,7 @@ class StorageTracker(TrackerBase):
                 The current state of the simulation
             t (float): The associated time
         """
-        self.storage.append(field, time=t)
+        self.storage.append(self._transform(field, t), time=t)
 
     def finalize(self, info: Optional[InfoDict] = None) -> None:
         """finalize the tracker, supplying additional information

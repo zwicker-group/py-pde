@@ -106,7 +106,7 @@ def numba_environment() -> Dict[str, Any]:
         threading_layer = nb.threading_layer()
     except ValueError:
         # threading layer was not initialized, so compile a mock function
-        @nb.jit("i8()", parallel=True)
+        @nb.njit("i8()", parallel=True)
         def f():
             s = 0
             for i in nb.prange(4):
