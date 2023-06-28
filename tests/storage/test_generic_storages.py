@@ -261,8 +261,8 @@ def test_storage_mpi(storage_factory):
 
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storing_transformation(storage_factory):
-    """test transformation in storage classes"""
+def test_storing_transformation_collection(storage_factory):
+    """test transformation yielding field collections in storage classes"""
     grid = UnitGrid([8])
     field = ScalarField.random_normal(grid).smooth(1)
 
@@ -271,12 +271,13 @@ def test_storing_transformation(storage_factory):
 
     storage = storage_factory()
     eq = DiffusionPDE()
+    trackers = [storage.tracker(0.01, transformation=trans1)]
     eq.solve(
         field,
         t_range=0.1,
         dt=0.001,
         backend="numpy",
-        tracker=[storage.tracker(0.01, transformation=trans1)],
+        tracker=trackers,
     )
 
     assert storage.has_collection
@@ -284,16 +285,18 @@ def test_storing_transformation(storage_factory):
         a, a2 = sol
         np.testing.assert_allclose(a2.data, 2 * a.data + t)
 
-    storage2 = storage_factory()
-    eq2 = DiffusionPDE(diffusivity=0)
-    eq2.solve(
-        field,
-        t_range=0.1,
-        dt=0.001,
-        backend="numpy",
-        tracker=[storage2.tracker(0.01, transformation=lambda f: f**2)],
-    )
 
-    assert not storage2.has_collection
-    for t, sol in storage2.items():
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
+def test_storing_transformation_scalar(storage_factory):
+    """test transformations yielding scalar fields in storage classes"""
+    grid = UnitGrid([8])
+    field = ScalarField.random_normal(grid).smooth(1)
+
+    storage = storage_factory()
+    eq = DiffusionPDE(diffusivity=0)
+    trackers = [storage.tracker(0.01, transformation=lambda f: f**2)]
+    eq.solve(field, t_range=0.1, dt=0.001, backend="numpy", tracker=trackers)
+
+    assert not storage.has_collection
+    for sol in storage:
         np.testing.assert_allclose(sol.data, field.data**2)
