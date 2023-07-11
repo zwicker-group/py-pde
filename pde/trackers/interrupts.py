@@ -10,7 +10,7 @@ The provided interrupt classes are:
    ConstantInterrupts
    LogarithmicInterrupts
    RealtimeInterrupts
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 

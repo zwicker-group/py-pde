@@ -677,7 +677,6 @@ class DataTracker(CallbackTracker):
         """
         extension = os.path.splitext(filename)[1].lower()
         if extension == ".pickle":
-            # default
             import pickle
 
             with open(filename, "wb") as fp:
