@@ -73,7 +73,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="scipy",
-        version="1.4.0",
+        version="1.10.0",
         usage="Miscellaneous scientific functions",
         essential=True,
     ),
