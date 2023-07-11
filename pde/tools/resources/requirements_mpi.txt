@@ -6,6 +6,6 @@ numba>=0.56.0
 numba-mpi>=0.22
 numpy>=1.22.0
 pandas>=1.2
-scipy>=1.4.0
+scipy>=1.10.0
 sympy>=1.5.0
 tqdm>=4.60
