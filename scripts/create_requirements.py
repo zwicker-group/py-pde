@@ -154,7 +154,7 @@ REQUIREMENTS = [
     Requirement(name="importlib-metadata", version="5", tests_only=True),
     Requirement(name="isort", version="5.1", tests_only=True),
     Requirement(name="mypy", version="0.770", tests_only=True),
-    Requirement(name="notebook", version="6", relation="~=", tests_only=True),
+    Requirement(name="notebook", version="6.5", relation="~=", tests_only=True),
     Requirement(name="pyinstrument", version="3", tests_only=True),
     Requirement(name="pytest", version="5.4", tests_only=True),
     Requirement(name="pytest-cov", version="2.8", tests_only=True),
