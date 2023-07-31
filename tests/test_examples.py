@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List  # @UnusedImport
 
 import pytest
+import notebook as jupyter_notebook
 
 from pde.tools.misc import module_available, skipUnlessModule
 from pde.visualization.movies import Movie
@@ -79,19 +80,26 @@ def test_jupyter_notebooks(path, tmp_path):
     my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env.get("PYTHONPATH", "")
 
     outfile = tmp_path / os.path.basename(path)
-    sp.check_call(
-        [
-            sys.executable,
-            "-m",
-            "jupyter",
-            "nbconvert",
-            "--ExecutePreprocessor.timeout=600",
-            "--to",
-            "notebook",
-            "--output",
-            outfile,
-            "--execute",
-            path,
-        ],
-        env=my_env,
-    )
+    if jupyter_notebook.__version__.startswith("6"):
+        # older version of running jypyter notebook
+        # deprecated on 2023-07-31
+        # in the future, the `notebook` package should be at least version 7
+        sp.check_call(
+            [
+                sys.executable,
+                "-m",
+                "jupyter",
+                "nbconvert",
+                "--ExecutePreprocessor.timeout=600",
+                "--to",
+                "notebook",
+                "--output",
+                outfile,
+                "--execute",
+                path,
+            ],
+            env=my_env,
+        )
+    else:
+        # run the notebook
+        sp.check_call([sys.executable, "-m", "jupyter", "run", path], env=my_env)

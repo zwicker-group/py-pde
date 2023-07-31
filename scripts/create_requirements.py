@@ -22,6 +22,7 @@ class Requirement:
     name: str  # name of the python package
     version: str  # minimal version
     usage: str = ""  # description for how the package is used in py-pde
+    relation: Optional[str] = None  # relation used to compare version number
     essential: bool = False  # basic requirement for the package
     docs_only: bool = False  # only required for creating documentation
     tests_only: bool = False  # only required for running tests
@@ -43,11 +44,14 @@ class Requirement:
         """create a line for a requirements file
 
         Args:
-            relation (str): The relation used for version comparison
+            relation (str):
+                The relation used for version comparison if self.relation is None
 
         Returns:
             str: A string that can be written to a requirements file
         """
+        if self.relation is not None:
+            relation = self.relation
         return f"{self.name}{relation}{self.version}"
 
 
@@ -150,6 +154,7 @@ REQUIREMENTS = [
     Requirement(name="importlib-metadata", version="5", tests_only=True),
     Requirement(name="isort", version="5.1", tests_only=True),
     Requirement(name="mypy", version="0.770", tests_only=True),
+    Requirement(name="notebook", version="6.5", relation="~=", tests_only=True),
     Requirement(name="pyinstrument", version="3", tests_only=True),
     Requirement(name="pytest", version="5.4", tests_only=True),
     Requirement(name="pytest-cov", version="2.8", tests_only=True),

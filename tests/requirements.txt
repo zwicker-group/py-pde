@@ -4,6 +4,7 @@ importlib-metadata>=5
 isort>=5.1
 jupyter_contrib_nbextensions>=0.5
 mypy>=0.770
+notebook~=6.5
 pyinstrument>=3
 pytest>=5.4
 pytest-cov>=2.8
