@@ -315,7 +315,7 @@ class Boundaries(list):
 
                 @register_jitable
                 def wrap(data_full: np.ndarray, args=None) -> None:
-                    inner(data_full, args=args)  # type: ignore
+                    inner(data_full, args=args)
                     first(data_full, args=args)
 
             if rest:
