@@ -8,8 +8,8 @@ import sys
 from pathlib import Path
 from typing import List  # @UnusedImport
 
-import pytest
 import notebook as jupyter_notebook
+import pytest
 
 from pde.tools.misc import module_available, skipUnlessModule
 from pde.visualization.movies import Movie

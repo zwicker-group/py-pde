@@ -94,7 +94,7 @@ def make_colored_noise(
     def noise_colored() -> np.ndarray:
         """return array of colored noise"""
         # random field
-        arr: np.ndarray = rng.normal(size=shape)  # type: ignore
+        arr: np.ndarray = rng.normal(size=shape)
 
         # forward transform
         arr = np_rfftn(arr)
