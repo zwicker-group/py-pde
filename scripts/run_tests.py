@@ -183,9 +183,7 @@ def run_unit_tests(
 
     # run tests using multiple cores?
     if num_cores == "auto":
-        from multiprocessing import cpu_count
-
-        num_cores = cpu_count() // 2
+        num_cores = os.cpu_count()
     else:
         num_cores = int(num_cores)
     if num_cores > 1:
