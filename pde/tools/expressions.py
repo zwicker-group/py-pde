@@ -41,6 +41,7 @@ from typing import (
 
 import numpy as np
 import sympy
+from numba import vectorize
 from sympy.core import basic
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
@@ -97,8 +98,9 @@ def parse_number(
     return value
 
 
-def _heaviside_implemention(x1, x2=0.5):
-    """implementation of the Heaviside function used for numba and sympy
+@vectorize()
+def _heaviside_implemention_ufunc(x1, x2):
+    """ufunc implementation of the Heaviside function used for numba and sympy
 
     Args:
         x1 (float): Argument of the function
@@ -115,6 +117,21 @@ def _heaviside_implemention(x1, x2=0.5):
         return 0.0
     else:
         return 1.0
+
+
+def _heaviside_implemention(x1, x2):
+    """normal implementation of the Heaviside function used for numba and sympy
+
+    Args:
+        x1 (float): Argument of the function
+        x2 (float): Value returned when the argument is zero
+
+    Returns:
+        float: 0 if x1 is negative, 1 if x1 is positive, and x2 if x1 == 0
+    """
+    # this extra function is necessary since the `overload` wrapper cannot deal properly
+    # with the `_DUFunc` returned by `vectorize`
+    return _heaviside_implemention_ufunc(x1, x2)
 
 
 @overload(np.heaviside)
@@ -177,7 +194,14 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
     fill_locals(symbols, sympy_cls=sympy.Symbol)
     fill_locals(functions, sympy_cls=sympy.Function)
 
-    return sympy_parser.parse_expr(expression, local_dict=local_dict)  # type: ignore
+    expr = sympy_parser.parse_expr(expression, local_dict=local_dict)
+
+    # replace lower-case heaviside (which would translate to numpy function) by
+    # upper-case Heaviside, which is directly recognized by sympy. Down the line, this
+    # allows easier handling of special cases
+    expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
+
+    return expr  # type: ignore
 
 
 ExpressionType = Union[float, str, np.ndarray, basic.Basic, "ExpressionBase"]
