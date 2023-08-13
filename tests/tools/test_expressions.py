@@ -286,7 +286,16 @@ def test_complex_expression():
     expr = TensorExpression("[1, I]")
     assert expr.complex
     assert expr.constant
+    assert expr.rank == 1
+    assert expr.shape == (2,)
     np.testing.assert_allclose(expr.value, np.array([1, 1j]))
+
+    expr = TensorExpression("[[1, -1], [I, 2]]")
+    assert expr.complex
+    assert expr.constant
+    assert expr.rank == 2
+    assert expr.shape == (2, 2)
+    np.testing.assert_allclose(expr.value, np.array([[1, -1], [1j, 2]]))
 
 
 @pytest.mark.parametrize(

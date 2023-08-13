@@ -12,7 +12,7 @@ representations using :mod:`sympy`.
    ScalarExpression
    TensorExpression
    evaluate
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
@@ -199,9 +199,14 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
     # replace lower-case heaviside (which would translate to numpy function) by
     # upper-case Heaviside, which is directly recognized by sympy. Down the line, this
     # allows easier handling of special cases
-    expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
+    def substitude(expr):
+        """helper function substituting expressions"""
+        if isinstance(expr, list):
+            return [substitude(e) for e in expr]
+        else:
+            return expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
 
-    return expr  # type: ignore
+    return substitude(expr)  # type: ignore
 
 
 ExpressionType = Union[float, str, np.ndarray, basic.Basic, "ExpressionBase"]
@@ -804,6 +809,11 @@ class TensorExpression(ExpressionBase):
     def shape(self) -> Tuple[int, ...]:
         """tuple: the shape of the tensor"""
         return self._sympy_expr.shape  # type: ignore
+
+    @property
+    def rank(self) -> int:
+        """int: rank of the tensor expression"""
+        return len(self.shape)
 
     def __getitem__(self, index):
         expr = self._sympy_expr[index]
