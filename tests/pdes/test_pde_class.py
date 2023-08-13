@@ -466,5 +466,5 @@ def test_pde_heaviside(backend):
     """test PDE with a heaviside right hand side"""
     field = ScalarField(grids.CartesianGrid([[-1, 1]], 2), [-1, 1])
     eq = PDE({"c": "Heaviside(x)"})
-    res = eq.solve(field, 1, dt=0.1, backend=backend)
+    res = eq.solve(field, 0.999, dt=0.1, backend=backend, tracker=None)
     np.testing.assert_allclose(res.data, np.array([-1.0, 2]))
