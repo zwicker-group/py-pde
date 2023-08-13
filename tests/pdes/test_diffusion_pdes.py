@@ -116,7 +116,7 @@ def test_diffusion_sde(backend):
     eq = DiffusionPDE(diffusivity=0, noise=var_local)
     grid = CartesianGrid([[0, 1000]], 3700)
     field = ScalarField(grid)
-    sol = eq.solve(field, t_range=t_range, dt=1e-4, backend=backend)
+    sol = eq.solve(field, t_range=t_range, dt=1e-4, backend=backend, tracker=None)
     var_expected = var_local * t_range / grid.typical_discretization
     dist = stats.norm(scale=np.sqrt(var_expected)).cdf
     assert stats.kstest(np.ravel(sol.data), dist).pvalue > 0.001
