@@ -286,21 +286,36 @@ def test_complex_expression():
     expr = TensorExpression("[1, I]")
     assert expr.complex
     assert expr.constant
+    assert expr.rank == 1
+    assert expr.shape == (2,)
     np.testing.assert_allclose(expr.value, np.array([1, 1j]))
 
+    expr = TensorExpression("[[1, -1], [I, 2]]")
+    assert expr.complex
+    assert expr.constant
+    assert expr.rank == 2
+    assert expr.shape == (2, 2)
+    np.testing.assert_allclose(expr.value, np.array([[1, -1], [1j, 2]]))
 
-def test_expression_special():
+
+@pytest.mark.parametrize(
+    "expression, value",
+    [("Heaviside(x)", 0.5), ("Heaviside(x, 0.75)", 0.75), ("heaviside(x, 0.75)", 0.75)],
+)
+def test_expression_heaviside(expression, value):
     """test special cases of expressions"""
-    expr = ScalarExpression("Heaviside(x)")
+    expr = ScalarExpression(expression)
     assert not expr.constant
     assert expr(-1) == 0
-    assert expr(0) == 0.5
+    assert expr(0) == value
     assert expr(1) == 1
+    np.testing.assert_allclose(expr(np.array([-1, 0, 1])), np.array([0, value, 1]))
 
     f = expr.get_compiled()
     assert f(-1) == 0
-    assert f(0) == 0.5
+    assert f(0) == value
     assert f(1) == 1
+    np.testing.assert_allclose(f(np.array([-1, 0, 1])), np.array([0, value, 1]))
 
 
 def test_expression_consts():

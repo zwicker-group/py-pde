@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 from typing import List  # @UnusedImport
 
-import notebook as jupyter_notebook
 import pytest
 
 from pde.tools.misc import module_available, skipUnlessModule
@@ -68,10 +67,12 @@ def test_example_scripts(path):
 
 @pytest.mark.slow
 @pytest.mark.no_cover
-@skipUnlessModule(["h5py", "jupyter", "nbconvert"])
+@skipUnlessModule(["h5py", "jupyter", "notebook", "nbconvert"])
 @pytest.mark.parametrize("path", NOTEBOOKS)
 def test_jupyter_notebooks(path, tmp_path):
     """run the jupyter notebooks"""
+    import notebook as jupyter_notebook
+
     if path.name.startswith("_"):
         pytest.skip("skip examples starting with an underscore")
 

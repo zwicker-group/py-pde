@@ -372,7 +372,7 @@ def test_expression_invalid_args():
     """test boundary conditions use an expression with invalid data"""
     grid = CartesianGrid([[0, 1]], 4)
     with pytest.raises(BCDataError):
-        grid.get_boundary_conditions({"derivative_expression": "heaviside(x)"})
+        grid.get_boundary_conditions({"derivative_expression": "unknown(x)"})
 
 
 def test_expression_bc_polar_grid():
