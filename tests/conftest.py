@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 
 from pde.tools.misc import module_available
+from pde.tools.numba import random_seed
 
 
 @pytest.fixture(scope="function", autouse=True)
@@ -22,6 +23,17 @@ def setup_and_teardown():
 
     # clean up open matplotlib figures after the test
     plt.close("all")
+
+
+@pytest.fixture(scope="function", autouse=False, name="rng")
+def init_random_number_generators():
+    """get a random number generator and set the seed of the random number generator
+
+    The function returns an instance of :func:`~numpy.random.default_rng()` and
+    initializes the default generators of both :mod:`numpy` and :mod:`numba`.
+    """
+    random_seed()
+    return np.random.default_rng(0)
 
 
 def pytest_configure(config):

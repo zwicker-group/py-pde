@@ -307,6 +307,23 @@ def get_common_numba_dtype(*args):
     return nb.double
 
 
+@jit(nopython=True, nogil=True)
+def _random_seed_compiled(seed: int) -> None:
+    """sets the seed of the random number generator of numba"""
+    np.random.seed(seed)
+
+
+def random_seed(seed: int = 0) -> None:
+    """sets the seed of the random number generator of numpy and numba
+
+    Args:
+        seed (int): Sets random seed
+    """
+    np.random.seed(seed)
+    if not nb.config.DISABLE_JIT:
+        _random_seed_compiled(seed)
+
+
 if NUMBA_VERSION < [0, 45]:
     warnings.warn(
         "Your numba version is outdated. Please install at least version 0.45"

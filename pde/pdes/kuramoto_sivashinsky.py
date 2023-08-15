@@ -37,16 +37,15 @@ class KuramotoSivashinskyPDE(PDEBase):
         self,
         nu: float = 1,
         *,
-        noise: float = 0,
         bc: BoundariesData = "auto_periodic_neumann",
         bc_lap: Optional[BoundariesData] = None,
+        noise: float = 0,
+        rng: Optional[np.random.Generator] = None,
     ):
         r"""
         Args:
             nu (float):
                 Parameter :math:`\nu` for the strength of the fourth-order term
-            noise (float):
-                Variance of the (additive) noise term
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
@@ -55,8 +54,17 @@ class KuramotoSivashinskyPDE(PDEBase):
                 scalar field :math:`c`. If `None`, the same boundary condition
                 as `bc` is chosen. Otherwise, this supports the same options as
                 `bc`.
+            noise (float):
+                Variance of the (additive) noise term
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+                used for stochastic simulations. Note that this random number generator
+                is only used for numpy function, while compiled numba code uses the
+                random number generator of numba. Moreover, in simulations using
+                multiprocessing, setting the same generator in all processes might yield
+                unintended correlations in the simulation results.
         """
-        super().__init__(noise=noise)
+        super().__init__(noise=noise, rng=rng)
 
         self.nu = nu
         self.bc = bc

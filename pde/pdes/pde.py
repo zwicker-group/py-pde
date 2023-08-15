@@ -50,11 +50,12 @@ class PDE(PDEBase):
         self,
         rhs: Dict[str, str],
         *,
-        noise: ArrayLike = 0,
         bc: BoundariesData = "auto_periodic_neumann",
         bc_ops: Optional[Dict[str, BoundariesData]] = None,
         user_funcs: Optional[Dict[str, Callable]] = None,
         consts: Optional[Dict[str, NumberOrArray]] = None,
+        noise: ArrayLike = 0,
+        rng: Optional[np.random.Generator] = None,
     ):
         r"""
         Warning:
@@ -77,12 +78,6 @@ class PDE(PDEBase):
                 `integral(field)` denotes an integral over a field.
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
-            noise (float or :class:`~numpy.ndarray`):
-                Variance of additive Gaussian white noise. The default value of zero
-                implies deterministic partial differential equations will be solved.
-                Different noise magnitudes can be supplied for each field in coupled
-                PDEs by either specifying a sequence of numbers or a dictionary with
-                values for each field.
             bc:
                 Boundary conditions for the operators used in the expression. The
                 conditions here are applied to all operators that do not have a
@@ -104,6 +99,19 @@ class PDE(PDEBase):
                 A dictionary with user defined constants that can be used in the
                 expression. These can be either scalar numbers or fields defined on the
                 same grid as the actual simulation.
+            noise (float or :class:`~numpy.ndarray`):
+                Variance of additive Gaussian white noise. The default value of zero
+                implies deterministic partial differential equations will be solved.
+                Different noise magnitudes can be supplied for each field in coupled
+                PDEs by either specifying a sequence of numbers or a dictionary with
+                values for each field.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+                used for stochastic simulations. Note that this random number generator
+                is only used for numpy function, while compiled numba code uses the
+                random number generator of numba. Moreover, in simulations using
+                multiprocessing, setting the same generator in all processes might yield
+                unintended correlations in the simulation results.
 
         Note:
             The order in which the fields are given in `rhs` defines the order in which
@@ -121,7 +129,7 @@ class PDE(PDEBase):
         if hasattr(noise, "__iter__") and len(noise) != len(rhs):  # type: ignore
             raise ValueError("Number of noise strengths does not match field count")
 
-        super().__init__(noise=noise)
+        super().__init__(noise=noise, rng=rng)
 
         # validate input
         if not isinstance(rhs, dict):
