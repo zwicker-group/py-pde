@@ -69,9 +69,10 @@ class PDEBase(metaclass=ABCMeta):
                 equation will be solved. Different noise magnitudes can be supplied for
                 each field in coupled PDEs.
             rng (:class:`~numpy.random.Generator`):
-                Random number generator (default: :func:`~numpy.random.default_rng()`).
-                Note that this random number generator is only used for numpy function,
-                while compiled numba code is unaffected. Moreover, in simulations using
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+                used for stochastic simulations. Note that this random number generator
+                is only used for numpy function, while compiled numba code uses the
+                random number generator of numba. Moreover, in simulations using
                 multiprocessing, setting the same generator in all processes might yield
                 unintended correlations in the simulation results.
 

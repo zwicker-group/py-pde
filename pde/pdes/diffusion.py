@@ -4,7 +4,7 @@ A simple diffusion equation
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable
+from typing import Callable, Optional
 
 import numba as nb
 import numpy as np
@@ -33,20 +33,29 @@ class DiffusionPDE(PDEBase):
     def __init__(
         self,
         diffusivity: float = 1,
-        noise: float = 0,
+        *,
         bc: BoundariesData = "auto_periodic_neumann",
+        noise: float = 0,
+        rng: Optional[np.random.Generator] = None,
     ):
         """
         Args:
             diffusivity (float):
                 The diffusivity of the described species
-            noise (float):
-                Variance of the (additive) noise term
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
+            noise (float):
+                Variance of the (additive) noise term
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+                used for stochastic simulations. Note that this random number generator
+                is only used for numpy function, while compiled numba code uses the
+                random number generator of numba. Moreover, in simulations using
+                multiprocessing, setting the same generator in all processes might yield
+                unintended correlations in the simulation results.
         """
-        super().__init__(noise=noise)
+        super().__init__(noise=noise, rng=rng)
 
         self.diffusivity = diffusivity
         self.bc = bc

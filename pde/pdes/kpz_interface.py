@@ -4,7 +4,7 @@ The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interf
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable
+from typing import Callable, Optional
 
 import numba as nb
 import numpy as np
@@ -39,8 +39,9 @@ class KPZInterfacePDE(PDEBase):
         nu: float = 0.5,
         lmbda: float = 1,
         *,
-        noise: float = 0,
         bc: BoundariesData = "auto_periodic_neumann",
+        noise: float = 0,
+        rng: Optional[np.random.Generator] = None,
     ):
         r"""
         Args:
@@ -48,13 +49,20 @@ class KPZInterfacePDE(PDEBase):
                 Parameter :math:`\nu` for the strength of the diffusive term
             lmbda (float):
                 Parameter :math:`\lambda` for the strenth of the gradient term
-            noise (float):
-                Variance of the (additive) noise term
             bc:
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
+            noise (float):
+                Variance of the (additive) noise term
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+                used for stochastic simulations. Note that this random number generator
+                is only used for numpy function, while compiled numba code uses the
+                random number generator of numba. Moreover, in simulations using
+                multiprocessing, setting the same generator in all processes might yield
+                unintended correlations in the simulation results.
         """
-        super().__init__(noise=noise)
+        super().__init__(noise=noise, rng=rng)
 
         self.nu = nu
         self.lmbda = lmbda
