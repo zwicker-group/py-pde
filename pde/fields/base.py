@@ -1646,7 +1646,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # deprecated on 2023-02-23
         warnings.warn(
-            "`apply_operator` is deprecated. Use `apply_operator` instead",
+            "`_apply_operator` is deprecated. Use `apply_operator` instead",
             DeprecationWarning,
         )
         return self.apply_operator(
