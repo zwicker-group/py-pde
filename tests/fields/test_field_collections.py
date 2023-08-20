@@ -122,6 +122,38 @@ def test_collections_copy():
     np.testing.assert_allclose(fc[1].data, 1)
 
 
+def test_collections_append():
+    """test append data to collections"""
+    grid = UnitGrid([2, 2])
+    sf = ScalarField(grid, 0)
+    vf = VectorField(grid, 1, label="vector")
+    c1 = FieldCollection([sf], labels=["scalar"])
+
+    c2 = c1.append(vf)
+    assert len(c2) == 2 and len(c1) == 1
+    data = np.r_[np.zeros(4), np.ones(8)]
+    np.testing.assert_allclose(c2.data.flat, data)
+
+    assert c1.data is not c2.data
+    assert c1[0].data is not c2[0].data
+    assert vf.data is not c2[1].data
+    assert list(c2.labels) == ["scalar", "vector"]
+
+    c3 = c1.append(c1, label="new")
+    assert len(c3) == 2 and len(c1) == 1
+    np.testing.assert_allclose(c3.data.flat, np.zeros(8))
+
+    assert c1.data is not c3.data
+    assert c1[0].data is not c3[0].data
+    assert vf.data is not c3[1].data
+    assert c3.label == "new"
+
+    c4 = c1.append(c1, vf)
+    assert len(c4) == 3 and len(c1) == 1
+    data = np.r_[np.zeros(8), np.ones(8)]
+    np.testing.assert_allclose(c4.data.flat, data)
+
+
 def test_collections_operators():
     """test field collections"""
     grid = UnitGrid([3, 4])

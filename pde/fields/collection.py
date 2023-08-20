@@ -579,6 +579,42 @@ class FieldCollection(FieldBase):
         # create the collection from the copied fields
         return self.__class__(fields, copy_fields=False, label=label, dtype=dtype)
 
+    def append(
+        self,
+        *fields: Union[DataFieldBase, FieldCollection],
+        label: Optional[str] = None,
+    ) -> FieldCollection:
+        """create new collection with appended field(s)
+
+        Args:
+            fields (`FieldCollection` or `DataFieldBase`):
+                A sequence of single fields or collection of fields that will be
+                appended to the fields in the current collection. The data of all fields
+                will be copied.
+            label (str):
+                Label of the new field collection. If omitted, the current label is used
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`: A new field collection,
+            which combines the current one with fields given by `fields`.
+        """
+        # copy fields and labels
+        _fields, _labels = self.fields[:], list(self.labels)
+        for field in fields:
+            if isinstance(field, FieldCollection):
+                _fields.extend(field.fields)
+                _labels.extend(field.labels)
+            else:
+                _fields.append(field)
+                _labels.append(field.label)
+
+        return FieldCollection(
+            _fields,
+            copy_fields=True,
+            label=self.label if label is None else label,
+            labels=_labels,
+        )
+
     def _unary_operation(self: FieldCollection, op: Callable) -> FieldCollection:
         """perform an unary operation on this field collection
 
