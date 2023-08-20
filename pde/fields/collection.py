@@ -581,35 +581,38 @@ class FieldCollection(FieldBase):
 
     def append(
         self,
-        field: Union[DataFieldBase, FieldCollection],
-        *,
+        *fields: Union[DataFieldBase, FieldCollection],
         label: Optional[str] = None,
     ) -> FieldCollection:
         """create new collection with appended field(s)
 
-        The data of the old collection as well as the new field(s) are copied.
-
         Args:
-            field:
-                Sequence of the individual fields
+            fields (`FieldCollection` or `DataFieldBase`):
+                A sequence of single fields or collection of fields that will be
+                appended to the fields in the current collection. The data of all fields
+                will be copied.
             label (str):
                 Label of the new field collection. If omitted, the current label is used
 
         Returns:
             :class:`~pde.fields.collection.FieldCollection`: A new field collection,
-            which combines the current one with the new field.
+            which combines the current one with fields given by `fields`.
         """
-        if isinstance(field, FieldCollection):
-            fields = self.fields + field.fields
-            labels = list(self.labels) + list(field.labels)
-        else:
-            fields = self.fields + [field]
-            labels = list(self.labels) + [field.label]
+        # copy fields and labels
+        _fields, _labels = self.fields[:], list(self.labels)
+        for field in fields:
+            if isinstance(field, FieldCollection):
+                _fields.extend(field.fields)
+                _labels.extend(field.labels)
+            else:
+                _fields.append(field)
+                _labels.append(field.label)
+
         return FieldCollection(
-            fields,
+            _fields,
             copy_fields=True,
             label=self.label if label is None else label,
-            labels=labels,
+            labels=_labels,
         )
 
     def _unary_operation(self: FieldCollection, op: Callable) -> FieldCollection:
