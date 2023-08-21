@@ -217,7 +217,8 @@ class FieldCollection(FieldBase):
     @property
     def fields(self) -> List[DataFieldBase]:
         """list: the fields of this collection"""
-        return self._fields
+        # return shallow copy of list so the internal list is not modified accidentially
+        return self._fields[:]
 
     @property
     def labels(self) -> "_FieldLabels":
