@@ -286,6 +286,23 @@ class StorageBase(metaclass=ABCMeta):
 
         Returns:
             :class:`StorageTracker`: The tracker that fills the current storage
+
+        Example:
+            The `transformation` argument allows storing additional fields:
+
+            .. code-block:: python
+
+                def add_to_state(state):
+                    transformed_field = state.smooth(1)
+                    return field.append(transformed_field)
+
+                storage = pde.MemoryStorage()
+                tracker = storage.tracker(1, transformation=add_to_state)
+                eq.solve(..., tracker=tracker)
+
+            In this example, :obj:`storage` will contain a trajectory of the fields of
+            the simulation as well as the smoothed fields. Other transformations are
+            possible by defining appropriate :func:`add_to_state`
         """
         return StorageTracker(
             storage=self, interval=interval, transformation=transformation
