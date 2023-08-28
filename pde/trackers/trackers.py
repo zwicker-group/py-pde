@@ -115,6 +115,8 @@ class ProgressTracker(TrackerBase):
     def __init__(
         self,
         interval: Optional[IntervalData] = None,
+        *,
+        fancy: bool = True,
         ndigits: int = 5,
         leave: bool = True,
     ):
@@ -122,18 +124,22 @@ class ProgressTracker(TrackerBase):
         Args:
             interval:
                 {ARG_TRACKER_INTERVAL}
-                The default value `None` updates the progress bar approximately
-                every (real) second.
-            ndigits (int): The number of digits after the decimal point that are
-                shown maximally.
-            leave (bool): Whether to leave the progress bar after the simulation
-                has finished (default: True)
+                The default value `None` updates the progress bar approximately every
+                (real) second.
+            fancy (bool):
+                Flag determining whether a fancy progress bar should be used in jupyter
+                notebooks (if :mod:`ipywidgets` is installed)
+            ndigits (int):
+                The number of digits after the decimal point that are shown maximally.
+            leave (bool):
+                Whether to leave the progress bar after the simulation has finished
+                (default: True)
         """
         if interval is None:
-            # print every second by default
-            interval = RealtimeInterrupts(duration=1)
+            interval = RealtimeInterrupts(duration=1)  # print every second by default
 
         super().__init__(interval=interval)
+        self.fancy = fancy
         self.ndigits = ndigits
         self.leave = leave
 
@@ -155,7 +161,7 @@ class ProgressTracker(TrackerBase):
         controller_info = {} if info is None else info.get("controller", {})
 
         # initialize the progress bar
-        pb_cls = get_progress_bar_class()
+        pb_cls = get_progress_bar_class(self.fancy)
         self.progress_bar = pb_cls(
             total=controller_info.get("t_end"),
             initial=controller_info.get("t_start", 0),
