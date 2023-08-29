@@ -54,7 +54,7 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
 
-class SphericalSymGridBase(GridBase, metaclass=ABCMeta):  # lgtm [py/missing-equals]
+class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
     r"""Base class for d-dimensional spherical grids with angular symmetry
 
     The angular symmetry implies that states only depend on the radial

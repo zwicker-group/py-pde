@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from .spherical import PolarSymGrid  # @UnusedImport
 
 
-class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
+class CylindricalSymGrid(GridBase):
     r""" 3-dimensional cylindrical grid assuming polar symmetry 
 
     The polar symmetry implies that states only depend on the radial and axial

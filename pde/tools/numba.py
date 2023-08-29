@@ -9,7 +9,7 @@ import os
 import warnings
 from typing import Any, Callable, Dict, Optional, TypeVar
 
-import numba as nb  # lgtm [py/import-and-import-from]
+import numba as nb
 import numpy as np
 from numba.core.types import npytypes, scalars
 from numba.extending import overload, register_jitable
