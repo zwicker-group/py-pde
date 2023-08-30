@@ -19,7 +19,7 @@ from typing import Callable, Tuple
 
 import numba as nb
 import numpy as np
-from numba.extending import register_jitable
+from numba.extending import overload, register_jitable
 
 from ... import config
 from ...tools.misc import module_available
@@ -446,11 +446,30 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
     ks = 2 * np.pi * fft.fftfreq(grid.shape[0], grid.discretization[0])
     factor = -(ks**2)
 
+    @register_jitable
+    def laplace_impl(arr: np.ndarray, out: np.ndarray) -> None:
+        """apply Laplace operator to array `arr`"""
+        out[:] = fft.ifft(factor * fft.fft(arr[1:-1]))
+
+    @overload(laplace_impl)
+    def ol_laplace(arr: np.ndarray, out: np.ndarray):
+        """integrates data over a grid using numba"""
+        if np.isrealobj(arr):
+            # special case of a real array
+
+            def laplace_real(arr: np.ndarray, out: np.ndarray) -> None:
+                """apply Laplace operator to array `arr`"""
+                out[:] = fft.ifft(factor * fft.fft(arr[1:-1])).real
+
+            return laplace_real
+
+        else:
+            return laplace_impl
+
     @jit
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply Laplace operator to array `arr`"""
-        # TODO: support complex fields (by not casting to `real`
-        out[:] = fft.ifft(factor * fft.fft(arr[1:-1])).real
+        laplace_impl(arr, out)
 
     return laplace  # type: ignore
 
@@ -472,11 +491,30 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
     ks = [fft.fftfreq(grid.shape[i], grid.discretization[i]) for i in range(2)]
     factor = -4 * np.pi**2 * (ks[0][:, None] ** 2 + ks[1][None, :] ** 2)
 
+    @register_jitable
+    def laplace_impl(arr: np.ndarray, out: np.ndarray) -> None:
+        """apply Laplace operator to array `arr`"""
+        out[:] = fft.ifft2(factor * fft.fft2(arr[1:-1, 1:-1]))
+
+    @overload(laplace_impl)
+    def ol_laplace(arr: np.ndarray, out: np.ndarray):
+        """integrates data over a grid using numba"""
+        if np.isrealobj(arr):
+            # special case of a real array
+
+            def laplace_real(arr: np.ndarray, out: np.ndarray) -> None:
+                """apply Laplace operator to array `arr`"""
+                out[:] = fft.ifft2(factor * fft.fft2(arr[1:-1, 1:-1])).real
+
+            return laplace_real
+
+        else:
+            return laplace_impl
+
     @jit
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
         """apply Laplace operator to array `arr`"""
-        # TODO: support complex fields (by not casting to `real`
-        out[:] = fft.ifft2(factor * fft.fft2(arr[1:-1, 1:-1])).real
+        laplace_impl(arr, out)
 
     return laplace  # type: ignore
 
