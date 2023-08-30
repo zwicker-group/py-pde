@@ -526,9 +526,6 @@ def make_laplace(grid: CartesianGrid, backend: str = "auto") -> OperatorType:
                 f"Spectral Laplace operator not implemented for {dim:d} dimensions"
             )
 
-    # elif backend == "matrix":
-    #     laplace = make_laplace_from_matrix(*_get_laplace_matrix(grid))
-
     elif backend == "scipy":
         laplace = _make_laplace_scipy_nd(grid)
 

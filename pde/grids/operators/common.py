@@ -6,6 +6,7 @@ Common functions that are used by many operators
 
 import logging
 import warnings
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -24,16 +25,16 @@ def uniform_discretization(grid: GridBase) -> float:
         raise RuntimeError("Grid discretization is not uniform")
 
 
-def make_laplace_from_matrix(matrix, vector) -> OperatorType:
+def make_laplace_from_matrix(
+    matrix, vector
+) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
     """make a Laplace operator using matrix vector products
 
     Args:
         matrix:
-            The (sparse) matrix representing the laplace operator on the given
-            grid.
+            (Sparse) matrix representing the laplace operator on the given grid
         vector:
-            The constant part representing the boundary conditions of the
-            Laplace operator.
+            Constant part representing the boundary conditions of the Laplace operator
 
     Returns:
         A function that can be applied to an array of values to obtain the
@@ -43,10 +44,14 @@ def make_laplace_from_matrix(matrix, vector) -> OperatorType:
     mat = matrix.tocsc()
     vec = vector.toarray()[:, 0]
 
-    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace(arr: np.ndarray, out: Optional[np.ndarray] = None) -> np.ndarray:
         """apply the laplace operator to `arr`"""
         result = mat.dot(arr.flat) + vec
-        out[:] = result.reshape(arr.shape)
+        if out is None:
+            out = result.reshape(arr.shape)
+        else:
+            out[:] = result.reshape(arr.shape)
+        return out
 
     return laplace
 
@@ -56,11 +61,10 @@ def make_general_poisson_solver(matrix, vector, method: str = "auto") -> Operato
 
     Args:
         matrix:
-            The (sparse) matrix representing the laplace operator on the given
-            grid.
+            The (sparse) matrix representing the laplace operator on the given grid.
         vector:
-            The constant part representing the boundary conditions of the
-            Laplace operator.
+            The constant part representing the boundary conditions of the Laplace
+            operator.
         method (str):
             The chosen method for implementing the operator
 

@@ -8,8 +8,16 @@ import numpy as np
 import pytest
 from scipy import ndimage
 
-from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
+from pde import (
+    CartesianGrid,
+    ScalarField,
+    Tensor2Field,
+    UnitGrid,
+    VectorField,
+    solve_poisson_equation,
+)
 from pde.grids.operators import cartesian as ops
+from pde.grids.operators.common import make_laplace_from_matrix
 from pde.tools.misc import skipUnlessModule
 
 π = np.pi
@@ -348,3 +356,35 @@ def test_make_derivative2(ndim, axis):
     field.set_ghost_cells(bcs)
     diff(field._data_full, out=res.data)
     np.testing.assert_allclose(grad2.data, res.data, atol=0.1, rtol=0.1)
+
+
+@pytest.mark.parametrize("ndim", [1, 2])
+def test_laplace_matrix(ndim):
+    """test laplace operator implemented using matrix multiplication"""
+    if ndim == 1:
+        periodic, bc = [False], [{"value": "sin(x)"}]
+    elif ndim == 2:
+        periodic, bc = [False, True], [{"value": "sin(x)"}, "periodic"]
+    grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
+    bcs = grid.get_boundary_conditions(bc)
+    laplace = make_laplace_from_matrix(*ops._get_laplace_matrix(bcs))
+
+    field = ScalarField.random_uniform(grid)
+    res1 = field.laplace(bcs)
+    res2 = laplace(field.data)
+
+    np.testing.assert_allclose(res1.data, res2)
+
+
+@pytest.mark.parametrize("grid", [UnitGrid([12]), CartesianGrid([[0, 1], [4, 5.5]], 8)])
+@pytest.mark.parametrize("bc_val", ["auto_periodic_neumann", {"value": "sin(x)"}])
+def test_poisson_solver_cartesian(grid, bc_val):
+    """test the poisson solver on cartesian grids"""
+    bcs = grid.get_boundary_conditions(bc_val)
+    d = ScalarField.random_uniform(grid)
+    d -= d.average  # balance the right hand side
+    sol = solve_poisson_equation(d, bcs)
+    test = sol.laplace(bcs)
+    np.testing.assert_allclose(
+        test.data, d.data, err_msg=f"bcs={bc_val}, grid={grid}", rtol=1e-6
+    )

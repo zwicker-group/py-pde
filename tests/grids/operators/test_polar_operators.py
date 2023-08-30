@@ -13,6 +13,8 @@ from pde import (
     VectorField,
     solve_poisson_equation,
 )
+from pde.grids.operators.common import make_laplace_from_matrix
+from pde.grids.operators.polar_sym import _get_laplace_matrix
 
 
 def test_findiff_polar():
@@ -116,17 +118,17 @@ def test_grid_div_grad_polar():
     np.testing.assert_allclose(b.data[1:-1], res.data[1:-1], rtol=0.1, atol=0.1)
 
 
-def test_poisson_solver_polar():
+@pytest.mark.parametrize("grid", [PolarSymGrid(4, 8), PolarSymGrid([2, 4], 8)])
+@pytest.mark.parametrize("bc_val", ["auto_periodic_neumann", {"value": 1}])
+def test_poisson_solver_polar(grid, bc_val):
     """test the poisson solver on Polar grids"""
-    for grid in [PolarSymGrid(4, 8), PolarSymGrid([2, 4], 8)]:
-        for bc_val in ["auto_periodic_neumann", {"value": 1}]:
-            bcs = grid.get_boundary_conditions(bc_val)
-            d = ScalarField.random_uniform(grid)
-            d -= d.average  # balance the right hand side
-            sol = solve_poisson_equation(d, bcs)
-            test = sol.laplace(bcs)
-            msg = f"grid={grid}, bcs={bc_val}"
-            np.testing.assert_allclose(test.data, d.data, err_msg=msg, rtol=1e-6)
+    bcs = grid.get_boundary_conditions(bc_val)
+    d = ScalarField.random_uniform(grid)
+    d -= d.average  # balance the right hand side
+    sol = solve_poisson_equation(d, bcs)
+    test = sol.laplace(bcs)
+    msg = f"grid={grid}, bcs={bc_val}"
+    np.testing.assert_allclose(test.data, d.data, err_msg=msg, rtol=1e-6)
 
 
 def test_examples_scalar_polar():
@@ -186,3 +188,20 @@ def test_examples_tensor_polar():
     res = tf.divergence([{"derivative": 0}, {"value": np.ones((2, 2))}])
     expect = VectorField.from_expression(grid, ["3 * r**2", "5 * r**2"])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
+
+
+@pytest.mark.parametrize("r_inner", (0, 1))
+def test_laplace_matrix(r_inner):
+    """test laplace operator implemented using matrix multiplication"""
+    grid = PolarSymGrid((r_inner, 2), 16)
+    if r_inner == 0:
+        bcs = grid.get_boundary_conditions({"neumann"})
+    else:
+        bcs = grid.get_boundary_conditions({"value": "sin(r)"})
+    laplace = make_laplace_from_matrix(*_get_laplace_matrix(bcs))
+
+    field = ScalarField.random_uniform(grid)
+    res1 = field.laplace(bcs)
+    res2 = laplace(field.data)
+
+    np.testing.assert_allclose(res1.data, res2)
