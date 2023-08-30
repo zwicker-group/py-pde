@@ -1731,7 +1731,7 @@ class ConstBCBase(BCBase):
         # Note that we tried using register_jitable here, but this lead to
         # problems with address_as_void_pointer
 
-        @nb.jit(nb.typeof(self._value)(), inline="always")
+        @nb.njit(nb.typeof(self._value)(), inline="always")
         def get_value() -> np.ndarray:
             """helper function returning the linked array"""
             return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
