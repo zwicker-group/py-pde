@@ -9,6 +9,7 @@ This module implements differential operators on spherical grids
    make_divergence
    make_vector_gradient
    make_tensor_divergence
+   make_poisson_solver
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
