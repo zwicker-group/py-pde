@@ -449,7 +449,6 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
     @register_jitable
     def laplace_impl(arr: np.ndarray, out: np.ndarray) -> None:
         """apply Laplace operator to array `arr`"""
-        # FIXME: seems to be incorrect for complex fields
         out[:] = fft.ifft(factor * fft.fft(arr[1:-1]))
 
     @overload(laplace_impl)
@@ -495,7 +494,6 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
     @register_jitable
     def laplace_impl(arr: np.ndarray, out: np.ndarray) -> None:
         """apply Laplace operator to array `arr`"""
-        # FIXME: seems to be incorrect for complex fields
         out[:] = fft.ifft2(factor * fft.fft2(arr[1:-1, 1:-1]))
 
     @overload(laplace_impl)
