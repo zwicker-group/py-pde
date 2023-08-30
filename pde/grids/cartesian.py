@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
 
 
-class CartesianGrid(GridBase):  # lgtm [py/missing-equals]
+class CartesianGrid(GridBase):
     r""" d-dimensional Cartesian grid with uniform discretization for each axis
 
     The grids can be thought of as a collection of n-dimensional boxes, called cells, of
