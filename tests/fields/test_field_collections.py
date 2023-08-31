@@ -37,7 +37,7 @@ def test_collections():
     assert fields.data.shape == (7, 3, 4)
     assert isinstance(str(fields), str)
 
-    fields2 = FieldCollection.from_dict({"s": sf, "v": vf, "t": tf}, copy_fields=True)
+    fields2 = FieldCollection({"s": sf, "v": vf, "t": tf}, copy_fields=True)
     assert fields == fields2
     assert fields2.labels == ["s", "v", "t"]
     assert not np.shares_memory(fields[0].data, fields2[0].data)

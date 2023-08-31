@@ -422,7 +422,7 @@ def test_evaluate_func_collection():
     grid = UnitGrid([3])
     field = ScalarField.from_expression(grid, "x")
     vec = VectorField.from_expression(grid, ["x"])
-    col = FieldCollection.from_dict({"v": vec, "a": field})
+    col = FieldCollection({"v": vec, "a": field})
 
     res = evaluate("inner(v, v)", col)
     assert isinstance(res, ScalarField)
