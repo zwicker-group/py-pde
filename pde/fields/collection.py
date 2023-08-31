@@ -8,12 +8,14 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
 from typing import (
     Any,
     Callable,
     Dict,
     Iterator,
     List,
+    Mapping,
     Optional,
     Sequence,
     Union,
@@ -42,7 +44,7 @@ class FieldCollection(FieldBase):
 
     def __init__(
         self,
-        fields: Sequence[DataFieldBase],
+        fields: Union[Sequence[DataFieldBase], Mapping[str, DataFieldBase]],
         *,
         copy_fields: bool = False,
         label: Optional[str] = None,
@@ -51,8 +53,9 @@ class FieldCollection(FieldBase):
     ):
         """
         Args:
-            fields:
-                Sequence of the individual fields
+            fields (sequence or mapping of :class:`DataFieldBase`):
+                Sequence or mapping of the individual fields. If a mapping is used, the
+                keys set the names of the individual fields.
             copy_fields (bool):
                 Flag determining whether the individual fields given in `fields` are
                 copied. Note that fields are always copied if some of the supplied
@@ -73,6 +76,13 @@ class FieldCollection(FieldBase):
         if isinstance(fields, FieldCollection):
             # support assigning a field collection for convenience
             fields = fields.fields
+        elif isinstance(fields, Mapping):
+            # support setting fields using a mapping
+            if labels is not None:
+                self._logger = logging.getLogger(self.__class__.__name__)
+                self._logger.warning("`labels` argument is ignored")
+            labels = list(fields.keys())
+            fields = list(fields.values())
 
         if len(fields) == 0:
             raise ValueError("At least one field must be defined")
@@ -270,13 +280,11 @@ class FieldCollection(FieldBase):
                 The data type of the field. All the numpy dtypes are supported. If
                 omitted, it will be determined from `data` automatically.
         """
-        return cls(
-            list(fields.values()),
-            copy_fields=copy_fields,
-            label=label,
-            labels=list(fields.keys()),
-            dtype=dtype,
+        warnings.warn(
+            "`FieldCollection.from_dict` is deprecated – use FieldCollection() instead",
+            DeprecationWarning,
         )
+        return cls(fields, copy_fields=copy_fields, label=label, dtype=dtype)
 
     @classmethod
     def from_state(
