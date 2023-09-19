@@ -33,6 +33,9 @@ also require a slightly deeper understanding for proper use:
 * :class:`~pde.grids.boundaries.local.ExpressionDerivativeBC`:
   Imposing the derivative of a field in the outward normal direction at the boundary
   based on a mathematical expression or a python function.
+* :class:`~pde.grids.boundaries.local.ExpressionMixedBC`:
+  Imposing a mixed (Robin) boundary condition using mathematical expressions or python
+  functions.
 * :class:`~pde.grids.boundaries.local.UserBC`:
   Allows full control for setting virtual points, values, or derivatives. The boundary
   conditions are never enforced automatically. It is thus the user's responsibility to
@@ -1114,6 +1117,7 @@ class ExpressionBC(BCBase):
         *,
         rank: int = 0,
         value: Union[float, str, Callable] = 0,
+        const: Union[float, str, Callable] = 0,
         target: str = "virtual_point",
     ):
         r"""
@@ -1138,9 +1142,14 @@ class ExpressionBC(BCBase):
                 of `target` from the closest field value `adjacent_value`, the spatial
                 discretization `dx` in the direction perpendicular to the wall, the
                 spatial coordinates of the wall point, and time `t`.
+            const (float or str or callable):
+                An expression similar to `value`, which is only used for mixed (Robin)
+                boundary conditions. Note that the implementation currently does not
+                support that one argument is given as a callable function while the
+                other is defined via an expression.
             target (str):
                 Selects which value is actually set. Possible choices include `value`,
-                `derivative`, and `virtual_point`.
+                `derivative`, `mixed`, and `virtual_point`.
         """
         super().__init__(grid, axis, upper, rank=rank)
 
@@ -1150,18 +1159,23 @@ class ExpressionBC(BCBase):
             )
 
         # store data for later use
-        self._input: Dict[str, Any] = {"expression": value, "target": target}
+        self._input: Dict[str, Any] = {
+            "expression": value,
+            "const_expr": const,
+            "target": target,
+        }
         signature = ["value", "dx"] + grid.axes + ["t"]
 
-        if callable(value):
+        if callable(value) or callable(const):
             # `value` is a callable function
             self._is_func = True
-            value_func = register_jitable(value)
 
             if target == "virtual_point":
-                self._func = value_func
+                self._func = register_jitable(value)
 
             elif target == "value":
+                # Dirichlet boundary condition
+                value_func = register_jitable(value)
 
                 @register_jitable
                 def virtual_from_value(adjacent_value, *args):
@@ -1170,12 +1184,44 @@ class ExpressionBC(BCBase):
                 self._func = virtual_from_value
 
             elif target == "derivative":
+                # Neumann boundary condition
+                value_func = register_jitable(value)
 
                 @register_jitable
                 def virtual_from_derivative(adjacent_value, dx, *args):
                     return dx * value_func(adjacent_value, dx, *args) + adjacent_value
 
                 self._func = virtual_from_derivative
+
+            elif target == "mixed":
+                # special case of a Robin boundary condition, which also uses `const`
+                if callable(value):
+                    value_func = register_jitable(value)
+                else:
+                    value_value = float(value)
+
+                    @register_jitable
+                    def value_func(*args):
+                        return value_value
+
+                if callable(const):
+                    const_func = register_jitable(const)
+                else:
+                    const_value = float(const)
+
+                    @register_jitable
+                    def const_func(*args):
+                        return const_value
+
+                @register_jitable
+                def virtual_from_mixed(adjacent_value, dx, *args):
+                    value_dx = dx * value_func(adjacent_value, dx, *args)
+                    const_value = const_func(adjacent_value, dx, *args)
+                    expr_A = 2 * dx / (value_dx + 2) * const_value
+                    expr_B = (value_dx - 2) / (value_dx + 2)
+                    return expr_A - expr_B * adjacent_value
+
+                self._func = virtual_from_mixed
 
             else:
                 raise ValueError(f"Unknown target `{target}` for expression")
@@ -1186,9 +1232,15 @@ class ExpressionBC(BCBase):
             if target == "virtual_point":
                 expression = value
             elif target == "value":
+                # Dirichlet boundary condition
                 expression = f"2 * ({value}) - value"
             elif target == "derivative":
+                # Neumann boundary condition
                 expression = f"dx * ({value}) + value"
+            elif target == "mixed":
+                # special case of a Robin boundary condition, which also uses `const`
+                enumerator = f"2 * dx * ({const}) + (2 - ({value}) * dx) * value"
+                expression = f"({enumerator}) / (({value}) * dx + 2)"
             else:
                 raise ValueError(f"Unknown target `{target}` for expression")
 
@@ -1216,7 +1268,14 @@ class ExpressionBC(BCBase):
                 )
 
     def _repr_value(self):
-        if self._is_func:
+        if self._input["target"] == "mixed":
+            # treat the mixed case separately
+            return [
+                f'target="{self._input["target"]}", '
+                f'value="{self._input["expression"]}", '
+                f'const="{self._input["const_expr"]}"'
+            ]
+        elif self._is_func:
             return [f'{self._input["target"]}=<function>']
         else:
             return [f'{self._input["target"]}="{self._input["expression"]}"']
@@ -1230,6 +1289,7 @@ class ExpressionBC(BCBase):
             expression = "<function>"
         else:
             expression = self._input["expression"]
+        const_expr = self._input["const_expr"]
 
         field = self._field_repr(field_name)
         if target == "virtual_point":
@@ -1239,6 +1299,12 @@ class ExpressionBC(BCBase):
         elif target == "derivative":
             sign = " " if self.upper else "-"
             return f"{sign}∂{field}/∂{axis_name} = {expression}   @ {axis_name}={self.axis_coord}"
+        elif target == "mixed":
+            sign = " " if self.upper else "-"
+            return (
+                f"{sign}∂{field}/∂{axis_name} + ({expression})*{field} = "
+                f"{const_expr}   @ {axis_name}={self.axis_coord}"
+            )
         else:
             raise NotImplementedError(f"Unsupported target `{target}`")
 
@@ -1258,6 +1324,7 @@ class ExpressionBC(BCBase):
             upper=self.upper if upper is None else upper,
             rank=self.rank if rank is None else rank,
             value=self._input["expression"],
+            const=self._input["const_expr"],
             target=self._input["target"],
         )
 
@@ -1280,6 +1347,7 @@ class ExpressionBC(BCBase):
             upper=self.upper,
             rank=self.rank,
             value=self._input["expression"],
+            const=self._input["const_expr"],
             target=self._input["target"],
         )
 
@@ -1439,6 +1507,35 @@ class ExpressionDerivativeBC(ExpressionBC):
         target: str = "derivative",
     ):
         super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
+
+    __init__.__doc__ = ExpressionBC.__init__.__doc__
+
+
+class ExpressionMixedBC(ExpressionBC):
+    """represents a boundary whose outward derivative is calculated from an expression
+
+    The expression is given as a string and will be parsed by :mod:`sympy`. The
+    expression can contain typical mathematical operators and may depend on the value
+    at the last support point next to the boundary (`value`), spatial coordinates
+    defined by the grid marking the boundary point (e.g., `x` or `r`), and time `t`.
+    """
+
+    names = ["mixed_expression", "mixed_expr", "robin_expression", "robin_expr"]
+
+    def __init__(
+        self,
+        grid: GridBase,
+        axis: int,
+        upper: bool,
+        *,
+        rank: int = 0,
+        value: Union[float, str, Callable] = 0,
+        const: Union[float, str, Callable] = 0,
+        target: str = "mixed",
+    ):
+        super().__init__(
+            grid, axis, upper, rank=rank, value=value, const=const, target=target
+        )
 
     __init__.__doc__ = ExpressionBC.__init__.__doc__
 

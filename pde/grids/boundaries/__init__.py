@@ -117,6 +117,9 @@ The :mod:`~pde.grids.boundaries` package defines the following classes:
 * :class:`~pde.grids.boundaries.local.MixedBC`:
   Imposing the derivative of the field in the outward normal direction proportional to
   its value at the boundary  
+* :class:`~pde.grids.boundaries.local.ExpressionMixedBC`:
+  Imposing the derivative of the field in the outward normal direction proportional to
+  its value at the boundary with coefficients given by expressions or python functions
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing a constant second derivative (curvature) of the field at the boundary
 
