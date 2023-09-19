@@ -60,7 +60,7 @@ class CylindricalSymGrid(GridBase):
     num_axes = 2  # number of independent axes
     axes = ["r", "z"]  # name of the actual axes
     axes_symmetric = ["phi"]
-    coordinate_constraints = [0, 1]  # constraint Cartesian coordinates
+    coordinate_constraints = [0, 1]  # constraint Cartesian x and y coordinates
     boundary_names = {  # name all the boundaries
         "inner": (0, False),
         "outer": (0, True),

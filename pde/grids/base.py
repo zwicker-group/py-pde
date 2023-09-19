@@ -194,7 +194,6 @@ class GridBase(metaclass=ABCMeta):
         if isinstance(state, str):
             state = dict(json.loads(state))
 
-        # create the instance
         # create the instance of the correct class
         class_name = state.pop("class")
         if class_name == cls.__name__:
