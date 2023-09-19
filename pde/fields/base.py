@@ -1721,7 +1721,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     )
                 rank = arr_typ.ndim - num_axes
                 if rank < 1:
-                    raise TypeError("Fields in dot product must have rank >= 1")
+                    raise TypeError(
+                        f"Rank={rank} too small for dot product. Use a normal product "
+                        "instead."
+                    )
                 return rank  # type: ignore
 
             @overload(dot, inline="always")
