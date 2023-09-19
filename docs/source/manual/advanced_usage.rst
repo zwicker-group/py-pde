@@ -114,6 +114,9 @@ In summary, we have the following options for boundary conditions on a field :ma
    * - Robin
      - :math:`\partial_n c + \textrm{value}\cdot c = \textrm{const}`
      - :code:`{"type": "mixed", "value": 2, "const": 7}`
+   * -
+     - :math:`\partial_n c + \textrm{value}\cdot c = \textrm{const}`
+     - :code:`{"type": "mixed_expression", "value": "exp(t)", "const": "3 * x"}`
    * - Curvature
      - :math:`\partial_n^2 c = \textrm{const}`
      - :code:`{"curvature": 3}`
