@@ -210,6 +210,9 @@ class FieldBase(metaclass=ABCMeta):
                 The attributes that describe the current instance
             data (:class:`~numpy.ndarray`, optional):
                 Data values at the support points of the grid defining the field
+
+        Returns:
+            :class:`FieldBase`: The field created from the state
         """
         # base class was chosen => select correct class from attributes
         class_name = attributes.pop("class")
@@ -237,7 +240,8 @@ class FieldBase(metaclass=ABCMeta):
                 field_copy = pde.FieldBase.from_file("test.hdf5")
 
         Args:
-            filename (str): Path to the file being read
+            filename (str):
+                Path to the file being read
 
         Returns:
             :class:`FieldBase`: The field with the appropriate sub-class
@@ -280,10 +284,10 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def grid(self) -> GridBase:
-        """GridBase: The grid on which the field is defined"""
+        """:class:`~pde.grids.base,GridBase`: The grid on which the field is defined"""
         return self._grid
 
-    def to_file(self, filename: str, **kwargs):
+    def to_file(self, filename: str, **kwargs) -> None:
         r"""store field in a file
 
         The extension of the filename determines what format is being used. If it ends
@@ -324,7 +328,7 @@ class FieldBase(metaclass=ABCMeta):
         else:
             raise ValueError(f"Do not know how to save data to `*{extension}`")
 
-    def _write_hdf_dataset(self, hdf_path, key: str = "data"):
+    def _write_hdf_dataset(self, hdf_path, key: str = "data") -> None:
         """write data to a given hdf5 path `hdf_path`"""
         # write the data
         dataset = hdf_path.create_dataset(key, data=self.data)
@@ -347,7 +351,9 @@ class FieldBase(metaclass=ABCMeta):
     ) -> TField:
         ...
 
-    def assert_field_compatible(self, other: FieldBase, accept_scalar: bool = False):
+    def assert_field_compatible(
+        self, other: FieldBase, accept_scalar: bool = False
+    ) -> None:
         """checks whether `other` is compatible with the current field
 
         Args:
@@ -437,7 +443,7 @@ class FieldBase(metaclass=ABCMeta):
                 A function calculating the result
 
         Returns:
-            FieldBase: An field that contains the result of the operation.
+            :class:`FieldBase`: An field that contains the result of the operation.
         """
         return self.__class__(grid=self.grid, data=op(self.data), label=self.label)
 
@@ -452,11 +458,18 @@ class FieldBase(metaclass=ABCMeta):
         return self._unary_operation(np.imag)
 
     def conjugate(self: TField) -> TField:
-        """returns complex conjugate of the field"""
+        """returns complex conjugate of the field
+
+        Returns:
+            :class:`FieldBase`: the complex conjugated field
+        """
         return self._unary_operation(np.conjugate)
 
     def __neg__(self):
-        """return the negative of the current field"""
+        """return the negative of the current field
+
+        :class:`FieldBase`: The negative of the current field
+        """
         return self._unary_operation(np.negative)
 
     def _binary_operation(
@@ -473,7 +486,7 @@ class FieldBase(metaclass=ABCMeta):
                 Flag determining whether the second operator must be a scalar
 
         Returns:
-            FieldBase: An field that contains the result of the operation. If
+            :class:`FieldBase`: An field that contains the result of the operation. If
             `scalar_second == True`, the type of FieldBase is the same as `self`
         """
         # determine the dtype of the output
@@ -526,7 +539,7 @@ class FieldBase(metaclass=ABCMeta):
                 Flag determining whether the second operator must be a scalar.
 
         Returns:
-            FieldBase: The field `self` with updated data
+            :class:`FieldBase`: The field `self` with updated data
         """
         if isinstance(other, FieldBase):
             # right operator is a field
@@ -638,7 +651,7 @@ class FieldBase(metaclass=ABCMeta):
                 Only used when `func` is a string.
 
         Returns:
-            Field with new data. This is identical to `out` if it was given.
+            :class:`FieldBase`: Field with new data. Identical to `out` if given.
         """
         if isinstance(func, str):
             # function is given as an expression that will be evaluated
@@ -694,7 +707,9 @@ class FieldBase(metaclass=ABCMeta):
     def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
         ...
 
-    def plot_interactive(self, viewer_args: Optional[Dict[str, Any]] = None, **kwargs):
+    def plot_interactive(
+        self, viewer_args: Optional[Dict[str, Any]] = None, **kwargs
+    ) -> None:
         """create an interactive plot of the field using :mod:`napari`
 
         For a detailed description of the launched program, see the
@@ -878,7 +893,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             vmax (float):
                 Largest random value
             label (str, optional):
-                Name of the field
+                Name of the returned field
             dtype (numpy dtype):
                 The data type of the field. If omitted, it defaults to `double` if both
                 `vmin` and `vmax` are real, otherwise it is `complex`.
@@ -937,7 +952,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 scaled by the inverse volume of the grid cell; this is for instance
                 useful for concentration fields, which vary less in larger volumes).
             label (str, optional):
-                Name of the field
+                Name of the returned field
             dtype (numpy dtype):
                 The data type of the field. If omitted, it defaults to `double` if both
                 `mean` and `std` are real, otherwise it is `complex`.
@@ -1016,7 +1031,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 resulting in products and sums of the values along axes,
                 respectively.
             label (str, optional):
-                Name of the field
+                Name of the returned field
             dtype (numpy dtype):
                 The data type of the field. If omitted, it defaults to `double`.
             rng (:class:`~numpy.random.Generator`):
@@ -1077,7 +1092,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             scale (float):
                 Scaling factor :math:`\Gamma` determining noise strength
             label (str, optional):
-                Name of the field
+                Name of the returned field
             dtype (numpy dtype):
                 The data type of the field. If omitted, it defaults to `double`.
             rng (:class:`~numpy.random.Generator`):
@@ -1105,6 +1120,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         Args:
             rank (int): The rank of the tensor field
+
+        Returns:
+            The DataField class that corresponds to the rank
         """
         for field_cls in cls._subclasses.values():
             if (
@@ -1128,6 +1146,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 The attributes that describe the current instance
             data (:class:`~numpy.ndarray`, optional):
                 Data values at the support points of the grid defining the field
+
+        Returns:
+            :class:`DataFieldBase`: The instance created from the stored state
         """
         if "class" in attributes:
             class_name = attributes.pop("class")
@@ -1142,7 +1163,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         dtype: Optional[DTypeLike] = None,
     ) -> TDataField:
-        """return a copy of the data, but not of the grid
+        """return a new field with the data (but not the grid) copied
 
         Args:
             label (str, optional):
@@ -1150,6 +1171,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             dtype (numpy dtype):
                 The data type of the field. If omitted, it will be determined from
                 `data` automatically or the dtype of the current field is used.
+
+        Returns:
+            :class:`DataFieldBase`: A copy of the current field
         """
         if label is None:
             label = self.label
@@ -1188,7 +1212,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 results[key] = json.loads(value)
         return results
 
-    def _write_to_image(self, filename: str, **kwargs):
+    def _write_to_image(self, filename: str, **kwargs) -> None:
         r"""write data to image
 
         Args:
@@ -1519,7 +1543,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @property
     def average(self) -> NumberOrArray:
-        """determine the average of data
+        """float or :class:`~numpy.ndarray`: the average of data
 
         This is calculated by integrating each component of the field over space
         and dividing by the grid volume
@@ -1528,7 +1552,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @property
     def fluctuations(self) -> NumberOrArray:
-        """:class:`~numpy.ndarray`: fluctuations over the entire space.
+        """float or :class:`~numpy.ndarray`: quantification of the average fluctuations
 
         The fluctuations are defined as the standard deviation of the data scaled by the
         cell volume. This definition makes the fluctuations independent of the
@@ -1547,7 +1571,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @property
     def magnitude(self) -> float:
-        """float: determine the magnitude of the field.
+        """float: determine the (scalar) magnitude of the field
 
         This is calculated by getting a scalar field using the default arguments of the
         :func:`to_scalar` method, averaging the result over the whole grid, and taking
@@ -1584,12 +1608,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Optional field to which the  result is written.
             label (str, optional):
                 Name of the returned field
+            args (dict):
+                Additional arguments for the boundary conditions
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 
         Returns:
-            Field data after applying the operator. This field is identical to `out` if
-            this argument was specified.
+            :class:`DataFieldBase`: Field data after applying the operator. This field
+            is identical to `out` if this argument was specified.
         """
         # get information about the operator
         operator_info = self.grid._get_operator_info(operator)
@@ -1637,6 +1663,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Optional field to which the  result is written.
             label (str, optional):
                 Name of the returned field
+            args (dict):
+                Additional arguments for the boundary conditions
             **kwargs:
                 Additional arguments affecting how the operator behaves.
 
@@ -1829,17 +1857,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     ) -> TDataField:
         """applies Gaussian smoothing with the given standard deviation
 
-        This function respects periodic boundary conditions of the underlying
-        grid, using reflection when no periodicity is specified.
+        This function respects periodic boundary conditions of the underlying grid,
+        using reflection when no periodicity is specified.
 
-        sigma (float):
-            Gives the standard deviation of the smoothing in real length units
-            (default: 1)
-        out (FieldBase, optional):
-            Optional field into which the smoothed data is stored. Setting this
-            to the input field enables in-place smoothing.
-        label (str, optional):
-            Name of the returned field
+        Args:
+            sigma (float):
+                Gives the standard deviation of the smoothing in real length units
+                (default: 1)
+            out (FieldBase, optional):
+                Optional field into which the smoothed data is stored. Setting this
+                to the input field enables in-place smoothing.
+            label (str, optional):
+                Name of the returned field
 
         Returns:
             Field with smoothed data. This is stored at `out` if given.

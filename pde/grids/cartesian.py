@@ -2,7 +2,6 @@
 Cartesian grids of arbitrary dimension.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
- 
 """
 
 from __future__ import annotations
@@ -169,6 +168,9 @@ class CartesianGrid(GridBase):
         Args:
             state (dict):
                 The state from which the grid is reconstructed.
+
+        Returns:
+            :class:`CartesianGrid`: the grid re-created from the state data
         """
         state_copy = state.copy()
         obj = cls(
@@ -202,7 +204,7 @@ class CartesianGrid(GridBase):
                 or a single boolean value specifying the same periodicity for all axes.
 
         Returns:
-            :class:`CartesianGrid` representing the region chosen by bounds
+            :class:`CartesianGrid`: representing the region chosen by bounds
         """
         return CartesianGrid(bounds, shape, periodic)
 
@@ -222,9 +224,12 @@ class CartesianGrid(GridBase):
         """generates all mirror points corresponding to `point`
 
         Args:
-            point (:class:`~numpy.ndarray`): the point within the grid
-            with_self (bool): whether to include the point itself
-            only_periodic (bool): whether to only mirror along periodic axes
+            point (:class:`~numpy.ndarray`):
+                The point within the grid
+            with_self (bool):
+                Whether to include the point itself
+            only_periodic (bool):
+                Whether to only mirror along periodic axes
 
         Returns:
             A generator yielding the coordinates that correspond to mirrors
@@ -305,8 +310,8 @@ class CartesianGrid(GridBase):
                 a letter denoting the axis.
 
         Returns:
-            A dictionary with information about the line cut, which is
-            convenient for plotting.
+            dict: A dictionary with information about the line cut, which is convenient
+            for plotting.
         """
         if data.shape[-self.dim :] != self.shape:
             raise ValueError(
@@ -365,10 +370,11 @@ class CartesianGrid(GridBase):
         """return a 2d-image of the data
 
         Args:
-            data (:class:`~numpy.ndarray`): The values at the grid points
+            data (:class:`~numpy.ndarray`):
+                The values at the grid points
 
         Returns:
-            A dictionary with information about the image, which is  convenient
+            dict: A dictionary with information about the image, which is  convenient
             for plotting.
         """
         if data.shape[-self.dim :] != self.shape:
@@ -405,8 +411,10 @@ class CartesianGrid(GridBase):
         """convert coordinates of a point to Cartesian coordinates
 
         Args:
-            points (:class:`~numpy.ndarray`): Points given in grid coordinates
-            full (bool): Compatibility option not used in this method
+            points (:class:`~numpy.ndarray`):
+                Points given in grid coordinates
+            full (bool):
+                Compatibility option not used in this method
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
@@ -418,7 +426,8 @@ class CartesianGrid(GridBase):
         """convert points given in Cartesian coordinates to this grid
 
         Args:
-            coords (:class:`~numpy.ndarray`): Points in Cartesian coordinates.
+            coords (:class:`~numpy.ndarray`):
+                Points in Cartesian coordinates.
 
         Returns:
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid
@@ -443,6 +452,10 @@ class CartesianGrid(GridBase):
                 point and the origin, so that angles can either be 1 or -1. For 2d
                 systems and 3d systems, polar coordinates and spherical coordinates are
                 used, respectively.
+
+        Returns:
+            :class:`~numpy.ndarray` or tuple of :class:`~numpy.ndarray`:
+                Coordinates values in polar coordinates
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
@@ -622,7 +635,11 @@ class UnitGrid(CartesianGrid):
         return obj
 
     def to_cartesian(self) -> CartesianGrid:
-        """convert unit grid to :class:`CartesianGrid`"""
+        """convert unit grid to :class:`CartesianGrid`
+
+        Returns:
+            :class:`CartesianGrid`: The equivalent cartesian grid
+        """
         return CartesianGrid(
             self.cuboid.bounds, shape=self.shape, periodic=self.periodic
         )

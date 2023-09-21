@@ -7,7 +7,6 @@ represented as a scalar field on the same grid if the θ-component of the vector
 vanishes.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
- 
 """
 
 from __future__ import annotations
@@ -38,8 +37,10 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
     """Return the volume of a sphere with a given radius
 
     Args:
-        radius (float or :class:`~numpy.ndarray`): Radius of the sphere
-        dim (int): Dimension of the space
+        radius (float or :class:`~numpy.ndarray`):
+            Radius of the sphere
+        dim (int):
+            Dimension of the space
 
     Returns:
         float or :class:`~numpy.ndarray`: Volume of the sphere
@@ -83,11 +84,11 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         r"""
         Args:
             radius (float or tuple of floats):
-                radius :math:`R_\mathrm{outer}` in case a simple float is given.
-                If a tuple is supplied it is interpreted as the inner and outer
-                radius, :math:`(R_\mathrm{inner}, R_\mathrm{outer})`.
-            shape (tuple or int): A single number setting the number :math:`N`
-                of support points along the radial coordinate
+                Radius :math:`R_\mathrm{outer}` in case a simple float is given. If a
+                tuple is supplied it is interpreted as the inner and outer radius,
+                :math:`(R_\mathrm{inner}, R_\mathrm{outer})`.
+            shape (tuple or int):
+                The number :math:`N` of support points along the radial coordinate.
         """
         super().__init__()
         shape_list = _check_shape(shape)
@@ -140,12 +141,13 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
     ) -> SphericalSymGridBase:
         """
         Args:
-            bounds (tuple): Give the coordinate range for the radial axis.
-            shape (tuple): The number of support points for the radial axis
-            periodic (bool or list): Not used
+            bounds (tuple):
+                Give the coordinate range for the radial axis.
+            shape (tuple):
+                The number of support points for the radial axis
 
         Returns:
-            SphericalGridBase representing the region chosen by bounds
+            :class:`SphericalGridBase`: represents the region chosen by bounds
         """
         if len(bounds) != 1:
             raise ValueError(
@@ -258,9 +260,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             data (:class:`~numpy.ndarray`):
                 The values at the grid points
             extract (str):
-                Determines which cut is done through the grid. This parameter is
-                mainly supplied for a consistent interface and has no effect for
-                polar grids.
+                Determines which cut is done through the grid. This parameter is mainly
+                supplied for a consistent interface and has no effect for polar grids.
 
         Returns:
             A dictionary with information about the line cut, which is
@@ -289,17 +290,17 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             data (:class:`~numpy.ndarray`):
                 The values at the grid points
             performance_goal (str):
-                Determines the method chosen for interpolation. Possible options
-                are `speed` and `quality`.
+                Determines the method chosen for interpolation. Possible options are
+                `speed` and `quality`.
             fill_value (float):
-                The value assigned to invalid positions (those inside the hole
-                or outside the region).
+                The value assigned to invalid positions (those inside the hole or
+                outside the region).
             masked (bool):
-                Whether a :class:`numpy.ma.MaskedArray` is returned for the data
-                instead of the normal :class:`~numpy.ndarray`.
+                Whether a :class:`numpy.ma.MaskedArray` is returned for the data instead
+                of the normal :class:`~numpy.ndarray`.
 
         Returns:
-            A dictionary with information about the image, which is  convenient
+            :dict: A dictionary with information about the image, which is  convenient
             for plotting.
         """
         from scipy import interpolate
@@ -356,9 +357,12 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         """generates all mirror points corresponding to `point`
 
         Args:
-            point (:class:`~numpy.ndarray`): the point within the grid
-            with_self (bool): whether to include the point itself
-            only_periodic (bool): whether to only mirror along periodic axes
+            point (:class:`~numpy.ndarray`):
+                The point within the grid
+            with_self (bool):
+                Whether to include the point itself
+            only_periodic (bool):
+                Whether to only mirror along periodic axes
 
         Returns:
             A generator yielding the coordinates that correspond to mirrors
@@ -449,8 +453,9 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
         Args:
             {PLOT_ARGS}
-            \**kwargs: Extra arguments are passed on the to the matplotlib
-                plotting routines, e.g., to set the color of the lines
+            \**kwargs:
+                Extra arguments are passed on the to the matplotlib plotting routines,
+                e.g., to set the color of the lines
         """
         from matplotlib import collections, patches
 
@@ -508,8 +513,10 @@ class PolarSymGrid(SphericalSymGridBase):
         coordinates will be zero.
 
         Args:
-            points (:class:`~numpy.ndarray`): The grid coordinates of the points
-            full (bool): Flag indicating whether angular coordinates are specified
+            points (:class:`~numpy.ndarray`):
+                The grid coordinates of the points
+            full (bool):
+                Flag indicating whether angular coordinates are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
@@ -573,8 +580,10 @@ class SphericalSymGrid(SphericalSymGridBase):
         coordinates will be zero.
 
         Args:
-            points (:class:`~numpy.ndarray`): The grid coordinates of the points
-            full (bool): Flag indicating whether angular coordinates are specified
+            points (:class:`~numpy.ndarray`):
+                The grid coordinates of the points
+            full (bool):
+                Flag indicating whether angular coordinates are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point

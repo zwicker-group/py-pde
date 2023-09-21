@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Sequence, TypeVar, Union
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 from .typing import ArrayLike, Number
 
@@ -352,7 +353,9 @@ def get_common_dtype(*args):
     return np.double
 
 
-def number_array(data: ArrayLike, dtype=None, copy: bool = True) -> np.ndarray:
+def number_array(
+    data: ArrayLike, dtype: DTypeLike = None, copy: bool = True
+) -> np.ndarray:
     """convert an array with arbitrary dtype either to np.double or np.cdouble
 
     Args:

@@ -50,8 +50,10 @@ def _subdivide(num: int, chunks: int) -> np.ndarray:
     r"""subdivide `num` intervals in `chunk` chunks
 
     Args:
-        num (int): Number of intervals
-        chunks (int): Number of chunks
+        num (int):
+            Number of intervals
+        chunks (int):
+            Number of chunks
 
     Returns:
         list: The number of intervals per chunk
@@ -65,8 +67,10 @@ def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> List[GridBa
     """subdivide the grid along a given axis
 
     Args:
-        axis (int): The axis along which the subdivision will happen
-        chunks (int): The number of chunks along this axis
+        axis (int):
+            The axis along which the subdivision will happen
+        chunks (int):
+            The number of chunks along this axis
 
     Returns:
         list: A list of subgrids
@@ -152,7 +156,7 @@ class GridMesh:
                 nodes.
 
         Returns:
-            :class:`GridMesh`
+            :class:`GridMesh`: The grid mesh created from the grid
         """
         # parse `decomposition`
         try:
@@ -678,7 +682,8 @@ class GridMesh:
         """distribute a value from the main node to all nodes
 
         Args:
-            data: The data that will be broadcasted from the main node
+            data:
+                The data that will be broadcasted from the main node
 
         Returns:
             The same data, but on all nodes
@@ -691,7 +696,8 @@ class GridMesh:
         """gather a value from all nodes
 
         Args:
-            data: The data that will be sent to the main node
+            data:
+                The data that will be sent to the main node
 
         Returns:
             None on all nodes, except the main node, which receives an ordered list with
@@ -705,7 +711,8 @@ class GridMesh:
         """gather a value from reach node and sends them to all nodes
 
         Args:
-            data: The data that will be sent to the main node
+            data:
+                The data that will be sent to the main node
 
         Returns:
             list: data from all nodes.
@@ -715,17 +722,18 @@ class GridMesh:
         return COMM_WORLD.allgather(data)
 
     @plot_on_axes()
-    def plot(self, ax, **kwargs):
+    def plot(self, ax, **kwargs) -> None:
         r"""visualize the grid mesh
 
         Args:
             {PLOT_ARGS}
-            \**kwargs: Extra arguments are passed on the to the matplotlib
-                plotting routines, e.g., to set the color of the lines
+            \**kwargs:
+                Extra arguments are passed on the to the matplotlib plotting routines,
+                e.g., to set the color of the lines
         """
         if self.num_axes not in {1, 2}:
             raise NotImplementedError(
-                f"Plotting is not implemented for grids of dimension {self.dim}"
+                f"Cannot plot data of dimension {self.basegrid.dim}"
             )
 
         kwargs.setdefault("color", "k")

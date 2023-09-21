@@ -2,7 +2,6 @@
 Bases classes
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
- 
 """
 
 from __future__ import annotations
@@ -23,6 +22,7 @@ from typing import (
     Generator,
     Iterator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Sequence,
@@ -189,6 +189,9 @@ class GridBase(metaclass=ABCMeta):
             state (`str` or `dict`):
                 The state from which the grid is reconstructed. If `state` is a
                 string, it is decoded as JSON, which should yield a `dict`.
+
+        Returns:
+            :class:`GridBase`: Grid re-created from the state
         """
         # decode the json data
         if isinstance(state, str):
@@ -229,8 +232,10 @@ class GridBase(metaclass=ABCMeta):
         """return the index belonging to an axis
 
         Args:
-            key (int or str): The index or name of an axis
-            allow_symmetric (bool): Whether axes with assumed symmetry are included
+            key (int or str):
+                The index or name of an axis
+            allow_symmetric (bool):
+                Whether axes with assumed symmetry are included
 
         Returns:
             int: The index of the axis
@@ -264,7 +269,7 @@ class GridBase(metaclass=ABCMeta):
                 e.g., :code:`(1, True)`.
 
         Returns:
-            Tuple: axis index perpendicular to the boundary and a boolean specifying
+            tuple: axis index perpendicular to the boundary and a boolean specifying
                 whether the boundary is at the upper side of the axis or not.
         """
         if isinstance(index, str):
@@ -300,7 +305,12 @@ class GridBase(metaclass=ABCMeta):
         return tuple(slice(1, s + 1) for s in self.shape)
 
     def _make_get_valid(self) -> Callable[[np.ndarray], np.ndarray]:
-        """callable: function to extract the valid part of a full data array"""
+        """create a function to extract the valid part of a full data array
+
+        Returns:
+            callable: Mapping a numpy array containing the full data of the grid to a
+                numpy array of only the valid data
+        """
         num_axes = self.num_axes
 
         @jit
@@ -318,7 +328,12 @@ class GridBase(metaclass=ABCMeta):
         return get_valid  # type: ignore
 
     def _make_set_valid(self) -> Callable[[np.ndarray, np.ndarray], None]:
-        """callable: function to extract the valid part of a full data array"""
+        """create a function to set the valid part of a full data array
+
+        Returns:
+            callable: Takes two numpy arrays, setting the valid data in the first one,
+                using the second array
+        """
         num_axes = self.num_axes
 
         @jit
@@ -456,8 +471,10 @@ class GridBase(metaclass=ABCMeta):
             for curvilinear coordinates.
 
         Args:
-            p1 (:class:`~numpy.ndarray`): First point(s)
-            p2 (:class:`~numpy.ndarray`): Second point(s)
+            p1 (:class:`~numpy.ndarray`):
+                First point(s)
+            p2 (:class:`~numpy.ndarray`):
+                Second point(s)
 
         Returns:
             :class:`~numpy.ndarray`: The difference vectors between the points with
@@ -482,8 +499,10 @@ class GridBase(metaclass=ABCMeta):
             results for coordinates given in curvilinear coordinate systems.
 
         Args:
-            p1 (:class:`~numpy.ndarray`): First position
-            p2 (:class:`~numpy.ndarray`): Second position
+            p1 (:class:`~numpy.ndarray`):
+                First position
+            p2 (:class:`~numpy.ndarray`):
+                Second position
 
         Returns:
             float: Distance between the two positions
@@ -640,7 +659,10 @@ class GridBase(metaclass=ABCMeta):
             return cells  # type: ignore
 
     def transform(
-        self, coordinates: np.ndarray, source: str, target: str
+        self,
+        coordinates: np.ndarray,
+        source: Literal["cartesian", "cell", "grid"],
+        target: Literal["cartesian", "cell", "grid"],
     ) -> np.ndarray:
         """converts coordinates from one coordinate system to another
 
@@ -659,9 +681,12 @@ class GridBase(metaclass=ABCMeta):
             originating at the origin.
 
         Args:
-            coordinates (:class:`~numpy.ndarray`): The coordinates to convert
-            source (str): The source coordinate system
-            target (str): The target coordinate system
+            coordinates (:class:`~numpy.ndarray`):
+                The coordinates to convert
+            source (str):
+                The source coordinate system
+            target (str):
+                The target coordinate system
 
         Returns:
             :class:`~numpy.ndarray`: The transformed coordinates
@@ -725,7 +750,10 @@ class GridBase(metaclass=ABCMeta):
         ...
 
     def contains_point(
-        self, points: np.ndarray, *, coords: str = "cartesian", wrap: bool = True
+        self,
+        points: np.ndarray,
+        *,
+        coords: Literal["cartesian", "cell", "grid"] = "cartesian",
     ) -> np.ndarray:
         """check whether the point is contained in the grid
 
@@ -1105,12 +1133,20 @@ class GridBase(metaclass=ABCMeta):
             raise NotImplementedError(f"Undefined backend '{backend}'")
 
     def slice(self, indices: Sequence[int]) -> GridBase:
-        """return a subgrid of only the specified axes"""
+        """return a subgrid of only the specified axes
+
+        Args:
+            indices (list):
+                Indices indicating the axes that are retained in the subgrid
+
+        Returns:
+            :class:`GridBase`: The subgrid
+        """
         raise NotImplementedError(
             f"Slicing is not implemented for class {self.__class__.__name__}"
         )
 
-    def plot(self):
+    def plot(self) -> None:
         """visualize the grid"""
         raise NotImplementedError(
             f"Plotting is not implemented for class {self.__class__.__name__}"
@@ -1286,9 +1322,9 @@ class GridBase(metaclass=ABCMeta):
                 point coordinates.
 
         Returns:
-            A function that is called with a coordinate value for the axis. The function
-            returns the indices of the neighboring support points as well as the
-            associated weights
+            callable: A function that is called with a coordinate value for the axis.
+            The function returns the indices of the neighboring support points as well
+            as the associated weights.
         """
         # obtain information on how this axis is discretized
         size = self.shape[axis]
@@ -1377,10 +1413,10 @@ class GridBase(metaclass=ABCMeta):
                 point coordinates.
 
         Returns:
-            A function which returns interpolated values when called with arbitrary
-            positions within the space of the grid. The signature of this function is
-            (data, point), where `data` is the numpy array containing the field data and
-            position denotes the position in grid coordinates.
+            callable: A function which returns interpolated values when called with
+            arbitrary positions within the space of the grid. The signature of this
+            function is (data, point), where `data` is the numpy array containing the
+            field data and position denotes the position in grid coordinates.
         """
         args = {"with_ghost_cells": with_ghost_cells, "cell_coords": cell_coords}
 
@@ -1515,9 +1551,10 @@ class GridBase(metaclass=ABCMeta):
                 boundaries are not checked and the coordinates are used as is.
 
         Returns:
-            A function with signature (data, position, amount), where `data` is the numpy
-            array containing the field data, position is denotes the position in grid
-            coordinates, and `amount` is the  that is to be added to the field.
+            callable: A function with signature (data, position, amount), where `data`
+            is the numpy array containing the field data, position is denotes the
+            position in grid coordinates, and `amount` is the  that is to be added to
+            the field.
         """
         cell_volume = self.make_cell_volume_compiled()
 
@@ -1663,7 +1700,7 @@ class GridBase(metaclass=ABCMeta):
         return insert  # type: ignore
 
     def make_integrator(self) -> Callable[[np.ndarray], NumberOrArray]:
-        """Return function that can be used to integrates discretized data over the grid
+        """return function that can be used to integrates discretized data over the grid
 
         If this function is used in a multiprocessing run (using MPI), the integrals are
         performed on all subgrids and then accumulated. Each process then receives the
@@ -1748,7 +1785,6 @@ class GridBase(metaclass=ABCMeta):
 
 def registered_operators() -> Dict[str, List[str]]:
     """returns all operators that are currently defined
-
 
     Returns:
         dict: a dictionary with the names of the operators defined for each grid class

@@ -2,7 +2,6 @@
 Cylindrical grids with azimuthal symmetry
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
- 
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class CylindricalSymGrid(GridBase):
-    r""" 3-dimensional cylindrical grid assuming polar symmetry 
+    r"""3-dimensional cylindrical grid assuming polar symmetry 
 
     The polar symmetry implies that states only depend on the radial and axial
     coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly as
@@ -138,7 +137,7 @@ class CylindricalSymGrid(GridBase):
         }
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> "CylindricalSymGrid":  # type: ignore
+    def from_state(cls, state: Dict[str, Any]) -> CylindricalSymGrid:  # type: ignore
         """create a field from a stored `state`.
 
         Args:
@@ -177,7 +176,7 @@ class CylindricalSymGrid(GridBase):
                 entry is ignored.
 
         Returns:
-            CylindricalGrid representing the region chosen by bounds
+            :class:`CylindricalSymGrid`: grid representing the region chosen by bounds
         """
         radii, bounds_z = bounds
         if radii[0] != 0:
@@ -186,7 +185,7 @@ class CylindricalSymGrid(GridBase):
 
     @property
     def has_hole(self) -> bool:
-        """returns whether the inner radius is larger than zero"""
+        """bool: whether the inner radius is larger than zero"""
         return self.axes_bounds[0][0] > 0
 
     @property
@@ -283,8 +282,8 @@ class CylindricalSymGrid(GridBase):
                 * `project_r` or `project_radial`: average values for each
                   radial position (axial average)
         Returns:
-            A dictionary with information about the line cut, which is
-            convenient for plotting.
+            dict: A dictionary with information about the line cut, which is convenient
+            for plotting.
         """
         if extract == "auto":
             extract = "cut_axial"
@@ -322,10 +321,11 @@ class CylindricalSymGrid(GridBase):
         """return a 2d-image of the data
 
         Args:
-            data (:class:`~numpy.ndarray`): The values at the grid points
+            data (:class:`~numpy.ndarray`):
+                The values at the grid points
 
         Returns:
-            A dictionary with information about the image, which is  convenient
+            dict: A dictionary with information about the image, which is  convenient
             for plotting.
         """
         bounds_r, bounds_z = self.axes_bounds
@@ -352,9 +352,12 @@ class CylindricalSymGrid(GridBase):
         """generates all mirror points corresponding to `point`
 
         Args:
-            point (:class:`~numpy.ndarray`): the point within the grid
-            with_self (bool): whether to include the point itself
-            only_periodic (bool): whether to only mirror along periodic axes
+            point (:class:`~numpy.ndarray`):
+                The point within the grid
+            with_self (bool):
+                Whether to include the point itself
+            only_periodic (bool):
+                Whether to only mirror along periodic axes
 
         Returns:
             A generator yielding the coordinates that correspond to mirrors
@@ -383,8 +386,10 @@ class CylindricalSymGrid(GridBase):
         """convert coordinates of a point to Cartesian coordinates
 
         Args:
-            points (:class:`~numpy.ndarray`): The grid coordinates of the points
-            full (bool): Flag indicating whether angular coordinates are specified
+            points (:class:`~numpy.ndarray`):
+                The grid coordinates of the points
+            full (bool):
+                Flag indicating whether angular coordinates are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
@@ -430,13 +435,15 @@ class CylindricalSymGrid(GridBase):
         """return spherical coordinates associated with the grid
 
         Args:
-            origin (:class:`~numpy.ndarray`): Coordinates of the origin at which the polar
-                coordinate system is anchored. Note that this must be of the
-                form `[0, 0, z_val]`, where only `z_val` can be chosen freely.
-            ret_angle (bool): Determines whether the azimuthal angle is returned
-                alongside the distance. If `False` only the distance to the
-                origin is  returned for each support point of the grid.
-                If `True`, the distance and angles are returned.
+            origin (:class:`~numpy.ndarray`):
+                Coordinates of the origin at which the polar coordinate system is
+                anchored. Note that this must be of the form `[0, 0, z_val]`, where only
+                `z_val` can be chosen freely.
+            ret_angle (bool):
+                Determines whether the azimuthal angle is returned alongside the
+                distance. If `False` only the distance to the origin is  returned for
+                each support point of the grid. If `True`, the distance and angles are
+                returned.
         """
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
@@ -459,10 +466,10 @@ class CylindricalSymGrid(GridBase):
 
         Args:
             mode (str):
-                Determines how the grid is determined. Setting it to 'valid'
-                only returns points that are fully resolved in the cylindrical
-                grid, e.g., the cylinder is circumscribed. Conversely, 'full'
-                returns all data, so the cylinder is inscribed.
+                Determines how the grid is determined. Setting it to 'valid' only
+                returns points that are fully resolved in the cylindrical grid, e.g.,
+                the cylinder is circumscribed. Conversely, 'full' returns all data, so
+                the cylinder is inscribed.
 
         Returns:
             :class:`pde.grids.cartesian.CartesianGrid`: The requested grid

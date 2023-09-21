@@ -173,7 +173,7 @@ class VectorField(DataFieldBase):
             other (VectorField or Tensor2Field):
                 the second field
             out (ScalarField or VectorField, optional):
-                Optional field to which the  result is written.
+                Optional field to which the result is written.
             conjugate (bool):
                 Whether to use the complex conjugate for the second operand
             label (str, optional):
