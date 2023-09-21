@@ -11,6 +11,7 @@ import itertools
 from typing import List, Tuple
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 from .typing import FloatNumerical
 
@@ -225,7 +226,7 @@ class Cuboid:
         return np.all(c1 <= points, axis=-1) & np.all(points <= c2, axis=-1)  # type: ignore
 
 
-def asanyarray_flags(data: np.ndarray, dtype=None, writeable: bool = True):
+def asanyarray_flags(data: np.ndarray, dtype: DTypeLike = None, writeable: bool = True):
     """turns data into an array and sets the respective flags.
 
     A copy is only made if necessary

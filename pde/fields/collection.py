@@ -23,6 +23,7 @@ from typing import (
 )
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
@@ -49,7 +50,7 @@ class FieldCollection(FieldBase):
         copy_fields: bool = False,
         label: Optional[str] = None,
         labels: Union[List[Optional[str]], _FieldLabels, None] = None,
-        dtype=None,
+        dtype: DTypeLike = None,
     ):
         """
         Args:
@@ -263,7 +264,7 @@ class FieldCollection(FieldBase):
         *,
         copy_fields: bool = False,
         label: Optional[str] = None,
-        dtype=None,
+        dtype: DTypeLike = None,
     ) -> FieldCollection:
         """create a field collection from a dictionary of fields
 
@@ -326,7 +327,7 @@ class FieldCollection(FieldBase):
         with_ghost_cells: bool = True,
         label: Optional[str] = None,
         labels: Union[List[Optional[str]], _FieldLabels, None] = None,
-        dtype=None,
+        dtype: DTypeLike = None,
     ):
         """create a field collection from classes and data
 
@@ -423,7 +424,7 @@ class FieldCollection(FieldBase):
         consts: Optional[Dict[str, NumberOrArray]] = None,
         label: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
-        dtype=None,
+        dtype: DTypeLike = None,
     ) -> FieldCollection:
         """create a field collection on a grid from given expressions
 
@@ -570,7 +571,7 @@ class FieldCollection(FieldBase):
         self: FieldCollection,
         *,
         label: Optional[str] = None,
-        dtype=None,
+        dtype: DTypeLike = None,
     ) -> FieldCollection:
         """return a copy of the data, but not of the grid
 
