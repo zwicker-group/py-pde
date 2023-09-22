@@ -150,27 +150,22 @@ def test_interpolation_bcs():
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_insert_scalar(grid):
+@pytest.mark.parametrize("compiled", [True, False])
+def test_insert_scalar(grid, compiled):
     """test the `insert` method"""
     f = ScalarField(grid)
     a = np.random.random()
 
-    c = tuple(grid.get_random_point(coords="cell"))
-    p = grid.transform(c, "cell", "grid")
-    f.insert(p, a)
-    assert f.data[c] == pytest.approx(a / grid.cell_volumes[c])
+    c = grid.get_random_point(coords="cell").astype(int)  # pick a random cell
+    p = grid.transform(c + 0.5, "cell", "grid")  # point at cell center
+    if compiled:
+        insert = grid.make_inserter_compiled()
+        insert(f.data, p, a)  # add material to cell center
+    else:
+        f.insert(p, a)  # add material to cell center
+    assert f.data[tuple(c)] == pytest.approx(a / grid.cell_volumes[tuple(c)])
 
     f.insert(grid.get_random_point(coords="grid"), a)
-    assert f.integral == pytest.approx(2 * a)
-
-    f.data = 0  # reset
-    insert = grid.make_inserter_compiled()
-    c = tuple(grid.get_random_point(coords="cell"))
-    p = grid.transform(c, "cell", "grid")
-    insert(f.data, p, a)
-    assert f.data[c] == pytest.approx(a / grid.cell_volumes[c])
-
-    insert(f.data, grid.get_random_point(coords="grid"), a)
     assert f.integral == pytest.approx(2 * a)
 
 

@@ -20,7 +20,7 @@ class Requirement:
     """simple class collecting data for a single required python package"""
 
     name: str  # name of the python package
-    version: str  # minimal version
+    version_min: str  # minimal version
     usage: str = ""  # description for how the package is used in py-pde
     relation: Optional[str] = None  # relation used to compare version number
     essential: bool = False  # basic requirement for the package
@@ -30,8 +30,8 @@ class Requirement:
 
     @property
     def short_version(self) -> str:
-        """str: simplified version string"""
-        version = self.version.split(",")[0]  # only use the first part
+        """str: simplified version_min string"""
+        version = self.version_min.split(",")[0]  # only use the first part
         processing = True
         while processing:
             if version.endswith(".0"):
@@ -45,120 +45,122 @@ class Requirement:
 
         Args:
             relation (str):
-                The relation used for version comparison if self.relation is None
+                The relation used for version_min comparison if self.relation is None
 
         Returns:
             str: A string that can be written to a requirements file
         """
         if self.relation is not None:
             relation = self.relation
-        return f"{self.name}{relation}{self.version}"
+        return f"{self.name}{relation}{self.version_min}"
 
 
 REQUIREMENTS = [
     # essential requirements
     Requirement(
         name="matplotlib",
-        version="3.1.0",
+        version_min="3.1.0",
         usage="Visualizing results",
         essential=True,
     ),
     Requirement(
         name="numba",
-        version="0.56.0",
+        version_min="0.56.0",
         usage="Just-in-time compilation to accelerate numerics",
         essential=True,
     ),
     Requirement(
         name="numpy",
-        version="1.22.0",
+        version_min="1.22.0",
         usage="Handling numerical data",
         essential=True,
     ),
     Requirement(
         name="scipy",
-        version="1.10.0",
+        version_min="1.10.0",
         usage="Miscellaneous scientific functions",
         essential=True,
     ),
     Requirement(
         name="sympy",
-        version="1.9.0",
+        version_min="1.9.0",
         usage="Dealing with user-defined mathematical expressions",
         essential=True,
     ),
     Requirement(
         name="tqdm",
-        version="4.60",
+        version_min="4.60",
         usage="Display progress bars during calculations",
         essential=True,
     ),
     # general, optional requirements
     Requirement(
         name="h5py",
-        version="2.10",
+        version_min="2.10",
         usage="Storing data in the hierarchical file format",
         collections={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="pandas",
-        version="1.2",
+        version_min="1.2",
         usage="Handling tabular data",
         collections={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="pyfftw",
-        version="0.12",
+        version_min="0.12",
         usage="Faster Fourier transforms",
         collections={"full"},
     ),
     Requirement(
         name="rocket-fft",
-        version="0.2",
+        version_min="0.2",
         usage="Numba-compiled fast Fourier transforms",
         collections={"full"},
     ),
     Requirement(
         name="ipywidgets",
-        version="7",
+        version_min="7",
         usage="Jupyter notebook support",
         collections={"interactive"},
     ),
     Requirement(
         name="mpi4py",
-        version="3",
+        version_min="3",
         usage="Parallel processing using MPI",
         collections={"multiprocessing"},
     ),
     Requirement(
         name="napari",
-        version="0.4.8",
+        version_min="0.4.8",
         usage="Displaying images interactively",
         collections={"interactive"},
     ),
     Requirement(
         name="numba-mpi",
-        version="0.22",
+        version_min="0.22",
         usage="Parallel processing using MPI+numba",
         collections={"multiprocessing"},
     ),
     # for documentation only
-    Requirement(name="Sphinx", version="4", docs_only=True),
-    Requirement(name="sphinx-autodoc-annotation", version="1.0", docs_only=True),
-    Requirement(name="sphinx-gallery", version="0.6", docs_only=True),
-    Requirement(name="sphinx-rtd-theme", version="1", docs_only=True),
-    Requirement(name="Pillow", version="7.0", docs_only=True),
+    Requirement(name="Sphinx", version_min="4", docs_only=True),
+    Requirement(name="sphinx-autodoc-annotation", version_min="1.0", docs_only=True),
+    Requirement(name="sphinx-gallery", version_min="0.6", docs_only=True),
+    Requirement(name="sphinx-rtd-theme", version_min="1", docs_only=True),
+    Requirement(name="Pillow", version_min="7.0", docs_only=True),
     # for tests only
-    Requirement(name="jupyter_contrib_nbextensions", version="0.5", tests_only=True),
-    Requirement(name="black", version="19.*", tests_only=True),
-    Requirement(name="importlib-metadata", version="5", tests_only=True),
-    Requirement(name="isort", version="5.1", tests_only=True),
-    Requirement(name="mypy", version="0.770", tests_only=True),
-    Requirement(name="notebook", version="6.5", relation="~=", tests_only=True),
-    Requirement(name="pyinstrument", version="3", tests_only=True),
-    Requirement(name="pytest", version="5.4", tests_only=True),
-    Requirement(name="pytest-cov", version="2.8", tests_only=True),
-    Requirement(name="pytest-xdist", version="1.30", tests_only=True),
+    Requirement(
+        name="jupyter_contrib_nbextensions", version_min="0.5", tests_only=True
+    ),
+    Requirement(name="black", version_min="19.*", tests_only=True),
+    Requirement(name="importlib-metadata", version_min="5", tests_only=True),
+    Requirement(name="isort", version_min="5.1", tests_only=True),
+    Requirement(name="mypy", version_min="0.770", tests_only=True),
+    Requirement(name="notebook", version_min="6.5", relation="~=", tests_only=True),
+    Requirement(name="pyinstrument", version_min="3", tests_only=True),
+    Requirement(name="pytest", version_min="5.4", tests_only=True),
+    Requirement(name="pytest-cov", version_min="2.8", tests_only=True),
+    Requirement(name="pytest-xdist", version_min="1.30", tests_only=True),
 ]
 
 
@@ -211,7 +213,7 @@ def write_requirements_csv(
     with open(path, "w") as fp:
         writer = csv.writer(fp)
         if incl_version:
-            writer.writerow(["Package", "Minimal version", "Usage"])
+            writer.writerow(["Package", "Minimal version_min", "Usage"])
         else:
             writer.writerow(["Package", "Usage"])
         for r in sorted(requirements, key=lambda r: r.name.lower()):
@@ -243,7 +245,7 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
 
     # add generated code
     for r in sorted(requirements, key=lambda r: r.name.lower()):
-        content.append(f'check_package_version("{r.name}", "{r.version}")\n')
+        content.append(f'check_package_version("{r.name}", "{r.version_min}")\n')
     content.append("del check_package_version\n")
 
     # write content back to file
@@ -275,7 +277,7 @@ def write_from_template(
     with template_path.open("r") as fp:
         template = Template(fp.read())
 
-    # parse python version
+    # parse python version_min
     major, minor = MAX_PYTHON_VERSION.split(".")
     minor_next = int(minor) + 1
 

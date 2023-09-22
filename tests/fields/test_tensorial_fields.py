@@ -115,29 +115,23 @@ def test_tensor_symmetrize():
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_insert_tensor(grid):
+@pytest.mark.parametrize("compiled", [True, False])
+def test_insert_tensor(grid, compiled):
     """test the `insert` method"""
     f = Tensor2Field(grid)
     a = np.random.random(f.data_shape)
 
-    c = tuple(grid.get_random_point(coords="cell"))
-    c_data = (Ellipsis,) + c
-    p = grid.transform(c, "cell", "grid")
-    f.insert(p, a)
-    np.testing.assert_almost_equal(f.data[c_data], a / grid.cell_volumes[c])
+    c = grid.get_random_point(coords="cell").astype(int)  # pick a random cell
+    c_data = (Ellipsis,) + tuple(c)
+    p = grid.transform(c + 0.5, "cell", "grid")  # point at cell center
+    if compiled:
+        insert = grid.make_inserter_compiled()
+        insert(f.data, p, a)  # add material to cell center
+    else:
+        f.insert(p, a)  # add material to cell center
+    np.testing.assert_almost_equal(f.data[c_data], a / grid.cell_volumes[tuple(c)])
 
     f.insert(grid.get_random_point(coords="grid"), a)
-    np.testing.assert_almost_equal(f.integral, 2 * a)
-
-    f.data = 0  # reset
-    insert = grid.make_inserter_compiled()
-    c = tuple(grid.get_random_point(coords="cell"))
-    c_data = (Ellipsis,) + c
-    p = grid.transform(c, "cell", "grid")
-    insert(f.data, p, a)
-    np.testing.assert_almost_equal(f.data[c_data], a / grid.cell_volumes[c])
-
-    insert(f.data, grid.get_random_point(coords="grid"), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
 

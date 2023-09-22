@@ -260,8 +260,8 @@ class CartesianGrid(GridBase):
         """return a random point within the grid
 
         Args:
-            boundary_distance (float): The minimal distance this point needs to
-                have from all boundaries.
+            boundary_distance (float):
+                The minimal distance this point needs to have from all boundaries.
             coords (str):
                 Determines the coordinate system in which the point is specified. Valid
                 values are `cartesian`, `cell`, and `grid`;
