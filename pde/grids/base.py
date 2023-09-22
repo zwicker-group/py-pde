@@ -640,7 +640,8 @@ class GridBase(metaclass=ABCMeta):
                 marking what cell the point belongs to or whether fractional coordinates
                 are returned. The default is to return integers.
             normalize (bool):
-                Flag indicating whether the points should be normalized
+                Flag indicating whether the points should be normalized, e.g., whether
+                periodic boundary conditions should be imposed.
 
         Returns:
             :class:`~numpy.ndarray`: The cell coordinates
@@ -654,7 +655,7 @@ class GridBase(metaclass=ABCMeta):
         c_min = np.array(self.axes_bounds)[:, 0]
         cells = (coords - c_min) / self.discretization
         if truncate:
-            return cells.astype(np.intc)  # type: ignore
+            return cells.astype(int)  # type: ignore
         else:
             return cells  # type: ignore
 
@@ -666,11 +667,21 @@ class GridBase(metaclass=ABCMeta):
     ) -> np.ndarray:
         """converts coordinates from one coordinate system to another
 
-        Supported coordinate systems include
+        Supported coordinate systems include the following:
 
-        * `cartesian`: Cartesian coordinates where each point carries `dim` values
-        * `cell`: Grid coordinates based on indexing the discretization cells
-        * `grid`: Grid coordinates where each point carries `num_axes` values
+        * `cartesian`:
+            Cartesian coordinates where each point carries `dim` values. These are the
+            true physical coordinates in space.
+        * `grid`:
+            Coordinates values in the coordinate system defined by the grid. A point is
+            thus characterized by `grid.num_axes` values.
+        * `cell`:
+            Normalized grid coordinates based on indexing the discretization cells. A
+            point is characterized by `grid.num_axes` values and the range of values for
+            a given axis is between `0` and `N`, where `N` is the number of grid points.
+            Consequently, the integral part of the cell coordinate denotes the cell,
+            while the fractional part denotes the relative position within the cell. In
+            particular, the cell center is located at `i + 0.5` with `i = 0, ..., N-1`.
 
         Note:
             Some conversion might involve projections if the coordinate system imposes
@@ -706,7 +717,7 @@ class GridBase(metaclass=ABCMeta):
             if target == "grid":
                 return grid_coords
             if target == "cell":
-                return self._grid_to_cell(grid_coords, normalize=False)
+                return self._grid_to_cell(grid_coords, truncate=False, normalize=False)
 
         elif source == "cell":
             # Cell coordinates given
@@ -719,7 +730,7 @@ class GridBase(metaclass=ABCMeta):
 
             # convert cell coordinates to grid coordinates
             c_min = np.array(self.axes_bounds)[:, 0]
-            grid_coords = c_min + (cells + 0.5) * self.discretization
+            grid_coords = c_min + cells * self.discretization
 
             if target == "grid":
                 return grid_coords
@@ -735,7 +746,7 @@ class GridBase(metaclass=ABCMeta):
             if target == "cartesian":
                 return self.point_to_cartesian(grid_coords, full=False)
             elif target == "cell":
-                return self._grid_to_cell(grid_coords, normalize=False)
+                return self._grid_to_cell(grid_coords, truncate=False, normalize=False)
             elif target == "grid":
                 return grid_coords
 
@@ -768,7 +779,7 @@ class GridBase(metaclass=ABCMeta):
             the grid
         """
         cell_coords = self.transform(points, source=coords, target="cell")
-        return np.all((0 <= cell_coords) & (cell_coords < self.shape), axis=-1)  # type: ignore
+        return np.all((0 <= cell_coords) & (cell_coords <= self.shape), axis=-1)  # type: ignore
 
     @abstractmethod
     def iter_mirror_points(
@@ -1401,9 +1412,9 @@ class GridBase(metaclass=ABCMeta):
 
         Args:
             fill (Number, optional):
-                Determines how values out of bounds are handled. If `None`, a
-                `ValueError` is raised when out-of-bounds points are requested.
-                Otherwise, the given value is returned.
+                Determines how values out of bounds are handled. If `None`, `ValueError`
+                is raised when out-of-bounds points are requested. Otherwise, the given
+                value is returned.
             with_ghost_cells (bool):
                 Flag indicating that the interpolator should work on the full data array
                 that includes values for the ghost points. If this is the case, the

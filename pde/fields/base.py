@@ -1346,7 +1346,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 coordinates.
             bc:
                 The boundary conditions applied to the field, which affects values close
-                to the boundary. If omitted, the argument `fill` is used.
+                to the boundary. If omitted, the argument `fill` is used to determine
+                values outside the domain.
                 {ARG_BOUNDARIES_OPTIONAL}
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
@@ -1453,7 +1454,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # determine the grid coordinates next to the chosen points
         low = np.array(grid.axes_bounds)[:, 0]
         c_l, d_l = np.divmod((point - low) / grid.discretization - 0.5, 1.0)
-        c_l = c_l.astype(np.intc)  # support points to the left of the chosen points
+        c_l = c_l.astype(int)  # support points to the left of the chosen points
         w_l = 1 - d_l  # weights of the low point
         w_h = d_l  # weights of the high point
 

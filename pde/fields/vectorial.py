@@ -368,7 +368,7 @@ class VectorField(DataFieldBase):
                 Additional arguments affecting how the operator behaves.
 
         Returns:
-            :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
+            :class:`~pde.fields.scalar.ScalarField`: Divergence of the field
         """
         return self.apply_operator("divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
@@ -398,7 +398,7 @@ class VectorField(DataFieldBase):
                 Additional arguments affecting how the operator behaves.
 
         Returns:
-            :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the operator
+            :class:`~pde.fields.tensorial.Tensor2Field`: Gradient of the field
         """
         return self.apply_operator("vector_gradient", bc=bc, out=out, **kwargs)  # type: ignore
 
@@ -428,7 +428,7 @@ class VectorField(DataFieldBase):
                 Additional arguments affecting how the operator behaves.
 
         Returns:
-            :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
+            :class:`~pde.fields.vectorial.VectorField`: Laplacian of the field
         """
         return self.apply_operator("vector_laplace", bc=bc, out=out, **kwargs)  # type: ignore
 
@@ -457,8 +457,8 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            :class:`pde.fields.scalar.ScalarField`: the scalar field after
-            applying the operation
+            :class:`pde.fields.scalar.ScalarField`:
+                The scalar field after applying the operation
         """
         if scalar == "auto":
             if self.grid.dim > 1 or np.iscomplexobj(self.data):
@@ -503,8 +503,8 @@ class VectorField(DataFieldBase):
             max_points (int):
                 The maximal number of points that is used along each axis. This
                 option can be used to sub-sample the data.
-            \**kwargs: Additional parameters are forwarded to
-                `grid.get_image_data`
+            \**kwargs:
+                Additional parameters forwarded to `grid.get_image_data`
 
         Returns:
             dict: Information useful for plotting an vector field
@@ -559,8 +559,8 @@ class VectorField(DataFieldBase):
 
         Args:
             max_points (int):
-                The maximal number of points that is used along each axis. This
-                option can be used to subsample the data.
+                The maximal number of points that is used along each axis. This option
+                can be used to subsample the data.
             args (dict):
                 Additional arguments returned in the result, which affect how the layer
                 is shown.
