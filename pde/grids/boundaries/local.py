@@ -70,6 +70,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Literal,
     Optional,
     Tuple,
     Type,
@@ -1097,6 +1098,9 @@ class UserBC(BCBase):
         return ghost_cell_setter  # type: ignore
 
 
+ExpressionBCTargetType = Literal["value", "derivative", "mixed", "virtual_point"]
+
+
 class ExpressionBC(BCBase):
     """represents a boundary whose virtual point is calculated from an expression
 
@@ -1118,7 +1122,7 @@ class ExpressionBC(BCBase):
         rank: int = 0,
         value: Union[float, str, Callable] = 0,
         const: Union[float, str, Callable] = 0,
-        target: str = "virtual_point",
+        target: ExpressionBCTargetType = "virtual_point",
     ):
         r"""
         Warning:
@@ -1485,7 +1489,7 @@ class ExpressionValueBC(ExpressionBC):
         *,
         rank: int = 0,
         value: Union[float, str, Callable] = 0,
-        target: str = "value",
+        target: ExpressionBCTargetType = "value",
     ):
         super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
 
@@ -1511,7 +1515,7 @@ class ExpressionDerivativeBC(ExpressionBC):
         *,
         rank: int = 0,
         value: Union[float, str, Callable] = 0,
-        target: str = "derivative",
+        target: ExpressionBCTargetType = "derivative",
     ):
         super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
 
@@ -1538,7 +1542,7 @@ class ExpressionMixedBC(ExpressionBC):
         rank: int = 0,
         value: Union[float, str, Callable] = 0,
         const: Union[float, str, Callable] = 0,
-        target: str = "mixed",
+        target: ExpressionBCTargetType = "mixed",
     ):
         super().__init__(
             grid, axis, upper, rank=rank, value=value, const=const, target=target

@@ -23,7 +23,7 @@ import numpy as np
 
 from ..tools.cuboid import Cuboid
 from ..tools.plotting import plot_on_axes
-from .base import DimensionError, GridBase, _check_shape
+from .base import CoordsType, DimensionError, GridBase, _check_shape
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
@@ -254,7 +254,7 @@ class CartesianGrid(GridBase):
         self,
         *,
         boundary_distance: float = 0,
-        coords: str = "cartesian",
+        coords: CoordsType = "cartesian",
         rng: Optional[np.random.Generator] = None,
     ) -> np.ndarray:
         """return a random point within the grid

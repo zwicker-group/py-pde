@@ -4,7 +4,7 @@ Defines an explicit solver supporting various methods
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, Optional, Tuple
+from typing import Callable, Literal, Optional, Tuple
 
 import numba as nb
 import numpy as np
@@ -24,7 +24,7 @@ class ExplicitSolver(AdaptiveSolverBase):
     def __init__(
         self,
         pde: PDEBase,
-        scheme: str = "euler",
+        scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
         *,
         backend: str = "auto",
         adaptive: bool = False,

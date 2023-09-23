@@ -13,19 +13,17 @@ Functions, classes, and decorators for managing caches
    DictFiniteCapacity
    SerializedDict
 
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import division
 
-import collections  # @UnusedImport
-import collections.abc
+import collections
 import functools
 import logging
 import numbers
 from hashlib import sha1
-from typing import Callable, Dict, Iterable, Optional, TypeVar
+from typing import Callable, Dict, Iterable, Literal, Optional, TypeVar
 
 import numpy as np
 from scipy import sparse
@@ -200,7 +198,12 @@ def hash_readable(obj) -> str:
         return "{name}({args})".format(name=obj.__class__.__name__, args=args)
 
 
-def make_serializer(method: str) -> Callable:
+SerializerMethod = Literal[
+    "hash", "hash_mutable", "hash_readable", "json", "pickle", "yaml"
+]
+
+
+def make_serializer(method: SerializerMethod) -> Callable:
     """returns a function that serialize data with the given method. Note that
     some of the methods destroy information and cannot be reverted.
 
@@ -244,7 +247,7 @@ def make_serializer(method: str) -> Callable:
     raise ValueError("Unknown serialization method `%s`" % method)
 
 
-def make_unserializer(method: str) -> Callable:
+def make_unserializer(method: SerializerMethod) -> Callable:
     """returns a function that unserialize data with the  given method
 
     This is the inverse function of :func:`make_serializer`.
@@ -323,8 +326,8 @@ class SerializedDict(collections.abc.MutableMapping):
 
     def __init__(
         self,
-        key_serialization: str = "pickle",
-        value_serialization: str = "pickle",
+        key_serialization: SerializerMethod = "pickle",
+        value_serialization: SerializerMethod = "pickle",
         storage_dict: Optional[Dict] = None,
     ):
         """provides a dictionary whose keys and values are serialized

@@ -15,6 +15,7 @@ from typing import (
     Callable,
     Iterator,
     List,
+    Literal,
     Optional,
     Sequence,
     Tuple,
@@ -36,6 +37,13 @@ if TYPE_CHECKING:
     from .memory import MemoryStorage  # @UnusedImport
 
 
+WriteModeType = Literal[
+    "append",
+    "readonly" "truncate",
+    "truncate_once",
+]
+
+
 class StorageBase(metaclass=ABCMeta):
     """base class for storing time series of discretized fields
 
@@ -49,7 +57,9 @@ class StorageBase(metaclass=ABCMeta):
     write_mode: str  # mode determining how the storage behaves
 
     def __init__(
-        self, info: Optional[InfoDict] = None, write_mode: str = "truncate_once"
+        self,
+        info: Optional[InfoDict] = None,
+        write_mode: WriteModeType = "truncate_once",
     ):
         """
         Args:

@@ -6,7 +6,7 @@ Common functions that are used by many operators
 
 import logging
 import warnings
-from typing import Callable, Optional
+from typing import Callable, Literal, Optional
 
 import numpy as np
 
@@ -56,7 +56,9 @@ def make_laplace_from_matrix(
     return laplace
 
 
-def make_general_poisson_solver(matrix, vector, method: str = "auto") -> OperatorType:
+def make_general_poisson_solver(
+    matrix, vector, method: Literal["auto", "scipy"] = "auto"
+) -> OperatorType:
     """make an operator that solves Poisson's problem
 
     Args:

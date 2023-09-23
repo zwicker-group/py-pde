@@ -7,7 +7,7 @@ Defines a PDE class whose right hand side is given as a string
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Literal, Optional, Tuple
 
 import numba as nb
 import numpy as np
@@ -231,7 +231,7 @@ class PDE(PDEBase):
         var: str,
         ops: Dict[str, Callable],
         state: FieldBase,
-        backend: str = "numpy",
+        backend: Literal["numpy", "numba"] = "numpy",
     ):
         """compile a function determining the right hand side for one variable
 
@@ -349,7 +349,9 @@ class PDE(PDEBase):
 
         return rhs_func
 
-    def _prepare_cache(self, state: TState, backend: str = "numpy") -> Dict[str, Any]:
+    def _prepare_cache(
+        self, state: TState, backend: Literal["numpy", "numba"] = "numpy"
+    ) -> Dict[str, Any]:
         """prepare the expression by setting internal variables in the cache
 
         Note that the expensive calculations in this method are only carried out if the

@@ -8,7 +8,17 @@ from __future__ import annotations
 
 import numbers
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -267,7 +277,7 @@ class ScalarField(DataFieldBase):
     def project(
         self,
         axes: Union[str, Sequence[str]],
-        method: str = "integral",
+        method: Literal["integral", "average", "mean"] = "integral",
         label: Optional[str] = None,
     ) -> ScalarField:
         """project scalar field along given axes
@@ -323,7 +333,7 @@ class ScalarField(DataFieldBase):
         self,
         position: Dict[str, float],
         *,
-        method: str = "nearest",
+        method: Literal["nearest"] = "nearest",
         label: Optional[str] = None,
     ) -> ScalarField:
         """slice data at a given position

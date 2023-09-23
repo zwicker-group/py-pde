@@ -8,7 +8,17 @@ import copy
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    Literal,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 
@@ -224,7 +234,10 @@ class PDEBase(metaclass=ABCMeta):
         return rhs  # type: ignore
 
     def make_pde_rhs(
-        self, state: TState, backend: str = "auto", **kwargs
+        self,
+        state: TState,
+        backend: Literal["auto", "numpy", "numba"] = "auto",
+        **kwargs,
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """return a function for evaluating the right hand side of the PDE
 
@@ -442,7 +455,10 @@ class PDEBase(metaclass=ABCMeta):
         return sde_rhs  # type: ignore
 
     def make_sde_rhs(
-        self, state: TState, backend: str = "auto", **kwargs
+        self,
+        state: TState,
+        backend: Literal["auto", "numpy", "numba"] = "auto",
+        **kwargs,
     ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the right hand side of the SDE
 
