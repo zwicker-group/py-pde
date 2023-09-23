@@ -78,7 +78,7 @@ def test_storage_persistence(collection, tmp_path):
 
 @skipUnlessModule("h5py")
 @pytest.mark.parametrize("compression", [True, False])
-def test_simulation_persistence(compression, tmp_path):
+def test_simulation_persistence(compression, tmp_path, rng):
     """test whether a tracker can accurately store information about simulation"""
     path = tmp_path / "test_simulation_persistence.hdf5"
     storage = FileStorage(path, compression=compression)
@@ -86,7 +86,7 @@ def test_simulation_persistence(compression, tmp_path):
     # write some simulation data
     pde = DiffusionPDE()
     grid = UnitGrid([16, 16])  # generate grid
-    state = ScalarField.random_uniform(grid, 0.2, 0.3)
+    state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
     pde.solve(state, t_range=0.11, dt=0.001, tracker=storage.tracker(interval=0.05))
     storage.close()
 
@@ -182,14 +182,14 @@ def test_keep_opened(tmp_path):
 
 @skipUnlessModule("h5py")
 @pytest.mark.parametrize("dtype", [bool, float, complex])
-def test_write_types(dtype, tmp_path):
+def test_write_types(dtype, tmp_path, rng):
     """test whether complex data can be written"""
     path = tmp_path / "test_type_writing.hdf5"
 
     grid = UnitGrid([32])
-    c = ScalarField.random_uniform(grid).copy(dtype=dtype)
+    c = ScalarField.random_uniform(grid, rng=rng).copy(dtype=dtype)
     if dtype == complex:
-        c += 1j * ScalarField.random_uniform(grid)
+        c += 1j * ScalarField.random_uniform(grid, rng=rng)
 
     storage = FileStorage(path, keep_opened=False)
     storage.start_writing(c)

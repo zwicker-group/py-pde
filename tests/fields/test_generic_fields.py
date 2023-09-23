@@ -40,17 +40,17 @@ def test_set_label(field_class):
 
 @pytest.mark.parametrize("grid", iter_grids())
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
-def test_interpolation_natural(grid, field_class):
+def test_interpolation_natural(grid, field_class, rng):
     """test some interpolation for natural boundary conditions"""
     msg = f"grid={grid}, field={field_class}"
-    f = field_class.random_uniform(grid)
+    f = field_class.random_uniform(grid, rng=rng)
 
     def get_point():
         if isinstance(grid, CartesianGrid):
-            return grid.get_random_point(boundary_distance=0.5, coords="grid")
+            return grid.get_random_point(boundary_distance=0.5, coords="grid", rng=rng)
         else:
             return grid.get_random_point(
-                boundary_distance=1, avoid_center=True, coords="grid"
+                boundary_distance=1, avoid_center=True, coords="grid", rng=rng
             )
 
     # interpolate at cell center
@@ -62,9 +62,9 @@ def test_interpolation_natural(grid, field_class):
 
 @pytest.mark.parametrize("num", [1, 3])
 @pytest.mark.parametrize("grid", iter_grids())
-def test_shapes_nfields(num, grid):
+def test_shapes_nfields(num, grid, rng):
     """test single component field"""
-    fields = [ScalarField.random_uniform(grid) for _ in range(num)]
+    fields = [ScalarField.random_uniform(grid, rng=rng) for _ in range(num)]
     field = FieldCollection(fields)
     data_shape = (num,) + grid.shape
     np.testing.assert_equal(field.data.shape, data_shape)
@@ -132,11 +132,11 @@ def test_arithmetics(field_class):
     np.testing.assert_allclose(f1_out.data, 8)
 
 
-def test_scalar_arithmetics():
+def test_scalar_arithmetics(rng):
     """test simple arithmetics involving scalar fields"""
     grid = UnitGrid([3, 4])
     s = ScalarField(grid, data=2)
-    v = VectorField.random_uniform(grid)
+    v = VectorField.random_uniform(grid, rng=rng)
 
     for f in [v, FieldCollection([v])]:
         f.data = s
@@ -201,11 +201,11 @@ def test_data_managment(field_class):
 
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
-def test_complex_fields(field_class):
+def test_complex_fields(field_class, rng):
     """test operations on complex fields"""
     grid = UnitGrid([3])
 
-    field = field_class.random_uniform(grid, 0, 1 + 1j)
+    field = field_class.random_uniform(grid, 0, 1 + 1j, rng=rng)
     assert field.is_complex
     assert field.dtype == np.dtype("complex")
 
@@ -215,12 +215,12 @@ def test_complex_fields(field_class):
 
 
 @skipUnlessModule("h5py")
-def test_hdf_input_output(tmp_path):
+def test_hdf_input_output(tmp_path, rng):
     """test writing and reading files"""
     grid = UnitGrid([4, 4])
-    s = ScalarField.random_uniform(grid, label="scalar")
-    v = VectorField.random_uniform(grid, label="vector")
-    t = Tensor2Field.random_uniform(grid, label="tensor")
+    s = ScalarField.random_uniform(grid, label="scalar", rng=rng)
+    v = VectorField.random_uniform(grid, label="vector", rng=rng)
+    t = Tensor2Field.random_uniform(grid, label="tensor", rng=rng)
     col = FieldCollection([s, v, t], label="collection")
 
     path = tmp_path / "test_hdf_input_output.hdf5"
@@ -233,14 +233,14 @@ def test_hdf_input_output(tmp_path):
         assert isinstance(repr(f), str)
 
 
-def test_writing_images(tmp_path):
+def test_writing_images(tmp_path, rng):
     """test writing and reading files"""
     from matplotlib.pyplot import imread
 
     grid = UnitGrid([4, 4])
-    s = ScalarField.random_uniform(grid, label="scalar")
-    v = VectorField.random_uniform(grid, label="vector")
-    t = Tensor2Field.random_uniform(grid, label="tensor")
+    s = ScalarField.random_uniform(grid, label="scalar", rng=rng)
+    v = VectorField.random_uniform(grid, label="vector", rng=rng)
+    t = Tensor2Field.random_uniform(grid, label="tensor", rng=rng)
 
     path = tmp_path / "test_writing_images.png"
     for f in [s, v, t]:
@@ -274,10 +274,10 @@ def test_interpolation_to_grid_fields(ndim):
 
 
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
-def test_interpolation_values(field_cls):
+def test_interpolation_values(field_cls, rng):
     """test whether data is interpolated correctly for different fields"""
     grid = UnitGrid([3, 4])
-    f = field_cls.random_uniform(grid)
+    f = field_cls.random_uniform(grid, rng=rng)
     f.set_ghost_cells("auto_periodic_neumann")
 
     intp = f.make_interpolator()
@@ -365,10 +365,10 @@ def test_get_cartesian_grid(grid):
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_simple_plotting(grid):
+def test_simple_plotting(grid, rng):
     """test simple plotting of various fields on various grids"""
-    vf = VectorField.random_uniform(grid)
-    tf = Tensor2Field.random_uniform(grid)
+    vf = VectorField.random_uniform(grid, rng=rng)
+    tf = Tensor2Field.random_uniform(grid, rng=rng)
     sf = tf[0, 0]  # test extraction of fields
     fc = FieldCollection([sf, vf])
     for f in [sf, vf, tf, fc]:
@@ -382,12 +382,12 @@ def test_simple_plotting(grid):
 
 
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
-def test_random_uniform(field_cls):
+def test_random_uniform(field_cls, rng):
     """test whether random uniform fields behave correctly"""
     grid = UnitGrid([256, 256])
-    a = np.random.random()
-    b = 2 + np.random.random()
-    f = field_cls.random_uniform(grid, a, b)
+    a = rng.random()
+    b = 2 + rng.random()
+    f = field_cls.random_uniform(grid, a, b, rng=rng)
     assert np.mean(f.average) == pytest.approx((a + b) / 2, rel=0.02)
     assert np.std(f.data) == pytest.approx(0.288675 * (b - a), rel=0.1)
 
@@ -395,61 +395,73 @@ def test_random_uniform(field_cls):
     np.testing.assert_allclose(f.imag.data, 0)
 
 
-def test_random_uniform_types():
+def test_random_uniform_types(rng):
     """test whether random uniform fields behave correctly for different types"""
     grid = UnitGrid([8])
     for dtype in [bool, int, float, complex]:
-        field = VectorField.random_uniform(grid, dtype=dtype)
+        field = VectorField.random_uniform(grid, dtype=dtype, rng=rng)
         assert field.dtype == np.dtype(dtype)
         assert isinstance(field.data.flat[0].item(), dtype)
 
-    assert ScalarField.random_uniform(grid, 0, 1).dtype == np.dtype(float)
-    assert ScalarField.random_uniform(grid, vmin=0 + 0j).dtype == np.dtype(complex)
-    assert ScalarField.random_uniform(grid, vmax=1 + 0j).dtype == np.dtype(complex)
-    assert ScalarField.random_uniform(grid, 0 + 0j, 1 + 0j).dtype == np.dtype(complex)
+    assert ScalarField.random_uniform(grid, 0, 1, rng=rng).dtype == np.dtype(float)
+    assert ScalarField.random_uniform(grid, vmin=0 + 0j, rng=rng).dtype == np.dtype(
+        complex
+    )
+    assert ScalarField.random_uniform(grid, vmax=1 + 0j, rng=rng).dtype == np.dtype(
+        complex
+    )
+    assert ScalarField.random_uniform(grid, 0 + 0j, 1 + 0j, rng=rng).dtype == np.dtype(
+        complex
+    )
 
 
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
-def test_random_normal(field_cls):
+def test_random_normal(field_cls, rng):
     """test whether random normal fields behave correctly"""
     grid = UnitGrid([256, 256])
-    m = np.random.random()
-    s = 1 + np.random.random()
+    m = rng.random()
+    s = 1 + rng.random()
     for scaling in ["none", "physical"]:
-        f = field_cls.random_normal(grid, mean=m, std=s, scaling=scaling)
+        f = field_cls.random_normal(grid, mean=m, std=s, scaling=scaling, rng=rng)
         assert np.mean(f.average) == pytest.approx(m, rel=0.1, abs=0.1)
         assert np.std(f.data) == pytest.approx(s, rel=0.1, abs=0.1)
 
 
-def test_random_normal_types():
+def test_random_normal_types(rng):
     """test whether random normal fields behave correctly for different types"""
     grid = UnitGrid([8])
     for dtype in [bool, int, float, complex]:
-        field = VectorField.random_normal(grid, dtype=dtype)
+        field = VectorField.random_normal(grid, dtype=dtype, rng=rng)
         assert field.dtype == np.dtype(dtype)
         assert isinstance(field.data.flat[0].item(), dtype)
 
-    assert ScalarField.random_normal(grid, 0, 1).dtype == np.dtype(float)
-    assert ScalarField.random_normal(grid, mean=0 + 0j).dtype == np.dtype(complex)
-    assert ScalarField.random_normal(grid, std=1 + 0j).dtype == np.dtype(complex)
-    assert ScalarField.random_normal(grid, 0 + 0j, 1 + 0j).dtype == np.dtype(complex)
+    assert ScalarField.random_normal(grid, 0, 1, rng=rng).dtype == np.dtype(float)
+    assert ScalarField.random_normal(grid, mean=0 + 0j, rng=rng).dtype == np.dtype(
+        complex
+    )
+    assert ScalarField.random_normal(grid, std=1 + 0j, rng=rng).dtype == np.dtype(
+        complex
+    )
+    assert ScalarField.random_normal(grid, 0 + 0j, 1 + 0j, rng=rng).dtype == np.dtype(
+        complex
+    )
 
-    m = complex(np.random.random(), np.random.random())
-    s = complex(1 + np.random.random(), 1 + np.random.random())
+    m = complex(rng.random(), rng.random())
+    s = complex(1 + rng.random(), 1 + rng.random())
     grid = UnitGrid([256, 256])
-    field = field.random_normal(grid, m, s)
+    field = field.random_normal(grid, m, s, rng=rng)
     assert np.mean(field.average) == pytest.approx(m, rel=0.1, abs=0.1)
     assert np.std(field.data.real) == pytest.approx(s.real, rel=0.1, abs=0.1)
     assert np.std(field.data.imag) == pytest.approx(s.imag, rel=0.1, abs=0.1)
 
 
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
-def test_random_colored(field_cls):
+def test_random_colored(field_cls, rng):
     """test whether random colored fields behave correctly"""
     grid = UnitGrid([128, 128])
-    exponent = np.random.uniform(-4, 4)
-    scale = 1 + np.random.random()
-    f = field_cls.random_colored(grid, exponent=exponent, scale=scale)
+    exponent = rng.uniform(-4, 4)
+    scale = 1 + rng.random()
+    f = field_cls.random_colored(grid, exponent=exponent, scale=scale, rng=rng)
 
     assert np.allclose(f.average, 0)
 
@@ -463,36 +475,36 @@ def test_random_rng():
         ScalarField.random_normal,
         ScalarField.random_uniform,
     ]:
-        f1 = create_random_field(grid, rng=np.random.default_rng(1))
-        f2 = create_random_field(grid, rng=np.random.default_rng(1))
+        f1 = create_random_field(grid, rng=np.random.default_rng(0))
+        f2 = create_random_field(grid, rng=np.random.default_rng(0))
         np.testing.assert_allclose(f1.data, f2.data)
 
 
 @pytest.mark.parametrize("dim", [1, 2])
 @pytest.mark.parametrize("size", [256, 512])
-def test_fluctuations(dim, size):
+def test_fluctuations(dim, size, rng):
     """test the scaling of fluctuations"""
     if dim == 1:
         size **= 2
     grid = CartesianGrid([[0, 1]] * dim, [size] * dim)
-    std = 1 + np.random.random()
+    std = 1 + rng.random()
     for field_cls in [ScalarField, VectorField, Tensor2Field]:
         s = field_cls.random_normal(
-            grid, mean=np.random.random(), std=std, scaling="physical"
+            grid, mean=rng.random(), std=std, scaling="physical", rng=rng
         )
         expect = np.full([dim] * field_cls.rank, std)
         np.testing.assert_allclose(s.fluctuations, expect, rtol=0.1)
 
 
-def test_smoothing():
+def test_smoothing(rng):
     """test smoothing on different grids"""
     for grid in [
         CartesianGrid([[-2, 3]], 4),
         UnitGrid(7, periodic=False),
         UnitGrid(7, periodic=True),
     ]:
-        f1 = ScalarField.random_uniform(grid)
-        sigma = 0.5 + np.random.random()
+        f1 = ScalarField.random_uniform(grid, rng=rng)
+        sigma = 0.5 + rng.random()
 
         # this assumes that the grid periodicity is the same for all axes
         mode = "wrap" if grid.periodic[0] else "reflect"
@@ -507,12 +519,12 @@ def test_smoothing():
         np.testing.assert_allclose(out.data, expected)
 
     # test one simple higher order smoothing
-    tf = Tensor2Field.random_uniform(grid)
+    tf = Tensor2Field.random_uniform(grid, rng=rng)
     assert tf.data.shape == tf.smooth(1).data.shape
 
     # test in-place smoothing
     g = UnitGrid([8, 8])
-    f1 = ScalarField.random_normal(g)
+    f1 = ScalarField.random_normal(g, rng=rng)
     f2 = f1.smooth(3)
     f1.smooth(3, out=f1)
     np.testing.assert_allclose(f1.data, f2.data)
@@ -534,10 +546,10 @@ def test_vector_from_scalars():
 @pytest.mark.parametrize(
     "grid", [UnitGrid([3, 2]), UnitGrid([3]), CylindricalSymGrid(1, (0, 2), 3)]
 )
-def test_dot_product(grid):
+def test_dot_product(grid, rng):
     """test dot products between vectors and tensors"""
-    vf = VectorField.random_normal(grid)
-    tf = Tensor2Field.random_normal(grid)
+    vf = VectorField.random_normal(grid, rng=rng)
+    tf = Tensor2Field.random_normal(grid, rng=rng)
     dot = vf.make_dot_operator()
 
     expected = np.einsum("i...,i...->...", vf.data, vf.data)
@@ -557,7 +569,7 @@ def test_dot_product(grid):
     np.testing.assert_allclose(dot(tf.data, tf.data), expected)
 
     # test non-sensical dot product
-    sf = ScalarField.random_normal(grid)
+    sf = ScalarField.random_normal(grid, rng=rng)
     # vector dot
     with pytest.raises(TypeError):
         vf @ sf
@@ -574,10 +586,10 @@ def test_dot_product(grid):
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_complex_operator(grid):
+def test_complex_operator(grid, rng):
     """test using a complex operator on grid"""
-    r = ScalarField.random_normal(grid)
-    i = ScalarField.random_normal(grid)
+    r = ScalarField.random_normal(grid, rng=rng)
+    i = ScalarField.random_normal(grid, rng=rng)
     c = r + 1j * i
     assert c.is_complex
     assert np.iscomplexobj(c)

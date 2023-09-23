@@ -9,7 +9,7 @@ from pde import CartesianGrid, PolarSymGrid, ScalarField, SphericalSymGrid
 from pde.grids.boundaries.local import NeumannBC
 
 
-def test_polar_grid():
+def test_polar_grid(rng):
     """test simple polar grid"""
     grid = PolarSymGrid(4, 8)
     assert grid.dim == 2
@@ -25,17 +25,17 @@ def test_polar_grid():
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
 
-    a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
+    a = grid.make_operator("laplace", "auto_periodic_neumann")(rng.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
-    p = grid.get_random_point(boundary_distance=3.99, coords="cartesian")
+    assert grid.contains_point(grid.get_random_point(coords="cartesian", rng=rng))
+    p = grid.get_random_point(boundary_distance=3.99, coords="cartesian", rng=rng)
     assert grid.contains_point(p)
     assert "laplace" in grid.operators
 
 
-def test_polar_annulus():
+def test_polar_annulus(rng):
     """test simple polar grid with a hole"""
     grid = PolarSymGrid((2, 4), 8)
     assert grid.dim == 2
@@ -52,12 +52,12 @@ def test_polar_annulus():
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(2.125, 3.875, 8))
 
-    a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
+    a = grid.make_operator("laplace", "auto_periodic_neumann")(rng.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
-    p = grid.get_random_point(boundary_distance=1.99, coords="cartesian")
+    assert grid.contains_point(grid.get_random_point(coords="cartesian", rng=rng))
+    p = grid.get_random_point(boundary_distance=1.99, coords="cartesian", rng=rng)
     assert grid.contains_point(p)
 
     # test boundary points
@@ -79,7 +79,7 @@ def test_polar_to_cartesian():
     np.testing.assert_allclose(pf_cart1.data, pf_cart2.data, atol=0.1)
 
 
-def test_spherical_grid():
+def test_spherical_grid(rng):
     """test simple spherical grid"""
     grid = SphericalSymGrid(4, 8)
     assert grid.dim == 3
@@ -95,17 +95,17 @@ def test_spherical_grid():
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(0.25, 3.75, 8))
 
-    a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
+    a = grid.make_operator("laplace", "auto_periodic_neumann")(rng.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
-    p = grid.get_random_point(boundary_distance=3.99, coords="cartesian")
+    assert grid.contains_point(grid.get_random_point(coords="cartesian", rng=rng))
+    p = grid.get_random_point(boundary_distance=3.99, coords="cartesian", rng=rng)
     assert grid.contains_point(p)
     assert "laplace" in grid.operators
 
 
-def test_spherical_annulus():
+def test_spherical_annulus(rng):
     """test simple spherical grid with a hole"""
     grid = SphericalSymGrid((2, 4), 8)
     assert grid.dim == 3
@@ -122,12 +122,12 @@ def test_spherical_annulus():
 
     np.testing.assert_allclose(grid.axes_coords[0], np.linspace(2.125, 3.875, 8))
 
-    a = grid.make_operator("laplace", "auto_periodic_neumann")(np.random.random(8))
+    a = grid.make_operator("laplace", "auto_periodic_neumann")(rng.random(8))
     assert a.shape == (8,)
     assert np.all(np.isfinite(a))
 
-    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
-    p = grid.get_random_point(boundary_distance=1.99, coords="cartesian")
+    assert grid.contains_point(grid.get_random_point(coords="cartesian", rng=rng))
+    p = grid.get_random_point(boundary_distance=1.99, coords="cartesian", rng=rng)
     assert grid.contains_point(p)
 
     # test boundary points

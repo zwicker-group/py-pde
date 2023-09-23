@@ -80,11 +80,11 @@ def test_cuboid_add():
         Cuboid([1], [2]) + Cuboid([1, 2], [1, 1])
 
 
-def test_cuboid_nd():
+def test_cuboid_nd(rng):
     """test Cuboid class in n dimensions"""
-    dim = np.random.randint(5, 10)
-    size = np.random.randn(dim)
-    c = Cuboid(np.random.randn(dim), size)
+    dim = rng.integers(5, 10)
+    size = rng.normal(size=dim)
+    c = Cuboid(rng.normal(size=dim), size)
     assert c.dim == dim
     assert c.diagonal == pytest.approx(np.linalg.norm(size))
     c2 = Cuboid.from_bounds(c.bounds)
@@ -101,11 +101,11 @@ def test_cuboid_nd():
         assert c.surface_area == 2 * n * 3 ** (n - 1)
 
 
-def test_asanyarray_flags():
+def test_asanyarray_flags(rng):
     """test the asanyarray_flags function"""
     assert np.arange(3) is not asanyarray_flags(range(3))
 
-    a = np.random.random(3).astype(np.double)
+    a = rng.random(3).astype(np.double)
     assert a is asanyarray_flags(a)
     assert a is asanyarray_flags(a, np.double)
     assert a is asanyarray_flags(a, writeable=True)

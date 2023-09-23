@@ -69,7 +69,7 @@ def test_conservative_sph():
         ("gradient", ScalarField),
     ],
 )
-def test_small_annulus_sph(op_name, field):
+def test_small_annulus_sph(op_name, field, rng):
     """test whether a small annulus gives the same result as a sphere"""
     grids = [
         SphericalSymGrid((0, 1), 8),
@@ -77,7 +77,7 @@ def test_small_annulus_sph(op_name, field):
         SphericalSymGrid((0.1, 1), 8),
     ]
 
-    f = field.random_uniform(grids[0])
+    f = field.random_uniform(grids[0], rng=rng)
     if field is VectorField:
         f.data[1] = 0
 
@@ -109,10 +109,10 @@ def test_grid_laplace():
 
 
 @pytest.mark.parametrize("r_inner", (0, 1))
-def test_gradient_squared(r_inner):
+def test_gradient_squared(r_inner, rng):
     """compare gradient squared operator"""
     grid = SphericalSymGrid((r_inner, 5), 64)
-    field = ScalarField.random_harmonic(grid, modes=1)
+    field = ScalarField.random_harmonic(grid, modes=1, rng=rng)
     s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
     s2 = field.gradient_squared("auto_periodic_neumann", central=True)
     np.testing.assert_allclose(s1.data, s2.data, rtol=0.1, atol=0.1)
@@ -137,10 +137,10 @@ def test_grid_div_grad_sph():
 
 @pytest.mark.parametrize("grid", [SphericalSymGrid(4, 8), SphericalSymGrid([2, 4], 8)])
 @pytest.mark.parametrize("bc_val", ["auto_periodic_neumann", {"value": 1}])
-def test_poisson_solver_spherical(grid, bc_val):
+def test_poisson_solver_spherical(grid, bc_val, rng):
     """test the poisson solver on Spherical grids"""
     bcs = grid.get_boundary_conditions(bc_val)
-    d = ScalarField.random_uniform(grid)
+    d = ScalarField.random_uniform(grid, rng=rng)
     d -= d.average  # balance the right hand side
     sol = solve_poisson_equation(d, bcs)
     test = sol.laplace(bcs)
@@ -280,7 +280,7 @@ def test_tensor_div_div(conservative):
 
 
 @pytest.mark.parametrize("r_inner", (0, 1))
-def test_laplace_matrix(r_inner):
+def test_laplace_matrix(r_inner, rng):
     """test laplace operator implemented using matrix multiplication"""
     grid = SphericalSymGrid((r_inner, 2), 16)
     if r_inner == 0:
@@ -289,7 +289,7 @@ def test_laplace_matrix(r_inner):
         bcs = grid.get_boundary_conditions({"value": "sin(r)"})
     laplace = make_laplace_from_matrix(*_get_laplace_matrix(bcs))
 
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     res1 = field.laplace(bcs)
     res2 = laplace(field.data)
 

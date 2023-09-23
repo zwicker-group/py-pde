@@ -45,13 +45,13 @@ def test_generic_meshes(grid, decomposition):
 
 
 @pytest.mark.parametrize("decomp", [(1, 1), (2, 1), (1, 2), (2, 2)])
-def test_split_fields(decomp):
+def test_split_fields(decomp, rng):
     """test splitting and recombining fields"""
     grid = UnitGrid([8, 8])
     mesh = GridMesh.from_grid(grid, decomp)
 
     field = ScalarField(grid)
-    field._data_full = np.random.uniform(size=grid._shape_full)
+    field._data_full = rng.uniform(size=grid._shape_full)
     subfields = [mesh.extract_subfield(field, node_id) for node_id in range(len(mesh))]
 
     field_comb = mesh.combine_field_data([f.data for f in subfields])
@@ -61,14 +61,13 @@ def test_split_fields(decomp):
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("decomp", [(-1,), (-1, 1), (1, -1)])
 @pytest.mark.parametrize("dtype", [int, float, complex])
-def test_split_fields_mpi(decomp, dtype):
+def test_split_fields_mpi(decomp, dtype, rng):
     """test splitting and recombining fields using multiprocessing"""
     dim = len(decomp)
     grid = UnitGrid([8] * dim)
     mesh = GridMesh.from_grid(grid, decomp)
 
     field = ScalarField(grid, dtype=dtype)
-    rng = np.random.default_rng(0)
     if dtype == int:
         field._data_full = rng.integers(0, 10, size=grid._shape_full)
     elif dtype == complex:
@@ -109,13 +108,12 @@ def test_split_fields_mpi(decomp, dtype):
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("decomp", [(-1,), (-1, 1), (1, -1)])
-def test_split_fieldcollections_mpi(decomp):
+def test_split_fieldcollections_mpi(decomp, rng):
     """test splitting and recombining field collections using multiprocessing"""
     dim = len(decomp)
     grid = UnitGrid([8] * dim)
     mesh = GridMesh.from_grid(grid, decomp)
 
-    rng = np.random.default_rng(0)
     sf = ScalarField.random_uniform(grid, rng=rng)
     vf = VectorField.random_uniform(grid, rng=rng)
     fc = FieldCollection([sf, vf], labels=["s", "v"])
@@ -157,12 +155,12 @@ def test_split_fieldcollections_mpi(decomp):
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("bc", ["periodic", "value", "derivative", "curvature"])
-def test_boundary_conditions_numpy(bc):
+def test_boundary_conditions_numpy(bc, rng):
     """test setting boundary conditions using numpy"""
     grid = UnitGrid([8, 8], periodic=(bc == "periodic"))
     mesh = GridMesh.from_grid(grid)
 
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
 
     # split without ghost cells
     f1 = mesh.split_field_mpi(field)
@@ -178,12 +176,12 @@ def test_boundary_conditions_numpy(bc):
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("bc", ["periodic", "value", "derivative", "curvature"])
-def test_boundary_conditions_numba(bc):
+def test_boundary_conditions_numba(bc, rng):
     """test setting boundary conditions using numba"""
     grid = UnitGrid([8, 8], periodic=(bc == "periodic"))
     mesh = GridMesh.from_grid(grid)
 
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
 
     # split without ghost cells
     f1 = mesh.split_field_mpi(field)
@@ -200,12 +198,12 @@ def test_boundary_conditions_numba(bc):
 
 
 @pytest.mark.multiprocessing
-def test_vector_boundary_conditions():
+def test_vector_boundary_conditions(rng):
     """test setting vectorial boundary conditions"""
     grid = UnitGrid([8, 8])
     mesh = GridMesh.from_grid(grid)
 
-    field = VectorField.random_uniform(grid)
+    field = VectorField.random_uniform(grid, rng=rng)
 
     # split without ghost cells
     f1 = mesh.split_field_mpi(field)
@@ -221,9 +219,9 @@ def test_vector_boundary_conditions():
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("grid, decomposition", GRIDS)
-def test_noncartesian_grids(grid, decomposition):
+def test_noncartesian_grids(grid, decomposition, rng):
     """test whether we can deal with non-cartesian grids"""
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     eq = DiffusionPDE()
 
     args = {

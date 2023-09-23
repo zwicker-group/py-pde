@@ -10,7 +10,7 @@ from pde import CartesianGrid, PolarSymGrid, ScalarField, Tensor2Field, UnitGrid
 from pde.fields.base import FieldBase
 
 
-def test_tensors_basic():
+def test_tensors_basic(rng):
     """test some tensor calculations"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
 
@@ -29,7 +29,7 @@ def test_tensors_basic():
     t1 += t2
     np.testing.assert_allclose(t1.data, 3)
 
-    field = Tensor2Field.random_uniform(grid)
+    field = Tensor2Field.random_uniform(grid, rng=rng)
     trace = field.trace()
 
     assert isinstance(trace, ScalarField)
@@ -116,12 +116,12 @@ def test_tensor_symmetrize():
 
 @pytest.mark.parametrize("grid", iter_grids())
 @pytest.mark.parametrize("compiled", [True, False])
-def test_insert_tensor(grid, compiled):
+def test_insert_tensor(grid, compiled, rng):
     """test the `insert` method"""
     f = Tensor2Field(grid)
-    a = np.random.random(f.data_shape)
+    a = rng.random(f.data_shape)
 
-    c = grid.get_random_point(coords="cell").astype(int)  # pick a random cell
+    c = grid.get_random_point(coords="cell", rng=rng).astype(int)  # pick a random cell
     c_data = (Ellipsis,) + tuple(c)
     p = grid.transform(c + 0.5, "cell", "grid")  # point at cell center
     if compiled:
@@ -131,25 +131,25 @@ def test_insert_tensor(grid, compiled):
         f.insert(p, a)  # add material to cell center
     np.testing.assert_almost_equal(f.data[c_data], a / grid.cell_volumes[tuple(c)])
 
-    f.insert(grid.get_random_point(coords="grid"), a)
+    f.insert(grid.get_random_point(coords="grid", rng=rng), a)
     np.testing.assert_almost_equal(f.integral, 2 * a)
 
 
-def test_tensor_invariants():
+def test_tensor_invariants(rng):
     """test the invariants"""
     # dim == 1
-    f = Tensor2Field.random_uniform(UnitGrid([3]))
+    f = Tensor2Field.random_uniform(UnitGrid([3]), rng=rng)
     np.testing.assert_allclose(
         f.to_scalar("invariant1").data, f.to_scalar("invariant3").data
     )
     np.testing.assert_allclose(f.to_scalar("invariant2").data, 0)
 
     # dim == 2
-    f = Tensor2Field.random_uniform(UnitGrid([3, 3]))
+    f = Tensor2Field.random_uniform(UnitGrid([3, 3]), rng=rng)
     invs = [f.to_scalar(f"invariant{i}").data for i in range(1, 4)]
     np.testing.assert_allclose(2 * invs[1], invs[2])
 
-    a = np.random.uniform(0, 2 * np.pi)  # pick random rotation angle
+    a = rng.uniform(0, 2 * np.pi)  # pick random rotation angle
     rot = Tensor2Field(f.grid)
     rot.data[0, 0, ...] = np.cos(a)
     rot.data[0, 1, ...] = np.sin(a)
@@ -167,9 +167,9 @@ def test_tensor_invariants():
     # dim == 3
     from scipy.spatial.transform import Rotation
 
-    f = Tensor2Field.random_uniform(UnitGrid([1, 1, 1]))
+    f = Tensor2Field.random_uniform(UnitGrid([1, 1, 1]), rng=rng)
     rot = Tensor2Field(f.grid)
-    rot_mat = Rotation.from_rotvec(np.random.randn(3)).as_matrix()
+    rot_mat = Rotation.from_rotvec(rng.normal(size=3)).as_matrix()
     rot.data = rot_mat.reshape(3, 3, 1, 1, 1)
     f_rot = rot @ f @ rot.transpose()  # apply the transpose
     for i in range(1, 4):
@@ -181,11 +181,11 @@ def test_tensor_invariants():
 
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
-def test_complex_tensors(backend):
+def test_complex_tensors(backend, rng):
     """test some complex tensor fields"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     shape = (2, 2, 2) + grid.shape
-    numbers = np.random.random(shape) + np.random.random(shape) * 1j
+    numbers = rng.random(shape) + rng.random(shape) * 1j
     t1 = Tensor2Field(grid, numbers[0])
     t2 = Tensor2Field(grid, numbers[1])
     assert t1.is_complex and t2.is_complex

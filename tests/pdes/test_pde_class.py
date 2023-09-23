@@ -23,7 +23,7 @@ def iter_grids():
     yield grids.PolarSymGrid(2, 2)
 
 
-def test_pde_critical_input():
+def test_pde_critical_input(rng):
     """test some wrong input and edge cases"""
     # test whether reserved symbols can be used as variables
     grid = grids.UnitGrid([4])
@@ -43,24 +43,24 @@ def test_pde_critical_input():
     eq = PDE({"u": 1, "v": 2})
     assert eq.expressions == {"u": "1.0", "v": "2.0"}
     with pytest.raises(ValueError):
-        eq.evolution_rate(ScalarField.random_uniform(grid))
+        eq.evolution_rate(ScalarField.random_uniform(grid, rng=rng))
 
     eq = PDE({"u": "a"})
     with pytest.raises(RuntimeError):
-        eq.evolution_rate(ScalarField.random_uniform(grid))
+        eq.evolution_rate(ScalarField.random_uniform(grid, rng=rng))
 
     eq = PDE({"x": "x"})
     with pytest.raises(ValueError):
         eq.evolution_rate(ScalarField(grid))
 
 
-def test_pde_scalar():
+def test_pde_scalar(rng):
     """test PDE with a single scalar field"""
     eq = PDE({"u": "laplace(u) + exp(-t) + sin(t)"})
     assert eq.explicit_time_dependence
     assert not eq.complex_valued
     grid = grids.UnitGrid([8])
-    field = ScalarField.random_normal(grid)
+    field = ScalarField.random_normal(grid, rng=rng)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
     res_b = eq.solve(field, t_range=1, dt=0.01, backend="numba", tracker=None)
@@ -69,13 +69,13 @@ def test_pde_scalar():
     np.testing.assert_allclose(res_a.data, res_b.data)
 
 
-def test_pde_vector():
+def test_pde_vector(rng):
     """test PDE with a single vector field"""
     eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
     assert eq.explicit_time_dependence
     assert not eq.complex_valued
     grid = grids.UnitGrid([8, 8])
-    field = VectorField.random_normal(grid).smooth(1)
+    field = VectorField.random_normal(grid, rng=rng).smooth(1)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
     res_b = eq.solve(field, t_range=1, dt=0.01, backend="numba", tracker=None)
@@ -85,13 +85,13 @@ def test_pde_vector():
 
 
 @pytest.mark.multiprocessing
-def test_pde_vector_mpi():
+def test_pde_vector_mpi(rng):
     """test PDE with a single vector field using multiprocessing"""
     eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
     assert eq.explicit_time_dependence
     assert not eq.complex_valued
     grid = grids.UnitGrid([8, 8])
-    field = VectorField.random_normal(grid).smooth(1)
+    field = VectorField.random_normal(grid, rng=rng).smooth(1)
 
     args = {
         "state": field,
@@ -123,7 +123,7 @@ def test_pde_2scalar():
 
 
 @pytest.mark.slow
-def test_pde_vector_scalar():
+def test_pde_vector_scalar(rng):
     """test PDE with a vector and a scalar field"""
     eq = PDE({"u": "vector_laplace(u) - u + gradient(v)", "v": "- divergence(u)"})
     assert not eq.explicit_time_dependence
@@ -131,8 +131,8 @@ def test_pde_vector_scalar():
     grid = grids.UnitGrid([8, 8])
     field = FieldCollection(
         [
-            VectorField.random_uniform(grid).smooth(1),
-            ScalarField.random_uniform(grid).smooth(1),
+            VectorField.random_uniform(grid, rng=rng).smooth(1),
+            ScalarField.random_uniform(grid, rng=rng).smooth(1),
         ]
     )
 
@@ -144,9 +144,9 @@ def test_pde_vector_scalar():
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_compare_swift_hohenberg(grid):
+def test_compare_swift_hohenberg(grid, rng):
     """compare custom class to swift-Hohenberg"""
-    rate, kc2, delta = np.random.uniform(0.5, 2, size=3)
+    rate, kc2, delta = rng.uniform(0.5, 2, size=3)
     eq1 = SwiftHohenbergPDE(rate=rate, kc2=kc2, delta=delta)
     eq2 = PDE(
         {
@@ -157,7 +157,7 @@ def test_compare_swift_hohenberg(grid):
     assert eq1.explicit_time_dependence == eq2.explicit_time_dependence
     assert eq1.complex_valued == eq2.complex_valued
 
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     res1 = eq1.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
     res2 = eq2.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
 
@@ -165,10 +165,10 @@ def test_compare_swift_hohenberg(grid):
     np.testing.assert_allclose(res1.data, res2.data)
 
 
-def test_custom_operators():
+def test_custom_operators(rng):
     """test using a custom operator"""
     grid = grids.UnitGrid([32])
-    field = ScalarField.random_normal(grid)
+    field = ScalarField.random_normal(grid, rng=rng)
     eq = PDE({"u": "undefined(u)"})
 
     with pytest.raises(ValueError):
@@ -190,18 +190,18 @@ def test_custom_operators():
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
-def test_pde_noise(backend, rng):
+def test_pde_noise(backend):
     """test noise operator on PDE class"""
     grid = grids.UnitGrid([128, 128])
     state = FieldCollection([ScalarField(grid), ScalarField(grid)])
 
     var_local = 0.5
-    eq = PDE({"a": 0, "b": 0}, noise=var_local, rng=rng)
+    eq = PDE({"a": 0, "b": 0}, noise=var_local)
     res = eq.solve(state, t_range=1, backend=backend, dt=1, tracker=None)
     dist = stats.norm(scale=np.sqrt(var_local)).cdf
     assert stats.kstest(np.ravel(res.data), dist).pvalue > 0.001
 
-    eq = PDE({"a": 0, "b": 0}, noise=[0.01, 2.0], rng=rng)
+    eq = PDE({"a": 0, "b": 0}, noise=[0.01, 2.0])
     res = eq.solve(state, t_range=1, backend=backend, dt=1, tracker=None)
 
     dist_a = stats.norm(scale=np.sqrt(0.01)).cdf
@@ -210,7 +210,7 @@ def test_pde_noise(backend, rng):
     assert stats.kstest(np.ravel(res[1].data), dist_b).pvalue > 0.001
 
     with pytest.raises(ValueError):
-        eq = PDE({"a": 0}, noise=[0.01, 2.0], rng=rng)
+        eq = PDE({"a": 0}, noise=[0.01, 2.0])
         eq.solve(ScalarField(grid), t_range=1, backend=backend, dt=1, tracker=None)
 
 
@@ -235,11 +235,11 @@ def test_pde_spatial_args(backend):
         rhs(field.data, 0.0)
 
 
-def test_pde_user_funcs():
+def test_pde_user_funcs(rng):
     """test user supplied functions"""
     # test a simple case
     eq = PDE({"u": "get_x(gradient(u))"}, user_funcs={"get_x": lambda arr: arr[0]})
-    field = ScalarField.random_colored(grids.UnitGrid([32, 32]))
+    field = ScalarField.random_colored(grids.UnitGrid([32, 32]), rng=rng)
     rhs = eq.evolution_rate(field)
     np.testing.assert_allclose(
         rhs.data, field.gradient("auto_periodic_neumann").data[0]
@@ -250,13 +250,13 @@ def test_pde_user_funcs():
     )
 
 
-def test_pde_complex_serial():
+def test_pde_complex_serial(rng):
     """test complex valued PDE"""
     eq = PDE({"p": "I * laplace(p)"})
     assert not eq.explicit_time_dependence
     assert eq.complex_valued
 
-    field = ScalarField.random_uniform(grids.UnitGrid([4]))
+    field = ScalarField.random_uniform(grids.UnitGrid([4]), rng=rng)
     assert not field.is_complex
     res1 = eq.solve(field, t_range=1, dt=0.1, backend="numpy", tracker=None)
     assert res1.is_complex
@@ -267,13 +267,13 @@ def test_pde_complex_serial():
 
 
 @pytest.mark.multiprocessing
-def test_pde_complex_mpi():
+def test_pde_complex_mpi(rng):
     """test complex valued PDE"""
     eq = PDE({"p": "I * laplace(p)"})
     assert not eq.explicit_time_dependence
     assert eq.complex_valued
 
-    field = ScalarField.random_uniform(grids.UnitGrid([4]))
+    field = ScalarField.random_uniform(grids.UnitGrid([4]), rng=rng)
     assert not field.is_complex
 
     args = {
@@ -349,13 +349,13 @@ def test_pde_consts():
 
 
 @pytest.mark.parametrize("bc", ["auto_periodic_neumann", {"value": 1}])
-def test_pde_bcs(bc):
+def test_pde_bcs(bc, rng):
     """test PDE with boundary conditions"""
     eq = PDE({"u": "laplace(u)"}, bc=bc)
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
     grid = grids.UnitGrid([8])
-    field = ScalarField.random_normal(grid)
+    field = ScalarField.random_normal(grid, rng=rng)
 
     res_a = eq.solve(field, t_range=1, dt=0.01, backend="numpy", tracker=None)
     res_b = eq.solve(field, t_range=1, dt=0.01, backend="numba", tracker=None)
@@ -378,11 +378,11 @@ def test_pde_bcs_warning(caplog):
 
 
 @pytest.mark.parametrize("bc", ["asdf", [{"value": 1}] * 3])
-def test_pde_bcs_error(bc):
+def test_pde_bcs_error(bc, rng):
     """test PDE with wrong boundary conditions"""
     eq = PDE({"u": "laplace(u)"}, bc=bc)
     grid = grids.UnitGrid([8, 8])
-    field = ScalarField.random_normal(grid)
+    field = ScalarField.random_normal(grid, rng=rng)
 
     for backend in ["numpy", "numba"]:
         with pytest.raises(BCDataError):
@@ -404,10 +404,10 @@ def test_pde_time_dependent_bcs(backend):
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
-def test_pde_integral(backend):
+def test_pde_integral(backend, rng):
     """test PDE with integral"""
     grid = grids.UnitGrid([16])
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     eq = PDE({"c": "-integral(c)"})
 
     # test rhs

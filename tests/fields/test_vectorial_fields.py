@@ -202,31 +202,31 @@ def test_from_expressions():
     np.testing.assert_allclose(vf.data[1], xs * ys)
 
 
-def test_vector_plot_quiver_reduction():
+def test_vector_plot_quiver_reduction(rng):
     """test whether quiver plots reduce the resolution"""
     grid = UnitGrid([6, 6])
-    field = VectorField.random_normal(grid)
+    field = VectorField.random_normal(grid, rng=rng)
     ref = field.plot(method="quiver", max_points=4)
     assert len(ref.element.U) == 16
 
 
-def test_boundary_interpolation_vector():
+def test_boundary_interpolation_vector(rng):
     """test boundary interpolation"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
-    field = VectorField.random_normal(grid)
+    field = VectorField.random_normal(grid, rng=rng)
 
     # test boundary interpolation
-    bndry_val = np.random.randn(2, 3)
+    bndry_val = rng.normal(size=(2, 3))
     for bndry in grid._iter_boundaries():
         val = field.get_boundary_values(*bndry, bc={"value": bndry_val})
         np.testing.assert_allclose(val, bndry_val)
 
 
 @pytest.mark.parametrize("transpose", [True, False])
-def test_vector_plotting_2d(transpose):
+def test_vector_plotting_2d(transpose, rng):
     """test plotting of 2d vector fields"""
     grid = UnitGrid([3, 4])
-    field = VectorField.random_uniform(grid, 0.1, 0.9)
+    field = VectorField.random_uniform(grid, 0.1, 0.9, rng=rng)
 
     for method in ["quiver", "streamplot"]:
         ref = field.plot(method=method, transpose=transpose)
@@ -234,24 +234,24 @@ def test_vector_plotting_2d(transpose):
 
     # test sub-sampling
     grid = UnitGrid([32, 15])
-    field = VectorField.random_uniform(grid, 0.1, 0.9)
+    field = VectorField.random_uniform(grid, 0.1, 0.9, rng=rng)
     field.get_vector_data(transpose=transpose, max_points=7)
 
 
 @skipUnlessModule("napari")
 @pytest.mark.interactive
-def test_interactive_vector_plotting():
+def test_interactive_vector_plotting(rng):
     """test the interactive plotting"""
     grid = UnitGrid([3, 3])
-    field = VectorField.random_uniform(grid, 0.1, 0.9)
+    field = VectorField.random_uniform(grid, 0.1, 0.9, rng=rng)
     field.plot_interactive(viewer_args={"show": False, "close": True})
 
 
-def test_complex_vectors():
+def test_complex_vectors(rng):
     """test some complex vector fields"""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     shape = (2, 2) + grid.shape
-    numbers = np.random.random(shape) + np.random.random(shape) * 1j
+    numbers = rng.random(shape) + rng.random(shape) * 1j
     v1 = VectorField(grid, numbers[0])
     v2 = VectorField(grid, numbers[1])
     assert v1.is_complex and v2.is_complex

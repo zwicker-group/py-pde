@@ -24,17 +24,17 @@ def test_solver_registration():
     assert "scipy" in solvers
 
 
-def test_solver_in_pde_class():
+def test_solver_in_pde_class(rng):
     """test whether solver instances can be used in pde instances"""
-    field = ScalarField.random_uniform(UnitGrid([16, 16]), -1, 1)
+    field = ScalarField.random_uniform(UnitGrid([16, 16]), -1, 1, rng=rng)
     eq = DiffusionPDE()
     eq.solve(field, t_range=1, solver=ScipySolver, tracker=None)
 
 
 @pytest.mark.parametrize("solver_class", [ExplicitSolver, ImplicitSolver, ScipySolver])
-def test_compare_solvers(solver_class):
+def test_compare_solvers(solver_class, rng):
     """compare several solvers"""
-    field = ScalarField.random_uniform(UnitGrid([8, 8]), -1, 1)
+    field = ScalarField.random_uniform(UnitGrid([8, 8]), -1, 1, rng=rng)
     eq = DiffusionPDE()
 
     # ground truth

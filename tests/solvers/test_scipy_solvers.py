@@ -8,10 +8,10 @@ from pde import PDE, DiffusionPDE, FieldCollection, ScalarField, UnitGrid
 from pde.solvers import Controller, ScipySolver
 
 
-def test_scipy_no_dt():
+def test_scipy_no_dt(rng):
     """test scipy solver without timestep"""
     grid = UnitGrid([16])
-    field = ScalarField.random_uniform(grid, -1, 1)
+    field = ScalarField.random_uniform(grid, -1, 1, rng=rng)
     eq = DiffusionPDE()
 
     c1 = Controller(ScipySolver(eq), t_range=1, tracker=None)
