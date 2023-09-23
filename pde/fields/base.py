@@ -1684,7 +1684,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         )
 
     def make_dot_operator(
-        self, backend: str = "numba", *, conjugate: bool = True
+        self, backend: Literal["numpy", "numba"] = "numba", *, conjugate: bool = True
     ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return operator calculating the dot product between two fields
 

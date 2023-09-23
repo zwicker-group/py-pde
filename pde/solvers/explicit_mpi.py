@@ -14,6 +14,7 @@ from ..grids._mesh import GridMesh
 from ..pdes.base import PDEBase
 from ..tools import mpi
 from ..tools.math import OnlineStatistics
+from ..tools.typing import BackendType
 from .explicit import ExplicitSolver
 
 
@@ -80,7 +81,7 @@ class ExplicitMPISolver(ExplicitSolver):
         scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
         decomposition: Union[int, List[int]] = -1,
         *,
-        backend: str = "auto",
+        backend: BackendType = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-4,
     ):

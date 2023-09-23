@@ -54,7 +54,7 @@ class StorageBase(metaclass=ABCMeta):
 
     times: Sequence[float]  # :class:`~numpy.ndarray`): stored time points
     data: Any  # actual data for all the stored times
-    write_mode: str  # mode determining how the storage behaves
+    write_mode: WriteModeType  # mode determining how the storage behaves
 
     def __init__(
         self,

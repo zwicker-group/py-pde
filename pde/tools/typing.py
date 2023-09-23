@@ -4,7 +4,7 @@ Provides support for mypy type checking of the package
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import TYPE_CHECKING, Protocol, Tuple, Union
+from typing import TYPE_CHECKING, Literal, Protocol, Tuple, Union
 
 import numpy as np
 from numpy.typing import ArrayLike  # @UnusedImport
@@ -16,6 +16,7 @@ Real = Union[int, float]
 Number = Union[Real, complex]
 NumberOrArray = Union[Number, np.ndarray]
 FloatNumerical = Union[float, np.ndarray]
+BackendType = Literal["auto", "numpy", "numba"]
 
 
 class OperatorType(Protocol):

@@ -6,7 +6,17 @@ Defines a vectorial field over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Union,
+)
 
 import numba as nb
 import numpy as np
@@ -247,7 +257,7 @@ class VectorField(DataFieldBase):
         return out
 
     def make_outer_prod_operator(
-        self, backend: str = "numba"
+        self, backend: Literal["numpy", "numba"] = "numba"
     ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
         """return operator calculating the outer product of two vector fields
 

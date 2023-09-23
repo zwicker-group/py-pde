@@ -13,6 +13,7 @@ from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.numba import jit
+from ..tools.typing import BackendType
 from .base import AdaptiveSolverBase
 
 
@@ -26,7 +27,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         pde: PDEBase,
         scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
         *,
-        backend: str = "auto",
+        backend: BackendType = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-4,
     ):

@@ -10,6 +10,7 @@ import numpy as np
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
+from ..tools.typing import BackendType
 from .base import SolverBase
 
 
@@ -22,7 +23,7 @@ class ScipySolver(SolverBase):
 
     name = "scipy"
 
-    def __init__(self, pde: PDEBase, backend: str = "auto", **kwargs):
+    def __init__(self, pde: PDEBase, backend: BackendType = "auto", **kwargs):
         r"""
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
