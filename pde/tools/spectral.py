@@ -89,8 +89,6 @@ def make_colored_noise(
     scaling = 2 * np.pi * scale * k2s ** (exponent / 4)
     scaling.flat[0] = 0
 
-    # TODO: accelerate the FFT using the pyfftw package
-
     def noise_colored() -> np.ndarray:
         """return array of colored noise"""
         # random field

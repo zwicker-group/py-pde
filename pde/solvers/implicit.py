@@ -11,6 +11,7 @@ import numpy as np
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
+from ..tools.typing import BackendType
 from .base import SolverBase
 
 
@@ -28,7 +29,7 @@ class ImplicitSolver(SolverBase):
         pde: PDEBase,
         maxiter: int = 100,
         maxerror: float = 1e-4,
-        backend: str = "auto",
+        backend: BackendType = "auto",
     ):
         """
         Args:

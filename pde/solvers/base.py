@@ -24,6 +24,7 @@ from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
 from ..tools.numba import is_jitted, jit
+from ..tools.typing import BackendType
 
 
 class SolverBase(metaclass=ABCMeta):
@@ -38,7 +39,7 @@ class SolverBase(metaclass=ABCMeta):
     _subclasses: Dict[str, Type[SolverBase]] = {}
     """dict: dictionary of all inheriting classes"""
 
-    def __init__(self, pde: PDEBase, *, backend: str = "auto"):
+    def __init__(self, pde: PDEBase, *, backend: BackendType = "auto"):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
@@ -140,7 +141,7 @@ class SolverBase(metaclass=ABCMeta):
         return modify_after_step  # type: ignore
 
     def _make_pde_rhs(
-        self, state: FieldBase, backend: str = "auto"
+        self, state: FieldBase, backend: BackendType = "auto"
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """obtain a function for evaluating the right hand side
 
@@ -328,7 +329,7 @@ class AdaptiveSolverBase(SolverBase):
         self,
         pde: PDEBase,
         *,
-        backend: str = "auto",
+        backend: BackendType = "auto",
         adaptive: bool = True,
         tolerance: float = 1e-4,
     ):
