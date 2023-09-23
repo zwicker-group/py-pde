@@ -109,11 +109,11 @@ def test_diffusion_time_dependent_bcs(backend):
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
-def test_diffusion_sde(backend):
+def test_diffusion_sde(backend, rng):
     """test scaling of noise using a stochastic diffusion equation"""
     # we disable diffusivity to have a simple analytical solution
     var_local, t_range = 0.35, 0.1
-    eq = DiffusionPDE(diffusivity=0, noise=var_local)
+    eq = DiffusionPDE(diffusivity=0, noise=var_local, rng=rng)
     grid = CartesianGrid([[0, 1000]], 3700)
     field = ScalarField(grid)
     sol = eq.solve(field, t_range=t_range, dt=1e-4, backend=backend, tracker=None)

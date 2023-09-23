@@ -190,18 +190,18 @@ def test_custom_operators(rng):
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
-def test_pde_noise(backend):
+def test_pde_noise(backend, rng):
     """test noise operator on PDE class"""
     grid = grids.UnitGrid([128, 128])
     state = FieldCollection([ScalarField(grid), ScalarField(grid)])
 
     var_local = 0.5
-    eq = PDE({"a": 0, "b": 0}, noise=var_local)
+    eq = PDE({"a": 0, "b": 0}, noise=var_local, rng=rng)
     res = eq.solve(state, t_range=1, backend=backend, dt=1, tracker=None)
     dist = stats.norm(scale=np.sqrt(var_local)).cdf
     assert stats.kstest(np.ravel(res.data), dist).pvalue > 0.001
 
-    eq = PDE({"a": 0, "b": 0}, noise=[0.01, 2.0])
+    eq = PDE({"a": 0, "b": 0}, noise=[0.01, 2.0], rng=rng)
     res = eq.solve(state, t_range=1, backend=backend, dt=1, tracker=None)
 
     dist_a = stats.norm(scale=np.sqrt(0.01)).cdf
