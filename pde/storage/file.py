@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, Tuple
+from typing import Any, Literal, Optional, Tuple
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -17,7 +17,7 @@ from numpy.typing import DTypeLike
 from ..fields.base import FieldBase
 from ..tools import mpi
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
-from .base import InfoDict, StorageBase
+from .base import InfoDict, StorageBase, WriteModeType
 
 
 class FileStorage(StorageBase):
@@ -28,7 +28,7 @@ class FileStorage(StorageBase):
         filename: str,
         *,
         info: Optional[InfoDict] = None,
-        write_mode: str = "truncate_once",
+        write_mode: WriteModeType = "truncate_once",
         max_length: Optional[int] = None,
         compression: bool = True,
         keep_opened: bool = True,
@@ -145,7 +145,11 @@ class FileStorage(StorageBase):
                 **kwargs,
             )
 
-    def _open(self, mode: str = "reading", info: Optional[InfoDict] = None) -> None:
+    def _open(
+        self,
+        mode: Literal["reading", "appending", "writing", "closed"] = "reading",
+        info: Optional[InfoDict] = None,
+    ) -> None:
         """open the hdf file in a particular mode
 
         Args:

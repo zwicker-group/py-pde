@@ -9,7 +9,7 @@ Functions and classes for plotting simulation data
    plot_kymograph
    plot_kymographs
    plot_interactive
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -17,7 +17,7 @@ import logging
 import math
 import time
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import numpy as np
 
@@ -809,7 +809,7 @@ def plot_kymographs(
 
 def plot_interactive(
     storage: StorageBase,
-    time_scaling: str = "exact",
+    time_scaling: Literal["exact", "scaled"] = "exact",
     viewer_args: Optional[Dict[str, Any]] = None,
     **kwargs,
 ):

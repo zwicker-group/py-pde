@@ -6,12 +6,28 @@ Cylindrical grids with azimuthal symmetry
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Sequence, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generator,
+    Literal,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import numpy as np
 
 from ..tools.cache import cached_property
-from .base import DimensionError, GridBase, _check_shape, discretize_interval
+from .base import (
+    CoordsType,
+    DimensionError,
+    GridBase,
+    _check_shape,
+    discretize_interval,
+)
 from .cartesian import CartesianGrid
 
 if TYPE_CHECKING:
@@ -213,7 +229,7 @@ class CylindricalSymGrid(GridBase):
         *,
         boundary_distance: float = 0,
         avoid_center: bool = False,
-        coords: str = "cartesian",
+        coords: CoordsType = "cartesian",
         rng: Optional[np.random.Generator] = None,
     ) -> np.ndarray:
         """return a random point within the grid
@@ -461,7 +477,9 @@ class CylindricalSymGrid(GridBase):
         else:
             return dist
 
-    def get_cartesian_grid(self, mode: str = "valid") -> CartesianGrid:
+    def get_cartesian_grid(
+        self, mode: Literal["valid", "full"] = "valid"
+    ) -> CartesianGrid:
         """return a Cartesian grid for this Cylindrical one
 
         Args:

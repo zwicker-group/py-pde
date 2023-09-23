@@ -12,13 +12,29 @@ vanishes.
 from __future__ import annotations
 
 from abc import ABCMeta
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Tuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Generator,
+    Literal,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 
 from ..tools.cache import cached_property
 from ..tools.plotting import plot_on_axes
-from .base import DimensionError, GridBase, _check_shape, discretize_interval
+from .base import (
+    CoordsType,
+    DimensionError,
+    GridBase,
+    _check_shape,
+    discretize_interval,
+)
 from .cartesian import CartesianGrid
 
 if TYPE_CHECKING:
@@ -192,7 +208,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         *,
         boundary_distance: float = 0,
         avoid_center: bool = False,
-        coords: str = "cartesian",
+        coords: CoordsType = "cartesian",
         rng: Optional[np.random.Generator] = None,
     ) -> np.ndarray:
         """return a random point within the grid
@@ -280,7 +296,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
     def get_image_data(
         self,
         data: np.ndarray,
-        performance_goal: str = "speed",
+        performance_goal: Literal["speed", "quality"] = "speed",
         fill_value: float = 0,
         masked: bool = True,
     ) -> Dict[str, Any]:
@@ -412,7 +428,9 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             return rs
 
     def get_cartesian_grid(
-        self, mode: str = "valid", num: Optional[int] = None
+        self,
+        mode: Literal["valid", "inscribed", "full", "circumscribed"] = "valid",
+        num: Optional[int] = None,
     ) -> CartesianGrid:
         """return a Cartesian grid for this spherical one
 

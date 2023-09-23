@@ -14,7 +14,7 @@ This module implements differential operators on spherical grids
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Tuple
+from typing import Literal, Tuple
 
 import numpy as np
 
@@ -586,7 +586,9 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
 
 @SphericalSymGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_poisson_solver(bcs: Boundaries, method: str = "auto") -> OperatorType:
+def make_poisson_solver(
+    bcs: Boundaries, method: Literal["auto", "scipy"] = "auto"
+) -> OperatorType:
     """make a operator that solves Poisson's equation
 
     {DESCR_POLAR_GRID}

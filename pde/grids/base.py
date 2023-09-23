@@ -55,6 +55,7 @@ if TYPE_CHECKING:
 
 PI_4 = 4 * np.pi
 PI_43 = 4 / 3 * np.pi
+CoordsType = Literal["cartesian", "grid", "cells"]
 
 
 class OperatorInfo(NamedTuple):
@@ -835,7 +836,7 @@ class GridBase(metaclass=ABCMeta):
 
     @abstractmethod
     def get_random_point(
-        self, *, boundary_distance: float = 0, coords: str = "cartesian"
+        self, *, boundary_distance: float = 0, coords: CoordsType = "cartesian"
     ) -> np.ndarray:
         ...
 

@@ -13,7 +13,7 @@ import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
-from .base import InfoDict, StorageBase
+from .base import InfoDict, StorageBase, WriteModeType
 
 
 class MemoryStorage(StorageBase):
@@ -26,7 +26,7 @@ class MemoryStorage(StorageBase):
         *,
         info: Optional[InfoDict] = None,
         field_obj: Optional[FieldBase] = None,
-        write_mode: str = "truncate_once",
+        write_mode: WriteModeType = "truncate_once",
     ):
         """
         Args:
@@ -69,7 +69,7 @@ class MemoryStorage(StorageBase):
         times: Optional[Sequence[float]] = None,
         fields: Optional[Sequence[FieldBase]] = None,
         info: Optional[InfoDict] = None,
-        write_mode: str = "truncate_once",
+        write_mode: WriteModeType = "truncate_once",
     ) -> MemoryStorage:
         """create MemoryStorage from a list of fields
 

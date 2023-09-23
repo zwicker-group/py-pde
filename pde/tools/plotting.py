@@ -24,7 +24,7 @@ import functools
 import logging
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Type  # @UnusedImport
+from typing import TYPE_CHECKING, Any, Dict, Generator, Literal, Optional, Type
 
 from ..tools.docstrings import replace_in_docstring
 
@@ -190,6 +190,9 @@ class PlotReference:
         self.parameters = {} if parameters is None else parameters
 
 
+PlotActionType = Literal["auto", "close", "none", "sca", "show"]
+
+
 def plot_on_axes(wrapped=None, update_method=None):
     """decorator for a plot method or function that uses a single axes
 
@@ -240,7 +243,7 @@ def plot_on_axes(wrapped=None, update_method=None):
         *args,
         title: Optional[str] = None,
         filename: Optional[str] = None,
-        action: str = "auto",
+        action: PlotActionType = "auto",
         ax_style: Optional[Dict[str, Any]] = None,
         fig_style: Optional[Dict[str, Any]] = None,
         ax=None,
@@ -445,7 +448,7 @@ def plot_on_figure(wrapped=None, update_method=None):
         title: Optional[str] = None,
         constrained_layout: bool = True,
         filename: Optional[str] = None,
-        action: str = "auto",
+        action: PlotActionType = "auto",
         fig_style: Optional[Dict[str, Any]] = None,
         fig=None,
         **kwargs,

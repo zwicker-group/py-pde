@@ -19,6 +19,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Literal,
     Optional,
     Tuple,
     Type,
@@ -924,7 +925,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         mean: float = 0,
         std: float = 1,
         *,
-        scaling: str = "none",
+        scaling: Literal["none", "physical"] = "none",
         label: Optional[str] = None,
         dtype: Optional[DTypeLike] = None,
         rng: Optional[np.random.Generator] = None,
@@ -2135,7 +2136,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def _plot_vector(
         self,
         ax,
-        method: str = "quiver",
+        method: Literal["quiver", "streamplot"] = "quiver",
         transpose: bool = False,
         max_points: int = 16,
         **kwargs,
@@ -2163,7 +2164,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the plot with new data later.
         """
         # store the parameters of this plot for later updating
-        parameters = {
+        parameters: Dict[str, Any] = {
             "method": method,
             "transpose": transpose,
             "kwargs": kwargs,
