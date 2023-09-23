@@ -78,10 +78,10 @@ def test_boundary_specifications():
     assert bc1 == Boundaries.from_data(g, ["neumann", "dirichlet"])
 
 
-def test_mixed_boundary_condition():
+def test_mixed_boundary_condition(rng):
     """test limiting cases of the mixed boundary condition"""
     g = UnitGrid([2])
-    d = np.random.random(2)
+    d = rng.random(2)
     g1 = g.make_operator("gradient", bc=[{"mixed": 0}, {"mixed": np.inf}])
     g2 = g.make_operator("gradient", bc=["derivative", "value"])
     np.testing.assert_allclose(g1(d), g2(d))
@@ -125,10 +125,10 @@ def test_bc_values():
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 @pytest.mark.parametrize("periodic", [True, False])
-def test_set_ghost_cells(dim, periodic):
+def test_set_ghost_cells(dim, periodic, rng):
     """test setting values for ghost cells"""
     grid = UnitGrid([1] * dim, periodic=periodic)
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     bcs = grid.get_boundary_conditions("auto_periodic_neumann")
 
     arr1 = field._data_full.copy()

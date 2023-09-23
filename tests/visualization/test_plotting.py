@@ -12,12 +12,12 @@ from pde.visualization import plotting
 
 
 @skipUnlessModule("matplotlib")
-def test_scalar_field_plot(tmp_path):
+def test_scalar_field_plot(tmp_path, rng):
     """test ScalarFieldPlot class"""
     path = tmp_path / "test_scalar_field_plot.png"
 
     # create some data
-    state = ScalarField.random_uniform(UnitGrid([16, 16]))
+    state = ScalarField.random_uniform(UnitGrid([16, 16]), rng=rng)
     for scale in [(0, 1), 1, "automatic", "symmetric", "unity"]:
         sfp = plotting.ScalarFieldPlot(state, scale=scale)
         sfp.savefig(path)
@@ -29,12 +29,12 @@ def test_scalar_field_plot(tmp_path):
 
 
 @skipUnlessModule("matplotlib")
-def test_scalar_plot(tmp_path):
+def test_scalar_plot(tmp_path, rng):
     """test Simple simulation"""
     path = tmp_path / "test_scalar_plot.png"
 
     # create some data
-    state = ScalarField.random_uniform(UnitGrid([16, 16]), label="test")
+    state = ScalarField.random_uniform(UnitGrid([16, 16]), label="test", rng=rng)
     with get_memory_storage(state) as storage:
         storage.append(state, 0)
         storage.append(state, 1)
@@ -109,11 +109,10 @@ def test_kymograph_collection(tmp_path):
 
 @skipUnlessModule("napari")
 @pytest.mark.interactive
-def test_interactive_plotting():
+def test_interactive_plotting(rng):
     """test plot_interactive"""
-
     # create some data
-    field = ScalarField.random_uniform(UnitGrid([8]))
+    field = ScalarField.random_uniform(UnitGrid([8]), rng=rng)
     with get_memory_storage(field) as storage:
         for i in range(8):
             field.data = i

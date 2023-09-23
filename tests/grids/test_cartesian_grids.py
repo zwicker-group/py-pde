@@ -14,8 +14,9 @@ from pde.grids.boundaries import Boundaries, PeriodicityError
 
 def _get_cartesian_grid(dim=2, periodic=True):
     """return a random Cartesian grid of given dimension"""
-    bounds = [[0, 1 + np.random.random()] for _ in range(dim)]
-    shape = np.random.randint(32, 64, size=dim)
+    rng = np.random.default_rng(0)
+    bounds = [[0, 1 + rng.random()] for _ in range(dim)]
+    shape = rng.integers(32, 64, size=dim)
     return CartesianGrid(bounds, shape, periodic=periodic)
 
 
@@ -28,12 +29,12 @@ def test_degenerated_grid():
 
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
-def test_generic_cartesian_grid(dim):
+def test_generic_cartesian_grid(dim, rng):
     """test generic cartesian grid functions"""
     periodic = random.choices([True, False], k=dim)
-    shape = np.random.randint(2, 8, size=dim)
-    a = np.random.random(dim)
-    b = a + np.random.random(dim)
+    shape = rng.integers(2, 8, size=dim)
+    a = rng.random(dim)
+    b = a + rng.random(dim)
 
     cases = [
         UnitGrid(shape, periodic=periodic),
@@ -48,15 +49,15 @@ def test_generic_cartesian_grid(dim):
         assert grid.volume == pytest.approx(vol)
         assert grid.uniform_cell_volumes
 
-        assert grid.contains_point(grid.get_random_point(coords="grid"))
+        assert grid.contains_point(grid.get_random_point(coords="grid", rng=rng))
         w = 0.499 * (b - a).min()
-        p = grid.get_random_point(boundary_distance=w, coords="grid")
+        p = grid.get_random_point(boundary_distance=w, coords="grid", rng=rng)
         assert grid.contains_point(p)
         assert "laplace" in grid.operators
 
 
 @pytest.mark.parametrize("periodic", [True, False])
-def test_unit_grid_1d(periodic):
+def test_unit_grid_1d(periodic, rng):
     """test 1D grids"""
     grid = UnitGrid(4, periodic=periodic)
     assert grid.dim == 1
@@ -95,7 +96,7 @@ def test_unit_grid_1d(periodic):
 
     # test conversion between polar and Cartesian coordinates
     c1 = grid.cell_coords
-    p = np.random.random(1) * grid.shape
+    p = rng.random(1) * grid.shape
     d, a = grid.polar_coordinates_real(p, ret_angle=True)
     c2 = grid.from_polar_coordinates(d, a, p)
     assert np.allclose(grid.distance_real(c1, c2), 0)
@@ -105,7 +106,7 @@ def test_unit_grid_1d(periodic):
     np.testing.assert_equal(grid._boundary_coordinates(0, True), np.array([8]))
 
 
-def test_unit_grid_2d():
+def test_unit_grid_2d(rng):
     """test 2D grids"""
     # test special case
     grid = UnitGrid([4, 4], periodic=True)
@@ -115,7 +116,7 @@ def test_unit_grid_2d():
     np.testing.assert_array_equal(grid.discretization, np.ones(2))
     assert grid.get_image_data(np.zeros(grid.shape))["extent"] == [0, 4, 0, 4]
     for _ in range(10):
-        p = np.random.randn(2)
+        p = rng.normal(size=2)
         assert np.all(grid.polar_coordinates_real(p) < np.sqrt(8))
     large_enough = grid.polar_coordinates_real((0, 0)) > np.sqrt(4)
     assert np.any(large_enough)
@@ -133,7 +134,7 @@ def test_unit_grid_2d():
 
     # test conversion between polar and Cartesian coordinates
     c1 = grid.cell_coords
-    p = np.random.random(2) * grid.shape
+    p = rng.random(2) * grid.shape
     d, a = grid.polar_coordinates_real(p, ret_angle=True)
     c2 = grid.from_polar_coordinates(d, a, p)
     assert np.allclose(grid.distance_real(c1, c2), 0)
@@ -157,7 +158,7 @@ def test_unit_grid_2d():
     )
 
 
-def test_unit_grid_3d():
+def test_unit_grid_3d(rng):
     """test 3D grids"""
     grid = UnitGrid([4, 4, 4])
     assert grid.dim == 3
@@ -177,7 +178,7 @@ def test_unit_grid_3d():
     assert grid.dim == 3
     assert grid.volume == 64
     for _ in range(10):
-        p = np.random.randn(3)
+        p = rng.normal(size=3)
         not_too_large = grid.polar_coordinates_real(p) < np.sqrt(12)
         assert np.all(not_too_large)
     large_enough = grid.polar_coordinates_real((0, 0, 0)) > np.sqrt(6)
@@ -188,7 +189,7 @@ def test_unit_grid_3d():
         assert grid._boundary_coordinates(*bndry).shape == (4, 4, 3)
 
 
-def test_rect_grid_1d():
+def test_rect_grid_1d(rng):
     """test 1D grids"""
     grid = CartesianGrid([32], 16, periodic=False)
     assert grid.dim == 1
@@ -211,23 +212,23 @@ def test_rect_grid_1d():
     np.testing.assert_allclose(grid.normalize_point(16 + 1e-10), -16 + 1e-10)
 
     for periodic in [True, False]:
-        a, b = np.random.random(2)
+        a, b = rng.random(2)
         grid = CartesianGrid([[a, a + b]], 8, periodic=periodic)
 
         # test conversion between polar and Cartesian coordinates
         c1 = grid.cell_coords
-        p = np.random.random(1) * grid.shape
+        p = rng.random(1) * grid.shape
         d, a = grid.polar_coordinates_real(p, ret_angle=True)
         c2 = grid.from_polar_coordinates(d, a, p)
         assert np.allclose(grid.distance_real(c1, c2), 0)
 
 
-def test_rect_grid_2d():
+def test_rect_grid_2d(rng):
     """test 2D grids"""
     grid = CartesianGrid([[2], [2]], 4, periodic=True)
     assert grid.get_image_data(np.zeros(grid.shape))["extent"] == [0, 2, 0, 2]
     for _ in range(10):
-        p = np.random.randn(2)
+        p = rng.normal(size=2)
         assert np.all(grid.polar_coordinates_real(p) < np.sqrt(2))
 
     periodic = random.choices([True, False], k=2)
@@ -246,14 +247,14 @@ def test_rect_grid_2d():
 
     # test conversion between polar and Cartesian coordinates
     c1 = grid.cell_coords
-    p = np.random.random(2) * grid.shape
+    p = rng.random(2) * grid.shape
     d, a = grid.polar_coordinates_real(p, ret_angle=True)
     c2 = grid.from_polar_coordinates(d, a, p)
 
     assert np.allclose(grid.distance_real(c1, c2), 0)
 
 
-def test_rect_grid_3d():
+def test_rect_grid_3d(rng):
     """test 3D grids"""
     grid = CartesianGrid([4, 4, 4], 4)
     assert grid.dim == 3
@@ -272,15 +273,15 @@ def test_rect_grid_3d():
 
     grid = CartesianGrid([[2], [2], [2]], 4, periodic=True)
     for _ in range(10):
-        p = np.random.randn(3)
+        p = rng.normal(size=3)
         assert np.all(grid.polar_coordinates_real(p) < np.sqrt(3))
 
 
 @pytest.mark.parametrize("periodic", [True, False])
-def test_unit_rect_grid(periodic):
+def test_unit_rect_grid(periodic, rng):
     """test whether the rectangular grid behaves like a unit grid in special cases"""
     dim = random.randrange(1, 4)
-    shape = np.random.randint(2, 10, size=dim)
+    shape = rng.integers(2, 10, size=dim)
     g1 = UnitGrid(shape, periodic=periodic)
     g2 = CartesianGrid(np.c_[np.zeros(dim), shape], shape, periodic=periodic)
     volume = np.prod(shape)
@@ -294,19 +295,19 @@ def test_unit_rect_grid(periodic):
     assert g1.typical_discretization == pytest.approx(g2.typical_discretization)
 
     for _ in range(10):
-        p1, p2 = np.random.normal(scale=10, size=(2, dim))
+        p1, p2 = rng.normal(scale=10, size=(2, dim))
         assert g1.distance_real(p1, p2) == pytest.approx(g2.distance_real(p1, p2))
 
-    p0 = np.random.normal(scale=10, size=dim)
+    p0 = rng.normal(scale=10, size=dim)
     np.testing.assert_allclose(
         g1.polar_coordinates_real(p0), g2.polar_coordinates_real(p0)
     )
 
 
-def test_conversion_unit_rect_grid():
+def test_conversion_unit_rect_grid(rng):
     """test the conversion from unit to rectangular grid"""
     dim = random.randrange(1, 4)
-    shape = np.random.randint(2, 10, size=dim)
+    shape = rng.integers(2, 10, size=dim)
     periodic = random.choices([True, False], k=dim)
     g1 = UnitGrid(shape, periodic=periodic)
     g2 = g1.to_cartesian()

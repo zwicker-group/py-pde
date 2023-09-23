@@ -65,7 +65,7 @@ def test_storage_write(storage_factory):
     np.testing.assert_allclose(storage.times, np.arange(3))
 
 
-def test_storage_truncation(tmp_path):
+def test_storage_truncation(tmp_path, rng):
     """test whether simple trackers can be used"""
     file = tmp_path / "test_storage_truncation.hdf5"
     for truncate in [True, False]:
@@ -75,7 +75,7 @@ def test_storage_truncation(tmp_path):
         tracker_list = [s.tracker(interval=0.01) for s in storages]
 
         grid = UnitGrid([8, 8])
-        state = ScalarField.random_uniform(grid, 0.2, 0.3)
+        state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
         eq = DiffusionPDE()
 
         eq.solve(state, t_range=0.1, dt=0.001, tracker=tracker_list)
@@ -136,12 +136,12 @@ def test_storing_extract_range(storage_factory):
 
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storing_collection(storage_factory):
+def test_storing_collection(storage_factory, rng):
     """test methods specific to FieldCollections in memory storage"""
     grid = UnitGrid([2, 2])
-    f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="a")
-    f2 = VectorField.random_uniform(grid, 0.1, 0.4, label="b")
-    f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4, label="c")
+    f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="a", rng=rng)
+    f2 = VectorField.random_uniform(grid, 0.1, 0.4, label="b", rng=rng)
+    f3 = Tensor2Field.random_uniform(grid, 0.1, 0.4, label="c", rng=rng)
     fc = FieldCollection([f1, f2, f3])
 
     # store some data
@@ -223,12 +223,12 @@ def test_storage_copy(storage_factory):
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
 @pytest.mark.parametrize("dtype", [bool, complex])
-def test_storage_types(storage_factory, dtype):
+def test_storage_types(storage_factory, dtype, rng):
     """test storing different types"""
     grid = UnitGrid([32])
-    field = ScalarField.random_uniform(grid).copy(dtype=dtype)
+    field = ScalarField.random_uniform(grid, rng=rng).copy(dtype=dtype)
     if dtype == complex:
-        field += 1j * ScalarField.random_uniform(grid)
+        field += 1j * ScalarField.random_uniform(grid, rng=rng)
 
     s = storage_factory()
     s.start_writing(field)
@@ -244,11 +244,11 @@ def test_storage_types(storage_factory, dtype):
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storage_mpi(storage_factory):
+def test_storage_mpi(storage_factory, rng):
     """test writing data using MPI"""
     eq = DiffusionPDE()
     grid = UnitGrid([8])
-    field = ScalarField.random_normal(grid).smooth(1)
+    field = ScalarField.random_normal(grid, rng=rng).smooth(1)
 
     storage = storage_factory()
     res = eq.solve(
@@ -261,10 +261,10 @@ def test_storage_mpi(storage_factory):
 
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storing_transformation_collection(storage_factory):
+def test_storing_transformation_collection(storage_factory, rng):
     """test transformation yielding field collections in storage classes"""
     grid = UnitGrid([8])
-    field = ScalarField.random_normal(grid).smooth(1)
+    field = ScalarField.random_normal(grid, rng=rng).smooth(1)
 
     def trans1(field, t):
         return FieldCollection([field, 2 * field + t])
@@ -287,10 +287,10 @@ def test_storing_transformation_collection(storage_factory):
 
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storing_transformation_scalar(storage_factory):
+def test_storing_transformation_scalar(storage_factory, rng):
     """test transformations yielding scalar fields in storage classes"""
     grid = UnitGrid([8])
-    field = ScalarField.random_normal(grid).smooth(1)
+    field = ScalarField.random_normal(grid, rng=rng).smooth(1)
 
     storage = storage_factory()
     eq = DiffusionPDE(diffusivity=0)

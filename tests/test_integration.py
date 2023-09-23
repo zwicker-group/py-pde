@@ -12,9 +12,9 @@ from pde.tools import misc, mpi, numba
 
 
 @misc.skipUnlessModule("h5py")
-def test_writing_to_storage(tmp_path):
+def test_writing_to_storage(tmp_path, rng):
     """test whether data is written to storage"""
-    state = ScalarField.random_uniform(UnitGrid([3]))
+    state = ScalarField.random_uniform(UnitGrid([3]), rng=rng)
     pde = DiffusionPDE()
     path = tmp_path / "test_writing_to_storage.hdf5"
     data = FileStorage(filename=path)
@@ -65,7 +65,7 @@ def test_inhomogeneous_bcs_func(backend):
 
 
 @pytest.mark.multiprocessing
-def test_custom_pde_mpi(caplog):
+def test_custom_pde_mpi(caplog, rng):
     """test a custom PDE using the parallelized solver"""
 
     class TestPDE(PDEBase):
@@ -91,7 +91,7 @@ def test_custom_pde_mpi(caplog):
             return pde_rhs
 
     grid = UnitGrid([16, 16])
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     eq = TestPDE()
 
     args = {

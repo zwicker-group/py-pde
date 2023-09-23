@@ -4,7 +4,6 @@
 
 import matplotlib.pyplot as plt
 import matplotlib.testing.compare
-import numpy as np
 import pytest
 
 from pde.tools.plotting import add_scaled_colorbar, plot_on_axes, plot_on_figure
@@ -37,9 +36,9 @@ def test_plot_on_figure(tmp_path):
 
 
 @pytest.mark.interactive
-def test_plot_colorbar(tmp_path):
+def test_plot_colorbar(tmp_path, rng):
     """test the plot_on_axes decorator"""
-    data = np.random.randn(3, 3)
+    data = rng.normal(size=(3, 3))
 
     # do not specify axis
     img = plt.imshow(data)

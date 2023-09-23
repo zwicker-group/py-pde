@@ -17,7 +17,7 @@ from pde.trackers.interrupts import ConstantInterrupts
 from pde.visualization.movies import Movie
 
 
-def test_plot_tracker(tmp_path):
+def test_plot_tracker(tmp_path, rng):
     """test whether the plot tracker creates files without errors"""
     output_file = tmp_path / "img.png"
 
@@ -25,7 +25,7 @@ def test_plot_tracker(tmp_path):
         return f"{state.integral:g} at {t:g}"
 
     grid = UnitGrid([4, 4])
-    state = ScalarField.random_uniform(grid)
+    state = ScalarField.random_uniform(grid, rng=rng)
     eq = DiffusionPDE()
     tracker = trackers.PlotTracker(
         output_file=output_file,
@@ -41,12 +41,12 @@ def test_plot_tracker(tmp_path):
 
 
 @pytest.mark.skipif(not Movie.is_available(), reason="no ffmpeg")
-def test_plot_movie_tracker(tmp_path):
+def test_plot_movie_tracker(tmp_path, rng):
     """test whether the plot tracker creates files without errors"""
     output_file = tmp_path / "movie.mov"
 
     grid = UnitGrid([4, 4])
-    state = ScalarField.random_uniform(grid)
+    state = ScalarField.random_uniform(grid, rng=rng)
     eq = DiffusionPDE()
     tracker = trackers.PlotTracker(
         movie=output_file, interval=0.1, show=False, tight_layout=True
@@ -66,7 +66,7 @@ def test_simple_progress():
     pbar.finalize()
 
 
-def test_trackers():
+def test_trackers(rng):
     """test whether simple trackers can be used"""
     times = []
 
@@ -88,7 +88,7 @@ def test_trackers():
         tracker_list.append(trackers.PlotTracker(interval=0.1, show=False))
 
     grid = UnitGrid([16, 16])
-    state = ScalarField.random_uniform(grid, 0.2, 0.3)
+    state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
     eq = DiffusionPDE()
     eq.solve(state, t_range=1, dt=0.005, tracker=tracker_list)
 
@@ -101,7 +101,7 @@ def test_trackers():
         np.testing.assert_allclose(df["integral"], state.integral)
 
 
-def test_callback_tracker():
+def test_callback_tracker(rng):
     """test trackers that support a callback"""
     data = []
 
@@ -112,7 +112,7 @@ def test_callback_tracker():
         return state.average
 
     grid = UnitGrid([4, 4])
-    state = ScalarField.random_uniform(grid, 0.2, 0.3)
+    state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
     eq = DiffusionPDE()
     data_tracker = trackers.DataTracker(get_mean_data, interval=0.1)
     callback_tracker = trackers.CallbackTracker(store_mean_data, interval=0.1)
@@ -130,7 +130,7 @@ def test_callback_tracker():
         return t
 
     grid = UnitGrid([4, 4])
-    state = ScalarField.random_uniform(grid, 0.2, 0.3)
+    state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
     eq = DiffusionPDE()
     data_tracker = trackers.DataTracker(get_time, interval=0.1)
     tracker_list = [trackers.CallbackTracker(store_time, interval=0.1), data_tracker]
@@ -182,30 +182,30 @@ def test_steady_state_tracker():
     assert len(storage) < 20  # finished early
 
 
-def test_small_tracker_dt():
+def test_small_tracker_dt(rng):
     """test the case where the dt of the tracker is smaller than the dt
     of the simulation"""
     storage = MemoryStorage()
     eq = DiffusionPDE()
-    c0 = ScalarField.random_uniform(UnitGrid([4, 4]), 0.1, 0.2)
+    c0 = ScalarField.random_uniform(UnitGrid([4, 4]), 0.1, 0.2, rng=rng)
     eq.solve(
         c0, 1e-2, dt=1e-3, solver="explicit", tracker=storage.tracker(interval=1e-4)
     )
     assert len(storage) == 11
 
 
-def test_runtime_tracker():
+def test_runtime_tracker(rng):
     """test the RuntimeTracker"""
-    s = ScalarField.random_uniform(UnitGrid([128]))
+    s = ScalarField.random_uniform(UnitGrid([128]), rng=rng)
     tracker = trackers.RuntimeTracker("0:01")
     sol = ExplicitSolver(DiffusionPDE())
     con = Controller(sol, t_range=1e4, tracker=["progress", tracker])
     con.run(s, dt=1e-3)
 
 
-def test_consistency_tracker():
+def test_consistency_tracker(rng):
     """test the ConsistencyTracker"""
-    s = ScalarField.random_uniform(UnitGrid([128]))
+    s = ScalarField.random_uniform(UnitGrid([128]), rng=rng)
     sol = ExplicitSolver(DiffusionPDE(1e3))
     con = Controller(sol, t_range=1e5, tracker=["consistency"])
     with np.errstate(all="ignore"):
@@ -213,9 +213,9 @@ def test_consistency_tracker():
     assert con.info["t_final"] < con.info["t_end"]
 
 
-def test_material_conservation_tracker():
+def test_material_conservation_tracker(rng):
     """test the MaterialConservationTracker"""
-    state = ScalarField.random_uniform(UnitGrid([8, 8]), 0, 1)
+    state = ScalarField.random_uniform(UnitGrid([8, 8]), 0, 1, rng=rng)
 
     solver = ExplicitSolver(CahnHilliardPDE())
     controller = Controller(solver, t_range=1, tracker=["material_conservation"])
@@ -236,14 +236,14 @@ def test_get_named_trackers():
         assert isinstance(tracker, cls)
 
 
-def test_double_tracker():
+def test_double_tracker(rng):
     """simple test for using a custom tracker twice"""
     interval = ConstantInterrupts(1)
     times1, times2 = [], []
     t1 = trackers.CallbackTracker(lambda s, t: times1.append(t), interval=interval)
     t2 = trackers.CallbackTracker(lambda s, t: times2.append(t), interval=interval)
 
-    field = ScalarField.random_uniform(UnitGrid([3]))
+    field = ScalarField.random_uniform(UnitGrid([3]), rng=rng)
     DiffusionPDE().solve(field, t_range=4, dt=0.1, tracker=[t1, t2])
 
     np.testing.assert_allclose(times1, np.arange(5))

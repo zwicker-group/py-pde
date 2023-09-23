@@ -272,7 +272,7 @@ def test_inhomogeneous_bcs_2d():
 
 
 @pytest.mark.parametrize("expr", ["1", "x + y**2"])
-def test_expression_bc_setting_value(expr):
+def test_expression_bc_setting_value(expr, rng):
     """test boundary conditions that use an expression"""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
 
@@ -292,7 +292,7 @@ def test_expression_bc_setting_value(expr):
     bc4 = grid.get_boundary_conditions({"virtual_point": f"2 * ({expr}) - value"})
     bcs = [bc1, bc2, bc3, bc4]
 
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     f_ref = field.copy()
     f_ref.set_ghost_cells(bc1)
 
@@ -307,7 +307,7 @@ def test_expression_bc_setting_value(expr):
 
 
 @pytest.mark.parametrize("expr", ["1", "x + y**2"])
-def test_expression_bc_setting_derivative(expr):
+def test_expression_bc_setting_derivative(expr, rng):
     """test boundary conditions that use an expression"""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
 
@@ -326,7 +326,7 @@ def test_expression_bc_setting_derivative(expr):
     bc3 = grid.get_boundary_conditions({"derivative_expression": func})
     bcs = [bc1, bc2, bc3]
 
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     f_ref = field.copy()
     f_ref.set_ghost_cells(bc1)
 
@@ -341,7 +341,7 @@ def test_expression_bc_setting_derivative(expr):
 
 
 @pytest.mark.parametrize("value_expr, const_expr", [["1", "1"], ["x", "y**2"]])
-def test_expression_bc_setting_mixed(value_expr, const_expr):
+def test_expression_bc_setting_mixed(value_expr, const_expr, rng):
     """test boundary conditions that use an expression"""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
 
@@ -376,7 +376,7 @@ def test_expression_bc_setting_mixed(value_expr, const_expr):
     )
     bcs = [bc1, bc2, bc3]
 
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     f_ref = field.copy()
     f_ref.set_ghost_cells(bc1)
 

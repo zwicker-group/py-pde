@@ -12,10 +12,10 @@ from pde.tools.misc import skipUnlessModule
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_shapes_nfields(grid):
+def test_shapes_nfields(grid, rng):
     """test single component field"""
     for num in [1, 3]:
-        fields = [ScalarField.random_uniform(grid) for _ in range(num)]
+        fields = [ScalarField.random_uniform(grid, rng=rng) for _ in range(num)]
         field = FieldCollection(fields)
         data_shape = (num,) + grid.shape
         np.testing.assert_equal(field.data.shape, data_shape)
@@ -27,12 +27,12 @@ def test_shapes_nfields(grid):
         assert field.grid == field_c.grid
 
 
-def test_collections():
+def test_collections(rng):
     """test field collections"""
     grid = UnitGrid([3, 4])
-    sf = ScalarField.random_uniform(grid, label="sf")
-    vf = VectorField.random_uniform(grid, label="vf")
-    tf = Tensor2Field.random_uniform(grid, label="tf")
+    sf = ScalarField.random_uniform(grid, label="sf", rng=rng)
+    vf = VectorField.random_uniform(grid, label="vf", rng=rng)
+    tf = Tensor2Field.random_uniform(grid, label="tf", rng=rng)
     fields = FieldCollection([sf, vf, tf])
     assert fields.data.shape == (7, 3, 4)
     assert isinstance(str(fields), str)
@@ -176,14 +176,14 @@ def test_collections_operators():
     np.testing.assert_allclose(fields.data, 4)
 
 
-def test_smoothing_collection():
+def test_smoothing_collection(rng):
     """test smoothing of a FieldCollection"""
     grid = UnitGrid([3, 4], periodic=[True, False])
-    sf = ScalarField.random_uniform(grid)
-    vf = VectorField.random_uniform(grid)
-    tf = Tensor2Field.random_uniform(grid)
+    sf = ScalarField.random_uniform(grid, rng=rng)
+    vf = VectorField.random_uniform(grid, rng=rng)
+    tf = Tensor2Field.random_uniform(grid, rng=rng)
     fields = FieldCollection([sf, vf, tf])
-    sgm = 0.5 + np.random.random()
+    sgm = 0.5 + rng.random()
 
     out = fields.smooth(sigma=sgm)
     for i in range(3):
@@ -225,11 +225,11 @@ def test_from_scalar_expressions():
 
 @skipUnlessModule("napari")
 @pytest.mark.interactive
-def test_interactive_collection_plotting():
+def test_interactive_collection_plotting(rng):
     """test the interactive plotting"""
     grid = UnitGrid([3, 3])
-    sf = ScalarField.random_uniform(grid, 0.1, 0.9)
-    vf = VectorField.random_uniform(grid, 0.1, 0.9)
+    sf = ScalarField.random_uniform(grid, 0.1, 0.9, rng=rng)
+    vf = VectorField.random_uniform(grid, 0.1, 0.9, rng=rng)
     field = FieldCollection([sf, vf])
     field.plot_interactive(viewer_args={"show": False, "close": True})
 
@@ -306,11 +306,11 @@ def test_collection_plotting():
     fc.plot(arrangement="vertical")
 
 
-def test_from_data():
+def test_from_data(rng):
     """test the `from_data` method"""
     grid = UnitGrid([3, 5])
-    s = ScalarField.random_uniform(grid, label="s1")
-    v = VectorField.random_uniform(grid, label="v2")
+    s = ScalarField.random_uniform(grid, label="s1", rng=rng)
+    v = VectorField.random_uniform(grid, label="v2", rng=rng)
     f1 = FieldCollection([s, v])
 
     f2 = FieldCollection.from_data(
@@ -334,11 +334,11 @@ def test_from_data():
     np.testing.assert_allclose(f1.data, f2.data)
 
 
-def test_collection_apply():
+def test_collection_apply(rng):
     """test the `apply` method"""
     grid = UnitGrid([3, 5])
     s = ScalarField(grid, 2, label="s1")
-    v = VectorField.random_uniform(grid, label="v2")
+    v = VectorField.random_uniform(grid, label="v2", rng=rng)
     f1 = FieldCollection([s, v])
 
     np.testing.assert_allclose(f1.apply("s1 * v2").data, v.data * 2)

@@ -38,10 +38,10 @@ def test_findiff_polar():
     np.testing.assert_allclose(div.data, [5, 17 / 3, 2 + 4 / r2])
 
 
-def test_conservative_laplace_polar():
+def test_conservative_laplace_polar(rng):
     """test and compare the two implementation of the laplace operator"""
     grid = PolarSymGrid(1.5, 8)
-    f = ScalarField.random_uniform(grid)
+    f = ScalarField.random_uniform(grid, rng=rng)
 
     res = f.laplace("auto_periodic_neumann")
     np.testing.assert_allclose(res.integral, 0, atol=1e-12)
@@ -56,7 +56,7 @@ def test_conservative_laplace_polar():
         ("tensor_divergence", Tensor2Field),
     ],
 )
-def test_small_annulus_polar(op_name, field):
+def test_small_annulus_polar(op_name, field, rng):
     """test whether a small annulus gives the same result as a sphere"""
     grids = [
         PolarSymGrid((0, 1), 8),
@@ -64,7 +64,7 @@ def test_small_annulus_polar(op_name, field):
         PolarSymGrid((0.1, 1), 8),
     ]
 
-    f = field.random_uniform(grids[0])
+    f = field.random_uniform(grids[0], rng=rng)
 
     res = [
         field(g, data=f.data).apply_operator(op_name, "auto_periodic_neumann")
@@ -120,10 +120,10 @@ def test_grid_div_grad_polar():
 
 @pytest.mark.parametrize("grid", [PolarSymGrid(4, 8), PolarSymGrid([2, 4], 8)])
 @pytest.mark.parametrize("bc_val", ["auto_periodic_neumann", {"value": 1}])
-def test_poisson_solver_polar(grid, bc_val):
+def test_poisson_solver_polar(grid, bc_val, rng):
     """test the poisson solver on Polar grids"""
     bcs = grid.get_boundary_conditions(bc_val)
-    d = ScalarField.random_uniform(grid)
+    d = ScalarField.random_uniform(grid, rng=rng)
     d -= d.average  # balance the right hand side
     sol = solve_poisson_equation(d, bcs)
     test = sol.laplace(bcs)
@@ -191,7 +191,7 @@ def test_examples_tensor_polar():
 
 
 @pytest.mark.parametrize("r_inner", (0, 1))
-def test_laplace_matrix(r_inner):
+def test_laplace_matrix(r_inner, rng):
     """test laplace operator implemented using matrix multiplication"""
     grid = PolarSymGrid((r_inner, 2), 16)
     if r_inner == 0:
@@ -200,7 +200,7 @@ def test_laplace_matrix(r_inner):
         bcs = grid.get_boundary_conditions({"value": "sin(r)"})
     laplace = make_laplace_from_matrix(*_get_laplace_matrix(bcs))
 
-    field = ScalarField.random_uniform(grid)
+    field = ScalarField.random_uniform(grid, rng=rng)
     res1 = field.laplace(bcs)
     res2 = laplace(field.data)
 

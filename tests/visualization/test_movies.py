@@ -35,11 +35,10 @@ def test_movie_class(tmp_path):
 
 @pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
 @pytest.mark.parametrize("movie_func", [movies.movie_scalar, movies.movie])
-def test_movie_scalar(movie_func, tmp_path):
+def test_movie_scalar(movie_func, tmp_path, rng):
     """test Movie class"""
-
     # create some data
-    state = ScalarField.random_uniform(UnitGrid([4, 4]))
+    state = ScalarField.random_uniform(UnitGrid([4, 4]), rng=rng)
     eq = DiffusionPDE()
     storage = MemoryStorage()
     tracker = storage.tracker(interval=1)

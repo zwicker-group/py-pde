@@ -11,7 +11,7 @@ from pde.grids.boundaries.local import NeumannBC
 
 @pytest.mark.parametrize("periodic", [True, False])
 @pytest.mark.parametrize("r_inner", [0, 2])
-def test_cylindrical_grid(periodic, r_inner):
+def test_cylindrical_grid(periodic, r_inner, rng):
     """test simple cylindrical grid"""
     grid = CylindricalSymGrid((r_inner, 4), (-1, 2), (8, 9), periodic_z=periodic)
     if r_inner == 0:
@@ -37,10 +37,10 @@ def test_cylindrical_grid(periodic, r_inner):
         np.testing.assert_array_equal(grid.discretization, np.array([0.25, 1 / 3]))
         np.testing.assert_allclose(rs, np.linspace(2.125, 3.875, 8))
 
-    assert grid.contains_point(grid.get_random_point(coords="cartesian"))
-    ps = [grid.get_random_point(coords="cartesian") for _ in range(2)]
+    assert grid.contains_point(grid.get_random_point(coords="cartesian", rng=rng))
+    ps = [grid.get_random_point(coords="cartesian", rng=rng) for _ in range(2)]
     assert all(grid.contains_point(ps))
-    ps = grid.get_random_point(coords="cartesian", boundary_distance=1.49)
+    ps = grid.get_random_point(coords="cartesian", boundary_distance=1.49, rng=rng)
     assert grid.contains_point(ps)
     assert "laplace" in grid.operators
 

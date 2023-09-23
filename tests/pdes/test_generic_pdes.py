@@ -20,7 +20,7 @@ from pde import ScalarField, UnitGrid, pdes
         pdes.SwiftHohenbergPDE,
     ],
 )
-def test_pde_consistency(pde_class, dim):
+def test_pde_consistency(pde_class, dim, rng):
     """test some methods of generic PDE models"""
     eq = pde_class()
     assert isinstance(str(eq), str)
@@ -28,7 +28,7 @@ def test_pde_consistency(pde_class, dim):
 
     # compare numba to numpy implementation
     grid = UnitGrid([4] * dim)
-    state = ScalarField.random_uniform(grid)
+    state = ScalarField.random_uniform(grid, rng=rng)
     field = eq.evolution_rate(state)
     assert field.grid == grid
     rhs = eq._make_pde_rhs_numba(state)
@@ -41,7 +41,7 @@ def test_pde_consistency(pde_class, dim):
     np.testing.assert_allclose(field.data, eq2.evolution_rate(state).data)
 
 
-def test_pde_consistency_test():
+def test_pde_consistency_test(rng):
     """test whether the consistency of a pde implementation is checked"""
 
     class TestPDE(pdes.PDEBase):
@@ -55,6 +55,6 @@ def test_pde_consistency_test():
             return impl
 
     eq = TestPDE()
-    state = ScalarField.random_uniform(UnitGrid([4]))
+    state = ScalarField.random_uniform(UnitGrid([4]), rng=rng)
     with pytest.raises(AssertionError):
         eq.solve(state, t_range=5, tracker=None)

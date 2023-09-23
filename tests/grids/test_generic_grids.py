@@ -38,11 +38,11 @@ def test_basic_grid_properties(grid):
         grid.shape = 12
 
 
-def test_discretize():
+def test_discretize(rng):
     """test the discretize function"""
-    x_min = np.random.uniform(0, 1)
-    x_max = np.random.uniform(2, 3)
-    num = np.random.randint(5, 8)
+    x_min = rng.uniform(0, 1)
+    x_max = rng.uniform(2, 3)
+    num = rng.integers(5, 8)
     x, dx = discretize_interval(x_min, x_max, num)
     assert dx == pytest.approx((x_max - x_min) / num)
     x_expect = np.linspace(x_min + dx / 2, x_max - dx / 2, num)
@@ -85,12 +85,12 @@ def test_iter_mirror_points():
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_coordinate_conversion(grid):
+def test_coordinate_conversion(grid, rng):
     """test the conversion between cells and points"""
     p_empty = np.zeros((0, grid.dim))
     c_empty = np.zeros((0, grid.num_axes))
 
-    p = grid.get_random_point(coords="grid")
+    p = grid.get_random_point(coords="grid", rng=rng)
     for coords in ["cartesian", "cell", "grid"]:
         # test empty conversion
         assert grid.transform(p_empty, "cartesian", coords).size == 0
@@ -106,9 +106,9 @@ def test_coordinate_conversion(grid):
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_integration_serial(grid):
+def test_integration_serial(grid, rng):
     """test integration of fields"""
-    arr = np.random.randn(*grid.shape)
+    arr = rng.normal(size=grid.shape)
     res = grid.make_integrator()(arr)
     assert np.isscalar(res)
     assert res == pytest.approx(grid.integrate(arr))

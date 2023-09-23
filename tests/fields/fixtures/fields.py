@@ -25,6 +25,7 @@ def iter_grids():
 
 def get_cartesian_grid(dim=2, periodic=True):
     """return a random Cartesian grid of given dimension"""
-    bounds = [[0, 1 + np.random.random()] for _ in range(dim)]
-    shape = np.random.randint(32, 64, size=dim)
+    rng = np.random.default_rng(0)
+    bounds = [[0, 1 + rng.random()] for _ in range(dim)]
+    shape = rng.integers(32, 64, size=dim)
     return CartesianGrid(bounds, shape, periodic=periodic)

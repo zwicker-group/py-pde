@@ -37,11 +37,11 @@ def spectral_density(data, dx=1.0):
     return np.sqrt(k2s), np.abs(res) ** 2
 
 
-def test_colored_noise():
+def test_colored_noise(rng):
     """test the implementation of the colored noise"""
     grid = UnitGrid([64, 64], periodic=True)
     for exponent in [0, -1, 2]:
-        scale = np.random.uniform(1, 10)
+        scale = rng.uniform(1, 10)
         noise = make_colored_noise(grid.shape, grid.discretization, exponent, scale)
         x = noise()
         assert (
@@ -49,12 +49,12 @@ def test_colored_noise():
         ), f"Colored noise with exp={exponent} is not normal distributed"
 
 
-def test_noise_scaling():
+def test_noise_scaling(rng):
     """compare the noise strength (in terms of the spectral density of
     two different noise sources that should be equivalent)"""
     # create a grid
-    x, w = 2 + 10 * np.random.random(2)
-    size = np.random.randint(128, 256)
+    x, w = 2 + 10 * rng.random(2)
+    size = rng.integers(128, 256)
     grid = CartesianGrid([[x, x + w]], size, periodic=True)
 
     # colored noise
@@ -65,7 +65,7 @@ def test_noise_scaling():
     div = grid.make_operator("divergence", bc="auto_periodic_neumann")
 
     def noise_div():
-        return div(np.random.randn(*shape))
+        return div(rng.normal(size=shape))
 
     # calculate spectral densities of the two noises
     result = []

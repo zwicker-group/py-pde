@@ -95,9 +95,9 @@ def test_solvers_time_dependent(scheme, adaptive):
 
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
-def test_stochastic_solvers(backend):
+def test_stochastic_solvers(backend, rng):
     """test simple version of the stochastic solver"""
-    field = ScalarField.random_uniform(UnitGrid([16]), -1, 1)
+    field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE()
     seq = DiffusionPDE(noise=1e-10)
 
@@ -117,9 +117,9 @@ def test_stochastic_solvers(backend):
     assert not solver2.info.get("dt_adaptive", False)
 
 
-def test_stochastic_adaptive_solver(caplog):
+def test_stochastic_adaptive_solver(caplog, rng):
     """test using an adaptive, stochastic solver"""
-    field = ScalarField.random_uniform(UnitGrid([16]), -1, 1)
+    field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE(noise=1e-6)
 
     with pytest.raises(RuntimeError):
@@ -128,9 +128,9 @@ def test_stochastic_adaptive_solver(caplog):
         c.run(field, dt=1e-2)
 
 
-def test_unsupported_stochastic_solvers():
+def test_unsupported_stochastic_solvers(rng):
     """test some solvers that do not support stochasticity"""
-    field = ScalarField.random_uniform(UnitGrid([16]), -1, 1)
+    field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE(noise=1)
 
     with pytest.raises(RuntimeError):

@@ -91,7 +91,7 @@ def test_const(caplog):
             e.get_compiled()()
 
 
-def test_single_arg():
+def test_single_arg(rng):
     """test simple expressions"""
     e = ScalarExpression("2 * a")
     assert not e.constant
@@ -109,7 +109,7 @@ def test_single_arg():
     with pytest.raises(TypeError):
         e.value
 
-    arr = np.random.random(5)
+    arr = rng.random(5)
     np.testing.assert_allclose(e(arr), 2 * arr)
     np.testing.assert_allclose(e.get_compiled()(arr), 2 * arr)
 
@@ -123,7 +123,7 @@ def test_single_arg():
         ScalarExpression(np.exp)
 
 
-def test_two_args():
+def test_two_args(rng):
     """test simple expressions"""
     e = ScalarExpression("2 * a ** b")
     assert e.depends_on("b")
@@ -137,7 +137,7 @@ def test_two_args():
     assert e.rank == 0
     assert e == ScalarExpression(e.expression)
 
-    for x in [np.random.random(2), np.random.random((2, 5))]:
+    for x in [rng.random(2), rng.random((2, 5))]:
         res = 2 * x[0] ** x[1]
         np.testing.assert_allclose(e(*x), res)
         np.testing.assert_allclose(e.get_compiled()(*x), res)

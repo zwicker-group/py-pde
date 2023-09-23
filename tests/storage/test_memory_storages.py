@@ -37,11 +37,11 @@ def test_memory_storage():
     np.testing.assert_allclose(np.ravel(s3.data), np.arange(4))
 
 
-def test_field_type_guessing():
+def test_field_type_guessing(rng):
     """test the ability to guess the field type"""
     for cls in [ScalarField, VectorField, Tensor2Field]:
         grid = UnitGrid([3])
-        field = cls.random_normal(grid)
+        field = cls.random_normal(grid, rng=rng)
         s = MemoryStorage()
         s.start_writing(field)
         s.append(field, 0)

@@ -9,7 +9,7 @@ from pde import PDE, ScalarField, UnitGrid, WavePDE
 
 
 @pytest.mark.parametrize("dim", [1, 2])
-def test_wave_consistency(dim):
+def test_wave_consistency(dim, rng):
     """test some methods of the wave model"""
     eq = WavePDE()
     assert isinstance(str(eq), str)
@@ -17,7 +17,7 @@ def test_wave_consistency(dim):
 
     # compare numba to numpy implementation
     grid = UnitGrid([4] * dim)
-    state = eq.get_initial_condition(ScalarField.random_uniform(grid))
+    state = eq.get_initial_condition(ScalarField.random_uniform(grid, rng=rng))
     field = eq.evolution_rate(state)
     assert field.grid == grid
     rhs = eq._make_pde_rhs_numba(state)

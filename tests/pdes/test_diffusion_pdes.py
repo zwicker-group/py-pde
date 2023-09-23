@@ -9,7 +9,7 @@ from scipy import stats
 from pde import CartesianGrid, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
 
 
-def test_diffusion_single():
+def test_diffusion_single(rng):
     """test some methods of the simple diffusion model"""
     eq = DiffusionPDE()
     assert isinstance(str(eq), str)
@@ -17,17 +17,17 @@ def test_diffusion_single():
     assert not eq.explicit_time_dependence
 
     grid = UnitGrid([4, 4])
-    state = ScalarField.random_uniform(grid)
+    state = ScalarField.random_uniform(grid, rng=rng)
 
     field = eq.evolution_rate(state)
     assert isinstance(field, ScalarField)
     assert field.grid == grid
 
 
-def test_simple_diffusion_value():
+def test_simple_diffusion_value(rng):
     """test a simple diffusion equation with constant boundaries"""
     grid = CartesianGrid([[0, 1]], [16])
-    c = ScalarField.random_uniform(grid, 0, 1)
+    c = ScalarField.random_uniform(grid, 0, 1, rng=rng)
     b_l = {"type": "value", "value": 0}
     b_r = {"type": "value", "value": 1}
     pde = DiffusionPDE(bc=[b_l, b_r])
@@ -36,10 +36,10 @@ def test_simple_diffusion_value():
     np.testing.assert_allclose(sol.data, grid.axes_coords[0], rtol=5e-3)
 
 
-def test_simple_diffusion_flux_right():
+def test_simple_diffusion_flux_right(rng):
     """test a simple diffusion equation with flux boundary on the right"""
     grid = CartesianGrid([[0, 1]], [16])
-    c = ScalarField.random_uniform(grid, 0, 1)
+    c = ScalarField.random_uniform(grid, 0, 1, rng=rng)
     b_l = {"type": "value", "value": 0}
     b_r = {"type": "derivative", "value": 3}
     pde = DiffusionPDE(bc=[b_l, b_r])
@@ -47,10 +47,10 @@ def test_simple_diffusion_flux_right():
     np.testing.assert_allclose(sol.data, 3 * grid.axes_coords[0], rtol=5e-3)
 
 
-def test_simple_diffusion_flux_left():
+def test_simple_diffusion_flux_left(rng):
     """test a simple diffusion equation with flux boundary on the left"""
     grid = CartesianGrid([[0, 1]], [16])
-    c = ScalarField.random_uniform(grid, 0, 1)
+    c = ScalarField.random_uniform(grid, 0, 1, rng=rng)
     b_l = {"type": "derivative", "value": 2}
     b_r = {"type": "value", "value": 0}
     pde = DiffusionPDE(bc=[b_l, b_r])
@@ -58,10 +58,10 @@ def test_simple_diffusion_flux_left():
     np.testing.assert_allclose(sol.data, 2 - 2 * grid.axes_coords[0], rtol=5e-3)
 
 
-def test_diffusion_cached():
+def test_diffusion_cached(rng):
     """test some caching of rhs of the simple diffusion model"""
     grid = UnitGrid([8])
-    c0 = ScalarField.random_uniform(grid)
+    c0 = ScalarField.random_uniform(grid, rng=rng)
 
     # first run without cache
     eq1 = DiffusionPDE(diffusivity=1)
