@@ -167,8 +167,9 @@ class ScalarField(DataFieldBase):
                     arrs.append(arg)
                 elif isinstance(arg, np.ndarray):
                     if arg.shape != self.data.shape:
-                        print(arg.shape, self.data.shape)
-                        raise RuntimeError("Data shapes incompatible")
+                        raise RuntimeError(
+                            f"Data shapes incompatible ({arg.shape} != {self.data.shape}"
+                        )
                     arrs.append(arg)
                 elif isinstance(arg, self.__class__):
                     self.assert_field_compatible(arg)

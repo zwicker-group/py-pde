@@ -571,14 +571,16 @@ class GridBase(metaclass=ABCMeta):
     ) -> np.ndarray:
         """normalize grid coordinates by applying periodic boundary conditions
 
-        Here, the point is assumed to be specified by the physical values along the
-        non-symmetric axes of the grid. Normalizing points is useful to make sure they
-        lie within the domain of the  grid. This function respects periodic boundary
-        conditions and can also reflect points off the boundary.
+        Here, points are assumed to be specified by the physical values along the
+        non-symmetric axes of the grid, e.g., by grid coordinates. Normalizing points is
+        useful to make sure they lie within the domain of the  grid. This function
+        respects periodic boundary conditions and can also reflect points off the
+        boundary if `reflect = True`.
 
         Args:
             point (:class:`~numpy.ndarray`):
-                Coordinates of a single point
+                Coordinates of a single point or an array of points, where the last axis
+                denotes the point coordinates (e.g., a list of points).
             reflect (bool):
                 Flag determining whether coordinates along non-periodic axes are
                 reflected to lie in the valid range. If `False`, such coordinates are
