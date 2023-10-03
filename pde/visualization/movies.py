@@ -9,8 +9,7 @@ Functions for creating movies of simulation results
    movie_scalar
    movie_multiple
    movie
-   
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
