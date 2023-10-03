@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 
 PI_4 = 4 * np.pi
 PI_43 = 4 / 3 * np.pi
-CoordsType = Literal["cartesian", "grid", "cells"]
+CoordsType = Literal["cartesian", "grid", "cell"]
 
 
 class OperatorInfo(NamedTuple):
@@ -663,10 +663,7 @@ class GridBase(metaclass=ABCMeta):
             return cells  # type: ignore
 
     def transform(
-        self,
-        coordinates: np.ndarray,
-        source: Literal["cartesian", "cell", "grid"],
-        target: Literal["cartesian", "cell", "grid"],
+        self, coordinates: np.ndarray, source: CoordsType, target: CoordsType
     ) -> np.ndarray:
         """converts coordinates from one coordinate system to another
 
