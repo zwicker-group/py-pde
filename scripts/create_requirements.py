@@ -12,7 +12,7 @@ from typing import List, Optional, Set
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 MIN_PYTHON_VERSION = "3.8"
-MAX_PYTHON_VERSION = "3.11"
+MAX_PYTHON_VERSION = "3.12"
 
 
 @dataclass
@@ -213,7 +213,7 @@ def write_requirements_csv(
     with open(path, "w") as fp:
         writer = csv.writer(fp)
         if incl_version:
-            writer.writerow(["Package", "Minimal version_min", "Usage"])
+            writer.writerow(["Package", "Minimal version", "Usage"])
         else:
             writer.writerow(["Package", "Usage"])
         for r in sorted(requirements, key=lambda r: r.name.lower()):
