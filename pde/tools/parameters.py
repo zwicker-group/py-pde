@@ -144,8 +144,6 @@ class Parameter:
 class DeprecatedParameter(Parameter):
     """a parameter that can still be used normally but is deprecated"""
 
-    pass
-
 
 class HideParameter:
     """a helper class that allows hiding parameters of the parent classes"""

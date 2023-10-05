@@ -16,7 +16,7 @@ from .base import SolverBase
 
 
 class ConvergenceError(RuntimeError):
-    pass
+    """indicates that the implicit step did not converge"""
 
 
 class ImplicitSolver(SolverBase):

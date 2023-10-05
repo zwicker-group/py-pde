@@ -350,7 +350,18 @@ class FieldBase(metaclass=ABCMeta):
     def copy(
         self: TField, *, label: Optional[str] = None, dtype: Optional[DTypeLike] = None
     ) -> TField:
-        ...
+        """return a new field with the data (but not the grid) copied
+
+        Args:
+            label (str, optional):
+                Name of the returned field
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically or the dtype of the current field is used.
+
+        Returns:
+            :class:`DataFieldBase`: A copy of the current field
+        """
 
     def assert_field_compatible(
         self, other: FieldBase, accept_scalar: bool = False
@@ -694,19 +705,44 @@ class FieldBase(metaclass=ABCMeta):
     def get_line_data(
         self, scalar: str = "auto", extract: str = "auto"
     ) -> Dict[str, Any]:
-        ...
+        """return data for a line plot of the field
+
+        Args:
+            scalar (str or int):
+                The method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
+            extract (str):
+                The method used for extracting the line data. See the docstring
+                of the grid method `get_line_data` to find supported values.
+
+        Returns:
+            dict: Information useful for performing a line plot of the field
+        """
 
     @abstractmethod
     def get_image_data(self) -> Dict[str, Any]:
-        ...
+        r"""return data for plotting an image of the field
+
+        Args:
+            scalar (str or int):
+                The method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
+            transpose (bool):
+                Determines whether the transpose of the data should is plotted
+            \**kwargs:
+                Additional parameters are forwarded to `grid.get_image_data`
+
+        Returns:
+            dict: Information useful for plotting an image of the field
+        """
 
     @abstractmethod
     def plot(self, *args, **kwargs):
-        ...
+        """visualize the field"""
 
     @abstractmethod
     def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
-        ...
+        """returns data for plotting this field using :mod:`napari`"""
 
     def plot_interactive(
         self, viewer_args: Optional[Dict[str, Any]] = None, **kwargs
@@ -1164,18 +1200,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: Optional[str] = None,
         dtype: Optional[DTypeLike] = None,
     ) -> TDataField:
-        """return a new field with the data (but not the grid) copied
-
-        Args:
-            label (str, optional):
-                Name of the returned field
-            dtype (numpy dtype):
-                The data type of the field. If omitted, it will be determined from
-                `data` automatically or the dtype of the current field is used.
-
-        Returns:
-            :class:`DataFieldBase`: A copy of the current field
-        """
         if label is None:
             label = self.label
         if dtype is None:
@@ -1535,13 +1559,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @property
     @abstractmethod
     def integral(self) -> NumberOrArray:
-        ...
+        """integral of the scalar field over space"""
 
     @abstractmethod
     def to_scalar(
         self, scalar: str = "auto", *, label: Optional[str] = None
     ) -> "ScalarField":
-        ...
+        """return scalar variant of the field"""
 
     @property
     def average(self) -> NumberOrArray:
@@ -1902,19 +1926,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_line_data(
         self, scalar: str = "auto", extract: str = "auto"
     ) -> Dict[str, Any]:
-        """return data for a line plot of the field
-
-        Args:
-            scalar (str or int):
-                The method for extracting scalars as described in
-                :meth:`DataFieldBase.to_scalar`.
-            extract (str):
-                The method used for extracting the line data. See the docstring
-                of the grid method `get_line_data` to find supported values.
-
-        Returns:
-            dict: Information useful for performing a line plot of the field
-        """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 
@@ -1930,20 +1941,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_image_data(
         self, scalar: str = "auto", transpose: bool = False, **kwargs
     ) -> Dict[str, Any]:
-        r"""return data for plotting an image of the field
-
-        Args:
-            scalar (str or int):
-                The method for extracting scalars as described in
-                :meth:`DataFieldBase.to_scalar`.
-            transpose (bool):
-                Determines whether the transpose of the data should is plotted
-            \**kwargs:
-                Additional parameters are forwarded to `grid.get_image_data`
-
-        Returns:
-            dict: Information useful for plotting an image of the field
-        """
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 
@@ -2356,7 +2353,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return result
 
     def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
-        r"""returns data for plotting this field
+        r"""returns data for plotting this field using :mod:`napari`
 
         Args:
             \**kwargs: all arguments are forwarded to `_get_napari_layer_data`

@@ -143,7 +143,7 @@ class CylindricalSymGrid(GridBase):
 
     @property
     def state(self) -> Dict[str, Any]:
-        """state: the state of the grid"""
+        """dict: all information required for reconstructing the grid"""
         radius = self.axes_bounds[0][1]
         return {
             "radius": radius,
@@ -234,15 +234,12 @@ class CylindricalSymGrid(GridBase):
     ) -> np.ndarray:
         """return a random point within the grid
 
-        Note that these points will be uniformly distributed on the radial axis,
-        which implies that they are not uniformly distributed in the volume.
-
         Args:
-            boundary_distance (float): The minimal distance this point needs to
-                have from all boundaries.
-            avoid_center (bool): Determines whether the boundary distance
-                should also be kept from the center, i.e., whether points close
-                to the center are returned.
+            boundary_distance (float):
+                The minimal distance this point needs to have from all boundaries.
+            avoid_center (bool):
+                Determines whether the boundary distance should also be kept from the
+                center, i.e., whether points close to the center are returned.
             coords (str):
                 Determines the coordinate system in which the point is specified. Valid
                 values are `cartesian`, `cell`, and `grid`;
@@ -297,6 +294,7 @@ class CylindricalSymGrid(GridBase):
                   position (radial average).
                 * `project_r` or `project_radial`: average values for each
                   radial position (axial average)
+
         Returns:
             dict: A dictionary with information about the line cut, which is convenient
             for plotting.

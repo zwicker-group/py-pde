@@ -25,8 +25,6 @@ TrackerDataType = Union["TrackerBase", str]
 class FinishedSimulation(StopIteration):
     """exception for signaling that simulation finished successfully"""
 
-    pass
-
 
 class TrackerBase(metaclass=ABCMeta):
     """base class for implementing trackers"""
@@ -100,7 +98,6 @@ class TrackerBase(metaclass=ABCMeta):
             t (float):
                 The associated time
         """
-        pass
 
     def finalize(self, info: Optional[InfoDict] = None) -> None:
         """finalize the tracker, supplying additional information
@@ -109,7 +106,6 @@ class TrackerBase(metaclass=ABCMeta):
             info (dict):
                 Extra information from the simulation
         """
-        pass
 
 
 TrackerCollectionDataType = Union[Sequence[TrackerDataType], TrackerDataType, None]

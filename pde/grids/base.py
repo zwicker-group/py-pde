@@ -118,19 +118,13 @@ def discretize_interval(
 class DomainError(ValueError):
     """exception indicating that point lies outside domain"""
 
-    pass
-
 
 class DimensionError(ValueError):
     """exception indicating that dimensions were inconsistent"""
 
-    pass
-
 
 class PeriodicityError(RuntimeError):
     """exception indicating that the grid periodicity is inconsistent"""
-
-    pass
 
 
 class GridBase(metaclass=ABCMeta):
@@ -354,7 +348,7 @@ class GridBase(metaclass=ABCMeta):
     @property
     @abstractmethod
     def state(self) -> Dict[str, Any]:
-        ...
+        """dict: all information required for reconstructing the grid"""
 
     @property
     def state_serialized(self) -> str:
@@ -554,17 +548,35 @@ class GridBase(metaclass=ABCMeta):
     @property
     @abstractmethod
     def volume(self) -> float:
-        ...
+        """float: total volume of the grid"""
 
     @abstractmethod
     def point_to_cartesian(
         self, points: np.ndarray, *, full: bool = False
     ) -> np.ndarray:
-        ...
+        """convert coordinates of a point in grid coordinates to Cartesian coordinates
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                The grid coordinates of the points
+            full (bool):
+                Flag indicating whether angular coordinates are specified
+
+        Returns:
+            :class:`~numpy.ndarray`: The Cartesian coordinates of the point
+        """
 
     @abstractmethod
     def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
-        ...
+        """convert points given in Cartesian coordinates to grid coordinates
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                Points given in Cartesian coordinates.
+
+        Returns:
+            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
+        """
 
     def normalize_point(
         self, point: np.ndarray, *, reflect: bool = False
@@ -758,7 +770,16 @@ class GridBase(metaclass=ABCMeta):
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
     ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
-        ...
+        """return spherical coordinates associated with the grid
+
+        Args:
+            origin (:class:`~numpy.ndarray`):
+                Coordinates of origin at which the polar coordinate system is anchored
+            ret_angle (bool):
+                Determines whether azimuthal angles are returned alongside distances. If
+                `False` only the distance to the origin is returned for each support
+                point of the grid. If `True`, the distance and angles are returned.
+        """
 
     def contains_point(
         self,
@@ -785,7 +806,19 @@ class GridBase(metaclass=ABCMeta):
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
-        ...
+        """generates all mirror points corresponding to `point`
+
+        Args:
+            point (:class:`~numpy.ndarray`):
+                The point within the grid
+            with_self (bool):
+                Whether to include the point itself
+            only_periodic (bool):
+                Whether to only mirror along periodic axes
+
+        Returns:
+            A generator yielding the coordinates that correspond to mirrors
+        """
 
     @fill_in_docstring
     def get_boundary_conditions(
@@ -827,17 +860,56 @@ class GridBase(metaclass=ABCMeta):
 
     @abstractmethod
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
-        ...
+        """return a line cut through the grid
+
+        Args:
+            data (:class:`~numpy.ndarray`):
+                The values at the grid points
+            extract (str):
+                Determines which cut is done through the grid. Possible choices depend
+                on the actual grid.
+
+        Returns:
+            dict: A dictionary with information about the line cut, which is convenient
+            for plotting.
+        """
 
     @abstractmethod
     def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
-        ...
+        """return a 2d-image of the data
+
+        Args:
+            data (:class:`~numpy.ndarray`):
+                The values at the grid points
+
+        Returns:
+            dict: A dictionary with information about the image, which is  convenient
+            for plotting.
+        """
 
     @abstractmethod
     def get_random_point(
-        self, *, boundary_distance: float = 0, coords: CoordsType = "cartesian"
+        self,
+        *,
+        boundary_distance: float = 0,
+        coords: CoordsType = "cartesian",
+        rng: Optional[np.random.Generator] = None,
     ) -> np.ndarray:
-        ...
+        """return a random point within the grid
+
+        Args:
+            boundary_distance (float):
+                The minimal distance this point needs to have from all boundaries.
+            coords (str):
+                Determines the coordinate system in which the point is specified. Valid
+                values are `cartesian`, `cell`, and `grid`;
+                see :meth:`~pde.grids.base.GridBase.transform`.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+
+        Returns:
+            :class:`~numpy.ndarray`: The coordinates of the random point
+        """
 
     @classmethod
     def register_operator(

@@ -102,8 +102,6 @@ BoundaryData = Union[Dict, str, "BCBase"]
 class BCDataError(ValueError):
     """exception that signals that incompatible data was supplied for the BC"""
 
-    pass
-
 
 def _get_arr_1d(arr, idx: Tuple[int, ...], axis: int) -> Tuple[np.ndarray, int, Tuple]:
     """extract the 1d array along axis at point idx
@@ -591,21 +589,52 @@ class BCBase(metaclass=ABCMeta):
 
     @abstractmethod
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        pass
+        """returns a function evaluating the value at the virtual support point
+
+        Returns:
+            function: A function that takes the data array and an index marking
+            the current point, which is assumed to be a virtual point. The
+            result is the data value at this point, which is calculated using
+            the boundary condition.
+        """
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
+        """returns a function evaluating the value adjacent to a given point
+
+        Returns:
+            function: A function with signature (arr_1d, i_point, bc_idx), where
+            `arr_1d` is the one-dimensional data array (the data points along the axis
+            perpendicular to the boundary), `i_point` is the index into this array for
+            the current point and bc_idx are the remaining indices of the current point,
+            which indicate the location on the boundary plane. The result of the
+            function is the data value at the adjacent point along the axis associated
+            with this boundary condition in the upper (lower) direction when `upper` is
+            True (False).
+        """
         raise NotImplementedError
 
     @abstractmethod
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
-        """set the ghost cell values for this boundary"""
+        """set the ghost cell values for this boundary
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+            args (:class:`~numpy.ndarray`):
+                Determines what boundary conditions are set. `args` should be set to
+                :code:`{TARGET: value}`. Here, `TARGET` determines how the `value` is
+                interpreted and what boundary condition is actually enforced: the value
+                of the virtual points directly (`virtual_point`), the value of the field
+                at the boundary (`value`) or the outward derivative of the field at the
+                boundary (`derivative`).
+        """
 
     def make_ghost_cell_sender(self) -> GhostCellSetter:
         """return function that might mpi_send data to set ghost cells for this boundary"""
 
         @register_jitable
         def noop(data_full: np.ndarray, args=None) -> None:
-            pass
+            """no-operation as the default case"""
 
         return noop  # type: ignore
 
@@ -787,25 +816,11 @@ class _MPIBC(BCBase):
         mpi_send(data_full[self._idx_read], self._neighbor_id, self._mpi_flag)
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
-        """set the ghost cell values for this boundary
-
-        Args:
-            data_full (:class:`~numpy.ndarray`):
-                The full field data including ghost points
-        """
         from ...tools.mpi import mpi_recv
 
         mpi_recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        """returns a function evaluating the value at the virtual support point
-
-        Returns:
-            function: A function that takes the data array and an index marking
-            the current point, which is assumed to be a virtual point. The
-            result is the data value at this point, which is calculated using
-            the boundary condition.
-        """
         raise NotImplementedError
 
     def make_ghost_cell_sender(self) -> GhostCellSetter:
@@ -962,19 +977,6 @@ class UserBC(BCBase):
         )
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
-        """set the ghost cell values for this boundary
-
-        Args:
-            data_full (:class:`~numpy.ndarray`):
-                The full field data including ghost points
-            args (:class:`~numpy.ndarray`):
-                Determines what boundary conditions are set. `args` should be set to
-                :code:`{TARGET: value}`. Here, `TARGET` determines how the `value` is
-                interpreted and what boundary condition is actually enforced: the value
-                of the virtual points directly (`virtual_point`), the value of the field
-                at the boundary (`value`) or the outward derivative of the field at the
-                boundary (`derivative`).
-        """
         if args is None:
             # usual case where set_ghost_cells is called automatically. In our case,
             # won't do anything since we expect the user to call the function manually
@@ -1014,14 +1016,6 @@ class UserBC(BCBase):
         # else: no-op for the default case where BCs are not set by user
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        """returns a function evaluating the value at the virtual support point
-
-        Returns:
-            function: A function that takes the data array and an index marking
-            the current point, which is assumed to be a virtual point. The
-            result is the data value at this point, which is calculated using
-            the boundary condition.
-        """
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
         dx = self.grid.discretization[self.axis]
 
@@ -1372,15 +1366,6 @@ class ExpressionBC(BCBase):
         raise NotImplementedError
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
-        """set the ghost cell values for this boundary
-
-        Args:
-            data_full (:class:`~numpy.ndarray`):
-                The full field data including ghost points
-            args:
-                Additional arguments that might be supported by special boundary
-                conditions.
-        """
         dx = self.grid.discretization[self.axis]
 
         # prepare the array of slices to index bcs
@@ -1416,14 +1401,6 @@ class ExpressionBC(BCBase):
         data_full[tuple(idx_write)] = self._func(values, dx, *coords, t)
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        """returns a function evaluating the value at the virtual support point
-
-        Returns:
-            function: A function that takes the data array and an index marking
-            the current point, which is assumed to be a virtual point. The
-            result is the data value at this point, which is calculated using
-            the boundary condition.
-        """
         dx = self.grid.discretization[self.axis]
         num_axes = self.grid.num_axes
         get_arr_1d = _make_get_arr_1d(num_axes, self.axis)
@@ -1855,7 +1832,17 @@ class ConstBC1stOrderBase(ConstBCBase):
 
     @abstractmethod
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
-        pass
+        """return data suitable for calculating virtual points
+
+        Args:
+            compiled (bool):
+                Flag indicating whether a compiled version is required, which
+                automatically takes updated values into account when it is used
+                in numba-compiled code.
+
+        Returns:
+            tuple: the data structure associated with this virtual point
+        """
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         """sets the elements of the sparse representation of this condition
@@ -1917,14 +1904,6 @@ class ConstBC1stOrderBase(ConstBCBase):
             return const[bc_idx] + factor[bc_idx] * arr_1d[..., index]  # type: ignore
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        """returns a function evaluating the value at the virtual support point
-
-        Returns:
-            function: A function that takes the data array and an index marking
-            the current point, which is assumed to be a virtual point. The
-            result is the data value at this point, which is calculated using
-            the boundary condition.
-        """
         normal = self.normal
         axis = self.axis
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
@@ -1963,19 +1942,6 @@ class ConstBC1stOrderBase(ConstBCBase):
         return virtual_point  # type: ignore
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
-        """returns a function evaluating the value adjacent to a given point
-
-        Returns:
-            function: A function with signature (arr_1d, i_point, bc_idx), where
-            `arr_1d` is the one-dimensional data array (the data points along
-            the axis perpendicular to the boundary), `i_point` is the index into
-            this array for the current point and bc_idx are the remaining
-            indices of the current point, which indicate the location on the
-            boundary plane. The result of the function is the data value at the
-            adjacent point along the axis associated with this boundary
-            condition in the upper (lower) direction when `upper` is True
-            (False).
-        """
         # get values distinguishing upper from lower boundary
         if self.upper:
             i_bndry = self.grid.shape[self.axis] - 1
@@ -2037,15 +2003,6 @@ class ConstBC1stOrderBase(ConstBCBase):
         return adjacent_point  # type: ignore
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
-        """set the ghost cell values for this boundary
-
-        Args:
-            data_full (:class:`~numpy.ndarray`):
-                The full field data including ghost points
-            args:
-                Additional arguments that might be supported by special boundary
-                conditions.
-        """
         # calculate necessary constants
         const, factor, index = self.get_virtual_point_data()
 
@@ -2146,18 +2103,6 @@ class _PeriodicBC(ConstBC1stOrderBase):
             return f"{field_name}({axis_name}={self.axis_coord}) = {field_name}({axis_name}={other_coord})"
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
-        """return data suitable for calculating virtual points
-
-        Args:
-            compiled (bool):
-                Flag indicating whether a compiled version is required, which
-                automatically takes updated values into account when it is used
-                in numba-compiled code.
-
-        Returns:
-            :class:`BC1stOrderData`: the data structure associated with this
-            virtual point
-        """
         index = 0 if self.upper else self.grid.shape[self.axis] - 1
         value = -1 if self.flip_sign else 1
 
@@ -2190,18 +2135,6 @@ class DirichletBC(ConstBC1stOrderBase):
         return f"{field} = {self.value}   @ {axis_name}={self.axis_coord}"
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
-        """return data suitable for calculating virtual points
-
-        Args:
-            compiled (bool):
-                Flag indicating whether a compiled version is required, which
-                automatically takes updated values into account when it is used
-                in numba-compiled code.
-
-        Returns:
-            :class:`BC1stOrderData`: the data structure associated with this
-            virtual point
-        """
         const = 2 * self.value
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
 
@@ -2251,18 +2184,6 @@ class NeumannBC(ConstBC1stOrderBase):
         return f"{sign}{deriv} = {self.value}   @ {axis_name}={self.axis_coord}"
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
-        """return data suitable for calculating virtual points
-
-        Args:
-            compiled (bool):
-                Flag indicating whether a compiled version is required, which
-                automatically takes updated values into account when it is used
-                in numba-compiled code.
-
-        Returns:
-            :class:`BC1stOrderData`: the data structure associated with this
-            virtual point
-        """
         dx = self.grid.discretization[self.axis]
 
         const = dx * self.value
@@ -2424,18 +2345,6 @@ class MixedBC(ConstBC1stOrderBase):
         return f"{sign}{deriv} + {self.value} * {field_repr} = {self.const}   @ {axis_name}={self.axis_coord}"
 
     def get_virtual_point_data(self, compiled: bool = False) -> Tuple[Any, Any, int]:
-        """return data suitable for calculating virtual points
-
-        Args:
-            compiled (bool):
-                Flag indicating whether a compiled version is required, which
-                automatically takes updated values into account when it is used
-                in numba-compiled code.
-
-        Returns:
-            :class:`BC1stOrderData`: the data structure associated with this
-            virtual point
-        """
         # calculate values assuming finite factor
         dx = self.grid.discretization[self.axis]
         with np.errstate(invalid="ignore"):
@@ -2506,7 +2415,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
         """return data suitable for calculating virtual points
 
         Returns:
-            tuple: the data associated with this virtual point
+            tuple: the data structure associated with this virtual point
         """
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
@@ -2580,14 +2489,6 @@ class ConstBC2ndOrderBase(ConstBCBase):
             )
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
-        """returns a function evaluating the value at the virtual support point
-
-        Returns:
-            function: A function that takes the data array and an index marking
-            the current point, which is assumed to be a virtual point. The
-            result is the data value at this point, which is calculated using
-            the boundary condition.
-        """
         normal = self.normal
         axis = self.axis
         size = self.grid.shape[self.axis]
@@ -2632,19 +2533,6 @@ class ConstBC2ndOrderBase(ConstBCBase):
         return virtual_point  # type: ignore
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
-        """returns a function evaluating the value adjacent to a given point
-
-        Returns:
-            function: A function with signature (arr_1d, i_point, bc_idx), where
-            `arr_1d` is the one-dimensional data array (the data points along
-            the axis perpendicular to the boundary), `i_point` is the index into
-            this array for the current point and bc_idx are the remaining
-            indices of the current point, which indicate the location on the
-            boundary plane. The result of the function is the data value at the
-            adjacent point along the axis associated with this boundary
-            condition in the upper (lower) direction when `upper` is True
-            (False).
-        """
         size = self.grid.shape[self.axis]
         if size < 2:
             raise ValueError(
@@ -2710,15 +2598,6 @@ class ConstBC2ndOrderBase(ConstBCBase):
         return adjacent_point  # type: ignore
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
-        """set the ghost cell values for this boundary
-
-        Args:
-            data_full (:class:`~numpy.ndarray`):
-                The full field data including ghost points
-            args:
-                Additional arguments that might be supported by special boundary
-                conditions.
-        """
         # calculate necessary constants
         data = self.get_virtual_point_data()
 

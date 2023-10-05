@@ -453,7 +453,7 @@ class VectorField(DataFieldBase):
         *,
         label: Optional[str] = "scalar `{scalar}`",
     ) -> ScalarField:
-        """return a scalar field by applying `method`
+        """return scalar variant of the field
 
         Args:
             scalar (str):
