@@ -31,7 +31,7 @@ jobs:
         MPLBACKEND: agg
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
-        pytest --cov-config=pyproject.toml --cov-report xml:report_coverage.xml --cov=pde -n auto tests
+        pytest --cov-config=pyproject.toml --cov=pde -n auto tests
 
     - name: Setup MPI
       uses: mpi4py/setup-mpi@v1
@@ -43,13 +43,18 @@ jobs:
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pip install -r tests/requirements_mpi.txt
-        mpiexec -n 2 pytest --cov-config=pyproject.toml --cov-report xml:report_coverage.xml --cov-append --cov=pde --use_mpi tests
+        mpiexec -n 2 pytest --cov-config=pyproject.toml --cov=pde --use_mpi tests
+
+    - name: Combine coverage files
+      run: |
+        coverage combine
+        coverage xml -o coverage_report.xml 
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./report_coverage.xml
+        file: ./coverage_report.xml
         flags: unittests
         name: codecov-pydev
         fail_ci_if_error: true
