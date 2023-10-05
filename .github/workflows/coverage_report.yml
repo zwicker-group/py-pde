@@ -13,25 +13,34 @@ jobs:
       continue-on-error: true
       run: |
         sudo apt-get install ffmpeg
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
         python-version: 3.8
-    - uses: mpi4py/setup-mpi@v1
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r tests/requirements_full.txt
-        pip install -r tests/requirements_mpi.txt
         pip install -r tests/requirements.txt
 
-    - name: Generate coverage report
+    - name: Generate serial coverage report
+      env:
+        NUMBA_DISABLE_JIT: 1
+        MPLBACKEND: agg
       run: |
-        export NUMBA_DISABLE_JIT=1
-        export MPLBACKEND="agg"
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
-        pytest --cov-config=pyproject.toml --cov-report xml:report_coverage.xml --cov=pde -m slow tests
+        pytest --cov-config=pyproject.toml --cov-report xml:report_coverage.xml --cov=pde -n auto tests
+
+    - name: Generate parallel coverage report
+      uses: mpi4py/setup-mpi@v1
+      env:
+        NUMBA_DISABLE_JIT: 1
+        MPLBACKEND: agg
+      run: |
+        export PYTHONPATH="${PYTHONPATH}:`pwd`"
+        pip install -r tests/requirements_mpi.txt
         mpiexec -n 2 pytest --cov-config=pyproject.toml --cov-report xml:report_coverage.xml --cov-append --cov=pde --use_mpi tests
 
     - name: Upload coverage to Codecov
