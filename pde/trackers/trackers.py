@@ -71,7 +71,8 @@ class CallbackTracker(TrackerBase):
     def __init__(self, func: Callable, interval: IntervalData = 1):
         """
         Args:
-            func: The function to call periodically. The function signature should be
+            func:
+                The function to call periodically. The function signature should be
                 `(state)` or `(state, time)`, where `state` contains the current state
                 as an instance of :class:`~pde.fields.base.FieldBase` and `time` is a
                 float value indicating the current time. Note that only a view of the
