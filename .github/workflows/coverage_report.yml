@@ -33,8 +33,10 @@ jobs:
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pytest --cov-config=pyproject.toml --cov-report xml:report_coverage.xml --cov=pde -n auto tests
 
-    - name: Generate parallel coverage report
+    - name: Setup MPI
       uses: mpi4py/setup-mpi@v1
+
+    - name: Generate parallel coverage report
       env:
         NUMBA_DISABLE_JIT: 1
         MPLBACKEND: agg
