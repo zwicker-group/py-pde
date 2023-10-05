@@ -107,7 +107,12 @@ class StorageBase(metaclass=ABCMeta):
 
     @abstractmethod
     def _append_data(self, data: np.ndarray, time: float) -> None:
-        pass
+        """append a new data set
+
+        Args:
+            data (:class:`~numpy.ndarray`): The actual data
+            time (float, optional): The time point associated with the data
+        """
 
     def append(self, field: FieldBase, time: Optional[float] = None) -> None:
         """add field to the storage
@@ -345,7 +350,6 @@ class StorageBase(metaclass=ABCMeta):
 
     def end_writing(self) -> None:
         """finalize the storage after writing"""
-        pass
 
     def extract_field(
         self, field_id: Union[int, str], label: Optional[str] = None

@@ -75,7 +75,8 @@ class DiffusionPDE(PDEBase):
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 The scalar field describing the concentration distribution
-            t (float): The current time point
+            t (float):
+                The current time point
 
         Returns:
             :class:`~pde.fields.ScalarField`:

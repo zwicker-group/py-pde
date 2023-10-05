@@ -276,10 +276,10 @@ class Tensor2Field(DataFieldBase):
     def to_scalar(
         self, scalar: str = "auto", *, label: Optional[str] = "scalar `{scalar}`"
     ) -> ScalarField:
-        r""" return a scalar field by applying `method`
-        
+        r"""return scalar variant of the field
+
         The invariants of the tensor field :math:`\boldsymbol{A}` are
-        
+
         .. math::
             I_1 &= \mathrm{tr}(\boldsymbol{A}) \\
             I_2 &= \frac12 \left[
@@ -287,13 +287,13 @@ class Tensor2Field(DataFieldBase):
                 \mathrm{tr}(\boldsymbol{A}^2)
             \right] \\
             I_3 &= \det(A)
-            
+
         where `tr` denotes the trace and `det` denotes the determinant. Note that the
         three invariants can only be distinct and non-zero in three dimensions. In two
         dimensional spaces, we have the identity :math:`2 I_2 = I_3` and in
         one-dimensional spaces, we have :math:`I_1 = I_3` as well as
         :math:`I_2 = 0`.
-            
+
         Args:
             scalar (str):
                 The method to calculate the scalar. Possible choices include `norm` (the
@@ -302,7 +302,7 @@ class Tensor2Field(DataFieldBase):
                 `determinant` (or `invariant3`)
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the scalar field after
             applying the operation

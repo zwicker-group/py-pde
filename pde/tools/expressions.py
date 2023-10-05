@@ -312,7 +312,7 @@ class ExpressionBase(metaclass=ABCMeta):
     @property
     @abstractmethod
     def shape(self) -> Tuple[int, ...]:
-        pass
+        """tuple: the shape of the tensor"""
 
     def _check_signature(
         self, signature: Optional[Sequence[Union[str, List[str]]]] = None
@@ -807,7 +807,6 @@ class TensorExpression(ExpressionBase):
 
     @property
     def shape(self) -> Tuple[int, ...]:
-        """tuple: the shape of the tensor"""
         return self._sympy_expr.shape  # type: ignore
 
     @property

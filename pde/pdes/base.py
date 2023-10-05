@@ -133,7 +133,18 @@ class PDEBase(metaclass=ABCMeta):
 
     @abstractmethod
     def evolution_rate(self, state: TState, t: float = 0) -> TState:
-        pass
+        """evaluate the right hand side of the PDE
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                The field at the current time point
+            t (float):
+                The current time point
+
+        Returns:
+            :class:`~pde.fields.base.FieldBase`:
+                Field describing the evolution rate of the PDE
+        """
 
     def _make_pde_rhs_numba(
         self, state: FieldBase, **kwargs

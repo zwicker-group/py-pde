@@ -23,33 +23,33 @@ class OperatorType(Protocol):
     """an operator that acts on an array"""
 
     def __call__(self, arr: np.ndarray, out: np.ndarray) -> None:
-        ...
+        """evaluate the operator"""
 
 
 class OperatorFactory(Protocol):
     """a factory function that creates an operator for a particular grid"""
 
     def __call__(self, grid: "GridBase", **kwargs) -> OperatorType:
-        ...
+        """create the operator"""
+
+
+class CellVolume(Protocol):
+    def __call__(self, *args: int) -> float:
+        """calculate the volume of the cell at the given position"""
+
+
+class VirtualPointEvaluator(Protocol):
+    def __call__(self, arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
+        """evaluate the virtual point at the given position"""
 
 
 class AdjacentEvaluator(Protocol):
     def __call__(
         self, arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
     ) -> float:
-        ...
-
-
-class CellVolume(Protocol):
-    def __call__(self, *args: int) -> float:
-        ...
+        """evaluate the values at adjecent points"""
 
 
 class GhostCellSetter(Protocol):
     def __call__(self, data_full: np.ndarray, args=None) -> None:
-        ...
-
-
-class VirtualPointEvaluator(Protocol):
-    def __call__(self, arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
-        ...
+        """set the ghost cells"""
