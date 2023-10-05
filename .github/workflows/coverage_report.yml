@@ -43,11 +43,10 @@ jobs:
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pip install -r tests/requirements_mpi.txt
-        mpiexec -n 2 pytest --cov-config=pyproject.toml --cov=pde --use_mpi tests
+        mpiexec -n 2 pytest --cov-config=pyproject.toml --cov-append --cov=pde --use_mpi tests
 
-    - name: Combine coverage files
+    - name: Create coverage report
       run: |
-        coverage combine
         coverage xml -o coverage_report.xml 
 
     - name: Upload coverage to Codecov
