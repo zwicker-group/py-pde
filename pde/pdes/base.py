@@ -544,16 +544,15 @@ class PDEBase(metaclass=ABCMeta):
                 Sets the time range for which the PDE is solved. This should typically
                 be a tuple of two numbers, `(t_start, t_end)`, specifying the initial
                 and final time of the simulation. If only a single value is given, it is
-                interpreted as `t_end` and the time range is assumed to be `(0, t_end)`.
+                interpreted as `t_end` and the time range is `(0, t_end)`.
             dt (float):
                 Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen. If an adaptive
-                stepper is used (supported by :class:`~pde.solvers.ScipySolver` and
-                :class:`~pde.solvers.ExplicitSolver`), the value given here sets the
-                initial time step.
+                based on the stepper will be chosen. If an adaptive stepper is used
+                (supported by :class:`~pde.solvers.ScipySolver` and
+                :class:`~pde.solvers.ExplicitSolver`), `dt` sets the initial time step.
             tracker:
-                Defines a tracker that process the state of the simulation at specified
-                times. A tracker is either an instance of
+                Defines a tracker that processes the state of the simulation at
+                specified times. A tracker is either an instance of
                 :class:`~pde.trackers.base.TrackerBase` or a string, which identifies a
                 tracker. All possible identifiers can be obtained by calling
                 :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be
@@ -576,7 +575,7 @@ class PDEBase(metaclass=ABCMeta):
                 as the :attr:`~PDEBase.diagnostics` attribute.
             **kwargs:
                 Additional keyword arguments are forwarded to the solver class chosen
-                with the `method` argument. In particular,
+                with the `solver` argument. In particular,
                 :class:`~pde.solvers.explicit.ExplicitSolver` supports several `schemes`
                 and an adaptive stepper can be enabled using :code:`adaptive=True`.
                 Conversely, :class:`~pde.solvers.ScipySolver` accepts the additional
@@ -595,7 +594,7 @@ class PDEBase(metaclass=ABCMeta):
         # warn on deprecated argument (deprecated on 2023-05-26)
         if solver == "explicit" and "method" in kwargs:
             warnings.warn(
-                "Argument `method` has been renamed to `solver` in `solve`",
+                "Argument `method` has been renamed to `solver` in `solve` method",
                 DeprecationWarning,
             )
             solver = kwargs.pop("method")
