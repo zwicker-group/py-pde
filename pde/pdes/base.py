@@ -100,7 +100,7 @@ class PDEBase(metaclass=ABCMeta):
 
     @property
     def is_sde(self) -> bool:
-        """flag indicating whether this is a stochastic differential equation
+        """bool: flag indicating whether this is a stochastic differential equation
 
         The :class:`BasePDF` class supports additive Gaussian white noise, whose
         magnitude is controlled by the `noise` property. In this case, `is_sde` is
@@ -160,7 +160,7 @@ class PDEBase(metaclass=ABCMeta):
         tol: float = 1e-7,
         rhs_numba: Optional[Callable] = None,
         **kwargs,
-    ):
+    ) -> None:
         """check the numba compiled right hand side versus the numpy variant
 
         Args:
@@ -215,6 +215,9 @@ class PDEBase(metaclass=ABCMeta):
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
+
+        Returns:
+            callable: Function determining the right hand side of the PDE
         """
         check_implementation = self.check_implementation
 
@@ -257,9 +260,8 @@ class PDEBase(metaclass=ABCMeta):
                 An example for the state from which the grid and other information can
                 be extracted.
             backend (str):
-                Determines how the function is created. Accepted values are 'numpy`
-                and 'numba'. Alternatively, 'auto' lets the code decide for the most
-                optimal backend.
+                Determines how the function is created. Accepted values are 'numpy' and
+                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
 
         Returns:
             callable: Function determining the right hand side of the PDE
@@ -443,6 +445,10 @@ class PDEBase(metaclass=ABCMeta):
     ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
         """create a compiled function for evaluating the noise term of the PDE
 
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
+
         This method implements caching and checking of the actual method, which is
         defined by overwriting the method `_make_pde_rhs_numba`.
         """
@@ -475,11 +481,10 @@ class PDEBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            backend (str): Determines how the function is created. Accepted
-                values are 'python` and 'numba'. Alternatively, 'auto' lets the code
-                decide for the most optimal backend.
+                An example for the state from which information can be extracted
+            backend (str):
+                Determines how the function is created. Accepted values are 'numpy' and
+                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
 
         Returns:
             Function determining the deterministic part of the right hand side of the
