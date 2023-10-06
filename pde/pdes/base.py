@@ -592,8 +592,8 @@ class PDEBase(metaclass=ABCMeta):
         from ..solvers import Controller
         from ..solvers.base import SolverBase  # @Reimport
 
-        # support deprecated argument (deprecated on 2023-05-26)
-        if "method" in kwargs:
+        # warn on deprecated argument (deprecated on 2023-05-26)
+        if solver == "explicit" and "method" in kwargs:
             warnings.warn(
                 "Argument `method` has been renamed to `solver` in `solve`",
                 DeprecationWarning,
