@@ -20,6 +20,8 @@ The trackers defined in this module are:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import inspect
 import math
 import os.path
@@ -27,8 +29,7 @@ import sys
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import List  # @UnusedImport
-from typing import IO, TYPE_CHECKING, Any, Callable, Dict, Optional, Union
+from typing import IO, TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import numpy as np
 
@@ -43,9 +44,9 @@ from .base import FinishedSimulation, InfoDict, TrackerBase
 from .interrupts import IntervalData, RealtimeInterrupts
 
 if TYPE_CHECKING:
-    import pandas  # @UnusedImport
+    import pandas
 
-    from ..visualization.movies import Movie  # @UnusedImport
+    from ..visualization.movies import Movie
 
 
 class CallbackTracker(TrackerBase):
@@ -287,9 +288,9 @@ class PlotTracker(TrackerBase):
         self,
         interval: IntervalData = 1,
         *,
-        title: Union[str, Callable] = "Time: {time:g}",
+        title: str | Callable = "Time: {time:g}",
         output_file: Optional[str] = None,
-        movie: Union[str, Path, "Movie", None] = None,
+        movie: str | Path | "Movie" | None = None,
         show: Optional[bool] = None,
         tight_layout: bool = False,
         max_fps: float = math.inf,
@@ -831,7 +832,7 @@ class RuntimeTracker(TrackerBase):
     """Tracker interrupting the simulation once a duration has passed"""
 
     @fill_in_docstring
-    def __init__(self, max_runtime: Union[Real, str], interval: IntervalData = 1):
+    def __init__(self, max_runtime: Real | str, interval: IntervalData = 1):
         """
         Args:
             max_runtime (float or str):

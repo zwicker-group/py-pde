@@ -21,7 +21,6 @@ from typing import (
     Optional,
     Tuple,
     TypeVar,
-    Union,
 )
 
 import numpy as np
@@ -38,7 +37,7 @@ from .base import (
 from .cartesian import CartesianGrid
 
 if TYPE_CHECKING:
-    from .boundaries.axes import Boundaries  # @UnusedImport
+    from .boundaries.axes import Boundaries
 
 
 π = np.pi
@@ -94,9 +93,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
     boundary_names = {"inner": (0, False), "outer": (0, True)}
 
-    def __init__(
-        self, radius: Union[float, Tuple[float, float]], shape: Union[Tuple[int], int]
-    ):
+    def __init__(self, radius: float | Tuple[float, float], shape: int | Tuple[int]):
         r"""
         Args:
             radius (float or tuple of floats):
@@ -177,7 +174,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         return self.axes_bounds[0][0] > 0
 
     @property
-    def radius(self) -> Union[float, Tuple[float, float]]:
+    def radius(self) -> float | Tuple[float, float]:
         """float: radius of the sphere"""
         r_inner, r_outer = self.axes_bounds[0]
         if r_inner == 0:
@@ -402,7 +399,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
     def polar_coordinates_real(
         self, origin=None, *, ret_angle: bool = False, **kwargs
-    ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
+    ) -> np.ndarray | Tuple[np.ndarray, ...]:
         """return spherical coordinates associated with the grid
 
         Args:

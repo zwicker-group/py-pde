@@ -15,7 +15,6 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    Union,
 )
 
 import numpy as np
@@ -31,8 +30,8 @@ from .base import (
 from .cartesian import CartesianGrid
 
 if TYPE_CHECKING:
-    from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
-    from .spherical import PolarSymGrid  # @UnusedImport
+    from .boundaries.axes import Boundaries, BoundariesData
+    from .spherical import PolarSymGrid
 
 
 class CylindricalSymGrid(GridBase):
@@ -85,9 +84,9 @@ class CylindricalSymGrid(GridBase):
 
     def __init__(
         self,
-        radius: Union[float, Tuple[float, float]],
+        radius: float | Tuple[float, float],
         bounds_z: Tuple[float, float],
-        shape: Union[int, Sequence[int]],
+        shape: int | Sequence[int],
         periodic_z: bool = False,
     ):
         r"""
@@ -205,7 +204,7 @@ class CylindricalSymGrid(GridBase):
         return self.axes_bounds[0][0] > 0
 
     @property
-    def radius(self) -> Union[float, Tuple[float, float]]:
+    def radius(self) -> float | Tuple[float, float]:
         """float: radius of the sphere"""
         r_inner, r_outer = self.axes_bounds[0]
         if r_inner == 0:
@@ -305,7 +304,7 @@ class CylindricalSymGrid(GridBase):
         if extract == "cut_z" or extract == "cut_axial":
             # do a cut along the z axis for r=0
             axis = 1
-            data_y: Union[np.ndarray, Tuple[np.ndarray]] = data[..., 0, :]
+            data_y: np.ndarray | Tuple[np.ndarray] = data[..., 0, :]
             label_y = "Cut along z"
 
         elif extract == "project_z" or extract == "project_axial":
@@ -445,7 +444,7 @@ class CylindricalSymGrid(GridBase):
 
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+    ) -> np.ndarray | Tuple[np.ndarray, np.ndarray]:
         """return spherical coordinates associated with the grid
 
         Args:
@@ -505,7 +504,7 @@ class CylindricalSymGrid(GridBase):
         grid_shape = 2 * num, 2 * num, self.shape[1]
         return CartesianGrid(grid_bounds, grid_shape)
 
-    def slice(self, indices: Sequence[int]) -> Union["CartesianGrid", "PolarSymGrid"]:
+    def slice(self, indices: Sequence[int]) -> "CartesianGrid" | "PolarSymGrid":
         """return a subgrid of only the specified axes
 
         Args:

@@ -4,21 +4,13 @@ Base class for defining partial differential equations
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 import copy
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Literal,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, Literal, Optional, Tuple, TypeVar
 
 import numpy as np
 
@@ -29,8 +21,8 @@ from ..tools.typing import ArrayLike
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
-    from ..solvers.base import SolverBase  # @UnusedImport
-    from ..solvers.controller import TRangeType  # @UnusedImport
+    from ..solvers.base import SolverBase
+    from ..solvers.controller import TRangeType
 
 
 TState = TypeVar("TState", FieldCollection, DataFieldBase)
@@ -530,10 +522,10 @@ class PDEBase(metaclass=ABCMeta):
         dt: Optional[float] = None,
         tracker: TrackerCollectionDataType = "auto",
         *,
-        solver: Union[str, "SolverBase"] = "explicit",
+        solver: str | "SolverBase" = "explicit",
         ret_info: bool = False,
         **kwargs,
-    ) -> Union[Optional[TState], Tuple[Optional[TState], Dict[str, Any]]]:
+    ) -> None | TState | Tuple[Optional[TState], Dict[str, Any]]:
         """solves the partial differential equation
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)

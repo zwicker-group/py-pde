@@ -24,7 +24,6 @@ from typing import (
     Tuple,
     Type,
     TypeVar,
-    Union,
 )
 
 import numba as nb
@@ -48,7 +47,7 @@ from ..tools.plotting import (
 from ..tools.typing import ArrayLike, NumberOrArray
 
 if TYPE_CHECKING:
-    from .scalar import ScalarField  # @UnusedImport
+    from .scalar import ScalarField
 
 
 TField = TypeVar("TField", bound="FieldBase")
@@ -640,7 +639,7 @@ class FieldBase(metaclass=ABCMeta):
 
     def apply(
         self: TField,
-        func: Union[Callable, str],
+        func: Callable | str,
         out: Optional[TField] = None,
         *,
         label: Optional[str] = None,
@@ -769,7 +768,7 @@ class FieldBase(metaclass=ABCMeta):
         with napari_viewer(self.grid, **viewer_args) as viewer:
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
-    def split_mpi(self: TField, decomposition: Union[int, List[int]] = -1) -> TField:
+    def split_mpi(self: TField, decomposition: int | List[int] = -1) -> TField:
         """splits the field onto subgrids in an MPI run
 
         In a normal serial simulation, the method simply returns the field itself. In
@@ -814,7 +813,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: Union[ArrayLike, str, None] = "zeros",
+        data: ArrayLike | str | None = "zeros",
         *,
         label: Optional[str] = None,
         dtype: Optional[DTypeLike] = None,
@@ -1528,7 +1527,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if bc is not None:
             self.set_ghost_cells(bc=bc)
 
-        l_wall: List[Union[slice, int]] = [slice(1, -1)] * self.grid.num_axes
+        l_wall: List[slice | int] = [slice(1, -1)] * self.grid.num_axes
         l_ghost = l_wall.copy()
         if upper:
             l_wall[axis] = -2
@@ -1766,7 +1765,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif backend == "numba":
             # overload `dot` and return a compiled version
 
-            def get_rank(arr: Union[nb.types.Type, nb.types.Optional]) -> int:
+            def get_rank(arr: nb.types.Type | nb.types.Optional) -> int:
                 """determine rank of field with type `arr`"""
                 arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
                 if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):

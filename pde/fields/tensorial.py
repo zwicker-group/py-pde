@@ -6,7 +6,7 @@ Defines a tensorial field of rank 2 over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -21,7 +21,7 @@ from .scalar import ScalarField
 from .vectorial import VectorField
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
+    from ..grids.boundaries.axes import BoundariesData
 
 
 class Tensor2Field(DataFieldBase):
@@ -101,9 +101,7 @@ class Tensor2Field(DataFieldBase):
         # create vector field from the data
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
-    def _get_axes_index(
-        self, key: Tuple[Union[int, str], Union[int, str]]
-    ) -> Tuple[int, int]:
+    def _get_axes_index(self, key: Tuple[int | str, int | str]) -> Tuple[int, int]:
         """turns a general index of two axis into a tuple of two numeric indices"""
         try:
             if len(key) != 2:
@@ -112,7 +110,7 @@ class Tensor2Field(DataFieldBase):
             raise IndexError("Index must be given as two values")
         return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
 
-    def __getitem__(self, key: Tuple[Union[int, str], Union[int, str]]) -> ScalarField:
+    def __getitem__(self, key: Tuple[int | str, int | str]) -> ScalarField:
         """extract a single component of the tensor field as a scalar field"""
         return ScalarField(
             self.grid,
@@ -122,8 +120,8 @@ class Tensor2Field(DataFieldBase):
 
     def __setitem__(
         self,
-        key: Tuple[Union[int, str], Union[int, str]],
-        value: Union[NumberOrArray, ScalarField],
+        key: Tuple[int | str, int | str],
+        value: NumberOrArray | ScalarField,
     ):
         """set a single component of the tensor field"""
         idx = self._get_axes_index(key)
@@ -150,12 +148,12 @@ class Tensor2Field(DataFieldBase):
 
     def dot(
         self,
-        other: Union[VectorField, Tensor2Field],
-        out: Union[VectorField, Tensor2Field, None] = None,
+        other: VectorField | Tensor2Field,
+        out: VectorField | Tensor2Field | None = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
-    ) -> Union[VectorField, Tensor2Field]:
+    ) -> VectorField | Tensor2Field:
         """calculate the dot product involving a tensor field
 
         This supports the dot product between two tensor fields as well as the

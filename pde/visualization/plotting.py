@@ -13,6 +13,8 @@ Functions and classes for plotting simulation data
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import logging
 import math
 import time
@@ -61,7 +63,7 @@ def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
 
 def extract_field(
     fields: FieldBase,
-    source: Union[None, int, Callable] = None,
+    source: None | int | Callable = None,
     check_rank: Optional[int] = None,
 ) -> DataFieldBase:
     """Extracts a single field from a possible collection.

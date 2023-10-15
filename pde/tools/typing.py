@@ -4,13 +4,15 @@ Provides support for mypy type checking of the package
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Literal, Protocol, Tuple, Union
 
 import numpy as np
 from numpy.typing import ArrayLike  # @UnusedImport
 
 if TYPE_CHECKING:
-    from ..grids.base import GridBase  # @UnusedImport
+    from ..grids.base import GridBase
 
 Real = Union[int, float]
 Number = Union[Real, complex]

@@ -14,6 +14,8 @@ Handles configuration variables of the package
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import collections
 import contextlib
 import importlib
@@ -21,7 +23,7 @@ import re
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from .misc import module_available
 from .parameters import Parameter
@@ -202,7 +204,7 @@ def check_package_version(package_name: str, min_version: str):
             warnings.warn(f"{msg} (installed: {version})")
 
 
-def packages_from_requirements(requirements_file: Union[Path, str]) -> List[str]:
+def packages_from_requirements(requirements_file: Path | str) -> List[str]:
     """read package names from a requirements file
 
     Args:

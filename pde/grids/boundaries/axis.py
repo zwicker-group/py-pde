@@ -21,7 +21,7 @@ from ..base import GridBase, PeriodicityError
 from .local import _MPIBC, BCBase, BCDataError, BoundaryData, _PeriodicBC
 
 if TYPE_CHECKING:
-    from .._mesh import GridMesh  # @UnusedImport
+    from .._mesh import GridMesh
 
 BoundaryPairData = Union[
     Dict[str, BoundaryData],
