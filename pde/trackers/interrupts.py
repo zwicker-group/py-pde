@@ -14,6 +14,8 @@ The provided interrupt classes are:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 import copy
 import math
 import time
@@ -66,7 +68,7 @@ class InterruptsBase(metaclass=ABCMeta):
 class FixedInterrupts(InterruptsBase):
     """class representing a list of interrupt times"""
 
-    def __init__(self, interrupts: Union[np.ndarray, Sequence[float]]):
+    def __init__(self, interrupts: np.ndarray | Sequence[float]):
         self.interrupts = np.atleast_1d(interrupts)
         assert self.interrupts.ndim == 1
 
@@ -192,7 +194,7 @@ class RealtimeInterrupts(ConstantInterrupts):
     set by `dt_initial` and the actual variation in computation speed.
     """
 
-    def __init__(self, duration: Union[float, str], dt_initial: float = 0.01):
+    def __init__(self, duration: float | str, dt_initial: float = 0.01):
         """
         Args:
             duration (float or str):

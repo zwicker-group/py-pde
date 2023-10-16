@@ -65,7 +65,7 @@ except ImportError:
 
 @fill_in_docstring
 def parse_number(
-    expression: Union[str, Number], variables: Optional[Mapping[str, Number]] = None
+    expression: str | Number, variables: Optional[Mapping[str, Number]] = None
 ) -> Number:
     r"""return a number compiled from an expression
 
@@ -219,7 +219,7 @@ class ExpressionBase(metaclass=ABCMeta):
     def __init__(
         self,
         expression: basic.Basic,
-        signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        signature: Optional[Sequence[str | List[str]]] = None,
         *,
         user_funcs: Optional[Dict[str, Callable]] = None,
         consts: Optional[Dict[str, NumberOrArray]] = None,
@@ -314,9 +314,7 @@ class ExpressionBase(metaclass=ABCMeta):
     def shape(self) -> Tuple[int, ...]:
         """tuple: the shape of the tensor"""
 
-    def _check_signature(
-        self, signature: Optional[Sequence[Union[str, List[str]]]] = None
-    ):
+    def _check_signature(self, signature: Optional[Sequence[str | List[str]]] = None):
         """validate the variables of the expression against the signature"""
         # get arguments of the expressions
         if self.constant:
@@ -527,7 +525,7 @@ class ScalarExpression(ExpressionBase):
     def __init__(
         self,
         expression: ExpressionType = 0,
-        signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        signature: Optional[Sequence[str | List[str]]] = None,
         *,
         user_funcs: Optional[Dict[str, Callable]] = None,
         consts: Optional[Dict[str, NumberOrArray]] = None,
@@ -730,7 +728,7 @@ class TensorExpression(ExpressionBase):
     def __init__(
         self,
         expression: ExpressionType,
-        signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        signature: Optional[Sequence[str | List[str]]] = None,
         *,
         user_funcs: Optional[Dict[str, Callable]] = None,
         consts: Optional[Dict[str, NumberOrArray]] = None,
@@ -941,7 +939,7 @@ class TensorExpression(ExpressionBase):
 @fill_in_docstring
 def evaluate(
     expression: str,
-    fields: Union[Dict[str, DataFieldBase], FieldCollection],
+    fields: Dict[str, DataFieldBase] | FieldCollection,
     *,
     bc: BoundariesData = "auto_periodic_neumann",
     bc_ops: Optional[Dict[str, BoundariesData]] = None,

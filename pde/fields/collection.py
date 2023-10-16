@@ -18,7 +18,6 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
-    Union,
     overload,
 )
 
@@ -45,11 +44,11 @@ class FieldCollection(FieldBase):
 
     def __init__(
         self,
-        fields: Union[Sequence[DataFieldBase], Mapping[str, DataFieldBase]],
+        fields: Sequence[DataFieldBase] | Mapping[str, DataFieldBase],
         *,
         copy_fields: bool = False,
         label: Optional[str] = None,
-        labels: Union[List[Optional[str]], _FieldLabels, None] = None,
+        labels: List[Optional[str]] | _FieldLabels | None = None,
         dtype: DTypeLike = None,
     ):
         """
@@ -161,16 +160,14 @@ class FieldCollection(FieldBase):
         return iter(self.fields)
 
     @overload
-    def __getitem__(self, index: Union[int, str]) -> DataFieldBase:
+    def __getitem__(self, index: int | str) -> DataFieldBase:
         ...
 
     @overload
     def __getitem__(self, index: slice) -> FieldCollection:
         ...
 
-    def __getitem__(
-        self, index: Union[int, str, slice]
-    ) -> Union[DataFieldBase, FieldCollection]:
+    def __getitem__(self, index: int | str | slice) -> DataFieldBase | FieldCollection:
         """returns one or many fields from the collection
 
         If `index` is an integer or string, the field at this position or with this
@@ -195,7 +192,7 @@ class FieldCollection(FieldBase):
         else:
             raise TypeError(f"Unsupported index `{index}`")
 
-    def __setitem__(self, index: Union[int, str], value: NumberOrArray):
+    def __setitem__(self, index: int | str, value: NumberOrArray):
         """set the value of a specific field
 
         Args:
@@ -326,7 +323,7 @@ class FieldCollection(FieldBase):
         *,
         with_ghost_cells: bool = True,
         label: Optional[str] = None,
-        labels: Union[List[Optional[str]], _FieldLabels, None] = None,
+        labels: List[Optional[str]] | _FieldLabels | None = None,
         dtype: DTypeLike = None,
     ):
         """create a field collection from classes and data
@@ -591,7 +588,7 @@ class FieldCollection(FieldBase):
 
     def append(
         self,
-        *fields: Union[DataFieldBase, FieldCollection],
+        *fields: DataFieldBase | FieldCollection,
         label: Optional[str] = None,
     ) -> FieldCollection:
         """create new collection with appended field(s)
@@ -766,7 +763,7 @@ class FieldCollection(FieldBase):
     @plot_on_figure(update_method="_update_plot")
     def plot(
         self,
-        kind: Union[str, Sequence[str]] = "auto",
+        kind: str | Sequence[str] = "auto",
         figsize="auto",
         arrangement="horizontal",
         fig=None,
@@ -887,9 +884,7 @@ class _FieldLabels:
         for field in self.collection:
             yield field.label
 
-    def __getitem__(
-        self, index: Union[int, slice]
-    ) -> Union[Optional[str], List[Optional[str]]]:
+    def __getitem__(self, index: int | slice) -> Optional[str] | List[Optional[str]]:
         """return one or many labels of a field in the collection"""
         if isinstance(index, int):
             return self.collection[index].label
@@ -898,9 +893,7 @@ class _FieldLabels:
         else:
             raise TypeError("Unsupported index type")
 
-    def __setitem__(
-        self, index: Union[int, slice], value: Union[Optional[str], List[Optional[str]]]
-    ):
+    def __setitem__(self, index: int | slice, value: None | str | List[Optional[str]]):
         """change one or many labels of a field in the collection"""
         if isinstance(index, int):
             self.collection.fields[index].label = value  # type: ignore

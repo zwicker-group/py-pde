@@ -17,7 +17,6 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    Union,
 )
 
 import numpy as np
@@ -31,8 +30,8 @@ from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
-    from .vectorial import VectorField  # @UnusedImport
+    from ..grids.boundaries.axes import BoundariesData
+    from .vectorial import VectorField
 
 
 class ScalarField(DataFieldBase):
@@ -105,7 +104,7 @@ class ScalarField(DataFieldBase):
     @classmethod
     def from_image(
         cls,
-        path: Union[Path, str],
+        path: Path | str,
         bounds=None,
         periodic=False,
         *,
@@ -277,7 +276,7 @@ class ScalarField(DataFieldBase):
 
     def project(
         self,
-        axes: Union[str, Sequence[str]],
+        axes: str | Sequence[str],
         method: Literal["integral", "average", "mean"] = "integral",
         label: Optional[str] = None,
     ) -> ScalarField:
@@ -398,7 +397,7 @@ class ScalarField(DataFieldBase):
 
         # obtain the sliced data
         if method == "nearest":
-            idx: List[Union[int, slice]] = []
+            idx: List[int | slice] = []
             for i in range(grid.num_axes):
                 if i in ax_remove:
                     pos = pos_values[i]
@@ -420,7 +419,7 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=sliced_grid, data=subdata, label=label)
 
     def to_scalar(
-        self, scalar: Union[str, Callable] = "auto", *, label: Optional[str] = None
+        self, scalar: str | Callable = "auto", *, label: Optional[str] = None
     ) -> ScalarField:
         """return a modified scalar field by applying method `scalar`
 
@@ -459,7 +458,7 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def get_boundary_field(
         self,
-        index: Union[str, Tuple[int, bool]],
+        index: str | Tuple[int, bool],
         bc: Optional[BoundariesData] = None,
         *,
         label: Optional[str] = None,

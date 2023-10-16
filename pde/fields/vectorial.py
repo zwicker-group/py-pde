@@ -6,17 +6,7 @@ Defines a vectorial field over a grid
 
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Optional,
-    Sequence,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Sequence
 
 import numba as nb
 import numpy as np
@@ -32,8 +22,8 @@ from .base import DataFieldBase
 from .scalar import ScalarField
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
-    from .tensorial import Tensor2Field  # @UnusedImport
+    from ..grids.boundaries.axes import BoundariesData
+    from .tensorial import Tensor2Field
 
 
 class VectorField(DataFieldBase):
@@ -146,7 +136,7 @@ class VectorField(DataFieldBase):
         # create vector field from the data
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
-    def __getitem__(self, key: Union[int, str]) -> ScalarField:
+    def __getitem__(self, key: int | str) -> ScalarField:
         """extract a component of the VectorField"""
         return ScalarField(
             self.grid,
@@ -154,9 +144,7 @@ class VectorField(DataFieldBase):
             with_ghost_cells=True,
         )
 
-    def __setitem__(
-        self, key: Union[int, str], value: Union[NumberOrArray, ScalarField]
-    ):
+    def __setitem__(self, key: int | str, value: NumberOrArray | ScalarField):
         """set a component of the VectorField"""
         idx = self.grid.get_axis_index(key)
         if isinstance(value, ScalarField):
@@ -167,12 +155,12 @@ class VectorField(DataFieldBase):
 
     def dot(
         self,
-        other: Union[VectorField, "Tensor2Field"],
-        out: Union[ScalarField, VectorField, None] = None,
+        other: VectorField | "Tensor2Field",
+        out: ScalarField | VectorField | None = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
-    ) -> Union[ScalarField, VectorField]:
+    ) -> ScalarField | VectorField:
         """calculate the dot product involving a vector field
 
         This supports the dot product between two vectors fields as well as the
@@ -291,7 +279,7 @@ class VectorField(DataFieldBase):
             dim = self.grid.dim
             num_axes = self.grid.num_axes
 
-            def check_rank(arr: Union[nb.types.Type, nb.types.Optional]) -> None:
+            def check_rank(arr: nb.types.Type | nb.types.Optional) -> None:
                 """determine rank of field with type `arr`"""
                 arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
                 if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
@@ -449,7 +437,7 @@ class VectorField(DataFieldBase):
 
     def to_scalar(
         self,
-        scalar: Union[str, int] = "auto",
+        scalar: str | int = "auto",
         *,
         label: Optional[str] = "scalar `{scalar}`",
     ) -> ScalarField:

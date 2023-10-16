@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+from __future__ import annotations
+
 import argparse
 import os
 import subprocess as sp
 import sys
 from pathlib import Path
-from typing import Sequence, Union
+from typing import Sequence
 
 PACKAGE = "pde"  # name of the package that needs to be tested
 PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package
@@ -115,7 +117,7 @@ def run_unit_tests(
     runslow: bool = False,
     runinteractive: bool = False,
     use_mpi: bool = False,
-    num_cores: Union[str, int] = 1,
+    num_cores: str | int = 1,
     coverage: bool = False,
     nojit: bool = False,
     early: bool = False,

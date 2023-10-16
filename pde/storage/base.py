@@ -19,7 +19,6 @@ from typing import (
     Optional,
     Sequence,
     Tuple,
-    Union,
 )
 
 import numpy as np
@@ -34,7 +33,7 @@ from ..trackers.base import InfoDict, TrackerBase
 from ..trackers.interrupts import InterruptsBase, IntervalData
 
 if TYPE_CHECKING:
-    from .memory import MemoryStorage  # @UnusedImport
+    from .memory import MemoryStorage
 
 
 WriteModeType = Literal[
@@ -260,7 +259,7 @@ class StorageBase(metaclass=ABCMeta):
         field.data = self.data[t_index]
         return field
 
-    def __getitem__(self, key: Union[int, slice]) -> Union[FieldBase, List[FieldBase]]:
+    def __getitem__(self, key: int | slice) -> FieldBase | List[FieldBase]:
         """return field at given index or a list of fields for a slice"""
         if isinstance(key, int):
             return self._get_field(key)
@@ -282,7 +281,7 @@ class StorageBase(metaclass=ABCMeta):
     @fill_in_docstring
     def tracker(
         self,
-        interval: Union[int, float, InterruptsBase] = 1,
+        interval: int | float | InterruptsBase = 1,
         *,
         transformation: Optional[Callable[[FieldBase, float], FieldBase]] = None,
     ) -> "StorageTracker":
@@ -352,7 +351,7 @@ class StorageBase(metaclass=ABCMeta):
         """finalize the storage after writing"""
 
     def extract_field(
-        self, field_id: Union[int, str], label: Optional[str] = None
+        self, field_id: int | str, label: Optional[str] = None
     ) -> "MemoryStorage":
         """extract the time course of a single field from a collection
 
@@ -404,7 +403,7 @@ class StorageBase(metaclass=ABCMeta):
         )
 
     def extract_time_range(
-        self, t_range: Union[float, Tuple[float, float], None] = None
+        self, t_range: float | Tuple[float, float] | None = None
     ) -> "MemoryStorage":
         """extract a particular time interval
 

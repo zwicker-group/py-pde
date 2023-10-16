@@ -20,7 +20,7 @@ from ..trackers.base import (
 from .base import SolverBase
 
 if TYPE_CHECKING:
-    from ..fields.base import FieldBase  # @UnusedImport
+    from ..fields.base import FieldBase
 
 
 TRangeType = Union[float, Tuple[float, float]]

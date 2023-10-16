@@ -93,7 +93,7 @@ from ...tools.typing import (
 from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
-    from .._mesh import GridMesh  # @UnusedImport
+    from .._mesh import GridMesh
 
 
 BoundaryData = Union[Dict, str, "BCBase"]
@@ -990,7 +990,7 @@ class UserBC(BCBase):
             offset = data_full.ndim - self.grid.num_axes  # additional data axes
             idx_offset = [slice(None)] * offset
             idx_valid = [slice(1, -1)] * self.grid.num_axes
-            idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
+            idx_write: List[slice | int] = idx_offset + idx_valid  # type: ignore
             idx_write[offset + self.axis] = -1 if self.upper else 0
             idx_read = idx_write[:]
             idx_read[offset + self.axis] = -2 if self.upper else 1
@@ -1114,8 +1114,8 @@ class ExpressionBC(BCBase):
         upper: bool,
         *,
         rank: int = 0,
-        value: Union[float, str, Callable] = 0,
-        const: Union[float, str, Callable] = 0,
+        value: float | str | Callable = 0,
+        const: float | str | Callable = 0,
         target: ExpressionBCTargetType = "virtual_point",
     ):
         r"""
@@ -1372,7 +1372,7 @@ class ExpressionBC(BCBase):
         offset = data_full.ndim - self.grid.num_axes  # additional data axes
         idx_offset = [slice(None)] * offset
         idx_valid = [slice(1, -1)] * self.grid.num_axes
-        idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
+        idx_write: List[slice | int] = idx_offset + idx_valid  # type: ignore
         idx_write[offset + self.axis] = -1 if self.upper else 0
         idx_read = idx_write[:]
         idx_read[offset + self.axis] = -2 if self.upper else 1
@@ -1465,7 +1465,7 @@ class ExpressionValueBC(ExpressionBC):
         upper: bool,
         *,
         rank: int = 0,
-        value: Union[float, str, Callable] = 0,
+        value: float | str | Callable = 0,
         target: ExpressionBCTargetType = "value",
     ):
         super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
@@ -1491,7 +1491,7 @@ class ExpressionDerivativeBC(ExpressionBC):
         upper: bool,
         *,
         rank: int = 0,
-        value: Union[float, str, Callable] = 0,
+        value: float | str | Callable = 0,
         target: ExpressionBCTargetType = "derivative",
     ):
         super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
@@ -1517,8 +1517,8 @@ class ExpressionMixedBC(ExpressionBC):
         upper: bool,
         *,
         rank: int = 0,
-        value: Union[float, str, Callable] = 0,
-        const: Union[float, str, Callable] = 0,
+        value: float | str | Callable = 0,
+        const: float | str | Callable = 0,
         target: ExpressionBCTargetType = "mixed",
     ):
         super().__init__(
@@ -1546,7 +1546,7 @@ class ConstBCBase(BCBase):
         upper: bool,
         *,
         rank: int = 0,
-        value: Union[float, np.ndarray, str] = 0,
+        value: float | np.ndarray | str = 0,
     ):
         """
         Warning:
@@ -1590,7 +1590,7 @@ class ConstBCBase(BCBase):
 
     @value.setter
     @fill_in_docstring
-    def value(self, value: Union[float, np.ndarray, str] = 0):
+    def value(self, value: float | np.ndarray | str = 0):
         """set the value of this boundary condition
 
         Warning:
@@ -1640,7 +1640,7 @@ class ConstBCBase(BCBase):
             return self.__repr__()
 
     @fill_in_docstring
-    def _parse_value(self, value: Union[float, np.ndarray, str]) -> np.ndarray:
+    def _parse_value(self, value: float | np.ndarray | str) -> np.ndarray:
         """parses a boundary value
 
         Warning:
@@ -1755,7 +1755,7 @@ class ConstBCBase(BCBase):
         self: ConstBCBase,
         upper: Optional[bool] = None,
         rank: Optional[int] = None,
-        value: Union[float, np.ndarray, str, None] = None,
+        value: float | np.ndarray | str | None = None,
     ) -> ConstBCBase:
         """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
@@ -2010,7 +2010,7 @@ class ConstBC1stOrderBase(ConstBCBase):
         offset = data_full.ndim - self.grid.num_axes  # additional data axes
         idx_offset = [slice(None)] * offset
         idx_valid = [slice(1, -1)] * self.grid.num_axes
-        idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
+        idx_write: List[slice | int] = idx_offset + idx_valid  # type: ignore
         idx_write[offset + self.axis] = -1 if self.upper else 0
         idx_read = idx_write[:]
         idx_read[offset + self.axis] = index + 1
@@ -2255,8 +2255,8 @@ class MixedBC(ConstBC1stOrderBase):
         upper: bool,
         *,
         rank: int = 0,
-        value: Union[float, np.ndarray, str] = 0,
-        const: Union[float, np.ndarray, str] = 0,
+        value: float | np.ndarray | str = 0,
+        const: float | np.ndarray | str = 0,
     ):
         r"""
         Args:
@@ -2295,8 +2295,8 @@ class MixedBC(ConstBC1stOrderBase):
         self: MixedBC,
         upper: Optional[bool] = None,
         rank: Optional[int] = None,
-        value: Union[float, np.ndarray, str, None] = None,
-        const: Union[float, np.ndarray, str, None] = None,
+        value: float | np.ndarray | str | None = None,
+        const: float | np.ndarray | str | None = None,
     ) -> MixedBC:
         """return a copy of itself, but with a reference to the same grid"""
         obj = self.__class__(
@@ -2605,7 +2605,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
         offset = data_full.ndim - self.grid.num_axes  # additional data axes
         idx_offset = [slice(None)] * offset
         idx_valid = [slice(1, -1)] * self.grid.num_axes
-        idx_write: List[Union[slice, int]] = idx_offset + idx_valid  # type: ignore
+        idx_write: List[slice | int] = idx_offset + idx_valid  # type: ignore
         idx_write[offset + self.axis] = -1 if self.upper else 0
         idx_1 = idx_write[:]
         idx_1[offset + self.axis] = data[2] + 1

@@ -29,7 +29,6 @@ from typing import (
     Set,
     Tuple,
     Type,
-    Union,
 )
 
 import numba as nb
@@ -50,7 +49,7 @@ from ..tools.typing import (
 
 if TYPE_CHECKING:
     from ._mesh import GridMesh
-    from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
+    from .boundaries.axes import Boundaries, BoundariesData
 
 
 PI_4 = 4 * np.pi
@@ -67,7 +66,7 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-def _check_shape(shape: Union[int, Sequence[int]]) -> Tuple[int, ...]:
+def _check_shape(shape: int | Sequence[int]) -> Tuple[int, ...]:
     """checks the consistency of shape tuples"""
     if hasattr(shape, "__iter__"):
         shape_list: Sequence[int] = shape  # type: ignore
@@ -177,7 +176,7 @@ class GridBase(metaclass=ABCMeta):
         cls._operators = {}
 
     @classmethod
-    def from_state(cls, state: Union[str, Dict[str, Any]]) -> GridBase:
+    def from_state(cls, state: str | Dict[str, Any]) -> GridBase:
         """create a field from a stored `state`.
 
         Args:
@@ -223,7 +222,7 @@ class GridBase(metaclass=ABCMeta):
         """tuple: coordinates of the cells for each axis"""
         return self._axes_coords
 
-    def get_axis_index(self, key: Union[int, str], allow_symmetric: bool = True) -> int:
+    def get_axis_index(self, key: int | str, allow_symmetric: bool = True) -> int:
         """return the index belonging to an axis
 
         Args:
@@ -250,9 +249,7 @@ class GridBase(metaclass=ABCMeta):
             return key
         raise IndexError("Index must be an integer or the name of an axes")
 
-    def _get_boundary_index(
-        self, index: Union[str, Tuple[int, bool]]
-    ) -> Tuple[int, bool]:
+    def _get_boundary_index(self, index: str | Tuple[int, bool]) -> Tuple[int, bool]:
         """return the index of a boundary belonging to an axis
 
         Args:
@@ -769,7 +766,7 @@ class GridBase(metaclass=ABCMeta):
     @abstractmethod
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> Union[np.ndarray, Tuple[np.ndarray, ...]]:
+    ) -> np.ndarray | Tuple[np.ndarray, ...]:
         """return spherical coordinates associated with the grid
 
         Args:
@@ -993,7 +990,7 @@ class GridBase(metaclass=ABCMeta):
                 result |= {f"d_d{ax}", f"d2_d{ax}2"}
         return result
 
-    def _get_operator_info(self, operator: Union[str, OperatorInfo]) -> OperatorInfo:
+    def _get_operator_info(self, operator: str | OperatorInfo) -> OperatorInfo:
         """return the operator defined on this grid
 
         Args:
@@ -1042,7 +1039,7 @@ class GridBase(metaclass=ABCMeta):
     @cached_method()
     def make_operator_no_bc(
         self,
-        operator: Union[str, OperatorInfo],
+        operator: str | OperatorInfo,
         **kwargs,
     ) -> OperatorType:
         """return a compiled function applying an operator without boundary conditions
@@ -1075,7 +1072,7 @@ class GridBase(metaclass=ABCMeta):
     @cached_method()
     @fill_in_docstring
     def make_operator(
-        self, operator: Union[str, OperatorInfo], bc: BoundariesData, **kwargs
+        self, operator: str | OperatorInfo, bc: BoundariesData, **kwargs
     ) -> Callable[..., np.ndarray]:
         """return a compiled function applying an operator with boundary conditions
 
@@ -1241,7 +1238,7 @@ class GridBase(metaclass=ABCMeta):
         return np.mean(self.discretization)  # type: ignore
 
     def integrate(
-        self, data: NumberOrArray, axes: Union[int, Sequence[int], None] = None
+        self, data: NumberOrArray, axes: int | Sequence[int] | None = None
     ) -> NumberOrArray:
         """Integrates the discretized data over the grid
 

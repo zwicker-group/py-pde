@@ -7,17 +7,7 @@ Cartesian grids of arbitrary dimension.
 from __future__ import annotations
 
 import itertools
-from typing import (  # @UnusedImport
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Generator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -26,7 +16,7 @@ from ..tools.plotting import plot_on_axes
 from .base import CoordsType, DimensionError, GridBase, _check_shape
 
 if TYPE_CHECKING:
-    from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
+    from .boundaries.axes import Boundaries, BoundariesData
 
 
 class CartesianGrid(GridBase):
@@ -69,8 +59,8 @@ class CartesianGrid(GridBase):
     def __init__(
         self,
         bounds: Sequence[Tuple[float, float]],
-        shape: Union[int, Sequence[int]],
-        periodic: Union[Sequence[bool], bool] = False,
+        shape: int | Sequence[int],
+        periodic: bool | Sequence[bool] = False,
     ):
         """
         Args:
@@ -437,7 +427,7 @@ class CartesianGrid(GridBase):
 
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    ) -> np.ndarray | Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """return polar coordinates associated with the grid
 
         Args:
@@ -592,9 +582,7 @@ class UnitGrid(CartesianGrid):
     :math:`[0, n]` along this dimension.
     """
 
-    def __init__(
-        self, shape: Sequence[int], periodic: Union[Sequence[bool], bool] = False
-    ):
+    def __init__(self, shape: Sequence[int], periodic: bool | Sequence[bool] = False):
         """
         Args:
             shape (list):

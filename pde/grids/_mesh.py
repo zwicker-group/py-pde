@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import math
 from enum import IntEnum
-from typing import Any, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, List, Optional, Sequence, Tuple, TypeVar
 
 import numpy as np
 
@@ -140,9 +140,7 @@ class GridMesh:
         assert basegrid.num_axes == self.subgrids.ndim
 
     @classmethod
-    def from_grid(
-        cls, grid: GridBase, decomposition: Union[int, List[int]] = -1
-    ) -> GridMesh:
+    def from_grid(cls, grid: GridBase, decomposition: int | List[int] = -1) -> GridMesh:
         """subdivide the grid into subgrids
 
         Args:
