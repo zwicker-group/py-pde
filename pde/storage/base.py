@@ -1,6 +1,6 @@
 """
 Base classes for storing data
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 

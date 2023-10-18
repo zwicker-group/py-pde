@@ -7,7 +7,7 @@ Module defining classes for storing simulation data.
    ~memory.get_memory_storage
    ~memory.MemoryStorage
    ~file.FileStorage
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
