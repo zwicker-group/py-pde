@@ -38,7 +38,7 @@ In order to have all features of the package available, you might want to
 install the following optional packages:
 
 ```bash
-pip install h5py pandas tqdm
+pip install h5py pandas mpi4py numba-mpi
 ```
 
 Moreover, `ffmpeg` needs to be installed for creating movies.
