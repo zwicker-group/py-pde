@@ -141,8 +141,95 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     return matrix, vector
 
 
+def _get_laplace_matrix_3d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+    """get sparse matrix for Laplace operator on a 3d Cartesian grid
+
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+
+    Returns:
+        tuple: A sparse matrix and a sparse vector that can be used to evaluate
+        the discretized laplacian
+    """
+    from scipy import sparse
+
+    dim_x, dim_y, dim_z = bcs.grid.shape
+    matrix = sparse.dok_matrix((dim_x * dim_y * dim_z, dim_x * dim_y * dim_z))
+    vector = sparse.dok_matrix((dim_x * dim_y * dim_z, 1))
+
+    bc_x, bc_y, bc_z = bcs
+    scale_x, scale_y, scale_z = bcs.grid.discretization**-2
+
+    def i(x, y, z):
+        """helper function for flattening the index
+
+        This is equivalent to np.ravel_multi_index((x, y, z), (dim_x, dim_y, dim_z))
+        """
+        return (x * dim_y + y) * dim_z + z
+
+    # set diagonal elements, i.e., the central value in the kernel
+    matrix.setdiag(-2 * (scale_x + scale_y + scale_z))
+
+    for x in range(dim_x):
+        for y in range(dim_y):
+            for z in range(dim_z):
+                # handle x-direction
+                if x == 0:
+                    const, entries = bc_x.get_data((-1, y, z))
+                    vector[i(x, y, z)] += const * scale_x
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(k, y, z)] += v * scale_x
+                else:
+                    matrix[i(x, y, z), i(x - 1, y, z)] += scale_x
+
+                if x == dim_x - 1:
+                    const, entries = bc_x.get_data((dim_x, y, z))
+                    vector[i(x, y, z)] += const * scale_x
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(k, y, z)] += v * scale_x
+                else:
+                    matrix[i(x, y, z), i(x + 1, y, z)] += scale_x
+
+                # handle y-direction
+                if y == 0:
+                    const, entries = bc_y.get_data((x, -1, z))
+                    vector[i(x, y, z)] += const * scale_y
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(x, k, z)] += v * scale_y
+                else:
+                    matrix[i(x, y, z), i(x, y - 1, z)] += scale_y
+
+                if y == dim_y - 1:
+                    const, entries = bc_y.get_data((x, dim_y, z))
+                    vector[i(x, y, z)] += const * scale_y
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(x, k, z)] += v * scale_y
+                else:
+                    matrix[i(x, y, z), i(x, y + 1, z)] += scale_y
+
+                # handle z-direction
+                if z == 0:
+                    const, entries = bc_z.get_data((x, y, -1))
+                    vector[i(x, y, z)] += const * scale_z
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(x, y, k)] += v * scale_z
+                else:
+                    matrix[i(x, y, z), i(x, y, z - 1)] += scale_z
+
+                if z == dim_z - 1:
+                    const, entries = bc_z.get_data((x, y, dim_z))
+                    vector[i(x, y, z)] += const * scale_z
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(x, y, k)] += v * scale_z
+                else:
+                    matrix[i(x, y, z), i(x, y, z + 1)] += scale_z
+
+    return matrix, vector
+
+
 def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for Laplace operator on a 1d Cartesian grid
+    """get sparse matrix for Laplace operator on a Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -158,6 +245,8 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
         result = _get_laplace_matrix_1d(bcs)
     elif dim == 2:
         result = _get_laplace_matrix_2d(bcs)
+    elif dim == 3:
+        result = _get_laplace_matrix_3d(bcs)
     else:
         raise NotImplementedError(f"{dim:d}-dimensional Laplace matrix not implemented")
 
