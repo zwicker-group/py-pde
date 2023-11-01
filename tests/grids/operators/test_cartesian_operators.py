@@ -362,13 +362,16 @@ def test_make_derivative2(ndim, axis, rng):
     np.testing.assert_allclose(grad2.data, res.data, atol=0.1, rtol=0.1)
 
 
-@pytest.mark.parametrize("ndim", [1, 2])
+@pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_laplace_matrix(ndim, rng):
     """test laplace operator implemented using matrix multiplication"""
     if ndim == 1:
         periodic, bc = [False], [{"value": "sin(x)"}]
     elif ndim == 2:
         periodic, bc = [False, True], [{"value": "sin(x)"}, "periodic"]
+    elif ndim == 3:
+        periodic = [False, True, False]
+        bc = [{"value": "sin(x)"}, "periodic", "derivative"]
     grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
     bcs = grid.get_boundary_conditions(bc)
     laplace = make_laplace_from_matrix(*ops._get_laplace_matrix(bcs))
@@ -380,7 +383,9 @@ def test_laplace_matrix(ndim, rng):
     np.testing.assert_allclose(res1.data, res2)
 
 
-@pytest.mark.parametrize("grid", [UnitGrid([12]), CartesianGrid([[0, 1], [4, 5.5]], 8)])
+@pytest.mark.parametrize(
+    "grid", [UnitGrid([12]), CartesianGrid([[0, 1], [4, 5.5]], 8), UnitGrid([3, 3, 3])]
+)
 @pytest.mark.parametrize("bc_val", ["auto_periodic_neumann", {"value": "sin(x)"}])
 def test_poisson_solver_cartesian(grid, bc_val, rng):
     """test the poisson solver on cartesian grids"""
