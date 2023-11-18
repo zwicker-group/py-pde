@@ -93,7 +93,8 @@ def test_collections(rng):
     with pytest.raises(KeyError):
         fields["42"] = 0
 
-    fields.plot(subplot_args=[{}, {"scale": 1}, {"colorbar": False}])
+    refs = fields.plot(subplot_args=[{}, {"scale": 1}, {"colorbar": False}])
+    fields._update_plot(refs)
 
 
 def test_collections_copy():

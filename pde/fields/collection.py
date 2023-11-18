@@ -787,7 +787,9 @@ class FieldCollection(FieldBase):
                 The reference to the plot that is updated
         """
         # obtain image data
-        rgb_arr, _ = self._get_rgb_data(**reference.parameters)
+        data_args = reference.parameters.copy()
+        data_args.pop("kind")
+        rgb_arr, _ = self._get_rgb_data(**data_args)
         # update the axes image
         reference.element.set_data(rgb_arr)
 
@@ -833,7 +835,12 @@ class FieldCollection(FieldBase):
         ax.set_title(self.label)
 
         # store parameters of the plot that are necessary for updating
-        parameters = {"transpose": transpose, "vmin": vmin, "vmax": vmax}
+        parameters = {
+            "kind": "rgb_image",
+            "transpose": transpose,
+            "vmin": vmin,
+            "vmax": vmax,
+        }
         return PlotReference(ax, axes_image, parameters)
 
     def _update_plot(self, reference: List[PlotReference]) -> None:
@@ -843,8 +850,11 @@ class FieldCollection(FieldBase):
             reference (list of :class:`PlotReference`):
                 All references of the plot to update
         """
-        for field, ref in zip(self.fields, reference):
-            field._update_plot(ref)
+        if reference[0].parameters.get("kind", None) == "rgb_image":
+            self._update_rgb_image_plot(reference[0])
+        else:
+            for field, ref in zip(self.fields, reference):
+                field._update_plot(ref)
 
     @plot_on_figure(update_method="_update_plot")
     def plot(
