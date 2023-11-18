@@ -2079,12 +2079,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 data_kws[arg] = kwargs.pop(arg)
         data = self.get_image_data(scalar, transpose, **data_kws)
 
-        if ax is None:
-            import matplotlib.pyplot as plt
-
-            # create new figure
-            ax = plt.subplots()[1]
-
         # plot the image
         kwargs.setdefault("origin", "lower")
         kwargs.setdefault("interpolation", "none")

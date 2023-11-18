@@ -74,5 +74,5 @@ eq = BrusselatorPDE(diffusivity=[1, 0.1])
 state = eq.get_initial_state(grid)
 
 # simulate the pde
-tracker = PlotTracker(interval=1, plot_args={"vmin": 0, "vmax": 5})
+tracker = PlotTracker(interval=1, plot_args={"kind": "rgb", "vmin": 0, "vmax": 5})
 sol = eq.solve(state, t_range=20, dt=1e-3, tracker=tracker)
