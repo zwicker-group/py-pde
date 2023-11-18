@@ -89,7 +89,7 @@ def _check_shape(shape: int | Sequence[int]) -> Tuple[int, ...]:
 def discretize_interval(
     x_min: float, x_max: float, num: int
 ) -> Tuple[np.ndarray, float]:
-    r""" construct a list of equidistantly placed intervals 
+    r"""construct a list of equidistantly placed intervals 
 
     The discretization is defined as
 

@@ -13,7 +13,13 @@ import numpy as np
 
 from ..tools.cuboid import Cuboid
 from ..tools.plotting import plot_on_axes
-from .base import CoordsType, DimensionError, GridBase, _check_shape
+from .base import (
+    CoordsType,
+    DimensionError,
+    GridBase,
+    _check_shape,
+    discretize_interval,
+)
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData
@@ -130,12 +136,7 @@ class CartesianGrid(GridBase):
         p1, p2 = self.cuboid.corners
         axes_coords, discretization = [], []
         for d in range(self.dim):
-            num = self.shape[d]
-            c, dc = np.linspace(p1[d], p2[d], num, endpoint=False, retstep=True)
-            if self.shape[d] == 1:
-                # correct for singular dimension
-                dc = p2[d] - p1[d]
-            c += dc / 2
+            c, dc = discretize_interval(p1[d], p2[d], self.shape[d])
             axes_coords.append(c)
             discretization.append(dc)
         self._discretization = np.array(discretization)

@@ -342,3 +342,16 @@ def test_collection_apply(rng):
     f1 = FieldCollection([s, v])
 
     np.testing.assert_allclose(f1.apply("s1 * v2").data, v.data * 2)
+
+
+@pytest.mark.parametrize("num", [1, 2, 3])
+def test_rgb_image_plotting(num):
+    """test plotting of collections as rgb fields"""
+    grid = UnitGrid([16, 8])
+    fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
+
+    ref = fc._plot_rgb_image()
+    fc._update_rgb_image_plot(ref)
+
+    refs = fc.plot("rgb_image")
+    fc._update_plot(refs)

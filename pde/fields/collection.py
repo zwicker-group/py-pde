@@ -18,16 +18,18 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
+    Tuple,
     overload,
 )
 
 import numpy as np
+from matplotlib.colors import Normalize
 from numpy.typing import DTypeLike
 
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
-from ..tools.plotting import PlotReference, plot_on_figure
+from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase, FieldBase
 from .scalar import ScalarField
@@ -750,6 +752,90 @@ class FieldCollection(FieldBase):
         """
         return self[index].get_image_data(**kwargs)
 
+    def _get_rgb_data(
+        self,
+        transpose: bool = False,
+        vmin: float | List[float | None] | None = None,
+        vmax: float | List[float | None] | None = None,
+    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        """obtain data required for RGB plot"""
+        num_fields = len(self)
+        if num_fields > 3:
+            raise ValueError("Can only plot RGB image for three or fewer fields")
+        if not hasattr(vmin, "__iter__"):
+            vmin = [vmin] * num_fields
+        if not hasattr(vmax, "__iter__"):
+            vmax = [vmax] * num_fields
+
+        # obtain image data with appropriate parameters
+        data = [f.get_image_data(transpose=transpose) for f in self]
+        # turn data into array of RGB values (shape nxmx3)
+        data_list = []
+        for i, d in enumerate(data):
+            norm = Normalize(vmin=vmin[i], vmax=vmax[i], clip=True)  # type: ignore
+            data_list.append(norm(d["data"].T))
+        while len(data_list) < 3:
+            data_list.append(np.zeros_like(data_list[0]))
+        rgb_arr = np.dstack(data_list)
+        return rgb_arr, data[0]
+
+    def _update_rgb_image_plot(self, reference: PlotReference) -> None:
+        """update an RGB image plot with the current field values
+
+        Args:
+            reference (:class:`PlotReference`):
+                The reference to the plot that is updated
+        """
+        # obtain image data
+        rgb_arr, _ = self._get_rgb_data(**reference.parameters)
+        # update the axes image
+        reference.element.set_data(rgb_arr)
+
+    @plot_on_axes(update_method="_update_rgb_image_plot")
+    def _plot_rgb_image(
+        self,
+        ax,
+        transpose: bool = False,
+        vmin: float | List[float | None] | None = None,
+        vmax: float | List[float | None] | None = None,
+        **kwargs,
+    ) -> PlotReference:
+        r"""visualize fields by mapping to different color chanels in a 2d density plot
+
+        Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting.
+            transpose (bool):
+                Determines whether the transpose of the data is plotted
+            vmin, vmax (float, list of float):
+                Define the data range that the color chanels cover. By default, they
+                cover the complete value range of the supplied data.
+            \**kwargs:
+                Additional keyword arguments that affect the image. Non-Cartesian grids
+                might support `performance_goal` to influence how an image is created
+                from raw data. Finally, remaining arguments are passed to
+                :func:`matplotlib.pyplot.imshow` to affect the appearance.
+
+        Returns:
+            :class:`PlotReference`: Instance that contains information to update the
+            plot with new data later.
+        """
+        rgb_arr, data = self._get_rgb_data(transpose, vmin, vmax)
+
+        # plot the image
+        kwargs.setdefault("origin", "lower")
+        kwargs.setdefault("interpolation", "none")
+        axes_image = ax.imshow(rgb_arr, extent=data["extent"], **kwargs)
+
+        # set some default properties
+        ax.set_xlabel(data["label_x"])
+        ax.set_ylabel(data["label_y"])
+        ax.set_title(self.label)
+
+        # store parameters of the plot that are necessary for updating
+        parameters = {"transpose": transpose, "vmin": vmin, "vmax": vmax}
+        return PlotReference(ax, axes_image, parameters)
+
     def _update_plot(self, reference: List[PlotReference]) -> None:
         """update a plot collection with the current field values
 
@@ -775,9 +861,10 @@ class FieldCollection(FieldBase):
         Args:
             kind (str or list of str):
                 Determines the kind of the visualizations. Supported values are `image`,
-                `line`, `vector`, or `interactive`. Alternatively, `auto` determines the
-                best visualization based on each field itself. Instead of a single value
-                for all fields, a list with individual values can be given.
+                `line`, `vector`, `interactive`, or `rgb`. Alternatively, `auto`
+                determines the best visualization based on each field itself. Instead of
+                a single value for all fields, a list with individual values can be
+                given, unless `rgb` is chosen.
             figsize (str or tuple of numbers):
                 Determines the figure size. The figure size is unchanged if the string
                 `default` is passed. Conversely, the size is adjusted automatically when
@@ -800,6 +887,11 @@ class FieldCollection(FieldBase):
             List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
+        if kind in {"rgb", "rgb_image", "rgb-image"}:
+            num_panels = 1
+        else:
+            num_panels = len(self)
+
         # set the size of the figure
         if figsize == "default":
             pass  # just leave the figure size at its default value
@@ -807,9 +899,9 @@ class FieldCollection(FieldBase):
         elif figsize == "auto":
             # adjust the size of the figure
             if arrangement == "horizontal":
-                fig.set_size_inches((4 * len(self), 3), forward=True)
+                fig.set_size_inches((4 * num_panels, 3), forward=True)
             elif arrangement == "vertical":
-                fig.set_size_inches((4, 3 * len(self)), forward=True)
+                fig.set_size_inches((4, 3 * num_panels), forward=True)
 
         else:
             # assume that an actual tuple is given
@@ -817,26 +909,34 @@ class FieldCollection(FieldBase):
 
         # create all the subpanels
         if arrangement == "horizontal":
-            (axs,) = fig.subplots(1, len(self), squeeze=False)
+            (axs,) = fig.subplots(1, num_panels, squeeze=False)
         elif arrangement == "vertical":
-            axs = fig.subplots(len(self), 1, squeeze=False)
+            axs = fig.subplots(num_panels, 1, squeeze=False)
             axs = [a[0] for a in axs]  # transpose
         else:
             raise ValueError(f"Unknown arrangement `{arrangement}`")
 
         if subplot_args is None:
-            subplot_args = [{}] * len(self)
+            subplot_args = [{}] * num_panels
 
-        if isinstance(kind, str):
-            kind = [kind] * len(self.fields)
+        if kind in {"rgb", "rgb_image", "rgb-image"}:
+            # plot a single RGB representation
+            reference = [
+                self._plot_rgb_image(
+                    ax=axs[0], action="none", **kwargs, **subplot_args[0]
+                )
+            ]
 
-        # plot all the elements onto the respective axes
-        reference = [
-            field.plot(kind=knd, ax=ax, action="none", **kwargs, **sp_args)
-            for field, knd, ax, sp_args in zip(  # @UnusedVariable
-                self.fields, kind, axs, subplot_args
-            )
-        ]
+        else:
+            # plot all the elements onto the respective axes
+            if isinstance(kind, str):
+                kind = [kind] * num_panels
+            reference = [
+                field.plot(kind=knd, ax=ax, action="none", **kwargs, **sp_args)
+                for field, knd, ax, sp_args in zip(  # @UnusedVariable
+                    self.fields, kind, axs, subplot_args
+                )
+            ]
 
         # return the references for all subplots
         return reference
