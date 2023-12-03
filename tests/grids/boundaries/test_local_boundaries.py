@@ -9,6 +9,7 @@ from pde import CartesianGrid, PolarSymGrid, ScalarField, UnitGrid
 from pde.grids.boundaries.local import (
     BCBase,
     BCDataError,
+    ExpressionValueBC,
     _get_arr_1d,
     registered_boundary_condition_classes,
     registered_boundary_condition_names,
@@ -497,6 +498,52 @@ def test_expression_bc_polar_grid():
     bc_setter(state._data_full)
     np.testing.assert_allclose(state.data, 0)
     assert state._data_full[0] == state._data_full[-1] == 2
+
+
+@pytest.mark.parametrize("dim", [1, 2])
+@pytest.mark.parametrize("compiled", [True, False])
+def test_expression_bc_specific_value(dim, compiled):
+    """test boundary conditions that use a value at a different position"""
+    n = 2
+    grid = CartesianGrid([[0, 1]] * dim, n)
+
+    for i in range(-n - 1, n + 1):
+        bc = {"type": "value_expression", "value": "value", "value_cell": i}
+
+        bcs = [[bc, "value"]]
+        if dim == 2:
+            bcs.append("value")
+        bcs = grid.get_boundary_conditions(bcs)
+
+        assert isinstance(bcs["left"], ExpressionValueBC)
+        assert "field" in bcs["left"].get_mathematical_representation("field")
+        assert "value_cell" in repr(bcs["left"])
+
+        # set linearly increasing field
+        field = ScalarField(grid, np.arange(n))
+        field.data = field.data.T
+
+        # determine function that sets the ghost cells
+        if compiled:
+
+            def set_bcs():
+                bcs.make_ghost_cell_setter()(field._data_full)
+
+        else:
+
+            def set_bcs():
+                field.set_ghost_cells(bcs)
+
+        if i < -n or i > n - 1:
+            # check ut-of-bounds errors
+            with pytest.raises(IndexError):
+                set_bcs()
+        else:
+            set_bcs()
+            if dim == 1:
+                np.testing.assert_allclose(field._data_full[0], field.data[i])
+            else:
+                np.testing.assert_allclose(field._data_full[0, 1:-1], field.data[i, :])
 
 
 def test_getting_registered_bcs():
