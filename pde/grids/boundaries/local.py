@@ -638,6 +638,25 @@ class BCBase(metaclass=ABCMeta):
 
         return noop  # type: ignore
 
+    def _get_value_cell_index(self, with_ghost_cells: bool) -> int:
+        """determine index of the cell from which field value is read
+
+        Args:
+            with_ghost_cells (bool):
+                Determines whether the index is supposed to be into an array with ghost
+                cells or not
+        """
+        if self.upper:
+            if with_ghost_cells:
+                return self.grid.shape[self.axis]
+            else:
+                return self.grid.shape[self.axis] - 1
+        else:
+            if with_ghost_cells:
+                return 1
+            else:
+                return 0
+
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells for this boundary"""
         normal = self.normal
@@ -645,7 +664,7 @@ class BCBase(metaclass=ABCMeta):
 
         # get information of the virtual points (ghost cells)
         vp_idx = self.grid.shape[self.axis] + 1 if self.upper else 0
-        np_idx = self.grid.shape[self.axis] - 1 if self.upper else 0
+        np_idx = self._get_value_cell_index(with_ghost_cells=False)
         vp_value = self.make_virtual_point_evaluator()
 
         if self.grid.num_axes == 1:  # 1d grid
@@ -1117,6 +1136,7 @@ class ExpressionBC(BCBase):
         value: float | str | Callable = 0,
         const: float | str | Callable = 0,
         target: ExpressionBCTargetType = "virtual_point",
+        value_cell: Optional[int] = None,
     ):
         r"""
         Warning:
@@ -1136,20 +1156,26 @@ class ExpressionBC(BCBase):
             value (float or str or callable):
                 An expression that determines the value of the boundary condition.
                 Alternatively, this can be a (jitable, vectorized) function with
-                signature `(adjacent_value, dx, *coords, t)` that determines the value
-                of `target` from the closest field value `adjacent_value`, the spatial
-                discretization `dx` in the direction perpendicular to the wall, the
-                spatial coordinates of the wall point, and time `t`.
+                signature `(value, dx, *coords, t)` that determines the value
+                of `target` from the field value `value` (the value of the adjacent cell
+                unless `value_cell` is specified), the spatial discretization `dx` in
+                the direction perpendicular to the wall, the spatial coordinates of the
+                wall point, and time `t`.
             const (float or str or callable):
                 An expression similar to `value`, which is only used for mixed (Robin)
                 boundary conditions. Note that the implementation currently does not
                 support that one argument is given as a callable function while the
-                other is defined via an expression.
+                other is defined via an expression, so both need to have the same type.
             target (str):
                 Selects which value is actually set. Possible choices include `value`,
                 `derivative`, `mixed`, and `virtual_point`.
+            value_cell (int):
+                Determines which cells is read to determine the field value that is used
+                as `value` in the expression or the function call. The default (`None`)
+                specifies the adjacent cell.
         """
         super().__init__(grid, axis, upper, rank=rank)
+        self.value_cell = value_cell
 
         if self.rank != 0:
             raise NotImplementedError(
@@ -1275,15 +1301,18 @@ class ExpressionBC(BCBase):
     def _repr_value(self):
         if self._input["target"] == "mixed":
             # treat the mixed case separately
-            return [
+            res = [
                 f'target="{self._input["target"]}", '
                 f'value="{self._input["value_expr"]}", '
                 f'const="{self._input["const_expr"]}"'
             ]
         elif self._is_func:
-            return [f'{self._input["target"]}=<function>']
+            res = [f'{self._input["target"]}=<function>']
         else:
-            return [f'{self._input["target"]}="{self._input["value_expr"]}"']
+            res = [f'{self._input["target"]}="{self._input["value_expr"]}"']
+        if self.value_cell is not None:
+            res.append(f", value_cell={self.value_cell}")
+        return res
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """return mathematical representation of the boundary condition"""
@@ -1317,7 +1346,11 @@ class ExpressionBC(BCBase):
         """checks for equality neglecting the `upper` property"""
         if not isinstance(other, self.__class__):
             return NotImplemented
-        return super().__eq__(other) and self._input == other._input
+        return (
+            super().__eq__(other)
+            and self._input == other._input
+            and self.value_cell == other.value_cell
+        )
 
     def copy(
         self: ExpressionBC, upper: Optional[bool] = None, rank: Optional[int] = None
@@ -1331,6 +1364,7 @@ class ExpressionBC(BCBase):
             value=self._input["value_expr"],
             const=self._input["const_expr"],
             target=self._input["target"],
+            value_cell=self.value_cell,
         )
 
     def to_subgrid(self: ExpressionBC, subgrid: GridBase) -> ExpressionBC:
@@ -1346,7 +1380,11 @@ class ExpressionBC(BCBase):
         # use `issubclass`, so that `self.grid` could be `UnitGrid`, while `subgrid` is
         # `CartesianGrid`
         assert issubclass(self.grid.__class__, subgrid.__class__)
-        return self.__class__(
+
+        if self.value_cell is not None:
+            raise NotImplementedError("Custom value indices are not supported")
+
+        bc = self.__class__(
             grid=subgrid,
             axis=self.axis,
             upper=self.upper,
@@ -1354,7 +1392,12 @@ class ExpressionBC(BCBase):
             value=self._input["value_expr"],
             const=self._input["const_expr"],
             target=self._input["target"],
+            value_cell=self.value_cell,
         )
+
+        # The following call raise error when `value_cell` index is not in `subgrid`.
+        bc._get_value_cell_index(with_ghost_cells=False)
+        return bc
 
     def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
         raise NotImplementedError
@@ -1364,6 +1407,25 @@ class ExpressionBC(BCBase):
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         raise NotImplementedError
+
+    def _get_value_cell_index(self, with_ghost_cells: bool) -> int:
+        if self.value_cell is None:
+            # pick adjacent cell by default
+            return super()._get_value_cell_index(with_ghost_cells)
+        elif self.value_cell >= 0:
+            # positive indexing
+            idx = int(self.value_cell)
+            if idx >= self.grid.shape[self.axis]:
+                size = self.grid.shape[self.axis]
+                raise IndexError(f"Index {self.value_cell} out of bounds ({size=})")
+            return idx + 1 if with_ghost_cells else idx
+        else:  # self.value_cell < 0:
+            # negative indexing
+            idx = int(self.value_cell)
+            if idx < -self.grid.shape[self.axis]:
+                size = self.grid.shape[self.axis]
+                raise IndexError(f"Index {self.value_cell} out of bounds ({size=})")
+            return idx - 1 if with_ghost_cells else idx
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         dx = self.grid.discretization[self.axis]
@@ -1375,7 +1437,7 @@ class ExpressionBC(BCBase):
         idx_write: List[slice | int] = idx_offset + idx_valid  # type: ignore
         idx_write[offset + self.axis] = -1 if self.upper else 0
         idx_read = idx_write[:]
-        idx_read[offset + self.axis] = -2 if self.upper else 1
+        idx_read[offset + self.axis] = self._get_value_cell_index(with_ghost_cells=True)
 
         if self.normal:
             assert offset > 0
@@ -1467,8 +1529,17 @@ class ExpressionValueBC(ExpressionBC):
         rank: int = 0,
         value: float | str | Callable = 0,
         target: ExpressionBCTargetType = "value",
+        value_cell: Optional[int] = None,
     ):
-        super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
+        super().__init__(
+            grid,
+            axis,
+            upper,
+            rank=rank,
+            value=value,
+            target=target,
+            value_cell=value_cell,
+        )
 
     __init__.__doc__ = ExpressionBC.__init__.__doc__
 
@@ -1493,8 +1564,17 @@ class ExpressionDerivativeBC(ExpressionBC):
         rank: int = 0,
         value: float | str | Callable = 0,
         target: ExpressionBCTargetType = "derivative",
+        value_cell: Optional[int] = None,
     ):
-        super().__init__(grid, axis, upper, rank=rank, value=value, target=target)
+        super().__init__(
+            grid,
+            axis,
+            upper,
+            rank=rank,
+            value=value,
+            target=target,
+            value_cell=value_cell,
+        )
 
     __init__.__doc__ = ExpressionBC.__init__.__doc__
 
@@ -1520,9 +1600,17 @@ class ExpressionMixedBC(ExpressionBC):
         value: float | str | Callable = 0,
         const: float | str | Callable = 0,
         target: ExpressionBCTargetType = "mixed",
+        value_cell: Optional[int] = None,
     ):
         super().__init__(
-            grid, axis, upper, rank=rank, value=value, const=const, target=target
+            grid,
+            axis,
+            upper,
+            rank=rank,
+            value=value,
+            const=const,
+            target=target,
+            value_cell=value_cell,
         )
 
     __init__.__doc__ = ExpressionBC.__init__.__doc__
