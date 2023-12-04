@@ -546,6 +546,24 @@ def test_expression_bc_specific_value(dim, compiled):
                 np.testing.assert_allclose(field._data_full[0, 1:-1], field.data[i, :])
 
 
+def test_expression_bc_user_func():
+    """test user functions in boundary expressions"""
+    grid = UnitGrid([2])
+    bc1 = grid.get_boundary_conditions({"virtual_point": "sin(value)"})
+    bc2 = grid.get_boundary_conditions(
+        {
+            "type": "virtual_point",
+            "value": "func(value)",
+            "user_funcs": {"func": np.sin},
+        }
+    )
+    for bc in [bc1, bc2]:
+        field = ScalarField(grid, [1, 2])
+        field.set_ghost_cells(bc)
+        assert field._data_full[0] == pytest.approx(np.sin(1)), bc
+        assert field._data_full[-1] == pytest.approx(np.sin(2)), bc
+
+
 def test_getting_registered_bcs():
     """test the functions that return the registered BCs"""
     assert isinstance(registered_boundary_condition_classes(), dict)

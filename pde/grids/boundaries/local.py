@@ -1136,6 +1136,7 @@ class ExpressionBC(BCBase):
         value: float | str | Callable = 0,
         const: float | str | Callable = 0,
         target: ExpressionBCTargetType = "virtual_point",
+        user_funcs: Optional[Dict[str, Callable]] = None,
         value_cell: Optional[int] = None,
     ):
         r"""
@@ -1169,6 +1170,8 @@ class ExpressionBC(BCBase):
             target (str):
                 Selects which value is actually set. Possible choices include `value`,
                 `derivative`, `mixed`, and `virtual_point`.
+            user_funcs (dict, optional):
+                A dictionary with user defined functions that can be used in expressions
             value_cell (int):
                 Determines which cells is read to determine the field value that is used
                 as `value` in the expression or the function call. The default (`None`)
@@ -1187,6 +1190,7 @@ class ExpressionBC(BCBase):
             "value_expr": value,
             "const_expr": const,
             "target": target,
+            "user_funcs": user_funcs,
         }
         signature = ["value", "dx"] + grid.axes + ["t"]
 
@@ -1215,7 +1219,9 @@ class ExpressionBC(BCBase):
             # parse this expression
             from pde.tools.expressions import ScalarExpression
 
-            self._func = ScalarExpression(expression, signature=signature)
+            self._func = ScalarExpression(
+                expression, signature=signature, user_funcs=user_funcs
+            )
 
         # quickly check whether the expression was parsed correctly
         test_value = np.zeros((self.grid.dim,) * self.rank)
@@ -1364,6 +1370,7 @@ class ExpressionBC(BCBase):
             value=self._input["value_expr"],
             const=self._input["const_expr"],
             target=self._input["target"],
+            user_funcs=self._input["user_funcs"],
             value_cell=self.value_cell,
         )
 
@@ -1392,6 +1399,7 @@ class ExpressionBC(BCBase):
             value=self._input["value_expr"],
             const=self._input["const_expr"],
             target=self._input["target"],
+            user_funcs=self._input["user_funcs"],
             value_cell=self.value_cell,
         )
 
@@ -1529,6 +1537,7 @@ class ExpressionValueBC(ExpressionBC):
         rank: int = 0,
         value: float | str | Callable = 0,
         target: ExpressionBCTargetType = "value",
+        user_funcs: Optional[Dict[str, Callable]] = None,
         value_cell: Optional[int] = None,
     ):
         super().__init__(
@@ -1538,6 +1547,7 @@ class ExpressionValueBC(ExpressionBC):
             rank=rank,
             value=value,
             target=target,
+            user_funcs=user_funcs,
             value_cell=value_cell,
         )
 
@@ -1564,6 +1574,7 @@ class ExpressionDerivativeBC(ExpressionBC):
         rank: int = 0,
         value: float | str | Callable = 0,
         target: ExpressionBCTargetType = "derivative",
+        user_funcs: Optional[Dict[str, Callable]] = None,
         value_cell: Optional[int] = None,
     ):
         super().__init__(
@@ -1573,6 +1584,7 @@ class ExpressionDerivativeBC(ExpressionBC):
             rank=rank,
             value=value,
             target=target,
+            user_funcs=user_funcs,
             value_cell=value_cell,
         )
 
@@ -1600,6 +1612,7 @@ class ExpressionMixedBC(ExpressionBC):
         value: float | str | Callable = 0,
         const: float | str | Callable = 0,
         target: ExpressionBCTargetType = "mixed",
+        user_funcs: Optional[Dict[str, Callable]] = None,
         value_cell: Optional[int] = None,
     ):
         super().__init__(
@@ -1610,6 +1623,7 @@ class ExpressionMixedBC(ExpressionBC):
             value=value,
             const=const,
             target=target,
+            user_funcs=user_funcs,
             value_cell=value_cell,
         )
 
