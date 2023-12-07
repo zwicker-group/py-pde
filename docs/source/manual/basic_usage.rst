@@ -12,7 +12,7 @@ The package focuses on simple geometries, which work well for the employed finit
 difference scheme.
 Grids are defined by instance of various classes that capture the symmetries of the 
 underlying space.
-In particular, the package offers Cartesian grids of `1` to `3` dimensions via   
+In particular, the package offers Cartesian grids of `1` to `3` dimensions via
 :class:`~pde.grids.cartesian.CartesianGrid`, as well as curvilinear coordinate for
 spherically symmetric systems in two dimension (:class:`~pde.grids.spherical.PolarSymGrid`)
 and three dimensions (:class:`~pde.grids.spherical.SphericalSymGrid`), as well as the

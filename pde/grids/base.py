@@ -981,7 +981,12 @@ class GridBase(metaclass=ABCMeta):
             result |= set(anycls._operators.keys())  # type: ignore
         if hasattr(cls, "axes"):
             for ax in cls.axes:
-                result |= {f"d_d{ax}", f"d2_d{ax}2"}
+                result |= {
+                    f"d_d{ax}",
+                    f"d_d{ax}_forward",
+                    f"d_d{ax}_backward",
+                    f"d2_d{ax}2",
+                }
         return result
 
     @operators.instancemethod
@@ -1022,18 +1027,28 @@ class GridBase(metaclass=ABCMeta):
         # deal with some special patterns that are often used
         if operator.startswith("d_d"):
             # create a special operator that takes a first derivative along one axis
-            from .operators.cartesian import _make_derivative
+            from .operators.common import make_derivative
 
-            axis_id = self.axes.index(operator[len("d_d") :])
-            factory = functools.partial(_make_derivative, axis=axis_id)
+            # determine axis to which operator is applied (and the method to use)
+            axis_name = operator[len("d_d") :]
+            for direction in ["central", "forward", "backward"]:
+                if axis_name.endswith("_" + direction):
+                    method = direction
+                    axis_name = axis_name[: -len("_" + direction)]
+                    break
+            else:
+                method = "central"
+
+            axis_id = self.axes.index(axis_name)
+            factory = functools.partial(make_derivative, axis=axis_id, method=method)
             return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
 
         elif operator.startswith("d2_d") and operator.endswith("2"):
             # create a special operator that takes a second derivative along one axis
-            from .operators.cartesian import _make_derivative2
+            from .operators.common import make_derivative2
 
             axis_id = self.axes.index(operator[len("d2_d") : -1])
-            factory = functools.partial(_make_derivative2, axis=axis_id)
+            factory = functools.partial(make_derivative2, axis=axis_id)
             return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
 
         # throw an informative error since operator was not found
