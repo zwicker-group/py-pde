@@ -287,10 +287,13 @@ The :code:`make_operator` method of the grids generally supports the following
 differential operators: :code:`'laplacian'`, :code:`'gradient'`,
 :code:`'gradient_squared'`, :code:`'divergence'`, :code:`'vector_gradient'`,
 :code:`'vector_laplace'`, and :code:`'tensor_divergence'`.
-However, a complete list of operators supported by a certain grid class can be
-obtained from the class property :attr:`GridClass.operators`.
-New operators can be added using the class method
-:meth:`GridClass.register_operator`.
+Moreover, generic operators that perform a derivative along a single axis are supported:
+Specifying :code:`'d_dx'` for instance performs a single derivative along the `x`-direction,
+:code:`'d_dy_forward'` uses a forward derivative along the `y`-direction, and
+:code:`'d_d2r'` performs a second derivative in `r`-direction.
+A complete list of operators supported by a certain grid class can be obtained from the
+class property :attr:`GridClass.operators`.
+New operators can be added using the class method :meth:`GridClass.register_operator`.
 
 
 Field integration

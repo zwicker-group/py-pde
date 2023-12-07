@@ -10,6 +10,7 @@ import pytest
 
 from pde import CartesianGrid, UnitGrid
 from pde.grids.boundaries import Boundaries, PeriodicityError
+from pde.grids.operators.common import make_derivative
 
 
 def _get_cartesian_grid(dim=2, periodic=True):
@@ -383,3 +384,24 @@ def test_normalize_point(reflect):
     for norm in [norm_numba_wrap, partial(grid.normalize_point, reflect=reflect)]:
         for x, y in values:
             assert norm(x) == pytest.approx(y), (norm, x)
+
+
+@pytest.mark.parametrize("method", ["central", "forward", "backward"])
+def test_generic_operators(method, rng):
+    """test the `d_dx` version of the operator"""
+    grid = CartesianGrid([[1, 3]], 5, periodic=True)
+    bcs = grid.get_boundary_conditions("periodic")
+    data = rng.uniform(0, 1, size=5)
+    data_full = np.empty(7)
+    data_full[1:-1] = data
+    bcs.set_ghost_cells(data_full)
+
+    op1 = make_derivative(grid, axis=0, method=method)
+    expect = np.empty(5)
+    op1(data_full, expect)
+    op2 = grid.make_operator(f"d_dx_{method}", bc=bcs)
+    np.testing.assert_allclose(expect, op2(data))
+
+    if method == "central":
+        op3 = grid.make_operator("gradient", bc="periodic")
+        np.testing.assert_allclose(expect, op3(data)[0])
