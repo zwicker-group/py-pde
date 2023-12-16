@@ -29,10 +29,11 @@ from typing import TYPE_CHECKING, Any, Dict, Generator, Literal, Optional, Type
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
-    import matplotlib.cm  # @UnusedImport
-    import napari  # @UnusedImport
+    import matplotlib.cm
+    import matplotlib.figure as mpl_figure
+    import napari
 
-    from ..grids.base import GridBase  # @UnusedImport
+    from ..grids.base import GridBase
 
 
 def add_scaled_colorbar(
@@ -95,7 +96,7 @@ def add_scaled_colorbar(
             return rel_size, abs_size
 
     if ax is None:
-        ax = axes_image.axes
+        ax = axes_image.axes  # type: ignore
 
     # make space for the colorbar and generate its axes
     divider = axes_grid1.make_axes_locatable(ax)
@@ -576,6 +577,8 @@ class PlottingContextBase:
     """ flag indicating whether the context supports that plots can be updated
     with out redrawing the entire plot """
 
+    fig: Optional["mpl_figure.Figure"]
+
     def __init__(self, title: Optional[str] = None, show: bool = True):
         """
         Args:
@@ -654,7 +657,8 @@ class BasicPlottingContext(PlottingContextBase):
 
         # determine which figure to modify
         if isinstance(fig_or_ax, mpl_axes.Axes):
-            self.fig = fig_or_ax.get_figure()  # assume that axes are given
+            # assume that axes are given
+            self.fig = fig_or_ax.get_figure()
         elif isinstance(fig_or_ax, mpl_figure.Figure):
             self.fig = fig_or_ax
 

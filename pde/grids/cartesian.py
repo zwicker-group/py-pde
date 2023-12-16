@@ -82,7 +82,7 @@ class CartesianGrid(GridBase):
                 either a list of booleans defining periodicity for each individual axis
                 or a single boolean value specifying the same periodicity for all axes.
         """
-        bounds_arr = np.array(bounds, ndmin=1, dtype=np.double)
+        bounds_arr: np.ndarray = np.array(bounds, ndmin=1, dtype=np.double)
         if bounds_arr.shape == (2,):
             raise ValueError(
                 "`bounds with shape (2,) are ambiguous. Either use shape (1, 2) to set "

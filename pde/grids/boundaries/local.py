@@ -1251,7 +1251,7 @@ class ExpressionBC(BCBase):
             def value_func(*args):
                 return func_value
 
-            return value_func
+            return value_func  # type: ignore
 
         elif not do_jit:
             # function is callable, but does not need to be compiled
@@ -1262,7 +1262,7 @@ class ExpressionBC(BCBase):
             signature = (nb.double,) * (self.grid.num_axes + 3)
             try:
                 # try compiling the function
-                return jit(signature)(func)
+                return jit(signature)(func)  # type: ignore
 
             except nb.NumbaError:
                 # if compilation fails, we simply fall back to pure-python mode
@@ -1274,7 +1274,7 @@ class ExpressionBC(BCBase):
                         value = func(*args)
                     return value
 
-                return value_func
+                return value_func  # type: ignore
 
     def _get_coefficient_function(self, do_jit: bool) -> None:
         """helper function that parses the functions determining the coefficients"""
@@ -1283,7 +1283,7 @@ class ExpressionBC(BCBase):
         value_func = self._prepare_function(self._input["value_expr"], do_jit=do_jit)
 
         if target == "virtual_point":
-            return value_func
+            return value_func  # type: ignore
 
         elif target == "value":
             # Dirichlet boundary condition
@@ -1292,7 +1292,7 @@ class ExpressionBC(BCBase):
             def virtual_from_value(adjacent_value, *args):
                 return 2 * value_func(adjacent_value, *args) - adjacent_value
 
-            return virtual_from_value
+            return virtual_from_value  # type: ignore
 
         elif target == "derivative":
             # Neumann boundary condition
@@ -1301,7 +1301,7 @@ class ExpressionBC(BCBase):
             def virtual_from_derivative(adjacent_value, dx, *args):
                 return dx * value_func(adjacent_value, dx, *args) + adjacent_value
 
-            return virtual_from_derivative
+            return virtual_from_derivative  # type: ignore
 
         elif target == "mixed":
             # special case of a Robin boundary condition, which also uses `const`
@@ -1317,7 +1317,7 @@ class ExpressionBC(BCBase):
                 expr_B = (value_dx - 2) / (value_dx + 2)
                 return expr_A - expr_B * adjacent_value
 
-            return virtual_from_mixed
+            return virtual_from_mixed  # type: ignore
 
         else:
             raise ValueError(f"Unknown target `{target}` for expression")

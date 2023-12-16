@@ -193,7 +193,7 @@ class GridMesh:
             )
 
         # subdivide the base grid according to the decomposition
-        subgrids = np.empty(decomposition, dtype=object)
+        subgrids: np.ndarray = np.empty(decomposition, dtype=object)
         subgrids.flat[0] = grid.copy()  # seed the initial grid at the top-left
         idx_set: List[Any] = [0] * subgrids.ndim  # indices to extract all grids
         for axis, chunks in enumerate(decomposition):
@@ -309,7 +309,7 @@ class GridMesh:
         indices_1d = self._get_data_indices_1d(with_ghost_cells)
 
         # combine everything into a full indices
-        indices = np.empty(self.shape, dtype=object)
+        indices: np.ndarray = np.empty(self.shape, dtype=object)
         for idx in np.ndindex(self.shape):
             indices[idx] = tuple(indices_1d[n][i] for n, i in enumerate(idx))
 
