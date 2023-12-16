@@ -1156,12 +1156,13 @@ class ExpressionBC(BCBase):
                 The tensorial rank of the field for this boundary condition
             value (float or str or callable):
                 An expression that determines the value of the boundary condition.
-                Alternatively, this can be a (jitable, vectorized) function with
-                signature `(value, dx, *coords, t)` that determines the value
-                of `target` from the field value `value` (the value of the adjacent cell
-                unless `value_cell` is specified), the spatial discretization `dx` in
-                the direction perpendicular to the wall, the spatial coordinates of the
-                wall point, and time `t`.
+                Alternatively, this can be a function with signature `(value, dx,
+                *coords, t)` that determines the value of `target` from the field value
+                `value` (the value of the adjacent cell unless `value_cell` is
+                specified), the spatial discretization `dx` in the direction
+                perpendicular to the wall, the spatial coordinates of the wall point,
+                and time `t`. Ideally, this function should be numba-compilable since
+                simulations might otherwise be very slow.
             const (float or str or callable):
                 An expression similar to `value`, which is only used for mixed (Robin)
                 boundary conditions. Note that the implementation currently does not
@@ -1197,7 +1198,6 @@ class ExpressionBC(BCBase):
         if callable(value) or callable(const):
             # the coefficients are given as functions
             self._is_func = True
-            self._set_coefficient_functions()
         else:
             # the coefficients are expressions or constant values
             self._is_func = False
@@ -1219,7 +1219,7 @@ class ExpressionBC(BCBase):
             # parse this expression
             from pde.tools.expressions import ScalarExpression
 
-            self._func = ScalarExpression(
+            self._func_expression = ScalarExpression(
                 expression, signature=signature, user_funcs=user_funcs
             )
 
@@ -1241,55 +1241,73 @@ class ExpressionBC(BCBase):
                     f"{signature}.\nEncountered error: {err}"
                 )
 
-    def _set_coefficient_functions(self) -> None:
+    def _prepare_function(self, func: Union[Callable, float], do_jit: bool) -> Callable:
+        """helper function that compiles a single function given as a parameter"""
+        if not callable(func):
+            # the function is just a number, which we also support
+            func_value = float(func)  # TODO: support complex numbers
+
+            @register_jitable
+            def value_func(*args):
+                return func_value
+
+            return value_func
+
+        elif not do_jit:
+            # function is callable, but does not need to be compiled
+            return func
+
+        else:
+            # function is callable and needs to be compiled
+            signature = (nb.double,) * (self.grid.num_axes + 3)
+            try:
+                # try compiling the function
+                return jit(signature)(func)
+
+            except nb.NumbaError:
+                # if compilation fails, we simply fall back to pure-python mode
+                self._logger.warning(f"Cannot compile BC {self}")
+
+                @register_jitable
+                def value_func(*args):
+                    with nb.objmode(value="double"):
+                        value = func(*args)
+                    return value
+
+                return value_func
+
+    def _get_coefficient_function(self, do_jit: bool) -> None:
         """helper function that parses the functions determining the coefficients"""
         # `value` is a callable function
         target = self._input["target"]
-        value = self._input["value_expr"]
-        const = self._input["const_expr"]
+        value_func = self._prepare_function(self._input["value_expr"], do_jit=do_jit)
 
         if target == "virtual_point":
-            self._func = register_jitable(value)
+            return value_func
 
         elif target == "value":
             # Dirichlet boundary condition
-            value_func = register_jitable(value)
 
             @register_jitable
             def virtual_from_value(adjacent_value, *args):
                 return 2 * value_func(adjacent_value, *args) - adjacent_value
 
-            self._func = virtual_from_value
+            return virtual_from_value
 
         elif target == "derivative":
             # Neumann boundary condition
-            value_func = register_jitable(value)
 
             @register_jitable
             def virtual_from_derivative(adjacent_value, dx, *args):
                 return dx * value_func(adjacent_value, dx, *args) + adjacent_value
 
-            self._func = virtual_from_derivative
+            return virtual_from_derivative
 
         elif target == "mixed":
             # special case of a Robin boundary condition, which also uses `const`
-            if callable(value):
-                value_func = register_jitable(value)
-            else:
-                value_value = float(value)
-
-                @register_jitable
-                def value_func(*args):
-                    return value_value
-
-            if callable(const):
-                const_func = register_jitable(const)
-            else:
-                const_value = float(const)
-
-                @register_jitable
-                def const_func(*args):
-                    return const_value
+            const_func = self._prepare_function(
+                self._input["const_expr"], do_jit=do_jit
+            )
 
             @register_jitable
             def virtual_from_mixed(adjacent_value, dx, *args):
@@ -1299,10 +1317,26 @@ class ExpressionBC(BCBase):
                 expr_B = (value_dx - 2) / (value_dx + 2)
                 return expr_A - expr_B * adjacent_value
 
-            self._func = virtual_from_mixed
+            return virtual_from_mixed
 
         else:
             raise ValueError(f"Unknown target `{target}` for expression")
+
+    @property
+    def _func(self):
+        """function that evaluates the value of the virtual point"""
+        if self._is_func:
+            return self._get_coefficient_function(do_jit=False)
+        else:
+            return self._func_expression
+
+    @property
+    def _func_compiled(self):
+        """compiled function that evaluates the value of the virtual point"""
+        if self._is_func:
+            return self._get_coefficient_function(do_jit=True)
+        else:
+            return self._func_expression.get_compiled()
 
     def _repr_value(self):
         if self._input["target"] == "mixed":
@@ -1480,12 +1514,11 @@ class ExpressionBC(BCBase):
 
         if self._is_func:
             warn_if_time_not_set = False
-            func = jit(self._func)
         else:
             warn_if_time_not_set = self._func.depends_on("t")
-            func = self._func.get_compiled()
+        func = self._func_compiled
 
-        @register_jitable
+        @jit
         def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
             """evaluate the virtual point at `idx`"""
             _, _, bc_idx = get_arr_1d(arr, idx)
