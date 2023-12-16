@@ -349,13 +349,13 @@ class ScalarFieldPlot:
                 cmap = panel.get("cmap")
                 if cmap is None:
                     if vmin is None or vmax is None:
-                        cmap = cm.viridis
+                        cmap = cm.viridis  # type: ignore
                     elif np.isclose(-vmin, vmax):
-                        cmap = cm.coolwarm
+                        cmap = cm.coolwarm  # type: ignore
                     elif np.isclose(vmin, 0):
-                        cmap = cm.gray
+                        cmap = cm.gray  # type: ignore
                     else:
-                        cmap = cm.viridis
+                        cmap = cm.viridis  # type: ignore
 
                 # initialize image
                 ax = self.axes[i, j]
@@ -380,7 +380,7 @@ class ScalarFieldPlot:
 
         if tight:
             # adjust layout and leave some room for title
-            self.fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+            self.fig.tight_layout(rect=(0, 0.03, 1, 0.95))
 
     def _update_data(self, fields: FieldBase, title: Optional[str] = None) -> None:
         """update the fields in the current plot

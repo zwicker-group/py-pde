@@ -102,6 +102,9 @@ In summary, we have the following options for boundary conditions on a field :ma
    * -
      - :math:`c = f(x, t)`
      - :code:`{"value_expression": "sin(x)"}`
+   * -
+     - :math:`c = f(x, t)`
+     - :code:`{"value_expression": func}` with function :code:`func(value, dx, *coords, t)`
    * - Neumann
      - :math:`\partial_n c = 0`
      - :code:`"neumann"` or :code:`"derivative"`

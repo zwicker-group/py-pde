@@ -92,7 +92,7 @@ class Movie:
         """
         from matplotlib.animation import FFMpegWriter
 
-        return FFMpegWriter.isAvailable()  # type: ignore
+        return FFMpegWriter.isAvailable()
 
     def __enter__(self):
         return self

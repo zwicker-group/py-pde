@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, PolarSymGrid, ScalarField, UnitGrid
+from pde import CartesianGrid, DiffusionPDE, PolarSymGrid, ScalarField, UnitGrid
 from pde.grids.boundaries.local import (
     BCBase,
     BCDataError,
@@ -562,6 +562,44 @@ def test_expression_bc_user_func():
         field.set_ghost_cells(bc)
         assert field._data_full[0] == pytest.approx(np.sin(1)), bc
         assert field._data_full[-1] == pytest.approx(np.sin(2)), bc
+
+
+@pytest.mark.parametrize("dim", [1, 2])
+def test_expression_bc_user_func_nojit(dim):
+    """test user functions in boundary expressions, which cannot be compiled"""
+    grid = UnitGrid([3] * dim)
+
+    class C:
+        def __call__(self, value):
+            return value
+
+    if dim == 1:
+
+        def func(value, dx, x, t):
+            return C()(value)
+
+    elif dim == 2:
+
+        def func(value, dx, x, y, t):
+            return C()(value)
+
+    bc = {"value_expression": func}
+
+    # check setting boundary conditions using compiled setup
+    bcs = grid.get_boundary_conditions(bc)
+    field = ScalarField(grid, 1)
+    bcs.make_ghost_cell_setter()(field._data_full)
+    if dim == 1:
+        np.testing.assert_allclose(field._data_full, 1)
+    else:
+        np.testing.assert_allclose(field._data_full[1:-1, :], 1)
+        np.testing.assert_allclose(field._data_full[:, 1:-1], 1)
+
+    # simulate a simple PDE
+    field = ScalarField(grid, 1)
+    eq = DiffusionPDE(bc=bc)
+    res = eq.solve(field, 1)
+    np.testing.assert_allclose(res.data, 1)
 
 
 def test_getting_registered_bcs():
