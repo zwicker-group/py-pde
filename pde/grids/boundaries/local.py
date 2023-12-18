@@ -84,7 +84,7 @@ from numba.extending import overload, register_jitable
 
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
-from ...tools.numba import address_as_void_pointer, jit
+from ...tools.numba import address_as_void_pointer, jit, numba_dict
 from ...tools.typing import (
     AdjacentEvaluator,
     FloatNumerical,
@@ -1620,7 +1620,8 @@ class ExpressionBC(BCBase):
                 # cheap way to signal a problem
                 return math.nan
 
-        virtual_point(np.zeros([3] * num_axes), tuple([0] * num_axes), None)
+        # evaluate the function to force compilation
+        virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict({"t": 0.0}))
 
         return virtual_point  # type: ignore
 
