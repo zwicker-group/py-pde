@@ -1225,15 +1225,12 @@ class ExpressionBC(BCBase):
             )
 
         # quickly check whether the expression was parsed correctly
-        test_value = np.zeros((self.grid.dim,) * self.rank)
-        dx = self.grid.discretization[self.axis]
-        coords = np.moveaxis(self.grid._boundary_coordinates(axis, upper), -1, 0)
         try:
-            self._func(test_value, dx, *coords, 0)
+            self._func(*self._test_values)
         except Exception as err:
             if self._is_func:
                 raise BCDataError(
-                    f"Could not evaluate Bc function. Expected signature "
+                    f"Could not evaluate BC function. Expected signature "
                     f"{signature}.\nEncountered error: {err}"
                 )
             else:
@@ -1241,6 +1238,18 @@ class ExpressionBC(BCBase):
                     f"Could not evaluate BC expression `{expression}` with signature "
                     f"{signature}.\nEncountered error: {err}"
                 )
+
+    @property
+    def _test_values(self) -> Tuple[float, ...]:
+        """tuple: suitable values with which the user expression can be tested"""
+        test_values = [
+            np.zeros((self.grid.dim,) * self.rank),
+            self.grid.discretization[self.axis],
+        ]
+        bc_coords = self.grid._boundary_coordinates(self.axis, self.upper)
+        test_values.extend(np.moveaxis(bc_coords, -1, 0))
+        test_values.append(0)
+        return tuple(test_values)
 
     def _prepare_function(self, func: Union[Callable, float], do_jit: bool) -> Callable:
         """helper function that compiles a single function given as a parameter"""
@@ -1336,8 +1345,25 @@ class ExpressionBC(BCBase):
         """compiled function that evaluates the value of the virtual point"""
         if self._is_func:
             return self._get_coefficient_function(do_jit=True)
+
         else:
-            return self._func_expression.get_compiled()
+            try:
+                # try to compile the expression that was given
+                value_func = self._func_expression.get_compiled()
+                # call the function to actually trigger compilation
+                value_func(*self._test_values)
+
+            except nb.NumbaError:
+                # if compilation fails, we simply fall back to pure-python mode
+                self._logger.warning(f"Cannot compile BC {self._func_expression}")
+
+                @register_jitable
+                def value_func(*args):
+                    with nb.objmode(value="double"):
+                        value = self._func_expression(*args)
+                    return value
+
+            return value_func
 
     def _repr_value(self):
         if self._input["target"] == "mixed":

@@ -566,7 +566,7 @@ def test_expression_bc_user_func():
 
 @pytest.mark.parametrize("dim", [1, 2])
 def test_expression_bc_user_func_nojit(dim):
-    """test user functions in boundary expressions, which cannot be compiled"""
+    """test user functions in boundary expressions that cannot be compiled"""
     grid = UnitGrid([3] * dim)
 
     class C:
@@ -584,6 +584,41 @@ def test_expression_bc_user_func_nojit(dim):
             return C()(value)
 
     bc = {"value_expression": func}
+
+    # check setting boundary conditions using compiled setup
+    bcs = grid.get_boundary_conditions(bc)
+    field = ScalarField(grid, 1)
+    bcs.make_ghost_cell_setter()(field._data_full)
+    if dim == 1:
+        np.testing.assert_allclose(field._data_full, 1)
+    else:
+        np.testing.assert_allclose(field._data_full[1:-1, :], 1)
+        np.testing.assert_allclose(field._data_full[:, 1:-1], 1)
+
+    # simulate a simple PDE
+    field = ScalarField(grid, 1)
+    eq = DiffusionPDE(bc=bc)
+    res = eq.solve(field, 1)
+    np.testing.assert_allclose(res.data, 1)
+
+
+@pytest.mark.parametrize("dim", [1, 2])
+def test_expression_bc_user_expr_nojit(dim):
+    """test user expressions in boundary expressions that cannot be compiled"""
+    grid = UnitGrid([3] * dim)
+
+    class C:
+        def __call__(self, value):
+            return value
+
+    def func(value):
+        return C()(value)
+
+    bc = {
+        "type": "value_expression",
+        "value": "func(value)",
+        "user_funcs": {"func": func},
+    }
 
     # check setting boundary conditions using compiled setup
     bcs = grid.get_boundary_conditions(bc)
