@@ -190,7 +190,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
 
     # log some details
     logger = logging.getLogger(__name__)
-    name = function.__name__
+    name = getattr(function, "__name__", "<anonymous function>")
     if kwargs["nopython"]:  # standard case
         logger.info("Compile `%s` with parallel=%s", name, kwargs["parallel"])
     else:  # this might imply numba falls back to object mode

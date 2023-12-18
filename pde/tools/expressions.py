@@ -234,17 +234,15 @@ class ExpressionBase(metaclass=ABCMeta):
                 instance of :class:`~sympy.core.expr.Expr` or
                 :class:`~sympy.tensor.array.ndim_array.NDimArray`.
             signature (list of str, optional):
-                The signature defines which variables are expected in the
-                expression. This is typically a list of strings identifying
-                the variable names. Individual names can be specified as list,
-                in which case any of these names can be used. The first item in
-                such a list is the definite name and if another name of the list
-                is used, the associated variable is renamed to the definite
-                name. If signature is `None`, all variables in `expressions`
-                are allowed.
+                The signature defines which variables are expected in the expression.
+                This is typically a list of strings identifying the variable names.
+                Individual names can be specified as list, in which case any of these
+                names can be used. The first item in such a list is the definite name
+                and if another name of the list is used, the associated variable is
+                renamed to the definite name. If signature is `None`, all variables in
+                `expressions` are allowed.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that can be used in the
-                expression.
+                A dictionary with user defined functions that used in the expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
@@ -481,9 +479,8 @@ class ExpressionBase(metaclass=ABCMeta):
 
         Args:
             single_arg (bool):
-                Determines whether the returned function accepts all variables
-                in a single argument as an array or whether all variables need
-                to be supplied separately
+                Determines whether the function takes all variables in a single argument
+                as an array or whether all variables need to be supplied separately.
             prepare_compilation (bool):
                 Determines whether all user functions are marked with
                 :func:`numba.extending.register_jitable` to prepare for compilation.
@@ -502,9 +499,9 @@ class ExpressionBase(metaclass=ABCMeta):
         """return numba function evaluating expression
 
         Args:
-            single_arg (bool): Determines whether the returned function accepts
-                all variables in a single argument as an array or whether all
-                variables need to be supplied separately
+            single_arg (bool):
+                Determines whether the function takes all variables in a single argument
+                as an array or whether all variables need to be supplied separately.
 
         Returns:
             function: the compiled function
@@ -538,8 +535,7 @@ class ScalarExpression(ExpressionBase):
 
         Args:
             expression (str or float):
-                The expression, which is either a number or a string that sympy
-                can parse
+                The expression, either a number or a string that sympy can parse.
             signature (list of str):
                 The signature defines which variables are expected in the expression.
                 This is typically a list of strings identifying the variable names.
@@ -549,8 +545,7 @@ class ScalarExpression(ExpressionBase):
                 renamed to the definite name. If signature is `None`, all variables in
                 `expressions` are allowed.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that can be used in the
-                expression
+                A dictionary with user defined functions that used in the expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
@@ -740,20 +735,17 @@ class TensorExpression(ExpressionBase):
 
         Args:
             expression (str or float):
-                The expression, which is either a number or a string that sympy
-                can parse
+                The expression, either a number or a string that sympy can parse.
             signature (list of str):
-                The signature defines which variables are expected in the
-                expression. This is typically a list of strings identifying
-                the variable names. Individual names can be specified as list,
-                in which case any of these names can be used. The first item in
-                such a list is the definite name and if another name of the list
-                is used, the associated variable is renamed to the definite
-                name. If signature is `None`, all variables in `expressions`
-                are allowed.
+                The signature defines which variables are expected in the expression.
+                This is typically a list of strings identifying the variable names.
+                Individual names can be specified as list, in which case any of these
+                names can be used. The first item in such a list is the definite name
+                and if another name of the list is used, the associated variable is
+                renamed to the definite name. If signature is `None`, all variables in
+                `expressions` are allowed.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that can be used in the
-                expression.
+                A dictionary with user defined functions that used in the expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
