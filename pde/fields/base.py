@@ -1774,7 +1774,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     )
                 rank = arr_typ.ndim - num_axes
                 if rank < 1:
-                    raise TypeError(
+                    raise nb.NumbaTypeError(
                         f"Rank={rank} too small for dot product. Use a normal product "
                         "instead."
                     )

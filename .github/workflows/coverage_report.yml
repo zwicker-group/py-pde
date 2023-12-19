@@ -29,6 +29,7 @@ jobs:
       env:
         NUMBA_DISABLE_JIT: 1
         MPLBACKEND: agg
+        PYPDE_TESTRUN: 1
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pytest --cov-config=pyproject.toml --cov=pde -n auto tests
@@ -40,6 +41,7 @@ jobs:
       env:
         NUMBA_DISABLE_JIT: 1
         MPLBACKEND: agg
+        PYPDE_TESTRUN: 1
       run: |
         export PYTHONPATH="${PYTHONPATH}:`pwd`"
         pip install -r tests/requirements_mpi.txt

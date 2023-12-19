@@ -6,7 +6,9 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, DiffusionPDE, PolarSymGrid, ScalarField, UnitGrid
+from pde.grids._mesh import GridMesh
 from pde.grids.boundaries.local import (
+    _MPIBC,
     BCBase,
     BCDataError,
     ExpressionValueBC,
@@ -566,7 +568,7 @@ def test_expression_bc_user_func():
 
 @pytest.mark.parametrize("dim", [1, 2])
 def test_expression_bc_user_func_nojit(dim):
-    """test user functions in boundary expressions, which cannot be compiled"""
+    """test user functions in boundary expressions that cannot be compiled"""
     grid = UnitGrid([3] * dim)
 
     class C:
@@ -594,6 +596,47 @@ def test_expression_bc_user_func_nojit(dim):
     else:
         np.testing.assert_allclose(field._data_full[1:-1, :], 1)
         np.testing.assert_allclose(field._data_full[:, 1:-1], 1)
+
+    # simulate a simple PDE
+    field = ScalarField(grid, 1)
+    eq = DiffusionPDE(bc=bc)
+    res = eq.solve(field, 1)
+    np.testing.assert_allclose(res.data, 1)
+
+
+@pytest.mark.parametrize("dim", [1, 2, 3])
+def test_expression_bc_user_expr_nojit(dim):
+    """test user expressions in boundary expressions that cannot be compiled"""
+    grid = UnitGrid([3] * dim)
+
+    class C:
+        factor = 2
+
+        def __call__(self, value):
+            return value**self.factor
+
+    def func(value):
+        return C()(value)
+
+    bc = {
+        "type": "value_expression",
+        "value": "func(value)",
+        "user_funcs": {"func": func},
+    }
+
+    # check setting boundary conditions using compiled setup
+    bcs = grid.get_boundary_conditions(bc)
+    field = ScalarField(grid, 1)
+    bcs.make_ghost_cell_setter()(field._data_full)
+    if dim == 1:
+        np.testing.assert_allclose(field._data_full, 1)
+    elif dim == 2:
+        np.testing.assert_allclose(field._data_full[1:-1, :], 1)
+        np.testing.assert_allclose(field._data_full[:, 1:-1], 1)
+    else:
+        np.testing.assert_allclose(field._data_full[1:-1, 1:-1, :], 1)
+        np.testing.assert_allclose(field._data_full[1:-1, :, 1:-1], 1)
+        np.testing.assert_allclose(field._data_full[:, 1:-1, 1:-1], 1)
 
     # simulate a simple PDE
     field = ScalarField(grid, 1)
@@ -669,3 +712,15 @@ def test_user_bcs_numba(dim, target):
     # test whether calling setter with user data works properly
     setter(f2._data_full, args={target: value})
     np.testing.assert_allclose(f1._data_full, f2._data_full)
+
+
+def test_mpi_bc():
+    """test some basic methods of _MPIBC"""
+    grid = UnitGrid([4], periodic=True)
+    mesh = GridMesh.from_grid(grid, decomposition=[2])
+    assert len(mesh) == 2
+
+    bc = _MPIBC(mesh, axis=0, upper=True)
+    assert isinstance(bc.get_mathematical_representation(), str)
+    assert bc == _MPIBC(mesh, axis=0, upper=True, node_id=0)
+    assert bc != _MPIBC(mesh, axis=0, upper=True, node_id=1)

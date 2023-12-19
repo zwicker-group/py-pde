@@ -11,7 +11,6 @@ from scipy import stats
 from pde import PDE, MemoryStorage, SwiftHohenbergPDE, grids
 from pde.fields import FieldCollection, ScalarField, VectorField
 from pde.grids.boundaries.local import BCDataError
-from pde.tools import mpi
 
 
 def iter_grids():
@@ -82,29 +81,6 @@ def test_pde_vector(rng):
 
     res_a.assert_field_compatible(res_b)
     np.testing.assert_allclose(res_a.data, res_b.data)
-
-
-@pytest.mark.multiprocessing
-def test_pde_vector_mpi(rng):
-    """test PDE with a single vector field using multiprocessing"""
-    eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
-    assert eq.explicit_time_dependence
-    assert not eq.complex_valued
-    grid = grids.UnitGrid([8, 8])
-    field = VectorField.random_normal(grid, rng=rng).smooth(1)
-
-    args = {
-        "state": field,
-        "t_range": 1,
-        "dt": 0.01,
-        "tracker": None,
-    }
-    res_a = eq.solve(backend="numpy", solver="explicit_mpi", **args)
-    res_b = eq.solve(backend="numba", solver="explicit_mpi", **args)
-
-    if mpi.is_main:
-        res_a.assert_field_compatible(res_b)
-        np.testing.assert_allclose(res_a.data, res_b.data)
 
 
 def test_pde_2scalar():
@@ -266,39 +242,6 @@ def test_pde_complex_serial(rng):
     np.testing.assert_allclose(res1.data, res2.data)
 
 
-@pytest.mark.multiprocessing
-def test_pde_complex_mpi(rng):
-    """test complex valued PDE"""
-    eq = PDE({"p": "I * laplace(p)"})
-    assert not eq.explicit_time_dependence
-    assert eq.complex_valued
-
-    field = ScalarField.random_uniform(grids.UnitGrid([4]), rng=rng)
-    assert not field.is_complex
-
-    args = {
-        "state": field,
-        "t_range": 1.01,
-        "dt": 0.1,
-        "tracker": None,
-        "ret_info": True,
-    }
-    res1, info1 = eq.solve(backend="numpy", solver="explicit_mpi", **args)
-    res2, info2 = eq.solve(backend="numba", solver="explicit_mpi", **args)
-
-    if mpi.is_main:
-        # check results in the main process
-        expect, _ = eq.solve(backend="numpy", solver="explicit", **args)
-
-        assert res1.is_complex
-        np.testing.assert_allclose(res1.data, expect.data)
-        assert info1["solver"]["steps"] == 11
-
-        assert res2.is_complex
-        np.testing.assert_allclose(res2.data, expect.data)
-        assert info2["solver"]["steps"] == 11
-
-
 def test_pde_product_operators():
     """test inner and outer products"""
     eq = PDE(
@@ -438,27 +381,6 @@ def test_anti_periodic_bcs():
     res2 = eq2.solve(field, t_range=1e3, dt=1e-3, adaptive=True)
     assert np.all(np.abs(res2.data) <= 1.0001)
     assert res2.fluctuations > 0.1
-
-
-@pytest.mark.multiprocessing
-@pytest.mark.parametrize("backend", ["numpy", "numba"])
-def test_pde_const_mpi(backend):
-    """test PDE with a field constant using multiprocessing"""
-    grid = grids.UnitGrid([8])
-    eq = PDE({"u": "k"}, consts={"k": ScalarField.from_expression(grid, "x")})
-
-    args = {
-        "state": ScalarField(grid),
-        "t_range": 1,
-        "dt": 0.01,
-        "tracker": None,
-    }
-    res_a = eq.solve(backend="numpy", solver="explicit", **args)
-    res_b = eq.solve(backend=backend, solver="explicit_mpi", **args)
-
-    if mpi.is_main:
-        res_a.assert_field_compatible(res_b)
-        np.testing.assert_allclose(res_a.data, res_b.data)
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])

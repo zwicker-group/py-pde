@@ -61,6 +61,7 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 import warnings
 from abc import ABCMeta, abstractmethod
 from numbers import Number
@@ -82,8 +83,9 @@ import numba as nb
 import numpy as np
 from numba.extending import overload, register_jitable
 
+from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
-from ...tools.numba import address_as_void_pointer, jit
+from ...tools.numba import address_as_void_pointer, jit, numba_dict
 from ...tools.typing import (
     AdjacentEvaluator,
     FloatNumerical,
@@ -600,6 +602,8 @@ class BCBase(metaclass=ABCMeta):
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         """returns a function evaluating the value adjacent to a given point
+
+        .. deprecated:: Since 2023-12-19
 
         Returns:
             function: A function with signature (arr_1d, i_point, bc_idx), where
@@ -1225,15 +1229,12 @@ class ExpressionBC(BCBase):
             )
 
         # quickly check whether the expression was parsed correctly
-        test_value = np.zeros((self.grid.dim,) * self.rank)
-        dx = self.grid.discretization[self.axis]
-        coords = np.moveaxis(self.grid._boundary_coordinates(axis, upper), -1, 0)
         try:
-            self._func(test_value, dx, *coords, 0)
+            self._func(do_jit=False)(*self._test_values)
         except Exception as err:
             if self._is_func:
                 raise BCDataError(
-                    f"Could not evaluate Bc function. Expected signature "
+                    f"Could not evaluate BC function. Expected signature "
                     f"{signature}.\nEncountered error: {err}"
                 )
             else:
@@ -1241,6 +1242,18 @@ class ExpressionBC(BCBase):
                     f"Could not evaluate BC expression `{expression}` with signature "
                     f"{signature}.\nEncountered error: {err}"
                 )
+
+    @property
+    def _test_values(self) -> Tuple[float, ...]:
+        """tuple: suitable values with which the user expression can be tested"""
+        test_values = [
+            np.zeros((self.grid.dim,) * self.rank),
+            self.grid.discretization[self.axis],
+        ]
+        bc_coords = self.grid._boundary_coordinates(self.axis, self.upper)
+        test_values.extend(np.moveaxis(bc_coords, -1, 0))
+        test_values.append(0)
+        return tuple(test_values)
 
     def _prepare_function(self, func: Union[Callable, float], do_jit: bool) -> Callable:
         """helper function that compiles a single function given as a parameter"""
@@ -1260,10 +1273,15 @@ class ExpressionBC(BCBase):
 
         else:
             # function is callable and needs to be compiled
-            signature = (nb.double,) * (self.grid.num_axes + 3)
             try:
                 # try compiling the function
-                return jit(signature)(func)  # type: ignore
+                value_func = jit(func)
+                # and evaluate it, so compilation is forced
+                value_func(*self._test_values)
+
+                if os.environ.get("PYPDE_TESTRUN"):
+                    # ensure that the except path is also tested
+                    raise nb.NumbaError("Force except")
 
             except nb.NumbaError:
                 # if compilation fails, we simply fall back to pure-python mode
@@ -1275,16 +1293,21 @@ class ExpressionBC(BCBase):
                         value = func(*args)
                     return value
 
-                return value_func  # type: ignore
+            return value_func  # type: ignore
 
-    def _get_coefficient_function(self, do_jit: bool) -> None:
-        """helper function that parses the functions determining the coefficients"""
+    def _get_function_from_userfunc(self, do_jit: bool) -> Callable:
+        """returns function from user function evaluating the value of the virtual point
+
+        Args:
+            do_jit (bool):
+                Determines whether the returned function is numba-compiled
+        """
         # `value` is a callable function
         target = self._input["target"]
         value_func = self._prepare_function(self._input["value_expr"], do_jit=do_jit)
 
         if target == "virtual_point":
-            return value_func  # type: ignore
+            return value_func
 
         elif target == "value":
             # Dirichlet boundary condition
@@ -1323,21 +1346,81 @@ class ExpressionBC(BCBase):
         else:
             raise ValueError(f"Unknown target `{target}` for expression")
 
-    @property
-    def _func(self):
-        """function that evaluates the value of the virtual point"""
-        if self._is_func:
-            return self._get_coefficient_function(do_jit=False)
-        else:
+    def _get_function_from_expression(self, do_jit: bool) -> Callable:
+        """returns function from expression evaluating the value of the virtual point
+
+        Args:
+            do_jit (bool):
+                Determines whether the returned function is numba-compiled
+        """
+        if not do_jit:
             return self._func_expression
 
-    @property
-    def _func_compiled(self):
-        """compiled function that evaluates the value of the virtual point"""
+        func = self._func_expression._get_function_cached(single_arg=False)
+        try:
+            # try to compile the expression that was given
+            value_func = jit(func)
+            # call the function to actually trigger compilation
+            value_func(*self._test_values)
+
+            if os.environ.get("PYPDE_TESTRUN"):
+                # ensure that the except path is also tested
+                raise nb.NumbaError("Force except")
+
+        except nb.NumbaError:
+            # if compilation fails, we simply fall back to pure-python mode
+            self._logger.warning(f"Cannot compile BC {self._func_expression}")
+            # calculate the expected value to test this later (and fail early)
+            expected = func(*self._test_values)
+
+            num_axes = self.grid.num_axes
+            if num_axes == 1:
+
+                @jit
+                def value_func(grid_value, dx, x, t):
+                    with nb.objmode(value="double"):
+                        value = func(grid_value, dx, x, t)
+                    return value
+
+            elif num_axes == 2:
+
+                @jit
+                def value_func(grid_value, dx, x, y, t):
+                    with nb.objmode(value="double"):
+                        value = func(grid_value, dx, x, y, t)
+                    return value
+
+            elif num_axes == 3:
+
+                @jit
+                def value_func(grid_value, dx, x, y, z, t):
+                    with nb.objmode(value="double"):
+                        value = func(grid_value, dx, x, y, z, t)
+                    return value
+
+            else:
+                # cheap way to signal a problem
+                raise ValueError
+
+            # compile the actual functio and check the result
+            result_compiled = value_func(*self._test_values)
+            if not np.allclose(result_compiled, expected):
+                raise RuntimeError("Compiled function does not give same value")
+
+        return value_func  # type: ignore
+
+    @cached_method()
+    def _func(self, do_jit: bool) -> Callable:
+        """returns function that evaluates the value of the virtual point
+
+        Args:
+            do_jit (bool):
+                Determines whether the returned function is numba-compiled
+        """
         if self._is_func:
-            return self._get_coefficient_function(do_jit=True)
+            return self._get_function_from_userfunc(do_jit=do_jit)
         else:
-            return self._func_expression.get_compiled()
+            return self._get_function_from_expression(do_jit=do_jit)
 
     def _repr_value(self):
         if self._input["target"] == "mixed":
@@ -1493,7 +1576,7 @@ class ExpressionBC(BCBase):
         coords = np.moveaxis(coords, -1, 0)  # point coordinates to first axis
 
         if args is None:
-            if not self._is_func and self._func.depends_on("t"):
+            if not self._is_func and self._func_expression.depends_on("t"):
                 raise RuntimeError(
                     "Require value for `t` for time-dependent BC. The value must be "
                     "passed explicitly via `args` when calling a differential operator."
@@ -1503,7 +1586,7 @@ class ExpressionBC(BCBase):
             t = float(args["t"])
 
         # calculate the virtual points
-        data_full[tuple(idx_write)] = self._func(values, dx, *coords, t)
+        data_full[tuple(idx_write)] = self._func(do_jit=False)(values, dx, *coords, t)
 
     def make_virtual_point_evaluator(self) -> VirtualPointEvaluator:
         dx = self.grid.discretization[self.axis]
@@ -1516,8 +1599,8 @@ class ExpressionBC(BCBase):
         if self._is_func:
             warn_if_time_not_set = False
         else:
-            warn_if_time_not_set = self._func.depends_on("t")
-        func = self._func_compiled
+            warn_if_time_not_set = self._func_expression.depends_on("t")
+        func = self._func(do_jit=True)
 
         @jit
         def virtual_point(arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
@@ -1547,6 +1630,9 @@ class ExpressionBC(BCBase):
             else:
                 # cheap way to signal a problem
                 return math.nan
+
+        # evaluate the function to force compilation and catch errors early
+        virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict({"t": 0.0}))
 
         return virtual_point  # type: ignore
 
@@ -2078,6 +2164,8 @@ class ConstBC1stOrderBase(ConstBCBase):
         return virtual_point  # type: ignore
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
+        # method deprecated since 2023-12-19
+        warnings.warn("`make_adjacent_evaluator` is deprecated", DeprecationWarning)
         # get values distinguishing upper from lower boundary
         if self.upper:
             i_bndry = self.grid.shape[self.axis] - 1
@@ -2669,6 +2757,8 @@ class ConstBC2ndOrderBase(ConstBCBase):
         return virtual_point  # type: ignore
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
+        # method deprecated since 2023-12-19
+        warnings.warn("`make_adjacent_evaluator` is deprecated", DeprecationWarning)
         size = self.grid.shape[self.axis]
         if size < 2:
             raise ValueError(
