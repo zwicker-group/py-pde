@@ -61,6 +61,7 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 import warnings
 from abc import ABCMeta, abstractmethod
 from numbers import Number
@@ -601,6 +602,8 @@ class BCBase(metaclass=ABCMeta):
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
         """returns a function evaluating the value adjacent to a given point
+
+        .. deprecated:: Since 2023-12-19
 
         Returns:
             function: A function with signature (arr_1d, i_point, bc_idx), where
@@ -1276,6 +1279,10 @@ class ExpressionBC(BCBase):
                 # and evaluate it, so compilation is forced
                 value_func(*self._test_values)
 
+                if os.environ.get("PYPDE_TESTRUN"):
+                    # ensure that the except path is also tested
+                    raise nb.NumbaError("Force except")
+
             except nb.NumbaError:
                 # if compilation fails, we simply fall back to pure-python mode
                 self._logger.warning(f"Cannot compile BC {self}")
@@ -1356,6 +1363,10 @@ class ExpressionBC(BCBase):
             # call the function to actually trigger compilation
             value_func(*self._test_values)
 
+            if os.environ.get("PYPDE_TESTRUN"):
+                # ensure that the except path is also tested
+                raise nb.NumbaError("Force except")
+
         except nb.NumbaError:
             # if compilation fails, we simply fall back to pure-python mode
             self._logger.warning(f"Cannot compile BC {self._func_expression}")
@@ -1393,7 +1404,7 @@ class ExpressionBC(BCBase):
 
             # compile the actual functio and check the result
             result_compiled = value_func(*self._test_values)
-            if result_compiled != expected:
+            if not np.allclose(result_compiled, expected):
                 raise RuntimeError("Compiled function does not give same value")
 
         return value_func  # type: ignore
@@ -1620,7 +1631,7 @@ class ExpressionBC(BCBase):
                 # cheap way to signal a problem
                 return math.nan
 
-        # evaluate the function to force compilation
+        # evaluate the function to force compilation and catch errors early
         virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict({"t": 0.0}))
 
         return virtual_point  # type: ignore
@@ -2153,6 +2164,8 @@ class ConstBC1stOrderBase(ConstBCBase):
         return virtual_point  # type: ignore
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
+        # method deprecated since 2023-12-19
+        warnings.warn("`make_adjacent_evaluator` is deprecated", DeprecationWarning)
         # get values distinguishing upper from lower boundary
         if self.upper:
             i_bndry = self.grid.shape[self.axis] - 1
@@ -2744,6 +2757,8 @@ class ConstBC2ndOrderBase(ConstBCBase):
         return virtual_point  # type: ignore
 
     def make_adjacent_evaluator(self) -> AdjacentEvaluator:
+        # method deprecated since 2023-12-19
+        warnings.warn("`make_adjacent_evaluator` is deprecated", DeprecationWarning)
         size = self.grid.shape[self.axis]
         if size < 2:
             raise ValueError(

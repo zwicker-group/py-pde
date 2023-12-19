@@ -197,6 +197,7 @@ def run_unit_tests(
 
     # add coverage attributes?
     if coverage:
+        env["PYPDE_TESTRUN"] = "1"
         args.extend(
             [
                 "--cov-config=pyproject.toml",  # locate the configuration file
