@@ -1322,7 +1322,7 @@ class GridBase(metaclass=ABCMeta):
 
         else:
             # we are in a parallel run, so we need to gather the sub-integrals from all
-            from mpi4py.MPI import COMM_WORLD
+            from mpi4py.MPI import COMM_WORLD  # @UnresolvedImport
 
             integral_full = np.empty_like(integral)
             COMM_WORLD.Allreduce(integral, integral_full)

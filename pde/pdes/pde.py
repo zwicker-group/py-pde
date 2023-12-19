@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, Literal, Optional, Tuple
 
 import numba as nb
 import numpy as np
-from numba.typed import Dict as NumbaDict
+from numba.typed import Dict as NumbaDict  # @UnresolvedImport
 from sympy import Symbol
 from sympy.core.function import UndefinedFunction
 

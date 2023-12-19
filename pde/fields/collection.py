@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import logging
-import warnings
 from typing import (
     Any,
     Callable,
@@ -255,36 +254,6 @@ class FieldCollection(FieldBase):
         if not isinstance(other, self.__class__):
             return NotImplemented
         return self.fields == other.fields
-
-    @classmethod
-    def from_dict(
-        cls,
-        fields: Dict[str, DataFieldBase],
-        *,
-        copy_fields: bool = False,
-        label: Optional[str] = None,
-        dtype: DTypeLike = None,
-    ) -> FieldCollection:
-        """create a field collection from a dictionary of fields
-
-        Args:
-            fields (dict):
-                Dictionary of fields where keys determine field labels
-            copy_fields (bool):
-                Flag determining whether the individual fields given in `fields` are
-                copied. Note that fields are always copied if some of the supplied
-                fields are identical.
-            label (str):
-                Label of the field collection
-            dtype (numpy dtype):
-                The data type of the field. All the numpy dtypes are supported. If
-                omitted, it will be determined from `data` automatically.
-        """
-        warnings.warn(
-            "`FieldCollection.from_dict` is deprecated – use FieldCollection() instead",
-            DeprecationWarning,
-        )
-        return cls(fields, copy_fields=copy_fields, label=label, dtype=dtype)
 
     @classmethod
     def from_state(
