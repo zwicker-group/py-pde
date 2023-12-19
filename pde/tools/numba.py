@@ -13,7 +13,7 @@ import numba as nb
 import numpy as np
 from numba.core.types import npytypes, scalars
 from numba.extending import overload, register_jitable
-from numba.typed import Dict as NumbaDict
+from numba.typed import Dict as NumbaDict  # @UnresolvedImport
 
 from .. import config
 from ..tools.misc import decorator_arguments
@@ -127,12 +127,12 @@ def numba_environment() -> Dict[str, Any]:
         "multithreading_threshold": config["numba.multithreading_threshold"],
         "fastmath": config["numba.fastmath"],
         "debug": config["numba.debug"],
-        "using_svml": nb.config.USING_SVML,
+        "using_svml": nb.config.USING_SVML,  # @UndefinedVariable
         "threading_layer": threading_layer,
         "omp_num_threads": os.environ.get("OMP_NUM_THREADS"),
         "mkl_num_threads": os.environ.get("MKL_NUM_THREADS"),
-        "num_threads": nb.config.NUMBA_NUM_THREADS,
-        "num_threads_default": nb.config.NUMBA_DEFAULT_NUM_THREADS,
+        "num_threads": nb.config.NUMBA_NUM_THREADS,  # @UndefinedVariable
+        "num_threads_default": nb.config.NUMBA_DEFAULT_NUM_THREADS,  # @UndefinedVariable
         "cuda_available": cuda_available,
         "roc_available": roc_available,
     }
@@ -202,7 +202,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
     return nb.jit(signature, **kwargs)(function)  # type: ignore
 
 
-if nb.config.DISABLE_JIT:
+if nb.config.DISABLE_JIT:  # @UndefinedVariable
     # dummy function that creates a ctypes pointer
     def address_as_void_pointer(addr):
         """returns a void pointer from a given memory address
@@ -320,7 +320,7 @@ def random_seed(seed: int = 0) -> None:
         seed (int): Sets random seed
     """
     np.random.seed(seed)
-    if not nb.config.DISABLE_JIT:
+    if not nb.config.DISABLE_JIT:  # @UndefinedVariable
         _random_seed_compiled(seed)
 
 

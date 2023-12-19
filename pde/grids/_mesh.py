@@ -686,7 +686,7 @@ class GridMesh:
         Returns:
             The same data, but on all nodes
         """
-        from mpi4py.MPI import COMM_WORLD
+        from mpi4py.MPI import COMM_WORLD  # @UnresolvedImport
 
         return COMM_WORLD.bcast(data, root=0)  # type: ignore
 
@@ -701,7 +701,7 @@ class GridMesh:
             None on all nodes, except the main node, which receives an ordered list with
             the data from all nodes.
         """
-        from mpi4py.MPI import COMM_WORLD
+        from mpi4py.MPI import COMM_WORLD  # @UnresolvedImport
 
         return COMM_WORLD.gather(data, root=0)
 
@@ -715,7 +715,7 @@ class GridMesh:
         Returns:
             list: data from all nodes.
         """
-        from mpi4py.MPI import COMM_WORLD
+        from mpi4py.MPI import COMM_WORLD  # @UnresolvedImport
 
         return COMM_WORLD.allgather(data)
 

@@ -13,7 +13,7 @@ import logging
 import warnings
 from abc import ABCMeta
 from inspect import isabstract
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type  # @UnusedImport
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 import numba as nb
 import numpy as np
@@ -112,7 +112,9 @@ class SolverBase(metaclass=ABCMeta):
     @property
     def _compiled(self) -> bool:
         """bool: indicates whether functions need to be compiled"""
-        return self.backend == "numba" and not nb.config.DISABLE_JIT
+        return (
+            self.backend == "numba" and not nb.config.DISABLE_JIT
+        )  # @UndefinedVariable
 
     def _make_modify_after_step(
         self, state: FieldBase
