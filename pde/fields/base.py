@@ -1376,9 +1376,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
-            \**kwargs:
-                Additional keyword arguments are forwarded to the method
-                :meth:`DataFieldBase.make_interpolator`.
 
         Returns:
             :class:`~numpy.ndarray`: the values of the field
