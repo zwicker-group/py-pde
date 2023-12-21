@@ -29,11 +29,14 @@ from typing import (
     Set,
     Tuple,
     Type,
+    overload,
 )
 
 import numba as nb
 import numpy as np
-from numba.extending import is_jitted, overload, register_jitable
+from numba.extending import is_jitted
+from numba.extending import overload as nb_overload
+from numba.extending import register_jitable
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
@@ -319,12 +322,30 @@ class GridBase(metaclass=ABCMeta):
 
         return get_valid  # type: ignore
 
+    @overload
     def _make_set_valid(self) -> Callable[[np.ndarray, np.ndarray], None]:
+        ...
+
+    @overload
+    def _make_set_valid(
+        self, bcs: Boundaries
+    ) -> Callable[[np.ndarray, np.ndarray, Dict], None]:
+        ...
+
+    def _make_set_valid(self, bcs: Optional[Boundaries] = None) -> Callable:
         """create a function to set the valid part of a full data array
 
+        Args:
+            bcs (:class:`~pde.grids.boundaries.axes.Boundaries`, optional):
+                If supplied, the returned function also enforces boundary conditions by
+                setting the ghost cells to the correct values
+
         Returns:
-            callable: Takes two numpy arrays, setting the valid data in the first one,
-                using the second array
+            callable:
+                Takes two numpy arrays, setting the valid data in the first one, using
+                the second array. The arrays need to be allocated already and they need
+                to have the correct dimensions, which are not checked. If `bcs` are
+                given, a third argument is allowed, which sets arguments for the BCs.
         """
         num_axes = self.num_axes
 
@@ -340,7 +361,19 @@ class GridBase(metaclass=ABCMeta):
             else:
                 raise NotImplementedError
 
-        return set_valid  # type: ignore
+        if bcs is None:
+            # just set the valid elements and leave ghost cells with arbitrary values
+            return set_valid  # type: ignore
+        else:
+            # set the valid elements and the ghost cells according to boundary condition
+            set_bcs = bcs.make_ghost_cell_setter()
+
+            @jit
+            def set_valid_bcs(arr: np.ndarray, value: np.ndarray, args=None) -> None:
+                set_valid(arr, value)
+                set_bcs(arr, args=args)
+
+            return set_valid_bcs  # type: ignore
 
     @property
     @abstractmethod
@@ -1165,13 +1198,13 @@ class GridBase(metaclass=ABCMeta):
 
         elif backend.startswith("numba"):
             # overload `apply_op` with numba-compiled version
-            set_ghost_cells = bcs.make_ghost_cell_setter()
-            set_valid = self._make_set_valid()
+            # set_ghost_cells = bcs.make_ghost_cell_setter()
+            set_valid_w_bc = self._make_set_valid(bcs=bcs)
 
             if not is_jitted(operator_raw):
                 operator_raw = jit(operator_raw)
 
-            @overload(apply_op, inline="always")
+            @nb_overload(apply_op, inline="always")
             def apply_op_ol(
                 arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
             ) -> np.ndarray:
@@ -1188,8 +1221,7 @@ class GridBase(metaclass=ABCMeta):
                         out = np.empty(shape_out, dtype=arr.dtype)
                         # prepare input with boundary conditions
                         arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                        set_valid(arr_full, arr)
-                        set_ghost_cells(arr_full, args=args)
+                        set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
 
                         # apply operator
                         operator_raw(arr_full, out)
@@ -1209,8 +1241,7 @@ class GridBase(metaclass=ABCMeta):
 
                         # prepare input with boundary conditions
                         arr_full = np.empty(shape_in_full, dtype=arr.dtype)
-                        set_valid(arr_full, arr)
-                        set_ghost_cells(arr_full, args=args)
+                        set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
 
                         # apply operator
                         operator_raw(arr_full, out)  # type: ignore
@@ -1829,7 +1860,7 @@ class GridBase(metaclass=ABCMeta):
             amounts = arr * self.cell_volumes
             return amounts.sum(axis=tuple(range(-num_axes, 0, 1)))  # type: ignore
 
-        @overload(integrate_local)
+        @nb_overload(integrate_local)
         def ol_integrate_local(
             arr: np.ndarray,
         ) -> Callable[[np.ndarray], NumberOrArray]:
