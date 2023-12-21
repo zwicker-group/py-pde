@@ -1,5 +1,5 @@
 """
-Bases classes
+Defines the base class for all grids
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
