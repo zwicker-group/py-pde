@@ -309,14 +309,19 @@ class GridBase(metaclass=ABCMeta):
         num_axes = self.num_axes
 
         @jit
-        def get_valid(arr: np.ndarray) -> np.ndarray:
-            """return valid part of the data (without ghost cells)"""
+        def get_valid(data_full: np.ndarray) -> np.ndarray:
+            """return valid part of the data (without ghost cells)
+
+            Args:
+                data_full (:class:`~numpy.ndarray`):
+                    The array with ghost cells from which the valid data is extracted
+            """
             if num_axes == 1:
-                return arr[..., 1:-1]
+                return data_full[..., 1:-1]
             elif num_axes == 2:
-                return arr[..., 1:-1, 1:-1]
+                return data_full[..., 1:-1, 1:-1]
             elif num_axes == 3:
-                return arr[..., 1:-1, 1:-1, 1:-1]
+                return data_full[..., 1:-1, 1:-1, 1:-1]
             else:
                 raise NotImplementedError
 
@@ -350,28 +355,47 @@ class GridBase(metaclass=ABCMeta):
         num_axes = self.num_axes
 
         @jit
-        def set_valid(arr: np.ndarray, value: np.ndarray) -> None:
-            """return valid part of the data (without ghost cells)"""
+        def set_valid(data_full: np.ndarray, data_valid: np.ndarray) -> None:
+            """set valid part of the data (without ghost cells)
+
+            Args:
+                data_full (:class:`~numpy.ndarray`):
+                    The full array with ghost cells that the data is written to
+                data_valid (:class:`~numpy.ndarray`):
+                    The valid data that is written to `data_full`
+            """
             if num_axes == 1:
-                arr[..., 1:-1] = value
+                data_full[..., 1:-1] = data_valid
             elif num_axes == 2:
-                arr[..., 1:-1, 1:-1] = value
+                data_full[..., 1:-1, 1:-1] = data_valid
             elif num_axes == 3:
-                arr[..., 1:-1, 1:-1, 1:-1] = value
+                data_full[..., 1:-1, 1:-1, 1:-1] = data_valid
             else:
                 raise NotImplementedError
 
         if bcs is None:
-            # just set the valid elements and leave ghost cells with arbitrary values
+            # just set the valid elements and leave ghost cells with arbitrary data_valids
             return set_valid  # type: ignore
         else:
             # set the valid elements and the ghost cells according to boundary condition
             set_bcs = bcs.make_ghost_cell_setter()
 
             @jit
-            def set_valid_bcs(arr: np.ndarray, value: np.ndarray, args=None) -> None:
-                set_valid(arr, value)
-                set_bcs(arr, args=args)
+            def set_valid_bcs(
+                data_full: np.ndarray, data_valid: np.ndarray, args=None
+            ) -> None:
+                """set valid part of the data and the ghost cells using BCs
+
+                Args:
+                    data_full (:class:`~numpy.ndarray`):
+                        The full array with ghost cells that the data is written to
+                    data_valid (:class:`~numpy.ndarray`):
+                        The valid data that is written to `data_full`
+                    args (dict):
+                        Extra arguments affecting the boundary conditions
+                """
+                set_valid(data_full, data_valid)
+                set_bcs(data_full, args=args)
 
             return set_valid_bcs  # type: ignore
 
