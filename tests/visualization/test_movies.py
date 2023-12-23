@@ -41,7 +41,7 @@ def test_movie_scalar(movie_func, tmp_path, rng):
     state = ScalarField.random_uniform(UnitGrid([4, 4]), rng=rng)
     eq = DiffusionPDE()
     storage = MemoryStorage()
-    tracker = storage.tracker(interval=1)
+    tracker = storage.tracker(interrupts=1)
     eq.solve(state, t_range=2, dt=1e-2, backend="numpy", tracker=tracker)
 
     # check creating the movie

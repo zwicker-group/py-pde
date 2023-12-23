@@ -242,11 +242,11 @@ class RealtimeInterrupts(ConstantInterrupts):
         return super().next(t)
 
 
-IntervalData = Union[InterruptsBase, float, str, Sequence[float], np.ndarray]
+InterruptData = Union[InterruptsBase, float, str, Sequence[float], np.ndarray]
 
 
-def interval_to_interrupts(data: IntervalData) -> InterruptsBase:
-    """create interrupt class from various data formats specifying time intervals
+def parse_interrupt(data: InterruptData) -> InterruptsBase:
+    """create interrupt class from various data formats
 
     Args:
         data (str or number or :class:`InterruptsBase`):
@@ -256,7 +256,7 @@ def interval_to_interrupts(data: IntervalData) -> InterruptsBase:
             interpreted as :class:`FixedInterrupts`.
 
     Returns:
-        :class:`InterruptsBase`: An instance that represents the time intervals
+        :class:`InterruptsBase`: An instance that represents the interrupt
     """
     if isinstance(data, InterruptsBase):
         return data

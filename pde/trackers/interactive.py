@@ -16,7 +16,7 @@ from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import napari_add_layers
 from .base import InfoDict, TrackerBase
-from .interrupts import IntervalData
+from .interrupts import InterruptData
 
 
 def napari_process(
@@ -248,14 +248,16 @@ class InteractivePlotTracker(TrackerBase):
     @fill_in_docstring
     def __init__(
         self,
-        interval: IntervalData = "0:01",
+        interrupts: InterruptData = "0:01",
+        *,
         close: bool = True,
         show_time: bool = False,
+        interval=None,
     ):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             close (bool):
                 Flag indicating whether the napari window is closed automatically at the
                 end of the simulation. If `False`, the tracker blocks when `finalize` is
@@ -263,8 +265,7 @@ class InteractivePlotTracker(TrackerBase):
             show_time (bool):
                 Whether to indicate the time
         """
-        # initialize the tracker
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
         self.close = close
         self.show_time = show_time
 

@@ -10,7 +10,7 @@ from pde.trackers.interrupts import (
     FixedInterrupts,
     LogarithmicInterrupts,
     RealtimeInterrupts,
-    interval_to_interrupts,
+    parse_interrupt,
 )
 
 
@@ -35,7 +35,7 @@ def test_interrupt_constant():
     assert ival3.next(3) == pytest.approx(6)
     assert ival3.dt == 2
 
-    ival = interval_to_interrupts(2)
+    ival = parse_interrupt(2)
     assert ival.initialize(1) == pytest.approx(1)
     assert ival.next(3) == pytest.approx(3)
     assert ival.next(3) == pytest.approx(5)
@@ -67,7 +67,7 @@ def test_interrupt_logarithmic():
 
 def test_interrupt_realtime():
     """test the RealtimeInterrupts class"""
-    for ival in [RealtimeInterrupts("0:01"), interval_to_interrupts("0:01")]:
+    for ival in [RealtimeInterrupts("0:01"), parse_interrupt("0:01")]:
         assert ival.initialize(0) == pytest.approx(0)
         i1, i2, i3 = ival.next(1), ival.next(1), ival.next(1)
         assert i3 > i2 > i1 > 0
@@ -95,10 +95,10 @@ def test_interrupt_fixed():
     assert ival.next(6) == pytest.approx(7)
     assert ival.dt == 6
 
-    ival = interval_to_interrupts([1, 3])
+    ival = parse_interrupt([1, 3])
     assert np.isinf(ival.initialize(4))
 
-    ival = interval_to_interrupts(np.arange(3))
+    ival = parse_interrupt(np.arange(3))
     assert ival.initialize(0) == pytest.approx(0)
     assert ival.dt == 0
     assert ival.next(0) == pytest.approx(1)

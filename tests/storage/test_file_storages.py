@@ -87,7 +87,7 @@ def test_simulation_persistence(compression, tmp_path, rng):
     pde = DiffusionPDE()
     grid = UnitGrid([16, 16])  # generate grid
     state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
-    pde.solve(state, t_range=0.11, dt=0.001, tracker=storage.tracker(interval=0.05))
+    pde.solve(state, t_range=0.11, dt=0.001, tracker=storage.tracker(interrupts=0.05))
     storage.close()
 
     # read the data

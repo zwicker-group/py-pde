@@ -57,16 +57,16 @@ class Controller:
                 Sets the time range for which the simulation is run. If only a single
                 value `t_end` is given, the time range is assumed to be `[0, t_end]`.
             tracker:
-                Defines a tracker that process the state of the simulation at specified
+                Defines trackers that process the state of the simulation at specified
                 times. A tracker is either an instance of
-                :class:`~pde.trackers.base.TrackerBase` or a string, which identifies a
-                tracker. All possible identifiers can be obtained by calling
-                :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be
+                :class:`~pde.trackers.base.TrackerBase` or a string identifying a
+                tracker (possible identifiers can be obtained by calling
+                :func:`~pde.trackers.base.get_named_trackers`). Multiple trackers can be
                 specified as a list. The default value `auto` checks the state for
                 consistency (tracker 'consistency') and displays a progress bar (tracker
                 'progress') when :mod:`tqdm` is installed. More general trackers are
                 defined in :mod:`~pde.trackers`, where all options are explained in
-                detail. In particular, the interval at which the tracker is evaluated
+                detail. In particular, the time points where the tracker analyzes data
                 can be chosen when creating a tracker object explicitly.
         """
         self.solver = solver
