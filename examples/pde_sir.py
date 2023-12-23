@@ -64,5 +64,5 @@ i.data[0, 0] = 1
 state = eq.get_state(s, i)
 
 # simulate the pde
-tracker = PlotTracker(interval=10, plot_args={"vmin": 0, "vmax": 1})
+tracker = PlotTracker(interrupts=10, plot_args={"vmin": 0, "vmax": 1})
 sol = eq.solve(state, t_range=50, dt=1e-2, tracker=["progress", tracker])

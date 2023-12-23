@@ -41,7 +41,7 @@ from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
 from ..tools.typing import Real
 from .base import FinishedSimulation, InfoDict, TrackerBase
-from .interrupts import IntervalData, RealtimeInterrupts
+from .interrupts import InterruptData, RealtimeInterrupts
 
 if TYPE_CHECKING:
     import pandas
@@ -69,7 +69,13 @@ class CallbackTracker(TrackerBase):
     """
 
     @fill_in_docstring
-    def __init__(self, func: Callable, interval: IntervalData = 1):
+    def __init__(
+        self,
+        func: Callable,
+        interrupts: InterruptData = 1,
+        *,
+        interval=None,
+    ):
         """
         Args:
             func:
@@ -81,10 +87,10 @@ class CallbackTracker(TrackerBase):
                 should be stored. The function can thus adjust the state by modifying it
                 in-place and it can even interrupt the simulation by raising the special
                 exception :class:`StopIteration`.
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
         """
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
         self._callback = func
         self._num_args = len(inspect.signature(func).parameters)
         if not 0 < self._num_args < 3:
@@ -116,16 +122,17 @@ class ProgressTracker(TrackerBase):
     @fill_in_docstring
     def __init__(
         self,
-        interval: Optional[IntervalData] = None,
+        interrupts: Optional[InterruptData] = None,
         *,
         fancy: bool = True,
         ndigits: int = 5,
         leave: bool = True,
+        interval=None,
     ):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
                 The default value `None` updates the progress bar approximately every
                 (real) second.
             fancy (bool):
@@ -137,10 +144,10 @@ class ProgressTracker(TrackerBase):
                 Whether to leave the progress bar after the simulation has finished
                 (default: True)
         """
-        if interval is None:
-            interval = RealtimeInterrupts(duration=1)  # print every second by default
+        if interrupts is None:
+            interrupts = RealtimeInterrupts(duration=1)  # print every second by default
 
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
         self.fancy = fancy
         self.ndigits = ndigits
         self.leave = leave
@@ -237,16 +244,22 @@ class PrintTracker(TrackerBase):
     name = "print"
 
     @fill_in_docstring
-    def __init__(self, interval: IntervalData = 1, stream: IO[str] = sys.stdout):
+    def __init__(
+        self,
+        interrupts: InterruptData = 1,
+        stream: IO[str] = sys.stdout,
+        *,
+        interval=None,
+    ):
         """
 
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             stream:
                 The stream used for printing
         """
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
         self.stream = stream
 
     def handle(self, field: FieldBase, t: float) -> None:
@@ -286,7 +299,7 @@ class PlotTracker(TrackerBase):
     @fill_in_docstring
     def __init__(
         self,
-        interval: IntervalData = 1,
+        interrupts: InterruptData = 1,
         *,
         title: str | Callable = "Time: {time:g}",
         output_file: Optional[str] = None,
@@ -295,11 +308,12 @@ class PlotTracker(TrackerBase):
         tight_layout: bool = False,
         max_fps: float = math.inf,
         plot_args: Optional[Dict[str, Any]] = None,
+        interval=None,
     ):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             title (str or callable):
                 Title text of the figure. If this is a string, it is shown with a
                 potential placeholder named `time` being replaced by the current
@@ -353,7 +367,7 @@ class PlotTracker(TrackerBase):
         from ..visualization.movies import Movie  # @Reimport
 
         # initialize the tracker
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
         self.title = title
         self.output_file = output_file
         self.tight_layout = tight_layout
@@ -530,16 +544,17 @@ class LivePlotTracker(PlotTracker):
     @fill_in_docstring
     def __init__(
         self,
-        interval: IntervalData = "0:03",
+        interrupts: InterruptData = "0:03",
         *,
         show: bool = True,
         max_fps: float = 2,
+        interval=None,
         **kwargs,
     ):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             title (str):
                 Text to show in the title. The current time point will be
                 appended to this text, so include a space for optimal results.
@@ -567,7 +582,13 @@ class LivePlotTracker(PlotTracker):
                 instance, the value `{'ax_style': {'ylim': (0, 1)}}` enforces
                 the y-axis to lie between 0 and 1.
         """
-        super().__init__(interval=interval, show=show, max_fps=max_fps, **kwargs)
+        super().__init__(
+            interrupts=interrupts,
+            interval=interval,
+            show=show,
+            max_fps=max_fps,
+            **kwargs,
+        )
 
 
 class DataTracker(CallbackTracker):
@@ -598,7 +619,12 @@ class DataTracker(CallbackTracker):
 
     @fill_in_docstring
     def __init__(
-        self, func: Callable, interval: IntervalData = 1, filename: Optional[str] = None
+        self,
+        func: Callable,
+        interrupts: InterruptData = 1,
+        *,
+        filename: Optional[str] = None,
+        interval=None,
     ):
         """
         Args:
@@ -613,8 +639,8 @@ class DataTracker(CallbackTracker):
                 Typical return values of the function are either a single
                 number, a numpy array, a list of number, or a dictionary to
                 return multiple numbers with assigned labels.
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             filename (str):
                 A path to a file to which the data is written at the end of the
                 tracking. The data format will be determined by the extension
@@ -622,7 +648,7 @@ class DataTracker(CallbackTracker):
                 storing a tuple `(self.times, self.data)`, whereas any other
                 data format requires :mod:`pandas`.
         """
-        super().__init__(func=func, interval=interval)
+        super().__init__(func=func, interrupts=interrupts, interval=interval)
         self.filename = filename
         self.times: List[float] = []
         self.data: List[Any] = []
@@ -722,17 +748,18 @@ class SteadyStateTracker(TrackerBase):
     @fill_in_docstring
     def __init__(
         self,
-        interval: Optional[IntervalData] = None,
+        interrupts: Optional[InterruptData] = None,
         atol: float = 1e-8,
         rtol: float = 1e-5,
         *,
         progress: bool = False,
         evolution_rate: Optional[Callable[[np.ndarray, float], np.ndarray]] = None,
+        interval=None,
     ):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
                 The default value `None` checks for the steady state approximately every
                 (real) second.
             atol (float):
@@ -748,9 +775,9 @@ class SteadyStateTracker(TrackerBase):
                 can be less accurate. A suitable form of the function is returned by
                 `eq.make_pde_rhs(state)` when `eq` is the PDE class.
         """
-        if interval is None:
-            interval = RealtimeInterrupts(duration=1)
-        super().__init__(interval=interval)
+        if interrupts is None:
+            interrupts = RealtimeInterrupts(duration=1)
+        super().__init__(interrupts=interrupts, interval=interval)
         self.atol = atol
         self.rtol = rtol
         self.evolution_rate = evolution_rate
@@ -832,7 +859,9 @@ class RuntimeTracker(TrackerBase):
     """Tracker interrupting the simulation once a duration has passed"""
 
     @fill_in_docstring
-    def __init__(self, max_runtime: Real | str, interval: IntervalData = 1):
+    def __init__(
+        self, max_runtime: Real | str, interrupts: InterruptData = 1, *, interval=None
+    ):
         """
         Args:
             max_runtime (float or str):
@@ -840,10 +869,10 @@ class RuntimeTracker(TrackerBase):
                 simulation is interrupted. Values can be either given as a number
                 (interpreted as seconds) or as a string, which is then parsed using the
                 function :func:`~pde.tools.parse_duration.parse_duration`.
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
         """
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
 
         try:
             self.max_runtime = float(max_runtime)
@@ -885,17 +914,17 @@ class ConsistencyTracker(TrackerBase):
     name = "consistency"
 
     @fill_in_docstring
-    def __init__(self, interval: Optional[IntervalData] = None):
+    def __init__(self, interrupts: Optional[InterruptData] = None, *, interval=None):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
                 The default value `None` checks for consistency approximately every
                 (real) second.
         """
-        if interval is None:
-            interval = RealtimeInterrupts(duration=1)
-        super().__init__(interval=interval)
+        if interrupts is None:
+            interrupts = RealtimeInterrupts(duration=1)
+        super().__init__(interrupts=interrupts, interval=interval)
 
     def handle(self, field: FieldBase, t: float) -> None:
         """handle data supplied to this tracker
@@ -917,18 +946,23 @@ class MaterialConservationTracker(TrackerBase):
 
     @fill_in_docstring
     def __init__(
-        self, interval: IntervalData = 1, atol: float = 1e-4, rtol: float = 1e-4
+        self,
+        interrupts: InterruptData = 1,
+        atol: float = 1e-4,
+        rtol: float = 1e-4,
+        *,
+        interval=None,
     ):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             atol (float):
                 Absolute tolerance for amount deviations
             rtol (float):
                 Relative tolerance for amount deviations
         """
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
         self.atol = atol
         self.rtol = rtol
 

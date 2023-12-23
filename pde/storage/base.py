@@ -30,7 +30,7 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
 from ..trackers.base import InfoDict, TrackerBase
-from ..trackers.interrupts import InterruptsBase, IntervalData
+from ..trackers.interrupts import InterruptData, InterruptsBase
 
 if TYPE_CHECKING:
     from .memory import MemoryStorage
@@ -281,15 +281,16 @@ class StorageBase(metaclass=ABCMeta):
     @fill_in_docstring
     def tracker(
         self,
-        interval: int | float | InterruptsBase = 1,
+        interrupts: InterruptData = 1,
         *,
         transformation: Optional[Callable[[FieldBase, float], FieldBase]] = None,
+        interval=None,
     ) -> "StorageTracker":
         """create object that can be used as a tracker to fill this storage
 
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             transformation (callable, optional):
                 A function that transforms the current state into a new field or field
                 collection, which is then stored. This allows to store derived
@@ -319,7 +320,10 @@ class StorageBase(metaclass=ABCMeta):
             possible by defining appropriate :func:`add_to_state`
         """
         return StorageTracker(
-            storage=self, interval=interval, transformation=transformation
+            storage=self,
+            interrupts=interrupts,
+            transformation=transformation,
+            interval=interval,
         )
 
     def start_writing(self, field: FieldBase, info: Optional[InfoDict] = None) -> None:
@@ -539,16 +543,17 @@ class StorageTracker(TrackerBase):
     def __init__(
         self,
         storage,
-        interval: IntervalData = 1,
+        interrupts: InterruptData = 1,
         *,
         transformation: Optional[Callable[[FieldBase, float], FieldBase]] = None,
+        interval=None,
     ):
         """
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
                 Storage instance to which the data is written
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             transformation (callable, optional):
                 A function that transforms the current state into a new field or field
                 collection, which is then stored. This allows to store derived
@@ -557,7 +562,7 @@ class StorageTracker(TrackerBase):
                 the current field, while the optional second argument is the associated
                 time.
         """
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
         self.storage = storage
         if transformation is not None and not callable(transformation):
             raise TypeError("`transformation` must be callable")

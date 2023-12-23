@@ -112,9 +112,7 @@ class SolverBase(metaclass=ABCMeta):
     @property
     def _compiled(self) -> bool:
         """bool: indicates whether functions need to be compiled"""
-        return (
-            self.backend == "numba" and not nb.config.DISABLE_JIT
-        )  # @UndefinedVariable
+        return self.backend == "numba" and not nb.config.DISABLE_JIT
 
     def _make_modify_after_step(
         self, state: FieldBase

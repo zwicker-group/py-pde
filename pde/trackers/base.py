@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import math
+import warnings
 from abc import ABCMeta, abstractmethod
 from typing import Any, Dict, List, Optional, Sequence, Type, Union
 
@@ -16,7 +17,7 @@ import numpy as np
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
-from .interrupts import IntervalData, interval_to_interrupts
+from .interrupts import InterruptData, parse_interrupt
 
 InfoDict = Optional[Dict[str, Any]]
 TrackerDataType = Union["TrackerBase", str]
@@ -32,13 +33,20 @@ class TrackerBase(metaclass=ABCMeta):
     _subclasses: Dict[str, Type[TrackerBase]] = {}  # all inheriting classes
 
     @fill_in_docstring
-    def __init__(self, interval: IntervalData = 1):
+    def __init__(self, interrupts: InterruptData = 1, *, interval=None):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
         """
-        self.interrupt = interval_to_interrupts(interval)
+        if interval is not None:
+            # deprecated on 2023-12-23
+            warnings.warn(
+                "Argument `interval` has been renamed to `interrupts`",
+                DeprecationWarning,
+            )
+            interrupts = interval
+        self.interrupt = parse_interrupt(interrupts)
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf

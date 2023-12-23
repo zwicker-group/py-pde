@@ -38,5 +38,5 @@ v = b / a + 0.1 * ScalarField.random_normal(grid, label="Field $v$")
 state = FieldCollection([u, v])
 
 # simulate the pde
-tracker = PlotTracker(interval=1, plot_args={"vmin": 0, "vmax": 5})
+tracker = PlotTracker(interrupts=1, plot_args={"vmin": 0, "vmax": 5})
 sol = eq.solve(state, t_range=20, dt=1e-3, tracker=tracker)
