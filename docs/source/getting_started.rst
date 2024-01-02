@@ -1,6 +1,27 @@
 Getting started
 ===============
 
+When (not) to use the package
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+`py-pde` provides a straight-forward way to simulate partial differential equations (PDEs) using a finite-difference scheme.
+Advantages of this approach include:
+
+* Supports non-linear PDEs with complex boundary conditions.
+* Direct specification of the evolution equations using a syntax that is similar to the underlying mathematical equations.
+* Supports collections of multiple fields of vectorial or tensorial character.
+
+However, there are of course also disadvantages to the approach taken by `py-pde`:
+
+* Only suited for simple geometries (like rectangles, disks, or cylinders) with a fixed discretization.
+* Optimized for PDEs that describe the time-evolution of a physical system. Neither time-independent systems nor integro-differential equation are fully supported.
+* Finite-differences can lead to numerical instabilities.
+* Provided generic solvers might not be most suitable choice for particular equations.
+
+
+Installation
+^^^^^^^^^^^^
+
 The `py-pde` package is developed for python |PythonMinVersion| and has been tested up
 to version |PythonMaxVersion| under Linux, Windows, and macOS.
 Before you can start using the package, you need to install it using one of the
@@ -8,7 +29,7 @@ following methods.
 
 
 Install using pip
-^^^^^^^^^^^^^^^^^
+-----------------
 
 The package is available on `pypi <https://pypi.org/project/py-pde/>`_, so you should be
 able to install it by running
@@ -29,7 +50,7 @@ Moreover, :command:`ffmpeg` needs to be installed and for creating movies.
 
 
 Install using conda
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 The `py-pde` package is also available on `conda <https://conda.io>`_ using the
 `conda-forge` channel.
@@ -43,13 +64,13 @@ This installation includes many dependencies to have most features of `py-pde`.
 
 
 Install from source
-^^^^^^^^^^^^^^^^^^^
+-------------------
 Installing from source can be necessary if the pypi installation does not work
 or if the latest source code should be installed from github.
 
 
 Required prerequisites
-----------------------
+""""""""""""""""""""""
 
 The code builds on other python packages, which need to be installed for
 `py-pde` to function properly.
@@ -78,7 +99,7 @@ latest version of the package.
 
 
 Optional packages
------------------
+"""""""""""""""""
 
 The following packages should be installed to use some miscellaneous features:
 
@@ -94,7 +115,7 @@ respective folders.
 
 
 Downloading `py-pde`
---------------------
+""""""""""""""""""""
 
 The package can be simply checked out from
 `github.com/zwicker-group/py-pde <https://github.com/zwicker-group/py-pde>`_.
