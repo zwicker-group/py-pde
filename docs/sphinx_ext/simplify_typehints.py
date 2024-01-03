@@ -48,8 +48,8 @@ REPLACEMENTS = [
 # replacement rules based on regular expressions
 REPLACEMENTS_REGEX = {
     # remove full package path and only leave the module/class identifier
-    "pde\.(\w+\.)*": "",
-    "typing\.": "",
+    r"pde\.(\w+\.)*": "",
+    r"typing\.": "",
 }
 
 
