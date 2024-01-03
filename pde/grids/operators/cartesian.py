@@ -14,8 +14,9 @@ This module implements differential operators on Cartesian grids
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>   
 """
+from __future__ import annotations
 
-from typing import Callable, Literal, Tuple
+from typing import Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -35,7 +36,7 @@ from .common import make_general_poisson_solver, uniform_discretization
 # deprecated since 2023-12-06
 
 
-def _get_laplace_matrix_1d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_1d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for Laplace operator on a 1d Cartesian grid
 
     Args:
@@ -77,7 +78,7 @@ def _get_laplace_matrix_1d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     return matrix, vector
 
 
-def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for Laplace operator on a 2d Cartesian grid
 
     Args:
@@ -146,7 +147,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     return matrix, vector
 
 
-def _get_laplace_matrix_3d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for Laplace operator on a 3d Cartesian grid
 
     Args:
@@ -233,7 +234,7 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     return matrix, vector
 
 
-def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for Laplace operator on a Cartesian grid
 
     Args:

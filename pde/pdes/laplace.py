@@ -3,6 +3,7 @@ Solvers for Poisson's and Laplace's equation
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+from __future__ import annotations
 
 from ..fields import ScalarField
 from ..grids.base import GridBase
@@ -13,7 +14,7 @@ from ..tools.docstrings import fill_in_docstring
 @fill_in_docstring
 def solve_poisson_equation(
     rhs: ScalarField,
-    bc: "BoundariesData",
+    bc: BoundariesData,
     label: str = "Solution to Poisson's equation",
     **kwargs,
 ) -> ScalarField:
@@ -80,7 +81,7 @@ def solve_poisson_equation(
 
 @fill_in_docstring
 def solve_laplace_equation(
-    grid: GridBase, bc: "BoundariesData", label: str = "Solution to Laplace's equation"
+    grid: GridBase, bc: BoundariesData, label: str = "Solution to Laplace's equation"
 ) -> ScalarField:
     """Solve Laplace's equation on a given grid.
 

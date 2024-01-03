@@ -1,16 +1,13 @@
 """
 Functions making use of spectral decompositions
 
-
 .. autosummary::
    :nosignatures:
 
    make_colored_noise
 
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
-
 
 from typing import Callable, Optional, Tuple
 

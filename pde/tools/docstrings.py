@@ -7,13 +7,14 @@ Methods for automatic transformation of docstrings
    get_text_block
    replace_in_docstring
    fill_in_docstring
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+from __future__ import annotations
 
 import re
 import textwrap
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 DOCSTRING_REPLACEMENTS = {
     # description of function arguments
@@ -123,7 +124,7 @@ TFunc = TypeVar("TFunc")
 
 
 def replace_in_docstring(
-    f: TFunc, token: str, value: str, docstring: Optional[str] = None
+    f: TFunc, token: str, value: str, docstring: str | None = None
 ) -> TFunc:
     """replace a text in a docstring using the correct indentation
 

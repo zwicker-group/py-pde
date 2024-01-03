@@ -3,11 +3,12 @@ Defines a class controlling the simulations of PDEs.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+from __future__ import annotations
 
 import datetime
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Tuple, TypeVar, Union
 
 from .. import __version__
 from ..tools import mpi
@@ -34,7 +35,7 @@ class Controller:
     care of trackers that analyze and modify the state periodically.
     """
 
-    diagnostics: Dict[str, Any]
+    diagnostics: dict[str, Any]
     """dict: diagnostic information (available after simulation finished)"""
 
     _get_current_time: Callable = time.process_time
@@ -74,7 +75,7 @@ class Controller:
         self.trackers = TrackerCollection.from_data(tracker)
 
         # initialize some diagnostic information
-        self.info: Dict[str, Any] = {}
+        self.info: dict[str, Any] = {}
         self.diagnostics = {
             "controller": self.info,
             "package_version": __version__,
@@ -82,7 +83,7 @@ class Controller:
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
-    def t_range(self) -> Tuple[float, float]:
+    def t_range(self) -> tuple[float, float]:
         """tuple: start and end time of the simulation"""
         return self._t_range
 
@@ -98,7 +99,7 @@ class Controller:
         """
         # determine time range
         try:
-            self._t_range: Tuple[float, float] = (0, float(value))  # type: ignore
+            self._t_range: tuple[float, float] = (0, float(value))  # type: ignore
         except TypeError:  # assume a single number was given
             if len(value) == 2:  # type: ignore
                 self._t_range = tuple(value)  # type: ignore
@@ -107,10 +108,10 @@ class Controller:
                     "t_range must be set to a single number or a tuple of two numbers"
                 )
 
-    def _get_stop_handler(self) -> Callable[[Exception, float], Tuple[int, str]]:
+    def _get_stop_handler(self) -> Callable[[Exception, float], tuple[int, str]]:
         """return function that handles messaging"""
 
-        def _handle_stop_iteration(err: Exception, t: float) -> Tuple[int, str]:
+        def _handle_stop_iteration(err: Exception, t: float) -> tuple[int, str]:
             """helper function for handling interrupts raised by trackers"""
             if isinstance(err, FinishedSimulation):
                 # tracker determined that the simulation finished
@@ -138,7 +139,7 @@ class Controller:
 
         return _handle_stop_iteration
 
-    def _run_single(self, state: TState, dt: Optional[float] = None) -> None:
+    def _run_single(self, state: TState, dt: float | None = None) -> None:
         """run the simulation
 
         Diagnostic information about the solver procedure are available in the
@@ -261,7 +262,7 @@ class Controller:
                 "Consider reducing time step."
             )
 
-    def _run_mpi_client(self, state: TState, dt: Optional[float] = None) -> None:
+    def _run_mpi_client(self, state: TState, dt: float | None = None) -> None:
         """loop for run the simulation on client nodes during an MPI run
 
         This function just loops the stepper advancing the sub field of the current node
@@ -292,9 +293,7 @@ class Controller:
         while t < t_end:
             t = stepper(state, t, t_end)
 
-    def run(
-        self, initial_state: TState, dt: Optional[float] = None
-    ) -> Optional[TState]:
+    def run(self, initial_state: TState, dt: float | None = None) -> TState | None:
         """run the simulation
 
         Diagnostic information about the solver are available in the

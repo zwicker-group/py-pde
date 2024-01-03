@@ -3,11 +3,12 @@ Helper functions for just-in-time compilation with numba
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+from __future__ import annotations
 
 import logging
 import os
 import warnings
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 import numba as nb
 import numpy as np
@@ -79,7 +80,7 @@ JIT_COUNT = Counter()
 TFunc = TypeVar("TFunc", bound="Callable")
 
 
-def numba_environment() -> Dict[str, Any]:
+def numba_environment() -> dict[str, Any]:
     """return information about the numba setup used
 
     Returns:
@@ -278,7 +279,7 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
     return array_constructor  # type: ignore
 
 
-def numba_dict(data: Optional[Dict[str, Any]] = None) -> Optional[NumbaDict]:
+def numba_dict(data: dict[str, Any] | None = None) -> NumbaDict | None:
     """converts a python dictionary to a numba typed dictionary"""
     if data is None:
         return None

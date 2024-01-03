@@ -3,8 +3,9 @@ The Swift-Hohenberg equation
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
+from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable
 
 import numba as nb
 import numpy as np
@@ -40,7 +41,7 @@ class SwiftHohenbergPDE(PDEBase):
         delta: float = 1.0,
         *,
         bc: BoundariesData = "auto_periodic_neumann",
-        bc_lap: Optional[BoundariesData] = None,
+        bc_lap: BoundariesData | None = None,
     ):
         r"""
         Args:

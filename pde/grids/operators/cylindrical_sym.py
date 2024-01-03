@@ -14,8 +14,9 @@ This module implements differential operators on cylindrical grids
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+from __future__ import annotations
 
-from typing import Literal, Tuple
+from typing import Literal
 
 import numba as nb
 import numpy as np
@@ -29,7 +30,7 @@ from ..cylindrical import CylindricalSymGrid
 from .common import make_general_poisson_solver
 
 
-def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for Laplace operator on a cylindrical grid
 
     Args:

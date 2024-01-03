@@ -3,8 +3,9 @@ The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interf
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
+from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable
 
 import numba as nb
 import numpy as np
@@ -38,9 +39,9 @@ class KuramotoSivashinskyPDE(PDEBase):
         nu: float = 1,
         *,
         bc: BoundariesData = "auto_periodic_neumann",
-        bc_lap: Optional[BoundariesData] = None,
+        bc_lap: BoundariesData | None = None,
         noise: float = 0,
-        rng: Optional[np.random.Generator] = None,
+        rng: np.random.Generator | None = None,
     ):
         r"""
         Args:

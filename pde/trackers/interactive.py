@@ -3,6 +3,7 @@ Special module for defining an interactive tracker that uses napari to display f
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+from __future__ import annotations
 
 import logging
 import multiprocessing as mp
@@ -10,7 +11,7 @@ import platform
 import queue
 import signal
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
@@ -21,9 +22,9 @@ from .interrupts import InterruptData
 
 def napari_process(
     data_channel: mp.Queue,
-    initial_data: Dict[str, Dict[str, Any]],
-    t_initial: Optional[float] = None,
-    viewer_args: Optional[Dict[str, Any]] = None,
+    initial_data: dict[str, dict[str, Any]],
+    t_initial: float | None = None,
+    viewer_args: dict[str, Any] | None = None,
 ):
     """:mod:`multiprocessing.Process` running `napari <https://napari.org>`__
 
@@ -74,7 +75,7 @@ def napari_process(
     else:
         label = None
 
-    def check_signal(msg: Optional[str]):
+    def check_signal(msg: str | None):
         """helper function that processes messages by the listener thread"""
         if msg is None:
             return  # do nothing
@@ -132,7 +133,7 @@ def napari_process(
 class NapariViewer:
     """allows viewing and updating data in a separate napari process"""
 
-    def __init__(self, state: FieldBase, t_initial: Optional[float] = None):
+    def __init__(self, state: FieldBase, t_initial: float | None = None):
         """
         Args:
             state (:class:`pde.fields.base.FieldBase`): The initial state to be shown
@@ -269,7 +270,7 @@ class InteractivePlotTracker(TrackerBase):
         self.close = close
         self.show_time = show_time
 
-    def initialize(self, state: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def initialize(self, state: FieldBase, info: InfoDict | None = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -300,7 +301,7 @@ class InteractivePlotTracker(TrackerBase):
         """
         self._viewer.update(state, t)
 
-    def finalize(self, info: Optional[InfoDict] = None) -> None:
+    def finalize(self, info: InfoDict | None = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:

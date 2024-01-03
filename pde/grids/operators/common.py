@@ -3,10 +3,11 @@ Common functions that are used by many operators
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+from __future__ import annotations
 
 import logging
 import warnings
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal
 
 import numpy as np
 
@@ -198,7 +199,7 @@ def uniform_discretization(grid: GridBase) -> float:
 
 def make_laplace_from_matrix(
     matrix, vector
-) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
+) -> Callable[[np.ndarray, np.ndarray | None], np.ndarray]:
     """make a Laplace operator using matrix vector products
 
     Args:
@@ -214,7 +215,7 @@ def make_laplace_from_matrix(
     mat = matrix.tocsc()
     vec = vector.toarray()[:, 0]
 
-    def laplace(arr: np.ndarray, out: Optional[np.ndarray] = None) -> np.ndarray:
+    def laplace(arr: np.ndarray, out: np.ndarray | None = None) -> np.ndarray:
         """apply the laplace operator to `arr`"""
         result = mat.dot(arr.flat) + vec
         if out is None:

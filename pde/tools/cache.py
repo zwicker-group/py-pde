@@ -16,13 +16,14 @@ Functions, classes, and decorators for managing caches
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
 
 import collections
 import functools
 import logging
 import numbers
 from hashlib import sha1
-from typing import Callable, Dict, Iterable, Literal, Optional, TypeVar
+from typing import Callable, Iterable, Literal, TypeVar
 
 import numpy as np
 from scipy import sparse
@@ -327,7 +328,7 @@ class SerializedDict(collections.abc.MutableMapping):
         self,
         key_serialization: SerializerMethod = "pickle",
         value_serialization: SerializerMethod = "pickle",
-        storage_dict: Optional[Dict] = None,
+        storage_dict: dict | None = None,
     ):
         """provides a dictionary whose keys and values are serialized
 
