@@ -3,8 +3,9 @@ A simple wave equation
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
+from __future__ import annotations
 
-from typing import Callable, Dict, Optional
+from typing import Callable
 
 import numba as nb
 import numpy as np
@@ -49,7 +50,7 @@ class WavePDE(PDEBase):
         self.speed = speed
         self.bc = bc
 
-    def get_initial_condition(self, u: ScalarField, v: Optional[ScalarField] = None):
+    def get_initial_condition(self, u: ScalarField, v: ScalarField | None = None):
         """create a suitable initial condition
 
         Args:
@@ -68,7 +69,7 @@ class WavePDE(PDEBase):
         return FieldCollection([u, v], labels=["u", "v"])
 
     @property
-    def expressions(self) -> Dict[str, str]:
+    def expressions(self) -> dict[str, str]:
         """dict: the expressions of the right hand side of this PDE"""
         return {"u": "v", "v": expr_prod(self.speed**2, "∇²u")}
 

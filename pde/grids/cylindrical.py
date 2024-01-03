@@ -6,16 +6,7 @@ Cylindrical grids with azimuthal symmetry
 
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Generator,
-    Literal,
-    Optional,
-    Sequence,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Any, Generator, Literal, Sequence
 
 import numpy as np
 
@@ -84,8 +75,8 @@ class CylindricalSymGrid(GridBase):
 
     def __init__(
         self,
-        radius: float | Tuple[float, float],
-        bounds_z: Tuple[float, float],
+        radius: float | tuple[float, float],
+        bounds_z: tuple[float, float],
         shape: int | Sequence[int],
         periodic_z: bool = False,
     ):
@@ -106,7 +97,7 @@ class CylindricalSymGrid(GridBase):
         super().__init__()
         shape_list = _check_shape(shape)
         if len(shape_list) == 1:
-            self._shape: Tuple[int, int] = (shape_list[0], shape_list[0])
+            self._shape: tuple[int, int] = (shape_list[0], shape_list[0])
         elif len(shape_list) == 2:
             self._shape = tuple(shape_list)  # type: ignore
         else:
@@ -141,7 +132,7 @@ class CylindricalSymGrid(GridBase):
         self._discretization = np.array((dr, dz))
 
     @property
-    def state(self) -> Dict[str, Any]:
+    def state(self) -> dict[str, Any]:
         """dict: all information required for reconstructing the grid"""
         radius = self.axes_bounds[0][1]
         return {
@@ -152,7 +143,7 @@ class CylindricalSymGrid(GridBase):
         }
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> CylindricalSymGrid:  # type: ignore
+    def from_state(cls, state: dict[str, Any]) -> CylindricalSymGrid:  # type: ignore
         """create a field from a stored `state`.
 
         Args:
@@ -173,7 +164,7 @@ class CylindricalSymGrid(GridBase):
     @classmethod
     def from_bounds(
         cls,
-        bounds: Sequence[Tuple[float, float]],
+        bounds: Sequence[tuple[float, float]],
         shape: Sequence[int],
         periodic: Sequence[bool],
     ) -> CylindricalSymGrid:
@@ -204,7 +195,7 @@ class CylindricalSymGrid(GridBase):
         return self.axes_bounds[0][0] > 0
 
     @property
-    def radius(self) -> float | Tuple[float, float]:
+    def radius(self) -> float | tuple[float, float]:
         """float: radius of the sphere"""
         r_inner, r_outer = self.axes_bounds[0]
         if r_inner == 0:
@@ -229,7 +220,7 @@ class CylindricalSymGrid(GridBase):
         boundary_distance: float = 0,
         avoid_center: bool = False,
         coords: CoordsType = "cartesian",
-        rng: Optional[np.random.Generator] = None,
+        rng: np.random.Generator | None = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -277,7 +268,7 @@ class CylindricalSymGrid(GridBase):
         else:
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
         """return a line cut for the cylindrical grid
 
         Args:
@@ -304,7 +295,7 @@ class CylindricalSymGrid(GridBase):
         if extract == "cut_z" or extract == "cut_axial":
             # do a cut along the z axis for r=0
             axis = 1
-            data_y: np.ndarray | Tuple[np.ndarray] = data[..., 0, :]
+            data_y: np.ndarray | tuple[np.ndarray] = data[..., 0, :]
             label_y = "Cut along z"
 
         elif extract == "project_z" or extract == "project_axial":
@@ -330,7 +321,7 @@ class CylindricalSymGrid(GridBase):
             "label_y": label_y,
         }
 
-    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
+    def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
         """return a 2d-image of the data
 
         Args:
@@ -385,7 +376,7 @@ class CylindricalSymGrid(GridBase):
             yield point + np.array([self.length, 0, 0])
 
     @cached_property()
-    def cell_volume_data(self) -> Tuple[np.ndarray, float]:
+    def cell_volume_data(self) -> tuple[np.ndarray, float]:
         """:class:`~numpy.ndarray`: the volumes of all cells"""
         dr, dz = self.discretization
         rs = self.axes_coords[0]
@@ -444,7 +435,7 @@ class CylindricalSymGrid(GridBase):
 
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> np.ndarray | Tuple[np.ndarray, np.ndarray]:
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """return spherical coordinates associated with the grid
 
         Args:
@@ -504,7 +495,7 @@ class CylindricalSymGrid(GridBase):
         grid_shape = 2 * num, 2 * num, self.shape[1]
         return CartesianGrid(grid_bounds, grid_shape)
 
-    def slice(self, indices: Sequence[int]) -> "CartesianGrid" | "PolarSymGrid":
+    def slice(self, indices: Sequence[int]) -> CartesianGrid | PolarSymGrid:
         """return a subgrid of only the specified axes
 
         Args:

@@ -60,7 +60,7 @@ extensions = [
     # our own extensions
     "toctree_filter",
     "package_config",
-    # "simplify_typehints",
+    "simplify_typehints",
 ]
 
 templates_path = ["_templates"]
@@ -154,7 +154,7 @@ latex_elements = {
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
-    "preamble": "\setcounter{tocdepth}{4}"
+    "preamble": r"\setcounter{tocdepth}{4}"
 }
 
 # Grouping the document tree into LaTeX files. List of tuples

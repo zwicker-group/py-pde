@@ -40,7 +40,7 @@ def test_counter():
     assert int(c1) is 1
 
     c1 += 2
-    assert int(c1) is 3
+    assert int(c1) == 3
 
     c2 = Counter(3)
     assert c1 is not c2

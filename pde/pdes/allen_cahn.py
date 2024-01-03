@@ -3,8 +3,9 @@ A Allen-Cahn equation
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
+from __future__ import annotations
 
-from typing import Callable  # @UnusedImport
+from typing import Callable
 
 import numba as nb
 import numpy as np

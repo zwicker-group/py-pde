@@ -13,6 +13,8 @@ Python functions for handling output
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import sys
 from abc import ABCMeta, abstractmethod
 from typing import List, Type  # @UnusedImport
@@ -113,7 +115,7 @@ class JupyterOutput(OutputBase):
         """
         self.header = header
         self.footer = footer
-        self.lines: List[str] = []
+        self.lines: list[str] = []
 
     def __call__(self, line: str):
         self.lines.append(line)

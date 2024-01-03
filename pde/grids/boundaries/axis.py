@@ -161,14 +161,14 @@ class BoundaryAxisBase:
         assert self.low.rank == self.high.rank
         return self.low.rank
 
-    def get_mathematical_representation(self, field_name: str = "C") -> Tuple[str, str]:
+    def get_mathematical_representation(self, field_name: str = "C") -> tuple[str, str]:
         """return mathematical representation of the boundary condition"""
         return (
             self.low.get_mathematical_representation(field_name),
             self.high.get_mathematical_representation(field_name),
         )
 
-    def get_data(self, idx: Tuple[int, ...]) -> Tuple[float, Dict[int, float]]:
+    def get_data(self, idx: tuple[int, ...]) -> tuple[float, dict[int, float]]:
         """sets the elements of the sparse representation of this condition
 
         Args:

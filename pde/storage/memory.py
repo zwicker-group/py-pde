@@ -7,7 +7,7 @@ Defines a class storing data in memory.
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import List, Optional, Sequence
+from typing import Sequence
 
 import numpy as np
 
@@ -21,11 +21,11 @@ class MemoryStorage(StorageBase):
 
     def __init__(
         self,
-        times: Optional[Sequence[float]] = None,
-        data: Optional[List[np.ndarray]] = None,
+        times: Sequence[float] | None = None,
+        data: list[np.ndarray] | None = None,
         *,
-        info: Optional[InfoDict] = None,
-        field_obj: Optional[FieldBase] = None,
+        info: InfoDict | None = None,
+        field_obj: FieldBase | None = None,
         write_mode: WriteModeType = "truncate_once",
     ):
         """
@@ -46,13 +46,13 @@ class MemoryStorage(StorageBase):
                 Alternatively, specifying 'readonly' will disable writing completely.
         """
         super().__init__(info=info, write_mode=write_mode)
-        self.times: List[float] = [] if times is None else list(times)
+        self.times: list[float] = [] if times is None else list(times)
         if field_obj is not None:
             self._field = field_obj.copy()
             self._grid = field_obj.grid
             self._data_shape = field_obj.data.shape
 
-        self.data: List[np.ndarray] = [] if data is None else data
+        self.data: list[np.ndarray] = [] if data is None else data
         if self._data_shape is None and len(self.data) > 0:
             self._data_shape = self.data[0].shape
 
@@ -66,9 +66,9 @@ class MemoryStorage(StorageBase):
     @classmethod
     def from_fields(
         cls,
-        times: Optional[Sequence[float]] = None,
-        fields: Optional[Sequence[FieldBase]] = None,
-        info: Optional[InfoDict] = None,
+        times: Sequence[float] | None = None,
+        fields: Sequence[FieldBase] | None = None,
+        info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",
     ) -> MemoryStorage:
         """create MemoryStorage from a list of fields
@@ -106,7 +106,7 @@ class MemoryStorage(StorageBase):
     def from_collection(
         cls,
         storages: Sequence[StorageBase],
-        label: Optional[str] = None,
+        label: str | None = None,
         *,
         rtol: float = 1.0e-5,
         atol: float = 1.0e-8,
@@ -162,7 +162,7 @@ class MemoryStorage(StorageBase):
         self.data = []
         super().clear(clear_data_shape=clear_data_shape)
 
-    def start_writing(self, field: FieldBase, info: Optional[InfoDict] = None) -> None:
+    def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
         """initialize the storage for writing data
 
         Args:
@@ -208,7 +208,7 @@ class MemoryStorage(StorageBase):
 
 
 @contextmanager
-def get_memory_storage(field: FieldBase, info: Optional[InfoDict] = None):
+def get_memory_storage(field: FieldBase, info: InfoDict | None = None):
     """a context manager that can be used to create a MemoryStorage
 
     Example:

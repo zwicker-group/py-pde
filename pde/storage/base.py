@@ -9,17 +9,7 @@ from __future__ import annotations
 import logging
 from abc import ABCMeta, abstractmethod
 from inspect import signature
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterator,
-    List,
-    Literal,
-    Optional,
-    Sequence,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Literal, Sequence
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -30,7 +20,7 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
 from ..trackers.base import InfoDict, TrackerBase
-from ..trackers.interrupts import InterruptData, InterruptsBase
+from ..trackers.interrupts import InterruptData
 
 if TYPE_CHECKING:
     from .memory import MemoryStorage
@@ -57,7 +47,7 @@ class StorageBase(metaclass=ABCMeta):
 
     def __init__(
         self,
-        info: Optional[InfoDict] = None,
+        info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",
     ):
         """
@@ -74,14 +64,14 @@ class StorageBase(metaclass=ABCMeta):
         """
         self.info = {} if info is None else info
         self.write_mode = write_mode
-        self._data_shape: Optional[Tuple[int, ...]] = None
-        self._dtype: Optional[DTypeLike] = None
-        self._grid: Optional[GridBase] = None
-        self._field: Optional[FieldBase] = None
+        self._data_shape: tuple[int, ...] | None = None
+        self._dtype: DTypeLike | None = None
+        self._grid: GridBase | None = None
+        self._field: FieldBase | None = None
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
-    def data_shape(self) -> Tuple[int, ...]:
+    def data_shape(self) -> tuple[int, ...]:
         """the current data shape.
 
         Raises:
@@ -113,7 +103,7 @@ class StorageBase(metaclass=ABCMeta):
             time (float, optional): The time point associated with the data
         """
 
-    def append(self, field: FieldBase, time: Optional[float] = None) -> None:
+    def append(self, field: FieldBase, time: float | None = None) -> None:
         """add field to the storage
 
         Args:
@@ -147,7 +137,7 @@ class StorageBase(metaclass=ABCMeta):
         return len(self.times)
 
     @property
-    def shape(self) -> Optional[Tuple[int, ...]]:
+    def shape(self) -> tuple[int, ...] | None:
         """the shape of the stored data"""
         if self._data_shape:
             return (len(self),) + self._data_shape
@@ -165,7 +155,7 @@ class StorageBase(metaclass=ABCMeta):
             raise RuntimeError("Storage is empty")
 
     @property
-    def grid(self) -> Optional[GridBase]:
+    def grid(self) -> GridBase | None:
         """GridBase: the grid associated with this storage
 
         This returns `None` if grid was not stored in `self.info`.
@@ -259,7 +249,7 @@ class StorageBase(metaclass=ABCMeta):
         field.data = self.data[t_index]
         return field
 
-    def __getitem__(self, key: int | slice) -> FieldBase | List[FieldBase]:
+    def __getitem__(self, key: int | slice) -> FieldBase | list[FieldBase]:
         """return field at given index or a list of fields for a slice"""
         if isinstance(key, int):
             return self._get_field(key)
@@ -273,7 +263,7 @@ class StorageBase(metaclass=ABCMeta):
         for i in range(len(self)):
             yield self[i]  # type: ignore
 
-    def items(self) -> Iterator[Tuple[float, FieldBase]]:
+    def items(self) -> Iterator[tuple[float, FieldBase]]:
         """iterate over all times and stored fields, returning pairs"""
         for i in range(len(self)):
             yield self.times[i], self[i]  # type: ignore
@@ -283,9 +273,9 @@ class StorageBase(metaclass=ABCMeta):
         self,
         interrupts: InterruptData = 1,
         *,
-        transformation: Optional[Callable[[FieldBase, float], FieldBase]] = None,
+        transformation: Callable[[FieldBase, float], FieldBase] | None = None,
         interval=None,
-    ) -> "StorageTracker":
+    ) -> StorageTracker:
         """create object that can be used as a tracker to fill this storage
 
         Args:
@@ -326,7 +316,7 @@ class StorageBase(metaclass=ABCMeta):
             interval=interval,
         )
 
-    def start_writing(self, field: FieldBase, info: Optional[InfoDict] = None) -> None:
+    def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
         """initialize the storage for writing data
 
         Args:
@@ -355,8 +345,8 @@ class StorageBase(metaclass=ABCMeta):
         """finalize the storage after writing"""
 
     def extract_field(
-        self, field_id: int | str, label: Optional[str] = None
-    ) -> "MemoryStorage":
+        self, field_id: int | str, label: str | None = None
+    ) -> MemoryStorage:
         """extract the time course of a single field from a collection
 
         Note:
@@ -407,8 +397,8 @@ class StorageBase(metaclass=ABCMeta):
         )
 
     def extract_time_range(
-        self, t_range: float | Tuple[float, float] | None = None
-    ) -> "MemoryStorage":
+        self, t_range: float | tuple[float, float] | None = None
+    ) -> MemoryStorage:
         """extract a particular time interval
 
         Note:
@@ -450,7 +440,7 @@ class StorageBase(metaclass=ABCMeta):
     def apply(
         self,
         func: Callable,
-        out: Optional[StorageBase] = None,
+        out: StorageBase | None = None,
         *,
         progress: bool = False,
     ) -> StorageBase:
@@ -512,7 +502,7 @@ class StorageBase(metaclass=ABCMeta):
         return out
 
     def copy(
-        self, out: Optional[StorageBase] = None, *, progress: bool = False
+        self, out: StorageBase | None = None, *, progress: bool = False
     ) -> StorageBase:
         """copies all fields in a storage to a new one
 
@@ -545,7 +535,7 @@ class StorageTracker(TrackerBase):
         storage,
         interrupts: InterruptData = 1,
         *,
-        transformation: Optional[Callable[[FieldBase, float], FieldBase]] = None,
+        transformation: Callable[[FieldBase, float], FieldBase] | None = None,
         interval=None,
     ):
         """
@@ -577,7 +567,7 @@ class StorageTracker(TrackerBase):
         else:
             return self.transformation(field, t)
 
-    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -602,7 +592,7 @@ class StorageTracker(TrackerBase):
         """
         self.storage.append(self._transform(field, t), time=t)
 
-    def finalize(self, info: Optional[InfoDict] = None) -> None:
+    def finalize(self, info: InfoDict | None = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:

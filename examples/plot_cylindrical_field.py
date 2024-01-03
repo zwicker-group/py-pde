@@ -1,4 +1,4 @@
-"""
+r"""
 Plotting a scalar field in cylindrical coordinates
 ==================================================
 

@@ -109,7 +109,7 @@ class FixedInterrupts(InterruptsBase):
 class ConstantInterrupts(InterruptsBase):
     """class representing equidistantly spaced time interrupts"""
 
-    def __init__(self, dt: float = 1, t_start: Optional[float] = None):
+    def __init__(self, dt: float = 1, t_start: float | None = None):
         """
         Args:
             dt (float):
@@ -122,7 +122,7 @@ class ConstantInterrupts(InterruptsBase):
         """
         self.dt = float(dt)
         self.t_start = t_start
-        self._t_next: Optional[float] = None  # next time it should be called
+        self._t_next: float | None = None  # next time it should be called
 
     def __repr__(self):
         return f"{self.__class__.__name__}(dt={self.dt:g}, t_start={self.t_start})"
@@ -157,7 +157,7 @@ class LogarithmicInterrupts(ConstantInterrupts):
     """class representing logarithmically spaced time interrupts"""
 
     def __init__(
-        self, dt_initial: float = 1, factor: float = 1, t_start: Optional[float] = None
+        self, dt_initial: float = 1, factor: float = 1, t_start: float | None = None
     ):
         """
         Args:
@@ -211,7 +211,7 @@ class RealtimeInterrupts(ConstantInterrupts):
         except Exception:
             td = parse_duration(str(duration))
             self.duration = td.total_seconds()
-        self._last_time: Optional[float] = None
+        self._last_time: float | None = None
 
     def __repr__(self):
         return (

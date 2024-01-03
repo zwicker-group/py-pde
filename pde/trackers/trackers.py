@@ -29,7 +29,7 @@ import sys
 import time
 from datetime import timedelta
 from pathlib import Path
-from typing import IO, TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import IO, TYPE_CHECKING, Any, Callable
 
 import numpy as np
 
@@ -40,13 +40,12 @@ from ..tools.misc import module_available
 from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
 from ..tools.typing import Real
+from ..visualization.movies import Movie
 from .base import FinishedSimulation, InfoDict, TrackerBase
 from .interrupts import InterruptData, RealtimeInterrupts
 
 if TYPE_CHECKING:
     import pandas
-
-    from ..visualization.movies import Movie
 
 
 class CallbackTracker(TrackerBase):
@@ -122,7 +121,7 @@ class ProgressTracker(TrackerBase):
     @fill_in_docstring
     def __init__(
         self,
-        interrupts: Optional[InterruptData] = None,
+        interrupts: InterruptData | None = None,
         *,
         fancy: bool = True,
         ndigits: int = 5,
@@ -152,7 +151,7 @@ class ProgressTracker(TrackerBase):
         self.ndigits = ndigits
         self.leave = leave
 
-    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -197,7 +196,7 @@ class ProgressTracker(TrackerBase):
         self.progress_bar.n = round(t_new, self.ndigits)
         self.progress_bar.set_description("")
 
-    def finalize(self, info: Optional[InfoDict] = None) -> None:
+    def finalize(self, info: InfoDict | None = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:
@@ -302,12 +301,12 @@ class PlotTracker(TrackerBase):
         interrupts: InterruptData = 1,
         *,
         title: str | Callable = "Time: {time:g}",
-        output_file: Optional[str] = None,
-        movie: str | Path | "Movie" | None = None,
-        show: Optional[bool] = None,
+        output_file: str | None = None,
+        movie: str | Path | Movie | None = None,
+        show: bool | None = None,
         tight_layout: bool = False,
         max_fps: float = math.inf,
-        plot_args: Optional[Dict[str, Any]] = None,
+        plot_args: dict[str, Any] | None = None,
         interval=None,
     ):
         """
@@ -380,7 +379,7 @@ class PlotTracker(TrackerBase):
 
         # initialize the movie class
         if movie is None:
-            self.movie: Optional[Movie] = None
+            self.movie: Movie | None = None
             self._save_movie = False
 
         elif isinstance(movie, Movie):
@@ -401,7 +400,7 @@ class PlotTracker(TrackerBase):
         else:
             self.show = show
 
-    def initialize(self, state: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def initialize(self, state: FieldBase, info: InfoDict | None = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -512,7 +511,7 @@ class PlotTracker(TrackerBase):
 
         self._last_update = time.monotonic()
 
-    def finalize(self, info: Optional[InfoDict] = None) -> None:
+    def finalize(self, info: InfoDict | None = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:
@@ -623,7 +622,7 @@ class DataTracker(CallbackTracker):
         func: Callable,
         interrupts: InterruptData = 1,
         *,
-        filename: Optional[str] = None,
+        filename: str | None = None,
         interval=None,
     ):
         """
@@ -650,8 +649,8 @@ class DataTracker(CallbackTracker):
         """
         super().__init__(func=func, interrupts=interrupts, interval=interval)
         self.filename = filename
-        self.times: List[float] = []
-        self.data: List[Any] = []
+        self.times: list[float] = []
+        self.data: list[Any] = []
 
     def handle(self, field: FieldBase, t: float) -> None:
         """handle data supplied to this tracker
@@ -668,7 +667,7 @@ class DataTracker(CallbackTracker):
         else:
             self.data.append(self._callback(field, t))
 
-    def finalize(self, info: Optional[InfoDict] = None) -> None:
+    def finalize(self, info: InfoDict | None = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:
@@ -680,7 +679,7 @@ class DataTracker(CallbackTracker):
             self.to_file(self.filename)
 
     @property
-    def dataframe(self) -> "pandas.DataFrame":
+    def dataframe(self) -> pandas.DataFrame:
         """:class:`pandas.DataFrame`: the data in a dataframe
 
         If `func` returns a dictionary, the keys are used as column names.
@@ -748,12 +747,12 @@ class SteadyStateTracker(TrackerBase):
     @fill_in_docstring
     def __init__(
         self,
-        interrupts: Optional[InterruptData] = None,
+        interrupts: InterruptData | None = None,
         atol: float = 1e-8,
         rtol: float = 1e-5,
         *,
         progress: bool = False,
-        evolution_rate: Optional[Callable[[np.ndarray, float], np.ndarray]] = None,
+        evolution_rate: Callable[[np.ndarray, float], np.ndarray] | None = None,
         interval=None,
     ):
         """
@@ -785,9 +784,9 @@ class SteadyStateTracker(TrackerBase):
 
         self._progress_bar: Any = None
         self._pbar_offset: float = 0  # required for calculating progress
-        self._last_data: Optional[np.ndarray] = None
-        self._last_time: Optional[float] = None
-        self._best_rate_max: Optional[np.ndarray] = None
+        self._last_data: np.ndarray | None = None
+        self._last_time: float | None = None
+        self._best_rate_max: np.ndarray | None = None
 
     def handle(self, field: FieldBase, t: float) -> None:
         """handle data supplied to this tracker
@@ -880,7 +879,7 @@ class RuntimeTracker(TrackerBase):
             td = parse_duration(str(max_runtime))
             self.max_runtime = td.total_seconds()
 
-    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -914,7 +913,7 @@ class ConsistencyTracker(TrackerBase):
     name = "consistency"
 
     @fill_in_docstring
-    def __init__(self, interrupts: Optional[InterruptData] = None, *, interval=None):
+    def __init__(self, interrupts: InterruptData | None = None, *, interval=None):
         """
         Args:
             interrupts:
@@ -966,7 +965,7 @@ class MaterialConservationTracker(TrackerBase):
         self.atol = atol
         self.rtol = rtol
 
-    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """
         Args:
             field (:class:`~pde.fields.base.FieldBase`):

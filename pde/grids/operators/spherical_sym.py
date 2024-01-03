@@ -13,8 +13,9 @@ This module implements differential operators on spherical grids
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+from __future__ import annotations
 
-from typing import Literal, Tuple
+from typing import Literal
 
 import numpy as np
 
@@ -523,7 +524,7 @@ def make_tensor_double_divergence(
 
 
 @fill_in_docstring
-def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for laplace operator on a polar grid
 
     Args:

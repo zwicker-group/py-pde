@@ -3,8 +3,9 @@ Defines an explicit solver supporting various methods
    
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
+from __future__ import annotations
 
-from typing import Callable, Literal, Optional, Tuple
+from typing import Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -154,8 +155,8 @@ class ExplicitSolver(AdaptiveSolverBase):
     def _make_adaptive_euler_stepper(
         self, state: FieldBase
     ) -> Callable[
-        [np.ndarray, float, float, float, Optional[OnlineStatistics]],
-        Tuple[float, float, int, float],
+        [np.ndarray, float, float, float, OnlineStatistics | None],
+        tuple[float, float, int, float],
     ]:
         """make an adaptive Euler stepper
 
@@ -191,8 +192,8 @@ class ExplicitSolver(AdaptiveSolverBase):
             t_start: float,
             t_end: float,
             dt_init: float,
-            dt_stats: Optional[OnlineStatistics] = None,
-        ) -> Tuple[float, float, int, float]:
+            dt_stats: OnlineStatistics | None = None,
+        ) -> tuple[float, float, int, float]:
             """adaptive stepper that advances the state in time"""
             modifications = 0.0
             dt_opt = dt_init
@@ -267,7 +268,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
     def _make_single_step_error_estimate_rkf(
         self, state: FieldBase
-    ) -> Callable[[np.ndarray, float, float], Tuple[np.ndarray, float]]:
+    ) -> Callable[[np.ndarray, float, float], tuple[np.ndarray, float]]:
         """make an adaptive stepper using the explicit Runge-Kutta-Fehlberg method
 
         Args:
@@ -325,7 +326,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
         def stepper(
             state_data: np.ndarray, t: float, dt: float
-        ) -> Tuple[np.ndarray, float]:
+        ) -> tuple[np.ndarray, float]:
             """basic stepper to estimate error"""
             # do the six intermediate steps
             k1 = dt * rhs(state_data, t)
@@ -353,7 +354,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
     def _make_single_step_error_estimate(
         self, state: FieldBase
-    ) -> Callable[[np.ndarray, float, float], Tuple[np.ndarray, float]]:
+    ) -> Callable[[np.ndarray, float, float], tuple[np.ndarray, float]]:
         """make a stepper that also estimates the error
 
         Args:
@@ -372,8 +373,8 @@ class ExplicitSolver(AdaptiveSolverBase):
     def _make_adaptive_stepper(
         self, state: FieldBase
     ) -> Callable[
-        [np.ndarray, float, float, float, Optional[OnlineStatistics]],
-        Tuple[float, float, int, float],
+        [np.ndarray, float, float, float, OnlineStatistics | None],
+        tuple[float, float, int, float],
     ]:
         """return a stepper function using an explicit scheme with fixed time steps
 

@@ -8,18 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    overload,
-)
+from typing import Any, Callable, Iterator, Mapping, Sequence, overload
 
 import numpy as np
 from matplotlib.colors import Normalize
@@ -48,8 +37,8 @@ class FieldCollection(FieldBase):
         fields: Sequence[DataFieldBase] | Mapping[str, DataFieldBase],
         *,
         copy_fields: bool = False,
-        label: Optional[str] = None,
-        labels: List[Optional[str]] | _FieldLabels | None = None,
+        label: str | None = None,
+        labels: list[str | None] | _FieldLabels | None = None,
         dtype: DTypeLike = None,
     ):
         """
@@ -95,7 +84,7 @@ class FieldCollection(FieldBase):
             raise RuntimeError(f"Grids are incompatible: {grids}")
 
         # check whether some fields are identical
-        if not copy_fields and len(fields) != len(set(id(field) for field in fields)):
+        if not copy_fields and len(fields) != len({id(field) for field in fields}):
             self._logger = logging.getLogger(self.__class__.__name__)
             self._logger.warning("Creating a copy of identical fields in collection")
             copy_fields = True
@@ -107,8 +96,8 @@ class FieldCollection(FieldBase):
             self._fields = fields  # type: ignore
 
         # extract data from individual fields
-        fields_data: List[np.ndarray] = []
-        self._slices: List[slice] = []
+        fields_data: list[np.ndarray] = []
+        self._slices: list[slice] = []
         dof = 0  # count local degrees of freedom
         for field in self.fields:
             if not isinstance(field, DataFieldBase):
@@ -224,13 +213,13 @@ class FieldCollection(FieldBase):
             raise TypeError(f"Unsupported index `{index}`")
 
     @property
-    def fields(self) -> List[DataFieldBase]:
+    def fields(self) -> list[DataFieldBase]:
         """list: the fields of this collection"""
         # return shallow copy of list so the internal list is not modified accidentially
         return self._fields[:]
 
     @property
-    def labels(self) -> "_FieldLabels":
+    def labels(self) -> _FieldLabels:
         """:class:`_FieldLabels`: the labels of all fields
 
         Note:
@@ -242,7 +231,7 @@ class FieldCollection(FieldBase):
         return _FieldLabels(self)
 
     @labels.setter
-    def labels(self, values: List[Optional[str]]):
+    def labels(self, values: list[str | None]):
         """sets the labels of all fields"""
         if len(values) != len(self):
             raise ValueError("Require a label for each field")
@@ -257,7 +246,7 @@ class FieldCollection(FieldBase):
 
     @classmethod
     def from_state(
-        cls, attributes: Dict[str, Any], data: Optional[np.ndarray] = None
+        cls, attributes: dict[str, Any], data: np.ndarray | None = None
     ) -> FieldCollection:
         """create a field collection from given state.
 
@@ -293,8 +282,8 @@ class FieldCollection(FieldBase):
         data: np.ndarray,
         *,
         with_ghost_cells: bool = True,
-        label: Optional[str] = None,
-        labels: List[Optional[str]] | _FieldLabels | None = None,
+        label: str | None = None,
+        labels: list[str | None] | _FieldLabels | None = None,
         dtype: DTypeLike = None,
     ):
         """create a field collection from classes and data
@@ -388,10 +377,10 @@ class FieldCollection(FieldBase):
         grid: GridBase,
         expressions: Sequence[str],
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        label: Optional[str] = None,
-        labels: Optional[Sequence[str]] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        labels: Sequence[str] | None = None,
         dtype: DTypeLike = None,
     ) -> FieldCollection:
         """create a field collection on a grid from given expressions
@@ -453,9 +442,9 @@ class FieldCollection(FieldBase):
         vmin: float = 0,
         vmax: float = 1,
         *,
-        label: Optional[str] = None,
-        labels: Optional[Sequence[str]] = None,
-        rng: Optional[np.random.Generator] = None,
+        label: str | None = None,
+        labels: Sequence[str] | None = None,
+        rng: np.random.Generator | None = None,
     ) -> FieldCollection:
         """create scalar fields with random values between `vmin` and `vmax`
 
@@ -486,7 +475,7 @@ class FieldCollection(FieldBase):
         )
 
     @property
-    def attributes(self) -> Dict[str, Any]:
+    def attributes(self) -> dict[str, Any]:
         """dict: describes the state of the instance (without the data)"""
         results = super().attributes
 
@@ -500,7 +489,7 @@ class FieldCollection(FieldBase):
         return results
 
     @property
-    def attributes_serialized(self) -> Dict[str, str]:
+    def attributes_serialized(self) -> dict[str, str]:
         """dict: serialized version of the attributes"""
         results = {}
         for key, value in self.attributes.items():
@@ -514,7 +503,7 @@ class FieldCollection(FieldBase):
         return results
 
     @classmethod
-    def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
+    def unserialize_attributes(cls, attributes: dict[str, str]) -> dict[str, Any]:
         """unserializes the given attributes
 
         Args:
@@ -538,7 +527,7 @@ class FieldCollection(FieldBase):
     def copy(
         self: FieldCollection,
         *,
-        label: Optional[str] = None,
+        label: str | None = None,
         dtype: DTypeLike = None,
     ) -> FieldCollection:
         """return a copy of the data, but not of the grid
@@ -560,7 +549,7 @@ class FieldCollection(FieldBase):
     def append(
         self,
         *fields: DataFieldBase | FieldCollection,
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> FieldCollection:
         """create new collection with appended field(s)
 
@@ -610,8 +599,8 @@ class FieldCollection(FieldBase):
         self,
         grid: GridBase,
         *,
-        fill: Optional[Number] = None,
-        label: Optional[str] = None,
+        fill: Number | None = None,
+        label: str | None = None,
     ) -> FieldCollection:
         """interpolate the data of this field collection to another grid.
 
@@ -638,8 +627,8 @@ class FieldCollection(FieldBase):
         self,
         sigma: float = 1,
         *,
-        out: Optional[FieldCollection] = None,
-        label: Optional[str] = None,
+        out: FieldCollection | None = None,
+        label: str | None = None,
     ) -> FieldCollection:
         """applies Gaussian smoothing with the given standard deviation
 
@@ -672,12 +661,12 @@ class FieldCollection(FieldBase):
         return out
 
     @property
-    def integrals(self) -> List:
+    def integrals(self) -> list:
         """integrals of all fields"""
         return [field.integral for field in self]
 
     @property
-    def averages(self) -> List:
+    def averages(self) -> list:
         """averages of all fields"""
         return [field.average for field in self]
 
@@ -691,7 +680,7 @@ class FieldCollection(FieldBase):
         index: int = 0,
         scalar: str = "auto",
         extract: str = "auto",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         r"""return data for a line plot of the field
 
         Args:
@@ -709,7 +698,7 @@ class FieldCollection(FieldBase):
         """
         return self[index].get_line_data(scalar=scalar, extract=extract)
 
-    def get_image_data(self, index: int = 0, **kwargs) -> Dict[str, Any]:
+    def get_image_data(self, index: int = 0, **kwargs) -> dict[str, Any]:
         r"""return data for plotting an image of the field
 
         Args:
@@ -724,9 +713,9 @@ class FieldCollection(FieldBase):
     def _get_rgb_data(
         self,
         transpose: bool = False,
-        vmin: float | List[float | None] | None = None,
-        vmax: float | List[float | None] | None = None,
-    ) -> Tuple[np.ndarray, Dict[str, Any]]:
+        vmin: float | list[float | None] | None = None,
+        vmax: float | list[float | None] | None = None,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
         """obtain data required for RGB plot"""
         num_fields = len(self)
         if num_fields > 3:
@@ -767,8 +756,8 @@ class FieldCollection(FieldBase):
         self,
         ax,
         transpose: bool = False,
-        vmin: float | List[float | None] | None = None,
-        vmax: float | List[float | None] | None = None,
+        vmin: float | list[float | None] | None = None,
+        vmax: float | list[float | None] | None = None,
         **kwargs,
     ) -> PlotReference:
         r"""visualize fields by mapping to different color chanels in a 2d density plot
@@ -812,7 +801,7 @@ class FieldCollection(FieldBase):
         }
         return PlotReference(ax, axes_image, parameters)
 
-    def _update_plot(self, reference: List[PlotReference]) -> None:
+    def _update_plot(self, reference: list[PlotReference]) -> None:
         """update a plot collection with the current field values
 
         Args:
@@ -834,7 +823,7 @@ class FieldCollection(FieldBase):
         fig=None,
         subplot_args=None,
         **kwargs,
-    ) -> List[PlotReference]:
+    ) -> list[PlotReference]:
         r"""visualize all the fields in the collection
 
         Args:
@@ -920,7 +909,7 @@ class FieldCollection(FieldBase):
         # return the references for all subplots
         return reference
 
-    def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
+    def _get_napari_data(self, **kwargs) -> dict[str, dict[str, Any]]:
         r"""returns data for plotting all fields
 
         Args:
@@ -959,11 +948,11 @@ class _FieldLabels:
     def __eq__(self, other):
         return list(self) == list(other)
 
-    def __iter__(self) -> Iterator[Optional[str]]:
+    def __iter__(self) -> Iterator[str | None]:
         for field in self.collection:
             yield field.label
 
-    def __getitem__(self, index: int | slice) -> Optional[str] | List[Optional[str]]:
+    def __getitem__(self, index: int | slice) -> str | None | list[str | None]:
         """return one or many labels of a field in the collection"""
         if isinstance(index, int):
             return self.collection[index].label
@@ -972,7 +961,7 @@ class _FieldLabels:
         else:
             raise TypeError("Unsupported index type")
 
-    def __setitem__(self, index: int | slice, value: None | str | List[Optional[str]]):
+    def __setitem__(self, index: int | slice, value: None | str | list[str | None]):
         """change one or many labels of a field in the collection"""
         if isinstance(index, int):
             self.collection.fields[index].label = value  # type: ignore

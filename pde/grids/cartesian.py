@@ -7,7 +7,7 @@ Cartesian grids of arbitrary dimension.
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any, Generator, Sequence
 
 import numpy as np
 
@@ -64,7 +64,7 @@ class CartesianGrid(GridBase):
 
     def __init__(
         self,
-        bounds: Sequence[Tuple[float, float]],
+        bounds: Sequence[tuple[float, float]],
         shape: int | Sequence[int],
         periodic: bool | Sequence[bool] = False,
     ):
@@ -144,7 +144,7 @@ class CartesianGrid(GridBase):
         self._axes_bounds = tuple(self.cuboid.bounds)
 
     @property
-    def state(self) -> Dict[str, Any]:
+    def state(self) -> dict[str, Any]:
         """dict: the state of the grid"""
         return {
             "bounds": self.axes_bounds,
@@ -153,7 +153,7 @@ class CartesianGrid(GridBase):
         }
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> CartesianGrid:  # type: ignore
+    def from_state(cls, state: dict[str, Any]) -> CartesianGrid:  # type: ignore
         """create a field from a stored `state`.
 
         Args:
@@ -176,7 +176,7 @@ class CartesianGrid(GridBase):
     @classmethod
     def from_bounds(
         cls,
-        bounds: Sequence[Tuple[float, float]],
+        bounds: Sequence[tuple[float, float]],
         shape: Sequence[int],
         periodic: Sequence[bool],
     ) -> CartesianGrid:
@@ -246,7 +246,7 @@ class CartesianGrid(GridBase):
         *,
         boundary_distance: float = 0,
         coords: CoordsType = "cartesian",
-        rng: Optional[np.random.Generator] = None,
+        rng: np.random.Generator | None = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -283,7 +283,7 @@ class CartesianGrid(GridBase):
         else:
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
         """return a line cut through the given data
 
         Args:
@@ -357,7 +357,7 @@ class CartesianGrid(GridBase):
             "label_y": label_y,
         }
 
-    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
+    def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
         """return a 2d-image of the data
 
         Args:
@@ -383,7 +383,7 @@ class CartesianGrid(GridBase):
                 "Creating images is only implemented for 2d and 3d grids"
             )
 
-        extent: List[float] = []
+        extent: list[float] = []
         for c in self.axes_bounds[:2]:
             extent.extend(c)
 
@@ -428,7 +428,7 @@ class CartesianGrid(GridBase):
 
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> np.ndarray | Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
         """return polar coordinates associated with the grid
 
         Args:
@@ -480,7 +480,7 @@ class CartesianGrid(GridBase):
         self,
         distance: np.ndarray,
         angle: np.ndarray,
-        origin: Optional[np.ndarray] = None,
+        origin: np.ndarray | None = None,
     ) -> np.ndarray:
         """convert polar coordinates to Cartesian coordinates
 
@@ -605,12 +605,12 @@ class UnitGrid(CartesianGrid):
         self._axes_bounds = tuple(self.cuboid.bounds)
 
     @property
-    def state(self) -> Dict[str, Any]:
+    def state(self) -> dict[str, Any]:
         """dict: the state of the grid"""
         return {"shape": self.shape, "periodic": self.periodic}
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> UnitGrid:  # type: ignore
+    def from_state(cls, state: dict[str, Any]) -> UnitGrid:  # type: ignore
         """create a field from a stored `state`.
 
         Args:

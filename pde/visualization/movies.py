@@ -1,7 +1,6 @@
 """
 Functions for creating movies of simulation results
 
-
 .. autosummary::
    :nosignatures:
 
@@ -12,9 +11,10 @@ Functions for creating movies of simulation results
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+from __future__ import annotations
 
 import pathlib
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
@@ -45,7 +45,7 @@ class Movie:
         self,
         filename: str,
         framerate: float = 30,
-        dpi: Optional[float] = None,
+        dpi: float | None = None,
         **kwargs,
     ):
         r"""
@@ -145,7 +145,7 @@ def movie_scalar(
     storage: StorageBase,
     filename: str,
     scale: ScaleData = "automatic",
-    extras: Optional[Dict[str, Any]] = None,
+    extras: dict[str, Any] | None = None,
     progress: bool = True,
     tight: bool = False,
     show: bool = True,
@@ -217,8 +217,8 @@ def movie(
     *,
     progress: bool = True,
     show_time: bool = True,
-    plot_args: Optional[Dict[str, Any]] = None,
-    movie_args: Optional[Dict[str, Any]] = None,
+    plot_args: dict[str, Any] | None = None,
+    movie_args: dict[str, Any] | None = None,
 ) -> None:
     """produce a movie by simply plotting each frame
 

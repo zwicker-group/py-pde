@@ -6,7 +6,7 @@ from sphinx.directives.other import TocTree
 class TocTreeFilter(TocTree):
     """directive to filter table-of-contents entries"""
 
-    hasPat = re.compile("^\s*:(.+):(.+)$")
+    hasPat = re.compile(r"^\s*:(.+):(.+)$")
 
     # Remove any entries in the content that we dont want and strip
     # out any filter prefixes that we want but obviously don't want the
