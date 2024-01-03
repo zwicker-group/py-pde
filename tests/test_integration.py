@@ -11,7 +11,7 @@ from pde import CartesianGrid, DiffusionPDE, FileStorage, PDEBase, ScalarField, 
 from pde.tools import misc, mpi, numba
 
 
-@misc.skipUnlessModule("h5py")
+@pytest.mark.skipif(not misc.module_available("h5py"), reason="requires `h5py` module")
 def test_writing_to_storage(tmp_path, rng):
     """test whether data is written to storage"""
     state = ScalarField.random_uniform(UnitGrid([3]), rng=rng)

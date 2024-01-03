@@ -18,7 +18,7 @@ from pde import (
 )
 from pde.grids.operators import cartesian as ops
 from pde.grids.operators.common import make_laplace_from_matrix
-from pde.tools.misc import skipUnlessModule
+from pde.tools.misc import module_available
 
 π = np.pi
 
@@ -85,7 +85,7 @@ def test_laplace_1d(periodic, rng):
     np.testing.assert_allclose(l1.data, l2.data)
 
 
-@skipUnlessModule("rocket_fft")
+@pytest.mark.skipif(not module_available("rocket_fft"), reason="requires `rocket_fft`")
 @pytest.mark.parametrize("ndim", [1, 2])
 @pytest.mark.parametrize("dtype", [float, complex])
 def test_laplace_spectral(ndim, dtype, rng):

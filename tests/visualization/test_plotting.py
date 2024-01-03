@@ -7,11 +7,10 @@ import pytest
 from pde.fields import FieldCollection, ScalarField
 from pde.grids import UnitGrid
 from pde.storage import get_memory_storage
-from pde.tools.misc import skipUnlessModule
+from pde.tools.misc import module_available
 from pde.visualization import plotting
 
 
-@skipUnlessModule("matplotlib")
 def test_scalar_field_plot(tmp_path, rng):
     """test ScalarFieldPlot class"""
     path = tmp_path / "test_scalar_field_plot.png"
@@ -28,7 +27,6 @@ def test_scalar_field_plot(tmp_path, rng):
     assert path.stat().st_size > 0
 
 
-@skipUnlessModule("matplotlib")
 def test_scalar_plot(tmp_path, rng):
     """test Simple simulation"""
     path = tmp_path / "test_scalar_plot.png"
@@ -48,7 +46,6 @@ def test_scalar_plot(tmp_path, rng):
     assert path.stat().st_size > 0
 
 
-@skipUnlessModule("matplotlib")
 def test_collection_plot(tmp_path):
     """test Simple simulation"""
     # create some data
@@ -107,7 +104,7 @@ def test_kymograph_collection(tmp_path):
     assert path.stat().st_size > 0
 
 
-@skipUnlessModule("napari")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.interactive
 def test_interactive_plotting(rng):
     """test plot_interactive"""

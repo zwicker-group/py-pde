@@ -10,7 +10,7 @@ Handles configuration variables of the package
    check_package_version
    packages_from_requirements
    environment
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

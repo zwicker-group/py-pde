@@ -13,7 +13,7 @@ from pde.fields.scalar import ScalarField
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
 from pde.grids._mesh import GridMesh
 from pde.tools import mpi
-from pde.tools.misc import module_available, skipUnlessModule
+from pde.tools.misc import module_available
 
 
 def test_interpolation_singular():
@@ -240,7 +240,6 @@ def test_from_expression():
     np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
 
 
-@skipUnlessModule("matplotlib")
 def test_from_image(tmp_path, rng):
     from matplotlib.pyplot import imsave
 
@@ -410,7 +409,7 @@ def test_plotting_2d(rng):
     field._update_plot(ref)
 
 
-@skipUnlessModule("napari")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.interactive
 def test_interactive_plotting(rng):
     """test the interactive plotting"""

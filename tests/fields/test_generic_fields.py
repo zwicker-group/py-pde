@@ -17,7 +17,7 @@ from pde.grids import (
     SphericalSymGrid,
     UnitGrid,
 )
-from pde.tools.misc import skipUnlessModule
+from pde.tools.misc import module_available
 
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
@@ -214,7 +214,7 @@ def test_complex_fields(field_class, rng):
     assert field_copy.dtype == np.dtype("complex")
 
 
-@skipUnlessModule("h5py")
+@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
 def test_hdf_input_output(tmp_path, rng):
     """test writing and reading files"""
     grid = UnitGrid([4, 4])
