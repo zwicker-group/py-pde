@@ -8,16 +8,7 @@ from __future__ import annotations
 
 import numbers
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Optional,
-    Sequence,
-    Tuple,
-)
+from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -46,10 +37,10 @@ class ScalarField(DataFieldBase):
         grid: GridBase,
         expression: str,
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> ScalarField:
         """create a scalar field on a grid from a given expression
 
@@ -108,7 +99,7 @@ class ScalarField(DataFieldBase):
         bounds=None,
         periodic=False,
         *,
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> ScalarField:
         """create a scalar field from an image
 
@@ -193,8 +184,8 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def laplace(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional[ScalarField] = None,
+        bc: BoundariesData | None,
+        out: ScalarField | None = None,
         **kwargs,
     ) -> ScalarField:
         """apply Laplace operator and return result as a field
@@ -218,8 +209,8 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def gradient_squared(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional[ScalarField] = None,
+        bc: BoundariesData | None,
+        out: ScalarField | None = None,
         **kwargs,
     ) -> ScalarField:
         r"""apply squared gradient operator and return result as a field
@@ -249,10 +240,10 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def gradient(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional["VectorField"] = None,
+        bc: BoundariesData | None,
+        out: VectorField | None = None,
         **kwargs,
-    ) -> "VectorField":
+    ) -> VectorField:
         """apply gradient operator and return result as a field
 
         Args:
@@ -278,7 +269,7 @@ class ScalarField(DataFieldBase):
         self,
         axes: str | Sequence[str],
         method: Literal["integral", "average", "mean"] = "integral",
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> ScalarField:
         """project scalar field along given axes
 
@@ -331,10 +322,10 @@ class ScalarField(DataFieldBase):
 
     def slice(
         self,
-        position: Dict[str, float],
+        position: dict[str, float],
         *,
         method: Literal["nearest"] = "nearest",
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> ScalarField:
         """slice data at a given position
 
@@ -397,7 +388,7 @@ class ScalarField(DataFieldBase):
 
         # obtain the sliced data
         if method == "nearest":
-            idx: List[int | slice] = []
+            idx: list[int | slice] = []
             for i in range(grid.num_axes):
                 if i in ax_remove:
                     pos = pos_values[i]
@@ -419,7 +410,7 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=sliced_grid, data=subdata, label=label)
 
     def to_scalar(
-        self, scalar: str | Callable = "auto", *, label: Optional[str] = None
+        self, scalar: str | Callable = "auto", *, label: str | None = None
     ) -> ScalarField:
         """return a modified scalar field by applying method `scalar`
 
@@ -458,10 +449,10 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def get_boundary_field(
         self,
-        index: str | Tuple[int, bool],
-        bc: Optional[BoundariesData] = None,
+        index: str | tuple[int, bool],
+        bc: BoundariesData | None = None,
         *,
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> ScalarField:
         """get the field on the specified boundary
 

@@ -60,7 +60,7 @@ extensions = [
     # our own extensions
     "toctree_filter",
     "package_config",
-    # "simplify_typehints",
+    "simplify_typehints",
 ]
 
 templates_path = ["_templates"]

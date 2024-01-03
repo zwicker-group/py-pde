@@ -12,16 +12,7 @@ vanishes.
 from __future__ import annotations
 
 from abc import ABCMeta
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Dict,
-    Generator,
-    Literal,
-    Optional,
-    Tuple,
-    TypeVar,
-)
+from typing import TYPE_CHECKING, Any, Generator, Literal, TypeVar
 
 import numpy as np
 
@@ -93,7 +84,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
     boundary_names = {"inner": (0, False), "outer": (0, True)}
 
-    def __init__(self, radius: float | Tuple[float, float], shape: int | Tuple[int]):
+    def __init__(self, radius: float | tuple[float, float], shape: int | tuple[int]):
         r"""
         Args:
             radius (float or tuple of floats):
@@ -107,7 +98,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         shape_list = _check_shape(shape)
         if not len(shape_list) == 1:
             raise ValueError(f"`shape` must be a single number, not {shape_list}")
-        self._shape: Tuple[int] = (int(shape_list[0]),)
+        self._shape: tuple[int] = (int(shape_list[0]),)
 
         try:
             r_inner, r_outer = radius  # type: ignore
@@ -127,12 +118,12 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         self._discretization = np.array((dr,))
 
     @property
-    def state(self) -> Dict[str, Any]:
+    def state(self) -> dict[str, Any]:
         """state: the state of the grid"""
         return {"radius": self.radius, "shape": self.shape}
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> SphericalSymGridBase:  # type: ignore
+    def from_state(cls, state: dict[str, Any]) -> SphericalSymGridBase:  # type: ignore
         """create a field from a stored `state`.
 
         Args:
@@ -148,9 +139,9 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
     @classmethod
     def from_bounds(  # type: ignore
         cls,
-        bounds: Tuple[Tuple[float, float]],
-        shape: Tuple[int],
-        periodic: Tuple[bool],
+        bounds: tuple[tuple[float, float]],
+        shape: tuple[int],
+        periodic: tuple[bool],
     ) -> SphericalSymGridBase:
         """
         Args:
@@ -174,7 +165,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         return self.axes_bounds[0][0] > 0
 
     @property
-    def radius(self) -> float | Tuple[float, float]:
+    def radius(self) -> float | tuple[float, float]:
         """float: radius of the sphere"""
         r_inner, r_outer = self.axes_bounds[0]
         if r_inner == 0:
@@ -192,7 +183,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         return volume
 
     @cached_property()
-    def cell_volume_data(self) -> Tuple[np.ndarray]:
+    def cell_volume_data(self) -> tuple[np.ndarray]:
         """tuple of :class:`~numpy.ndarray`: the volumes of all cells"""
         dr = self.discretization[0]
         rs = self.axes_coords[0]
@@ -206,7 +197,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         boundary_distance: float = 0,
         avoid_center: bool = False,
         coords: CoordsType = "cartesian",
-        rng: Optional[np.random.Generator] = None,
+        rng: np.random.Generator | None = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -266,7 +257,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         else:
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
         """return a line cut along the radial axis
 
         Args:
@@ -296,7 +287,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         performance_goal: Literal["speed", "quality"] = "speed",
         fill_value: float = 0,
         masked: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """return a 2d-image of the data
 
         Args:
@@ -399,7 +390,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
     def polar_coordinates_real(
         self, origin=None, *, ret_angle: bool = False, **kwargs
-    ) -> np.ndarray | Tuple[np.ndarray, ...]:
+    ) -> np.ndarray | tuple[np.ndarray, ...]:
         """return spherical coordinates associated with the grid
 
         Args:
@@ -427,7 +418,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
     def get_cartesian_grid(
         self,
         mode: Literal["valid", "inscribed", "full", "circumscribed"] = "valid",
-        num: Optional[int] = None,
+        num: int | None = None,
     ) -> CartesianGrid:
         """return a Cartesian grid for this spherical one
 

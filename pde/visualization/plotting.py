@@ -19,7 +19,7 @@ import logging
 import math
 import time
 import warnings
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Callable, Literal, Tuple, Union
 
 import numpy as np
 
@@ -64,7 +64,7 @@ def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
 def extract_field(
     fields: FieldBase,
     source: None | int | Callable = None,
-    check_rank: Optional[int] = None,
+    check_rank: int | None = None,
 ) -> DataFieldBase:
     """Extracts a single field from a possible collection.
 
@@ -121,7 +121,7 @@ class ScalarFieldPlot:
         quantities=None,
         scale: ScaleData = "automatic",
         fig=None,
-        title: Optional[str] = None,
+        title: str | None = None,
         tight: bool = False,
         show: bool = True,
     ):
@@ -184,7 +184,7 @@ class ScalarFieldPlot:
         scale: ScaleData = "automatic",
         tight: bool = False,
         show: bool = True,
-    ) -> "ScalarFieldPlot":
+    ) -> ScalarFieldPlot:
         """create ScalarFieldPlot from storage
 
         Args:
@@ -229,7 +229,7 @@ class ScalarFieldPlot:
     @fill_in_docstring
     def _prepare_quantities(
         fields: FieldBase, quantities, scale: ScaleData = "automatic"
-    ) -> List[List[Dict[str, Any]]]:
+    ) -> list[list[dict[str, Any]]]:
         """internal method to prepare quantities
 
         Args:
@@ -283,7 +283,7 @@ class ScalarFieldPlot:
         fields: FieldBase,
         scale: ScaleData = "automatic",
         fig=None,
-        title: Optional[str] = None,
+        title: str | None = None,
         tight: bool = False,
     ):
         """initialize the plot creating the figure and the axes
@@ -327,7 +327,7 @@ class ScalarFieldPlot:
         # set up all images
         empty = np.zeros_like(example_image["data"])
 
-        self.images: List[List[Any]] = []
+        self.images: list[list[Any]] = []
         for i, panel_row in enumerate(self.quantities):
             img_row = []
             for j, panel in enumerate(panel_row):
@@ -382,7 +382,7 @@ class ScalarFieldPlot:
             # adjust layout and leave some room for title
             self.fig.tight_layout(rect=(0, 0.03, 1, 0.95))
 
-    def _update_data(self, fields: FieldBase, title: Optional[str] = None) -> None:
+    def _update_data(self, fields: FieldBase, title: str | None = None) -> None:
         """update the fields in the current plot
 
         Args:
@@ -437,7 +437,7 @@ class ScalarFieldPlot:
 
                 plt.pause(0.01)
 
-    def update(self, fields: FieldBase, title: Optional[str] = None) -> None:
+    def update(self, fields: FieldBase, title: str | None = None) -> None:
         """update the plot with the given fields
 
         Args:
@@ -584,7 +584,7 @@ def plot_magnitudes(
 
 
 def _plot_kymograph(
-    img_data: Dict[str, Any],
+    img_data: dict[str, Any],
     ax,
     colorbar: bool = True,
     transpose: bool = False,
@@ -648,7 +648,7 @@ def _plot_kymograph(
 @plot_on_axes()
 def plot_kymograph(
     storage: StorageBase,
-    field_index: Optional[int] = None,
+    field_index: int | None = None,
     scalar: str = "auto",
     extract: str = "auto",
     colorbar: bool = True,
@@ -689,7 +689,7 @@ def plot_kymograph(
     """
     if len(storage) == 0:
         raise RuntimeError("Storage is empty")
-    line_data_args: Dict[str, Any] = {"scalar": scalar, "extract": extract}
+    line_data_args: dict[str, Any] = {"scalar": scalar, "extract": extract}
 
     if storage.has_collection:
         # there are many fields in the storage
@@ -730,7 +730,7 @@ def plot_kymographs(
     resize_fig: bool = True,
     fig=None,
     **kwargs,
-) -> List[PlotReference]:
+) -> list[PlotReference]:
     r"""plots kymographs for all fields stored in `storage`
 
     The kymograph shows line data stacked along time. Consequently, the
@@ -812,7 +812,7 @@ def plot_kymographs(
 def plot_interactive(
     storage: StorageBase,
     time_scaling: Literal["exact", "scaled"] = "exact",
-    viewer_args: Optional[Dict[str, Any]] = None,
+    viewer_args: dict[str, Any] | None = None,
     **kwargs,
 ):
     r"""plots stored data interactively using the `napari <https://napari.org>`_ viewer
@@ -841,7 +841,7 @@ def plot_interactive(
         raise RuntimeError("Storage did not contain information about the grid")
 
     # collect data from all time points
-    timecourse: Dict[str, List[np.ndarray]] = dict()
+    timecourse: dict[str, list[np.ndarray]] = dict()
     for field in storage:
         layer_data = field._get_napari_data(**kwargs)
 

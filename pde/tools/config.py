@@ -23,13 +23,13 @@ import re
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .misc import module_available
 from .parameters import Parameter
 
 # define default parameter values
-DEFAULT_CONFIG: List[Parameter] = [
+DEFAULT_CONFIG: list[Parameter] = [
     Parameter(
         "numba.debug",
         False,
@@ -66,7 +66,7 @@ DEFAULT_CONFIG: List[Parameter] = [
 class Config(collections.UserDict):
     """class handling the package configuration"""
 
-    def __init__(self, items: Optional[Dict[str, Any]] = None, mode: str = "update"):
+    def __init__(self, items: dict[str, Any] | None = None, mode: str = "update"):
         """
         Args:
             items (dict, optional):
@@ -123,7 +123,7 @@ class Config(collections.UserDict):
         else:
             raise RuntimeError("Configuration is not in `insert` mode")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """convert the configuration to a simple dictionary
 
         Returns:
@@ -136,7 +136,7 @@ class Config(collections.UserDict):
         return f"{self.__class__.__name__}({repr(self.to_dict())})"
 
     @contextlib.contextmanager
-    def __call__(self, values: Optional[Dict[str, Any]] = None, **kwargs):
+    def __call__(self, values: dict[str, Any] | None = None, **kwargs):
         """context manager temporarily changing the configuration
 
         Args:
@@ -154,8 +154,8 @@ class Config(collections.UserDict):
 
 
 def get_package_versions(
-    packages: List[str], *, na_str="not available"
-) -> Dict[str, str]:
+    packages: list[str], *, na_str="not available"
+) -> dict[str, str]:
     """tries to load certain python packages and returns their version
 
     Args:
@@ -165,7 +165,7 @@ def get_package_versions(
     Returns:
         dict: Dictionary with version for each package name
     """
-    versions: Dict[str, str] = {}
+    versions: dict[str, str] = {}
     for name in sorted(packages):
         try:
             module = importlib.import_module(name.replace("-", "_"))
@@ -176,7 +176,7 @@ def get_package_versions(
     return versions
 
 
-def parse_version_str(ver_str: str) -> List[int]:
+def parse_version_str(ver_str: str) -> list[int]:
     """helper function converting a version string into a list of integers"""
     result = []
     for token in ver_str.split(".")[:3]:
@@ -204,7 +204,7 @@ def check_package_version(package_name: str, min_version: str):
             warnings.warn(f"{msg} (installed: {version})")
 
 
-def packages_from_requirements(requirements_file: Path | str) -> List[str]:
+def packages_from_requirements(requirements_file: Path | str) -> list[str]:
     """read package names from a requirements file
 
     Args:
@@ -230,7 +230,7 @@ def packages_from_requirements(requirements_file: Path | str) -> List[str]:
     return result
 
 
-def environment() -> Dict[str, Any]:
+def environment() -> dict[str, Any]:
     """obtain information about the compute environment
 
     Returns:
@@ -246,7 +246,7 @@ def environment() -> Dict[str, Any]:
 
     RESOURCE_PATH = Path(__file__).resolve().parents[1] / "tools" / "resources"
 
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     result["package version"] = package_version
     result["python version"] = sys.version
     result["platform"] = sys.platform

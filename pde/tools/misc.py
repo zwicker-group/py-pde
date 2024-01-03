@@ -30,7 +30,7 @@ import os
 import unittest
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Sequence, TypeVar
+from typing import Any, Callable, Sequence, TypeVar
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -305,7 +305,7 @@ def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
 
 def hdf_write_attributes(
     hdf_path,
-    attributes: Optional[Dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
     raise_serialization_error: bool = False,
 ) -> None:
     """write (JSON-serialized) attributes to a hdf file

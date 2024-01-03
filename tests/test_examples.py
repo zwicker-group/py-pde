@@ -59,9 +59,9 @@ def test_example_scripts(path):
     # prepare output
     msg = "Script `%s` failed with following output:" % path
     if outs:
-        msg = "%s\nSTDOUT:\n%s" % (msg, outs)
+        msg = f"{msg}\nSTDOUT:\n{outs}"
     if errs:
-        msg = "%s\nSTDERR:\n%s" % (msg, errs)
+        msg = f"{msg}\nSTDERR:\n{errs}"
     assert proc.returncode <= 0, msg
 
 

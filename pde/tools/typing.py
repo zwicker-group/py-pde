@@ -6,7 +6,7 @@ Provides support for mypy type checking of the package
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol, Tuple, Union
+from typing import TYPE_CHECKING, Literal, Protocol, Union
 
 import numpy as np
 from numpy.typing import ArrayLike  # @UnusedImport
@@ -31,7 +31,7 @@ class OperatorType(Protocol):
 class OperatorFactory(Protocol):
     """a factory function that creates an operator for a particular grid"""
 
-    def __call__(self, grid: "GridBase", **kwargs) -> OperatorType:
+    def __call__(self, grid: GridBase, **kwargs) -> OperatorType:
         """create the operator"""
 
 
@@ -41,13 +41,13 @@ class CellVolume(Protocol):
 
 
 class VirtualPointEvaluator(Protocol):
-    def __call__(self, arr: np.ndarray, idx: Tuple[int, ...], args=None) -> float:
+    def __call__(self, arr: np.ndarray, idx: tuple[int, ...], args=None) -> float:
         """evaluate the virtual point at the given position"""
 
 
 class AdjacentEvaluator(Protocol):
     def __call__(
-        self, arr_1d: np.ndarray, i_point: int, bc_idx: Tuple[int, ...]
+        self, arr_1d: np.ndarray, i_point: int, bc_idx: tuple[int, ...]
     ) -> float:
         """evaluate the values at adjecent points"""
 

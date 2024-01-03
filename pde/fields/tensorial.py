@@ -6,7 +6,7 @@ Defines a tensorial field of rank 2 over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -36,10 +36,10 @@ class Tensor2Field(DataFieldBase):
         grid: GridBase,
         expressions: Sequence[Sequence[str]],
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> Tensor2Field:
         """create a tensor field on a grid from given expressions
 
@@ -86,7 +86,7 @@ class Tensor2Field(DataFieldBase):
         points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
         # evaluate all vector components at all points
-        data: List[List[np.ndarray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
+        data: list[list[np.ndarray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
         for i in range(grid.dim):
             for j in range(grid.dim):
                 expr = ScalarExpression(
@@ -101,7 +101,7 @@ class Tensor2Field(DataFieldBase):
         # create vector field from the data
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
-    def _get_axes_index(self, key: Tuple[int | str, int | str]) -> Tuple[int, int]:
+    def _get_axes_index(self, key: tuple[int | str, int | str]) -> tuple[int, int]:
         """turns a general index of two axis into a tuple of two numeric indices"""
         try:
             if len(key) != 2:
@@ -110,7 +110,7 @@ class Tensor2Field(DataFieldBase):
             raise IndexError("Index must be given as two values")
         return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
 
-    def __getitem__(self, key: Tuple[int | str, int | str]) -> ScalarField:
+    def __getitem__(self, key: tuple[int | str, int | str]) -> ScalarField:
         """extract a single component of the tensor field as a scalar field"""
         return ScalarField(
             self.grid,
@@ -120,7 +120,7 @@ class Tensor2Field(DataFieldBase):
 
     def __setitem__(
         self,
-        key: Tuple[int | str, int | str],
+        key: tuple[int | str, int | str],
         value: NumberOrArray | ScalarField,
     ):
         """set a single component of the tensor field"""
@@ -198,7 +198,7 @@ class Tensor2Field(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self, bc: Optional[BoundariesData], out: Optional[VectorField] = None, **kwargs
+        self, bc: BoundariesData | None, out: VectorField | None = None, **kwargs
     ) -> VectorField:
         r"""apply tensor divergence and return result as a field
 
@@ -272,7 +272,7 @@ class Tensor2Field(DataFieldBase):
         return out
 
     def to_scalar(
-        self, scalar: str = "auto", *, label: Optional[str] = "scalar `{scalar}`"
+        self, scalar: str = "auto", *, label: str | None = "scalar `{scalar}`"
     ) -> ScalarField:
         r"""return scalar variant of the field
 
@@ -364,7 +364,7 @@ class Tensor2Field(DataFieldBase):
 
         return ScalarField(self.grid, data, label=label)
 
-    def trace(self, label: Optional[str] = "trace") -> ScalarField:
+    def trace(self, label: str | None = "trace") -> ScalarField:
         """return the trace of the tensor field as a scalar field
 
         Args:
@@ -375,7 +375,7 @@ class Tensor2Field(DataFieldBase):
         """
         return self.to_scalar(scalar="trace", label=label)
 
-    def _update_plot_components(self, reference: List[List[PlotReference]]) -> None:
+    def _update_plot_components(self, reference: list[list[PlotReference]]) -> None:
         """update a plot collection with the current field values
 
         Args:
@@ -392,7 +392,7 @@ class Tensor2Field(DataFieldBase):
         kind: str = "auto",
         fig=None,
         **kwargs,
-    ) -> List[List[PlotReference]]:
+    ) -> list[list[PlotReference]]:
         r"""visualize all the components of this tensor field
 
         Args:

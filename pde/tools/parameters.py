@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Any, Dict, Optional, Sequence, Type, Union
+from typing import Any, Sequence, Union
 
 import numpy as np
 
@@ -37,7 +37,7 @@ class Parameter:
         cls=object,
         description: str = "",
         hidden: bool = False,
-        extra: Optional[Dict[str, Any]] = None,
+        extra: dict[str, Any] | None = None,
     ):
         """initialize a parameter
 
@@ -164,9 +164,9 @@ class Parameterized:
     """a mixin that manages the parameters of a class"""
 
     parameters_default: ParameterListType = []
-    _subclasses: Dict[str, Type[Parameterized]] = {}
+    _subclasses: dict[str, type[Parameterized]] = {}
 
-    def __init__(self, parameters: Optional[Dict[str, Any]] = None):
+    def __init__(self, parameters: dict[str, Any] | None = None):
         """initialize the parameters of the object
 
         Args:
@@ -210,7 +210,7 @@ class Parameterized:
         include_hidden: bool = False,
         include_deprecated: bool = False,
         sort: bool = True,
-    ) -> Dict[str, Parameter]:
+    ) -> dict[str, Parameter]:
         """return a dictionary of parameters that the class supports
 
         Args:
@@ -223,7 +223,7 @@ class Parameterized:
             names as keys.
         """
         # collect the parameters from the class hierarchy
-        parameters: Dict[str, Parameter] = {}
+        parameters: dict[str, Parameter] = {}
         for cls in reversed(cls.__mro__):
             if hasattr(cls, "parameters_default"):
                 for p in cls.parameters_default:
@@ -257,11 +257,11 @@ class Parameterized:
     @classmethod
     def _parse_parameters(
         cls,
-        parameters: Optional[Dict[str, Any]] = None,
+        parameters: dict[str, Any] | None = None,
         check_validity: bool = True,
         allow_hidden: bool = True,
         include_deprecated: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """parse parameters
 
         Args:
@@ -287,7 +287,7 @@ class Parameterized:
         )
 
         # initialize parameters with default ones from all parent classes
-        result: Dict[str, Any] = {}
+        result: dict[str, Any] = {}
         for name, param_obj in param_objs.items():
             if not allow_hidden and param_obj.hidden:
                 continue  # skip hidden parameters
@@ -322,11 +322,11 @@ class Parameterized:
     @classmethod
     def _show_parameters(
         cls,
-        description: Optional[bool] = None,
+        description: bool | None = None,
         sort: bool = False,
         show_hidden: bool = False,
         show_deprecated: bool = False,
-        parameter_values: Optional[Dict[str, Any]] = None,
+        parameter_values: dict[str, Any] | None = None,
     ):
         """private method showing all parameters in human readable format
 
@@ -403,7 +403,7 @@ class Parameterized:
     @hybridmethod
     def show_parameters(  # @NoSelf
         cls,
-        description: Optional[bool] = None,  # @NoSelf
+        description: bool | None = None,  # @NoSelf
         sort: bool = False,
         show_hidden: bool = False,
         show_deprecated: bool = False,
@@ -429,7 +429,7 @@ class Parameterized:
     @show_parameters.instancemethod  # type: ignore
     def show_parameters(
         self,
-        description: Optional[bool] = None,  # @NoSelf
+        description: bool | None = None,  # @NoSelf
         sort: bool = False,
         show_hidden: bool = False,
         show_deprecated: bool = False,
@@ -463,7 +463,7 @@ class Parameterized:
         )
 
 
-def get_all_parameters(data: str = "name") -> Dict[str, Any]:
+def get_all_parameters(data: str = "name") -> dict[str, Any]:
     """get a dictionary with all parameters of all registered classes
 
     Args:

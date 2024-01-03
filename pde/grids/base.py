@@ -18,17 +18,11 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-    Dict,
     Generator,
     Iterator,
-    List,
     Literal,
     NamedTuple,
-    Optional,
     Sequence,
-    Set,
-    Tuple,
-    Type,
     overload,
 )
 
@@ -69,7 +63,7 @@ class OperatorInfo(NamedTuple):
     name: str = ""  # attach a unique name to help caching
 
 
-def _check_shape(shape: int | Sequence[int]) -> Tuple[int, ...]:
+def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
     """checks the consistency of shape tuples"""
     if hasattr(shape, "__iter__"):
         shape_list: Sequence[int] = shape  # type: ignore
@@ -91,7 +85,7 @@ def _check_shape(shape: int | Sequence[int]) -> Tuple[int, ...]:
 
 def discretize_interval(
     x_min: float, x_max: float, num: int
-) -> Tuple[np.ndarray, float]:
+) -> tuple[np.ndarray, float]:
     r"""construct a list of equidistantly placed intervals 
 
     The discretization is defined as
@@ -132,42 +126,42 @@ class PeriodicityError(RuntimeError):
 class GridBase(metaclass=ABCMeta):
     """Base class for all grids defining common methods and interfaces"""
 
-    _subclasses: Dict[str, Type[GridBase]] = {}  # all classes inheriting from this
-    _operators: Dict[str, OperatorInfo] = {}  # all operators defined for the grid
+    _subclasses: dict[str, type[GridBase]] = {}  # all classes inheriting from this
+    _operators: dict[str, OperatorInfo] = {}  # all operators defined for the grid
 
     # properties that are defined in subclasses
     dim: int
     """int: The spatial dimension in which the grid is embedded"""
-    axes: List[str]
+    axes: list[str]
     """list: Names of all axes that are described by the grid"""
-    axes_symmetric: List[str] = []
+    axes_symmetric: list[str] = []
     """list: The names of the additional axes that the fields do not depend on,
     e.g. along which they are constant. """
 
-    boundary_names: Dict[str, Tuple[int, bool]] = {}
+    boundary_names: dict[str, tuple[int, bool]] = {}
     """dict: Names of boundaries to select them conveniently"""
-    cell_volume_data: Optional[Sequence[FloatNumerical]]
+    cell_volume_data: Sequence[FloatNumerical] | None
     """list: Information about the size of discretization cells"""
-    coordinate_constraints: List[int] = []
+    coordinate_constraints: list[int] = []
     """list: axes that not described explicitly"""
     num_axes: int
     """int: Number of axes that are *not* assumed symmetrically"""
 
     # mandatory, immutable, private attributes
-    _axes_bounds: Tuple[Tuple[float, float], ...]
-    _axes_coords: Tuple[np.ndarray, ...]
+    _axes_bounds: tuple[tuple[float, float], ...]
+    _axes_coords: tuple[np.ndarray, ...]
     _discretization: np.ndarray
-    _periodic: List[bool]
-    _shape: Tuple[int, ...]
+    _periodic: list[bool]
+    _shape: tuple[int, ...]
 
     # to help sphinx, we here list docstrings for classproperties
-    operators: Set[str]
+    operators: set[str]
     """ set: names of all operators defined for this grid """
 
     def __init__(self) -> None:
         """initialize the grid"""
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._mesh: Optional[GridMesh] = None
+        self._mesh: GridMesh | None = None
 
     def __init_subclass__(cls, **kwargs) -> None:  # @NoSelf
         """register all subclassess to reconstruct them later"""
@@ -179,7 +173,7 @@ class GridBase(metaclass=ABCMeta):
         cls._operators = {}
 
     @classmethod
-    def from_state(cls, state: str | Dict[str, Any]) -> GridBase:
+    def from_state(cls, state: str | dict[str, Any]) -> GridBase:
         """create a field from a stored `state`.
 
         Args:
@@ -204,24 +198,24 @@ class GridBase(metaclass=ABCMeta):
     @classmethod
     def from_bounds(
         cls,
-        bounds: Sequence[Tuple[float, float]],
+        bounds: Sequence[tuple[float, float]],
         shape: Sequence[int],
         periodic: Sequence[bool],
     ) -> GridBase:
         raise NotImplementedError
 
     @property
-    def periodic(self) -> List[bool]:
+    def periodic(self) -> list[bool]:
         """list: Flags that describe which axes are periodic"""
         return self._periodic
 
     @property
-    def axes_bounds(self) -> Tuple[Tuple[float, float], ...]:
+    def axes_bounds(self) -> tuple[tuple[float, float], ...]:
         """tuple: lower and upper bounds of each axis"""
         return self._axes_bounds
 
     @property
-    def axes_coords(self) -> Tuple[np.ndarray, ...]:
+    def axes_coords(self) -> tuple[np.ndarray, ...]:
         """tuple: coordinates of the cells for each axis"""
         return self._axes_coords
 
@@ -252,7 +246,7 @@ class GridBase(metaclass=ABCMeta):
             return key
         raise IndexError("Index must be an integer or the name of an axes")
 
-    def _get_boundary_index(self, index: str | Tuple[int, bool]) -> Tuple[int, bool]:
+    def _get_boundary_index(self, index: str | tuple[int, bool]) -> tuple[int, bool]:
         """return the index of a boundary belonging to an axis
 
         Args:
@@ -280,7 +274,7 @@ class GridBase(metaclass=ABCMeta):
         return self._discretization
 
     @property
-    def shape(self) -> Tuple[int, ...]:
+    def shape(self) -> tuple[int, ...]:
         """tuple of int: the number of support points of each axis"""
         return self._shape
 
@@ -290,12 +284,12 @@ class GridBase(metaclass=ABCMeta):
         return math.prod(self.shape)
 
     @property
-    def _shape_full(self) -> Tuple[int, ...]:
+    def _shape_full(self) -> tuple[int, ...]:
         """tuple of int: number of support points including ghost points"""
         return tuple(num + 2 for num in self.shape)
 
     @property
-    def _idx_valid(self) -> Tuple[slice, ...]:
+    def _idx_valid(self) -> tuple[slice, ...]:
         """tuple: slices to extract valid data from full data"""
         return tuple(slice(1, s + 1) for s in self.shape)
 
@@ -334,10 +328,10 @@ class GridBase(metaclass=ABCMeta):
     @overload
     def _make_set_valid(
         self, bcs: Boundaries
-    ) -> Callable[[np.ndarray, np.ndarray, Dict], None]:
+    ) -> Callable[[np.ndarray, np.ndarray, dict], None]:
         ...
 
-    def _make_set_valid(self, bcs: Optional[Boundaries] = None) -> Callable:
+    def _make_set_valid(self, bcs: Boundaries | None = None) -> Callable:
         """create a function to set the valid part of a full data array
 
         Args:
@@ -401,7 +395,7 @@ class GridBase(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def state(self) -> Dict[str, Any]:
+    def state(self) -> dict[str, Any]:
         """dict: all information required for reconstructing the grid"""
 
     @property
@@ -417,7 +411,7 @@ class GridBase(metaclass=ABCMeta):
 
     __copy__ = copy
 
-    def __deepcopy__(self, memo: Dict[int, Any]) -> GridBase:
+    def __deepcopy__(self, memo: dict[int, Any]) -> GridBase:
         """create a deep copy of the grid. This function is for instance called when
         a grid instance appears in another object that is copied using `copy.deepcopy`
         """
@@ -490,7 +484,7 @@ class GridBase(metaclass=ABCMeta):
         return "f8[" + ", ".join([":"] * self.num_axes) + "]"
 
     @cached_property()
-    def coordinate_arrays(self) -> Tuple[np.ndarray, ...]:
+    def coordinate_arrays(self) -> tuple[np.ndarray, ...]:
         """tuple: for each axes: coordinate values for all cells"""
         return tuple(np.meshgrid(*self.axes_coords, indexing="ij"))
 
@@ -566,7 +560,7 @@ class GridBase(metaclass=ABCMeta):
         diff = self.difference_vector_real(p1, p2)
         return np.linalg.norm(diff, axis=-1)  # type: ignore
 
-    def _iter_boundaries(self) -> Iterator[Tuple[int, bool]]:
+    def _iter_boundaries(self) -> Iterator[tuple[int, bool]]:
         """iterate over all boundaries of the grid
 
         Yields:
@@ -830,7 +824,7 @@ class GridBase(metaclass=ABCMeta):
     @abstractmethod
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> np.ndarray | Tuple[np.ndarray, ...]:
+    ) -> np.ndarray | tuple[np.ndarray, ...]:
         """return spherical coordinates associated with the grid
 
         Args:
@@ -883,7 +877,7 @@ class GridBase(metaclass=ABCMeta):
 
     @fill_in_docstring
     def get_boundary_conditions(
-        self, bc: "BoundariesData" = "auto_periodic_neumann", rank: int = 0
+        self, bc: BoundariesData = "auto_periodic_neumann", rank: int = 0
     ) -> Boundaries:
         """constructs boundary conditions from a flexible data format
 
@@ -920,7 +914,7 @@ class GridBase(metaclass=ABCMeta):
         return bcs
 
     @abstractmethod
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
         """return a line cut through the grid
 
         Args:
@@ -936,7 +930,7 @@ class GridBase(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
+    def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
         """return a 2d-image of the data
 
         Args:
@@ -954,7 +948,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         boundary_distance: float = 0,
         coords: CoordsType = "cartesian",
-        rng: Optional[np.random.Generator] = None,
+        rng: np.random.Generator | None = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
@@ -976,7 +970,7 @@ class GridBase(metaclass=ABCMeta):
     def register_operator(
         cls,
         name: str,
-        factory_func: Optional[OperatorFactory] = None,
+        factory_func: OperatorFactory | None = None,
         rank_in: int = 0,
         rank_out: int = 0,
     ):
@@ -1029,7 +1023,7 @@ class GridBase(metaclass=ABCMeta):
 
     @hybridmethod  # type: ignore
     @property
-    def operators(cls) -> Set[str]:  # @NoSelf
+    def operators(cls) -> set[str]:  # @NoSelf
         """set: all operators defined for this class"""
         result = set()
         # add all customly defined operators
@@ -1048,7 +1042,7 @@ class GridBase(metaclass=ABCMeta):
 
     @operators.instancemethod
     @property
-    def operators(self) -> Set[str]:
+    def operators(self) -> set[str]:
         """set: all operators defined for this instance"""
         # get all operators registered on the class
         result = self.__class__.operators
@@ -1195,7 +1189,7 @@ class GridBase(metaclass=ABCMeta):
 
         # define numpy version of the operator
         def apply_op(
-            arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
+            arr: np.ndarray, out: np.ndarray | None = None, args=None
         ) -> np.ndarray:
             """set boundary conditions and apply operator"""
             assert arr.shape == shape_in_valid
@@ -1230,14 +1224,14 @@ class GridBase(metaclass=ABCMeta):
 
             @nb_overload(apply_op, inline="always")
             def apply_op_ol(
-                arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
+                arr: np.ndarray, out: np.ndarray | None = None, args=None
             ) -> np.ndarray:
                 """make numba implementation of the operator"""
                 if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # need to allocate memory for `out`
 
                     def apply_op_impl(
-                        arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
+                        arr: np.ndarray, out: np.ndarray | None = None, args=None
                     ) -> np.ndarray:
                         """allocates `out` and applies operator to the data"""
                         assert arr.shape == shape_in_valid
@@ -1257,7 +1251,7 @@ class GridBase(metaclass=ABCMeta):
                     # reuse provided `out` array
 
                     def apply_op_impl(
-                        arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
+                        arr: np.ndarray, out: np.ndarray | None = None, args=None
                     ) -> np.ndarray:
                         """applies operator to the data wihtout allocating out"""
                         assert arr.shape == shape_in_valid
@@ -1277,7 +1271,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def apply_op_compiled(
-                arr: np.ndarray, out: Optional[np.ndarray] = None, args=None
+                arr: np.ndarray, out: np.ndarray | None = None, args=None
             ) -> np.ndarray:
                 """set boundary conditions and apply operator"""
                 return apply_op(arr, out, args)
@@ -1472,7 +1466,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         with_ghost_cells: bool = False,
         cell_coords: bool = False,
-    ) -> Callable[[float], Tuple[int, int, float, float]]:
+    ) -> Callable[[float], tuple[int, int, float, float]]:
         """factory for obtaining interpolation information
 
         Args:
@@ -1498,7 +1492,7 @@ class GridBase(metaclass=ABCMeta):
         dx = self.discretization[axis]
 
         @register_jitable
-        def get_axis_data(coord: float) -> Tuple[int, int, float, float]:
+        def get_axis_data(coord: float) -> tuple[int, int, float, float]:
             """determines data for interpolating along one axis"""
             # determine the index of the left cell and the fraction toward the right
             if cell_coords:
@@ -1558,7 +1552,7 @@ class GridBase(metaclass=ABCMeta):
     def _make_interpolator_compiled(
         self,
         *,
-        fill: Optional[Number] = None,
+        fill: Number | None = None,
         with_ghost_cells: bool = False,
         cell_coords: bool = False,
     ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
@@ -1948,7 +1942,7 @@ class GridBase(metaclass=ABCMeta):
         return integrate_global  # type: ignore
 
 
-def registered_operators() -> Dict[str, List[str]]:
+def registered_operators() -> dict[str, list[str]]:
     """returns all operators that are currently defined
 
     Returns:

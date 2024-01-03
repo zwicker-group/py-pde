@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 import numba as nb
 import numpy as np
@@ -59,8 +59,8 @@ else:
     class _OperatorRegistry:
         """collection of operators that MPI supports"""
 
-        _name_ids: Dict[str, int]
-        _ids_operators: Dict[int, MPI.Op]
+        _name_ids: dict[str, int]
+        _ids_operators: dict[int, MPI.Op]
 
         def __init__(self):
             self._name_ids = {}

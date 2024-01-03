@@ -10,7 +10,7 @@ import copy
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, Dict, Literal, Optional, Tuple, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 import numpy as np
 
@@ -37,7 +37,7 @@ class PDEBase(metaclass=ABCMeta):
     overwritten for supporting the `numpy` and `numba` backend, respectively.
     """
 
-    diagnostics: Dict[str, Any]
+    diagnostics: dict[str, Any]
     """dict: Diagnostic information (available after the PDE has been solved)"""
 
     check_implementation: bool = True
@@ -52,7 +52,7 @@ class PDEBase(metaclass=ABCMeta):
     after the first call. This option is thus disabled by default and should be used
     with care."""
 
-    explicit_time_dependence: Optional[bool] = None
+    explicit_time_dependence: bool | None = None
     """bool: Flag indicating whether the right hand side of the PDE has an explicit
     time dependence."""
 
@@ -60,9 +60,7 @@ class PDEBase(metaclass=ABCMeta):
     """bool: Flag indicating whether the right hand side is a complex-valued PDE, which
     requires all involved variables to have complex data type."""
 
-    def __init__(
-        self, *, noise: ArrayLike = 0, rng: Optional[np.random.Generator] = None
-    ):
+    def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
         """
         Args:
             noise (float or :class:`~numpy.ndarray`):
@@ -85,7 +83,7 @@ class PDEBase(metaclass=ABCMeta):
             `numpy` and `numba` backend, respectively.
         """
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self.diagnostics = {}
         self.noise = np.asanyarray(noise)
         self.rng = rng if rng is not None else np.random.default_rng()
@@ -150,7 +148,7 @@ class PDEBase(metaclass=ABCMeta):
         t: float = 0,
         *,
         tol: float = 1e-7,
-        rhs_numba: Optional[Callable] = None,
+        rhs_numba: Callable | None = None,
         **kwargs,
     ) -> None:
         """check the numba compiled right hand side versus the numpy variant
@@ -361,7 +359,7 @@ class PDEBase(metaclass=ABCMeta):
             Function determining the right hand side of the PDE
         """
         if self.is_sde:
-            data_shape: Tuple[int, ...] = state.data.shape
+            data_shape: tuple[int, ...] = state.data.shape
             noise_var: float
             cell_volume: Callable[[int], float] = state.grid.make_cell_volume_compiled(
                 flat_index=True
@@ -411,7 +409,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def _make_sde_rhs_numba(
         self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the noise term of the PDE
 
         Args:
@@ -426,7 +424,7 @@ class PDEBase(metaclass=ABCMeta):
         noise_realization = self._make_noise_realization_numba(state, **kwargs)
 
         @jit
-        def sde_rhs(state_data: np.ndarray, t: float) -> Tuple[np.ndarray, np.ndarray]:
+        def sde_rhs(state_data: np.ndarray, t: float) -> tuple[np.ndarray, np.ndarray]:
             """compiled helper function returning a noise realization"""
             return (evolution_rate(state_data, t), noise_realization(state_data, t))
 
@@ -434,7 +432,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def _make_sde_rhs_numba_cached(
         self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
         """create a compiled function for evaluating the noise term of the PDE
 
         Args:
@@ -468,7 +466,7 @@ class PDEBase(metaclass=ABCMeta):
         state: TState,
         backend: Literal["auto", "numpy", "numba"] = "auto",
         **kwargs,
-    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the right hand side of the SDE
 
         Args:
@@ -500,7 +498,7 @@ class PDEBase(metaclass=ABCMeta):
 
             def sde_rhs(
                 state_data: np.ndarray, t: float
-            ) -> Tuple[np.ndarray, np.ndarray]:
+            ) -> tuple[np.ndarray, np.ndarray]:
                 """evaluate the rhs given only a state without the grid"""
                 state.data = state_data
                 return (
@@ -518,14 +516,14 @@ class PDEBase(metaclass=ABCMeta):
     def solve(
         self,
         state: TState,
-        t_range: "TRangeType",
-        dt: Optional[float] = None,
+        t_range: TRangeType,
+        dt: float | None = None,
         tracker: TrackerCollectionDataType = "auto",
         *,
-        solver: str | "SolverBase" = "explicit",
+        solver: str | SolverBase = "explicit",
         ret_info: bool = False,
         **kwargs,
-    ) -> None | TState | Tuple[Optional[TState], Dict[str, Any]]:
+    ) -> None | TState | tuple[TState | None, dict[str, Any]]:
         """solves the partial differential equation
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)

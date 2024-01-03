@@ -8,7 +8,7 @@ This module handles the boundaries of all axes of a grid. It only defines
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Union
+from typing import Sequence, Union
 
 import numpy as np
 from numba.extending import register_jitable
@@ -196,7 +196,7 @@ class Boundaries(list):
         return self.__class__([bc.copy() for bc in self])
 
     @property
-    def periodic(self) -> List[bool]:
+    def periodic(self) -> list[bool]:
         """:class:`~numpy.ndarray`: a boolean array indicating which dimensions
         are periodic according to the boundary conditions"""
         return self.grid.periodic
@@ -299,7 +299,7 @@ class Boundaries(list):
         # return set_ghost_cells
 
         def chain(
-            fs: Sequence[GhostCellSetter], inner: Optional[GhostCellSetter] = None
+            fs: Sequence[GhostCellSetter], inner: GhostCellSetter | None = None
         ) -> GhostCellSetter:
             """helper function composing setters of all axes recursively"""
 

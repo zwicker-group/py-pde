@@ -16,7 +16,6 @@ Functions, classes, and decorators for managing caches
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from __future__ import division
 
 import collections
 import functools
@@ -195,7 +194,7 @@ def hash_readable(obj) -> str:
             if not k.startswith("_")
         )
 
-        return "{name}({args})".format(name=obj.__class__.__name__, args=args)
+        return f"{obj.__class__.__name__}({args})"
 
 
 SerializerMethod = Literal[
@@ -296,7 +295,7 @@ class DictFiniteCapacity(collections.OrderedDict):
 
     def __init__(self, *args, **kwargs):
         self.capacity = kwargs.pop("capacity", self.default_capacity)
-        super(DictFiniteCapacity, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def check_length(self):
         """ensures that the dictionary does not grow beyond its capacity"""
@@ -310,11 +309,11 @@ class DictFiniteCapacity(collections.OrderedDict):
         return super().__ne__(other) or self.capacity != other.capacity
 
     def __setitem__(self, key, value):
-        super(DictFiniteCapacity, self).__setitem__(key, value)
+        super().__setitem__(key, value)
         self.check_length()
 
     def update(self, values):
-        super(DictFiniteCapacity, self).update(values)
+        super().update(values)
         self.check_length()
 
 

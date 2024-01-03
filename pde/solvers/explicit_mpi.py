@@ -6,7 +6,7 @@ Defines an explicit solver using multiprocessing via MPI
 
 from __future__ import annotations
 
-from typing import Callable, List, Literal
+from typing import Callable, Literal
 
 import numpy as np
 from numba.extending import register_jitable
@@ -81,7 +81,7 @@ class ExplicitMPISolver(ExplicitSolver):
         self,
         pde: PDEBase,
         scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
-        decomposition: int | List[int] = -1,
+        decomposition: int | list[int] = -1,
         *,
         backend: BackendType = "auto",
         adaptive: bool = False,

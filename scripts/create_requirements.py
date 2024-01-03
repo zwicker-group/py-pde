@@ -157,7 +157,7 @@ REQUIREMENTS = [
     Requirement(name="isort", version_min="5.1", tests_only=True),
     Requirement(name="mypy", version_min="0.770", tests_only=True),
     Requirement(name="notebook", version_min="6.5", relation="~=", tests_only=True),
-    Requirement(name="pyinstrument", version_min="3", tests_only=True),
+    Requirement(name="pyupgrade", version_min="3", tests_only=True),
     Requirement(name="pytest", version_min="5.4", tests_only=True),
     Requirement(name="pytest-cov", version_min="2.8", tests_only=True),
     Requirement(name="pytest-xdist", version_min="1.30", tests_only=True),
@@ -213,7 +213,7 @@ def write_requirements_csv(
     with open(path, "w") as fp:
         writer = csv.writer(fp)
         if incl_version:
-            writer.writerow(["Package", "Minimal version_min", "Usage"])
+            writer.writerow(["Package", "Minimal version", "Usage"])
         else:
             writer.writerow(["Package", "Usage"])
         for r in sorted(requirements, key=lambda r: r.name.lower()):
@@ -234,7 +234,7 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
 
     # read user-created content of file
     content = []
-    with open(path, "r") as fp:
+    with open(path) as fp:
         for line in fp:
             if "GENERATED CODE" in line:
                 content.append(line)

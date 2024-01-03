@@ -6,7 +6,7 @@ Defines a vectorial field over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence
 
 import numba as nb
 import numpy as np
@@ -34,10 +34,10 @@ class VectorField(DataFieldBase):
     @classmethod
     def from_scalars(
         cls,
-        fields: List[ScalarField],
+        fields: list[ScalarField],
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> VectorField:
         """create a vector field from a list of ScalarFields
 
@@ -77,10 +77,10 @@ class VectorField(DataFieldBase):
         grid: GridBase,
         expressions: Sequence[str],
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> VectorField:
         """create a vector field on a grid from given expressions
 
@@ -155,7 +155,7 @@ class VectorField(DataFieldBase):
 
     def dot(
         self,
-        other: VectorField | "Tensor2Field",
+        other: VectorField | Tensor2Field,
         out: ScalarField | VectorField | None = None,
         *,
         conjugate: bool = True,
@@ -211,10 +211,10 @@ class VectorField(DataFieldBase):
     def outer_product(
         self,
         other: VectorField,
-        out: Optional["Tensor2Field"] = None,
+        out: Tensor2Field | None = None,
         *,
-        label: Optional[str] = None,
-    ) -> "Tensor2Field":
+        label: str | None = None,
+    ) -> Tensor2Field:
         """calculate the outer product of this vector field with another
 
         Args:
@@ -246,7 +246,7 @@ class VectorField(DataFieldBase):
 
     def make_outer_prod_operator(
         self, backend: Literal["numpy", "numba"] = "numba"
-    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
+    ) -> Callable[[np.ndarray, np.ndarray, np.ndarray | None], np.ndarray]:
         """return operator calculating the outer product of two vector fields
 
         Warning:
@@ -264,7 +264,7 @@ class VectorField(DataFieldBase):
         """
 
         def outer(
-            a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
         ) -> np.ndarray:
             """calculate the outer product using numpy"""
             return np.einsum("i...,j...->ij...", a, b, out=out)
@@ -299,7 +299,7 @@ class VectorField(DataFieldBase):
 
             @overload(outer, inline="always")
             def outer_ol(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
                 """numba implementation to calculate outer product between two fields"""
                 # get (and check) rank of the input arrays
@@ -313,7 +313,7 @@ class VectorField(DataFieldBase):
                     dtype = get_common_numba_dtype(a, b)
 
                     def outer_impl(
-                        a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
                         """helper function allocating output array"""
                         assert a.shape == b.shape == in_shape
@@ -325,7 +325,7 @@ class VectorField(DataFieldBase):
                     # function is called with `out` argument -> reuse `out` array
 
                     def outer_impl(
-                        a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
                         """helper function without allocating output array"""
                         # check input
@@ -338,7 +338,7 @@ class VectorField(DataFieldBase):
 
             @jit
             def outer_compiled(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
                 """numba implementation to calculate outer product between two fields"""
                 return outer(a, b, out)
@@ -350,7 +350,7 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self, bc: Optional[BoundariesData], out: Optional[ScalarField] = None, **kwargs
+        self, bc: BoundariesData | None, out: ScalarField | None = None, **kwargs
     ) -> ScalarField:
         """apply divergence operator and return result as a field
 
@@ -373,10 +373,10 @@ class VectorField(DataFieldBase):
     @fill_in_docstring
     def gradient(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional["Tensor2Field"] = None,
+        bc: BoundariesData | None,
+        out: Tensor2Field | None = None,
         **kwargs,
-    ) -> "Tensor2Field":
+    ) -> Tensor2Field:
         r"""apply vector gradient operator and return result as a field
 
         The vector gradient field is a tensor field :math:`t_{\alpha\beta}` that
@@ -402,7 +402,7 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def laplace(
-        self, bc: Optional[BoundariesData], out: Optional[VectorField] = None, **kwargs
+        self, bc: BoundariesData | None, out: VectorField | None = None, **kwargs
     ) -> VectorField:
         r"""apply vector Laplace operator and return result as a field
 
@@ -439,7 +439,7 @@ class VectorField(DataFieldBase):
         self,
         scalar: str | int = "auto",
         *,
-        label: Optional[str] = "scalar `{scalar}`",
+        label: str | None = "scalar `{scalar}`",
     ) -> ScalarField:
         """return scalar variant of the field
 
@@ -491,8 +491,8 @@ class VectorField(DataFieldBase):
         return ScalarField(self.grid, data, label=label)
 
     def get_vector_data(
-        self, transpose: bool = False, max_points: Optional[int] = None, **kwargs
-    ) -> Dict[str, Any]:
+        self, transpose: bool = False, max_points: int | None = None, **kwargs
+    ) -> dict[str, Any]:
         r"""return data for a vector plot of the field
 
         Args:
@@ -551,8 +551,8 @@ class VectorField(DataFieldBase):
         return data
 
     def _get_napari_layer_data(  # type: ignore
-        self, max_points: Optional[int] = None, args: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, max_points: int | None = None, args: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """returns data for plotting on a single napari layer
 
         Args:
