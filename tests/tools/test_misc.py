@@ -82,7 +82,7 @@ def test_classproperty():
     assert Test.value == 2
 
 
-@misc.skipUnlessModule("h5py")
+@pytest.mark.skipif(not misc.module_available("h5py"), reason="requires `h5py` module")
 def test_hdf_write_attributes(tmp_path):
     """test hdf_write_attributes function"""
     import h5py

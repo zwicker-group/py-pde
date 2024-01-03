@@ -7,10 +7,10 @@ import pytest
 
 import pde
 from pde import DiffusionPDE, FileStorage, ScalarField, UnitGrid
-from pde.tools.misc import skipUnlessModule
+from pde.tools.misc import module_available
 
 
-@skipUnlessModule("h5py")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.parametrize("collection", [True, False])
 def test_storage_persistence(collection, tmp_path):
     """test writing to persistent trackers"""
@@ -76,7 +76,7 @@ def test_storage_persistence(collection, tmp_path):
                 assert info.items() <= reader.info.items()
 
 
-@skipUnlessModule("h5py")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.parametrize("compression", [True, False])
 def test_simulation_persistence(compression, tmp_path, rng):
     """test whether a tracker can accurately store information about simulation"""
@@ -101,7 +101,7 @@ def test_simulation_persistence(compression, tmp_path, rng):
     assert grid == grid_res
 
 
-@skipUnlessModule("h5py")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.parametrize("compression", [True, False])
 def test_storage_fixed_size(compression, tmp_path):
     """test setting fixed size of FileStorage objects"""
@@ -130,7 +130,7 @@ def test_storage_fixed_size(compression, tmp_path):
             np.testing.assert_allclose(storage.times, [0, 1])
 
 
-@skipUnlessModule("h5py")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 def test_appending(tmp_path):
     """test the appending data"""
     path = tmp_path / "test_appending.hdf5"
@@ -152,7 +152,7 @@ def test_appending(tmp_path):
     assert len(storage2) == 2
 
 
-@skipUnlessModule("h5py")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 def test_keep_opened(tmp_path):
     """test the keep opened option"""
     path = tmp_path / "test_keep_opened.hdf5"
@@ -180,7 +180,7 @@ def test_keep_opened(tmp_path):
     np.testing.assert_allclose(storage2.times, np.arange(3))
 
 
-@skipUnlessModule("h5py")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.parametrize("dtype", [bool, float, complex])
 def test_write_types(dtype, tmp_path, rng):
     """test whether complex data can be written"""

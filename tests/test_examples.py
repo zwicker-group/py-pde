@@ -10,7 +10,7 @@ from typing import List  # @UnusedImport
 
 import pytest
 
-from pde.tools.misc import module_available, skipUnlessModule
+from pde.tools.misc import module_available
 from pde.visualization.movies import Movie
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
@@ -67,7 +67,10 @@ def test_example_scripts(path):
 
 @pytest.mark.slow
 @pytest.mark.no_cover
-@skipUnlessModule(["h5py", "jupyter", "notebook", "nbconvert"])
+@pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py`")
+@pytest.mark.skipif(not module_available("jupyter"), reason="requires `jupyter`")
+@pytest.mark.skipif(not module_available("notebook"), reason="requires `notebook`")
+@pytest.mark.skipif(not module_available("nbconvert"), reason="requires `nbconvert`")
 @pytest.mark.parametrize("path", NOTEBOOKS)
 def test_jupyter_notebooks(path, tmp_path):
     """run the jupyter notebooks"""

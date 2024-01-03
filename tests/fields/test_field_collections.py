@@ -8,7 +8,7 @@ import pytest
 from fixtures.fields import iter_grids
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.fields.base import FieldBase
-from pde.tools.misc import skipUnlessModule
+from pde.tools.misc import module_available
 
 
 @pytest.mark.parametrize("grid", iter_grids())
@@ -224,7 +224,7 @@ def test_from_scalar_expressions():
     np.testing.assert_allclose(fc[1].data, 1)
 
 
-@skipUnlessModule("napari")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.interactive
 def test_interactive_collection_plotting(rng):
     """test the interactive plotting"""

@@ -8,7 +8,6 @@ Miscellaneous python functions
    ensure_directory_exists
    preserve_scalars
    decorator_arguments
-   skipUnlessModule
    import_class
    classproperty
    hybridmethod
@@ -29,6 +28,7 @@ import importlib
 import json
 import os
 import unittest
+import warnings
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional, Sequence, TypeVar
 
@@ -135,6 +135,13 @@ def skipUnlessModule(module_names: str | Sequence[str]) -> Callable[[TFunc], TFu
     Returns:
         A function, so this can be used as a decorator
     """
+    # deprecated since 2024-01-03
+    warnings.warn(
+        "`skipUnlessModule` is deprecated. Use "
+        '`@pytest.mark.skipif(not module_available("module"))` instead.',
+        DeprecationWarning,
+    )
+
     if isinstance(module_names, str):
         module_names = [module_names]
 

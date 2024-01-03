@@ -7,7 +7,7 @@ import pytest
 
 from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.fields.base import FieldBase
-from pde.tools.misc import module_available, skipUnlessModule
+from pde.tools.misc import module_available
 
 
 def test_vectors_basic():
@@ -238,7 +238,7 @@ def test_vector_plotting_2d(transpose, rng):
     field.get_vector_data(transpose=transpose, max_points=7)
 
 
-@skipUnlessModule("napari")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.interactive
 def test_interactive_vector_plotting(rng):
     """test the interactive plotting"""

@@ -15,7 +15,6 @@ from pde.grids.base import (
     discretize_interval,
     registered_operators,
 )
-from pde.tools.misc import skipUnlessModule
 
 
 def iter_grids():
@@ -118,7 +117,6 @@ def test_integration_serial(grid, rng):
         assert res == pytest.approx(grid.integrate(arr, axes=range(grid.num_axes)))
 
 
-@skipUnlessModule("matplotlib")
 def test_grid_plotting():
     """test plotting of grids"""
     grids.UnitGrid([4]).plot()
