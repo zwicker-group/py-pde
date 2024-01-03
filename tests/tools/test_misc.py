@@ -110,3 +110,9 @@ def test_hdf_write_attributes(tmp_path):
             misc.hdf_write_attributes(
                 hdf_file, {"a": object()}, raise_serialization_error=True
             )
+
+
+@misc.skipUnlessModule("undefined_module_name")
+def test_skipUnlessModule():
+    """test skipUnlessModule decorator"""
+    raise RuntimeError  # test should never run
