@@ -5,6 +5,7 @@ This script tests the performance of different solvers
 
 import sys
 from pathlib import Path
+from typing import Literal
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_PATH))
@@ -12,16 +13,23 @@ sys.path.insert(0, str(PACKAGE_PATH))
 import numpy as np
 
 from pde import CahnHilliardPDE, Controller, DiffusionPDE, ScalarField, UnitGrid
-from pde.solvers import ExplicitSolver, ImplicitSolver, ScipySolver
+from pde.solvers import CrankNicolsonSolver, ExplicitSolver, ImplicitSolver, ScipySolver
 
 
-def main(equation: str = "cahn-hilliard", t_range: float = 100, size: int = 32):
+def main(
+    equation: Literal["diffusion", "cahn-hilliard"] = "cahn-hilliard",
+    t_range: float = 100,
+    size: int = 32,
+):
     """main routine testing the performance
 
     Args:
-        equation (str): Chooses the equation to consider
-        t_range (float): Sets the total duration that should be solved for
-        size (int): The number of grid points along each axis
+        equation (str):
+            Chooses the equation to consider
+        t_range (float):
+            Sets the total duration that should be solved for
+        size (int):
+            The number of grid points along each axis
     """
     print("Reports duration in seconds (smaller is better)\n")
 
@@ -48,8 +56,9 @@ def main(equation: str = "cahn-hilliard", t_range: float = 100, size: int = 32):
         "Euler, adaptive": (1e-3, ExplicitSolver(eq, scheme="euler", adaptive=True)),
         "Runge-Kutta, fixed": (1e-2, ExplicitSolver(eq, scheme="rk", adaptive=False)),
         "Runge-Kutta, adaptive": (1e-2, ExplicitSolver(eq, scheme="rk", adaptive=True)),
-        "implicit": (1e-2, ImplicitSolver(eq)),
-        "scipy": (None, ScipySolver(eq)),
+        "Implicit": (1e-2, ImplicitSolver(eq)),
+        "Crank-Nicolson": (1e-2, CrankNicolsonSolver(eq)),
+        "Scipy": (None, ScipySolver(eq)),
     }
 
     for name, (dt, solver) in solvers.items():

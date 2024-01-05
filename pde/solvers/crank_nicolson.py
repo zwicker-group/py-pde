@@ -1,5 +1,5 @@
 """
-Defines an implicit Euler solver
+Defines a Crank-Nicolson solver
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
@@ -16,16 +16,18 @@ from ..tools.typing import BackendType
 from .base import ConvergenceError, SolverBase
 
 
-class ImplicitSolver(SolverBase):
-    """implicit (backward) Euler PDE solver"""
+class CrankNicolsonSolver(SolverBase):
+    """solving partial differential equations using the Crank-Nicolson scheme"""
 
-    name = "implicit"
+    name = "crank-nicolson"
 
     def __init__(
         self,
         pde: PDEBase,
+        *,
         maxiter: int = 100,
         maxerror: float = 1e-4,
+        explicit_fraction: float = 0,
         backend: BackendType = "auto",
     ):
         """
@@ -36,6 +38,11 @@ class ImplicitSolver(SolverBase):
                 The maximal number of iterations per step
             maxerror (float):
                 The maximal error that is permitted in each step
+            explicit_fraction (float):
+                Hyperparameter determinig the fraction of explicit time stepping in the
+                implicit step. `explicit_fraction == 0` is the simple Crank-Nicolson
+                scheme, while `explicit_fraction == 1` reduces to the explicit Euler
+                method. Intermediate values can improve convergence.
             backend (str):
                 Determines how the function is created. Accepted  values are 'numpy` and
                 'numba'. Alternatively, 'auto' lets the code decide for the most optimal
@@ -44,6 +51,7 @@ class ImplicitSolver(SolverBase):
         super().__init__(pde, backend=backend)
         self.maxiter = maxiter
         self.maxerror = maxerror
+        self.explicit_fraction = explicit_fraction
 
     def _make_single_step_fixed_dt(
         self, state: FieldBase, dt: float
@@ -68,26 +76,30 @@ class ImplicitSolver(SolverBase):
         rhs = self._make_pde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)
         maxerror2 = self.maxerror**2
+        α = self.explicit_fraction
 
         # handle deterministic version of the pde
-        def implicit_step(state_data: np.ndarray, t: float) -> None:
+        def crank_nicolson_step(state_data: np.ndarray, t: float) -> None:
             """compiled inner loop for speed"""
             nfev = 0  # count function evaluations
 
-            # save state at current time point t for stepping
+            # keep values at the current time t point used in iteration
             state_t = state_data.copy()
+            rate_t = rhs(state_t, t)
 
-            # estimate state at next time point
-            state_data[:] = state_t + dt * rhs(state_data, t)
+            # new state is weighted average of explicit and Crank-Nicolson steps
+            state_cn = state_t + dt / 2 * (rhs(state_data, t + dt) + rate_t)
+            state_data[:] = α * state_data + (1 - α) * state_cn
             state_prev = np.empty_like(state_data)
 
             # fixed point iteration for improving state after dt
             for n in range(maxiter):
                 state_prev[:] = state_data  # keep previous state to judge convergence
-                # another interation to improve estimate
-                state_data[:] = state_t + dt * rhs(state_data, t + dt)
+                # new state is weighted average of explicit and Crank-Nicolson steps
+                state_cn = state_t + dt / 2 * (rhs(state_data, t + dt) + rate_t)
+                state_data[:] = α * state_data + (1 - α) * state_cn
 
-                # calculate mean squared error to judge convergence
+                # calculate mean squared error
                 err = 0.0
                 for j in range(state_data.size):
                     diff = state_data.flat[j] - state_prev.flat[j]
@@ -100,13 +112,13 @@ class ImplicitSolver(SolverBase):
             else:
                 with nb.objmode:
                     self._logger.warning(
-                        "Implicit Euler step did not converge after %d iterations "
+                        "Crank-Nicolson step did not converge after %d iterations "
                         "at t=%g (error=%g)",
                         maxiter,
                         t,
                         err,
                     )
-                raise ConvergenceError("Implicit Euler step did not converge.")
-            nfev += n + 1
+                raise ConvergenceError("Crank-Nicolson step did not converge.")
+            nfev += n + 2
 
-        return implicit_step
+        return crank_nicolson_step

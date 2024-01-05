@@ -1,5 +1,5 @@
 """
-Defines a class controlling the simulations of PDEs.
+Defines a class controlling the simulations of PDEs
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

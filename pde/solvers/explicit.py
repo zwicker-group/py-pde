@@ -19,7 +19,7 @@ from .base import AdaptiveSolverBase
 
 
 class ExplicitSolver(AdaptiveSolverBase):
-    """class for solving partial differential equations explicitly"""
+    """various explicit PDE solvers"""
 
     name = "explicit"
 
