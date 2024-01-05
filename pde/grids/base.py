@@ -938,9 +938,20 @@ class GridBase(metaclass=ABCMeta):
                 The values at the grid points
 
         Returns:
-            dict: A dictionary with information about the image, which is  convenient
-            for plotting.
+            dict: A dictionary with information about the data convenient for plotting.
         """
+
+    def get_vector_data(self, data: np.ndarray) -> dict[str, Any]:
+        """return data to visualize vector field
+
+        Args:
+            data (:class:`~numpy.ndarray`):
+                The vectorial values at the grid points
+
+        Returns:
+            dict: A dictionary with information about the data convenient for plotting.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def get_random_point(

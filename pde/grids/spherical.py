@@ -284,6 +284,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
     def get_image_data(
         self,
         data: np.ndarray,
+        *,
         performance_goal: Literal["speed", "quality"] = "speed",
         fill_value: float = 0,
         masked: bool = True,
@@ -350,6 +351,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             "data": data_int,
             "x": x,
             "y": x,
+            "xs": xs,
+            "ys": ys,
             "extent": (-r_outer, r_outer, -r_outer, r_outer),
             "label_x": "x",
             "label_y": "y",
@@ -545,6 +548,29 @@ class PolarSymGrid(SphericalSymGridBase):
             x = np.zeros_like(y)
 
         return np.stack((x, y), axis=-1)
+
+    def get_vector_data(self, data: np.ndarray, **kwargs) -> dict[str, Any]:
+        r"""return data to visualize vector field
+
+        Args:
+            data (:class:`~numpy.ndarray`):
+                The vectorial values at the grid points
+            \**kwargs:
+                Arguments forwarded to
+                :meth:`~pde.grids.spherical.SphericalSymGridBase.get_image_data`.
+        """
+        if data.shape != (2,) + self.shape:
+            raise ValueError(
+                f"Shape {data.shape} of the data array is not compatible with grid "
+                f"shape {self.shape}"
+            )
+
+        # convert radial components of vector to Cartesian grid
+        img_data = self.get_image_data(data[0], **kwargs)
+        φ_img = np.arctan2(img_data["ys"], img_data["xs"])
+        img_data["data_x"] = img_data["data"] * np.cos(φ_img)
+        img_data["data_y"] = img_data["data"] * np.sin(φ_img)
+        return img_data
 
 
 class SphericalSymGrid(SphericalSymGridBase):

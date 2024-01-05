@@ -358,16 +358,6 @@ class CartesianGrid(GridBase):
         }
 
     def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
-        """return a 2d-image of the data
-
-        Args:
-            data (:class:`~numpy.ndarray`):
-                The values at the grid points
-
-        Returns:
-            dict: A dictionary with information about the image, which is  convenient
-            for plotting.
-        """
         if data.shape[-self.dim :] != self.shape:
             raise ValueError(
                 f"Shape {data.shape} of the data array is not compatible with grid "
@@ -392,6 +382,25 @@ class CartesianGrid(GridBase):
             "x": self.axes_coords[0],
             "y": self.axes_coords[1],
             "extent": extent,
+            "label_x": self.axes[0],
+            "label_y": self.axes[1],
+        }
+
+    def get_vector_data(self, data: np.ndarray) -> dict[str, Any]:
+        if self.dim != 2:
+            raise DimensionError("Vector data only available for dim==2")
+        if data.shape != (2,) + self.shape:
+            raise ValueError(
+                f"Shape {data.shape} of the data array is not compatible with grid "
+                f"shape {self.shape}"
+            )
+
+        return {
+            "data_x": data[0],
+            "data_y": data[1],
+            "x": self.axes_coords[0],
+            "y": self.axes_coords[1],
+            "extent": np.ravel(self.axes_bounds).tolist(),
             "label_x": self.axes[0],
             "label_y": self.axes[1],
         }
