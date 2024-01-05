@@ -493,8 +493,8 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 class PolarSymGrid(SphericalSymGridBase):
     r"""2-dimensional polar grid assuming angular symmetry
 
-    The angular symmetry implies that states only depend on the radial
-    coordinate :math:`r`, which is discretized uniformly as
+    The angular symmetry implies that states only depend on the radial coordinate
+    :math:`r`, which is discretized uniformly as
 
     .. math::
         r_i = R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
@@ -503,9 +503,8 @@ class PolarSymGrid(SphericalSymGridBase):
             \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N}
 
     where :math:`R_\mathrm{outer}` is the outer radius of the grid and
-    :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is
-    zero by default. The radial direction is discretized by :math:`N` support
-    points.
+    :math:`R_\mathrm{inner}` corresponds to a possible inner radius, which is zero by
+    default. The radial direction is discretized by :math:`N` support points.
     """
 
     dim = 2  # dimension of the described space
@@ -518,8 +517,8 @@ class PolarSymGrid(SphericalSymGridBase):
     ) -> np.ndarray:
         """convert coordinates of a point to Cartesian coordinates
 
-        This function returns points along the y-coordinate, i.e, the x
-        coordinates will be zero.
+        This function returns points along the y-coordinate, i.e, the x coordinates will
+        be zero.
 
         Args:
             points (:class:`~numpy.ndarray`):
