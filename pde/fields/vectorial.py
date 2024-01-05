@@ -27,7 +27,14 @@ if TYPE_CHECKING:
 
 
 class VectorField(DataFieldBase):
-    """Vector field discretized on a grid"""
+    """Vector field discretized on a grid
+
+    Warning:
+        Components of the vector field are given in the local basis. While the local
+        basis is identical to the global basis in Cartesian coordinates, the local basis
+        depends on position in curvilinear coordinate systems. Moreover, the field
+        always contains all components, even if the underlying grid assumes symmetries.
+    """
 
     rank = 1
 

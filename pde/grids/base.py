@@ -601,9 +601,9 @@ class GridBase(metaclass=ABCMeta):
         return np.stack(points, -1).reshape(shape)  # type: ignore
 
     @property
-    @abstractmethod
     def volume(self) -> float:
         """float: total volume of the grid"""
+        raise NotImplementedError
 
     @abstractmethod
     def point_to_cartesian(
@@ -913,7 +913,6 @@ class GridBase(metaclass=ABCMeta):
 
         return bcs
 
-    @abstractmethod
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
         """return a line cut through the grid
 
@@ -928,8 +927,8 @@ class GridBase(metaclass=ABCMeta):
             dict: A dictionary with information about the line cut, which is convenient
             for plotting.
         """
+        raise NotImplementedError
 
-    @abstractmethod
     def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
         """return a 2d-image of the data
 
@@ -940,6 +939,7 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             dict: A dictionary with information about the data convenient for plotting.
         """
+        raise NotImplementedError
 
     def get_vector_data(self, data: np.ndarray) -> dict[str, Any]:
         """return data to visualize vector field
@@ -953,7 +953,6 @@ class GridBase(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def get_random_point(
         self,
         *,
@@ -976,6 +975,7 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the random point
         """
+        raise NotImplementedError
 
     @classmethod
     def register_operator(
