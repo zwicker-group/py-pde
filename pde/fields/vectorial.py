@@ -27,7 +27,14 @@ if TYPE_CHECKING:
 
 
 class VectorField(DataFieldBase):
-    """Vector field discretized on a grid"""
+    """Vector field discretized on a grid
+
+    Warning:
+        Components of the vector field are given in the local basis. While the local
+        basis is identical to the global basis in Cartesian coordinates, the local basis
+        depends on position in curvilinear coordinate systems. Moreover, the field
+        always contains all components, even if the underlying grid assumes symmetries.
+    """
 
     rank = 1
 
@@ -507,18 +514,12 @@ class VectorField(DataFieldBase):
         Returns:
             dict: Information useful for plotting an vector field
         """
-        # TODO: Handle Spherical and Cartesian grids, too. This could be
-        # implemented by adding a get_vector_data method to the grids
-        if self.grid.dim == 2:
-            vx = self[0].get_image_data(**kwargs)
-            vy = self[1].get_image_data(**kwargs)
-            data = vx  # use one of the fields to extract basic information
-            data["data_x"] = vx.pop("data")
-            data["data_y"] = vy["data"]
-            data["title"] = self.label
+        if self.is_complex:
+            self._logger.warning("Only the real part of complex data is shown")
 
-        else:
-            raise NotImplementedError("Only supports 2d grids")
+        # extract the image data
+        data = self.grid.get_vector_data(self.data.real, **kwargs)
+        data["title"] = self.label
 
         # transpose the data if requested
         if transpose:

@@ -53,7 +53,8 @@ class FieldBase(metaclass=ABCMeta):
     _grid: GridBase  # the grid on which the field is defined
     __data_full: np.ndarray  # the data on the grid including ghost points
     _data_valid: np.ndarray  # the valid data without ghost points
-    _label: str | None
+    _label: str | None  # name of the field
+    _logger: logging.Logger  # logger instance to output information
 
     def __init__(
         self,
@@ -1896,7 +1897,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         return data
 
-    def get_vector_data(self, **kwargs) -> dict[str, Any]:
+    def get_vector_data(self, transpose: bool = False, **kwargs) -> dict[str, Any]:
         r"""return data for a vector plot of the field
 
         Args:
