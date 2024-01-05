@@ -8,15 +8,17 @@ Solvers define how a PDE is solved, i.e., how the initial state is advanced in t
    ~explicit.ExplicitSolver
    ~explicit_mpi.ExplicitMPISolver
    ~implicit.ImplicitSolver
+   ~crank_nicolson.CrankNicolsonSolver
    ~scipy.ScipySolver
    ~registered_solvers
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
 from typing import List
 
 from .controller import Controller
+from .crank_nicolson import CrankNicolsonSolver
 from .explicit import ExplicitSolver
 from .implicit import ImplicitSolver
 from .scipy import ScipySolver
@@ -43,6 +45,7 @@ __all__ = [
     "Controller",
     "ExplicitSolver",
     "ImplicitSolver",
+    "CrankNicolsonSolver",
     "ScipySolver",
     "registered_solvers",
 ]

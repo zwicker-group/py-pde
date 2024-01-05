@@ -16,10 +16,11 @@ from .base import SolverBase
 
 
 class ScipySolver(SolverBase):
-    """class for solving partial differential equations using scipy
+    """PDE solver using :func:`scipy.integrate.solve_ivp`.
 
     This class is a thin wrapper around :func:`scipy.integrate.solve_ivp`. In
-    particular, it supports all the methods implemented by this function.
+    particular, it supports all the methods implemented by this function and exposes its
+    arguments, so details can be controlled.
     """
 
     name = "scipy"

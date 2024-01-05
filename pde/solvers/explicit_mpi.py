@@ -21,7 +21,7 @@ from .explicit import ExplicitSolver
 
 
 class ExplicitMPISolver(ExplicitSolver):
-    """class for solving partial differential equations explicitly using MPI
+    """various explicit PDE solve using MPI
 
     Warning:
         This solver can only be used if MPI is properly installed. In particular, python

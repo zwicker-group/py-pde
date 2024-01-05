@@ -27,8 +27,12 @@ from ..tools.numba import is_jitted, jit
 from ..tools.typing import BackendType
 
 
+class ConvergenceError(RuntimeError):
+    """indicates that an implicit step did not converge"""
+
+
 class SolverBase(metaclass=ABCMeta):
-    """base class for solvers"""
+    """base class for PDE solvers"""
 
     dt_default: float = 1e-3
     """float: default time step used if no time step was specified"""
