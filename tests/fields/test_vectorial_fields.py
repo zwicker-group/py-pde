@@ -7,6 +7,7 @@ import pytest
 
 from pde import CartesianGrid, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.fields.base import FieldBase
+from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid
 from pde.tools.misc import module_available
 
 
@@ -291,3 +292,45 @@ def test_vector_bcs():
     s2 = div(v.data)
 
     np.testing.assert_allclose(s1, s2)
+
+
+def test_interpolation_vector_fields_cylindrical():
+    """test interpolation of a vector field on cylindrical coordinates"""
+    grid = CylindricalSymGrid(5, [-2, 3], 10)
+    vf = VectorField.from_expression(grid, ["r", "z", "1"])
+    grid_cart = grid.get_cartesian_grid(mode="valid")
+    vf_cart = vf.interpolate_to_grid(grid_cart)
+
+    x, y, z = grid_cart.coordinate_arrays
+    r = np.hypot(x, y)
+    np.testing.assert_allclose(vf_cart.data[0], x - y / r)
+    np.testing.assert_allclose(vf_cart.data[1], y + x / r)
+    np.testing.assert_allclose(vf_cart.data[2], z)
+
+
+def test_interpolation_vector_fields_polar():
+    """test interpolation of a vector field on polar coordinates"""
+    grid = PolarSymGrid(5, 10)
+    vf = VectorField.from_expression(grid, ["r", "1"])
+    grid_cart = grid.get_cartesian_grid(mode="valid")
+    vf_cart = vf.interpolate_to_grid(grid_cart)
+
+    x, y = grid_cart.coordinate_arrays
+    r = np.hypot(x, y)
+    np.testing.assert_allclose(vf_cart.data[0], x - y / r)
+    np.testing.assert_allclose(vf_cart.data[1], y + x / r)
+
+
+def test_interpolation_vector_fields_spherical():
+    """test interpolation of a vector field on polar coordinates"""
+    grid = SphericalSymGrid(5, 10)
+    vf = VectorField.from_expression(grid, ["r", "1", "r"])
+    grid_cart = grid.get_cartesian_grid(mode="valid")
+    vf_cart = vf.interpolate_to_grid(grid_cart)
+
+    x, y, z = grid_cart.coordinate_arrays
+    d = np.sqrt(x**2 + y**2)
+    r = np.sqrt(x**2 + y**2 + z**2)
+    np.testing.assert_allclose(vf_cart.data[0], x + x * z / d / r - y * r / d)
+    np.testing.assert_allclose(vf_cart.data[1], y + y * z / d / r + x * r / d)
+    np.testing.assert_allclose(vf_cart.data[2], z - d / r)

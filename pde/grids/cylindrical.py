@@ -393,7 +393,7 @@ class CylindricalSymGrid(GridBase):
             points (:class:`~numpy.ndarray`):
                 The grid coordinates of the points
             full (bool):
-                Flag indicating whether angular coordinates are specified
+                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
@@ -402,6 +402,7 @@ class CylindricalSymGrid(GridBase):
 
         z = points[..., 1]
         if full:
+            # coordinates are given as (r, z, φ)
             if points.shape[-1] != self.dim:
                 raise DimensionError(f"Shape {points.shape} cannot denote full points")
             x = points[..., 0] * np.cos(points[..., 2])
@@ -413,7 +414,9 @@ class CylindricalSymGrid(GridBase):
             y = np.zeros_like(x)
         return np.stack((x, y, z), axis=-1)
 
-    def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_from_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert points given in Cartesian coordinates to this grid
 
         This function returns points restricted to the x-z plane, i.e., the
@@ -422,6 +425,8 @@ class CylindricalSymGrid(GridBase):
         Args:
             points (:class:`~numpy.ndarray`):
                 Points given in Cartesian coordinates.
+            full (bool):
+                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid
@@ -431,7 +436,12 @@ class CylindricalSymGrid(GridBase):
 
         rs = np.hypot(points[..., 0], points[..., 1])
         zs = points[..., 2]
-        return np.stack((rs, zs), axis=-1)
+        if full:
+            # coordinates are given as (r, z, φ)
+            φs = np.arctan2(points[..., 1], points[..., 0])
+            return np.stack((rs, zs, φs), axis=-1)
+        else:
+            return np.stack((rs, zs), axis=-1)
 
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
@@ -461,7 +471,7 @@ class CylindricalSymGrid(GridBase):
         dist: np.ndarray = np.linalg.norm(diff, axis=-1)  # get distance
 
         if ret_angle:
-            return dist, np.arctan2(diff[:, :, 0], diff[:, :, 1])
+            return dist, np.arctan2(diff[:, :, 1], diff[:, :, 0])
         else:
             return dist
 
@@ -494,6 +504,41 @@ class CylindricalSymGrid(GridBase):
         grid_bounds = [(-bounds, bounds), (-bounds, bounds), self.axes_bounds[1]]
         grid_shape = 2 * num, 2 * num, self.shape[1]
         return CartesianGrid(grid_bounds, grid_shape)
+
+    @cached_property()
+    def scale_factors(self) -> np.ndarray:
+        """:class:`~numpy.ndarray`: scale factors for each cell"""
+        r = self.coordinate_arrays[0]
+        # the order of the axes is (r, z, φ)
+        return np.array([np.ones_like(r), np.ones_like(r), r])
+
+    def _get_basis(
+        self, points: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        """returns the basis vectors of the grid in Cartesian coordinates
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                Coordinates of the point(s) where the basis determined
+            coords (:class:`~numpy.ndarray`):
+                Coordinate system in which points are specified. Valid values are
+                `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
+
+        Returns:
+            (arrays of) vectors, which give the direction of the grid unit vectors
+            in Cartesian coordinates.
+        """
+        points = self.transform(points, coords, "grid", full=True)
+        φ = points[..., 2]  # coordinates are given as (r, z, φ)
+        sinφ, cosφ = np.sin(φ), np.cos(φ)
+        zero = np.zeros_like(φ)
+        return np.array(
+            [
+                [cosφ, sinφ, zero],  # unit vector in r-direction
+                [zero, zero, np.ones_like(φ)],  # unit vector in z-direction
+                [-sinφ, cosφ, zero],  # unit vector in φ-direction
+            ]
+        )
 
     def slice(self, indices: Sequence[int]) -> CartesianGrid | PolarSymGrid:
         """return a subgrid of only the specified axes

@@ -386,7 +386,7 @@ class CartesianGrid(GridBase):
             "label_y": self.axes[1],
         }
 
-    def get_vector_data(self, data: np.ndarray) -> dict[str, Any]:
+    def get_vector_data(self, data: np.ndarray, **kwargs) -> dict[str, Any]:
         if self.dim != 2:
             raise DimensionError("Vector data only available for dim==2")
         if data.shape != (2,) + self.shape:
@@ -422,12 +422,16 @@ class CartesianGrid(GridBase):
         assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
         return points
 
-    def point_from_cartesian(self, coords: np.ndarray) -> np.ndarray:
+    def point_from_cartesian(
+        self, coords: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert points given in Cartesian coordinates to this grid
 
         Args:
             coords (:class:`~numpy.ndarray`):
                 Points in Cartesian coordinates.
+            full (bool):
+                Compatibility option not used in this method
 
         Returns:
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid
@@ -530,6 +534,35 @@ class CartesianGrid(GridBase):
             )
 
         return self.normalize_point(coords, reflect=False)
+
+    def scale_factors(self) -> np.ndarray:
+        """:class:`~numpy.ndarray`: scale factors for each cell"""
+        return np.ones((self.dim,) + self.shape)
+
+    def _get_basis(
+        self, points: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        """returns the basis vectors of the grid in Cartesian coordinates
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                Coordinates of the point(s) where the basis determined
+            coords (:class:`~numpy.ndarray`):
+                Coordinate system in which points are specified. Valid values are
+                `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
+
+        Returns:
+            (arrays of) vectors, which give the direction of the grid unit vectors
+            in Cartesian coordinates.
+        """
+        points = np.asanyarray(points)
+        if points.shape[-1] != self.dim:
+            raise DimensionError(f"`points` must have {self.dim} coordinates")
+        shape = points.shape[:-1]
+        basis = np.zeros((self.dim, self.dim) + shape)
+        for i in range(self.dim):
+            basis[i, i, ...] = 1
+        return basis
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):

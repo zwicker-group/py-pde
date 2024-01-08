@@ -31,6 +31,7 @@ import numpy as np
 from numba.extending import is_jitted
 from numba.extending import overload as nb_overload
 from numba.extending import register_jitable
+from numpy.typing import ArrayLike
 
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
@@ -560,6 +561,24 @@ class GridBase(metaclass=ABCMeta):
         diff = self.difference_vector_real(p1, p2)
         return np.linalg.norm(diff, axis=-1)  # type: ignore
 
+    def _get_basis(
+        self, points: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        """returns the basis vectors of the grid in Cartesian coordinates
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                Coordinates of the point(s) where the basis determined
+            coords (:class:`~numpy.ndarray`):
+                Coordinate system in which points are specified. Valid values are
+                `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
+
+        Returns:
+            (arrays of) vectors, which give the direction of the grid unit vectors
+            in Cartesian coordinates.
+        """
+        raise NotImplementedError
+
     def _iter_boundaries(self) -> Iterator[tuple[int, bool]]:
         """iterate over all boundaries of the grid
 
@@ -615,23 +634,60 @@ class GridBase(metaclass=ABCMeta):
             points (:class:`~numpy.ndarray`):
                 The grid coordinates of the points
             full (bool):
-                Flag indicating whether angular coordinates are specified
+                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
 
     @abstractmethod
-    def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
+    def point_from_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
         """convert points given in Cartesian coordinates to grid coordinates
 
         Args:
             points (:class:`~numpy.ndarray`):
                 Points given in Cartesian coordinates.
+            full (bool):
+                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid
         """
+
+    def _vector_to_cartesian(
+        self, points: ArrayLike, components: ArrayLike, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        """convert the vectors at given points into a Cartesian basis
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                The coordinates of the point(s) where the vectors are specified.
+            components (:class:`~numpy.ndarray`):
+                The components of the vectors at the given points
+            coords (:class:`~numpy.ndarray`):
+                The coordinate system in which the point is specified. Valid values are
+                `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
+
+        Returns:
+            The vectors specified at the same position but with components given in
+            Cartesian coordinates
+        """
+        points = np.asanyarray(points)
+        components = np.asanyarray(components)
+        # check input shapes
+        if points.shape[-1] != self.dim:
+            raise DimensionError(f"`points` must have {self.dim} coordinates")
+        shape = points.shape[:-1]  # shape of array describing the different points
+        vec_shape = (self.dim,) + shape
+        if components.shape != vec_shape:
+            raise DimensionError(f"`components` must have shape {vec_shape}")
+
+        # convert the basis of the vectors to Cartesian
+        basis = self._get_basis(points, coords=coords)
+        assert basis.shape == (self.dim, self.dim) + shape
+        return np.einsum("j...,ji...->i...", components, basis)  # type: ignore
 
     def normalize_point(
         self, point: np.ndarray, *, reflect: bool = False
@@ -730,7 +786,12 @@ class GridBase(metaclass=ABCMeta):
             return cells  # type: ignore
 
     def transform(
-        self, coordinates: np.ndarray, source: CoordsType, target: CoordsType
+        self,
+        coordinates: np.ndarray,
+        source: CoordsType,
+        target: CoordsType,
+        *,
+        full: bool = False,
     ) -> np.ndarray:
         """converts coordinates from one coordinate system to another
 
@@ -765,10 +826,15 @@ class GridBase(metaclass=ABCMeta):
                 The source coordinate system
             target (str):
                 The target coordinate system
+            full (bool):
+                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: The transformed coordinates
         """
+        if full and (source == "cell" or target == "cell"):
+            raise ValueError("Cannot tranform cell coordinates with `full=True`")
+
         if source == "cartesian":
             # Cartesian coordinates given
             cartesian = np.atleast_1d(coordinates)
@@ -779,7 +845,7 @@ class GridBase(metaclass=ABCMeta):
                 return coordinates
 
             # convert Cartesian coordinates to grid coordinates
-            grid_coords = self.point_from_cartesian(cartesian)
+            grid_coords = self.point_from_cartesian(cartesian, full=full)
 
             if target == "grid":
                 return grid_coords
@@ -807,11 +873,13 @@ class GridBase(metaclass=ABCMeta):
         elif source == "grid":
             # Grid coordinates given
             grid_coords = np.atleast_1d(coordinates)
-            if grid_coords.shape[-1] != self.num_axes:
+            if full and grid_coords.shape[-1] != self.dim:
+                raise DimensionError(f"Require {self.dim} grid coordinates")
+            if not full and grid_coords.shape[-1] != self.num_axes:
                 raise DimensionError(f"Require {self.num_axes} grid coordinates")
 
             if target == "cartesian":
-                return self.point_to_cartesian(grid_coords, full=False)
+                return self.point_to_cartesian(grid_coords, full=full)
             elif target == "cell":
                 return self._grid_to_cell(grid_coords, truncate=False, normalize=False)
             elif target == "grid":
@@ -941,17 +1009,40 @@ class GridBase(metaclass=ABCMeta):
         """
         raise NotImplementedError
 
-    def get_vector_data(self, data: np.ndarray) -> dict[str, Any]:
-        """return data to visualize vector field
+    def get_vector_data(self, data: np.ndarray, **kwargs) -> dict[str, Any]:
+        r"""return data to visualize vector field
 
         Args:
             data (:class:`~numpy.ndarray`):
                 The vectorial values at the grid points
+            \**kwargs:
+                Arguments forwarded to
+                :meth:`~pde.grids.base.GridBase.get_image_data`.
 
         Returns:
             dict: A dictionary with information about the data convenient for plotting.
         """
-        raise NotImplementedError
+        if self.dim != 2:
+            raise DimensionError("Can only plot generic vector fields for dim=2")
+        if data.shape != (self.dim,) + self.shape:
+            raise ValueError(
+                f"Shape {data.shape} of the data array is not compatible with grid "
+                f"shape {self.shape}"
+            )
+
+        # obtain the correctly interpolated components of the vector in grid coordinates
+        img_coord0 = self.get_image_data(data[0], **kwargs)
+        img_coord1 = self.get_image_data(data[1], **kwargs)
+
+        # convert vectors to cartesian coordinates
+        img_data = img_coord0
+        img_data["data_x"], img_data["data_y"] = self._vector_to_cartesian(
+            np.stack((img_coord0["xs"], img_coord0["ys"]), axis=-1),
+            [img_coord0["data"], img_coord1["data"]],
+            coords="cartesian",
+        )
+        img_data.pop("data")
+        return img_data
 
     def get_random_point(
         self,

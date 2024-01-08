@@ -255,14 +255,9 @@ def test_interpolation_to_grid_fields(ndim):
     """test whether data is interpolated correctly for different fields"""
     grid = CartesianGrid([[0, 2 * np.pi]] * ndim, 6)
     grid2 = CartesianGrid([[0, 2 * np.pi]] * ndim, 8)
-    if ndim == 1:
-        vf = VectorField.from_expression(grid, ["cos(x)"])
-    elif ndim == 2:
-        vf = VectorField.from_expression(grid, ["sin(y)", "cos(x)"])
-    sf = vf[0]  # test extraction of fields
-    fc = FieldCollection([sf, vf])
+    fc = FieldCollection.from_scalar_expressions(grid, ["cos(x)", "sin(x)"])
 
-    for f in [sf, vf, fc]:
+    for f in [fc[0], fc]:
         # test self-interpolation
         f0 = f.interpolate_to_grid(grid)
         np.testing.assert_allclose(f.data, f0.data, atol=1e-15)
@@ -334,9 +329,8 @@ def test_interpolation_ghost_cells():
 def test_interpolation_to_cartesian(grid):
     """test whether data is interpolated correctly to Cartesian grid"""
     dim = grid.dim
-    vf = VectorField(grid, 2)
-    sf = vf[0]  # test extraction of fields
-    fc = FieldCollection([sf, vf])
+    sf = ScalarField(grid, 2)
+    fc = FieldCollection([sf, sf])
 
     # subset
     grid_cart = UnitGrid([4] * dim)

@@ -22,7 +22,6 @@ from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..grids.boundaries.axes import BoundariesData
-from ..grids.cartesian import CartesianGrid
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
@@ -1350,7 +1349,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         bc: BoundariesData | None = None,
         fill: Number | None = None,
-    ) -> NumberOrArray:
+    ) -> np.ndarray:
         r"""interpolate the field to points between support points
 
         Args:
@@ -1405,33 +1404,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Field of the same rank as the current one.
         """
-        if self.grid.dim != grid.dim:
-            raise DimensionError(
-                f"Grid dimensions are incompatible "
-                f"({self.grid.dim:d} != {grid.dim:d})"
-            )
-
-        # determine the points at which data needs to be calculated
-        if isinstance(grid, CartesianGrid):
-            # convert Cartesian coordinates to coordinates in current grid
-            points = self.grid.transform(grid.cell_coords, "cartesian", "grid")
-
-        elif (
-            self.grid.__class__ is grid.__class__
-            and self.grid.num_axes == grid.num_axes
-        ):
-            # convert within the same grid class
-            points = grid.cell_coords
-
-        else:
-            # this type of interpolation is not supported
-            grid_in = self.grid.__class__.__name__
-            grid_out = grid.__class__.__name__
-            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
-
-        # interpolate the data to the grid
-        data = self.interpolate(points, fill=fill)
-        return self.__class__(grid, data, label=label)
+        raise NotImplementedError(f"Cannot interpolate {self.__class__.__name__}")
 
     def insert(self, point: np.ndarray, amount: ArrayLike) -> None:
         """adds an (integrated) value to the field at an interpolated position
@@ -2066,7 +2039,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         ax,
         *,
         method: Literal["quiver", "streamplot"] = "quiver",
-        max_points: int = 16,
+        max_points: int | None = 16,
         **kwargs,
     ) -> PlotReference:
         r"""visualize a field using a 2d vector plot
@@ -2075,11 +2048,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ax (:class:`matplotlib.axes.Axes`):
                 Figure axes to be used for plotting.
             method (str):
-                Plot type that is used. This can be either `quiver` or
-                `streamplot`.
+                Plot type that is used. This can be either `quiver` or `streamplot`.
             max_points (int):
-                The maximal number of points that is used along each axis. This
-                argument is only used for quiver plots.
+                The maximal number of points that is used along each axis. This argument
+                is only used for quiver plots. `None` indicates all points are used.
             \**kwargs:
                 Additional keyword arguments are passed to
                 :meth:`~pde.field.base.DataFieldBase.get_vector_data` and

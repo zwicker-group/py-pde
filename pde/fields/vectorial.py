@@ -14,8 +14,9 @@ from numba.extending import overload, register_jitable
 from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, GridBase
+from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import get_common_dtype
+from ..tools.misc import Number, get_common_dtype
 from ..tools.numba import get_common_numba_dtype, jit
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
@@ -550,6 +551,61 @@ class VectorField(DataFieldBase):
         data["size"] = data["data_x"].size
 
         return data
+
+    def interpolate_to_grid(
+        self: VectorField,
+        grid: GridBase,
+        *,
+        fill: Number | None = None,
+        label: str | None = None,
+    ) -> VectorField:
+        """interpolate the data of this vector field to another grid.
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid of the new field onto which the current field is interpolated.
+            fill (Number, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            Field of the same rank as the current one.
+        """
+        if self.grid.dim != grid.dim:
+            raise DimensionError(
+                f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
+            )
+
+        # determine the points at which data needs to be calculated
+        if isinstance(grid, CartesianGrid):
+            # convert Cartesian coordinates to coordinates in current grid
+            points = self.grid.transform(
+                grid.cell_coords, "cartesian", "grid", full=True
+            )
+            # interpolate the data to the grid; this gives the vector in the grid basis
+            data_grid = self.interpolate(points[..., : self.grid.num_axes], fill=fill)
+            # convert the vector to the cartesian basis
+            data = self.grid._vector_to_cartesian(points, data_grid, coords="grid")
+
+        elif (
+            self.grid.__class__ is grid.__class__
+            and self.grid.num_axes == grid.num_axes
+        ):
+            # convert within the same grid class
+            points = grid.cell_coords
+            # vectors are already given in the correct basis
+            data = self.interpolate(points, fill=fill)
+
+        else:
+            # this type of interpolation is not supported
+            grid_in = self.grid.__class__.__name__
+            grid_out = grid.__class__.__name__
+            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
+
+        return self.__class__(grid, data, label=label)
 
     def _get_napari_layer_data(  # type: ignore
         self, max_points: int | None = None, args: dict[str, Any] | None = None
