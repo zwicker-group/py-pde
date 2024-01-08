@@ -1,10 +1,9 @@
 """
-Spherically-symmetric grids in 2 and 3 dimensions. These are grids that only
-discretize the radial direction, assuming symmetry with respect to all angles.
-This choice implies that differential operators might not be applicable to all fields.
-For instance, the divergence of a vector field on a spherical grid can only be
-represented as a scalar field on the same grid if the θ-component of the vector field
-vanishes.
+Spherically-symmetric grids in 2 and 3 dimensions. These are grids that only discretize
+the radial direction, assuming symmetry with respect to all angles. This choice implies
+that differential operators might not be applicable to all fields. For instance, the
+divergence of a vector field on a spherical grid can only be represented as a scalar
+field on the same grid if the θ-component of the vector field vanishes.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -377,20 +376,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         if with_self:
             yield np.asanyarray(point, dtype=np.double)
 
-    def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
-        """convert points given in Cartesian coordinates to this grid
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                Points given in Cartesian coordinates.
-
-        Returns:
-            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
-        """
-        points = np.atleast_1d(points)
-        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
-        return np.linalg.norm(points, axis=-1, keepdims=True)  # type: ignore
-
     def polar_coordinates_real(
         self, origin=None, *, ret_angle: bool = False, **kwargs
     ) -> np.ndarray | tuple[np.ndarray, ...]:
@@ -512,6 +497,30 @@ class PolarSymGrid(SphericalSymGridBase):
     axes_symmetric = ["phi"]
     coordinate_constraints = [0, 1]  # axes not described explicitly
 
+    def point_from_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
+        """convert points given in Cartesian coordinates to this grid
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                Points given in Cartesian coordinates.
+            full (bool):
+                Indicates whether coordinates along symmetric axes are specified
+
+        Returns:
+            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
+        """
+        points = np.atleast_1d(points)
+        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
+
+        rs = np.hypot(points[..., 0], points[..., 1])
+        if full:
+            φs = np.arctan2(points[..., 1], points[..., 0])
+            return np.stack((rs, φs), axis=-1)
+        else:
+            return rs[..., np.newaxis]
+
     def point_to_cartesian(
         self, points: np.ndarray, *, full: bool = False
     ) -> np.ndarray:
@@ -524,7 +533,7 @@ class PolarSymGrid(SphericalSymGridBase):
             points (:class:`~numpy.ndarray`):
                 The grid coordinates of the points
             full (bool):
-                Flag indicating whether angular coordinates are specified
+                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
@@ -548,28 +557,32 @@ class PolarSymGrid(SphericalSymGridBase):
 
         return np.stack((x, y), axis=-1)
 
-    def get_vector_data(self, data: np.ndarray, **kwargs) -> dict[str, Any]:
-        r"""return data to visualize vector field
+    @cached_property()
+    def scale_factors(self) -> np.ndarray:
+        """:class:`~numpy.ndarray`: scale factors for each cell"""
+        r = self.coordinate_arrays[0]
+        return np.array([np.ones_like(r), r])
+
+    def _get_basis(
+        self, points: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        """returns the basis vectors of the grid in Cartesian coordinates
 
         Args:
-            data (:class:`~numpy.ndarray`):
-                The vectorial values at the grid points
-            \**kwargs:
-                Arguments forwarded to
-                :meth:`~pde.grids.spherical.SphericalSymGridBase.get_image_data`.
-        """
-        if data.shape != (2,) + self.shape:
-            raise ValueError(
-                f"Shape {data.shape} of the data array is not compatible with grid "
-                f"shape {self.shape}"
-            )
+            points (:class:`~numpy.ndarray`):
+                Coordinates of the point(s) where the basis determined
+            coords (:class:`~numpy.ndarray`):
+                Coordinate system in which points are specified. Valid values are
+                `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
 
-        # convert radial components of vector to Cartesian grid
-        img_data = self.get_image_data(data[0], **kwargs)
-        φ_img = np.arctan2(img_data["ys"], img_data["xs"])
-        img_data["data_x"] = img_data["data"] * np.cos(φ_img)
-        img_data["data_y"] = img_data["data"] * np.sin(φ_img)
-        return img_data
+        Returns:
+            (arrays of) vectors, which give the direction of the grid unit vectors
+            in Cartesian coordinates.
+        """
+        points = self.transform(points, coords, "grid", full=True)
+        φ = points[..., 1]
+        sinφ, cosφ = np.sin(φ), np.cos(φ)
+        return np.array([[cosφ, sinφ], [-sinφ, cosφ]])
 
 
 class SphericalSymGrid(SphericalSymGridBase):
@@ -602,6 +615,32 @@ class SphericalSymGrid(SphericalSymGridBase):
     axes_symmetric = ["theta", "phi"]
     coordinate_constraints = [0, 1, 2]  # axes not described explicitly
 
+    def point_from_cartesian(
+        self, points: np.ndarray, *, full: bool = False
+    ) -> np.ndarray:
+        """convert points given in Cartesian coordinates to this grid
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                Points given in Cartesian coordinates.
+            full (bool):
+                Indicates whether coordinates along symmetric axes are specified
+
+        Returns:
+            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
+        """
+        points = np.atleast_1d(points)
+        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
+
+        rs = np.linalg.norm(points, axis=-1)
+        if full:
+            x, y, z = points[..., 0], points[..., 1], points[..., 2]
+            θs = np.arctan2(np.hypot(x, y), z)
+            φs = np.arctan2(y, x)
+            return np.stack((rs, θs, φs), axis=-1)
+        else:
+            return rs[..., np.newaxis]  # type: ignore
+
     def point_to_cartesian(
         self, points: np.ndarray, *, full: bool = False
     ) -> np.ndarray:
@@ -614,7 +653,7 @@ class SphericalSymGrid(SphericalSymGridBase):
             points (:class:`~numpy.ndarray`):
                 The grid coordinates of the points
             full (bool):
-                Flag indicating whether angular coordinates are specified
+                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
@@ -625,10 +664,12 @@ class SphericalSymGrid(SphericalSymGridBase):
             if points.shape[-1] != self.dim:
                 raise DimensionError(f"Shape {points.shape} cannot denote points")
 
-            rsinθ = points[..., 0] * np.sin(points[..., 1])
-            x = rsinθ * np.cos(points[..., 2])
-            y = rsinθ * np.sin(points[..., 2])
-            z = points[..., 0] * np.cos(points[..., 1])
+            r, θ, φ = points[..., 0], points[..., 1], points[..., 2]
+
+            rsinθ = r * np.sin(θ)
+            x = rsinθ * np.cos(φ)
+            y = rsinθ * np.sin(φ)
+            z = r * np.cos(θ)
 
         else:
             # angles are not supplied
@@ -638,3 +679,38 @@ class SphericalSymGrid(SphericalSymGridBase):
             x = y = np.zeros_like(z)
 
         return np.stack((x, y, z), axis=-1)
+
+    @cached_property()
+    def scale_factors(self) -> np.ndarray:
+        """:class:`~numpy.ndarray`: scale factors for each cell"""
+        r, θ = self.coordinate_arrays[0], self.coordinate_arrays[1]
+        return np.array([np.ones_like(r), r, r * np.sin(θ)])
+
+    def _get_basis(
+        self, points: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        """returns the basis vectors of the grid in Cartesian coordinates
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                Coordinates of the point(s) where the basis determined. All coordinates
+                need to be given.
+            coords (:class:`~numpy.ndarray`):
+                Coordinate system in which points are specified. Valid values are
+                `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
+
+        Returns:
+            (arrays of) vectors, which give the direction of the grid unit vectors
+            in Cartesian coordinates.
+        """
+        points = self.transform(points, coords, "grid", full=True)
+        θ, φ = points[..., 1], points[..., 2]
+        sinθ, cosθ = np.sin(θ), np.cos(θ)
+        sinφ, cosφ = np.sin(φ), np.cos(φ)
+        return np.array(
+            [
+                [cosφ * sinθ, sinφ * sinθ, cosθ],
+                [cosφ * cosθ, sinφ * cosθ, -sinθ],
+                [-sinφ, cosφ, np.zeros_like(θ)],
+            ]
+        )
