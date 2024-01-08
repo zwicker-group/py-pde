@@ -15,13 +15,13 @@ from numpy.typing import DTypeLike
 
 from ..grids import CartesianGrid, UnitGrid
 from ..grids.base import DimensionError, DomainError, GridBase
+from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData
     from .vectorial import VectorField
 
 
@@ -446,10 +446,12 @@ class ScalarField(DataFieldBase):
 
         return ScalarField(grid=self.grid, data=data, label=label)
 
+    @fill_in_docstring
     def interpolate_to_grid(
         self: ScalarField,
         grid: GridBase,
         *,
+        bc: BoundariesData | None = None,
         fill: Number | None = None,
         label: str | None = None,
     ) -> ScalarField:
@@ -458,6 +460,11 @@ class ScalarField(DataFieldBase):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid of the new field onto which the current field is interpolated.
+            bc:
+                The boundary conditions applied to the field, which affects values close
+                to the boundary. If omitted, the argument `fill` is used to determine
+                values outside the domain.
+                {ARG_BOUNDARIES_OPTIONAL}
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -492,7 +499,7 @@ class ScalarField(DataFieldBase):
             raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
 
         # interpolate the data to the grid
-        data = self.interpolate(points, fill=fill)
+        data = self.interpolate(points, bc=bc, fill=fill)
         return self.__class__(grid, data, label=label)
 
     @fill_in_docstring

@@ -1381,10 +1381,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # do the actual interpolation
         return interpolator(np.asarray(point))  # type: ignore
 
+    @fill_in_docstring
     def interpolate_to_grid(
         self: TDataField,
         grid: GridBase,
         *,
+        bc: BoundariesData | None = None,
         fill: Number | None = None,
         label: str | None = None,
     ) -> TDataField:
@@ -1394,6 +1396,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
+            bc:
+                The boundary conditions applied to the field, which affects values close
+                to the boundary. If omitted, the argument `fill` is used to determine
+                values outside the domain.
+                {ARG_BOUNDARIES_OPTIONAL}
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.

@@ -513,7 +513,7 @@ class GridBase(metaclass=ABCMeta):
             return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
     def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return vector(s) pointing from p1 to p2
+        """return Cartesian vector(s) pointing from p1 to p2
 
         In case of periodic boundary conditions, the shortest vector is returned.
 
@@ -925,7 +925,6 @@ class GridBase(metaclass=ABCMeta):
         cell_coords = self.transform(points, source=coords, target="cell")
         return np.all((0 <= cell_coords) & (cell_coords <= self.shape), axis=-1)  # type: ignore
 
-    @abstractmethod
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
@@ -942,6 +941,9 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             A generator yielding the coordinates that correspond to mirrors
         """
+        # the default implementation does not know about mirror points
+        if with_self:
+            yield np.asanyarray(point, dtype=np.double)
 
     @fill_in_docstring
     def get_boundary_conditions(

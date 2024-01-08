@@ -14,6 +14,7 @@ from numba.extending import overload, register_jitable
 from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, GridBase
+from ..grids.boundaries.axes import BoundariesData
 from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, get_common_dtype
@@ -23,7 +24,6 @@ from .base import DataFieldBase
 from .scalar import ScalarField
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData
     from .tensorial import Tensor2Field
 
 
@@ -552,10 +552,12 @@ class VectorField(DataFieldBase):
 
         return data
 
+    @fill_in_docstring
     def interpolate_to_grid(
         self: VectorField,
         grid: GridBase,
         *,
+        bc: BoundariesData | None = None,
         fill: Number | None = None,
         label: str | None = None,
     ) -> VectorField:
@@ -564,6 +566,11 @@ class VectorField(DataFieldBase):
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid of the new field onto which the current field is interpolated.
+            bc:
+                The boundary conditions applied to the field, which affects values close
+                to the boundary. If omitted, the argument `fill` is used to determine
+                values outside the domain.
+                {ARG_BOUNDARIES_OPTIONAL}
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -586,7 +593,8 @@ class VectorField(DataFieldBase):
                 grid.cell_coords, "cartesian", "grid", full=True
             )
             # interpolate the data to the grid; this gives the vector in the grid basis
-            data_grid = self.interpolate(points[..., : self.grid.num_axes], fill=fill)
+            points_grid_sym = points[..., : self.grid.num_axes]
+            data_grid = self.interpolate(points_grid_sym, bc=bc, fill=fill)
             # convert the vector to the cartesian basis
             data = self.grid._vector_to_cartesian(points, data_grid, coords="grid")
 
@@ -597,7 +605,7 @@ class VectorField(DataFieldBase):
             # convert within the same grid class
             points = grid.cell_coords
             # vectors are already given in the correct basis
-            data = self.interpolate(points, fill=fill)
+            data = self.interpolate(points, bc=bc, fill=fill)
 
         else:
             # this type of interpolation is not supported
