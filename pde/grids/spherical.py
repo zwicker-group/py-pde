@@ -11,7 +11,7 @@ field on the same grid if the θ-component of the vector field vanishes.
 from __future__ import annotations
 
 from abc import ABCMeta
-from typing import TYPE_CHECKING, Any, Generator, Literal, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 
@@ -356,25 +356,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             "label_x": "x",
             "label_y": "y",
         }
-
-    def iter_mirror_points(
-        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
-    ) -> Generator:
-        """generates all mirror points corresponding to `point`
-
-        Args:
-            point (:class:`~numpy.ndarray`):
-                The point within the grid
-            with_self (bool):
-                Whether to include the point itself
-            only_periodic (bool):
-                Whether to only mirror along periodic axes
-
-        Returns:
-            A generator yielding the coordinates that correspond to mirrors
-        """
-        if with_self:
-            yield np.asanyarray(point, dtype=np.double)
 
     def polar_coordinates_real(
         self, origin=None, *, ret_angle: bool = False, **kwargs
