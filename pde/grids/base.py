@@ -574,8 +574,8 @@ class GridBase(metaclass=ABCMeta):
                 `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
 
         Returns:
-            (arrays of) vectors, which give the direction of the grid unit vectors
-            in Cartesian coordinates.
+            :class:`~numpy.ndarray`: Arrays of vectors giving the direction of the grid
+                unit vectors in Cartesian coordinates.
         """
         raise NotImplementedError
 

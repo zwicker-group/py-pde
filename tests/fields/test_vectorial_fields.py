@@ -307,6 +307,9 @@ def test_interpolation_vector_fields_cylindrical():
     np.testing.assert_allclose(vf_cart.data[1], y + x / r)
     np.testing.assert_allclose(vf_cart.data[2], z)
 
+    vf2 = vf.interpolate_to_grid(grid)
+    np.testing.assert_allclose(vf.data, vf2.data)
+
 
 def test_interpolation_vector_fields_polar():
     """test interpolation of a vector field on polar coordinates"""
@@ -319,6 +322,9 @@ def test_interpolation_vector_fields_polar():
     r = np.hypot(x, y)
     np.testing.assert_allclose(vf_cart.data[0], x - y / r)
     np.testing.assert_allclose(vf_cart.data[1], y + x / r)
+
+    vf2 = vf.interpolate_to_grid(grid)
+    np.testing.assert_allclose(vf.data, vf2.data)
 
 
 def test_interpolation_vector_fields_spherical():
@@ -334,3 +340,6 @@ def test_interpolation_vector_fields_spherical():
     np.testing.assert_allclose(vf_cart.data[0], x + x * z / d / r - y * r / d)
     np.testing.assert_allclose(vf_cart.data[1], y + y * z / d / r + x * r / d)
     np.testing.assert_allclose(vf_cart.data[2], z - d / r)
+
+    vf2 = vf.interpolate_to_grid(grid)
+    np.testing.assert_allclose(vf.data, vf2.data)
