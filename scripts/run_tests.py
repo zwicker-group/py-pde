@@ -214,7 +214,14 @@ def run_unit_tests(
     args.append("tests")
 
     # actually run the test
-    return sp.run(args, env=env, cwd=PACKAGE_PATH).returncode
+    retcode = sp.run(args, env=env, cwd=PACKAGE_PATH).returncode
+
+    # delete intermediate coverage files, which are sometimes left behind
+    if coverage:
+        for p in Path("..").glob(".coverage*"):
+            p.unlink()
+
+    return retcode
 
 
 def main() -> int:
