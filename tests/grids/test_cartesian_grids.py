@@ -100,7 +100,7 @@ def test_unit_grid_1d(periodic, rng):
     p = rng.random(1) * grid.shape
     d, a = grid.polar_coordinates_real(p, ret_angle=True)
     c2 = grid.from_polar_coordinates(d, a, p)
-    assert np.allclose(grid.distance_real(c1, c2), 0)
+    assert np.allclose(grid.distance(c1, c2), 0)
 
     # test boundary points
     np.testing.assert_equal(grid._boundary_coordinates(0, False), np.array([0]))
@@ -138,7 +138,7 @@ def test_unit_grid_2d(rng):
     p = rng.random(2) * grid.shape
     d, a = grid.polar_coordinates_real(p, ret_angle=True)
     c2 = grid.from_polar_coordinates(d, a, p)
-    assert np.allclose(grid.distance_real(c1, c2), 0)
+    assert np.allclose(grid.distance(c1, c2), 0)
 
     # test boundary points
     np.testing.assert_equal(
@@ -221,7 +221,7 @@ def test_rect_grid_1d(rng):
         p = rng.random(1) * grid.shape
         d, a = grid.polar_coordinates_real(p, ret_angle=True)
         c2 = grid.from_polar_coordinates(d, a, p)
-        assert np.allclose(grid.distance_real(c1, c2), 0)
+        assert np.allclose(grid.distance(c1, c2), 0)
 
 
 def test_rect_grid_2d(rng):
@@ -252,7 +252,7 @@ def test_rect_grid_2d(rng):
     d, a = grid.polar_coordinates_real(p, ret_angle=True)
     c2 = grid.from_polar_coordinates(d, a, p)
 
-    assert np.allclose(grid.distance_real(c1, c2), 0)
+    assert np.allclose(grid.distance(c1, c2), 0)
 
 
 def test_rect_grid_3d(rng):
@@ -297,7 +297,7 @@ def test_unit_rect_grid(periodic, rng):
 
     for _ in range(10):
         p1, p2 = rng.normal(scale=10, size=(2, dim))
-        assert g1.distance_real(p1, p2) == pytest.approx(g2.distance_real(p1, p2))
+        assert g1.distance(p1, p2) == pytest.approx(g2.distance(p1, p2))
 
     p0 = rng.normal(scale=10, size=dim)
     np.testing.assert_allclose(

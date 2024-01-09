@@ -512,54 +512,110 @@ class GridBase(metaclass=ABCMeta):
         else:
             return all(np.asarray(vols).ndim == 0 for vols in self.cell_volume_data)
 
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+    def _difference_vector(
+        self,
+        p1: np.ndarray,
+        p2: np.ndarray,
+        *,
+        coords: CoordsType,
+        periodic: Sequence[bool],
+        axes_bounds: tuple[tuple[float, float], ...] | None,
+    ) -> np.ndarray:
         """return Cartesian vector(s) pointing from p1 to p2
 
         In case of periodic boundary conditions, the shortest vector is returned.
-
-        Warning:
-            This function assumes a Cartesian coordinate system and might thus not work
-            for curvilinear coordinates.
 
         Args:
             p1 (:class:`~numpy.ndarray`):
                 First point(s)
             p2 (:class:`~numpy.ndarray`):
                 Second point(s)
+            coords (str):
+                The coordinate system in which the points are specified.
+            periodic (sequence of bool):
+                Indicates which cartesian axes are periodic
+            axes_bounds (sequence of pair of floats):
+                Indicates the bounds of the cartesian axes
 
         Returns:
             :class:`~numpy.ndarray`: The difference vectors between the points with
-            periodic  boundary conditions applied.
+            periodic boundary conditions applied.
         """
-        diff = np.atleast_1d(p2) - np.atleast_1d(p1)
-        assert diff.shape[-1] == self.num_axes
+        x1 = self.transform(p1, source=coords, target="cartesian")
+        x2 = self.transform(p2, source=coords, target="cartesian")
+        if axes_bounds is None:
+            axes_bounds = self.axes_bounds
 
-        for i, periodic in enumerate(self.periodic):
-            if periodic:
-                size = self.axes_bounds[i][1] - self.axes_bounds[i][0]
+        diff = np.atleast_1d(x2) - np.atleast_1d(x1)
+        assert diff.shape[-1] == self.dim
+
+        for i, per in enumerate(periodic):
+            if per:
+                size = axes_bounds[i][1] - axes_bounds[i][0]
                 diff[..., i] = (diff[..., i] + size / 2) % size - size / 2
         return diff  # type: ignore
 
-    def distance_real(self, p1: np.ndarray, p2: np.ndarray) -> float:
+    def difference_vector(
+        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        """return Cartesian vector(s) pointing from p1 to p2
+
+        In case of periodic boundary conditions, the shortest vector is returned.
+
+        Args:
+            p1 (:class:`~numpy.ndarray`):
+                First point(s)
+            p2 (:class:`~numpy.ndarray`):
+                Second point(s)
+            coords (str):
+                The coordinate system in which the points are specified. Valid values are
+                `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
+
+        Returns:
+            :class:`~numpy.ndarray`: The difference vectors between the points with
+            periodic boundary conditions applied.
+        """
+        return self._difference_vector(
+            p1, p2, coords=coords, periodic=[False] * self.dim, axes_bounds=None
+        )
+
+    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
+        # deprecated on 2024-01-09
+        warnings.warn(
+            "`difference_vector_real` has been renamed to `difference_vector`",
+            DeprecationWarning,
+        )
+        return self.difference_vector(p1, p2)
+
+    def distance(
+        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> float:
         """Calculate the distance between two points given in real coordinates
 
         This takes periodic boundary conditions into account if necessary.
-
-        Warning:
-            This function calculates the Euclidean distance and might thus give wrong
-            results for coordinates given in curvilinear coordinate systems.
 
         Args:
             p1 (:class:`~numpy.ndarray`):
                 First position
             p2 (:class:`~numpy.ndarray`):
                 Second position
+            coords (str):
+                The coordinate system in which the points are specified. Valid values are
+                `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
 
         Returns:
             float: Distance between the two positions
         """
-        diff = self.difference_vector_real(p1, p2)
+        diff = self.difference_vector(p1, p2, coords=coords)
         return np.linalg.norm(diff, axis=-1)  # type: ignore
+
+    def distance_real(self, p1: np.ndarray, p2: np.ndarray) -> float:
+        # deprecated on 2024-01-09
+        warnings.warn(
+            "`distance_real` has been renamed to `distance`",
+            DeprecationWarning,
+        )
+        return self.distance(p1, p2)
 
     def _get_basis(
         self, points: np.ndarray, *, coords: CoordsType = "grid"
@@ -569,7 +625,7 @@ class GridBase(metaclass=ABCMeta):
         Args:
             points (:class:`~numpy.ndarray`):
                 Coordinates of the point(s) where the basis determined
-            coords (:class:`~numpy.ndarray`):
+            coords (str):
                 Coordinate system in which points are specified. Valid values are
                 `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
 
@@ -666,7 +722,7 @@ class GridBase(metaclass=ABCMeta):
                 The coordinates of the point(s) where the vectors are specified.
             components (:class:`~numpy.ndarray`):
                 The components of the vectors at the given points
-            coords (:class:`~numpy.ndarray`):
+            coords (str):
                 The coordinate system in which the point is specified. Valid values are
                 `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
 
@@ -753,38 +809,6 @@ class GridBase(metaclass=ABCMeta):
 
         return point
 
-    def _grid_to_cell(
-        self, grid_coords: np.ndarray, *, truncate: bool = True, normalize: bool = False
-    ) -> np.ndarray:
-        """convert grid coordinates to cell coordinates
-
-        Args:
-            grid_coords (:class:`~numpy.ndarray`):
-                The grid coordinates to convert
-            truncate (bool):
-                Flag indicating whether the resulting cell coordinates are integers
-                marking what cell the point belongs to or whether fractional coordinates
-                are returned. The default is to return integers.
-            normalize (bool):
-                Flag indicating whether the points should be normalized, e.g., whether
-                periodic boundary conditions should be imposed.
-
-        Returns:
-            :class:`~numpy.ndarray`: The cell coordinates
-        """
-        if normalize:
-            coords = self.normalize_point(grid_coords)
-        else:
-            coords = np.atleast_1d(grid_coords)
-
-        # convert from grid coordinates to cells indices
-        c_min = np.array(self.axes_bounds)[:, 0]
-        cells = (coords - c_min) / self.discretization
-        if truncate:
-            return cells.astype(int)  # type: ignore
-        else:
-            return cells  # type: ignore
-
     def transform(
         self,
         coordinates: np.ndarray,
@@ -850,7 +874,8 @@ class GridBase(metaclass=ABCMeta):
             if target == "grid":
                 return grid_coords
             if target == "cell":
-                return self._grid_to_cell(grid_coords, truncate=False, normalize=False)
+                c_min = np.array(self.axes_bounds)[:, 0]
+                return (grid_coords - c_min) / self.discretization  # type: ignore
 
         elif source == "cell":
             # Cell coordinates given
@@ -881,7 +906,8 @@ class GridBase(metaclass=ABCMeta):
             if target == "cartesian":
                 return self.point_to_cartesian(grid_coords, full=full)
             elif target == "cell":
-                return self._grid_to_cell(grid_coords, truncate=False, normalize=False)
+                c_min = np.array(self.axes_bounds)[:, 0]
+                return (grid_coords - c_min) / self.discretization  # type: ignore
             elif target == "grid":
                 return grid_coords
 
@@ -889,7 +915,6 @@ class GridBase(metaclass=ABCMeta):
             raise ValueError(f"Unknown source coordinates `{source}`")
         raise ValueError(f"Unknown target coordinates `{target}`")
 
-    @abstractmethod
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
     ) -> np.ndarray | tuple[np.ndarray, ...]:
@@ -903,6 +928,7 @@ class GridBase(metaclass=ABCMeta):
                 `False` only the distance to the origin is returned for each support
                 point of the grid. If `True`, the distance and angles are returned.
         """
+        raise NotImplementedError
 
     def contains_point(
         self,

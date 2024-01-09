@@ -10,6 +10,7 @@ field on the same grid if the θ-component of the vector field vanishes.
 
 from __future__ import annotations
 
+import warnings
 from abc import ABCMeta
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
@@ -371,6 +372,10 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
                 point of the grid. If `True`, the distance and angles are returned. Note
                 that in the case of spherical grids, this angle is zero by convention.
         """
+        # deprecated on 2024-01-09
+        warnings.warn(
+            "`polar_coordinates_real` will be removed soon", DeprecationWarning
+        )
         # check the consistency of the origin argument, which can be set for other grids
         if origin is not None:
             origin = np.array(origin, dtype=np.double, ndmin=1)

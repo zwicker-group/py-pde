@@ -7,6 +7,7 @@ Cartesian grids of arbitrary dimension.
 from __future__ import annotations
 
 import itertools
+import warnings
 from typing import TYPE_CHECKING, Any, Generator, Sequence
 
 import numpy as np
@@ -283,6 +284,13 @@ class CartesianGrid(GridBase):
         else:
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
+    def difference_vector(
+        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        return self._difference_vector(
+            p1, p2, coords=coords, periodic=self.periodic, axes_bounds=self.axes_bounds
+        )
+
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
         """return a line cut through the given data
 
@@ -461,12 +469,16 @@ class CartesianGrid(GridBase):
             :class:`~numpy.ndarray` or tuple of :class:`~numpy.ndarray`:
                 Coordinates values in polar coordinates
         """
+        # deprecated on 2024-01-09
+        warnings.warn(
+            "`polar_coordinates_real` will be removed soon", DeprecationWarning
+        )
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
             raise DimensionError("Dimensions are not compatible")
 
         # calculate the difference vector between all cells and the origin
-        diff = self.difference_vector_real(origin, self.cell_coords)
+        diff = self.difference_vector(origin, self.cell_coords)
         dist: np.ndarray = np.linalg.norm(diff, axis=-1)  # get distance
 
         # determine distance and optionally angles for these vectors
