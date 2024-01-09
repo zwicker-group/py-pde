@@ -6,6 +6,7 @@ Cylindrical grids with azimuthal symmetry
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any, Generator, Literal, Sequence
 
 import numpy as np
@@ -268,6 +269,13 @@ class CylindricalSymGrid(GridBase):
         else:
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
+    def difference_vector(
+        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        return self._difference_vector(
+            p1, p2, coords=coords, periodic=self.periodic, axes_bounds=self.axes_bounds
+        )
+
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
         """return a line cut for the cylindrical grid
 
@@ -459,6 +467,10 @@ class CylindricalSymGrid(GridBase):
                 each support point of the grid. If `True`, the distance and angles are
                 returned.
         """
+        # deprecated on 2024-01-09
+        warnings.warn(
+            "`polar_coordinates_real` will be removed soon", DeprecationWarning
+        )
         origin = np.array(origin, dtype=np.double, ndmin=1)
         if len(origin) != self.dim:
             raise DimensionError("Dimensions are not compatible")
@@ -467,7 +479,7 @@ class CylindricalSymGrid(GridBase):
             raise RuntimeError("Origin must lie on symmetry axis for cylindrical grid")
 
         # calculate the difference vector between all cells and the origin
-        diff = self.difference_vector_real(np.array([0, origin[2]]), self.cell_coords)
+        diff = self.difference_vector(np.array([0, origin[2]]), self.cell_coords)
         dist: np.ndarray = np.linalg.norm(diff, axis=-1)  # get distance
 
         if ret_angle:
