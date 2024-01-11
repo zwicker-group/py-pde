@@ -405,3 +405,18 @@ def test_generic_operators(method, rng):
     if method == "central":
         op3 = grid.make_operator("gradient", bc="periodic")
         np.testing.assert_allclose(expect, op3(data)[0])
+
+
+def test_boundary_coordinates():
+    """test _boundary_coordinates method"""
+    grid = UnitGrid([2, 2])
+
+    c = grid._boundary_coordinates(axis=0, upper=False)
+    np.testing.assert_allclose(c, [[0.0, 0.5], [0.0, 1.5]])
+    c = grid._boundary_coordinates(axis=0, upper=False, offset=0.5)
+    np.testing.assert_allclose(c, [[0.5, 0.5], [0.5, 1.5]])
+
+    c = grid._boundary_coordinates(axis=0, upper=True)
+    np.testing.assert_allclose(c, [[2.0, 0.5], [2.0, 1.5]])
+    c = grid._boundary_coordinates(axis=0, upper=True, offset=0.5)
+    np.testing.assert_allclose(c, [[1.5, 0.5], [1.5, 1.5]])
