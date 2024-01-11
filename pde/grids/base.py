@@ -645,7 +645,9 @@ class GridBase(metaclass=ABCMeta):
         """
         return itertools.product(range(self.num_axes), [True, False])
 
-    def _boundary_coordinates(self, axis: int, upper: bool) -> np.ndarray:
+    def _boundary_coordinates(
+        self, axis: int, upper: bool, *, offset: float = 0
+    ) -> np.ndarray:
         """get coordinates of points on the boundary
 
         Args:
@@ -653,6 +655,9 @@ class GridBase(metaclass=ABCMeta):
                 The axis perpendicular to the boundary
             upper (bool):
                 Whether the boundary is at the upper side of the axis
+            offset (float):
+                A distance by which the points will be moved away from the boundary.
+                Positive values move the points into the interior of the domain
 
         Returns:
             :class:`~numpy.ndarray`: Coordinates of the boundary points. This array has
@@ -660,9 +665,9 @@ class GridBase(metaclass=ABCMeta):
         """
         # get coordinate along the axis determining the boundary
         if upper:
-            c_bndry = np.array([self._axes_bounds[axis][1]])
+            c_bndry = np.array([self._axes_bounds[axis][1]]) - offset
         else:
-            c_bndry = np.array([self._axes_bounds[axis][0]])
+            c_bndry = np.array([self._axes_bounds[axis][0]]) + offset
 
         # get orthogonal coordinates
         coords = tuple(
