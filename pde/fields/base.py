@@ -1895,6 +1895,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         scalar: str = "auto",
         extract: str = "auto",
         ylabel: str | None = None,
+        ylim: tuple[float, float] | None = None,
         **kwargs,
     ) -> PlotReference:
         r"""visualize a field using a 1d line plot
@@ -1908,11 +1909,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             extract (str):
                 The method used for extracting the line data.
             ylabel (str):
-                Label of the y-axis. If omitted, the label is chosen
-                automatically from the data field.
+                Label of the y-axis. If omitted, the label is chosen automatically from
+                the data field.
+            ylim (tuple of float):
+                Limits of the y-axis. If omitted, the data range is used
             \**kwargs:
-                Additional keyword arguments are passed to
-                :func:`matplotlib.pyplot.plot`
+                Additional arguments are passed to :func:`matplotlib.pyplot.plot`
 
         Returns:
             :class:`PlotReference`: Instance that contains information to update
@@ -1934,8 +1936,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ylabel = line_data.get("label_y", self.label)
         if ylabel:
             ax.set_ylabel(ylabel)
+        if ylim is not None:
+            ax.set_ylim(ylim)
 
-        return PlotReference(ax, line2d, {"scalar": scalar, "extract": extract})
+        return PlotReference(
+            ax,
+            line2d,
+            {"scalar": scalar, "extract": extract, "ylabel": ylabel, "ylim": ylim},
+        )
 
     def _update_line_plot(self, reference: PlotReference) -> None:
         """update a line plot with the current field values
@@ -2179,26 +2187,26 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             * :code:`kind == "line"`:
 
-              - `scalar`: sets method for extracting scalars as described in
+              - `scalar`: Sets method for extracting scalars as described in
                 :meth:`DataFieldBase.to_scalar`.
-              - `extract`: method used for extracting the line data.
-              - `ylabel`: Label of the y-axis. If omitted, the label is chosen
-                automatically from the data field.
+              - `extract`: Method used for extracting the line data.
+              - `ylabel`: Label of the y-axis.
+              - `ylim`: Data limits of the y-axis.
               - Additional arguments are passed to :func:`matplotlib.pyplot.plot`
 
             * :code:`kind == "image"`:
 
               - `colorbar`: Determines whether a colorbar is shown
-              - `scalar`: sets method for extracting scalars as described in
+              - `scalar`: Sets method for extracting scalars as described in
                  :meth:`DataFieldBase.to_scalar`.
-              - `transpose` determines whether the transpose of the data is plotted
+              - `transpose` Determines whether the transpose of the data is plotted
               - Most remaining arguments are passed to :func:`matplotlib.pyplot.imshow`
 
             * :code:`kind == `"vector"`:
 
-              - `method` can be either `quiver` or `streamplot`
-              - `transpose` determines whether the transpose of the data is plotted
-              - `max_points` sets max. number of points along each axis in quiver plots
+              - `method` Can be either `quiver` or `streamplot`
+              - `transpose` Determines whether the transpose of the data is plotted
+              - `max_points` Sets max. number of points along each axis in quiver plots
               - Additional arguments are passed to :func:`matplotlib.pyplot.quiver` or
                 :func:`matplotlib.pyplot.streamplot`.
 
@@ -2212,7 +2220,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 and self.grid.dim == 2
             ):
                 kind = "vector"
-            elif len(self.grid.shape) == 1:
+            elif self.grid.num_axes == 1:
                 kind = "line"
             else:
                 kind = "image"

@@ -60,8 +60,11 @@ def test_simple_shapes(grid, rng):
     assert pf.grid == pf_c.grid
     assert pf.data is not pf_c.data
 
-    if module_available("matplotlib"):
-        pf.plot()  # simply test whether this does not cause errors
+    if grid.num_axes == 1:
+        ref = pf.plot(ylabel="My plot", ylim=(0, 1))
+    else:
+        ref = pf.plot(transpose=True, vmin=0, vmax=1)
+    pf._update_plot(ref)
 
 
 def test_scalars(rng):
@@ -88,8 +91,7 @@ def test_scalars(rng):
     assert s1.grid is not s2.grid
 
     # test options for plotting images
-    if module_available("matplotlib"):
-        s1.plot(transpose=True, colorbar=True)
+    s1.plot(transpose=True, colorbar=True)
 
     s3 = ScalarField(grid, s1)
     assert s1 is not s3
