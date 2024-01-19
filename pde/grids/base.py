@@ -861,9 +861,6 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: The transformed coordinates
         """
-        if full and (source == "cell" or target == "cell"):
-            raise ValueError("Cannot tranform cell coordinates with `full=True`")
-
         if source == "cartesian":
             # Cartesian coordinates given
             cartesian = np.atleast_1d(coordinates)
@@ -880,10 +877,16 @@ class GridBase(metaclass=ABCMeta):
                 return grid_coords
             if target == "cell":
                 c_min = np.array(self.axes_bounds)[:, 0]
+                if full:
+                    # remove the coordinates that are symmetric
+                    grid_coords = grid_coords[..., : self.num_axes]
                 return (grid_coords - c_min) / self.discretization  # type: ignore
 
         elif source == "cell":
             # Cell coordinates given
+            if full:
+                raise ValueError("Cell coordinates cannot be given with `full=True`")
+
             cells = np.atleast_1d(coordinates)
             if cells.shape[-1] != self.num_axes:
                 raise DimensionError(f"Require {self.num_axes} cell coordinates")
@@ -912,6 +915,9 @@ class GridBase(metaclass=ABCMeta):
                 return self.point_to_cartesian(grid_coords, full=full)
             elif target == "cell":
                 c_min = np.array(self.axes_bounds)[:, 0]
+                if full:
+                    # remove the coordinates that are symmetric
+                    grid_coords = grid_coords[..., : self.num_axes]
                 return (grid_coords - c_min) / self.discretization  # type: ignore
             elif target == "grid":
                 return grid_coords
@@ -940,6 +946,7 @@ class GridBase(metaclass=ABCMeta):
         points: np.ndarray,
         *,
         coords: Literal["cartesian", "cell", "grid"] = "cartesian",
+        full: bool = False,
     ) -> np.ndarray:
         """check whether the point is contained in the grid
 
@@ -948,12 +955,14 @@ class GridBase(metaclass=ABCMeta):
                 Coordinates of the point
             coords (str):
                 The coordinate system in which the points are given
+            full (bool):
+                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: A boolean array indicating which points lie within
             the grid
         """
-        cell_coords = self.transform(points, source=coords, target="cell")
+        cell_coords = self.transform(points, source=coords, target="cell", full=full)
         return np.all((0 <= cell_coords) & (cell_coords <= self.shape), axis=-1)  # type: ignore
 
     def iter_mirror_points(
