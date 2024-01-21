@@ -20,6 +20,7 @@ from .base import (
     discretize_interval,
 )
 from .cartesian import CartesianGrid
+from .coordinates import CylindricalCoordinates
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData
@@ -62,7 +63,7 @@ class CylindricalSymGrid(GridBase):
         :code:`field[1]`.
     """
 
-    dim = 3  # dimension of the described space
+    c = CylindricalCoordinates()  # associated coordinates
     num_axes = 2  # number of independent axes
     axes = ["r", "z"]  # name of the actual axes
     axes_symmetric = ["phi"]

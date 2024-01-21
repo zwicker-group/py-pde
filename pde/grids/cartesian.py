@@ -21,6 +21,7 @@ from .base import (
     _check_shape,
     discretize_interval,
 )
+from .coordinates import CartesianCoordinates
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries, BoundariesData
@@ -115,7 +116,7 @@ class CartesianGrid(GridBase):
         # initialize the base class
         super().__init__()
         self._shape = _check_shape(shape)
-        self.dim = len(self.shape)
+        self.c = CartesianCoordinates(dim=len(self.shape))
         self.num_axes = self.dim
 
         if isinstance(periodic, (bool, np.bool_)):

@@ -44,6 +44,7 @@ from ..tools.typing import (
     OperatorFactory,
     OperatorType,
 )
+from .coordinates import CoordinatesBase, DimensionError
 
 if TYPE_CHECKING:
     from ._mesh import GridMesh
@@ -116,10 +117,6 @@ class DomainError(ValueError):
     """exception indicating that point lies outside domain"""
 
 
-class DimensionError(ValueError):
-    """exception indicating that dimensions were inconsistent"""
-
-
 class PeriodicityError(RuntimeError):
     """exception indicating that the grid periodicity is inconsistent"""
 
@@ -131,8 +128,8 @@ class GridBase(metaclass=ABCMeta):
     _operators: dict[str, OperatorInfo] = {}  # all operators defined for the grid
 
     # properties that are defined in subclasses
-    dim: int
-    """int: The spatial dimension in which the grid is embedded"""
+    c: CoordinatesBase
+    """:class:`~pde.grids.coordinates.CoordinatesBase`: Coordinates of the grid"""
     axes: list[str]
     """list: Names of all axes that are described by the grid"""
     axes_symmetric: list[str] = []
@@ -204,6 +201,11 @@ class GridBase(metaclass=ABCMeta):
         periodic: Sequence[bool],
     ) -> GridBase:
         raise NotImplementedError
+
+    @property
+    def dim(self) -> int:
+        """int: The spatial dimension in which the grid is embedded"""
+        return self.c.dim
 
     @property
     def periodic(self) -> list[bool]:
@@ -679,6 +681,11 @@ class GridBase(metaclass=ABCMeta):
         shape_bndry = tuple(self.shape[i] for i in range(self.num_axes) if i != axis)
         shape = shape_bndry + (self.num_axes,)
         return np.stack(points, -1).reshape(shape)  # type: ignore
+
+    @cached_property()
+    def scale_factors(self) -> np.ndarray:
+        """:class:`~numpy.ndarray`: scale factors for each cell"""
+        return self.c._scale_factors(self.cell_coords)
 
     @property
     def volume(self) -> float:

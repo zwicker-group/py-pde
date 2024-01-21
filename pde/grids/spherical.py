@@ -26,6 +26,7 @@ from .base import (
     discretize_interval,
 )
 from .cartesian import CartesianGrid
+from .coordinates import PolarCoordinates, SphericalCoordinates
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries
@@ -478,7 +479,7 @@ class PolarSymGrid(SphericalSymGridBase):
     default. The radial direction is discretized by :math:`N` support points.
     """
 
-    dim = 2  # dimension of the described space
+    c = PolarCoordinates()
     axes = ["r"]
     axes_symmetric = ["phi"]
     coordinate_constraints = [0, 1]  # axes not described explicitly
@@ -596,7 +597,7 @@ class SphericalSymGrid(SphericalSymGridBase):
         divergence of a tensor field can only be taken in special situations.
     """
 
-    dim = 3  # dimension of the described space
+    c = SphericalCoordinates()
     axes = ["r"]
     axes_symmetric = ["theta", "phi"]
     coordinate_constraints = [0, 1, 2]  # axes not described explicitly
