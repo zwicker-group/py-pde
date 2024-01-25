@@ -12,9 +12,15 @@ import warnings
 from typing import Any, Callable, Iterator, Literal, Mapping, Sequence, overload
 
 import numpy as np
-from matplotlib import cm, colormaps
+from matplotlib import cm
 from matplotlib.colors import LinearSegmentedColormap, Normalize
 from numpy.typing import DTypeLike
+
+try:
+    from matplotlib.colormaps import get_cmap
+except ImportError:
+    from matplotlib.cm import get_cmap
+
 
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
@@ -763,7 +769,7 @@ class FieldCollection(FieldBase):
             field_data = f.get_image_data(transpose=transpose)
             norm = Normalize(vmin=vmin[i], vmax=vmax[i], clip=True)  # type: ignore
             try:
-                cmap = colormaps.get_cmap(colors[i])
+                cmap = get_cmap(colors[i])
             except ValueError:
                 cmap = LinearSegmentedColormap.from_list(
                     "", [background_color, colors[i]]
