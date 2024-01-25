@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable, Iterator, Mapping, Sequence, overload
+import warnings
+from typing import Any, Callable, Iterator, Literal, Mapping, Sequence, overload
 
 import numpy as np
-from matplotlib.colors import Normalize
+from matplotlib import cm, colormaps
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 from numpy.typing import DTypeLike
 
 from ..grids.base import GridBase
@@ -710,35 +712,88 @@ class FieldCollection(FieldBase):
         """
         return self[index].get_image_data(**kwargs)
 
-    def _get_rgb_data(
+    def _get_merged_image_data(
         self,
+        colors: list[str] | None = None,
+        projection: Literal["max", "mean", "min", "product", "sum"] = "min",
+        *,
+        background_color: str = "w",
+        inverse_projection: bool = False,
         transpose: bool = False,
         vmin: float | list[float | None] | None = None,
         vmax: float | list[float | None] | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
-        """obtain data required for RGB plot"""
+        """obtain data required for a merged plot
+
+        Args:
+            colors (list):
+                Colors used for each color channel. This can either be a matplotlib
+                colormap used for mapping the channels or a single matplotlib color used
+                to interpolate between the background.
+            projection (str):
+                Defines a projection determining how different colors are merged.
+                Possible options are "max", "mean", "min", "product", and "sum".
+            inverse_projection (bool):
+                Inverses colors before applying the projection. Can be useful for dark
+                color maps and black backgrounds.
+            background_color (str):
+                Defines the background color corresponding to vanishing values. Not used
+                for colormaps specified in `colors`.
+            transpose (bool):
+                Determines whether the transpose of the data is plotted
+            vmin, vmax (float, list of float):
+                Define the data range that the color chanels cover. By default, they
+                cover the complete value range of the supplied data.
+
+        Returns:
+            tuple: a :class:`~numpy.ndarray` of the merged data together with a dict of
+            additional information, e.g., about the extent and the axes.
+        """
         num_fields = len(self)
-        if num_fields > 3:
-            raise ValueError("Can only plot RGB image for three or fewer fields")
+        if colors is None:
+            colors = [f"C{i}" for i in range(num_fields)]
         if not hasattr(vmin, "__iter__"):
             vmin = [vmin] * num_fields
         if not hasattr(vmax, "__iter__"):
             vmax = [vmax] * num_fields
 
-        # obtain image data with appropriate parameters
-        data = [f.get_image_data(transpose=transpose) for f in self]
-        # turn data into array of RGB values (shape nxmx3)
-        data_list = []
-        for i, d in enumerate(data):
+        # compile image data for all channels
+        data = []
+        for i, f in enumerate(self):
+            field_data = f.get_image_data(transpose=transpose)
             norm = Normalize(vmin=vmin[i], vmax=vmax[i], clip=True)  # type: ignore
-            data_list.append(norm(d["data"].T))
-        while len(data_list) < 3:
-            data_list.append(np.zeros_like(data_list[0]))
-        rgb_arr = np.dstack(data_list)
-        return rgb_arr, data[0]
+            try:
+                cmap = colormaps.get_cmap(colors[i])
+            except ValueError:
+                cmap = LinearSegmentedColormap.from_list(
+                    "", [background_color, colors[i]]
+                )
+            m = cm.ScalarMappable(norm=norm, cmap=cmap)
+            data.append(m.to_rgba(field_data["data"].T))
+        arr = np.array(data)
 
-    def _update_rgb_image_plot(self, reference: PlotReference) -> None:
-        """update an RGB image plot with the current field values
+        # combine the images
+        if inverse_projection:
+            arr = 1 - arr
+        if projection == "max":
+            rgb_arr = np.max(arr, axis=0)
+        elif projection == "mean":
+            rgb_arr = np.mean(arr, axis=0)
+        elif projection == "min":
+            rgb_arr = np.min(arr, axis=0)
+        elif projection == "product":
+            rgb_arr = np.prod(arr, axis=0)
+        elif projection == "sum":
+            rgb_arr = np.sum(arr, axis=0)
+        else:
+            raise ValueError(f"Undefined projection `{projection}`")
+        if inverse_projection:
+            rgb_arr = 1 - rgb_arr
+
+        return rgb_arr, field_data
+
+    def _update_merged_image_plot(self, reference: PlotReference) -> None:
+        """update an merged image plot with the current field values
 
         Args:
             reference (:class:`PlotReference`):
@@ -747,9 +802,84 @@ class FieldCollection(FieldBase):
         # obtain image data
         data_args = reference.parameters.copy()
         data_args.pop("kind")
-        rgb_arr, _ = self._get_rgb_data(**data_args)
+        rgb_arr, _ = self._get_merged_image_data(**data_args)
         # update the axes image
         reference.element.set_data(rgb_arr)
+
+    @plot_on_axes(update_method="_update_merged_image_plot")
+    def _plot_merged_image(
+        self,
+        ax,
+        colors: list[str] | None = None,
+        projection: Literal["max"] = "max",
+        inverse_projection: bool = False,
+        background_color: str = "w",
+        transpose: bool = False,
+        vmin: float | list[float | None] | None = None,
+        vmax: float | list[float | None] | None = None,
+        **kwargs,
+    ) -> PlotReference:
+        r"""visualize fields by mapping to different color chanels in a 2d density plot
+
+        Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting.
+            colors (list):
+                Colors used for each color channel. This can either be a matplotlib
+                colormap used for mapping the channels or a single matplotlib color used
+                to interpolate between the background.
+            projection (str):
+                Defines a projection determining how different colors are merged.
+                Possible options are "max", "mean", "min", "product", and "sum".
+            inverse_projection (bool):
+                Inverses colors before applying the projection. Can be useful for dark
+                color maps and black backgrounds.
+            background_color (str):
+                Defines the background color corresponding to vanishing values. Not used
+                for colormaps specified in `colors`.
+            transpose (bool):
+                Determines whether the transpose of the data is plotted
+            vmin, vmax (float, list of float):
+                Define the data range that the color chanels cover. By default, they
+                cover the complete value range of the supplied data.
+            \**kwargs:
+                Additional keyword arguments that affect the image. Non-Cartesian grids
+                might support `performance_goal` to influence how an image is created
+                from raw data. Finally, remaining arguments are passed to
+                :func:`matplotlib.pyplot.imshow` to affect the appearance.
+
+        Returns:
+            :class:`PlotReference`: Instance that contains information to update the
+            plot with new data later.
+        """
+        rgba_arr, data = self._get_merged_image_data(
+            colors,
+            projection,
+            inverse_projection=inverse_projection,
+            background_color=background_color,
+            transpose=transpose,
+            vmin=vmin,
+            vmax=vmax,
+        )
+
+        # plot the image
+        kwargs.setdefault("origin", "lower")
+        kwargs.setdefault("interpolation", "none")
+        axes_image = ax.imshow(rgba_arr, extent=data["extent"], **kwargs)
+
+        # set some default properties
+        ax.set_xlabel(data["label_x"])
+        ax.set_ylabel(data["label_y"])
+        ax.set_title(self.label)
+
+        # store parameters of the plot that are necessary for updating
+        parameters = {
+            "kind": "merged_image",
+            "transpose": transpose,
+            "vmin": vmin,
+            "vmax": vmax,
+        }
+        return PlotReference(ax, axes_image, parameters)
 
     @plot_on_axes(update_method="_update_rgb_image_plot")
     def _plot_rgb_image(
@@ -780,26 +910,20 @@ class FieldCollection(FieldBase):
             :class:`PlotReference`: Instance that contains information to update the
             plot with new data later.
         """
-        rgb_arr, data = self._get_rgb_data(transpose, vmin, vmax)
-
-        # plot the image
-        kwargs.setdefault("origin", "lower")
-        kwargs.setdefault("interpolation", "none")
-        axes_image = ax.imshow(rgb_arr, extent=data["extent"], **kwargs)
-
-        # set some default properties
-        ax.set_xlabel(data["label_x"])
-        ax.set_ylabel(data["label_y"])
-        ax.set_title(self.label)
-
-        # store parameters of the plot that are necessary for updating
-        parameters = {
-            "kind": "rgb_image",
-            "transpose": transpose,
-            "vmin": vmin,
-            "vmax": vmax,
-        }
-        return PlotReference(ax, axes_image, parameters)
+        # since 2024-01-25
+        warnings.warn(
+            "`rgb_image` is deprecated in favor of `merged`", DeprecationWarning
+        )
+        return self._plot_merged_image(  # type: ignore
+            ax=ax,
+            colors="rgb",
+            background_color="k",
+            projection="max",
+            transpose=transpose,
+            vmin=vmin,
+            vmax=vmax,
+            **kwargs,
+        )
 
     def _update_plot(self, reference: list[PlotReference]) -> None:
         """update a plot collection with the current field values
@@ -808,8 +932,8 @@ class FieldCollection(FieldBase):
             reference (list of :class:`PlotReference`):
                 All references of the plot to update
         """
-        if reference[0].parameters.get("kind", None) == "rgb_image":
-            self._update_rgb_image_plot(reference[0])
+        if reference[0].parameters.get("kind", None) == "merged_image":
+            self._update_merged_image_plot(reference[0])
         else:
             for field, ref in zip(self.fields, reference):
                 field._update_plot(ref)
@@ -855,7 +979,7 @@ class FieldCollection(FieldBase):
             List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
-        if kind in {"rgb", "rgb_image", "rgb-image"}:
+        if kind in {"merged", "rgb", "rgb_image", "rgb-image"}:
             num_panels = 1
         else:
             num_panels = len(self)
@@ -887,7 +1011,15 @@ class FieldCollection(FieldBase):
         if subplot_args is None:
             subplot_args = [{}] * num_panels
 
-        if kind in {"rgb", "rgb_image", "rgb-image"}:
+        if kind in {"merged"}:
+            # plot a single RGB representation
+            reference = [
+                self._plot_merged_image(
+                    ax=axs[0], action="none", **kwargs, **subplot_args[0]
+                )
+            ]
+
+        elif kind in {"rgb", "rgb_image", "rgb-image"}:
             # plot a single RGB representation
             reference = [
                 self._plot_rgb_image(

@@ -351,8 +351,30 @@ def test_rgb_image_plotting(num):
     grid = UnitGrid([16, 8])
     fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
 
-    ref = fc._plot_rgb_image()
-    fc._update_rgb_image_plot(ref)
-
     refs = fc.plot("rgb_image")
     fc._update_plot(refs)
+
+
+@pytest.mark.parametrize("num", [1, 2, 3, 4])
+def test_merged_image_plotting(num):
+    """test plotting of collections as merged images"""
+    grid = UnitGrid([16, 8])
+    fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
+
+    ref = fc._plot_merged_image()
+    fc._update_merged_image_plot(ref)
+
+    refs = fc.plot("merged")
+    fc._update_plot(refs)
+
+    # use some more fancy options
+    fc.plot(
+        "merged",
+        colors=["viridis", "r", "inferno", "magma"],
+        projection="mean",
+        inverse_projection=True,
+        background_color="g",
+        transpose=True,
+        vmin=-1,
+        vmax=[1, 2, 3, 4],
+    )
