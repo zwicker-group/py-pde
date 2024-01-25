@@ -216,6 +216,18 @@ class CylindricalSymGrid(GridBase):
         r_inner, r_outer = self.axes_bounds[0]
         return float(np.pi * self.length * (r_outer**2 - r_inner**2))
 
+    def _coords_symmetric(self, points: np.ndarray) -> np.ndarray:
+        if points.shape[-1] != 3:
+            raise DimensionError("Points need to be specified as (r, φ, z)")
+        return points[..., (0, 2)]  # only return r and z, ignore φ
+
+    def _coords_full(self, points: np.ndarray) -> np.ndarray:
+        if points.shape[-1] != 2:
+            raise DimensionError("Points need to be specified as (r, z)")
+        r, z = points[..., 0], points[..., 1]
+        φ = np.zeros_like(r)  # set angular variable to zero
+        return np.stack([r, φ, z], axis=-1)
+
     def get_random_point(
         self,
         *,
@@ -259,7 +271,7 @@ class CylindricalSymGrid(GridBase):
         z = rng.uniform(z_min, z_max)
         if coords == "cartesian":
             φ = rng.uniform(0, 2 * np.pi)  # additional random angle
-            return self.point_to_cartesian(np.array([r, z, φ]), full=True)
+            return self.c._pos_to_cart(np.array([r, φ, z]))
 
         elif coords == "cell":
             return self.transform(np.array([r, z]), "grid", "cell")
@@ -392,65 +404,6 @@ class CylindricalSymGrid(GridBase):
         r_vols = 2 * np.pi * dr * rs
         # same as r_vols = np.pi * ((rs + dr / 2) ** 2 - (rs - dr / 2)**2)
         return (r_vols, dz)
-
-    def point_to_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
-        """convert coordinates of a point to Cartesian coordinates
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                The grid coordinates of the points
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
-
-        Returns:
-            :class:`~numpy.ndarray`: The Cartesian coordinates of the point
-        """
-        points = np.atleast_1d(points)
-
-        z = points[..., 1]
-        if full:
-            # coordinates are given as (r, z, φ)
-            if points.shape[-1] != self.dim:
-                raise DimensionError(f"Shape {points.shape} cannot denote full points")
-            x = points[..., 0] * np.cos(points[..., 2])
-            y = points[..., 0] * np.sin(points[..., 2])
-        else:
-            if points.shape[-1] != self.num_axes:
-                raise DimensionError(f"Shape {points.shape} cannot denote grid points")
-            x = points[..., 0]
-            y = np.zeros_like(x)
-        return np.stack((x, y, z), axis=-1)
-
-    def point_from_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
-        """convert points given in Cartesian coordinates to this grid
-
-        This function returns points restricted to the x-z plane, i.e., the
-        y-coordinate will be zero.
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                Points given in Cartesian coordinates.
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
-
-        Returns:
-            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
-        """
-        points = np.atleast_1d(points)
-        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
-
-        rs = np.hypot(points[..., 0], points[..., 1])
-        zs = points[..., 2]
-        if full:
-            # coordinates are given as (r, z, φ)
-            φs = np.arctan2(points[..., 1], points[..., 0])
-            return np.stack((rs, zs, φs), axis=-1)
-        else:
-            return np.stack((rs, zs), axis=-1)
 
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False

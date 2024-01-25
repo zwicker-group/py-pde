@@ -414,40 +414,6 @@ class CartesianGrid(GridBase):
             "label_y": self.axes[1],
         }
 
-    def point_to_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
-        """convert coordinates of a point to Cartesian coordinates
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                Points given in grid coordinates
-            full (bool):
-                Compatibility option not used in this method
-
-        Returns:
-            :class:`~numpy.ndarray`: The Cartesian coordinates of the point
-        """
-        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
-        return points
-
-    def point_from_cartesian(
-        self, coords: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
-        """convert points given in Cartesian coordinates to this grid
-
-        Args:
-            coords (:class:`~numpy.ndarray`):
-                Points in Cartesian coordinates.
-            full (bool):
-                Compatibility option not used in this method
-
-        Returns:
-            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
-        """
-        assert coords.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
-        return coords
-
     def polar_coordinates_real(
         self, origin: np.ndarray, *, ret_angle: bool = False
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:

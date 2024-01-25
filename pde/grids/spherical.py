@@ -18,15 +18,9 @@ import numpy as np
 
 from ..tools.cache import cached_property
 from ..tools.plotting import plot_on_axes
-from .base import (
-    CoordsType,
-    DimensionError,
-    GridBase,
-    _check_shape,
-    discretize_interval,
-)
+from .base import CoordsType, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
-from .coordinates import PolarCoordinates, SphericalCoordinates
+from .coordinates import PolarCoordinates, SphericalCoordinates, DimensionError
 
 if TYPE_CHECKING:
     from .boundaries.axes import Boundaries
@@ -174,6 +168,19 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         else:
             return r_inner, r_outer
 
+    def _coords_symmetric(self, points: np.ndarray) -> np.ndarray:
+        return points[..., (0,)]  # only return radius
+
+    def _coords_full(self, points: np.ndarray) -> np.ndarray:
+        if points.size == 0:
+            return np.empty((0, self.dim), dtype=points.dtype)
+        if points.shape[-1] != 1:
+            raise DimensionError("Points need to be specified as (r,)")
+        r = points[..., 0]
+        zeros = np.zeros_like(r)
+        # set angular variables to zero
+        return np.stack([r] + [zeros] * (self.dim - 1), axis=-1)
+
     @property
     def volume(self) -> float:
         """float: total volume of the grid"""
@@ -247,7 +254,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             else:
                 raise NotImplementedError(f"{self.dim} dimensions")
 
-            return self.point_to_cartesian(point, full=True)
+            return self.c._pos_to_cart(point)
 
         elif coords == "cell":
             return self.transform(r, "grid", "cell")
@@ -484,66 +491,6 @@ class PolarSymGrid(SphericalSymGridBase):
     axes_symmetric = ["phi"]
     coordinate_constraints = [0, 1]  # axes not described explicitly
 
-    def point_from_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
-        """convert points given in Cartesian coordinates to this grid
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                Points given in Cartesian coordinates.
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
-
-        Returns:
-            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
-        """
-        points = np.atleast_1d(points)
-        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
-
-        rs = np.hypot(points[..., 0], points[..., 1])
-        if full:
-            φs = np.arctan2(points[..., 1], points[..., 0])
-            return np.stack((rs, φs), axis=-1)
-        else:
-            return rs[..., np.newaxis]
-
-    def point_to_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
-        """convert coordinates of a point to Cartesian coordinates
-
-        This function returns points along the y-coordinate, i.e, the x coordinates will
-        be zero.
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                The grid coordinates of the points
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
-
-        Returns:
-            :class:`~numpy.ndarray`: The Cartesian coordinates of the point
-        """
-        points = np.atleast_1d(points)
-
-        if full:
-            # angles are supplied
-            if points.shape[-1] != self.dim:
-                raise DimensionError(f"Shape {points.shape} cannot denote points")
-
-            x = points[..., 0] * np.cos(points[..., 1])
-            y = points[..., 0] * np.sin(points[..., 1])
-        else:
-            # angles are not supplied
-            if points.shape[-1] != self.num_axes:
-                raise DimensionError(f"Shape {points.shape} cannot denote points")
-
-            y = points[..., 0]
-            x = np.zeros_like(y)
-
-        return np.stack((x, y), axis=-1)
-
     @cached_property()
     def scale_factors(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: scale factors for each cell"""
@@ -601,71 +548,6 @@ class SphericalSymGrid(SphericalSymGridBase):
     axes = ["r"]
     axes_symmetric = ["theta", "phi"]
     coordinate_constraints = [0, 1, 2]  # axes not described explicitly
-
-    def point_from_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
-        """convert points given in Cartesian coordinates to this grid
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                Points given in Cartesian coordinates.
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
-
-        Returns:
-            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
-        """
-        points = np.atleast_1d(points)
-        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
-
-        rs = np.linalg.norm(points, axis=-1)
-        if full:
-            x, y, z = points[..., 0], points[..., 1], points[..., 2]
-            θs = np.arctan2(np.hypot(x, y), z)
-            φs = np.arctan2(y, x)
-            return np.stack((rs, θs, φs), axis=-1)
-        else:
-            return rs[..., np.newaxis]  # type: ignore
-
-    def point_to_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
-        """convert coordinates of a point to Cartesian coordinates
-
-        This function returns points along the z-coordinate, i.e, the x and y
-        coordinates will be zero.
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                The grid coordinates of the points
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
-
-        Returns:
-            :class:`~numpy.ndarray`: The Cartesian coordinates of the point
-        """
-        points = np.atleast_1d(points)
-        if full:
-            # angles are supplied
-            if points.shape[-1] != self.dim:
-                raise DimensionError(f"Shape {points.shape} cannot denote points")
-
-            r, θ, φ = points[..., 0], points[..., 1], points[..., 2]
-
-            rsinθ = r * np.sin(θ)
-            x = rsinθ * np.cos(φ)
-            y = rsinθ * np.sin(φ)
-            z = r * np.cos(θ)
-
-        else:
-            # angles are not supplied
-            if points.shape[-1] != self.num_axes:
-                raise DimensionError(f"Shape {points.shape} cannot denote points")
-            z = points[..., 0]
-            x = y = np.zeros_like(z)
-
-        return np.stack((x, y, z), axis=-1)
 
     @cached_property()
     def scale_factors(self) -> np.ndarray:

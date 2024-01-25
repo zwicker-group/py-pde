@@ -692,7 +692,6 @@ class GridBase(metaclass=ABCMeta):
         """float: total volume of the grid"""
         raise NotImplementedError
 
-    @abstractmethod
     def point_to_cartesian(
         self, points: np.ndarray, *, full: bool = False
     ) -> np.ndarray:
@@ -707,8 +706,10 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
+        if not full:
+            points = self._coords_full(points)
+        return self.c.pos_to_cart(points)
 
-    @abstractmethod
     def point_from_cartesian(
         self, points: np.ndarray, *, full: bool = False
     ) -> np.ndarray:
@@ -723,6 +724,11 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid
         """
+        points_sph = self.c.pos_from_cart(points)
+        if full:
+            return points_sph
+        else:
+            return self._coords_symmetric(points_sph)
 
     def _vector_to_cartesian(
         self, points: ArrayLike, components: ArrayLike, *, coords: CoordsType = "grid"
@@ -821,6 +827,22 @@ class GridBase(metaclass=ABCMeta):
 
         return point
 
+    def _coords_symmetric(self, points: np.ndarray) -> np.ndarray:
+        """enforce grid symmetry onto points"""
+        if self.num_axes == self.dim:
+            return points
+        else:
+            # needs to be overwritten by grid with symmetries
+            raise NotImplementedError
+
+    def _coords_full(self, points: np.ndarray) -> np.ndarray:
+        """specify values for symmetric axes on grids"""
+        if self.num_axes == self.dim:
+            return points
+        else:
+            # needs to be overwritten by grid with symmetries
+            raise NotImplementedError
+
     def transform(
         self,
         coordinates: np.ndarray,
@@ -886,7 +908,7 @@ class GridBase(metaclass=ABCMeta):
                 c_min = np.array(self.axes_bounds)[:, 0]
                 if full:
                     # remove the coordinates that are symmetric
-                    grid_coords = grid_coords[..., : self.num_axes]
+                    grid_coords = self._coords_symmetric(grid_coords)
                 return (grid_coords - c_min) / self.discretization  # type: ignore
 
         elif source == "cell":
@@ -924,7 +946,7 @@ class GridBase(metaclass=ABCMeta):
                 c_min = np.array(self.axes_bounds)[:, 0]
                 if full:
                     # remove the coordinates that are symmetric
-                    grid_coords = grid_coords[..., : self.num_axes]
+                    grid_coords = self._coords_symmetric(grid_coords)
                 return (grid_coords - c_min) / self.discretization  # type: ignore
             elif target == "grid":
                 return grid_coords
