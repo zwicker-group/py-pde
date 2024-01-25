@@ -55,7 +55,7 @@ class BrusselatorPDE(PDEBase):
         a, b = self.a, self.b
         laplace = state.grid.make_operator("laplace", bc=self.bc)
 
-        @nb.jit
+        @nb.njit
         def pde_rhs(state_data, t):
             u = state_data[0]
             v = state_data[1]
@@ -74,5 +74,5 @@ eq = BrusselatorPDE(diffusivity=[1, 0.1])
 state = eq.get_initial_state(grid)
 
 # simulate the pde
-tracker = PlotTracker(interrupts=1, plot_args={"kind": "rgb", "vmin": 0, "vmax": 5})
+tracker = PlotTracker(interrupts=1, plot_args={"kind": "merged", "vmin": 0, "vmax": 5})
 sol = eq.solve(state, t_range=20, dt=1e-3, tracker=tracker)

@@ -75,7 +75,6 @@ def process_signature(
 
 def process_docstring(app, what: str, name: str, obj, options, lines):
     """Process docstring by applying replacement rules"""
-    print(",".join(lines))
     for i, line in enumerate(lines):
         for key, value in REPLACEMENTS:
             line = line.replace(key, value)
