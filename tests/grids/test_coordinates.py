@@ -77,8 +77,10 @@ def test_coordinate_vector_fields(c, rng):
     x1 = rng.uniform(-1, 1, size=c.dim)
     p = c.pos_from_cart(x1)
 
-    # rotation must not change lengths
-    assert np.linalg.det(c.basis_rotation(p)) == pytest.approx(1)
+    # rotation must be orthogonal matrices
+    rot = c.basis_rotation(p)
+    assert np.linalg.det(rot) == pytest.approx(1)
+    np.testing.assert_allclose(rot @ rot.T, np.eye(c.dim), atol=1e-16)
 
     # vector components
     for i in range(c.dim):
