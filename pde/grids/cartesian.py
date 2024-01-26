@@ -112,12 +112,11 @@ class CartesianGrid(GridBase):
             shape = (int(shape[0]),) * self.cuboid.dim
         if self.cuboid.dim != len(shape):
             raise DimensionError("Dimension of `bounds` and `shape` are not compatible")
+        self._shape = _check_shape(shape)
+        self.c = CartesianCoordinates(dim=len(self.shape))
 
         # initialize the base class
         super().__init__()
-        self._shape = _check_shape(shape)
-        self.c = CartesianCoordinates(dim=len(self.shape))
-        self.num_axes = self.dim
 
         if isinstance(periodic, (bool, np.bool_)):
             self._periodic = [bool(periodic)] * self.dim
@@ -128,11 +127,6 @@ class CartesianGrid(GridBase):
             )
         else:
             self._periodic = list(periodic)
-
-        if self.dim <= 3:
-            self.axes = list("xyz"[: self.dim])
-        else:
-            self.axes = [chr(97 + i) for i in range(self.dim)]
 
         # determine the coordinates
         p1, p2 = self.cuboid.corners
@@ -513,35 +507,6 @@ class CartesianGrid(GridBase):
             )
 
         return self.normalize_point(coords, reflect=False)
-
-    def scale_factors(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: scale factors for each cell"""
-        return np.ones((self.dim,) + self.shape)
-
-    def _get_basis(
-        self, points: np.ndarray, *, coords: CoordsType = "grid"
-    ) -> np.ndarray:
-        """returns the basis vectors of the grid in Cartesian coordinates
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                Coordinates of the point(s) where the basis determined
-            coords (:class:`~numpy.ndarray`):
-                Coordinate system in which points are specified. Valid values are
-                `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
-
-        Returns:
-            (arrays of) vectors, which give the direction of the grid unit vectors
-            in Cartesian coordinates.
-        """
-        points = np.asanyarray(points)
-        if points.shape[-1] != self.dim:
-            raise DimensionError(f"`points` must have {self.dim} coordinates")
-        shape = points.shape[:-1]
-        basis = np.zeros((self.dim, self.dim) + shape)
-        for i in range(self.dim):
-            basis[i, i, ...] = 1
-        return basis
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):

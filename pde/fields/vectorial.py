@@ -593,7 +593,7 @@ class VectorField(DataFieldBase):
                 grid.cell_coords, "cartesian", "grid", full=True
             )
             # interpolate the data to the grid; this gives the vector in the grid basis
-            points_grid_sym = points[..., : self.grid.num_axes]
+            points_grid_sym = self.grid._coords_symmetric(points)
             data_grid = self.interpolate(points_grid_sym, bc=bc, fill=fill)
             # convert the vector to the cartesian basis
             data = self.grid._vector_to_cartesian(points, data_grid, coords="grid")

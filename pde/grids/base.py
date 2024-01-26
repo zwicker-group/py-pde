@@ -124,6 +124,7 @@ class PeriodicityError(RuntimeError):
 class GridBase(metaclass=ABCMeta):
     """Base class for all grids defining common methods and interfaces"""
 
+    # class properties
     _subclasses: dict[str, type[GridBase]] = {}  # all classes inheriting from this
     _operators: dict[str, OperatorInfo] = {}  # all operators defined for the grid
 
@@ -146,6 +147,8 @@ class GridBase(metaclass=ABCMeta):
     """int: Number of axes that are *not* assumed symmetrically"""
 
     # mandatory, immutable, private attributes
+    _axes_symmetric: tuple[int, ...] = ()
+    _axes_described: tuple[int, ...]
     _axes_bounds: tuple[tuple[float, float], ...]
     _axes_coords: tuple[np.ndarray, ...]
     _discretization: np.ndarray
@@ -160,6 +163,13 @@ class GridBase(metaclass=ABCMeta):
         """initialize the grid"""
         self._logger = logging.getLogger(self.__class__.__name__)
         self._mesh: GridMesh | None = None
+
+        self._axes_described = tuple(
+            i for i in range(self.dim) if i not in self._axes_symmetric
+        )
+        self.num_axes = len(self._axes_described)
+        self.axes = [self.c.axes[i] for i in self._axes_described]
+        self.axes_symmetric = [self.c.axes[i] for i in self.axes_symmetric]  # type: ignore
 
     def __init_subclass__(cls, **kwargs) -> None:  # @NoSelf
         """register all subclassess to reconstruct them later"""
@@ -500,11 +510,16 @@ class GridBase(metaclass=ABCMeta):
     def cell_volumes(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: volume of each cell"""
         if self.cell_volume_data is None:
-            raise RuntimeError(
-                "`cell_volumes` needs to be implemented if `cell_volume_data` is `None`"
-            )
-        vols = functools.reduce(np.outer, self.cell_volume_data)
-        return np.broadcast_to(vols, self.shape)
+            # use the self.c to calculate cell volumes
+            d2 = self.discretization / 2
+            x_low = self._coords_full(self.cell_coords - d2, value="min")
+            x_high = self._coords_full(self.cell_coords + d2, value="max")
+            return self.c.cell_volume(x_low, x_high)
+
+        else:
+            # use cell_volume_data
+            vols = functools.reduce(np.outer, self.cell_volume_data)
+            return np.broadcast_to(vols, self.shape)
 
     @cached_property()
     def uniform_cell_volumes(self) -> bool:
@@ -619,24 +634,6 @@ class GridBase(metaclass=ABCMeta):
         )
         return self.distance(p1, p2)
 
-    def _get_basis(
-        self, points: np.ndarray, *, coords: CoordsType = "grid"
-    ) -> np.ndarray:
-        """returns the basis vectors of the grid in Cartesian coordinates
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                Coordinates of the point(s) where the basis determined
-            coords (str):
-                Coordinate system in which points are specified. Valid values are
-                `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
-
-        Returns:
-            :class:`~numpy.ndarray`: Arrays of vectors giving the direction of the grid
-                unit vectors in Cartesian coordinates.
-        """
-        raise NotImplementedError
-
     def _iter_boundaries(self) -> Iterator[tuple[int, bool]]:
         """iterate over all boundaries of the grid
 
@@ -681,11 +678,6 @@ class GridBase(metaclass=ABCMeta):
         shape_bndry = tuple(self.shape[i] for i in range(self.num_axes) if i != axis)
         shape = shape_bndry + (self.num_axes,)
         return np.stack(points, -1).reshape(shape)  # type: ignore
-
-    @cached_property()
-    def scale_factors(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: scale factors for each cell"""
-        return self.c._scale_factors(self.cell_coords)
 
     @property
     def volume(self) -> float:
@@ -759,9 +751,9 @@ class GridBase(metaclass=ABCMeta):
             raise DimensionError(f"`components` must have shape {vec_shape}")
 
         # convert the basis of the vectors to Cartesian
-        basis = self._get_basis(points, coords=coords)
-        assert basis.shape == (self.dim, self.dim) + shape
-        return np.einsum("j...,ji...->i...", components, basis)  # type: ignore
+        rot_mat = self.c.basis_rotation(points)
+        assert rot_mat.shape == (self.dim, self.dim) + shape
+        return np.einsum("j...,ji...->i...", components, rot_mat)  # type: ignore
 
     def normalize_point(
         self, point: np.ndarray, *, reflect: bool = False
@@ -828,20 +820,57 @@ class GridBase(metaclass=ABCMeta):
         return point
 
     def _coords_symmetric(self, points: np.ndarray) -> np.ndarray:
-        """enforce grid symmetry onto points"""
-        if self.num_axes == self.dim:
-            return points
-        else:
-            # needs to be overwritten by grid with symmetries
-            raise NotImplementedError
+        """return only non-symmetric point coordinates
 
-    def _coords_full(self, points: np.ndarray) -> np.ndarray:
-        """specify values for symmetric axes on grids"""
+        Args:
+            points (:class:`~numpy.ndarray`):
+                The points specified with `dim` coordinates
+
+        Returns:
+            :class:`~numpy.ndarray`: The points with only `num_axes` coordinates, which
+            are not along symmetry axes of the grid.
+        """
+        if points.shape[-1] != self.dim:
+            raise DimensionError(f"Points need to be specified as {self.c.axes}")
+        return points[..., self._axes_described]
+
+    def _coords_full(
+        self, points: np.ndarray, *, value: Literal["min", "max"] | float = 0.0
+    ) -> np.ndarray:
+        """specify point coordinates along symmetric axes on grids
+
+        Args:
+            points (:class:`~numpy.ndarray`):
+                The points specified with `num_axes` coordinates, not specifying
+                cooridnates along symmetry axes of the grid.
+            value (str or float):
+                Value of the points along symmetry axes. The special values `min` and
+                `max` denote the minimal and maximal values along the respective
+                coordinates.
+
+        Returns:
+            :class:`~numpy.ndarray`: The points with all `dim` coordinates
+
+        """
         if self.num_axes == self.dim:
             return points
         else:
-            # needs to be overwritten by grid with symmetries
-            raise NotImplementedError
+            if points.shape[-1] != self.num_axes:
+                raise DimensionError(f"Points need to be specified as {self.axes}")
+            res = np.empty(points.shape[:-1] + (self.dim,), dtype=points.dtype)
+            j = 0
+            for i in range(self.dim):
+                if i in self._axes_described:
+                    res[..., i] = points[..., j]
+                    j += 1
+                else:
+                    if value == "min":
+                        res[..., i] = self.c.coordinate_limits[i][0]
+                    elif value == "max":
+                        res[..., i] = self.c.coordinate_limits[i][1]
+                    else:
+                        res[..., i] = value
+            return res
 
     def transform(
         self,

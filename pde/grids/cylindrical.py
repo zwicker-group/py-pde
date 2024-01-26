@@ -56,17 +56,14 @@ class CylindricalSymGrid(GridBase):
     discretized by :math:`N_r` and :math:`N_z` support points, respectively.
 
     Warning:
-        The order of components in the vector and tensor fields defined on this grid is
-        different than in ordinary math. While it is common to use :math:`(r, \phi, z)`,
-        we here use the order :math:`(r, z, \phi)`. It might thus be best to access
-        components by name instead of index, e.g., use  :code:`field['z']` instead of
-        :code:`field[1]`.
+        The order of components in the vector and tensor fields defined on this grid are
+        still :math:`(r, \phi, z)`. To avoid any confusion it might thus be best to
+        access components by name instead of index, e.g., use  :code:`field['z']`
+        instead of :code:`field[2]`.
     """
 
     c = CylindricalCoordinates()  # associated coordinates
-    num_axes = 2  # number of independent axes
-    axes = ["r", "z"]  # name of the actual axes
-    axes_symmetric = ["phi"]
+    _axes_symmetric = (1,)  # the angular axis is not described
     coordinate_constraints = [0, 1]  # constraint Cartesian x and y coordinates
     boundary_names = {  # name all the boundaries
         "inner": (0, False),
@@ -215,18 +212,6 @@ class CylindricalSymGrid(GridBase):
         """float: total volume of the grid"""
         r_inner, r_outer = self.axes_bounds[0]
         return float(np.pi * self.length * (r_outer**2 - r_inner**2))
-
-    def _coords_symmetric(self, points: np.ndarray) -> np.ndarray:
-        if points.shape[-1] != 3:
-            raise DimensionError("Points need to be specified as (r, φ, z)")
-        return points[..., (0, 2)]  # only return r and z, ignore φ
-
-    def _coords_full(self, points: np.ndarray) -> np.ndarray:
-        if points.shape[-1] != 2:
-            raise DimensionError("Points need to be specified as (r, z)")
-        r, z = points[..., 0], points[..., 1]
-        φ = np.zeros_like(r)  # set angular variable to zero
-        return np.stack([r, φ, z], axis=-1)
 
     def get_random_point(
         self,
@@ -459,7 +444,7 @@ class CylindricalSymGrid(GridBase):
         # Pick the grid instance
         radius_outer = self.axes_bounds[0][1]
         if mode == "valid":
-            bounds = radius_outer / np.sqrt(self.dim)
+            bounds = radius_outer / np.sqrt(2)
         elif mode == "full":
             bounds = radius_outer
         else:
@@ -470,41 +455,6 @@ class CylindricalSymGrid(GridBase):
         grid_bounds = [(-bounds, bounds), (-bounds, bounds), self.axes_bounds[1]]
         grid_shape = 2 * num, 2 * num, self.shape[1]
         return CartesianGrid(grid_bounds, grid_shape)
-
-    @cached_property()
-    def scale_factors(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: scale factors for each cell"""
-        r = self.coordinate_arrays[0]
-        # the order of the axes is (r, z, φ)
-        return np.array([np.ones_like(r), np.ones_like(r), r])
-
-    def _get_basis(
-        self, points: np.ndarray, *, coords: CoordsType = "grid"
-    ) -> np.ndarray:
-        """returns the basis vectors of the grid in Cartesian coordinates
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                Coordinates of the point(s) where the basis determined
-            coords (:class:`~numpy.ndarray`):
-                Coordinate system in which points are specified. Valid values are
-                `cartesian`, `grid`, and `cell`; see :meth:`~pde.grids.base.GridBase.transform`.
-
-        Returns:
-            (arrays of) vectors, which give the direction of the grid unit vectors
-            in Cartesian coordinates.
-        """
-        points = self.transform(points, coords, "grid", full=True)
-        φ = points[..., 2]  # coordinates are given as (r, z, φ)
-        sinφ, cosφ = np.sin(φ), np.cos(φ)
-        zero = np.zeros_like(φ)
-        return np.array(
-            [
-                [cosφ, sinφ, zero],  # unit vector in r-direction
-                [zero, zero, np.ones_like(φ)],  # unit vector in z-direction
-                [-sinφ, cosφ, zero],  # unit vector in φ-direction
-            ]
-        )
 
     def slice(self, indices: Sequence[int]) -> CartesianGrid | PolarSymGrid:
         """return a subgrid of only the specified axes

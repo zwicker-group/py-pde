@@ -57,6 +57,7 @@ def process_signature(
     app, what: str, name: str, obj, options, signature, return_annotation
 ):
     """Process signature by applying replacement rules"""
+
     def process(sig_obj):
         """process the signature object"""
         if sig_obj is not None:
