@@ -17,6 +17,7 @@ class CylindricalCoordinates(CoordinatesBase):
     dim = 3
     coordinate_limits = [(0, np.inf), (0, 2 * np.pi), (-np.inf, np.inf)]
     axes = ["r", "φ", "z"]
+    _axes_alt = {"φ": ["phi"]}
 
     def __new__(cls):
         # cache the instances for each dimension

@@ -101,6 +101,7 @@ class Tensor2Field(DataFieldBase):
                     signature=grid.axes,
                     user_funcs=user_funcs,
                     consts=consts,
+                    repl=grid.c._axes_alt_repl,
                 )
                 values = np.broadcast_to(expr(*points), grid.shape)
                 data[i][j] = values

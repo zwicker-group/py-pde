@@ -77,6 +77,7 @@ class ScalarField(DataFieldBase):
             signature=grid.axes,
             user_funcs=user_funcs,
             consts=consts,
+            repl=grid.c._axes_alt_repl,
         )
         # obtain the coordinates of the grid points
         points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]

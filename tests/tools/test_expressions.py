@@ -434,3 +434,20 @@ def test_evaluate_func_collection():
     with pytest.raises(RuntimeError):
         col.labels = ["a", "a"]
         evaluate("1", col)
+
+
+def test_expression_repl(rng):
+    """test expressions replacement"""
+    e = ScalarExpression("2 * a", repl={"a": "b"})
+    assert not e.constant
+    assert e.depends_on("b")
+    assert e(4) == 8
+    assert e.differentiate("a").value == 0
+    assert e.differentiate("b").value == 2
+
+    e = ScalarExpression("2 * σ", repl={"σ": "sigma"})
+    assert not e.constant
+    assert e.depends_on("sigma")
+    assert e(4) == 8
+    assert e.differentiate("σ").value == 0
+    assert e.differentiate("sigma").value == 2

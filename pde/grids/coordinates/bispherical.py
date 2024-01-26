@@ -15,6 +15,7 @@ class BisphericalCoordinates(CoordinatesBase):
 
     dim = 3
     axes = ["σ", "τ", "φ"]
+    _axes_alt = {"σ": ["sigma"], "τ": ["tau"], "φ": ["phi"]}
     coordinate_limits = [(0, np.pi), (-np.inf, np.inf), (0, 2 * np.pi)]
 
     def __init__(self, scale_parameter: float = 1):

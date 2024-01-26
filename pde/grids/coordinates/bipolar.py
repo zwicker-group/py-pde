@@ -15,6 +15,7 @@ class BipolarCoordinates(CoordinatesBase):
 
     dim = 2
     axes = ["σ", "τ"]
+    _axes_alt = {"σ": ["sigma"], "τ": ["tau"]}
     coordinate_limits = [(0, 2 * np.pi), (-np.inf, np.inf)]
 
     def __init__(self, scale_parameter: float = 1):

@@ -15,6 +15,7 @@ class SphericalCoordinates(CoordinatesBase):
 
     dim = 3
     axes = ["r", "θ", "φ"]
+    _axes_alt = {"θ": ["theta"], "φ": ["phi"]}
     coordinate_limits = [(0, np.inf), (0, np.pi), (0, 2 * np.pi)]
     major_axis = 0
 

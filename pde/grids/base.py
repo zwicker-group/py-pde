@@ -682,7 +682,8 @@ class GridBase(metaclass=ABCMeta):
     @property
     def volume(self) -> float:
         """float: total volume of the grid"""
-        raise NotImplementedError
+        # this property should be overwritten when the volume can be calculated directly
+        return self.cell_volumes.sum()  # type: ignore
 
     def point_to_cartesian(
         self, points: np.ndarray, *, full: bool = False
@@ -1789,6 +1790,7 @@ class GridBase(metaclass=ABCMeta):
 
                 if c_li == -42:  # out of bounds
                     if fill is None:  # outside the domain
+                        print("POINT", point)
                         raise DomainError("Point lies outside the grid domain")
                     else:
                         return fill
@@ -1822,6 +1824,7 @@ class GridBase(metaclass=ABCMeta):
 
                 if c_xli == -42 or c_yli == -42:  # out of bounds
                     if fill is None:  # outside the domain
+                        print("POINT", point)
                         raise DomainError("Point lies outside the grid domain")
                     else:
                         return fill
@@ -1862,6 +1865,7 @@ class GridBase(metaclass=ABCMeta):
 
                 if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
                     if fill is None:  # outside the domain
+                        print("POINT", point)
                         raise DomainError("Point lies outside the grid domain")
                     else:
                         return fill

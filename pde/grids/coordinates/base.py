@@ -23,9 +23,20 @@ class CoordinatesBase:
     """list of tuple: the limits of the actual coordinates"""
     axes: list[str]
     """list: Names of all axes that are described by the grid"""
+    _axes_alt: dict[str, list[str]] = {}
+    """dict: mapping of alternative names for axes"""
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
+
+    @property
+    def _axes_alt_repl(self) -> dict[str, str]:
+        """dict: replacement rules for axes names"""
+        res = {}
+        for axes_name, repl_list in self._axes_alt.items():
+            for axes_alt in repl_list:
+                res[axes_alt] = axes_name
+        return res
 
     def _pos_to_cart(self, points: np.ndarray) -> np.ndarray:
         # actual calculation needs to be implemented by sub-class

@@ -1209,7 +1209,10 @@ class ExpressionBC(BCBase):
             from pde.tools.expressions import ScalarExpression
 
             self._func_expression = ScalarExpression(
-                expression, signature=signature, user_funcs=user_funcs
+                expression,
+                signature=signature,
+                user_funcs=user_funcs,
+                repl=grid.c._axes_alt_repl,
             )
 
         # quickly check whether the expression was parsed correctly
@@ -1879,7 +1882,9 @@ class ConstBCBase(BCBase):
 
             # parse the expression with the correct variables
             bc_vars = [self.grid.axes[i] for i in axes_ids]
-            expr = ScalarExpression(value, self.grid.axes)
+            expr = ScalarExpression(
+                value, self.grid.axes, repl=self.grid.c._axes_alt_repl
+            )
 
             if axes_ids:
                 # extended boundary
