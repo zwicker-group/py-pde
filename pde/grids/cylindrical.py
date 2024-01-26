@@ -6,7 +6,6 @@ Cylindrical grids with azimuthal symmetry
 
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING, Any, Generator, Literal, Sequence
 
 import numpy as np
@@ -389,42 +388,6 @@ class CylindricalSymGrid(GridBase):
         r_vols = 2 * np.pi * dr * rs
         # same as r_vols = np.pi * ((rs + dr / 2) ** 2 - (rs - dr / 2)**2)
         return (r_vols, dz)
-
-    def polar_coordinates_real(
-        self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
-        """return spherical coordinates associated with the grid
-
-        Args:
-            origin (:class:`~numpy.ndarray`):
-                Coordinates of the origin at which the polar coordinate system is
-                anchored. Note that this must be of the form `[0, 0, z_val]`, where only
-                `z_val` can be chosen freely.
-            ret_angle (bool):
-                Determines whether the azimuthal angle is returned alongside the
-                distance. If `False` only the distance to the origin is  returned for
-                each support point of the grid. If `True`, the distance and angles are
-                returned.
-        """
-        # deprecated on 2024-01-09
-        warnings.warn(
-            "`polar_coordinates_real` will be removed soon", DeprecationWarning
-        )
-        origin = np.array(origin, dtype=np.double, ndmin=1)
-        if len(origin) != self.dim:
-            raise DimensionError("Dimensions are not compatible")
-
-        if origin[0] != 0 or origin[1] != 0:
-            raise RuntimeError("Origin must lie on symmetry axis for cylindrical grid")
-
-        # calculate the difference vector between all cells and the origin
-        diff = self.difference_vector(np.array([0, origin[2]]), self.cell_coords)
-        dist: np.ndarray = np.linalg.norm(diff, axis=-1)  # get distance
-
-        if ret_angle:
-            return dist, np.arctan2(diff[:, :, 1], diff[:, :, 0])
-        else:
-            return dist
 
     def get_cartesian_grid(
         self, mode: Literal["valid", "full"] = "valid"

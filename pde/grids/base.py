@@ -984,21 +984,6 @@ class GridBase(metaclass=ABCMeta):
             raise ValueError(f"Unknown source coordinates `{source}`")
         raise ValueError(f"Unknown target coordinates `{target}`")
 
-    def polar_coordinates_real(
-        self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> np.ndarray | tuple[np.ndarray, ...]:
-        """return spherical coordinates associated with the grid
-
-        Args:
-            origin (:class:`~numpy.ndarray`):
-                Coordinates of origin at which the polar coordinate system is anchored
-            ret_angle (bool):
-                Determines whether azimuthal angles are returned alongside distances. If
-                `False` only the distance to the origin is returned for each support
-                point of the grid. If `True`, the distance and angles are returned.
-        """
-        raise NotImplementedError
-
     def contains_point(
         self,
         points: np.ndarray,

@@ -10,7 +10,6 @@ field on the same grid if the θ-component of the vector field vanishes.
 
 from __future__ import annotations
 
-import warnings
 from abc import ABCMeta
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
@@ -345,37 +344,6 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             "label_x": "x",
             "label_y": "y",
         }
-
-    def polar_coordinates_real(
-        self, origin=None, *, ret_angle: bool = False, **kwargs
-    ) -> np.ndarray | tuple[np.ndarray, ...]:
-        """return spherical coordinates associated with the grid
-
-        Args:
-            origin:
-                Place holder variable to comply with the interface
-            ret_angle (bool):
-                Determines whether angles are returned alongside the distance. If
-                `False` only the distance to the origin is returned for each support
-                point of the grid. If `True`, the distance and angles are returned. Note
-                that in the case of spherical grids, this angle is zero by convention.
-        """
-        # deprecated on 2024-01-09
-        warnings.warn(
-            "`polar_coordinates_real` will be removed soon", DeprecationWarning
-        )
-        # check the consistency of the origin argument, which can be set for other grids
-        if origin is not None:
-            origin = np.array(origin, dtype=np.double, ndmin=1)
-            if not np.array_equal(origin, np.zeros(self.dim)):
-                raise RuntimeError(f"Origin must be {str([0]*self.dim)}")
-
-        # the distance to the origin is exactly the radial coordinate
-        rs = self.axes_coords[0]
-        if ret_angle:
-            return (rs,) + (np.zeros_like(rs),) * (self.dim - 1)
-        else:
-            return rs
 
     def get_cartesian_grid(
         self,

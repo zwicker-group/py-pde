@@ -7,7 +7,6 @@ Cartesian grids of arbitrary dimension.
 from __future__ import annotations
 
 import itertools
-import warnings
 from typing import TYPE_CHECKING, Any, Generator, Sequence
 
 import numpy as np
@@ -407,106 +406,6 @@ class CartesianGrid(GridBase):
             "label_x": self.axes[0],
             "label_y": self.axes[1],
         }
-
-    def polar_coordinates_real(
-        self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """return polar coordinates associated with the grid
-
-        Args:
-            origin (:class:`~numpy.ndarray`):
-                Coordinates of the origin at which the polar coordinate system is
-                anchored.
-            ret_angle (bool):
-                Determines whether angles are returned alongside the distance. If `False`
-                only the distance to the origin is returned for each support point of the
-                grid. If `True`, the distance and angles are returned. For a 1d system
-                system, the angle is defined as the sign of the difference between the
-                point and the origin, so that angles can either be 1 or -1. For 2d
-                systems and 3d systems, polar coordinates and spherical coordinates are
-                used, respectively.
-
-        Returns:
-            :class:`~numpy.ndarray` or tuple of :class:`~numpy.ndarray`:
-                Coordinates values in polar coordinates
-        """
-        # deprecated on 2024-01-09
-        warnings.warn(
-            "`polar_coordinates_real` will be removed soon", DeprecationWarning
-        )
-        origin = np.array(origin, dtype=np.double, ndmin=1)
-        if len(origin) != self.dim:
-            raise DimensionError("Dimensions are not compatible")
-
-        # calculate the difference vector between all cells and the origin
-        diff = self.difference_vector(origin, self.cell_coords)
-        dist: np.ndarray = np.linalg.norm(diff, axis=-1)  # get distance
-
-        # determine distance and optionally angles for these vectors
-        if ret_angle:
-            if self.dim == 1:
-                return dist, np.sign(diff)[..., 0]  # type: ignore
-
-            elif self.dim == 2:
-                return dist, np.arctan2(diff[:, :, 0], diff[:, :, 1])  # type: ignore
-
-            elif self.dim == 3:
-                theta = np.arccos(diff[..., 2] / dist)
-                phi = np.arctan2(diff[..., 0], diff[..., 1])
-                return dist, theta, phi
-
-            else:
-                raise NotImplementedError(
-                    f"Cannot calculate angles for dimension {self.dim}"
-                )
-        else:
-            return dist
-
-    def from_polar_coordinates(
-        self,
-        distance: np.ndarray,
-        angle: np.ndarray,
-        origin: np.ndarray | None = None,
-    ) -> np.ndarray:
-        """convert polar coordinates to Cartesian coordinates
-
-        This function is currently only implemented for 1d and 2d systems.
-
-        Args:
-            distance (:class:`~numpy.ndarray`):
-                The radial distance
-            angle (:class:`~numpy.ndarray`):
-                The angle with respect to the origin
-            origin (:class:`~numpy.ndarray`, optional):
-                Sets the origin of the coordinate system. If omitted, the zero point is
-                assumed as the origin.
-
-        Returns:
-            :class:`~numpy.ndarray`: The Cartesian coordinates corresponding to the given
-            polar coordinates.
-        """
-        distance = np.asarray(distance)
-        angle = np.asarray(angle)
-        if origin is None:
-            origin = np.zeros(self.dim)
-        else:
-            origin = np.atleast_1d(origin)
-
-        if self.dim == 1:
-            diff = distance * angle
-            coords = origin + diff[..., None]
-
-        elif self.dim == 2:
-            unit_vector = np.moveaxis(np.array([np.sin(angle), np.cos(angle)]), 0, -1)
-            diff = distance[..., None] * unit_vector
-            coords = origin + diff
-
-        else:
-            raise NotImplementedError(
-                f"Cannot calculate coordinates for dimension {self.dim}"
-            )
-
-        return self.normalize_point(coords, reflect=False)
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
