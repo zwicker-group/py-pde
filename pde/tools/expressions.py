@@ -211,6 +211,7 @@ class ExpressionBase(metaclass=ABCMeta):
         *,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
+        repl: dict[str, str] | None = None,
     ):
         """
         Warning:
@@ -235,12 +236,17 @@ class ExpressionBase(metaclass=ABCMeta):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
                 :class:`~numpy.ndarray`.
+            repl (dict, optional):
+                Replacements that are applied to symbols before turning the expression
+                into a python equivalent.
         """
         try:
             self._sympy_expr = sympy.simplify(expression)
         except TypeError:
             # work-around for sympy bug (github.com/sympy/sympy/issues/19829)
             self._sympy_expr = expression
+        if repl is not None:
+            self._sympy_expr = self._sympy_expr.subs(repl)
         self._logger = logging.getLogger(self.__class__.__name__)
         self.user_funcs = {} if user_funcs is None else user_funcs
         self.consts = {} if consts is None else consts
@@ -514,6 +520,7 @@ class ScalarExpression(ExpressionBase):
         *,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
+        repl: dict[str, str] | None = None,
         explicit_symbols: Sequence[str] | None = None,
         allow_indexed: bool = False,
     ):
@@ -538,6 +545,9 @@ class ScalarExpression(ExpressionBase):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
                 :class:`~numpy.ndarray`.
+            repl (dict, optional):
+                Replacements that are applied to symbols before turning the expression
+                into a python equivalent.
             explicit_symbols (list of str):
                 List of symbols that need to be interpreted as general sympy symbols
             allow_indexed (bool):
@@ -590,6 +600,7 @@ class ScalarExpression(ExpressionBase):
             signature=signature,
             user_funcs=user_funcs,
             consts=consts,
+            repl=repl,
         )
 
     def copy(self) -> ScalarExpression:
@@ -715,6 +726,7 @@ class TensorExpression(ExpressionBase):
         *,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
+        repl: dict[str, str] | None = None,
         explicit_symbols: Sequence[str] | None = None,
     ):
         """
@@ -738,6 +750,9 @@ class TensorExpression(ExpressionBase):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
                 :class:`~numpy.ndarray`.
+            repl (dict, optional):
+                Replacements that are applied to symbols before turning the expression
+                into a python equivalent.
             explicit_symbols (list of str):
                 List of symbols that need to be interpreted as general sympy symbols
         """
@@ -774,6 +789,7 @@ class TensorExpression(ExpressionBase):
             signature=signature,
             user_funcs=user_funcs,
             consts=consts,
+            repl=repl,
         )
 
     def __repr__(self):

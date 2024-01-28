@@ -297,7 +297,7 @@ def test_vector_bcs():
 def test_interpolation_vector_fields_cylindrical():
     """test interpolation of a vector field on cylindrical coordinates"""
     grid = CylindricalSymGrid(5, [-2, 3], 10)
-    vf = VectorField.from_expression(grid, ["r", "z", "1"])
+    vf = VectorField.from_expression(grid, ["r", "1", "z"])
     grid_cart = grid.get_cartesian_grid(mode="valid")
     vf_cart = vf.interpolate_to_grid(grid_cart)
 

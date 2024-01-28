@@ -183,11 +183,10 @@ def test_registered_operators():
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_grid_basis(grid, rng):
-    """test basis vectors"""
-    points = [grid.get_random_point(coords="cartesian", rng=rng) for _ in range(4)]
-    basis = grid._get_basis(points, coords="cartesian")
-    for i in range(grid.dim):
-        for j in range(grid.dim):
-            res = np.einsum("i...,i...->...", basis[i], basis[j])
-            np.testing.assert_allclose(res, i == j, atol=1e-15)
+def test_cell_volumes(grid):
+    """test calculation of cell volumes"""
+    d2 = grid.discretization / 2
+    x_low = grid._coords_full(grid.cell_coords - d2, value="min")
+    x_high = grid._coords_full(grid.cell_coords + d2, value="max")
+    cell_vols = grid.c.cell_volume(x_low, x_high)
+    np.testing.assert_allclose(cell_vols, grid.cell_volumes)
