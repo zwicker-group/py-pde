@@ -3,6 +3,7 @@ A simple diffusion equation
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
+
 from __future__ import annotations
 
 from typing import Callable

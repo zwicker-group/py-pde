@@ -218,9 +218,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             raise RuntimeError("Random points would be too close to boundary")
 
         # choose random radius scaled such that points are uniformly distributed
-        r = np.array(
-            [rng.uniform(r_min**self.dim, r_max**self.dim) ** (1 / self.dim)]
-        )
+        r = np.array([rng.uniform(r_min**self.dim, r_max**self.dim) ** (1 / self.dim)])
         if coords == "cartesian":
             # choose random angles for the already chosen radius
             if self.dim == 2:

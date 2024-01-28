@@ -158,12 +158,10 @@ class FieldCollection(FieldBase):
         return iter(self.fields)
 
     @overload
-    def __getitem__(self, index: int | str) -> DataFieldBase:
-        ...
+    def __getitem__(self, index: int | str) -> DataFieldBase: ...
 
     @overload
-    def __getitem__(self, index: slice) -> FieldCollection:
-        ...
+    def __getitem__(self, index: slice) -> FieldCollection: ...
 
     def __getitem__(self, index: int | str | slice) -> DataFieldBase | FieldCollection:
         """returns one or many fields from the collection

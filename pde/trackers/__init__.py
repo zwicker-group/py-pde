@@ -47,7 +47,6 @@ In particular, interrupts can be specified conveniently using
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-
 from .base import get_named_trackers
 from .interactive import InteractivePlotTracker
 from .interrupts import (

@@ -11,6 +11,7 @@ Functions for creating movies of simulation results
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+
 from __future__ import annotations
 
 import pathlib

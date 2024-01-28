@@ -458,9 +458,11 @@ class PDE(PDEBase):
             def get_data_tuple(state_data: np.ndarray) -> tuple[np.ndarray, ...]:
                 """helper for turning state_data into a tuple of field data"""
                 return tuple(
-                    state_data[starts[i]]
-                    if isscalar[i]
-                    else state_data[starts[i] : stops[i]]
+                    (
+                        state_data[starts[i]]
+                        if isscalar[i]
+                        else state_data[starts[i] : stops[i]]
+                    )
                     for i in range(num_fields)
                 )
 

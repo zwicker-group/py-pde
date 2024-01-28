@@ -3,6 +3,7 @@ Special module for defining an interactive tracker that uses napari to display f
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+
 from __future__ import annotations
 
 import logging
