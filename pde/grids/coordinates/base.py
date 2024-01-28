@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import warnings
+
 import numpy as np
 from numpy.typing import ArrayLike
 from scipy import integrate, optimize
@@ -18,13 +20,13 @@ class CoordinatesBase:
 
     # properties that are defined in subclasses
     dim: int
-    """int: spatial dimension of the coordinates"""
+    """int: spatial dimension of the coordinate system"""
     coordinate_limits: list[tuple[float, float]]
-    """list of tuple: the limits of the actual coordinates"""
+    """list of tuple: the limits of each coordinate axis"""
     axes: list[str]
-    """list: Names of all axes that are described by the grid"""
+    """list: name of each coordinate axis"""
     _axes_alt: dict[str, list[str]] = {}
-    """dict: mapping of alternative names for axes"""
+    """dict: maps alternative names for axes to the canonical ones"""
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}()"
@@ -47,7 +49,7 @@ class CoordinatesBase:
 
         Args:
             points (:class:`~numpy.ndarray`):
-                The coordinates of points in the current coorindate system
+                The coordinates of points in the current coordinate system
 
         Returns:
             :class:`~numpy.ndarray`: Cartesian coordinates of the points
@@ -79,8 +81,6 @@ class CoordinatesBase:
     def pos_diff(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """return Cartesian vector(s) pointing from p1 to p2
 
-        In case of periodic boundary conditions, the shortest vector is returned.
-
         Args:
             p1 (:class:`~numpy.ndarray`):
                 First point(s)
@@ -91,26 +91,28 @@ class CoordinatesBase:
             :class:`~numpy.ndarray`: The difference vectors between the points with
             periodic boundary conditions applied.
         """
+        # deprecated since 2024-01-28
+        warnings.warn(
+            "Deprecated function. Use `pos_to_cart` instead", DeprecationWarning
+        )
         return self.pos_to_cart(p2) - self.pos_to_cart(p1)  # type: ignore
 
     def distance(self, p1: np.ndarray, p2: np.ndarray) -> float:
-        """Calculate the distance between two points given in real coordinates
-
-        This takes periodic boundary conditions into account if necessary.
+        """Calculate the distance between two points
 
         Args:
             p1 (:class:`~numpy.ndarray`):
                 First position
             p2 (:class:`~numpy.ndarray`):
                 Second position
-            coords (str):
-                The coordinate system in which the points are specified. Valid values are
-                `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
 
         Returns:
             float: Distance between the two positions
         """
-        return np.linalg.norm(self.pos_diff(p1, p2), axis=-1)  # type: ignore
+        # this can be overwritten if a more efficient calculation is possible
+        x1 = self.pos_to_cart(p1)
+        x2 = self.pos_to_cart(p2)
+        return np.linalg.norm(x2 - x1, axis=-1)  # type: ignore
 
     def _scale_factors(self, points: np.ndarray) -> np.ndarray:
         return np.diag(self.metric(points)) ** 2
@@ -142,7 +144,7 @@ class CoordinatesBase:
         return jac
 
     def mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
-        """returns the Jacobian matrix of the cooridinate mapping
+        """returns the Jacobian matrix of the coordinate mapping
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -161,14 +163,14 @@ class CoordinatesBase:
         return np.prod(self._scale_factors(points), axis=0)  # type: ignore
 
     def volume_factor(self, points: np.ndarray) -> ArrayLike:
-        """calculate the volume elements at various points
+        """calculate the volume factors at various points
 
         Args:
             points (:class:`~numpy.ndarray`):
-                The grid coordinates of the points
+                Coordinates of the point(s)
 
         Returns:
-            :class:`~numpy.ndarray`: Scale factors at the points
+            :class:`~numpy.ndarray`: Volume factors at the points
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.dim:
@@ -195,8 +197,7 @@ class CoordinatesBase:
                 Upper values of the coordinate lines enclosing the volume
 
         Returns:
-            :class:`~numpy.ndarray`: Enclosed volumes, which is an array with one
-            dimension less than the given coordinate lines
+            :class:`~numpy.ndarray`: Enclosed volumes for all given cells
         """
         c_low = np.atleast_1d(c_low)
         if c_low.shape[-1] != self.dim:
@@ -226,17 +227,16 @@ class CoordinatesBase:
         raise NotImplementedError
 
     def basis_rotation(self, points: np.ndarray) -> np.ndarray:
-        """returns the basis vectors of the grid in Cartesian coordinates
+        """returns rotation matrix rotating basis vectors to Cartesian coordinates
 
         Args:
             points (:class:`~numpy.ndarray`):
-                Coordinates of the point(s) where the basis determined
+                Coordinates of the point(s)
 
         Returns:
-            :class:`~numpy.ndarray`: Arrays of vectors giving the direction of the grid
-                unit vectors in Cartesian coordinates. The returnd array has the shape
-                `(dim, dim) + points_shape`, assuming `points` has the shape
-                `points_shape + (dim,)
+            :class:`~numpy.ndarray`: Rotation matrices for all points. The returnd array
+            has the shape `(dim, dim) + points_shape`, assuming `points` has the shape
+            `points_shape + (dim,)`.
         """
         points = np.atleast_1d(points)
         if points.shape[-1] != self.dim:
@@ -244,7 +244,7 @@ class CoordinatesBase:
         return self._basis_rotation(points)
 
     def vec_to_cart(self, points: np.ndarray, components: np.ndarray) -> np.ndarray:
-        """convert the vectors at given points into a Cartesian basis
+        """convert the vectors at given points to a Cartesian basis
 
         Args:
             points (:class:`~numpy.ndarray`):
