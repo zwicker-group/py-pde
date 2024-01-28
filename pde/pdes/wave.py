@@ -3,6 +3,7 @@ A simple wave equation
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
+
 from __future__ import annotations
 
 from typing import Callable

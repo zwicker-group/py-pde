@@ -335,14 +335,12 @@ class GridBase(metaclass=ABCMeta):
         return get_valid  # type: ignore
 
     @overload
-    def _make_set_valid(self) -> Callable[[np.ndarray, np.ndarray], None]:
-        ...
+    def _make_set_valid(self) -> Callable[[np.ndarray, np.ndarray], None]: ...
 
     @overload
     def _make_set_valid(
         self, bcs: Boundaries
-    ) -> Callable[[np.ndarray, np.ndarray, dict], None]:
-        ...
+    ) -> Callable[[np.ndarray, np.ndarray, dict], None]: ...
 
     def _make_set_valid(self, bcs: Boundaries | None = None) -> Callable:
         """create a function to set the valid part of a full data array

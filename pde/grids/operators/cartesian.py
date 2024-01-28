@@ -14,6 +14,7 @@ This module implements differential operators on Cartesian grids
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>   
 """
+
 from __future__ import annotations
 
 from typing import Callable, Literal

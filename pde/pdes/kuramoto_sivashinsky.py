@@ -3,6 +3,7 @@ The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interf
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
+
 from __future__ import annotations
 
 from typing import Callable

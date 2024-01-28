@@ -3,6 +3,7 @@ Helper functions for just-in-time compilation with numba
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+
 from __future__ import annotations
 
 import logging

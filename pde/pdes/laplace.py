@@ -3,6 +3,7 @@ Solvers for Poisson's and Laplace's equation
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+
 from __future__ import annotations
 
 from ..fields import ScalarField

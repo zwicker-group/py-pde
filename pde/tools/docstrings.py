@@ -10,6 +10,7 @@ Methods for automatic transformation of docstrings
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+
 from __future__ import annotations
 
 import re

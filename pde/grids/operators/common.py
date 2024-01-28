@@ -3,6 +3,7 @@ Common functions that are used by many operators
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+
 from __future__ import annotations
 
 import logging
