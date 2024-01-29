@@ -73,11 +73,11 @@ def test_trackers(rng):
     def store_time(state, t):
         times.append(t)
 
-    def get_data(state):
+    def get_sparse_matrix_data(state):
         return {"integral": state.integral}
 
     devnull = open(os.devnull, "w")
-    data = trackers.DataTracker(get_data, interrupts=0.1)
+    data = trackers.DataTracker(get_sparse_matrix_data, interrupts=0.1)
     tracker_list = [
         trackers.PrintTracker(interrupts=0.1, stream=devnull),
         trackers.CallbackTracker(store_time, interrupts=0.1),

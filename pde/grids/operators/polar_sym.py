@@ -288,7 +288,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
                 matrix[i, i + 1] = 2 * scale
                 continue  # the special case of the inner boundary is handled
             else:
-                const, entries = bcs[0].get_data((-1,))
+                const, entries = bcs[0].get_sparse_matrix_data((-1,))
                 factor = scale - scale_i
                 vector[i] += const * factor
                 for k, v in entries.items():
@@ -298,7 +298,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
             matrix[i, i - 1] = scale - scale_i
 
         if i == dim_r - 1:
-            const, entries = bcs[0].get_data((dim_r,))
+            const, entries = bcs[0].get_sparse_matrix_data((dim_r,))
             factor = scale + scale_i
             vector[i] += const * factor
             for k, v in entries.items():
