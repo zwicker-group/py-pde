@@ -58,7 +58,7 @@ def _get_laplace_matrix_1d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
         matrix[i, i] += -2
 
         if i == 0:
-            const, entries = bcs[0].get_data((-1,))
+            const, entries = bcs[0].get_sparse_matrix_data((-1,))
             vector[i] += const
             for k, v in entries.items():
                 matrix[i, k] += v
@@ -66,7 +66,7 @@ def _get_laplace_matrix_1d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
             matrix[i, i - 1] += 1
 
         if i == dim_x - 1:
-            const, entries = bcs[0].get_data((dim_x,))
+            const, entries = bcs[0].get_sparse_matrix_data((dim_x,))
             vector[i] += const
             for k, v in entries.items():
                 matrix[i, k] += v
@@ -113,7 +113,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
         for y in range(dim_y):
             # handle x-direction
             if x == 0:
-                const, entries = bc_x.get_data((-1, y))
+                const, entries = bc_x.get_sparse_matrix_data((-1, y))
                 vector[i(x, y)] += const * scale_x
                 for k, v in entries.items():
                     matrix[i(x, y), i(k, y)] += v * scale_x
@@ -121,7 +121,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
                 matrix[i(x, y), i(x - 1, y)] += scale_x
 
             if x == dim_x - 1:
-                const, entries = bc_x.get_data((dim_x, y))
+                const, entries = bc_x.get_sparse_matrix_data((dim_x, y))
                 vector[i(x, y)] += const * scale_x
                 for k, v in entries.items():
                     matrix[i(x, y), i(k, y)] += v * scale_x
@@ -130,7 +130,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 
             # handle y-direction
             if y == 0:
-                const, entries = bc_y.get_data((x, -1))
+                const, entries = bc_y.get_sparse_matrix_data((x, -1))
                 vector[i(x, y)] += const * scale_y
                 for k, v in entries.items():
                     matrix[i(x, y), i(x, k)] += v * scale_y
@@ -138,7 +138,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
                 matrix[i(x, y), i(x, y - 1)] += scale_y
 
             if y == dim_y - 1:
-                const, entries = bc_y.get_data((x, dim_y))
+                const, entries = bc_y.get_sparse_matrix_data((x, dim_y))
                 vector[i(x, y)] += const * scale_y
                 for k, v in entries.items():
                     matrix[i(x, y), i(x, k)] += v * scale_y
@@ -183,7 +183,7 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
             for z in range(dim_z):
                 # handle x-direction
                 if x == 0:
-                    const, entries = bc_x.get_data((-1, y, z))
+                    const, entries = bc_x.get_sparse_matrix_data((-1, y, z))
                     vector[i(x, y, z)] += const * scale_x
                     for k, v in entries.items():
                         matrix[i(x, y, z), i(k, y, z)] += v * scale_x
@@ -191,7 +191,7 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
                     matrix[i(x, y, z), i(x - 1, y, z)] += scale_x
 
                 if x == dim_x - 1:
-                    const, entries = bc_x.get_data((dim_x, y, z))
+                    const, entries = bc_x.get_sparse_matrix_data((dim_x, y, z))
                     vector[i(x, y, z)] += const * scale_x
                     for k, v in entries.items():
                         matrix[i(x, y, z), i(k, y, z)] += v * scale_x
@@ -200,7 +200,7 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 
                 # handle y-direction
                 if y == 0:
-                    const, entries = bc_y.get_data((x, -1, z))
+                    const, entries = bc_y.get_sparse_matrix_data((x, -1, z))
                     vector[i(x, y, z)] += const * scale_y
                     for k, v in entries.items():
                         matrix[i(x, y, z), i(x, k, z)] += v * scale_y
@@ -208,7 +208,7 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
                     matrix[i(x, y, z), i(x, y - 1, z)] += scale_y
 
                 if y == dim_y - 1:
-                    const, entries = bc_y.get_data((x, dim_y, z))
+                    const, entries = bc_y.get_sparse_matrix_data((x, dim_y, z))
                     vector[i(x, y, z)] += const * scale_y
                     for k, v in entries.items():
                         matrix[i(x, y, z), i(x, k, z)] += v * scale_y
@@ -217,7 +217,7 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 
                 # handle z-direction
                 if z == 0:
-                    const, entries = bc_z.get_data((x, y, -1))
+                    const, entries = bc_z.get_sparse_matrix_data((x, y, -1))
                     vector[i(x, y, z)] += const * scale_z
                     for k, v in entries.items():
                         matrix[i(x, y, z), i(x, y, k)] += v * scale_z
@@ -225,7 +225,7 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
                     matrix[i(x, y, z), i(x, y, z - 1)] += scale_z
 
                 if z == dim_z - 1:
-                    const, entries = bc_z.get_data((x, y, dim_z))
+                    const, entries = bc_z.get_sparse_matrix_data((x, y, dim_z))
                     vector[i(x, y, z)] += const * scale_z
                     for k, v in entries.items():
                         matrix[i(x, y, z), i(x, y, k)] += v * scale_z

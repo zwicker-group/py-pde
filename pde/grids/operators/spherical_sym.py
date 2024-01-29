@@ -566,7 +566,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
             if r_min == 0:
                 matrix[i, i + 1] = factor_l[i]
             else:
-                const, entries = bcs[0].get_data((-1,))
+                const, entries = bcs[0].get_sparse_matrix_data((-1,))
                 vector[i] += const * factor_l[i]
                 for k, v in entries.items():
                     matrix[i, k] += v * factor_l[i]
@@ -575,7 +575,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
             matrix[i, i - 1] = factor_l[i]
 
         if i == dim_r - 1:
-            const, entries = bcs[0].get_data((dim_r,))
+            const, entries = bcs[0].get_sparse_matrix_data((dim_r,))
             vector[i] += const * factor_h[i]
             for k, v in entries.items():
                 matrix[i, k] += v * factor_h[i]

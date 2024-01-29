@@ -569,7 +569,9 @@ class BCBase(metaclass=ABCMeta):
     def copy(self: TBC, upper: bool | None = None, rank: int | None = None) -> TBC:
         raise NotImplementedError
 
-    def get_data(self, idx: tuple[int, ...]) -> tuple[float, dict[int, float]]:
+    def get_sparse_matrix_data(
+        self, idx: tuple[int, ...]
+    ) -> tuple[float, dict[int, float]]:
         raise NotImplementedError
 
     def get_virtual_point(self, arr, idx: tuple[int, ...] | None = None) -> float:
@@ -1512,7 +1514,9 @@ class ExpressionBC(BCBase):
         bc._get_value_cell_index(with_ghost_cells=False)
         return bc
 
-    def get_data(self, idx: tuple[int, ...]) -> tuple[float, dict[int, float]]:
+    def get_sparse_matrix_data(
+        self, idx: tuple[int, ...]
+    ) -> tuple[float, dict[int, float]]:
         raise NotImplementedError
 
     def get_virtual_point(self, arr, idx: tuple[int, ...] | None = None) -> float:
@@ -2055,7 +2059,9 @@ class ConstBC1stOrderBase(ConstBCBase):
             tuple: the data structure associated with this virtual point
         """
 
-    def get_data(self, idx: tuple[int, ...]) -> tuple[float, dict[int, float]]:
+    def get_sparse_matrix_data(
+        self, idx: tuple[int, ...]
+    ) -> tuple[float, dict[int, float]]:
         """sets the elements of the sparse representation of this condition
 
         Args:
@@ -2631,7 +2637,9 @@ class ConstBC2ndOrderBase(ConstBCBase):
             tuple: the data structure associated with this virtual point
         """
 
-    def get_data(self, idx: tuple[int, ...]) -> tuple[float, dict[int, float]]:
+    def get_sparse_matrix_data(
+        self, idx: tuple[int, ...]
+    ) -> tuple[float, dict[int, float]]:
         """sets the elements of the sparse representation of this condition
 
         Args:
