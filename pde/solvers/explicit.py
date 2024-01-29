@@ -74,6 +74,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         """
         if self.pde.is_sde:
             # handle stochastic version of the pde
+            self.info["scheme"] = "euler-maruyama"
             rhs_sde = self._make_sde_rhs(state, backend=self.backend)
 
             def stepper(state_data: np.ndarray, t: float) -> None:
@@ -87,6 +88,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
         else:
             # handle deterministic version of the pde
+            self.info["scheme"] = "euler"
             rhs_pde = self._make_pde_rhs(state, backend=self.backend)
 
             def stepper(state_data: np.ndarray, t: float) -> None:
