@@ -722,18 +722,16 @@ class GridBase(metaclass=ABCMeta):
             return self._coords_symmetric(points_sph)
 
     def _vector_to_cartesian(
-        self, points: ArrayLike, components: ArrayLike, *, coords: CoordsType = "grid"
+        self, points: ArrayLike, components: ArrayLike
     ) -> np.ndarray:
         """convert the vectors at given points into a Cartesian basis
 
         Args:
             points (:class:`~numpy.ndarray`):
-                The coordinates of the point(s) where the vectors are specified.
+                The coordinates of the point(s) where the vectors are specified. These
+                need to be given in grid coordinates.
             components (:class:`~numpy.ndarray`):
                 The components of the vectors at the given points
-            coords (str):
-                The coordinate system in which the point is specified. Valid values are
-                `cartesian`, `cell`, and `grid`; see :meth:`~pde.grids.base.GridBase.transform`.
 
         Returns:
             The vectors specified at the same position but with components given in
@@ -1118,12 +1116,13 @@ class GridBase(metaclass=ABCMeta):
         img_coord0 = self.get_image_data(data[0], **kwargs)
         img_coord1 = self.get_image_data(data[1], **kwargs)
 
+        points_cart = np.stack((img_coord0["xs"], img_coord0["ys"]), axis=-1)
+        points = self.c._pos_from_cart(points_cart)
+
         # convert vectors to cartesian coordinates
         img_data = img_coord0
         img_data["data_x"], img_data["data_y"] = self._vector_to_cartesian(
-            np.stack((img_coord0["xs"], img_coord0["ys"]), axis=-1),
-            [img_coord0["data"], img_coord1["data"]],
-            coords="cartesian",
+            points, [img_coord0["data"], img_coord1["data"]]
         )
         img_data.pop("data")
         return img_data
