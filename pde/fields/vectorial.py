@@ -147,10 +147,14 @@ class VectorField(DataFieldBase):
 
     def __getitem__(self, key: int | str) -> ScalarField:
         """extract a component of the VectorField"""
+        axis = self.grid.get_axis_index(key)
+        comp_name = self.grid.c.axes[axis]
+        if self.label:
+            label = self.label + f"_{comp_name}"
+        else:
+            label = f"{comp_name} component"
         return ScalarField(
-            self.grid,
-            data=self._data_full[self.grid.get_axis_index(key)],
-            with_ghost_cells=True,
+            self.grid, data=self._data_full[axis], label=label, with_ghost_cells=True
         )
 
     def __setitem__(self, key: int | str, value: NumberOrArray | ScalarField):
@@ -590,14 +594,12 @@ class VectorField(DataFieldBase):
         # determine the points at which data needs to be calculated
         if isinstance(grid, CartesianGrid):
             # convert Cartesian coordinates to coordinates in current grid
-            points = self.grid.transform(
-                grid.cell_coords, "cartesian", "grid", full=True
-            )
-            # interpolate the data to the grid; this gives the vector in the grid basis
+            points = self.grid.c.pos_from_cart(grid.cell_coords)
             points_grid_sym = self.grid._coords_symmetric(points)
+            # interpolate the data to the grid; this gives the vector in the grid basis
             data_grid = self.interpolate(points_grid_sym, bc=bc, fill=fill)
             # convert the vector to the cartesian basis
-            data = self.grid._vector_to_cartesian(points, data_grid, coords="grid")
+            data = self.grid._vector_to_cartesian(points, data_grid)
 
         elif (
             self.grid.__class__ is grid.__class__
