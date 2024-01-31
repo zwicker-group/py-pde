@@ -697,7 +697,13 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
-        if not full:
+        if full:
+            # Deprecated on 2024-01-31
+            warnings.warn(
+                "`full=True` is deprecated. Use `grid.c.pos_to_cart` instead",
+                DeprecationWarning,
+            )
+        else:
             points = self._coords_full(points)
         return self.c.pos_to_cart(points)
 
@@ -717,6 +723,11 @@ class GridBase(metaclass=ABCMeta):
         """
         points_sph = self.c.pos_from_cart(points)
         if full:
+            # Deprecated since 2024-01-31
+            warnings.warn(
+                "`full=True` is deprecated. Use `grid.c.pos_from_cart` instead",
+                DeprecationWarning,
+            )
             return points_sph
         else:
             return self._coords_symmetric(points_sph)
@@ -916,6 +927,13 @@ class GridBase(metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: The transformed coordinates
         """
+        if full:
+            # Deprecated since 2024-01-31
+            warnings.warn(
+                "`full=True` is deprecated. Use `grid.c` methods instead",
+                DeprecationWarning,
+            )
+
         if source == "cartesian":
             # Cartesian coordinates given
             cartesian = np.atleast_1d(coordinates)
