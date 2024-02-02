@@ -28,7 +28,7 @@ classifiers = [
 ]
 
 # Requirements for setuptools
-dependencies = ["matplotlib>=3.1.0", "numba>=0.56.0", "numpy>=1.22.0", "scipy>=1.10.0", "sympy>=1.9.0", "tqdm>=4.60"]
+dependencies = ["matplotlib>=3.1", "numba>=0.59", "numpy>=1.22", "scipy>=1.10", "sympy>=1.9", "tqdm>=4.60"]
 
 [project.optional-dependencies]
 hdf = ["h5py>=2.10"]

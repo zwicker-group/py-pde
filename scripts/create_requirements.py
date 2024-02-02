@@ -59,31 +59,31 @@ REQUIREMENTS = [
     # essential requirements
     Requirement(
         name="matplotlib",
-        version_min="3.1.0",
+        version_min="3.1",
         usage="Visualizing results",
         essential=True,
     ),
     Requirement(
         name="numba",
-        version_min="0.56.0",
+        version_min="0.59",
         usage="Just-in-time compilation to accelerate numerics",
         essential=True,
     ),
     Requirement(
         name="numpy",
-        version_min="1.22.0",
+        version_min="1.22",
         usage="Handling numerical data",
         essential=True,
     ),
     Requirement(
         name="scipy",
-        version_min="1.10.0",
+        version_min="1.10",
         usage="Miscellaneous scientific functions",
         essential=True,
     ),
     Requirement(
         name="sympy",
-        version_min="1.9.0",
+        version_min="1.9",
         usage="Dealing with user-defined mathematical expressions",
         essential=True,
     ),
