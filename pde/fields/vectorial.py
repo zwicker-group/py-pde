@@ -6,17 +6,7 @@ Defines a vectorial field over a grid
 
 from __future__ import annotations
 
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Optional,
-    Sequence,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence
 
 import numba as nb
 import numpy as np
@@ -24,30 +14,38 @@ from numba.extending import overload, register_jitable
 from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, GridBase
+from ..grids.boundaries.axes import BoundariesData
+from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import get_common_dtype
+from ..tools.misc import Number, get_common_dtype
 from ..tools.numba import get_common_numba_dtype, jit
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
-    from .tensorial import Tensor2Field  # @UnusedImport
+    from .tensorial import Tensor2Field
 
 
 class VectorField(DataFieldBase):
-    """Vector field discretized on a grid"""
+    """Vector field discretized on a grid
+
+    Warning:
+        Components of the vector field are given in the local basis. While the local
+        basis is identical to the global basis in Cartesian coordinates, the local basis
+        depends on position in curvilinear coordinate systems. Moreover, the field
+        always contains all components, even if the underlying grid assumes symmetries.
+    """
 
     rank = 1
 
     @classmethod
     def from_scalars(
         cls,
-        fields: List[ScalarField],
+        fields: list[ScalarField],
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> VectorField:
         """create a vector field from a list of ScalarFields
 
@@ -87,10 +85,10 @@ class VectorField(DataFieldBase):
         grid: GridBase,
         expressions: Sequence[str],
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> VectorField:
         """create a vector field on a grid from given expressions
 
@@ -139,6 +137,7 @@ class VectorField(DataFieldBase):
                 signature=grid.axes,
                 user_funcs=user_funcs,
                 consts=consts,
+                repl=grid.c._axes_alt_repl,
             )
             values = np.broadcast_to(expr(*points), grid.shape)
             data.append(values)
@@ -146,17 +145,19 @@ class VectorField(DataFieldBase):
         # create vector field from the data
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
-    def __getitem__(self, key: Union[int, str]) -> ScalarField:
+    def __getitem__(self, key: int | str) -> ScalarField:
         """extract a component of the VectorField"""
+        axis = self.grid.get_axis_index(key)
+        comp_name = self.grid.c.axes[axis]
+        if self.label:
+            label = self.label + f"_{comp_name}"
+        else:
+            label = f"{comp_name} component"
         return ScalarField(
-            self.grid,
-            data=self._data_full[self.grid.get_axis_index(key)],
-            with_ghost_cells=True,
+            self.grid, data=self._data_full[axis], label=label, with_ghost_cells=True
         )
 
-    def __setitem__(
-        self, key: Union[int, str], value: Union[NumberOrArray, ScalarField]
-    ):
+    def __setitem__(self, key: int | str, value: NumberOrArray | ScalarField):
         """set a component of the VectorField"""
         idx = self.grid.get_axis_index(key)
         if isinstance(value, ScalarField):
@@ -167,12 +168,12 @@ class VectorField(DataFieldBase):
 
     def dot(
         self,
-        other: Union[VectorField, "Tensor2Field"],
-        out: Union[ScalarField, VectorField, None] = None,
+        other: VectorField | Tensor2Field,
+        out: ScalarField | VectorField | None = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
-    ) -> Union[ScalarField, VectorField]:
+    ) -> ScalarField | VectorField:
         """calculate the dot product involving a vector field
 
         This supports the dot product between two vectors fields as well as the
@@ -223,10 +224,10 @@ class VectorField(DataFieldBase):
     def outer_product(
         self,
         other: VectorField,
-        out: Optional["Tensor2Field"] = None,
+        out: Tensor2Field | None = None,
         *,
-        label: Optional[str] = None,
-    ) -> "Tensor2Field":
+        label: str | None = None,
+    ) -> Tensor2Field:
         """calculate the outer product of this vector field with another
 
         Args:
@@ -258,7 +259,7 @@ class VectorField(DataFieldBase):
 
     def make_outer_prod_operator(
         self, backend: Literal["numpy", "numba"] = "numba"
-    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
+    ) -> Callable[[np.ndarray, np.ndarray, np.ndarray | None], np.ndarray]:
         """return operator calculating the outer product of two vector fields
 
         Warning:
@@ -276,7 +277,7 @@ class VectorField(DataFieldBase):
         """
 
         def outer(
-            a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
         ) -> np.ndarray:
             """calculate the outer product using numpy"""
             return np.einsum("i...,j...->ij...", a, b, out=out)
@@ -291,7 +292,7 @@ class VectorField(DataFieldBase):
             dim = self.grid.dim
             num_axes = self.grid.num_axes
 
-            def check_rank(arr: Union[nb.types.Type, nb.types.Optional]) -> None:
+            def check_rank(arr: nb.types.Type | nb.types.Optional) -> None:
                 """determine rank of field with type `arr`"""
                 arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
                 if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
@@ -311,7 +312,7 @@ class VectorField(DataFieldBase):
 
             @overload(outer, inline="always")
             def outer_ol(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
                 """numba implementation to calculate outer product between two fields"""
                 # get (and check) rank of the input arrays
@@ -325,7 +326,7 @@ class VectorField(DataFieldBase):
                     dtype = get_common_numba_dtype(a, b)
 
                     def outer_impl(
-                        a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
                         """helper function allocating output array"""
                         assert a.shape == b.shape == in_shape
@@ -337,7 +338,7 @@ class VectorField(DataFieldBase):
                     # function is called with `out` argument -> reuse `out` array
 
                     def outer_impl(
-                        a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
                         """helper function without allocating output array"""
                         # check input
@@ -350,7 +351,7 @@ class VectorField(DataFieldBase):
 
             @jit
             def outer_compiled(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
                 """numba implementation to calculate outer product between two fields"""
                 return outer(a, b, out)
@@ -362,7 +363,7 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self, bc: Optional[BoundariesData], out: Optional[ScalarField] = None, **kwargs
+        self, bc: BoundariesData | None, out: ScalarField | None = None, **kwargs
     ) -> ScalarField:
         """apply divergence operator and return result as a field
 
@@ -385,10 +386,10 @@ class VectorField(DataFieldBase):
     @fill_in_docstring
     def gradient(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional["Tensor2Field"] = None,
+        bc: BoundariesData | None,
+        out: Tensor2Field | None = None,
         **kwargs,
-    ) -> "Tensor2Field":
+    ) -> Tensor2Field:
         r"""apply vector gradient operator and return result as a field
 
         The vector gradient field is a tensor field :math:`t_{\alpha\beta}` that
@@ -414,7 +415,7 @@ class VectorField(DataFieldBase):
 
     @fill_in_docstring
     def laplace(
-        self, bc: Optional[BoundariesData], out: Optional[VectorField] = None, **kwargs
+        self, bc: BoundariesData | None, out: VectorField | None = None, **kwargs
     ) -> VectorField:
         r"""apply vector Laplace operator and return result as a field
 
@@ -449,11 +450,11 @@ class VectorField(DataFieldBase):
 
     def to_scalar(
         self,
-        scalar: Union[str, int] = "auto",
+        scalar: str | int = "auto",
         *,
-        label: Optional[str] = "scalar `{scalar}`",
+        label: str | None = "scalar `{scalar}`",
     ) -> ScalarField:
-        """return a scalar field by applying `method`
+        """return scalar variant of the field
 
         Args:
             scalar (str):
@@ -503,8 +504,8 @@ class VectorField(DataFieldBase):
         return ScalarField(self.grid, data, label=label)
 
     def get_vector_data(
-        self, transpose: bool = False, max_points: Optional[int] = None, **kwargs
-    ) -> Dict[str, Any]:
+        self, transpose: bool = False, max_points: int | None = None, **kwargs
+    ) -> dict[str, Any]:
         r"""return data for a vector plot of the field
 
         Args:
@@ -519,18 +520,12 @@ class VectorField(DataFieldBase):
         Returns:
             dict: Information useful for plotting an vector field
         """
-        # TODO: Handle Spherical and Cartesian grids, too. This could be
-        # implemented by adding a get_vector_data method to the grids
-        if self.grid.dim == 2:
-            vx = self[0].get_image_data(**kwargs)
-            vy = self[1].get_image_data(**kwargs)
-            data = vx  # use one of the fields to extract basic information
-            data["data_x"] = vx.pop("data")
-            data["data_y"] = vy["data"]
-            data["title"] = self.label
+        if self.is_complex:
+            self._logger.warning("Only the real part of complex data is shown")
 
-        else:
-            raise NotImplementedError("Only supports 2d grids")
+        # extract the image data
+        data = self.grid.get_vector_data(self.data.real, **kwargs)
+        data["title"] = self.label
 
         # transpose the data if requested
         if transpose:
@@ -562,9 +557,70 @@ class VectorField(DataFieldBase):
 
         return data
 
+    @fill_in_docstring
+    def interpolate_to_grid(
+        self: VectorField,
+        grid: GridBase,
+        *,
+        bc: BoundariesData | None = None,
+        fill: Number | None = None,
+        label: str | None = None,
+    ) -> VectorField:
+        """interpolate the data of this vector field to another grid.
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid of the new field onto which the current field is interpolated.
+            bc:
+                The boundary conditions applied to the field, which affects values close
+                to the boundary. If omitted, the argument `fill` is used to determine
+                values outside the domain.
+                {ARG_BOUNDARIES_OPTIONAL}
+            fill (Number, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            Field of the same rank as the current one.
+        """
+        if self.grid.dim != grid.dim:
+            raise DimensionError(
+                f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
+            )
+
+        # determine the points at which data needs to be calculated
+        if isinstance(grid, CartesianGrid):
+            # convert Cartesian coordinates to coordinates in current grid
+            points = self.grid.c.pos_from_cart(grid.cell_coords)
+            points_grid_sym = self.grid._coords_symmetric(points)
+            # interpolate the data to the grid; this gives the vector in the grid basis
+            data_grid = self.interpolate(points_grid_sym, bc=bc, fill=fill)
+            # convert the vector to the cartesian basis
+            data = self.grid._vector_to_cartesian(points, data_grid)
+
+        elif (
+            self.grid.__class__ is grid.__class__
+            and self.grid.num_axes == grid.num_axes
+        ):
+            # convert within the same grid class
+            points = grid.cell_coords
+            # vectors are already given in the correct basis
+            data = self.interpolate(points, bc=bc, fill=fill)
+
+        else:
+            # this type of interpolation is not supported
+            grid_in = self.grid.__class__.__name__
+            grid_out = grid.__class__.__name__
+            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
+
+        return self.__class__(grid, data, label=label)
+
     def _get_napari_layer_data(  # type: ignore
-        self, max_points: Optional[int] = None, args: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, max_points: int | None = None, args: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """returns data for plotting on a single napari layer
 
         Args:

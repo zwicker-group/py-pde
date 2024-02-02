@@ -81,14 +81,3 @@ def test_setting_boundary_conditions():
     grid.get_boundary_conditions(["derivative", "periodic"])
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions(["derivative", "derivative"])
-
-
-@pytest.mark.parametrize("periodic", [True, False])
-def test_polar_conversion(periodic):
-    """test conversion to polar coordinates"""
-    grid = CylindricalSymGrid(1, [-1, 1], [5, 5], periodic_z=periodic)
-    dists = grid.polar_coordinates_real([0, 0, 0])
-    assert np.all(0.09 <= dists)
-    assert np.any(dists < 0.11)
-    assert np.all(dists <= np.sqrt(2))
-    assert np.any(dists > 0.8 * np.sqrt(2))

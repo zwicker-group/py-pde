@@ -7,13 +7,15 @@ Methods for automatic transformation of docstrings
    get_text_block
    replace_in_docstring
    fill_in_docstring
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import re
 import textwrap
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 DOCSTRING_REPLACEMENTS = {
     # description of function arguments
@@ -36,12 +38,13 @@ DOCSTRING_REPLACEMENTS = {
         More information can be found in the
         :ref:`boundaries documentation <documentation-boundaries>`.
         """,
-    "ARG_TRACKER_INTERVAL": """
-        Determines how often the tracker interrupts the simulation. Simple
-        numbers are interpreted as durations measured in the simulation time
-        variable. Alternatively, a string using the format 'hh:mm:ss' can be
-        used to give durations in real time. Finally, instances of the classes
-        defined in :mod:`~pde.trackers.interrupts` can be given for more control.
+    "ARG_TRACKER_INTERRUPT": """
+        Determines when the tracker interrupts the simulation. A single numbers
+        determines an interval (measured in the simulation time unit) of regular
+        interruption. A string is interpreted as a duration in real time assuming the
+        format 'hh:mm:ss'. A list of numbers is taken as explicit simulation time points.
+        More fine-grained contol is possible by passing an instance of classes defined
+        in :mod:`~pde.trackers.interrupts`.
         """,
     "ARG_PLOT_QUANTITIES": """
         A 2d list of quantities that are shown in a rectangular arrangement.
@@ -122,7 +125,7 @@ TFunc = TypeVar("TFunc")
 
 
 def replace_in_docstring(
-    f: TFunc, token: str, value: str, docstring: Optional[str] = None
+    f: TFunc, token: str, value: str, docstring: str | None = None
 ) -> TFunc:
     """replace a text in a docstring using the correct indentation
 

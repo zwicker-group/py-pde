@@ -13,19 +13,7 @@ import warnings
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Optional,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 import numba as nb
 import numpy as np
@@ -34,7 +22,6 @@ from numpy.typing import DTypeLike
 
 from ..grids.base import DimensionError, DomainError, GridBase, discretize_interval
 from ..grids.boundaries.axes import BoundariesData
-from ..grids.cartesian import CartesianGrid
 from ..tools.cache import cached_method
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
@@ -48,7 +35,7 @@ from ..tools.plotting import (
 from ..tools.typing import ArrayLike, NumberOrArray
 
 if TYPE_CHECKING:
-    from .scalar import ScalarField  # @UnusedImport
+    from .scalar import ScalarField
 
 
 TField = TypeVar("TField", bound="FieldBase")
@@ -61,18 +48,19 @@ class RankError(TypeError):
 class FieldBase(metaclass=ABCMeta):
     """abstract base class for describing (discretized) fields"""
 
-    _subclasses: Dict[str, Type[FieldBase]] = {}  # all classes inheriting from this
+    _subclasses: dict[str, type[FieldBase]] = {}  # all classes inheriting from this
     _grid: GridBase  # the grid on which the field is defined
     __data_full: np.ndarray  # the data on the grid including ghost points
     _data_valid: np.ndarray  # the valid data without ghost points
-    _label: Optional[str]
+    _label: str | None  # name of the field
+    _logger: logging.Logger  # logger instance to output information
 
     def __init__(
         self,
         grid: GridBase,
         data: np.ndarray,
         *,
-        label: Optional[str] = None,
+        label: str | None = None,
     ):
         """
         Args:
@@ -119,7 +107,7 @@ class FieldBase(metaclass=ABCMeta):
             self._data_valid[...] = value
 
     @property
-    def _idx_valid(self) -> Tuple[slice, ...]:
+    def _idx_valid(self) -> tuple[slice, ...]:
         """tuple: slices to extract valid data from full data"""
         idx_comp = (slice(None),) * (self.__data_full.ndim - self.grid.num_axes)
         return idx_comp + self.grid._idx_valid
@@ -167,7 +155,7 @@ class FieldBase(metaclass=ABCMeta):
         # flatten the first dimension of the internal data by creating a view and then
         # setting the new shape. This disallows accidental copying of the data
         data_flat = self._data_full.view()
-        data_flat.shape = (-1, *self.grid._shape_full)
+        data_flat.shape = (-1, *self.grid._shape_full)  # type: ignore
         return data_flat
 
     @_data_flat.setter
@@ -188,12 +176,12 @@ class FieldBase(metaclass=ABCMeta):
         self._data_valid.flags.writeable = value
 
     @property
-    def label(self) -> Optional[str]:
+    def label(self) -> str | None:
         """str: the name of the field"""
         return self._label
 
     @label.setter
-    def label(self, value: Optional[str] = None):
+    def label(self, value: str | None = None):
         """set the new label of the field"""
         if value is None or isinstance(value, str):
             self._label = value
@@ -202,7 +190,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def from_state(
-        cls, attributes: Dict[str, Any], data: Optional[np.ndarray] = None
+        cls, attributes: dict[str, Any], data: np.ndarray | None = None
     ) -> FieldBase:
         """create a field from given state.
 
@@ -348,9 +336,20 @@ class FieldBase(metaclass=ABCMeta):
 
     @abstractmethod
     def copy(
-        self: TField, *, label: Optional[str] = None, dtype: Optional[DTypeLike] = None
+        self: TField, *, label: str | None = None, dtype: DTypeLike | None = None
     ) -> TField:
-        ...
+        """return a new field with the data (but not the grid) copied
+
+        Args:
+            label (str, optional):
+                Name of the returned field
+            dtype (numpy dtype):
+                The data type of the field. If omitted, it will be determined from
+                `data` automatically or the dtype of the current field is used.
+
+        Returns:
+            :class:`DataFieldBase`: A copy of the current field
+        """
 
     def assert_field_compatible(
         self, other: FieldBase, accept_scalar: bool = False
@@ -388,7 +387,7 @@ class FieldBase(metaclass=ABCMeta):
         return np.iscomplexobj(self.data)
 
     @property
-    def attributes(self) -> Dict[str, Any]:
+    def attributes(self) -> dict[str, Any]:
         """dict: describes the state of the instance (without the data)"""
         return {
             "class": self.__class__.__name__,
@@ -398,7 +397,7 @@ class FieldBase(metaclass=ABCMeta):
         }
 
     @property
-    def attributes_serialized(self) -> Dict[str, str]:
+    def attributes_serialized(self) -> dict[str, str]:
         """dict: serialized version of the attributes"""
         results = {}
         for key, value in self.attributes.items():
@@ -411,7 +410,7 @@ class FieldBase(metaclass=ABCMeta):
         return results
 
     @classmethod
-    def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
+    def unserialize_attributes(cls, attributes: dict[str, str]) -> dict[str, Any]:
         """unserializes the given attributes
 
         Args:
@@ -629,11 +628,11 @@ class FieldBase(metaclass=ABCMeta):
 
     def apply(
         self: TField,
-        func: Union[Callable, str],
-        out: Optional[TField] = None,
+        func: Callable | str,
+        out: TField | None = None,
         *,
-        label: Optional[str] = None,
-        evaluate_args: Optional[Dict[str, Any]] = None,
+        label: str | None = None,
+        evaluate_args: dict[str, Any] | None = None,
     ) -> TField:
         """applies a function/expression to the data and returns it as a field
 
@@ -693,23 +692,48 @@ class FieldBase(metaclass=ABCMeta):
     @abstractmethod
     def get_line_data(
         self, scalar: str = "auto", extract: str = "auto"
-    ) -> Dict[str, Any]:
-        ...
+    ) -> dict[str, Any]:
+        """return data for a line plot of the field
+
+        Args:
+            scalar (str or int):
+                The method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
+            extract (str):
+                The method used for extracting the line data. See the docstring
+                of the grid method `get_line_data` to find supported values.
+
+        Returns:
+            dict: Information useful for performing a line plot of the field
+        """
 
     @abstractmethod
-    def get_image_data(self) -> Dict[str, Any]:
-        ...
+    def get_image_data(self) -> dict[str, Any]:
+        r"""return data for plotting an image of the field
+
+        Args:
+            scalar (str or int):
+                The method for extracting scalars as described in
+                :meth:`DataFieldBase.to_scalar`.
+            transpose (bool):
+                Determines whether the transpose of the data should is plotted
+            \**kwargs:
+                Additional parameters are forwarded to `grid.get_image_data`
+
+        Returns:
+            dict: Information useful for plotting an image of the field
+        """
 
     @abstractmethod
     def plot(self, *args, **kwargs):
-        ...
+        """visualize the field"""
 
     @abstractmethod
-    def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
-        ...
+    def _get_napari_data(self, **kwargs) -> dict[str, dict[str, Any]]:
+        """returns data for plotting this field using :mod:`napari`"""
 
     def plot_interactive(
-        self, viewer_args: Optional[Dict[str, Any]] = None, **kwargs
+        self, viewer_args: dict[str, Any] | None = None, **kwargs
     ) -> None:
         """create an interactive plot of the field using :mod:`napari`
 
@@ -733,7 +757,7 @@ class FieldBase(metaclass=ABCMeta):
         with napari_viewer(self.grid, **viewer_args) as viewer:
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
-    def split_mpi(self: TField, decomposition: Union[int, List[int]] = -1) -> TField:
+    def split_mpi(self: TField, decomposition: int | list[int] = -1) -> TField:
         """splits the field onto subgrids in an MPI run
 
         In a normal serial simulation, the method simply returns the field itself. In
@@ -778,10 +802,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: Union[ArrayLike, str, None] = "zeros",
+        data: ArrayLike | str | None = "zeros",
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
         with_ghost_cells: bool = False,
     ):
         """
@@ -873,14 +897,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_uniform(
-        cls: Type[TDataField],
+        cls: type[TDataField],
         grid: GridBase,
         vmin: float = 0,
         vmax: float = 1,
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
-        rng: Optional[np.random.Generator] = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
+        rng: np.random.Generator | None = None,
     ) -> TDataField:
         """create field with uniform distributed random values
 
@@ -920,15 +944,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_normal(
-        cls: Type[TDataField],
+        cls: type[TDataField],
         grid: GridBase,
         mean: float = 0,
         std: float = 1,
         *,
         scaling: Literal["none", "physical"] = "none",
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
-        rng: Optional[np.random.Generator] = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
+        rng: np.random.Generator | None = None,
     ) -> TDataField:
         """create field with normal distributed random values
 
@@ -986,15 +1010,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_harmonic(
-        cls: Type[TDataField],
+        cls: type[TDataField],
         grid: GridBase,
         modes: int = 3,
         harmonic=np.cos,
         axis_combination=np.multiply,
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
-        rng: Optional[np.random.Generator] = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
+        rng: np.random.Generator | None = None,
     ) -> TDataField:
         r"""create a random field build from harmonics
 
@@ -1062,14 +1086,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def random_colored(
-        cls: Type[TDataField],
+        cls: type[TDataField],
         grid: GridBase,
         exponent: float = 0,
         scale: float = 1,
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
-        rng: Optional[np.random.Generator] = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
+        rng: np.random.Generator | None = None,
     ) -> TDataField:
         r"""create a field of random values with colored noise
 
@@ -1116,7 +1140,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(grid, data=data, label=label, dtype=dtype)
 
     @classmethod
-    def get_class_by_rank(cls, rank: int) -> Type[DataFieldBase]:
+    def get_class_by_rank(cls, rank: int) -> type[DataFieldBase]:
         """return a :class:`DataFieldBase` subclass describing a field with a given rank
 
         Args:
@@ -1136,9 +1160,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def from_state(
-        cls: Type[TDataField],
-        attributes: Dict[str, Any],
-        data: Optional[np.ndarray] = None,
+        cls: type[TDataField],
+        attributes: dict[str, Any],
+        data: np.ndarray | None = None,
     ) -> TDataField:
         """create a field from given state.
 
@@ -1161,21 +1185,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def copy(
         self: TDataField,
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> TDataField:
-        """return a new field with the data (but not the grid) copied
-
-        Args:
-            label (str, optional):
-                Name of the returned field
-            dtype (numpy dtype):
-                The data type of the field. If omitted, it will be determined from
-                `data` automatically or the dtype of the current field is used.
-
-        Returns:
-            :class:`DataFieldBase`: A copy of the current field
-        """
         if label is None:
             label = self.label
         if dtype is None:
@@ -1190,12 +1202,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         )
 
     @property
-    def data_shape(self) -> Tuple[int, ...]:
+    def data_shape(self) -> tuple[int, ...]:
         """tuple: the shape of the data at each grid point"""
         return (self.grid.dim,) * self.rank
 
     @classmethod
-    def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
+    def unserialize_attributes(cls, attributes: dict[str, str]) -> dict[str, Any]:
         """unserializes the given attributes
 
         Args:
@@ -1244,7 +1256,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def make_interpolator(
         self,
         *,
-        fill: Optional[Number] = None,
+        fill: Number | None = None,
         with_ghost_cells: bool = False,
     ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
         r"""returns a function that can be used to interpolate values.
@@ -1289,7 +1301,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         @jit
         def interpolator(
-            point: np.ndarray, data: Optional[np.ndarray] = None
+            point: np.ndarray, data: np.ndarray | None = None
         ) -> np.ndarray:
             """return the interpolated value at the position `point`
 
@@ -1335,10 +1347,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         self,
         point: np.ndarray,
         *,
-        bc: Optional[BoundariesData] = None,
-        fill: Optional[Number] = None,
-        **kwargs,
-    ) -> NumberOrArray:
+        bc: BoundariesData | None = None,
+        fill: Number | None = None,
+    ) -> np.ndarray:
         r"""interpolate the field to points between support points
 
         Args:
@@ -1354,19 +1365,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
                 Otherwise, the given value is returned.
-            \**kwargs:
-                Additional keyword arguments are forwarded to the method
-                :meth:`DataFieldBase.make_interpolator`.
 
         Returns:
             :class:`~numpy.ndarray`: the values of the field
         """
-        if kwargs:
-            warnings.warn(
-                f"args {kwargs.keys()} are no longer supported", DeprecationWarning
-            )
-            # this was deprecated on 2022-10-14
-
         if bc is not None:
             # impose boundary conditions and then interpolate using ghost cells
             self.set_ghost_cells(bc)
@@ -1379,12 +1381,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # do the actual interpolation
         return interpolator(np.asarray(point))  # type: ignore
 
+    @fill_in_docstring
     def interpolate_to_grid(
         self: TDataField,
         grid: GridBase,
         *,
-        fill: Optional[Number] = None,
-        label: Optional[str] = None,
+        bc: BoundariesData | None = None,
+        fill: Number | None = None,
+        label: str | None = None,
     ) -> TDataField:
         """interpolate the data of this field to another grid.
 
@@ -1392,6 +1396,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid of the new field onto which the current field is
                 interpolated.
+            bc:
+                The boundary conditions applied to the field, which affects values close
+                to the boundary. If omitted, the argument `fill` is used to determine
+                values outside the domain.
+                {ARG_BOUNDARIES_OPTIONAL}
             fill (Number, optional):
                 Determines how values out of bounds are handled. If `None`, a
                 `ValueError` is raised when out-of-bounds points are requested.
@@ -1402,33 +1411,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             Field of the same rank as the current one.
         """
-        if self.grid.dim != grid.dim:
-            raise DimensionError(
-                f"Grid dimensions are incompatible "
-                f"({self.grid.dim:d} != {grid.dim:d})"
-            )
-
-        # determine the points at which data needs to be calculated
-        if isinstance(grid, CartesianGrid):
-            # convert Cartesian coordinates to coordinates in current grid
-            points = self.grid.transform(grid.cell_coords, "cartesian", "grid")
-
-        elif (
-            self.grid.__class__ is grid.__class__
-            and self.grid.num_axes == grid.num_axes
-        ):
-            # convert within the same grid class
-            points = grid.cell_coords
-
-        else:
-            # this type of interpolation is not supported
-            grid_in = self.grid.__class__.__name__
-            grid_out = grid.__class__.__name__
-            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
-
-        # interpolate the data to the grid
-        data = self.interpolate(points, fill=fill)
-        return self.__class__(grid, data, label=label)
+        raise NotImplementedError(f"Cannot interpolate {self.__class__.__name__}")
 
     def insert(self, point: np.ndarray, amount: ArrayLike) -> None:
         """adds an (integrated) value to the field at an interpolated position
@@ -1485,7 +1468,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @fill_in_docstring
     def get_boundary_values(
-        self, axis: int, upper: bool, bc: Optional[BoundariesData] = None
+        self, axis: int, upper: bool, bc: BoundariesData | None = None
     ) -> NumberOrArray:
         """get the field values directly on the specified boundary
 
@@ -1504,7 +1487,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         if bc is not None:
             self.set_ghost_cells(bc=bc)
 
-        l_wall: List[Union[slice, int]] = [slice(1, -1)] * self.grid.num_axes
+        l_wall: list[slice | int] = [slice(1, -1)] * self.grid.num_axes
         l_ghost = l_wall.copy()
         if upper:
             l_wall[axis] = -2
@@ -1535,13 +1518,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @property
     @abstractmethod
     def integral(self) -> NumberOrArray:
-        ...
+        """integral of the scalar field over space"""
 
     @abstractmethod
     def to_scalar(
-        self, scalar: str = "auto", *, label: Optional[str] = None
-    ) -> "ScalarField":
-        ...
+        self, scalar: str = "auto", *, label: str | None = None
+    ) -> ScalarField:
+        """return scalar variant of the field"""
 
     @property
     def average(self) -> NumberOrArray:
@@ -1590,11 +1573,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def apply_operator(
         self,
         operator: str,
-        bc: Optional[BoundariesData],
-        out: Optional[DataFieldBase] = None,
+        bc: BoundariesData | None,
+        out: DataFieldBase | None = None,
         *,
-        label: Optional[str] = None,
-        args: Optional[Dict[str, Any]] = None,
+        label: str | None = None,
+        args: dict[str, Any] | None = None,
         **kwargs,
     ) -> DataFieldBase:
         r"""apply a (differential) operator and return result as a field
@@ -1641,51 +1624,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         return out
 
-    @fill_in_docstring
-    def _apply_operator(
-        self,
-        operator: str,
-        bc: Optional[BoundariesData],
-        out: Optional[DataFieldBase] = None,
-        *,
-        label: Optional[str] = None,
-        args: Optional[Dict[str, Any]] = None,
-        **kwargs,
-    ) -> DataFieldBase:
-        r"""apply a (differential) operator and return result as a field
-
-        Args:
-            operator (str):
-                An identifier determining the operator. Note that not all grids support
-                the same operators.
-            bc:
-                Boundary conditions applied to the field before applying the operator.
-                {ARG_BOUNDARIES_OPTIONAL}
-            out (:class:`DataFieldBase`, optional):
-                Optional field to which the  result is written.
-            label (str, optional):
-                Name of the returned field
-            args (dict):
-                Additional arguments for the boundary conditions
-            **kwargs:
-                Additional arguments affecting how the operator behaves.
-
-        Returns:
-            Field data after applying the operator. This field is identical to `out` if
-            this argument was specified.
-        """
-        # deprecated on 2023-02-23
-        warnings.warn(
-            "`_apply_operator` is deprecated. Use `apply_operator` instead",
-            DeprecationWarning,
-        )
-        return self.apply_operator(
-            operator, bc, out=out, label=label, args=args, **kwargs
-        )
-
     def make_dot_operator(
         self, backend: Literal["numpy", "numba"] = "numba", *, conjugate: bool = True
-    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
+    ) -> Callable[[np.ndarray, np.ndarray, np.ndarray | None], np.ndarray]:
         """return operator calculating the dot product between two fields
 
         This supports both products between two vectors as well as products
@@ -1711,7 +1652,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             return arr.conjugate() if conjugate else arr
 
         def dot(
-            a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
         ) -> np.ndarray:
             """numpy implementation to calculate dot product between two fields"""
             rank_a = a.ndim - num_axes
@@ -1742,7 +1683,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         elif backend == "numba":
             # overload `dot` and return a compiled version
 
-            def get_rank(arr: Union[nb.types.Type, nb.types.Optional]) -> int:
+            def get_rank(arr: nb.types.Type | nb.types.Optional) -> int:
                 """determine rank of field with type `arr`"""
                 arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
                 if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
@@ -1751,7 +1692,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     )
                 rank = arr_typ.ndim - num_axes
                 if rank < 1:
-                    raise TypeError(
+                    raise nb.NumbaTypeError(
                         f"Rank={rank} too small for dot product. Use a normal product "
                         "instead."
                     )
@@ -1759,7 +1700,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             @overload(dot, inline="always")
             def dot_ol(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
                 """numba implementation to calculate dot product between two fields"""
                 # get (and check) rank of the input arrays
@@ -1814,7 +1755,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     dtype = get_common_numba_dtype(a, b)
 
                     def dot_impl(
-                        a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
                         """helper function allocating output array"""
                         assert a.shape == a_shape
@@ -1827,7 +1768,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     # function is called with `out` argument -> reuse `out` array
 
                     def dot_impl(
-                        a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
                         """helper function without allocating output array"""
                         assert a.shape == a_shape
@@ -1840,7 +1781,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             @jit
             def dot_compiled(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
                 """numba implementation to calculate dot product between two fields"""
                 return dot(a, b, out)
@@ -1854,8 +1795,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         self: TDataField,
         sigma: float = 1,
         *,
-        out: Optional[TDataField] = None,
-        label: Optional[str] = None,
+        out: TDataField | None = None,
+        label: str | None = None,
     ) -> TDataField:
         """applies Gaussian smoothing with the given standard deviation
 
@@ -1901,20 +1842,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def get_line_data(
         self, scalar: str = "auto", extract: str = "auto"
-    ) -> Dict[str, Any]:
-        """return data for a line plot of the field
-
-        Args:
-            scalar (str or int):
-                The method for extracting scalars as described in
-                :meth:`DataFieldBase.to_scalar`.
-            extract (str):
-                The method used for extracting the line data. See the docstring
-                of the grid method `get_line_data` to find supported values.
-
-        Returns:
-            dict: Information useful for performing a line plot of the field
-        """
+    ) -> dict[str, Any]:
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 
@@ -1929,21 +1857,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def get_image_data(
         self, scalar: str = "auto", transpose: bool = False, **kwargs
-    ) -> Dict[str, Any]:
-        r"""return data for plotting an image of the field
-
-        Args:
-            scalar (str or int):
-                The method for extracting scalars as described in
-                :meth:`DataFieldBase.to_scalar`.
-            transpose (bool):
-                Determines whether the transpose of the data should is plotted
-            \**kwargs:
-                Additional parameters are forwarded to `grid.get_image_data`
-
-        Returns:
-            dict: Information useful for plotting an image of the field
-        """
+    ) -> dict[str, Any]:
         # turn field into scalar field
         scalar_data = self.to_scalar(scalar).data
 
@@ -1958,12 +1872,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         if transpose:
             # adjust image data such that the transpose is plotted
+            data["x"], data["y"] = data["y"], data["x"]
             data["data"] = data["data"].T
             data["label_x"], data["label_y"] = data["label_y"], data["label_x"]
+            data["extent"] = data["extent"][2:] + data["extent"][:2]
 
         return data
 
-    def get_vector_data(self, **kwargs) -> Dict[str, Any]:
+    def get_vector_data(self, transpose: bool = False, **kwargs) -> dict[str, Any]:
         r"""return data for a vector plot of the field
 
         Args:
@@ -1980,7 +1896,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         ax,
         scalar: str = "auto",
         extract: str = "auto",
-        ylabel: Optional[str] = None,
+        ylabel: str | None = None,
+        ylim: tuple[float, float] | None = None,
         **kwargs,
     ) -> PlotReference:
         r"""visualize a field using a 1d line plot
@@ -1994,11 +1911,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             extract (str):
                 The method used for extracting the line data.
             ylabel (str):
-                Label of the y-axis. If omitted, the label is chosen
-                automatically from the data field.
+                Label of the y-axis. If omitted, the label is chosen automatically from
+                the data field.
+            ylim (tuple of float):
+                Limits of the y-axis. If omitted, the data range is used
             \**kwargs:
-                Additional keyword arguments are passed to
-                :func:`matplotlib.pyplot.plot`
+                Additional arguments are passed to :func:`matplotlib.pyplot.plot`
 
         Returns:
             :class:`PlotReference`: Instance that contains information to update
@@ -2020,8 +1938,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ylabel = line_data.get("label_y", self.label)
         if ylabel:
             ax.set_ylabel(ylabel)
+        if ylim is not None:
+            ax.set_ylim(ylim)
 
-        return PlotReference(ax, line2d, {"scalar": scalar, "extract": extract})
+        return PlotReference(
+            ax,
+            line2d,
+            {"scalar": scalar, "extract": extract, "ylabel": ylabel, "ylim": ylim},
+        )
 
     def _update_line_plot(self, reference: PlotReference) -> None:
         """update a line plot with the current field values
@@ -2083,12 +2007,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 data_kws[arg] = kwargs.pop(arg)
         data = self.get_image_data(scalar, transpose, **data_kws)
 
-        if ax is None:
-            import matplotlib.pyplot as plt
-
-            # create new figure
-            ax = plt.subplots()[1]
-
         # plot the image
         kwargs.setdefault("origin", "lower")
         kwargs.setdefault("interpolation", "none")
@@ -2136,9 +2054,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def _plot_vector(
         self,
         ax,
+        *,
         method: Literal["quiver", "streamplot"] = "quiver",
-        transpose: bool = False,
-        max_points: int = 16,
+        max_points: int | None = 16,
         **kwargs,
     ) -> PlotReference:
         r"""visualize a field using a 2d vector plot
@@ -2147,15 +2065,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ax (:class:`matplotlib.axes.Axes`):
                 Figure axes to be used for plotting.
             method (str):
-                Plot type that is used. This can be either `quiver` or
-                `streamplot`.
-            transpose (bool):
-                Determines whether the transpose of the data should be plotted.
+                Plot type that is used. This can be either `quiver` or `streamplot`.
             max_points (int):
-                The maximal number of points that is used along each axis. This
-                argument is only used for quiver plots.
+                The maximal number of points that is used along each axis. This argument
+                is only used for quiver plots. `None` indicates all points are used.
             \**kwargs:
                 Additional keyword arguments are passed to
+                :meth:`~pde.field.base.DataFieldBase.get_vector_data` and
                 :func:`matplotlib.pyplot.quiver` or
                 :func:`matplotlib.pyplot.streamplot`.
 
@@ -2164,29 +2080,32 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             the plot with new data later.
         """
         # store the parameters of this plot for later updating
-        parameters: Dict[str, Any] = {
-            "method": method,
-            "transpose": transpose,
-            "kwargs": kwargs,
-        }
+        parameters: dict[str, Any] = {"method": method, "kwargs": kwargs}
+
+        # obtain parameter used to extract vector data
+        data_kws = {}
+        for arg in ["performance_goal", "transpose"]:
+            if arg in kwargs:
+                data_kws[arg] = kwargs.pop(arg)
 
         if method == "quiver":
             # plot vector field using a quiver plot
-            data = self.get_vector_data(transpose=transpose, max_points=max_points)
-            parameters["max_points"] = max_points  # only save for quiver plot
+            data_kws["max_points"] = max_points
+            data = self.get_vector_data(**data_kws)
             element = ax.quiver(
                 data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
 
         elif method == "streamplot":
             # plot vector field using a streamplot
-            data = self.get_vector_data(transpose=transpose)
+            data = self.get_vector_data(**data_kws)
             element = ax.streamplot(
                 data["x"], data["y"], data["data_x"].T, data["data_y"].T, **kwargs
             )
 
         else:
             raise ValueError(f"Vector plot `{method}` is not supported.")
+        parameters["data_kws"] = data_kws  # save data parameters
 
         # set some default properties of the plot
         ax.set_aspect("equal")
@@ -2205,19 +2124,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         # extract general parameters
         method = reference.parameters.get("method", "quiver")
-        transpose = reference.parameters.get("transpose", False)
+        data_kws = reference.parameters.get("data_kws", {})
 
         if method == "quiver":
             # update the data of a quiver plot
-            max_points = reference.parameters.get("max_points")
-            data = self.get_vector_data(transpose=transpose, max_points=max_points)
+            data = self.get_vector_data(**data_kws)
             reference.element.set_UVC(data["data_x"], data["data_y"])
 
         elif method == "streamplot":
             # update a streamplot by redrawing it completely
             ax = reference.ax
             kwargs = reference.parameters.get("kwargs", {})
-            data = self.get_vector_data(transpose=transpose)
+            data = self.get_vector_data(**data_kws)
             # remove old streamplot
             ax.cla()
             # update with new streamplot
@@ -2271,26 +2189,26 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             * :code:`kind == "line"`:
 
-              - `scalar`: sets method for extracting scalars as described in
+              - `scalar`: Sets method for extracting scalars as described in
                 :meth:`DataFieldBase.to_scalar`.
-              - `extract`: method used for extracting the line data.
-              - `ylabel`: Label of the y-axis. If omitted, the label is chosen
-                automatically from the data field.
+              - `extract`: Method used for extracting the line data.
+              - `ylabel`: Label of the y-axis.
+              - `ylim`: Data limits of the y-axis.
               - Additional arguments are passed to :func:`matplotlib.pyplot.plot`
 
             * :code:`kind == "image"`:
 
               - `colorbar`: Determines whether a colorbar is shown
-              - `scalar`: sets method for extracting scalars as described in
+              - `scalar`: Sets method for extracting scalars as described in
                  :meth:`DataFieldBase.to_scalar`.
-              - `transpose` determines whether the transpose of the data is plotted
+              - `transpose` Determines whether the transpose of the data is plotted
               - Most remaining arguments are passed to :func:`matplotlib.pyplot.imshow`
 
             * :code:`kind == `"vector"`:
 
-              - `method` can be either `quiver` or `streamplot`
-              - `transpose` determines whether the transpose of the data is plotted
-              - `max_points` sets max. number of points along each axis in quiver plots
+              - `method` Can be either `quiver` or `streamplot`
+              - `transpose` Determines whether the transpose of the data is plotted
+              - `max_points` Sets max. number of points along each axis in quiver plots
               - Additional arguments are passed to :func:`matplotlib.pyplot.quiver` or
                 :func:`matplotlib.pyplot.streamplot`.
 
@@ -2304,7 +2222,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 and self.grid.dim == 2
             ):
                 kind = "vector"
-            elif len(self.grid.shape) == 1:
+            elif self.grid.num_axes == 1:
                 kind = "line"
             else:
                 kind = "image"
@@ -2333,8 +2251,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return reference
 
     def _get_napari_layer_data(
-        self, scalar: str = "auto", args: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, scalar: str = "auto", args: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """returns data for plotting on a single napari layer
 
         Args:
@@ -2355,8 +2273,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         result["data"] = self.to_scalar(scalar).data
         return result
 
-    def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
-        r"""returns data for plotting this field
+    def _get_napari_data(self, **kwargs) -> dict[str, dict[str, Any]]:
+        r"""returns data for plotting this field using :mod:`napari`
 
         Args:
             \**kwargs: all arguments are forwarded to `_get_napari_layer_data`

@@ -30,7 +30,7 @@ def test_plot_tracker(tmp_path, rng):
     tracker = trackers.PlotTracker(
         output_file=output_file,
         title=get_title,
-        interval=0.1,
+        interrupts=0.1,
         show=False,
         tight_layout=True,
     )
@@ -49,7 +49,7 @@ def test_plot_movie_tracker(tmp_path, rng):
     state = ScalarField.random_uniform(grid, rng=rng)
     eq = DiffusionPDE()
     tracker = trackers.PlotTracker(
-        movie=output_file, interval=0.1, show=False, tight_layout=True
+        movie=output_file, interrupts=0.1, show=False, tight_layout=True
     )
 
     eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
@@ -59,7 +59,7 @@ def test_plot_movie_tracker(tmp_path, rng):
 
 def test_simple_progress():
     """simple test for basic progress bar"""
-    pbar = trackers.ProgressTracker(interval=1)
+    pbar = trackers.ProgressTracker(interrupts=1)
     field = ScalarField(UnitGrid([3]))
     pbar.initialize(field)
     pbar.handle(field, 2)
@@ -73,19 +73,19 @@ def test_trackers(rng):
     def store_time(state, t):
         times.append(t)
 
-    def get_data(state):
+    def get_sparse_matrix_data(state):
         return {"integral": state.integral}
 
     devnull = open(os.devnull, "w")
-    data = trackers.DataTracker(get_data, interval=0.1)
+    data = trackers.DataTracker(get_sparse_matrix_data, interrupts=0.1)
     tracker_list = [
-        trackers.PrintTracker(interval=0.1, stream=devnull),
-        trackers.CallbackTracker(store_time, interval=0.1),
+        trackers.PrintTracker(interrupts=0.1, stream=devnull),
+        trackers.CallbackTracker(store_time, interrupts=0.1),
         None,  # should be ignored
         data,
     ]
     if module_available("matplotlib"):
-        tracker_list.append(trackers.PlotTracker(interval=0.1, show=False))
+        tracker_list.append(trackers.PlotTracker(interrupts=0.1, show=False))
 
     grid = UnitGrid([16, 16])
     state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
@@ -114,8 +114,8 @@ def test_callback_tracker(rng):
     grid = UnitGrid([4, 4])
     state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
     eq = DiffusionPDE()
-    data_tracker = trackers.DataTracker(get_mean_data, interval=0.1)
-    callback_tracker = trackers.CallbackTracker(store_mean_data, interval=0.1)
+    data_tracker = trackers.DataTracker(get_mean_data, interrupts=0.1)
+    callback_tracker = trackers.CallbackTracker(store_mean_data, interrupts=0.1)
     tracker_list = [data_tracker, callback_tracker]
     eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker_list, backend="numpy")
 
@@ -132,8 +132,8 @@ def test_callback_tracker(rng):
     grid = UnitGrid([4, 4])
     state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
     eq = DiffusionPDE()
-    data_tracker = trackers.DataTracker(get_time, interval=0.1)
-    tracker_list = [trackers.CallbackTracker(store_time, interval=0.1), data_tracker]
+    data_tracker = trackers.DataTracker(get_time, interrupts=0.1)
+    tracker_list = [trackers.CallbackTracker(store_time, interrupts=0.1), data_tracker]
     eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker_list, backend="numpy")
 
     ts = np.arange(0, 0.55, 0.1)
@@ -168,7 +168,7 @@ def test_steady_state_tracker():
 
     # use basic form
     tracker = trackers.SteadyStateTracker(atol=0.05, rtol=0.05, progress=True)
-    eq.solve(c0, 1e4, dt=0.1, tracker=[tracker, storage.tracker(interval=1e2)])
+    eq.solve(c0, 1e4, dt=0.1, tracker=[tracker, storage.tracker(interrupts=1e2)])
     assert len(storage) < 20  # finished early
 
     # use form with the evolution rate supplied
@@ -178,7 +178,7 @@ def test_steady_state_tracker():
         progress=True,
         evolution_rate=eq.make_pde_rhs(c0, backend="numpy"),
     )
-    eq.solve(c0, 1e4, dt=0.1, tracker=[tracker, storage.tracker(interval=1e2)])
+    eq.solve(c0, 1e4, dt=0.1, tracker=[tracker, storage.tracker(interrupts=1e2)])
     assert len(storage) < 20  # finished early
 
 
@@ -189,7 +189,7 @@ def test_small_tracker_dt(rng):
     eq = DiffusionPDE()
     c0 = ScalarField.random_uniform(UnitGrid([4, 4]), 0.1, 0.2, rng=rng)
     eq.solve(
-        c0, 1e-2, dt=1e-3, solver="explicit", tracker=storage.tracker(interval=1e-4)
+        c0, 1e-2, dt=1e-3, solver="explicit", tracker=storage.tracker(interrupts=1e-4)
     )
     assert len(storage) == 11
 
@@ -238,10 +238,10 @@ def test_get_named_trackers():
 
 def test_double_tracker(rng):
     """simple test for using a custom tracker twice"""
-    interval = ConstantInterrupts(1)
+    interrupts = ConstantInterrupts(1)
     times1, times2 = [], []
-    t1 = trackers.CallbackTracker(lambda s, t: times1.append(t), interval=interval)
-    t2 = trackers.CallbackTracker(lambda s, t: times2.append(t), interval=interval)
+    t1 = trackers.CallbackTracker(lambda s, t: times1.append(t), interrupts=interrupts)
+    t2 = trackers.CallbackTracker(lambda s, t: times2.append(t), interrupts=interrupts)
 
     field = ScalarField.random_uniform(UnitGrid([3]), rng=rng)
     DiffusionPDE().solve(field, t_range=4, dt=0.1, tracker=[t1, t2])

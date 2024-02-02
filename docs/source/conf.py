@@ -60,7 +60,7 @@ extensions = [
     # our own extensions
     "toctree_filter",
     "package_config",
-    # "simplify_typehints",
+    "simplify_typehints",
 ]
 
 templates_path = ["_templates"]
@@ -110,6 +110,7 @@ html_theme_options = {
     #     'includehidden': True,
     #     'titles_only': False
 }
+html_secnumber_suffix = " "
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -153,7 +154,7 @@ latex_elements = {
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
-    "preamble": "\setcounter{tocdepth}{4}"
+    "preamble": r"\setcounter{tocdepth}{4}"
 }
 
 # Grouping the document tree into LaTeX files. List of tuples

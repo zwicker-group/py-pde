@@ -13,7 +13,7 @@ from pde.fields.scalar import ScalarField
 from pde.grids import CartesianGrid, PolarSymGrid, UnitGrid, boundaries
 from pde.grids._mesh import GridMesh
 from pde.tools import mpi
-from pde.tools.misc import module_available, skipUnlessModule
+from pde.tools.misc import module_available
 
 
 def test_interpolation_singular():
@@ -60,8 +60,11 @@ def test_simple_shapes(grid, rng):
     assert pf.grid == pf_c.grid
     assert pf.data is not pf_c.data
 
-    if module_available("matplotlib"):
-        pf.plot()  # simply test whether this does not cause errors
+    if grid.num_axes == 1:
+        ref = pf.plot(ylabel="My plot", ylim=(0, 1))
+    else:
+        ref = pf.plot(transpose=True, vmin=0, vmax=1)
+    pf._update_plot(ref)
 
 
 def test_scalars(rng):
@@ -88,8 +91,7 @@ def test_scalars(rng):
     assert s1.grid is not s2.grid
 
     # test options for plotting images
-    if module_available("matplotlib"):
-        s1.plot(transpose=True, colorbar=True)
+    s1.plot(transpose=True, colorbar=True)
 
     s3 = ScalarField(grid, s1)
     assert s1 is not s3
@@ -240,7 +242,6 @@ def test_from_expression():
     np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
 
 
-@skipUnlessModule("matplotlib")
 def test_from_image(tmp_path, rng):
     from matplotlib.pyplot import imsave
 
@@ -410,7 +411,7 @@ def test_plotting_2d(rng):
     field._update_plot(ref)
 
 
-@skipUnlessModule("napari")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.interactive
 def test_interactive_plotting(rng):
     """test the interactive plotting"""

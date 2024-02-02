@@ -14,17 +14,20 @@ The provided interrupt classes are:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 import copy
 import math
 import time
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Optional, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, TypeVar, Union
 
 import numpy as np
 
 from ..tools.parse_duration import parse_duration
 
 InfoDict = Optional[Dict[str, Any]]
+TInterrupt = TypeVar("TInterrupt", bound="InterruptsBase")
 
 
 class InterruptsBase(metaclass=ABCMeta):
@@ -34,32 +37,10 @@ class InterruptsBase(metaclass=ABCMeta):
     """float: current time difference between interrupts"""
 
     @abstractmethod
-    def copy(self):
-        pass
-
-    @abstractmethod
-    def initialize(self, t: float) -> float:
-        pass
-
-    @abstractmethod
-    def next(self, t: float) -> float:
-        pass
-
-
-class FixedInterrupts(InterruptsBase):
-    """class representing a list of interrupt times"""
-
-    def __init__(self, interrupts: Union[np.ndarray, Sequence[float]]):
-        self.interrupts = np.atleast_1d(interrupts)
-        assert self.interrupts.ndim == 1
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(interrupts={self.interrupts})"
-
-    def copy(self):
+    def copy(self: TInterrupt) -> TInterrupt:
         """return a copy of this instance"""
-        return self.__class__(interrupts=self.interrupts.copy())
 
+    @abstractmethod
     def initialize(self, t: float) -> float:
         """initialize the interrupt class
 
@@ -69,9 +50,8 @@ class FixedInterrupts(InterruptsBase):
         Returns:
             float: The first time the simulation needs to be interrupted
         """
-        self._index = -1
-        return self.next(t)
 
+    @abstractmethod
     def next(self, t: float) -> float:
         """computes the next time point
 
@@ -79,7 +59,30 @@ class FixedInterrupts(InterruptsBase):
             t (float):
                 The current time point of the simulation. The returned next time point
                 lies later than this time, so interrupts might be skipped.
+
+        Returns:
+            float: The next time point
         """
+
+
+class FixedInterrupts(InterruptsBase):
+    """class representing a list of interrupt times"""
+
+    def __init__(self, interrupts: np.ndarray | Sequence[float]):
+        self.interrupts = np.atleast_1d(interrupts)
+        assert self.interrupts.ndim == 1
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interrupts={self.interrupts})"
+
+    def copy(self):
+        return self.__class__(interrupts=self.interrupts.copy())
+
+    def initialize(self, t: float) -> float:
+        self._index = -1
+        return self.next(t)
+
+    def next(self, t: float) -> float:
         try:
             # Determine time of the last interrupt. This value does not make much sense
             # for the first interrupt, so we simply use the current time
@@ -106,7 +109,7 @@ class FixedInterrupts(InterruptsBase):
 class ConstantInterrupts(InterruptsBase):
     """class representing equidistantly spaced time interrupts"""
 
-    def __init__(self, dt: float = 1, t_start: Optional[float] = None):
+    def __init__(self, dt: float = 1, t_start: float | None = None):
         """
         Args:
             dt (float):
@@ -119,24 +122,15 @@ class ConstantInterrupts(InterruptsBase):
         """
         self.dt = float(dt)
         self.t_start = t_start
-        self._t_next: Optional[float] = None  # next time it should be called
+        self._t_next: float | None = None  # next time it should be called
 
     def __repr__(self):
         return f"{self.__class__.__name__}(dt={self.dt:g}, t_start={self.t_start})"
 
     def copy(self):
-        """return a copy of this instance"""
         return copy.copy(self)
 
     def initialize(self, t: float) -> float:
-        """initialize the interrupt class
-
-        Args:
-            t (float): The starting time of the simulation
-
-        Returns:
-            float: The first time the simulation needs to be interrupted
-        """
         if self.t_start is None:
             self._t_next = t
         else:
@@ -144,13 +138,6 @@ class ConstantInterrupts(InterruptsBase):
         return self._t_next
 
     def next(self, t: float) -> float:
-        """computes the next time point
-
-        Args:
-            t (float):
-                The current time point of the simulation. The returned next time point
-                lies later than this time, so interrupts might be skipped.
-        """
         # move next interrupt time by the appropriate interrupt
         self._t_next += self.dt  # type: ignore
 
@@ -170,7 +157,7 @@ class LogarithmicInterrupts(ConstantInterrupts):
     """class representing logarithmically spaced time interrupts"""
 
     def __init__(
-        self, dt_initial: float = 1, factor: float = 1, t_start: Optional[float] = None
+        self, dt_initial: float = 1, factor: float = 1, t_start: float | None = None
     ):
         """
         Args:
@@ -196,13 +183,6 @@ class LogarithmicInterrupts(ConstantInterrupts):
         )
 
     def next(self, t: float) -> float:
-        """computes the next time point
-
-        Args:
-            t (float):
-                The current time point of the simulation. The returned next time point
-                lies later than this time, so interrupts might be skipped.
-        """
         self.dt *= self.factor
         return super().next(t)
 
@@ -214,7 +194,7 @@ class RealtimeInterrupts(ConstantInterrupts):
     set by `dt_initial` and the actual variation in computation speed.
     """
 
-    def __init__(self, duration: Union[float, str], dt_initial: float = 0.01):
+    def __init__(self, duration: float | str, dt_initial: float = 0.01):
         """
         Args:
             duration (float or str):
@@ -231,7 +211,7 @@ class RealtimeInterrupts(ConstantInterrupts):
         except Exception:
             td = parse_duration(str(duration))
             self.duration = td.total_seconds()
-        self._last_time: Optional[float] = None
+        self._last_time: float | None = None
 
     def __repr__(self):
         return (
@@ -240,25 +220,10 @@ class RealtimeInterrupts(ConstantInterrupts):
         )
 
     def initialize(self, t: float) -> float:
-        """initialize the interrupt class
-
-        Args:
-            t (float): The starting time of the simulation
-
-        Returns:
-            float: The first time the simulation needs to be interrupted
-        """
         self._last_time = time.monotonic()
         return super().initialize(t)
 
     def next(self, t: float) -> float:
-        """computes the next time point
-
-        Args:
-            t (float):
-                The current time point of the simulation. The returned next time point
-                lies later than this time, so interrupts might be skipped.
-        """
         if self._last_time is None:
             self._last_time = time.monotonic()
         else:
@@ -277,11 +242,11 @@ class RealtimeInterrupts(ConstantInterrupts):
         return super().next(t)
 
 
-IntervalData = Union[InterruptsBase, float, str, Sequence[float], np.ndarray]
+InterruptData = Union[InterruptsBase, float, str, Sequence[float], np.ndarray]
 
 
-def interval_to_interrupts(data: IntervalData) -> InterruptsBase:
-    """create interrupt class from various data formats specifying time intervals
+def parse_interrupt(data: InterruptData) -> InterruptsBase:
+    """create interrupt class from various data formats
 
     Args:
         data (str or number or :class:`InterruptsBase`):
@@ -291,7 +256,7 @@ def interval_to_interrupts(data: IntervalData) -> InterruptsBase:
             interpreted as :class:`FixedInterrupts`.
 
     Returns:
-        :class:`InterruptsBase`: An instance that represents the time intervals
+        :class:`InterruptsBase`: An instance that represents the interrupt
     """
     if isinstance(data, InterruptsBase):
         return data

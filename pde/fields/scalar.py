@@ -8,31 +8,21 @@ from __future__ import annotations
 
 import numbers
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 import numpy as np
 from numpy.typing import DTypeLike
 
 from ..grids import CartesianGrid, UnitGrid
-from ..grids.base import DomainError, GridBase
+from ..grids.base import DimensionError, DomainError, GridBase
+from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
-    from .vectorial import VectorField  # @UnusedImport
+    from .vectorial import VectorField
 
 
 class ScalarField(DataFieldBase):
@@ -47,10 +37,10 @@ class ScalarField(DataFieldBase):
         grid: GridBase,
         expression: str,
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> ScalarField:
         """create a scalar field on a grid from a given expression
 
@@ -87,6 +77,7 @@ class ScalarField(DataFieldBase):
             signature=grid.axes,
             user_funcs=user_funcs,
             consts=consts,
+            repl=grid.c._axes_alt_repl,
         )
         # obtain the coordinates of the grid points
         points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
@@ -105,11 +96,11 @@ class ScalarField(DataFieldBase):
     @classmethod
     def from_image(
         cls,
-        path: Union[Path, str],
+        path: Path | str,
         bounds=None,
         periodic=False,
         *,
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> ScalarField:
         """create a scalar field from an image
 
@@ -194,8 +185,8 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def laplace(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional[ScalarField] = None,
+        bc: BoundariesData | None,
+        out: ScalarField | None = None,
         **kwargs,
     ) -> ScalarField:
         """apply Laplace operator and return result as a field
@@ -219,8 +210,8 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def gradient_squared(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional[ScalarField] = None,
+        bc: BoundariesData | None,
+        out: ScalarField | None = None,
         **kwargs,
     ) -> ScalarField:
         r"""apply squared gradient operator and return result as a field
@@ -250,10 +241,10 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def gradient(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional["VectorField"] = None,
+        bc: BoundariesData | None,
+        out: VectorField | None = None,
         **kwargs,
-    ) -> "VectorField":
+    ) -> VectorField:
         """apply gradient operator and return result as a field
 
         Args:
@@ -277,9 +268,9 @@ class ScalarField(DataFieldBase):
 
     def project(
         self,
-        axes: Union[str, Sequence[str]],
+        axes: str | Sequence[str],
         method: Literal["integral", "average", "mean"] = "integral",
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> ScalarField:
         """project scalar field along given axes
 
@@ -332,10 +323,10 @@ class ScalarField(DataFieldBase):
 
     def slice(
         self,
-        position: Dict[str, float],
+        position: dict[str, float],
         *,
         method: Literal["nearest"] = "nearest",
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> ScalarField:
         """slice data at a given position
 
@@ -398,7 +389,7 @@ class ScalarField(DataFieldBase):
 
         # obtain the sliced data
         if method == "nearest":
-            idx: List[Union[int, slice]] = []
+            idx: list[int | slice] = []
             for i in range(grid.num_axes):
                 if i in ax_remove:
                     pos = pos_values[i]
@@ -420,7 +411,7 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=sliced_grid, data=subdata, label=label)
 
     def to_scalar(
-        self, scalar: Union[str, Callable] = "auto", *, label: Optional[str] = None
+        self, scalar: str | Callable = "auto", *, label: str | None = None
     ) -> ScalarField:
         """return a modified scalar field by applying method `scalar`
 
@@ -457,12 +448,68 @@ class ScalarField(DataFieldBase):
         return ScalarField(grid=self.grid, data=data, label=label)
 
     @fill_in_docstring
+    def interpolate_to_grid(
+        self: ScalarField,
+        grid: GridBase,
+        *,
+        bc: BoundariesData | None = None,
+        fill: Number | None = None,
+        label: str | None = None,
+    ) -> ScalarField:
+        """interpolate the data of this scalar field to another grid.
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid of the new field onto which the current field is interpolated.
+            bc:
+                The boundary conditions applied to the field, which affects values close
+                to the boundary. If omitted, the argument `fill` is used to determine
+                values outside the domain.
+                {ARG_BOUNDARIES_OPTIONAL}
+            fill (Number, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            Field of the same rank as the current one.
+        """
+        if self.grid.dim != grid.dim:
+            raise DimensionError(
+                f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
+            )
+
+        # determine the points at which data needs to be calculated
+        if isinstance(grid, CartesianGrid):
+            # convert Cartesian coordinates to coordinates in current grid
+            points = self.grid.transform(grid.cell_coords, "cartesian", "grid")
+
+        elif (
+            self.grid.__class__ is grid.__class__
+            and self.grid.num_axes == grid.num_axes
+        ):
+            # convert within the same grid class
+            points = grid.cell_coords
+
+        else:
+            # this type of interpolation is not supported
+            grid_in = self.grid.__class__.__name__
+            grid_out = grid.__class__.__name__
+            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
+
+        # interpolate the data to the grid
+        data = self.interpolate(points, bc=bc, fill=fill)
+        return self.__class__(grid, data, label=label)
+
+    @fill_in_docstring
     def get_boundary_field(
         self,
-        index: Union[str, Tuple[int, bool]],
-        bc: Optional[BoundariesData] = None,
+        index: str | tuple[int, bool],
+        bc: BoundariesData | None = None,
         *,
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> ScalarField:
         """get the field on the specified boundary
 

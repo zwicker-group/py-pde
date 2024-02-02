@@ -18,7 +18,7 @@ from pde import (
 )
 from pde.grids.operators import cartesian as ops
 from pde.grids.operators.common import make_laplace_from_matrix
-from pde.tools.misc import skipUnlessModule
+from pde.tools.misc import module_available
 
 π = np.pi
 
@@ -85,7 +85,7 @@ def test_laplace_1d(periodic, rng):
     np.testing.assert_allclose(l1.data, l2.data)
 
 
-@skipUnlessModule("rocket_fft")
+@pytest.mark.skipif(not module_available("rocket_fft"), reason="requires `rocket_fft`")
 @pytest.mark.parametrize("ndim", [1, 2])
 @pytest.mark.parametrize("dtype", [float, complex])
 def test_laplace_spectral(ndim, dtype, rng):
@@ -322,53 +322,16 @@ def test_2nd_order_bc(rng):
     field.laplace([{"value": "sin(y)"}, {"value": "x"}])
 
 
-@pytest.mark.parametrize("ndim,axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)])
-def test_make_derivative(ndim, axis, rng):
-    """test the _make_derivative function"""
-    periodic = random.choice([True, False])
-    grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
-    field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add, rng=rng)
-
-    bcs = grid.get_boundary_conditions("auto_periodic_neumann")
-    grad = field.gradient(bcs)
-    for method in ["central", "forward", "backward"]:
-        msg = f"method={method}, periodic={periodic}"
-        diff = ops._make_derivative(grid, axis=axis, method=method)
-        res = field.copy()
-        res.data[:] = 0
-        field.set_ghost_cells(bcs)
-        diff(field._data_full, out=res.data)
-        np.testing.assert_allclose(
-            grad.data[axis], res.data, atol=0.1, rtol=0.1, err_msg=msg
-        )
-
-
-@pytest.mark.parametrize("ndim,axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)])
-def test_make_derivative2(ndim, axis, rng):
-    """test the _make_derivative2 function"""
-    periodic = random.choice([True, False])
-    grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
-    field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add, rng=rng)
-
-    bcs = grid.get_boundary_conditions("auto_periodic_neumann")
-    grad = field.gradient(bcs)[axis]
-    grad2 = grad.gradient(bcs)[axis]
-
-    diff = ops._make_derivative2(grid, axis=axis)
-    res = field.copy()
-    res.data[:] = 0
-    field.set_ghost_cells(bcs)
-    diff(field._data_full, out=res.data)
-    np.testing.assert_allclose(grad2.data, res.data, atol=0.1, rtol=0.1)
-
-
-@pytest.mark.parametrize("ndim", [1, 2])
+@pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_laplace_matrix(ndim, rng):
     """test laplace operator implemented using matrix multiplication"""
     if ndim == 1:
         periodic, bc = [False], [{"value": "sin(x)"}]
     elif ndim == 2:
         periodic, bc = [False, True], [{"value": "sin(x)"}, "periodic"]
+    elif ndim == 3:
+        periodic = [False, True, False]
+        bc = [{"value": "sin(x)"}, "periodic", "derivative"]
     grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
     bcs = grid.get_boundary_conditions(bc)
     laplace = make_laplace_from_matrix(*ops._get_laplace_matrix(bcs))
@@ -380,7 +343,9 @@ def test_laplace_matrix(ndim, rng):
     np.testing.assert_allclose(res1.data, res2)
 
 
-@pytest.mark.parametrize("grid", [UnitGrid([12]), CartesianGrid([[0, 1], [4, 5.5]], 8)])
+@pytest.mark.parametrize(
+    "grid", [UnitGrid([12]), CartesianGrid([[0, 1], [4, 5.5]], 8), UnitGrid([3, 3, 3])]
+)
 @pytest.mark.parametrize("bc_val", ["auto_periodic_neumann", {"value": "sin(x)"}])
 def test_poisson_solver_cartesian(grid, bc_val, rng):
     """test the poisson solver on cartesian grids"""

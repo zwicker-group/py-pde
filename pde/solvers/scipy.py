@@ -4,7 +4,9 @@ Defines a solver using :mod:`scipy.integrate`
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, Optional
+from __future__ import annotations
+
+from typing import Callable
 
 import numpy as np
 
@@ -15,10 +17,11 @@ from .base import SolverBase
 
 
 class ScipySolver(SolverBase):
-    """class for solving partial differential equations using scipy
+    """PDE solver using :func:`scipy.integrate.solve_ivp`.
 
     This class is a thin wrapper around :func:`scipy.integrate.solve_ivp`. In
-    particular, it supports all the methods implemented by this function.
+    particular, it supports all the methods implemented by this function and exposes its
+    arguments, so details can be controlled.
     """
 
     name = "scipy"
@@ -39,7 +42,7 @@ class ScipySolver(SolverBase):
         self.solver_params = kwargs
 
     def make_stepper(
-        self, state: FieldBase, dt: Optional[float] = None
+        self, state: FieldBase, dt: float | None = None
     ) -> Callable[[FieldBase, float, float], float]:
         """return a stepper function
 

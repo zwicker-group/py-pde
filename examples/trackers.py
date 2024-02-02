@@ -15,10 +15,10 @@ storage = pde.MemoryStorage()
 trackers = [
     "progress",  # show progress bar during simulation
     "steady_state",  # abort when steady state is reached
-    storage.tracker(interval=1),  # store data every simulation time unit
+    storage.tracker(interrupts=1),  # store data every simulation time unit
     pde.PlotTracker(show=True),  # show images during simulation
     # print some output every 5 real seconds:
-    pde.PrintTracker(interval=pde.RealtimeInterrupts(duration=5)),
+    pde.PrintTracker(interrupts=pde.RealtimeInterrupts(duration=5)),
 ]
 
 eq = pde.DiffusionPDE(0.1)  # define the PDE

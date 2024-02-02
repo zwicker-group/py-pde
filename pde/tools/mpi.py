@@ -16,9 +16,11 @@ Warning:
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import os
 import sys
-from typing import TYPE_CHECKING, Dict, Union
+from typing import TYPE_CHECKING
 
 import numba as nb
 import numpy as np
@@ -26,7 +28,7 @@ from numba import types
 from numba.extending import overload, register_jitable
 
 if TYPE_CHECKING:
-    from numba_mpi import Operator  # @UnusedImport
+    from numba_mpi import Operator
 
 # Initialize assuming that we run serial code if `numba_mpi` is not available
 initialized: bool = False
@@ -57,8 +59,8 @@ else:
     class _OperatorRegistry:
         """collection of operators that MPI supports"""
 
-        _name_ids: Dict[str, int]
-        _ids_operators: Dict[int, MPI.Op]
+        _name_ids: dict[str, int]
+        _ids_operators: dict[int, MPI.Op]
 
         def __init__(self):
             self._name_ids = {}
@@ -69,13 +71,13 @@ else:
             self._name_ids[name] = op_id
             self._ids_operators[op_id] = op
 
-        def id(self, name_or_id: Union[int, str]) -> int:
+        def id(self, name_or_id: int | str) -> int:
             if isinstance(name_or_id, int):
                 return name_or_id
             else:
                 return self._name_ids[name_or_id]
 
-        def operator(self, name_or_id: Union[int, str]) -> MPI.Op:
+        def operator(self, name_or_id: int | str) -> MPI.Op:
             if isinstance(name_or_id, str):
                 name_or_id = self._name_ids[name_or_id]
             return self._ids_operators[name_or_id]
@@ -154,7 +156,7 @@ def ol_mpi_recv(data, source: int, tag: int):
     return impl
 
 
-def mpi_allreduce(data, operator: Union[int, str, None] = None):
+def mpi_allreduce(data, operator: int | str | None = None):
     """combines data from all MPI nodes
 
     Note that complex datatypes and user-defined functions are not properly supported.
@@ -176,7 +178,7 @@ def mpi_allreduce(data, operator: Union[int, str, None] = None):
 
 
 @overload(mpi_allreduce)
-def ol_mpi_allreduce(data, operator: Union[int, str, None] = None):
+def ol_mpi_allreduce(data, operator: int | str | None = None):
     """overload the `mpi_allreduce` function"""
     import numba_mpi
 
@@ -190,7 +192,7 @@ def ol_mpi_allreduce(data, operator: Union[int, str, None] = None):
         raise RuntimeError("`operator` must be a literal type")
 
     @register_jitable
-    def _allreduce(sendobj, recvobj, operator: Union[int, str, None] = None) -> int:
+    def _allreduce(sendobj, recvobj, operator: int | str | None = None) -> int:
         """helper function that calls `numba_mpi.allreduce`"""
         if operator is None:
             return numba_mpi.allreduce(sendobj, recvobj)  # type: ignore
@@ -199,7 +201,7 @@ def ol_mpi_allreduce(data, operator: Union[int, str, None] = None):
 
     if isinstance(data, types.Number):
 
-        def impl(data, operator: Union[int, str, None] = None):
+        def impl(data, operator: int | str | None = None):
             """reduce a single number across all cores"""
             sendobj = np.array([data])
             recvobj = np.empty((1,), sendobj.dtype)
@@ -209,7 +211,7 @@ def ol_mpi_allreduce(data, operator: Union[int, str, None] = None):
 
     elif isinstance(data, types.Array):
 
-        def impl(data, operator: Union[int, str, None] = None):
+        def impl(data, operator: int | str | None = None):
             """reduce an array across all cores"""
             recvobj = np.empty(data.shape, data.dtype)
             status = _allreduce(data, recvobj, operator)

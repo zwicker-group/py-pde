@@ -4,16 +4,18 @@ Helper functions for just-in-time compilation with numba
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import warnings
-from typing import Any, Callable, Dict, Optional, TypeVar
+from typing import Any, Callable, TypeVar
 
 import numba as nb
 import numpy as np
 from numba.core.types import npytypes, scalars
 from numba.extending import overload, register_jitable
-from numba.typed import Dict as NumbaDict
+from numba.typed import Dict as NumbaDict  # @UnresolvedImport
 
 from .. import config
 from ..tools.misc import decorator_arguments
@@ -79,7 +81,7 @@ JIT_COUNT = Counter()
 TFunc = TypeVar("TFunc", bound="Callable")
 
 
-def numba_environment() -> Dict[str, Any]:
+def numba_environment() -> dict[str, Any]:
     """return information about the numba setup used
 
     Returns:
@@ -127,12 +129,12 @@ def numba_environment() -> Dict[str, Any]:
         "multithreading_threshold": config["numba.multithreading_threshold"],
         "fastmath": config["numba.fastmath"],
         "debug": config["numba.debug"],
-        "using_svml": nb.config.USING_SVML,
+        "using_svml": nb.config.USING_SVML,  # @UndefinedVariable
         "threading_layer": threading_layer,
         "omp_num_threads": os.environ.get("OMP_NUM_THREADS"),
         "mkl_num_threads": os.environ.get("MKL_NUM_THREADS"),
-        "num_threads": nb.config.NUMBA_NUM_THREADS,
-        "num_threads_default": nb.config.NUMBA_DEFAULT_NUM_THREADS,
+        "num_threads": nb.config.NUMBA_NUM_THREADS,  # @UndefinedVariable
+        "num_threads_default": nb.config.NUMBA_DEFAULT_NUM_THREADS,  # @UndefinedVariable
         "cuda_available": cuda_available,
         "roc_available": roc_available,
     }
@@ -190,7 +192,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
 
     # log some details
     logger = logging.getLogger(__name__)
-    name = function.__name__
+    name = getattr(function, "__name__", "<anonymous function>")
     if kwargs["nopython"]:  # standard case
         logger.info("Compile `%s` with parallel=%s", name, kwargs["parallel"])
     else:  # this might imply numba falls back to object mode
@@ -202,7 +204,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
     return nb.jit(signature, **kwargs)(function)  # type: ignore
 
 
-if nb.config.DISABLE_JIT:
+if nb.config.DISABLE_JIT:  # @UndefinedVariable
     # dummy function that creates a ctypes pointer
     def address_as_void_pointer(addr):
         """returns a void pointer from a given memory address
@@ -278,7 +280,7 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
     return array_constructor  # type: ignore
 
 
-def numba_dict(data: Optional[Dict[str, Any]] = None) -> Optional[NumbaDict]:
+def numba_dict(data: dict[str, Any] | None = None) -> NumbaDict | None:
     """converts a python dictionary to a numba typed dictionary"""
     if data is None:
         return None
@@ -320,7 +322,7 @@ def random_seed(seed: int = 0) -> None:
         seed (int): Sets random seed
     """
     np.random.seed(seed)
-    if not nb.config.DISABLE_JIT:
+    if not nb.config.DISABLE_JIT:  # @UndefinedVariable
         _random_seed_compiled(seed)
 
 

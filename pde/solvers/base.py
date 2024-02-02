@@ -13,7 +13,7 @@ import logging
 import warnings
 from abc import ABCMeta
 from inspect import isabstract
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type  # @UnusedImport
+from typing import Any, Callable
 
 import numba as nb
 import numpy as np
@@ -27,8 +27,12 @@ from ..tools.numba import is_jitted, jit
 from ..tools.typing import BackendType
 
 
+class ConvergenceError(RuntimeError):
+    """indicates that an implicit step did not converge"""
+
+
 class SolverBase(metaclass=ABCMeta):
-    """base class for solvers"""
+    """base class for PDE solvers"""
 
     dt_default: float = 1e-3
     """float: default time step used if no time step was specified"""
@@ -36,7 +40,7 @@ class SolverBase(metaclass=ABCMeta):
     _modify_state_after_step: bool = True
     """bool: flag choosing whether the `modify_after_step` hook of the PDE is called"""
 
-    _subclasses: Dict[str, Type[SolverBase]] = {}
+    _subclasses: dict[str, type[SolverBase]] = {}
     """dict: dictionary of all inheriting classes"""
 
     def __init__(self, pde: PDEBase, *, backend: BackendType = "auto"):
@@ -51,7 +55,7 @@ class SolverBase(metaclass=ABCMeta):
         """
         self.pde = pde
         self.backend = backend
-        self.info: Dict[str, Any] = {"class": self.__class__.__name__}
+        self.info: dict[str, Any] = {"class": self.__class__.__name__}
         if self.pde:
             self.info["pde_class"] = self.pde.__class__.__name__
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -105,14 +109,16 @@ class SolverBase(metaclass=ABCMeta):
         return solver_class(pde, **kwargs)
 
     @classproperty
-    def registered_solvers(cls) -> List[str]:  # @NoSelf
+    def registered_solvers(cls) -> list[str]:  # @NoSelf
         """list of str: the names of the registered solvers"""
         return list(sorted(cls._subclasses.keys()))
 
     @property
     def _compiled(self) -> bool:
         """bool: indicates whether functions need to be compiled"""
-        return self.backend == "numba" and not nb.config.DISABLE_JIT
+        return (
+            self.backend == "numba" and not nb.config.DISABLE_JIT
+        )  # @UndefinedVariable
 
     def _make_modify_after_step(
         self, state: FieldBase
@@ -181,7 +187,7 @@ class SolverBase(metaclass=ABCMeta):
 
     def _make_sde_rhs(
         self, state: FieldBase, backend: str = "auto"
-    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
         """obtain a function for evaluating the right hand side
 
         Args:
@@ -229,7 +235,7 @@ class SolverBase(metaclass=ABCMeta):
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, int], Tuple[float, float]]:
+    ) -> Callable[[np.ndarray, float, int], tuple[float, float]]:
         """return a stepper function using an explicit scheme with fixed time steps
 
         Args:
@@ -249,7 +255,7 @@ class SolverBase(metaclass=ABCMeta):
 
         def fixed_stepper(
             state_data: np.ndarray, t_start: float, steps: int
-        ) -> Tuple[float, float]:
+        ) -> tuple[float, float]:
             """perform `steps` steps with fixed time steps"""
             modifications = 0.0
             for i in range(steps):
@@ -268,7 +274,7 @@ class SolverBase(metaclass=ABCMeta):
         return fixed_stepper
 
     def make_stepper(
-        self, state: FieldBase, dt: Optional[float] = None
+        self, state: FieldBase, dt: float | None = None
     ) -> Callable[[FieldBase, float, float], float]:
         """return a stepper function using an explicit scheme
 
@@ -435,7 +441,7 @@ class AdaptiveSolverBase(SolverBase):
 
     def _make_single_step_error_estimate(
         self, state: FieldBase
-    ) -> Callable[[np.ndarray, float, float], Tuple[np.ndarray, float]]:
+    ) -> Callable[[np.ndarray, float, float], tuple[np.ndarray, float]]:
         """make a stepper that also estimates the error
 
         Args:
@@ -453,7 +459,7 @@ class AdaptiveSolverBase(SolverBase):
 
         def single_step_error_estimate(
             state_data: np.ndarray, t: float, dt: float
-        ) -> Tuple[np.ndarray, float]:
+        ) -> tuple[np.ndarray, float]:
             """basic stepper to estimate error"""
             # single step with dt
             k1 = single_step(state_data, t, dt)
@@ -469,11 +475,9 @@ class AdaptiveSolverBase(SolverBase):
 
         return single_step_error_estimate
 
-    def _make_adaptive_stepper(
-        self, state: FieldBase
-    ) -> Callable[
-        [np.ndarray, float, float, float, Optional[OnlineStatistics]],
-        Tuple[float, float, int, float],
+    def _make_adaptive_stepper(self, state: FieldBase) -> Callable[
+        [np.ndarray, float, float, float, OnlineStatistics | None],
+        tuple[float, float, int, float],
     ]:
         """make an adaptive Euler stepper
 
@@ -508,8 +512,8 @@ class AdaptiveSolverBase(SolverBase):
             t_start: float,
             t_end: float,
             dt_init: float,
-            dt_stats: Optional[OnlineStatistics] = None,
-        ) -> Tuple[float, float, int, float]:
+            dt_stats: OnlineStatistics | None = None,
+        ) -> tuple[float, float, int, float]:
             """adaptive stepper that advances the state in time"""
             modifications = 0.0
             dt_opt = dt_init
@@ -559,7 +563,7 @@ class AdaptiveSolverBase(SolverBase):
         return adaptive_stepper
 
     def make_stepper(
-        self, state: FieldBase, dt: Optional[float] = None
+        self, state: FieldBase, dt: float | None = None
     ) -> Callable[[FieldBase, float, float], float]:
         """return a stepper function using an explicit scheme
 

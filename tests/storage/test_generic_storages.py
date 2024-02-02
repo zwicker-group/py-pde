@@ -72,7 +72,7 @@ def test_storage_truncation(tmp_path, rng):
         storages = [MemoryStorage()]
         if module_available("h5py"):
             storages.append(FileStorage(file))
-        tracker_list = [s.tracker(interval=0.01) for s in storages]
+        tracker_list = [s.tracker(interrupts=0.01) for s in storages]
 
         grid = UnitGrid([8, 8])
         state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)

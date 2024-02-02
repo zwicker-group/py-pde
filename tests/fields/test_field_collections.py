@@ -8,7 +8,7 @@ import pytest
 from fixtures.fields import iter_grids
 from pde import FieldCollection, ScalarField, Tensor2Field, UnitGrid, VectorField
 from pde.fields.base import FieldBase
-from pde.tools.misc import skipUnlessModule
+from pde.tools.misc import module_available
 
 
 @pytest.mark.parametrize("grid", iter_grids())
@@ -93,7 +93,8 @@ def test_collections(rng):
     with pytest.raises(KeyError):
         fields["42"] = 0
 
-    fields.plot(subplot_args=[{}, {"scale": 1}, {"colorbar": False}])
+    refs = fields.plot(subplot_args=[{}, {"scale": 1}, {"colorbar": False}])
+    fields._update_plot(refs)
 
 
 def test_collections_copy():
@@ -223,7 +224,7 @@ def test_from_scalar_expressions():
     np.testing.assert_allclose(fc[1].data, 1)
 
 
-@skipUnlessModule("napari")
+@pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.interactive
 def test_interactive_collection_plotting(rng):
     """test the interactive plotting"""
@@ -342,3 +343,38 @@ def test_collection_apply(rng):
     f1 = FieldCollection([s, v])
 
     np.testing.assert_allclose(f1.apply("s1 * v2").data, v.data * 2)
+
+
+@pytest.mark.parametrize("num", [1, 2, 3])
+def test_rgb_image_plotting(num):
+    """test plotting of collections as rgb fields"""
+    grid = UnitGrid([16, 8])
+    fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
+
+    refs = fc.plot("rgb_image")
+    fc._update_plot(refs)
+
+
+@pytest.mark.parametrize("num", [1, 2, 3, 4])
+def test_merged_image_plotting(num):
+    """test plotting of collections as merged images"""
+    grid = UnitGrid([16, 8])
+    fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
+
+    ref = fc._plot_merged_image()
+    fc._update_merged_image_plot(ref)
+
+    refs = fc.plot("merged")
+    fc._update_plot(refs)
+
+    # use some more fancy options
+    fc.plot(
+        "merged",
+        colors=["viridis", "r", "inferno", "magma"],
+        projection="mean",
+        inverse_projection=True,
+        background_color="g",
+        transpose=True,
+        vmin=-1,
+        vmax=[1, 2, 3, 4],
+    )

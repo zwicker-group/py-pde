@@ -1,6 +1,7 @@
 """
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+
 import numpy as np
 
 from pde import (

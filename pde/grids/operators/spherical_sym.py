@@ -14,7 +14,9 @@ This module implements differential operators on spherical grids
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Literal, Tuple
+from __future__ import annotations
+
+from typing import Literal
 
 import numpy as np
 
@@ -523,7 +525,7 @@ def make_tensor_double_divergence(
 
 
 @fill_in_docstring
-def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for laplace operator on a polar grid
 
     Args:
@@ -564,7 +566,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
             if r_min == 0:
                 matrix[i, i + 1] = factor_l[i]
             else:
-                const, entries = bcs[0].get_data((-1,))
+                const, entries = bcs[0].get_sparse_matrix_data((-1,))
                 vector[i] += const * factor_l[i]
                 for k, v in entries.items():
                     matrix[i, k] += v * factor_l[i]
@@ -573,7 +575,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
             matrix[i, i - 1] = factor_l[i]
 
         if i == dim_r - 1:
-            const, entries = bcs[0].get_data((dim_r,))
+            const, entries = bcs[0].get_sparse_matrix_data((dim_r,))
             vector[i] += const * factor_h[i]
             for k, v in entries.items():
                 matrix[i, k] += v * factor_h[i]

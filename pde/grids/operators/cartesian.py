@@ -15,7 +15,9 @@ This module implements differential operators on Cartesian grids
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>   
 """
 
-from typing import Callable, Literal, Tuple
+from __future__ import annotations
+
+from typing import Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -27,10 +29,15 @@ from ...tools.numba import jit
 from ...tools.typing import OperatorType
 from ..boundaries import Boundaries
 from ..cartesian import CartesianGrid
+from .common import make_derivative as _make_derivative  # @UnusedImport
+from .common import make_derivative2 as _make_derivative2  # @UnusedImport
 from .common import make_general_poisson_solver, uniform_discretization
 
+# The `make_derivative?` methods are imported for backward compatibility. Their usage is
+# deprecated since 2023-12-06
 
-def _get_laplace_matrix_1d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+
+def _get_laplace_matrix_1d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for Laplace operator on a 1d Cartesian grid
 
     Args:
@@ -51,7 +58,7 @@ def _get_laplace_matrix_1d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
         matrix[i, i] += -2
 
         if i == 0:
-            const, entries = bcs[0].get_data((-1,))
+            const, entries = bcs[0].get_sparse_matrix_data((-1,))
             vector[i] += const
             for k, v in entries.items():
                 matrix[i, k] += v
@@ -59,7 +66,7 @@ def _get_laplace_matrix_1d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
             matrix[i, i - 1] += 1
 
         if i == dim_x - 1:
-            const, entries = bcs[0].get_data((dim_x,))
+            const, entries = bcs[0].get_sparse_matrix_data((dim_x,))
             vector[i] += const
             for k, v in entries.items():
                 matrix[i, k] += v
@@ -72,7 +79,7 @@ def _get_laplace_matrix_1d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     return matrix, vector
 
 
-def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for Laplace operator on a 2d Cartesian grid
 
     Args:
@@ -106,7 +113,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
         for y in range(dim_y):
             # handle x-direction
             if x == 0:
-                const, entries = bc_x.get_data((-1, y))
+                const, entries = bc_x.get_sparse_matrix_data((-1, y))
                 vector[i(x, y)] += const * scale_x
                 for k, v in entries.items():
                     matrix[i(x, y), i(k, y)] += v * scale_x
@@ -114,7 +121,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
                 matrix[i(x, y), i(x - 1, y)] += scale_x
 
             if x == dim_x - 1:
-                const, entries = bc_x.get_data((dim_x, y))
+                const, entries = bc_x.get_sparse_matrix_data((dim_x, y))
                 vector[i(x, y)] += const * scale_x
                 for k, v in entries.items():
                     matrix[i(x, y), i(k, y)] += v * scale_x
@@ -123,7 +130,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
 
             # handle y-direction
             if y == 0:
-                const, entries = bc_y.get_data((x, -1))
+                const, entries = bc_y.get_sparse_matrix_data((x, -1))
                 vector[i(x, y)] += const * scale_y
                 for k, v in entries.items():
                     matrix[i(x, y), i(x, k)] += v * scale_y
@@ -131,7 +138,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
                 matrix[i(x, y), i(x, y - 1)] += scale_y
 
             if y == dim_y - 1:
-                const, entries = bc_y.get_data((x, dim_y))
+                const, entries = bc_y.get_sparse_matrix_data((x, dim_y))
                 vector[i(x, y)] += const * scale_y
                 for k, v in entries.items():
                     matrix[i(x, y), i(x, k)] += v * scale_y
@@ -141,8 +148,95 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
     return matrix, vector
 
 
-def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for Laplace operator on a 1d Cartesian grid
+def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
+    """get sparse matrix for Laplace operator on a 3d Cartesian grid
+
+    Args:
+        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            {ARG_BOUNDARIES_INSTANCE}
+
+    Returns:
+        tuple: A sparse matrix and a sparse vector that can be used to evaluate
+        the discretized laplacian
+    """
+    from scipy import sparse
+
+    dim_x, dim_y, dim_z = bcs.grid.shape
+    matrix = sparse.dok_matrix((dim_x * dim_y * dim_z, dim_x * dim_y * dim_z))
+    vector = sparse.dok_matrix((dim_x * dim_y * dim_z, 1))
+
+    bc_x, bc_y, bc_z = bcs
+    scale_x, scale_y, scale_z = bcs.grid.discretization**-2
+
+    def i(x, y, z):
+        """helper function for flattening the index
+
+        This is equivalent to np.ravel_multi_index((x, y, z), (dim_x, dim_y, dim_z))
+        """
+        return (x * dim_y + y) * dim_z + z
+
+    # set diagonal elements, i.e., the central value in the kernel
+    matrix.setdiag(-2 * (scale_x + scale_y + scale_z))
+
+    for x in range(dim_x):
+        for y in range(dim_y):
+            for z in range(dim_z):
+                # handle x-direction
+                if x == 0:
+                    const, entries = bc_x.get_sparse_matrix_data((-1, y, z))
+                    vector[i(x, y, z)] += const * scale_x
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(k, y, z)] += v * scale_x
+                else:
+                    matrix[i(x, y, z), i(x - 1, y, z)] += scale_x
+
+                if x == dim_x - 1:
+                    const, entries = bc_x.get_sparse_matrix_data((dim_x, y, z))
+                    vector[i(x, y, z)] += const * scale_x
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(k, y, z)] += v * scale_x
+                else:
+                    matrix[i(x, y, z), i(x + 1, y, z)] += scale_x
+
+                # handle y-direction
+                if y == 0:
+                    const, entries = bc_y.get_sparse_matrix_data((x, -1, z))
+                    vector[i(x, y, z)] += const * scale_y
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(x, k, z)] += v * scale_y
+                else:
+                    matrix[i(x, y, z), i(x, y - 1, z)] += scale_y
+
+                if y == dim_y - 1:
+                    const, entries = bc_y.get_sparse_matrix_data((x, dim_y, z))
+                    vector[i(x, y, z)] += const * scale_y
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(x, k, z)] += v * scale_y
+                else:
+                    matrix[i(x, y, z), i(x, y + 1, z)] += scale_y
+
+                # handle z-direction
+                if z == 0:
+                    const, entries = bc_z.get_sparse_matrix_data((x, y, -1))
+                    vector[i(x, y, z)] += const * scale_z
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(x, y, k)] += v * scale_z
+                else:
+                    matrix[i(x, y, z), i(x, y, z - 1)] += scale_z
+
+                if z == dim_z - 1:
+                    const, entries = bc_z.get_sparse_matrix_data((x, y, dim_z))
+                    vector[i(x, y, z)] += const * scale_z
+                    for k, v in entries.items():
+                        matrix[i(x, y, z), i(x, y, k)] += v * scale_z
+                else:
+                    matrix[i(x, y, z), i(x, y, z + 1)] += scale_z
+
+    return matrix, vector
+
+
+def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
+    """get sparse matrix for Laplace operator on a Cartesian grid
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -158,169 +252,12 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
         result = _get_laplace_matrix_1d(bcs)
     elif dim == 2:
         result = _get_laplace_matrix_2d(bcs)
+    elif dim == 3:
+        result = _get_laplace_matrix_3d(bcs)
     else:
         raise NotImplementedError(f"{dim:d}-dimensional Laplace matrix not implemented")
 
     return result
-
-
-def _make_derivative(
-    grid: CartesianGrid,
-    axis: int = 0,
-    method: Literal["central", "forward", "backward"] = "central",
-) -> OperatorType:
-    """make a derivative operator along a single axis using numba compilation
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
-            The grid for which the operator is created
-        axis (int):
-            The axis along which the derivative will be taken
-        method (str):
-            The method for calculating the derivative. Possible values are
-            'central', 'forward', and 'backward'.
-
-    Returns:
-        A function that can be applied to an full array of values including those at
-        ghost cells. The result will be an array of the same shape containing the actual
-        derivatives at the valid (interior) grid points.
-    """
-    if method not in {"central", "forward", "backward"}:
-        raise ValueError(f"Unknown derivative type `{method}`")
-
-    shape = grid.shape
-    dim = len(shape)
-    dx = grid.discretization[axis]
-
-    if axis == 0:
-        di, dj, dk = 1, 0, 0
-    elif axis == 1:
-        di, dj, dk = 0, 1, 0
-    elif axis == 2:
-        di, dj, dk = 0, 0, 1
-    else:
-        raise NotImplementedError(f"Derivative for {axis:d} dimensions")
-
-    if dim == 1:
-
-        @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 1d array `arr`"""
-            for i in range(1, shape[0] + 1):
-                if method == "central":
-                    out[i - 1] = (arr[i + 1] - arr[i - 1]) / (2 * dx)
-                elif method == "forward":
-                    out[i - 1] = (arr[i + 1] - arr[i]) / dx
-                elif method == "backward":
-                    out[i - 1] = (arr[i] - arr[i - 1]) / dx
-
-    elif dim == 2:
-
-        @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 2d array `arr`"""
-            for i in range(1, shape[0] + 1):
-                for j in range(1, shape[1] + 1):
-                    arr_l = arr[i - di, j - dj]
-                    arr_r = arr[i + di, j + dj]
-                    if method == "central":
-                        out[i - 1, j - 1] = (arr_r - arr_l) / (2 * dx)
-                    elif method == "forward":
-                        out[i - 1, j - 1] = (arr_r - arr[i, j]) / dx
-                    elif method == "backward":
-                        out[i - 1, j - 1] = (arr[i, j] - arr_l) / dx
-
-    elif dim == 3:
-
-        @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 3d array `arr`"""
-            for i in range(1, shape[0] + 1):
-                for j in range(1, shape[1] + 1):
-                    for k in range(1, shape[2] + 1):
-                        arr_l = arr[i - di, j - dj, k - dk]
-                        arr_r = arr[i + di, j + dj, k + dk]
-                        if method == "central":
-                            out[i - 1, j - 1, k - 1] = (arr_r - arr_l) / (2 * dx)
-                        elif method == "forward":
-                            out[i - 1, j - 1, k - 1] = (arr_r - arr[i, j, k]) / dx
-                        elif method == "backward":
-                            out[i - 1, j - 1, k - 1] = (arr[i, j, k] - arr_l) / dx
-
-    else:
-        raise NotImplementedError(
-            f"Numba derivative operator not implemented for {dim:d} dimensions"
-        )
-
-    return diff  # type: ignore
-
-
-def _make_derivative2(grid: CartesianGrid, axis: int = 0) -> OperatorType:
-    """make a second-order derivative operator along a single axis
-
-    Args:
-        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
-            The grid for which the operator is created
-        axis (int):
-            The axis along which the derivative will be taken
-
-    Returns:
-        A function that can be applied to an full array of values including those at
-        ghost cells. The result will be an array of the same shape containing the actual
-        derivatives at the valid (interior) grid points.
-    """
-    shape = grid.shape
-    dim = len(shape)
-    scale = 1 / grid.discretization[axis] ** 2
-
-    if axis == 0:
-        di, dj, dk = 1, 0, 0
-    elif axis == 1:
-        di, dj, dk = 0, 1, 0
-    elif axis == 2:
-        di, dj, dk = 0, 0, 1
-    else:
-        raise NotImplementedError(f"Derivative for {axis:d} dimensions")
-
-    if dim == 1:
-
-        @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 1d array `arr`"""
-            for i in range(1, shape[0] + 1):
-                out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * scale
-
-    elif dim == 2:
-
-        @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 2d array `arr`"""
-            for i in range(1, shape[0] + 1):
-                for j in range(1, shape[1] + 1):
-                    arr_l = arr[i - di, j - dj]
-                    arr_r = arr[i + di, j + dj]
-                    out[i - 1, j - 1] = (arr_r - 2 * arr[i, j] + arr_l) * scale
-
-    elif dim == 3:
-
-        @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 3d array `arr`"""
-            for i in range(1, shape[0] + 1):
-                for j in range(1, shape[1] + 1):
-                    for k in range(1, shape[2] + 1):
-                        arr_l = arr[i - di, j - dj, k - dk]
-                        arr_r = arr[i + di, j + dj, k + dk]
-                        out[i - 1, j - 1, k - 1] = (
-                            arr_r - 2 * arr[i, j, k] + arr_l
-                        ) * scale
-
-    else:
-        raise NotImplementedError(
-            f"Numba derivative operator not implemented for {dim:d} dimensions"
-        )
-
-    return diff  # type: ignore
 
 
 def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:

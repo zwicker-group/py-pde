@@ -11,6 +11,10 @@ methods defined on fields and grids.
    cylindrical_sym
    polar_sym
    spherical_sym
+
+   common.make_derivative
+   common.make_derivative2
 """
 
 from . import cartesian, cylindrical_sym, polar_sym, spherical_sym
+from .common import make_derivative, make_derivative2

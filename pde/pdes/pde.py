@@ -7,11 +7,11 @@ Defines a PDE class whose right hand side is given as a string
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, Literal, Optional, Tuple
+from typing import Any, Callable, Literal
 
 import numba as nb
 import numpy as np
-from numba.typed import Dict as NumbaDict
+from numba.typed import Dict as NumbaDict  # @UnresolvedImport
 from sympy import Symbol
 from sympy.core.function import UndefinedFunction
 
@@ -27,7 +27,7 @@ from ..tools.typing import ArrayLike, NumberOrArray
 # Define short notations that can appear in mathematical equations and need to be
 # expanded. Since these replacements are replaced in order, it's advisable to start with
 # more complex expressions first
-_EXPRESSION_REPLACEMENT: Dict[str, str] = {
+_EXPRESSION_REPLACEMENT: dict[str, str] = {
     r"\|\s*∇\s*(\w+)\s*\|(²|\*\*2)": r"gradient_squared(\1)",  # |∇c|² or |∇c|**2
     r"∇(²|\*\*2)\s*(\w+)": r"laplace(\2)",  # ∇²c or ∇**2 c
     r"∇(²|\*\*2)\s*\(": r"laplace(",  # ∇²(c) or ∇**2(c)
@@ -48,14 +48,14 @@ class PDE(PDEBase):
     @fill_in_docstring
     def __init__(
         self,
-        rhs: Dict[str, str],
+        rhs: dict[str, str],
         *,
         bc: BoundariesData = "auto_periodic_neumann",
-        bc_ops: Optional[Dict[str, BoundariesData]] = None,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
+        bc_ops: dict[str, BoundariesData] | None = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
         noise: ArrayLike = 0,
-        rng: Optional[np.random.Generator] = None,
+        rng: np.random.Generator | None = None,
     ):
         r"""
         Warning:
@@ -153,7 +153,7 @@ class PDE(PDEBase):
                     self._logger.info("Transformed expression to `%s`", rhs_item)
 
             # create placeholder dictionary of constants that will be specified later
-            consts_d: Dict[str, NumberOrArray] = {name: 0 for name in consts}
+            consts_d: dict[str, NumberOrArray] = {name: 0 for name in consts}
             rhs_expr = ScalarExpression(
                 rhs_item,
                 user_funcs=user_funcs,
@@ -191,7 +191,7 @@ class PDE(PDEBase):
                 self._logger.warning("Found default BCs in `bcs` and `bc_ops`")
             bcs["*:*"] = bc  # append default boundary conditions
 
-        self.bcs: Dict[str, Any] = {}
+        self.bcs: dict[str, Any] = {}
         for key_str, value in bcs.items():
             # split on . and :
             parts = re.split(r"\.|:", key_str)
@@ -219,17 +219,17 @@ class PDE(PDEBase):
             "complex_valued_rhs": complex_valued,
             "operators": list(sorted(set().union(*self._operators.values()))),
         }
-        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._cache: dict[str, dict[str, Any]] = {}
 
     @property
-    def expressions(self) -> Dict[str, str]:
+    def expressions(self) -> dict[str, str]:
         """show the expressions of the PDE"""
         return {k: v.expression for k, v in self._rhs_expr.items()}
 
     def _compile_rhs_single(
         self,
         var: str,
-        ops: Dict[str, Callable],
+        ops: dict[str, Callable],
         state: FieldBase,
         backend: Literal["numpy", "numba"] = "numpy",
     ):
@@ -351,7 +351,7 @@ class PDE(PDEBase):
 
     def _prepare_cache(
         self, state: TState, backend: Literal["numpy", "numba"] = "numpy"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """prepare the expression by setting internal variables in the cache
 
         Note that the expensive calculations in this method are only carried out if the
@@ -413,7 +413,7 @@ class PDE(PDEBase):
                 rhs.consts[name] = value  # type: ignore
 
         # obtain functions used in the expression
-        ops_general: Dict[str, Callable] = {}
+        ops_general: dict[str, Callable] = {}
 
         # create special operators if necessary
         operators = self.diagnostics["pde"]["operators"]
@@ -451,16 +451,18 @@ class PDE(PDEBase):
         # add extra information for field collection
         if isinstance(state, FieldCollection):
             # isscalar be False even if start == stop (e.g. vector fields)
-            isscalar: Tuple[bool, ...] = tuple(field.rank == 0 for field in state)
-            starts: Tuple[int, ...] = tuple(slc.start for slc in state._slices)
-            stops: Tuple[int, ...] = tuple(slc.stop for slc in state._slices)
+            isscalar: tuple[bool, ...] = tuple(field.rank == 0 for field in state)
+            starts: tuple[int, ...] = tuple(slc.start for slc in state._slices)
+            stops: tuple[int, ...] = tuple(slc.stop for slc in state._slices)
 
-            def get_data_tuple(state_data: np.ndarray) -> Tuple[np.ndarray, ...]:
+            def get_data_tuple(state_data: np.ndarray) -> tuple[np.ndarray, ...]:
                 """helper for turning state_data into a tuple of field data"""
                 return tuple(
-                    state_data[starts[i]]
-                    if isscalar[i]
-                    else state_data[starts[i] : stops[i]]
+                    (
+                        state_data[starts[i]]
+                        if isscalar[i]
+                        else state_data[starts[i] : stops[i]]
+                    )
                     for i in range(num_fields)
                 )
 
@@ -508,7 +510,7 @@ class PDE(PDEBase):
         return result
 
     def _make_pde_rhs_numba_coll(
-        self, state: FieldCollection, cache: Dict[str, Any]
+        self, state: FieldCollection, cache: dict[str, Any]
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create the compiled rhs if `state` is a field collection
 
@@ -544,7 +546,7 @@ class PDE(PDEBase):
 
         def chain(
             i: int = 0,
-            inner: Optional[Callable[[np.ndarray, float, np.ndarray], None]] = None,
+            inner: Callable[[np.ndarray, float, np.ndarray], None] | None = None,
         ) -> Callable[[np.ndarray, float], np.ndarray]:
             """recursive helper function for applying all rhs"""
             # run through all functions

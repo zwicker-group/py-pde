@@ -13,6 +13,8 @@ Python functions for handling output
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import sys
 from abc import ABCMeta, abstractmethod
 from typing import List, Type  # @UnusedImport
@@ -74,11 +76,15 @@ class OutputBase(metaclass=ABCMeta):
 
     @abstractmethod
     def __call__(self, line: str):
-        pass
+        """add a line of text
+
+        Args:
+            line (str): The text line
+        """
 
     @abstractmethod
     def show(self):
-        pass
+        """shows the actual text"""
 
 
 class BasicOutput(OutputBase):
@@ -92,15 +98,9 @@ class BasicOutput(OutputBase):
         self.stream = stream
 
     def __call__(self, line: str):
-        """add a line of text
-
-        Args:
-            line (str): The text line
-        """
         self.stream.write(line + "\n")
 
     def show(self):
-        """shows the actual text"""
         self.stream.flush()
 
 
@@ -115,18 +115,12 @@ class JupyterOutput(OutputBase):
         """
         self.header = header
         self.footer = footer
-        self.lines: List[str] = []
+        self.lines: list[str] = []
 
     def __call__(self, line: str):
-        """add a line of text
-
-        Args:
-            line (str): The text line
-        """
         self.lines.append(line)
 
     def show(self):
-        """shows the actual html in a jupyter cell"""
         try:
             from IPython.display import HTML, display
         except ImportError:

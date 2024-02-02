@@ -21,12 +21,12 @@ def test_flat_idx():
 
     # testing the numba compiled version
     @jit
-    def get_data(data):
+    def get_sparse_matrix_data(data):
         return flat_idx(data, 1)
 
-    assert get_data(2) == 2
-    assert get_data(np.arange(2)) == 1
-    assert get_data(np.arange(4).reshape(2, 2)) == 1
+    assert get_sparse_matrix_data(2) == 2
+    assert get_sparse_matrix_data(np.arange(2)) == 1
+    assert get_sparse_matrix_data(np.arange(4).reshape(2, 2)) == 1
 
 
 def test_counter():
@@ -40,7 +40,7 @@ def test_counter():
     assert int(c1) is 1
 
     c1 += 2
-    assert int(c1) is 3
+    assert int(c1) == 3
 
     c2 = Counter(3)
     assert c1 is not c2

@@ -4,6 +4,8 @@ A Cahn-Hilliard equation
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 from typing import Callable
 
 import numba as nb
@@ -71,7 +73,8 @@ class CahnHilliardPDE(PDEBase):
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 The scalar field describing the concentration distribution
-            t (float): The current time point
+            t (float):
+                The current time point
 
         Returns:
             :class:`~pde.fields.ScalarField`:

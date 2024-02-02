@@ -6,7 +6,7 @@ Defines a tensorial field of rank 2 over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Sequence
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -21,11 +21,18 @@ from .scalar import ScalarField
 from .vectorial import VectorField
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
+    from ..grids.boundaries.axes import BoundariesData
 
 
 class Tensor2Field(DataFieldBase):
-    """Tensor field of rank 2 discretized on a grid"""
+    """Tensor field of rank 2 discretized on a grid
+
+    Warning:
+        Components of the tensor field are given in the local basis. While the local
+        basis is identical to the global basis in Cartesian coordinates, the local basis
+        depends on position in curvilinear coordinate systems. Moreover, the field
+        always contains all components, even if the underlying grid assumes symmetries.
+    """
 
     rank = 2
 
@@ -36,10 +43,10 @@ class Tensor2Field(DataFieldBase):
         grid: GridBase,
         expressions: Sequence[Sequence[str]],
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> Tensor2Field:
         """create a tensor field on a grid from given expressions
 
@@ -86,7 +93,7 @@ class Tensor2Field(DataFieldBase):
         points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
         # evaluate all vector components at all points
-        data: List[List[np.ndarray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
+        data: list[list[np.ndarray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
         for i in range(grid.dim):
             for j in range(grid.dim):
                 expr = ScalarExpression(
@@ -94,6 +101,7 @@ class Tensor2Field(DataFieldBase):
                     signature=grid.axes,
                     user_funcs=user_funcs,
                     consts=consts,
+                    repl=grid.c._axes_alt_repl,
                 )
                 values = np.broadcast_to(expr(*points), grid.shape)
                 data[i][j] = values
@@ -101,9 +109,7 @@ class Tensor2Field(DataFieldBase):
         # create vector field from the data
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
-    def _get_axes_index(
-        self, key: Tuple[Union[int, str], Union[int, str]]
-    ) -> Tuple[int, int]:
+    def _get_axes_index(self, key: tuple[int | str, int | str]) -> tuple[int, int]:
         """turns a general index of two axis into a tuple of two numeric indices"""
         try:
             if len(key) != 2:
@@ -112,7 +118,7 @@ class Tensor2Field(DataFieldBase):
             raise IndexError("Index must be given as two values")
         return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
 
-    def __getitem__(self, key: Tuple[Union[int, str], Union[int, str]]) -> ScalarField:
+    def __getitem__(self, key: tuple[int | str, int | str]) -> ScalarField:
         """extract a single component of the tensor field as a scalar field"""
         return ScalarField(
             self.grid,
@@ -122,8 +128,8 @@ class Tensor2Field(DataFieldBase):
 
     def __setitem__(
         self,
-        key: Tuple[Union[int, str], Union[int, str]],
-        value: Union[NumberOrArray, ScalarField],
+        key: tuple[int | str, int | str],
+        value: NumberOrArray | ScalarField,
     ):
         """set a single component of the tensor field"""
         idx = self._get_axes_index(key)
@@ -150,12 +156,12 @@ class Tensor2Field(DataFieldBase):
 
     def dot(
         self,
-        other: Union[VectorField, Tensor2Field],
-        out: Union[VectorField, Tensor2Field, None] = None,
+        other: VectorField | Tensor2Field,
+        out: VectorField | Tensor2Field | None = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
-    ) -> Union[VectorField, Tensor2Field]:
+    ) -> VectorField | Tensor2Field:
         """calculate the dot product involving a tensor field
 
         This supports the dot product between two tensor fields as well as the
@@ -200,7 +206,7 @@ class Tensor2Field(DataFieldBase):
 
     @fill_in_docstring
     def divergence(
-        self, bc: Optional[BoundariesData], out: Optional[VectorField] = None, **kwargs
+        self, bc: BoundariesData | None, out: VectorField | None = None, **kwargs
     ) -> VectorField:
         r"""apply tensor divergence and return result as a field
 
@@ -274,12 +280,12 @@ class Tensor2Field(DataFieldBase):
         return out
 
     def to_scalar(
-        self, scalar: str = "auto", *, label: Optional[str] = "scalar `{scalar}`"
+        self, scalar: str = "auto", *, label: str | None = "scalar `{scalar}`"
     ) -> ScalarField:
-        r""" return a scalar field by applying `method`
-        
+        r"""return scalar variant of the field
+
         The invariants of the tensor field :math:`\boldsymbol{A}` are
-        
+
         .. math::
             I_1 &= \mathrm{tr}(\boldsymbol{A}) \\
             I_2 &= \frac12 \left[
@@ -287,13 +293,13 @@ class Tensor2Field(DataFieldBase):
                 \mathrm{tr}(\boldsymbol{A}^2)
             \right] \\
             I_3 &= \det(A)
-            
+
         where `tr` denotes the trace and `det` denotes the determinant. Note that the
         three invariants can only be distinct and non-zero in three dimensions. In two
         dimensional spaces, we have the identity :math:`2 I_2 = I_3` and in
         one-dimensional spaces, we have :math:`I_1 = I_3` as well as
         :math:`I_2 = 0`.
-            
+
         Args:
             scalar (str):
                 The method to calculate the scalar. Possible choices include `norm` (the
@@ -302,7 +308,7 @@ class Tensor2Field(DataFieldBase):
                 `determinant` (or `invariant3`)
             label (str, optional):
                 Name of the returned field
-            
+
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the scalar field after
             applying the operation
@@ -366,7 +372,7 @@ class Tensor2Field(DataFieldBase):
 
         return ScalarField(self.grid, data, label=label)
 
-    def trace(self, label: Optional[str] = "trace") -> ScalarField:
+    def trace(self, label: str | None = "trace") -> ScalarField:
         """return the trace of the tensor field as a scalar field
 
         Args:
@@ -377,7 +383,7 @@ class Tensor2Field(DataFieldBase):
         """
         return self.to_scalar(scalar="trace", label=label)
 
-    def _update_plot_components(self, reference: List[List[PlotReference]]) -> None:
+    def _update_plot_components(self, reference: list[list[PlotReference]]) -> None:
         """update a plot collection with the current field values
 
         Args:
@@ -394,7 +400,7 @@ class Tensor2Field(DataFieldBase):
         kind: str = "auto",
         fig=None,
         **kwargs,
-    ) -> List[List[PlotReference]]:
+    ) -> list[list[PlotReference]]:
         r"""visualize all the components of this tensor field
 
         Args:

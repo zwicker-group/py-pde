@@ -1,4 +1,4 @@
-"""
+r"""
 1D problem - Using custom class
 ===============================
 

@@ -4,21 +4,13 @@ Base class for defining partial differential equations
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
+from __future__ import annotations
+
 import copy
 import logging
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Literal,
-    Optional,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 import numpy as np
 
@@ -29,8 +21,8 @@ from ..tools.typing import ArrayLike
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
-    from ..solvers.base import SolverBase  # @UnusedImport
-    from ..solvers.controller import TRangeType  # @UnusedImport
+    from ..solvers.base import SolverBase
+    from ..solvers.controller import TRangeType
 
 
 TState = TypeVar("TState", FieldCollection, DataFieldBase)
@@ -45,7 +37,7 @@ class PDEBase(metaclass=ABCMeta):
     overwritten for supporting the `numpy` and `numba` backend, respectively.
     """
 
-    diagnostics: Dict[str, Any]
+    diagnostics: dict[str, Any]
     """dict: Diagnostic information (available after the PDE has been solved)"""
 
     check_implementation: bool = True
@@ -60,7 +52,7 @@ class PDEBase(metaclass=ABCMeta):
     after the first call. This option is thus disabled by default and should be used
     with care."""
 
-    explicit_time_dependence: Optional[bool] = None
+    explicit_time_dependence: bool | None = None
     """bool: Flag indicating whether the right hand side of the PDE has an explicit
     time dependence."""
 
@@ -68,9 +60,7 @@ class PDEBase(metaclass=ABCMeta):
     """bool: Flag indicating whether the right hand side is a complex-valued PDE, which
     requires all involved variables to have complex data type."""
 
-    def __init__(
-        self, *, noise: ArrayLike = 0, rng: Optional[np.random.Generator] = None
-    ):
+    def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
         """
         Args:
             noise (float or :class:`~numpy.ndarray`):
@@ -93,14 +83,14 @@ class PDEBase(metaclass=ABCMeta):
             `numpy` and `numba` backend, respectively.
         """
         self._logger = logging.getLogger(self.__class__.__name__)
-        self._cache: Dict[str, Any] = {}
+        self._cache: dict[str, Any] = {}
         self.diagnostics = {}
         self.noise = np.asanyarray(noise)
         self.rng = rng if rng is not None else np.random.default_rng()
 
     @property
     def is_sde(self) -> bool:
-        """flag indicating whether this is a stochastic differential equation
+        """bool: flag indicating whether this is a stochastic differential equation
 
         The :class:`BasePDF` class supports additive Gaussian white noise, whose
         magnitude is controlled by the `noise` property. In this case, `is_sde` is
@@ -133,7 +123,18 @@ class PDEBase(metaclass=ABCMeta):
 
     @abstractmethod
     def evolution_rate(self, state: TState, t: float = 0) -> TState:
-        pass
+        """evaluate the right hand side of the PDE
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                The field at the current time point
+            t (float):
+                The current time point
+
+        Returns:
+            :class:`~pde.fields.base.FieldBase`:
+                Field describing the evolution rate of the PDE
+        """
 
     def _make_pde_rhs_numba(
         self, state: FieldBase, **kwargs
@@ -147,9 +148,9 @@ class PDEBase(metaclass=ABCMeta):
         t: float = 0,
         *,
         tol: float = 1e-7,
-        rhs_numba: Optional[Callable] = None,
+        rhs_numba: Callable | None = None,
         **kwargs,
-    ):
+    ) -> None:
         """check the numba compiled right hand side versus the numpy variant
 
         Args:
@@ -204,6 +205,9 @@ class PDEBase(metaclass=ABCMeta):
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
+
+        Returns:
+            callable: Function determining the right hand side of the PDE
         """
         check_implementation = self.check_implementation
 
@@ -246,9 +250,8 @@ class PDEBase(metaclass=ABCMeta):
                 An example for the state from which the grid and other information can
                 be extracted.
             backend (str):
-                Determines how the function is created. Accepted values are 'numpy`
-                and 'numba'. Alternatively, 'auto' lets the code decide for the most
-                optimal backend.
+                Determines how the function is created. Accepted values are 'numpy' and
+                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
 
         Returns:
             callable: Function determining the right hand side of the PDE
@@ -325,7 +328,7 @@ class PDEBase(metaclass=ABCMeta):
                 noise_var = self.noise
                 result = state.random_normal(
                     state.grid,
-                    std=np.sqrt(self.noise),  # type: ignore
+                    std=np.sqrt(self.noise),
                     scaling="physical",
                     label=label,
                     dtype=state.dtype,
@@ -356,7 +359,7 @@ class PDEBase(metaclass=ABCMeta):
             Function determining the right hand side of the PDE
         """
         if self.is_sde:
-            data_shape: Tuple[int, ...] = state.data.shape
+            data_shape: tuple[int, ...] = state.data.shape
             noise_var: float
             cell_volume: Callable[[int], float] = state.grid.make_cell_volume_compiled(
                 flat_index=True
@@ -406,7 +409,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def _make_sde_rhs_numba(
         self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the noise term of the PDE
 
         Args:
@@ -421,7 +424,7 @@ class PDEBase(metaclass=ABCMeta):
         noise_realization = self._make_noise_realization_numba(state, **kwargs)
 
         @jit
-        def sde_rhs(state_data: np.ndarray, t: float) -> Tuple[np.ndarray, np.ndarray]:
+        def sde_rhs(state_data: np.ndarray, t: float) -> tuple[np.ndarray, np.ndarray]:
             """compiled helper function returning a noise realization"""
             return (evolution_rate(state_data, t), noise_realization(state_data, t))
 
@@ -429,8 +432,12 @@ class PDEBase(metaclass=ABCMeta):
 
     def _make_sde_rhs_numba_cached(
         self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
         """create a compiled function for evaluating the noise term of the PDE
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which information can be extracted
 
         This method implements caching and checking of the actual method, which is
         defined by overwriting the method `_make_pde_rhs_numba`.
@@ -459,16 +466,15 @@ class PDEBase(metaclass=ABCMeta):
         state: TState,
         backend: Literal["auto", "numpy", "numba"] = "auto",
         **kwargs,
-    ) -> Callable[[np.ndarray, float], Tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
         """return a function for evaluating the right hand side of the SDE
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other information can
-                be extracted
-            backend (str): Determines how the function is created. Accepted
-                values are 'python` and 'numba'. Alternatively, 'auto' lets the code
-                decide for the most optimal backend.
+                An example for the state from which information can be extracted
+            backend (str):
+                Determines how the function is created. Accepted values are 'numpy' and
+                'numba'. Alternatively, 'auto' lets the code pick the optimal backend.
 
         Returns:
             Function determining the deterministic part of the right hand side of the
@@ -492,7 +498,7 @@ class PDEBase(metaclass=ABCMeta):
 
             def sde_rhs(
                 state_data: np.ndarray, t: float
-            ) -> Tuple[np.ndarray, np.ndarray]:
+            ) -> tuple[np.ndarray, np.ndarray]:
                 """evaluate the rhs given only a state without the grid"""
                 state.data = state_data
                 return (
@@ -510,14 +516,14 @@ class PDEBase(metaclass=ABCMeta):
     def solve(
         self,
         state: TState,
-        t_range: "TRangeType",
-        dt: Optional[float] = None,
+        t_range: TRangeType,
+        dt: float | None = None,
         tracker: TrackerCollectionDataType = "auto",
         *,
-        solver: Union[str, "SolverBase"] = "explicit",
+        solver: str | SolverBase = "explicit",
         ret_info: bool = False,
         **kwargs,
-    ) -> Union[Optional[TState], Tuple[Optional[TState], Dict[str, Any]]]:
+    ) -> None | TState | tuple[TState | None, dict[str, Any]]:
         """solves the partial differential equation
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)
@@ -533,25 +539,24 @@ class PDEBase(metaclass=ABCMeta):
                 Sets the time range for which the PDE is solved. This should typically
                 be a tuple of two numbers, `(t_start, t_end)`, specifying the initial
                 and final time of the simulation. If only a single value is given, it is
-                interpreted as `t_end` and the time range is assumed to be `(0, t_end)`.
+                interpreted as `t_end` and the time range is `(0, t_end)`.
             dt (float):
                 Time step of the chosen stepping scheme. If `None`, a default value
-                based on the stepper will be chosen. If an adaptive
-                stepper is used (supported by :class:`~pde.solvers.ScipySolver` and
-                :class:`~pde.solvers.ExplicitSolver`), the value given here sets the
-                initial time step.
+                based on the stepper will be chosen. If an adaptive stepper is used
+                (supported by :class:`~pde.solvers.ScipySolver` and
+                :class:`~pde.solvers.ExplicitSolver`), `dt` sets the initial time step.
             tracker:
-                Defines a tracker that process the state of the simulation at specified
+                Defines trackers that process the state of the simulation at specified
                 times. A tracker is either an instance of
-                :class:`~pde.trackers.base.TrackerBase` or a string, which identifies a
-                tracker. All possible identifiers can be obtained by calling
-                :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be
+                :class:`~pde.trackers.base.TrackerBase` or a string identifying a
+                tracker (possible identifiers can be obtained by calling
+                :func:`~pde.trackers.base.get_named_trackers`). Multiple trackers can be
                 specified as a list. The default value `auto` checks the state for
                 consistency (tracker 'consistency') and displays a progress bar (tracker
-                'progress'). More general trackers are defined in :mod:`~pde.trackers`,
-                where all options are explained in detail. In particular, the interval
-                at which the tracker is evaluated can be chosen when creating a tracker
-                object explicitly.
+                'progress') when :mod:`tqdm` is installed. More general trackers are
+                defined in :mod:`~pde.trackers`, where all options are explained in
+                detail. In particular, the time points where the tracker analyzes data
+                can be chosen when creating a tracker object explicitly.
             solver (:class:`~pde.solvers.base.SolverBase` or str):
                 Specifies the method for solving the differential equation. This can
                 either be an instance of :class:`~pde.solvers.base.SolverBase` or a
@@ -565,7 +570,7 @@ class PDEBase(metaclass=ABCMeta):
                 as the :attr:`~PDEBase.diagnostics` attribute.
             **kwargs:
                 Additional keyword arguments are forwarded to the solver class chosen
-                with the `method` argument. In particular,
+                with the `solver` argument. In particular,
                 :class:`~pde.solvers.explicit.ExplicitSolver` supports several `schemes`
                 and an adaptive stepper can be enabled using :code:`adaptive=True`.
                 Conversely, :class:`~pde.solvers.ScipySolver` accepts the additional
@@ -581,10 +586,10 @@ class PDEBase(metaclass=ABCMeta):
         from ..solvers import Controller
         from ..solvers.base import SolverBase  # @Reimport
 
-        # support deprecated argument (deprecated on 2023-05-26)
-        if "method" in kwargs:
+        # warn on deprecated argument (deprecated on 2023-05-26)
+        if solver == "explicit" and "method" in kwargs:
             warnings.warn(
-                "Argument `method` has been renamed to `solver` in `solve`",
+                "Argument `method` has been renamed to `solver` in `solve` method",
                 DeprecationWarning,
             )
             solver = kwargs.pop("method")

@@ -9,26 +9,23 @@ from __future__ import annotations
 import json
 import logging
 import warnings
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Union,
-    overload,
-)
+from typing import Any, Callable, Iterator, Literal, Mapping, Sequence, overload
 
 import numpy as np
+from matplotlib import cm
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 from numpy.typing import DTypeLike
+
+try:
+    from matplotlib.colormaps import get_cmap
+except ImportError:
+    from matplotlib.cm import get_cmap
+
 
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
-from ..tools.plotting import PlotReference, plot_on_figure
+from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase, FieldBase
 from .scalar import ScalarField
@@ -45,11 +42,11 @@ class FieldCollection(FieldBase):
 
     def __init__(
         self,
-        fields: Union[Sequence[DataFieldBase], Mapping[str, DataFieldBase]],
+        fields: Sequence[DataFieldBase] | Mapping[str, DataFieldBase],
         *,
         copy_fields: bool = False,
-        label: Optional[str] = None,
-        labels: Union[List[Optional[str]], _FieldLabels, None] = None,
+        label: str | None = None,
+        labels: list[str | None] | _FieldLabels | None = None,
         dtype: DTypeLike = None,
     ):
         """
@@ -95,7 +92,7 @@ class FieldCollection(FieldBase):
             raise RuntimeError(f"Grids are incompatible: {grids}")
 
         # check whether some fields are identical
-        if not copy_fields and len(fields) != len(set(id(field) for field in fields)):
+        if not copy_fields and len(fields) != len({id(field) for field in fields}):
             self._logger = logging.getLogger(self.__class__.__name__)
             self._logger.warning("Creating a copy of identical fields in collection")
             copy_fields = True
@@ -107,8 +104,8 @@ class FieldCollection(FieldBase):
             self._fields = fields  # type: ignore
 
         # extract data from individual fields
-        fields_data: List[np.ndarray] = []
-        self._slices: List[slice] = []
+        fields_data: list[np.ndarray] = []
+        self._slices: list[slice] = []
         dof = 0  # count local degrees of freedom
         for field in self.fields:
             if not isinstance(field, DataFieldBase):
@@ -161,16 +158,12 @@ class FieldCollection(FieldBase):
         return iter(self.fields)
 
     @overload
-    def __getitem__(self, index: Union[int, str]) -> DataFieldBase:
-        ...
+    def __getitem__(self, index: int | str) -> DataFieldBase: ...
 
     @overload
-    def __getitem__(self, index: slice) -> FieldCollection:
-        ...
+    def __getitem__(self, index: slice) -> FieldCollection: ...
 
-    def __getitem__(
-        self, index: Union[int, str, slice]
-    ) -> Union[DataFieldBase, FieldCollection]:
+    def __getitem__(self, index: int | str | slice) -> DataFieldBase | FieldCollection:
         """returns one or many fields from the collection
 
         If `index` is an integer or string, the field at this position or with this
@@ -195,7 +188,7 @@ class FieldCollection(FieldBase):
         else:
             raise TypeError(f"Unsupported index `{index}`")
 
-    def __setitem__(self, index: Union[int, str], value: NumberOrArray):
+    def __setitem__(self, index: int | str, value: NumberOrArray):
         """set the value of a specific field
 
         Args:
@@ -226,13 +219,13 @@ class FieldCollection(FieldBase):
             raise TypeError(f"Unsupported index `{index}`")
 
     @property
-    def fields(self) -> List[DataFieldBase]:
+    def fields(self) -> list[DataFieldBase]:
         """list: the fields of this collection"""
         # return shallow copy of list so the internal list is not modified accidentially
         return self._fields[:]
 
     @property
-    def labels(self) -> "_FieldLabels":
+    def labels(self) -> _FieldLabels:
         """:class:`_FieldLabels`: the labels of all fields
 
         Note:
@@ -244,7 +237,7 @@ class FieldCollection(FieldBase):
         return _FieldLabels(self)
 
     @labels.setter
-    def labels(self, values: List[Optional[str]]):
+    def labels(self, values: list[str | None]):
         """sets the labels of all fields"""
         if len(values) != len(self):
             raise ValueError("Require a label for each field")
@@ -258,38 +251,8 @@ class FieldCollection(FieldBase):
         return self.fields == other.fields
 
     @classmethod
-    def from_dict(
-        cls,
-        fields: Dict[str, DataFieldBase],
-        *,
-        copy_fields: bool = False,
-        label: Optional[str] = None,
-        dtype: DTypeLike = None,
-    ) -> FieldCollection:
-        """create a field collection from a dictionary of fields
-
-        Args:
-            fields (dict):
-                Dictionary of fields where keys determine field labels
-            copy_fields (bool):
-                Flag determining whether the individual fields given in `fields` are
-                copied. Note that fields are always copied if some of the supplied
-                fields are identical.
-            label (str):
-                Label of the field collection
-            dtype (numpy dtype):
-                The data type of the field. All the numpy dtypes are supported. If
-                omitted, it will be determined from `data` automatically.
-        """
-        warnings.warn(
-            "`FieldCollection.from_dict` is deprecated – use FieldCollection() instead",
-            DeprecationWarning,
-        )
-        return cls(fields, copy_fields=copy_fields, label=label, dtype=dtype)
-
-    @classmethod
     def from_state(
-        cls, attributes: Dict[str, Any], data: Optional[np.ndarray] = None
+        cls, attributes: dict[str, Any], data: np.ndarray | None = None
     ) -> FieldCollection:
         """create a field collection from given state.
 
@@ -325,8 +288,8 @@ class FieldCollection(FieldBase):
         data: np.ndarray,
         *,
         with_ghost_cells: bool = True,
-        label: Optional[str] = None,
-        labels: Union[List[Optional[str]], _FieldLabels, None] = None,
+        label: str | None = None,
+        labels: list[str | None] | _FieldLabels | None = None,
         dtype: DTypeLike = None,
     ):
         """create a field collection from classes and data
@@ -420,10 +383,10 @@ class FieldCollection(FieldBase):
         grid: GridBase,
         expressions: Sequence[str],
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        label: Optional[str] = None,
-        labels: Optional[Sequence[str]] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        labels: Sequence[str] | None = None,
         dtype: DTypeLike = None,
     ) -> FieldCollection:
         """create a field collection on a grid from given expressions
@@ -485,9 +448,9 @@ class FieldCollection(FieldBase):
         vmin: float = 0,
         vmax: float = 1,
         *,
-        label: Optional[str] = None,
-        labels: Optional[Sequence[str]] = None,
-        rng: Optional[np.random.Generator] = None,
+        label: str | None = None,
+        labels: Sequence[str] | None = None,
+        rng: np.random.Generator | None = None,
     ) -> FieldCollection:
         """create scalar fields with random values between `vmin` and `vmax`
 
@@ -518,7 +481,7 @@ class FieldCollection(FieldBase):
         )
 
     @property
-    def attributes(self) -> Dict[str, Any]:
+    def attributes(self) -> dict[str, Any]:
         """dict: describes the state of the instance (without the data)"""
         results = super().attributes
 
@@ -532,7 +495,7 @@ class FieldCollection(FieldBase):
         return results
 
     @property
-    def attributes_serialized(self) -> Dict[str, str]:
+    def attributes_serialized(self) -> dict[str, str]:
         """dict: serialized version of the attributes"""
         results = {}
         for key, value in self.attributes.items():
@@ -546,7 +509,7 @@ class FieldCollection(FieldBase):
         return results
 
     @classmethod
-    def unserialize_attributes(cls, attributes: Dict[str, str]) -> Dict[str, Any]:
+    def unserialize_attributes(cls, attributes: dict[str, str]) -> dict[str, Any]:
         """unserializes the given attributes
 
         Args:
@@ -570,7 +533,7 @@ class FieldCollection(FieldBase):
     def copy(
         self: FieldCollection,
         *,
-        label: Optional[str] = None,
+        label: str | None = None,
         dtype: DTypeLike = None,
     ) -> FieldCollection:
         """return a copy of the data, but not of the grid
@@ -591,8 +554,8 @@ class FieldCollection(FieldBase):
 
     def append(
         self,
-        *fields: Union[DataFieldBase, FieldCollection],
-        label: Optional[str] = None,
+        *fields: DataFieldBase | FieldCollection,
+        label: str | None = None,
     ) -> FieldCollection:
         """create new collection with appended field(s)
 
@@ -642,8 +605,8 @@ class FieldCollection(FieldBase):
         self,
         grid: GridBase,
         *,
-        fill: Optional[Number] = None,
-        label: Optional[str] = None,
+        fill: Number | None = None,
+        label: str | None = None,
     ) -> FieldCollection:
         """interpolate the data of this field collection to another grid.
 
@@ -670,8 +633,8 @@ class FieldCollection(FieldBase):
         self,
         sigma: float = 1,
         *,
-        out: Optional[FieldCollection] = None,
-        label: Optional[str] = None,
+        out: FieldCollection | None = None,
+        label: str | None = None,
     ) -> FieldCollection:
         """applies Gaussian smoothing with the given standard deviation
 
@@ -704,12 +667,12 @@ class FieldCollection(FieldBase):
         return out
 
     @property
-    def integrals(self) -> List:
+    def integrals(self) -> list:
         """integrals of all fields"""
         return [field.integral for field in self]
 
     @property
-    def averages(self) -> List:
+    def averages(self) -> list:
         """averages of all fields"""
         return [field.average for field in self]
 
@@ -723,7 +686,7 @@ class FieldCollection(FieldBase):
         index: int = 0,
         scalar: str = "auto",
         extract: str = "auto",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         r"""return data for a line plot of the field
 
         Args:
@@ -741,7 +704,7 @@ class FieldCollection(FieldBase):
         """
         return self[index].get_line_data(scalar=scalar, extract=extract)
 
-    def get_image_data(self, index: int = 0, **kwargs) -> Dict[str, Any]:
+    def get_image_data(self, index: int = 0, **kwargs) -> dict[str, Any]:
         r"""return data for plotting an image of the field
 
         Args:
@@ -753,34 +716,251 @@ class FieldCollection(FieldBase):
         """
         return self[index].get_image_data(**kwargs)
 
-    def _update_plot(self, reference: List[PlotReference]) -> None:
+    def _get_merged_image_data(
+        self,
+        colors: list[str] | None = None,
+        projection: Literal["max", "mean", "min", "product", "sum"] = "min",
+        *,
+        background_color: str = "w",
+        inverse_projection: bool = False,
+        transpose: bool = False,
+        vmin: float | list[float | None] | None = None,
+        vmax: float | list[float | None] | None = None,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
+        """obtain data required for a merged plot
+
+        Args:
+            colors (list):
+                Colors used for each color channel. This can either be a matplotlib
+                colormap used for mapping the channels or a single matplotlib color used
+                to interpolate between the background.
+            projection (str):
+                Defines a projection determining how different colors are merged.
+                Possible options are "max", "mean", "min", "product", and "sum".
+            inverse_projection (bool):
+                Inverses colors before applying the projection. Can be useful for dark
+                color maps and black backgrounds.
+            background_color (str):
+                Defines the background color corresponding to vanishing values. Not used
+                for colormaps specified in `colors`.
+            transpose (bool):
+                Determines whether the transpose of the data is plotted
+            vmin, vmax (float, list of float):
+                Define the data range that the color chanels cover. By default, they
+                cover the complete value range of the supplied data.
+
+        Returns:
+            tuple: a :class:`~numpy.ndarray` of the merged data together with a dict of
+            additional information, e.g., about the extent and the axes.
+        """
+        num_fields = len(self)
+        if colors is None:
+            colors = [f"C{i}" for i in range(num_fields)]
+        if not hasattr(vmin, "__iter__"):
+            vmin = [vmin] * num_fields
+        if not hasattr(vmax, "__iter__"):
+            vmax = [vmax] * num_fields
+
+        # compile image data for all channels
+        data = []
+        for i, f in enumerate(self):
+            field_data = f.get_image_data(transpose=transpose)
+            norm = Normalize(vmin=vmin[i], vmax=vmax[i], clip=True)  # type: ignore
+            try:
+                cmap = get_cmap(colors[i])
+            except ValueError:
+                cmap = LinearSegmentedColormap.from_list(
+                    "", [background_color, colors[i]]
+                )
+            m = cm.ScalarMappable(norm=norm, cmap=cmap)
+            data.append(m.to_rgba(field_data["data"].T))
+        arr = np.array(data)
+
+        # combine the images
+        if inverse_projection:
+            arr = 1 - arr
+        if projection == "max":
+            rgb_arr = np.max(arr, axis=0)
+        elif projection == "mean":
+            rgb_arr = np.mean(arr, axis=0)
+        elif projection == "min":
+            rgb_arr = np.min(arr, axis=0)
+        elif projection == "product":
+            rgb_arr = np.prod(arr, axis=0)
+        elif projection == "sum":
+            rgb_arr = np.sum(arr, axis=0)
+        else:
+            raise ValueError(f"Undefined projection `{projection}`")
+        if inverse_projection:
+            rgb_arr = 1 - rgb_arr
+
+        return rgb_arr, field_data
+
+    def _update_merged_image_plot(self, reference: PlotReference) -> None:
+        """update an merged image plot with the current field values
+
+        Args:
+            reference (:class:`PlotReference`):
+                The reference to the plot that is updated
+        """
+        # obtain image data
+        data_args = reference.parameters.copy()
+        data_args.pop("kind")
+        rgb_arr, _ = self._get_merged_image_data(**data_args)
+        # update the axes image
+        reference.element.set_data(rgb_arr)
+
+    @plot_on_axes(update_method="_update_merged_image_plot")
+    def _plot_merged_image(
+        self,
+        ax,
+        colors: list[str] | None = None,
+        projection: Literal["max"] = "max",
+        inverse_projection: bool = False,
+        background_color: str = "w",
+        transpose: bool = False,
+        vmin: float | list[float | None] | None = None,
+        vmax: float | list[float | None] | None = None,
+        **kwargs,
+    ) -> PlotReference:
+        r"""visualize fields by mapping to different color chanels in a 2d density plot
+
+        Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting.
+            colors (list):
+                Colors used for each color channel. This can either be a matplotlib
+                colormap used for mapping the channels or a single matplotlib color used
+                to interpolate between the background.
+            projection (str):
+                Defines a projection determining how different colors are merged.
+                Possible options are "max", "mean", "min", "product", and "sum".
+            inverse_projection (bool):
+                Inverses colors before applying the projection. Can be useful for dark
+                color maps and black backgrounds.
+            background_color (str):
+                Defines the background color corresponding to vanishing values. Not used
+                for colormaps specified in `colors`.
+            transpose (bool):
+                Determines whether the transpose of the data is plotted
+            vmin, vmax (float, list of float):
+                Define the data range that the color chanels cover. By default, they
+                cover the complete value range of the supplied data.
+            \**kwargs:
+                Additional keyword arguments that affect the image. Non-Cartesian grids
+                might support `performance_goal` to influence how an image is created
+                from raw data. Finally, remaining arguments are passed to
+                :func:`matplotlib.pyplot.imshow` to affect the appearance.
+
+        Returns:
+            :class:`PlotReference`: Instance that contains information to update the
+            plot with new data later.
+        """
+        rgba_arr, data = self._get_merged_image_data(
+            colors,
+            projection,
+            inverse_projection=inverse_projection,
+            background_color=background_color,
+            transpose=transpose,
+            vmin=vmin,
+            vmax=vmax,
+        )
+
+        # plot the image
+        kwargs.setdefault("origin", "lower")
+        kwargs.setdefault("interpolation", "none")
+        axes_image = ax.imshow(rgba_arr, extent=data["extent"], **kwargs)
+
+        # set some default properties
+        ax.set_xlabel(data["label_x"])
+        ax.set_ylabel(data["label_y"])
+        ax.set_title(self.label)
+
+        # store parameters of the plot that are necessary for updating
+        parameters = {
+            "kind": "merged_image",
+            "transpose": transpose,
+            "vmin": vmin,
+            "vmax": vmax,
+        }
+        return PlotReference(ax, axes_image, parameters)
+
+    @plot_on_axes(update_method="_update_rgb_image_plot")
+    def _plot_rgb_image(
+        self,
+        ax,
+        transpose: bool = False,
+        vmin: float | list[float | None] | None = None,
+        vmax: float | list[float | None] | None = None,
+        **kwargs,
+    ) -> PlotReference:
+        r"""visualize fields by mapping to different color chanels in a 2d density plot
+
+        Args:
+            ax (:class:`matplotlib.axes.Axes`):
+                Figure axes to be used for plotting.
+            transpose (bool):
+                Determines whether the transpose of the data is plotted
+            vmin, vmax (float, list of float):
+                Define the data range that the color chanels cover. By default, they
+                cover the complete value range of the supplied data.
+            \**kwargs:
+                Additional keyword arguments that affect the image. Non-Cartesian grids
+                might support `performance_goal` to influence how an image is created
+                from raw data. Finally, remaining arguments are passed to
+                :func:`matplotlib.pyplot.imshow` to affect the appearance.
+
+        Returns:
+            :class:`PlotReference`: Instance that contains information to update the
+            plot with new data later.
+        """
+        # since 2024-01-25
+        warnings.warn(
+            "`rgb_image` is deprecated in favor of `merged`", DeprecationWarning
+        )
+        return self._plot_merged_image(  # type: ignore
+            ax=ax,
+            colors="rgb",
+            background_color="k",
+            projection="max",
+            transpose=transpose,
+            vmin=vmin,
+            vmax=vmax,
+            **kwargs,
+        )
+
+    def _update_plot(self, reference: list[PlotReference]) -> None:
         """update a plot collection with the current field values
 
         Args:
             reference (list of :class:`PlotReference`):
                 All references of the plot to update
         """
-        for field, ref in zip(self.fields, reference):
-            field._update_plot(ref)
+        if reference[0].parameters.get("kind", None) == "merged_image":
+            self._update_merged_image_plot(reference[0])
+        else:
+            for field, ref in zip(self.fields, reference):
+                field._update_plot(ref)
 
     @plot_on_figure(update_method="_update_plot")
     def plot(
         self,
-        kind: Union[str, Sequence[str]] = "auto",
+        kind: str | Sequence[str] = "auto",
         figsize="auto",
         arrangement="horizontal",
         fig=None,
         subplot_args=None,
         **kwargs,
-    ) -> List[PlotReference]:
+    ) -> list[PlotReference]:
         r"""visualize all the fields in the collection
 
         Args:
             kind (str or list of str):
                 Determines the kind of the visualizations. Supported values are `image`,
-                `line`, `vector`, or `interactive`. Alternatively, `auto` determines the
-                best visualization based on each field itself. Instead of a single value
-                for all fields, a list with individual values can be given.
+                `line`, `vector`, `interactive`, or `rgb`. Alternatively, `auto`
+                determines the best visualization based on each field itself. Instead of
+                a single value for all fields, a list with individual values can be
+                given, unless `rgb` is chosen.
             figsize (str or tuple of numbers):
                 Determines the figure size. The figure size is unchanged if the string
                 `default` is passed. Conversely, the size is adjusted automatically when
@@ -803,6 +983,11 @@ class FieldCollection(FieldBase):
             List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
+        if kind in {"merged", "rgb", "rgb_image", "rgb-image"}:
+            num_panels = 1
+        else:
+            num_panels = len(self)
+
         # set the size of the figure
         if figsize == "default":
             pass  # just leave the figure size at its default value
@@ -810,9 +995,9 @@ class FieldCollection(FieldBase):
         elif figsize == "auto":
             # adjust the size of the figure
             if arrangement == "horizontal":
-                fig.set_size_inches((4 * len(self), 3), forward=True)
+                fig.set_size_inches((4 * num_panels, 3), forward=True)
             elif arrangement == "vertical":
-                fig.set_size_inches((4, 3 * len(self)), forward=True)
+                fig.set_size_inches((4, 3 * num_panels), forward=True)
 
         else:
             # assume that an actual tuple is given
@@ -820,31 +1005,47 @@ class FieldCollection(FieldBase):
 
         # create all the subpanels
         if arrangement == "horizontal":
-            (axs,) = fig.subplots(1, len(self), squeeze=False)
+            (axs,) = fig.subplots(1, num_panels, squeeze=False)
         elif arrangement == "vertical":
-            axs = fig.subplots(len(self), 1, squeeze=False)
+            axs = fig.subplots(num_panels, 1, squeeze=False)
             axs = [a[0] for a in axs]  # transpose
         else:
             raise ValueError(f"Unknown arrangement `{arrangement}`")
 
         if subplot_args is None:
-            subplot_args = [{}] * len(self)
+            subplot_args = [{}] * num_panels
 
-        if isinstance(kind, str):
-            kind = [kind] * len(self.fields)
+        if kind in {"merged"}:
+            # plot a single RGB representation
+            reference = [
+                self._plot_merged_image(
+                    ax=axs[0], action="none", **kwargs, **subplot_args[0]
+                )
+            ]
 
-        # plot all the elements onto the respective axes
-        reference = [
-            field.plot(kind=knd, ax=ax, action="none", **kwargs, **sp_args)
-            for field, knd, ax, sp_args in zip(  # @UnusedVariable
-                self.fields, kind, axs, subplot_args
-            )
-        ]
+        elif kind in {"rgb", "rgb_image", "rgb-image"}:
+            # plot a single RGB representation
+            reference = [
+                self._plot_rgb_image(
+                    ax=axs[0], action="none", **kwargs, **subplot_args[0]
+                )
+            ]
+
+        else:
+            # plot all the elements onto the respective axes
+            if isinstance(kind, str):
+                kind = [kind] * num_panels
+            reference = [
+                field.plot(kind=knd, ax=ax, action="none", **kwargs, **sp_args)
+                for field, knd, ax, sp_args in zip(  # @UnusedVariable
+                    self.fields, kind, axs, subplot_args
+                )
+            ]
 
         # return the references for all subplots
         return reference
 
-    def _get_napari_data(self, **kwargs) -> Dict[str, Dict[str, Any]]:
+    def _get_napari_data(self, **kwargs) -> dict[str, dict[str, Any]]:
         r"""returns data for plotting all fields
 
         Args:
@@ -883,13 +1084,11 @@ class _FieldLabels:
     def __eq__(self, other):
         return list(self) == list(other)
 
-    def __iter__(self) -> Iterator[Optional[str]]:
+    def __iter__(self) -> Iterator[str | None]:
         for field in self.collection:
             yield field.label
 
-    def __getitem__(
-        self, index: Union[int, slice]
-    ) -> Union[Optional[str], List[Optional[str]]]:
+    def __getitem__(self, index: int | slice) -> str | None | list[str | None]:
         """return one or many labels of a field in the collection"""
         if isinstance(index, int):
             return self.collection[index].label
@@ -898,9 +1097,7 @@ class _FieldLabels:
         else:
             raise TypeError("Unsupported index type")
 
-    def __setitem__(
-        self, index: Union[int, slice], value: Union[Optional[str], List[Optional[str]]]
-    ):
+    def __setitem__(self, index: int | slice, value: None | str | list[str | None]):
         """change one or many labels of a field in the collection"""
         if isinstance(index, int):
             self.collection.fields[index].label = value  # type: ignore

@@ -8,6 +8,7 @@ import pytest
 from pde import PDE, DiffusionPDE, FieldCollection, MemoryStorage, ScalarField, UnitGrid
 from pde.solvers import (
     Controller,
+    CrankNicolsonSolver,
     ExplicitSolver,
     ImplicitSolver,
     ScipySolver,
@@ -15,12 +16,15 @@ from pde.solvers import (
 )
 from pde.solvers.base import AdaptiveSolverBase
 
+SOLVER_CLASSES = [ExplicitSolver, ImplicitSolver, CrankNicolsonSolver, ScipySolver]
+
 
 def test_solver_registration():
     """test solver registration"""
     solvers = registered_solvers()
     assert "explicit" in solvers
     assert "implicit" in solvers
+    assert "crank-nicolson" in solvers
     assert "scipy" in solvers
 
 
@@ -31,7 +35,7 @@ def test_solver_in_pde_class(rng):
     eq.solve(field, t_range=1, solver=ScipySolver, tracker=None)
 
 
-@pytest.mark.parametrize("solver_class", [ExplicitSolver, ImplicitSolver, ScipySolver])
+@pytest.mark.parametrize("solver_class", SOLVER_CLASSES)
 def test_compare_solvers(solver_class, rng):
     """compare several solvers"""
     field = ScalarField.random_uniform(UnitGrid([8, 8]), -1, 1, rng=rng)
@@ -48,8 +52,9 @@ def test_compare_solvers(solver_class, rng):
     np.testing.assert_allclose(s1.data, s2.data, rtol=1e-2, atol=1e-2)
 
 
+@pytest.mark.parametrize("solver_class", SOLVER_CLASSES)
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
-def test_solvers_complex(backend):
+def test_solvers_complex(solver_class, backend):
     """test solvers with a complex PDE"""
     r = FieldCollection.scalar_random_uniform(2, UnitGrid([3]), labels=["a", "b"])
     c = r["a"] + 1j * r["b"]
@@ -61,11 +66,10 @@ def test_solvers_complex(backend):
     res_r = eq_r.solve(r, t_range=1e-2, dt=1e-3, backend="numpy", tracker=None)
     exp_c = res_r[0].data + 1j * res_r[1].data
 
-    for solver_class in [ExplicitSolver, ImplicitSolver, ScipySolver]:
-        solver = solver_class(eq_c, backend=backend)
-        controller = Controller(solver, t_range=1e-2, tracker=None)
-        res_c = controller.run(c, dt=1e-3)
-        np.testing.assert_allclose(res_c.data, exp_c, rtol=1e-3, atol=1e-3)
+    solver = solver_class(eq_c, backend=backend)
+    controller = Controller(solver, t_range=1e-2, tracker=None)
+    res_c = controller.run(c, dt=1e-3)
+    np.testing.assert_allclose(res_c.data, exp_c, rtol=1e-3, atol=1e-3)
 
 
 def test_basic_adaptive_solver():

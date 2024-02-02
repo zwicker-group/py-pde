@@ -4,7 +4,9 @@ The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interf
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, Optional
+from __future__ import annotations
+
+from typing import Callable
 
 import numba as nb
 import numpy as np
@@ -41,7 +43,7 @@ class KPZInterfacePDE(PDEBase):
         *,
         bc: BoundariesData = "auto_periodic_neumann",
         noise: float = 0,
-        rng: Optional[np.random.Generator] = None,
+        rng: np.random.Generator | None = None,
     ):
         r"""
         Args:
@@ -83,7 +85,8 @@ class KPZInterfacePDE(PDEBase):
         Args:
             state (:class:`~pde.fields.ScalarField`):
                 The scalar field describing the concentration distribution
-            t (float): The current time point
+            t (float):
+                The current time point
 
         Returns:
             :class:`~pde.fields.ScalarField`:

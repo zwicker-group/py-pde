@@ -1,13 +1,15 @@
 """
-Defines a class controlling the simulations of PDEs.
+Defines a class controlling the simulations of PDEs
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import datetime
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Tuple, TypeVar, Union
 
 from .. import __version__
 from ..tools import mpi
@@ -20,7 +22,7 @@ from ..trackers.base import (
 from .base import SolverBase
 
 if TYPE_CHECKING:
-    from ..fields.base import FieldBase  # @UnusedImport
+    from ..fields.base import FieldBase
 
 
 TRangeType = Union[float, Tuple[float, float]]
@@ -34,7 +36,7 @@ class Controller:
     care of trackers that analyze and modify the state periodically.
     """
 
-    diagnostics: Dict[str, Any]
+    diagnostics: dict[str, Any]
     """dict: diagnostic information (available after simulation finished)"""
 
     _get_current_time: Callable = time.process_time
@@ -57,16 +59,16 @@ class Controller:
                 Sets the time range for which the simulation is run. If only a single
                 value `t_end` is given, the time range is assumed to be `[0, t_end]`.
             tracker:
-                Defines a tracker that process the state of the simulation at specified
+                Defines trackers that process the state of the simulation at specified
                 times. A tracker is either an instance of
-                :class:`~pde.trackers.base.TrackerBase` or a string, which identifies a
-                tracker. All possible identifiers can be obtained by calling
-                :func:`~pde.trackers.base.get_named_trackers`. Multiple trackers can be
+                :class:`~pde.trackers.base.TrackerBase` or a string identifying a
+                tracker (possible identifiers can be obtained by calling
+                :func:`~pde.trackers.base.get_named_trackers`). Multiple trackers can be
                 specified as a list. The default value `auto` checks the state for
                 consistency (tracker 'consistency') and displays a progress bar (tracker
                 'progress') when :mod:`tqdm` is installed. More general trackers are
                 defined in :mod:`~pde.trackers`, where all options are explained in
-                detail. In particular, the interval at which the tracker is evaluated
+                detail. In particular, the time points where the tracker analyzes data
                 can be chosen when creating a tracker object explicitly.
         """
         self.solver = solver
@@ -74,7 +76,7 @@ class Controller:
         self.trackers = TrackerCollection.from_data(tracker)
 
         # initialize some diagnostic information
-        self.info: Dict[str, Any] = {}
+        self.info: dict[str, Any] = {}
         self.diagnostics = {
             "controller": self.info,
             "package_version": __version__,
@@ -82,7 +84,7 @@ class Controller:
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
-    def t_range(self) -> Tuple[float, float]:
+    def t_range(self) -> tuple[float, float]:
         """tuple: start and end time of the simulation"""
         return self._t_range
 
@@ -98,7 +100,7 @@ class Controller:
         """
         # determine time range
         try:
-            self._t_range: Tuple[float, float] = (0, float(value))  # type: ignore
+            self._t_range: tuple[float, float] = (0, float(value))  # type: ignore
         except TypeError:  # assume a single number was given
             if len(value) == 2:  # type: ignore
                 self._t_range = tuple(value)  # type: ignore
@@ -107,10 +109,10 @@ class Controller:
                     "t_range must be set to a single number or a tuple of two numbers"
                 )
 
-    def _get_stop_handler(self) -> Callable[[Exception, float], Tuple[int, str]]:
+    def _get_stop_handler(self) -> Callable[[Exception, float], tuple[int, str]]:
         """return function that handles messaging"""
 
-        def _handle_stop_iteration(err: Exception, t: float) -> Tuple[int, str]:
+        def _handle_stop_iteration(err: Exception, t: float) -> tuple[int, str]:
             """helper function for handling interrupts raised by trackers"""
             if isinstance(err, FinishedSimulation):
                 # tracker determined that the simulation finished
@@ -138,7 +140,7 @@ class Controller:
 
         return _handle_stop_iteration
 
-    def _run_single(self, state: TState, dt: Optional[float] = None) -> None:
+    def _run_single(self, state: TState, dt: float | None = None) -> None:
         """run the simulation
 
         Diagnostic information about the solver procedure are available in the
@@ -261,7 +263,7 @@ class Controller:
                 "Consider reducing time step."
             )
 
-    def _run_mpi_client(self, state: TState, dt: Optional[float] = None) -> None:
+    def _run_mpi_client(self, state: TState, dt: float | None = None) -> None:
         """loop for run the simulation on client nodes during an MPI run
 
         This function just loops the stepper advancing the sub field of the current node
@@ -292,9 +294,7 @@ class Controller:
         while t < t_end:
             t = stepper(state, t, t_end)
 
-    def run(
-        self, initial_state: TState, dt: Optional[float] = None
-    ) -> Optional[TState]:
+    def run(self, initial_state: TState, dt: float | None = None) -> TState | None:
         """run the simulation
 
         Diagnostic information about the solver are available in the

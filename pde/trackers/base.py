@@ -1,6 +1,6 @@
 """
 Base classes for trackers 
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -8,15 +8,16 @@ from __future__ import annotations
 
 import logging
 import math
+import warnings
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, List, Optional, Sequence, Type, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 import numpy as np
 
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
-from .interrupts import IntervalData, interval_to_interrupts
+from .interrupts import InterruptData, parse_interrupt
 
 InfoDict = Optional[Dict[str, Any]]
 TrackerDataType = Union["TrackerBase", str]
@@ -25,22 +26,27 @@ TrackerDataType = Union["TrackerBase", str]
 class FinishedSimulation(StopIteration):
     """exception for signaling that simulation finished successfully"""
 
-    pass
-
 
 class TrackerBase(metaclass=ABCMeta):
     """base class for implementing trackers"""
 
-    _subclasses: Dict[str, Type[TrackerBase]] = {}  # all inheriting classes
+    _subclasses: dict[str, type[TrackerBase]] = {}  # all inheriting classes
 
     @fill_in_docstring
-    def __init__(self, interval: IntervalData = 1):
+    def __init__(self, interrupts: InterruptData = 1, *, interval=None):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
         """
-        self.interrupt = interval_to_interrupts(interval)
+        if interval is not None:
+            # deprecated on 2023-12-23
+            warnings.warn(
+                "Argument `interval` has been renamed to `interrupts`",
+                DeprecationWarning,
+            )
+            interrupts = interval
+        self.interrupt = parse_interrupt(interrupts)
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
@@ -72,7 +78,7 @@ class TrackerBase(metaclass=ABCMeta):
         else:
             raise ValueError(f"Unsupported tracker format: `{data}`.")
 
-    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -100,16 +106,14 @@ class TrackerBase(metaclass=ABCMeta):
             t (float):
                 The associated time
         """
-        pass
 
-    def finalize(self, info: Optional[InfoDict] = None) -> None:
+    def finalize(self, info: InfoDict | None = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:
             info (dict):
                 Extra information from the simulation
         """
-        pass
 
 
 TrackerCollectionDataType = Union[Sequence[TrackerDataType], TrackerDataType, None]
@@ -123,18 +127,18 @@ class TrackerCollection:
             List of the trackers in the collection
     """
 
-    tracker_action_times: List[float]
+    tracker_action_times: list[float]
     """ list: Times at which the trackers need to be handled next """
     time_next_action: float
     """ float: The time of the next interrupt of the simulation """
 
-    def __init__(self, trackers: Optional[List[TrackerBase]] = None):
+    def __init__(self, trackers: list[TrackerBase] | None = None):
         """
         Args:
             trackers: List of trackers that are to be handled.
         """
         if trackers is None:
-            self.trackers: List[TrackerBase] = []
+            self.trackers: list[TrackerBase] = []
         elif not hasattr(trackers, "__iter__"):
             raise ValueError(f"`trackers` must be a list of trackers, not {trackers}")
         else:
@@ -149,9 +153,7 @@ class TrackerCollection:
         return len(self.trackers)
 
     @classmethod
-    def from_data(
-        cls, data: TrackerCollectionDataType, **kwargs
-    ) -> "TrackerCollection":
+    def from_data(cls, data: TrackerCollectionDataType, **kwargs) -> TrackerCollection:
         """create tracker collection from given data
 
         Args:
@@ -168,7 +170,7 @@ class TrackerCollection:
                 data = "consistency"
 
         if data is None:
-            trackers: List[TrackerBase] = []
+            trackers: list[TrackerBase] = []
         elif isinstance(data, TrackerCollection):
             trackers = data.trackers
         elif isinstance(data, TrackerBase):
@@ -190,7 +192,7 @@ class TrackerCollection:
 
         return cls(trackers)
 
-    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -254,7 +256,7 @@ class TrackerCollection:
             self.time_next_action = min(self.tracker_action_times)
         return self.time_next_action
 
-    def finalize(self, info: Optional[InfoDict] = None) -> None:
+    def finalize(self, info: InfoDict | None = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:
@@ -265,7 +267,7 @@ class TrackerCollection:
             tracker.finalize(info=info)
 
 
-def get_named_trackers() -> Dict[str, Type[TrackerBase]]:
+def get_named_trackers() -> dict[str, type[TrackerBase]]:
     """returns all named trackers
 
     Returns:

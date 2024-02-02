@@ -38,19 +38,19 @@ In order to have all features of the package available, you might want to
 install the following optional packages:
 
 ```bash
-pip install h5py pandas tqdm
+pip install h5py pandas mpi4py numba-mpi
 ```
 
 Moreover, `ffmpeg` needs to be installed for creating movies.
 
 As an alternative, you can install `py-pde` through [conda](https://docs.conda.io/en/latest/)
-using [conda-forge](https://conda-forge.org/) channel:
+using the [conda-forge](https://conda-forge.org/) channel:
 
 ```bash
 conda install -c conda-forge py-pde
 ```
 
-Installation with `conda` includes all required dependencies to have all features of `py-pde`.
+Installation with `conda` includes all dependencies of `py-pde`.
 
 Usage
 -----
