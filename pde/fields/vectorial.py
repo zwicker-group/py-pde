@@ -6,7 +6,8 @@ Defines a vectorial field over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numba as nb
 import numpy as np

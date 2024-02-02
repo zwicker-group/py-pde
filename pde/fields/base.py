@@ -155,7 +155,7 @@ class FieldBase(metaclass=ABCMeta):
         # flatten the first dimension of the internal data by creating a view and then
         # setting the new shape. This disallows accidental copying of the data
         data_flat = self._data_full.view()
-        data_flat.shape = (-1, *self.grid._shape_full)  # type: ignore
+        data_flat.shape = (-1, *self.grid._shape_full)
         return data_flat
 
     @_data_flat.setter

@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import logging
 from abc import ABCMeta, abstractmethod
+from collections.abc import Iterator, Sequence
 from inspect import signature
-from typing import TYPE_CHECKING, Any, Callable, Iterator, Literal, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numpy as np
 from numpy.typing import DTypeLike

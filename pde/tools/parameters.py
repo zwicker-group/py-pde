@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import logging
 import warnings
-from typing import Any, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Union
 
 import numpy as np
 

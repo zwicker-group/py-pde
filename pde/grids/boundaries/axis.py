@@ -11,7 +11,7 @@ non-periodic axes have more option, which are represented by
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Tuple, Union
+from typing import TYPE_CHECKING, Union
 
 import numpy as np
 from numba.extending import register_jitable
@@ -24,9 +24,9 @@ if TYPE_CHECKING:
     from .._mesh import GridMesh
 
 BoundaryPairData = Union[
-    Dict[str, BoundaryData],
+    dict[str, BoundaryData],
     BoundaryData,
-    Tuple[BoundaryData, BoundaryData],
+    tuple[BoundaryData, BoundaryData],
     "BoundaryAxisBase",
 ]
 

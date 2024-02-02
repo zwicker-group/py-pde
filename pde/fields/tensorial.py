@@ -6,7 +6,8 @@ Defines a tensorial field of rank 2 over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Callable
 
 import numpy as np
 from numpy.typing import DTypeLike

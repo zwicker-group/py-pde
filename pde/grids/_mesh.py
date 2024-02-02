@@ -7,8 +7,9 @@ Defines a class used for subdividing a grid for parallel execution using MPI
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from enum import IntEnum
-from typing import Any, Sequence, TypeVar
+from typing import Any, TypeVar
 
 import numpy as np
 

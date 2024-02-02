@@ -6,8 +6,8 @@ Defines a class storing data in memory.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from contextlib import contextmanager
-from typing import Sequence
 
 import numpy as np
 

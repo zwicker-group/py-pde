@@ -14,17 +14,8 @@ import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Generator,
-    Iterator,
-    Literal,
-    NamedTuple,
-    Sequence,
-    overload,
-)
+from collections.abc import Generator, Iterator, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, overload
 
 import numba as nb
 import numpy as np

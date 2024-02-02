@@ -9,7 +9,7 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.8,<3.13"
+requires-python = ">=3.9,<3.13"
 dynamic = ["version"]
 
 keywords = ["pdes", "partial-differential-equations", "dynamical-systems"]
@@ -20,7 +20,6 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -60,7 +59,7 @@ namespaces = false
 write_to = "pde/_version.py"
 
 [tool.black]
-target_version = ["py38"]
+target_version = ["py39"]
 exclude = "scripts/templates"
 
 [tool.isort]
@@ -78,7 +77,7 @@ filterwarnings = [
 ]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 plugins = "numpy.typing.mypy_plugin"
 warn_return_any = true
 warn_unused_configs = true

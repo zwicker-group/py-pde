@@ -20,13 +20,14 @@ import copy
 import math
 import time
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Optional, Sequence, TypeVar, Union
+from collections.abc import Sequence
+from typing import Any, Optional, TypeVar, Union
 
 import numpy as np
 
 from ..tools.parse_duration import parse_duration
 
-InfoDict = Optional[Dict[str, Any]]
+InfoDict = Optional[dict[str, Any]]
 TInterrupt = TypeVar("TInterrupt", bound="InterruptsBase")
 
 

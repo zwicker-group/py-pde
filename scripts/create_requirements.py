@@ -3,15 +3,16 @@
 This script creates the requirements files in the project
 """
 
+from __future__ import annotations
+
 import csv
 import subprocess as sp
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
-from typing import List, Optional, Set
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
-MIN_PYTHON_VERSION = "3.8"
+MIN_PYTHON_VERSION = "3.9"
 MAX_PYTHON_VERSION = "3.12"
 
 
@@ -22,11 +23,11 @@ class Requirement:
     name: str  # name of the python package
     version_min: str  # minimal version
     usage: str = ""  # description for how the package is used in py-pde
-    relation: Optional[str] = None  # relation used to compare version number
+    relation: str | None = None  # relation used to compare version number
     essential: bool = False  # basic requirement for the package
     docs_only: bool = False  # only required for creating documentation
     tests_only: bool = False  # only required for running tests
-    collections: Set[str] = field(default_factory=set)  # collections where this fits
+    collections: set[str] = field(default_factory=set)  # collections where this fits
 
     @property
     def short_version(self) -> str:
@@ -172,7 +173,7 @@ SETUP_WARNING = (
 
 def write_requirements_txt(
     path: Path,
-    requirements: List[Requirement],
+    requirements: list[Requirement],
     *,
     relation: str = ">=",
     ref_base: bool = False,
@@ -201,7 +202,7 @@ def write_requirements_txt(
 
 
 def write_requirements_csv(
-    path: Path, requirements: List[Requirement], *, incl_version: bool = True
+    path: Path, requirements: list[Requirement], *, incl_version: bool = True
 ):
     """write requirements to a CSV file
 
@@ -223,7 +224,7 @@ def write_requirements_csv(
                 writer.writerow([r.name, r.usage])
 
 
-def write_requirements_py(path: Path, requirements: List[Requirement]):
+def write_requirements_py(path: Path, requirements: list[Requirement]):
     """write requirements check into a python module
 
     Args:
@@ -257,7 +258,7 @@ def write_from_template(
     path: Path,
     template_name: str,
     *,
-    requirements: Optional[List[Requirement]] = None,
+    requirements: list[Requirement] | None = None,
     fix_format: bool = False,
     add_warning: bool = True,
 ):
