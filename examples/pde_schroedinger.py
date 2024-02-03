@@ -8,7 +8,7 @@ without a spatial potential in non-dimensional form:
 
 .. math::
     i \partial_t \psi = -\nabla^2 \psi
-    
+
 Note that the example imposes Neumann conditions at the wall, so the wave packet is
 expected to reflect off the wall.
 """

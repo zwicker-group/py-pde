@@ -73,7 +73,9 @@ def get_performance_data(periodic=False):
         field.set_ghost_cells(bc="auto_periodic_neumann")
 
         for backend in ["numba", "scipy"]:
-            op = grid.make_operator("laplace", bc="auto_periodic_neumann", backend=backend)
+            op = grid.make_operator(
+                "laplace", bc="auto_periodic_neumann", backend=backend
+            )
             data[backend] = time_function(op, field.data)
 
         op = grid.make_operator_no_bc("laplace", backend="numba")
@@ -105,7 +107,7 @@ def plot_performance(performance_data, title=None):
     ]
 
     sizes = np.array(sorted(performance_data.keys()))
-    grid_sizes = sizes ** 2
+    grid_sizes = sizes**2
 
     for plot in PLOT_DATA:
         data = np.array([performance_data[size][plot["key"]] for size in sizes])

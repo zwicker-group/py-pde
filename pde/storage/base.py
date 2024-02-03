@@ -1,6 +1,6 @@
 """
 Base classes for storing data
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
@@ -9,17 +9,7 @@ from __future__ import annotations
 import logging
 from abc import ABCMeta, abstractmethod
 from inspect import signature
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, Any, Callable, Iterator, Literal, Sequence
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -30,10 +20,17 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
 from ..trackers.base import InfoDict, TrackerBase
-from ..trackers.interrupts import InterruptsBase, IntervalData
+from ..trackers.interrupts import InterruptData
 
 if TYPE_CHECKING:
-    from .memory import MemoryStorage  # @UnusedImport
+    from .memory import MemoryStorage
+
+
+WriteModeType = Literal[
+    "append",
+    "readonly" "truncate",
+    "truncate_once",
+]
 
 
 class StorageBase(metaclass=ABCMeta):
@@ -46,10 +43,12 @@ class StorageBase(metaclass=ABCMeta):
 
     times: Sequence[float]  # :class:`~numpy.ndarray`): stored time points
     data: Any  # actual data for all the stored times
-    write_mode: str  # mode determining how the storage behaves
+    write_mode: WriteModeType  # mode determining how the storage behaves
 
     def __init__(
-        self, info: Optional[InfoDict] = None, write_mode: str = "truncate_once"
+        self,
+        info: InfoDict | None = None,
+        write_mode: WriteModeType = "truncate_once",
     ):
         """
         Args:
@@ -65,14 +64,14 @@ class StorageBase(metaclass=ABCMeta):
         """
         self.info = {} if info is None else info
         self.write_mode = write_mode
-        self._data_shape: Optional[Tuple[int, ...]] = None
-        self._dtype: Optional[DTypeLike] = None
-        self._grid: Optional[GridBase] = None
-        self._field: Optional[FieldBase] = None
+        self._data_shape: tuple[int, ...] | None = None
+        self._dtype: DTypeLike | None = None
+        self._grid: GridBase | None = None
+        self._field: FieldBase | None = None
         self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
-    def data_shape(self) -> Tuple[int, ...]:
+    def data_shape(self) -> tuple[int, ...]:
         """the current data shape.
 
         Raises:
@@ -97,9 +96,14 @@ class StorageBase(metaclass=ABCMeta):
 
     @abstractmethod
     def _append_data(self, data: np.ndarray, time: float) -> None:
-        pass
+        """append a new data set
 
-    def append(self, field: FieldBase, time: Optional[float] = None) -> None:
+        Args:
+            data (:class:`~numpy.ndarray`): The actual data
+            time (float, optional): The time point associated with the data
+        """
+
+    def append(self, field: FieldBase, time: float | None = None) -> None:
         """add field to the storage
 
         Args:
@@ -133,7 +137,7 @@ class StorageBase(metaclass=ABCMeta):
         return len(self.times)
 
     @property
-    def shape(self) -> Optional[Tuple[int, ...]]:
+    def shape(self) -> tuple[int, ...] | None:
         """the shape of the stored data"""
         if self._data_shape:
             return (len(self),) + self._data_shape
@@ -151,7 +155,7 @@ class StorageBase(metaclass=ABCMeta):
             raise RuntimeError("Storage is empty")
 
     @property
-    def grid(self) -> Optional[GridBase]:
+    def grid(self) -> GridBase | None:
         """GridBase: the grid associated with this storage
 
         This returns `None` if grid was not stored in `self.info`.
@@ -245,7 +249,7 @@ class StorageBase(metaclass=ABCMeta):
         field.data = self.data[t_index]
         return field
 
-    def __getitem__(self, key: Union[int, slice]) -> Union[FieldBase, List[FieldBase]]:
+    def __getitem__(self, key: int | slice) -> FieldBase | list[FieldBase]:
         """return field at given index or a list of fields for a slice"""
         if isinstance(key, int):
             return self._get_field(key)
@@ -259,27 +263,60 @@ class StorageBase(metaclass=ABCMeta):
         for i in range(len(self)):
             yield self[i]  # type: ignore
 
-    def items(self) -> Iterator[Tuple[float, FieldBase]]:
+    def items(self) -> Iterator[tuple[float, FieldBase]]:
         """iterate over all times and stored fields, returning pairs"""
         for i in range(len(self)):
             yield self.times[i], self[i]  # type: ignore
 
     @fill_in_docstring
     def tracker(
-        self, interval: Union[int, float, InterruptsBase] = 1
-    ) -> "StorageTracker":
+        self,
+        interrupts: InterruptData = 1,
+        *,
+        transformation: Callable[[FieldBase, float], FieldBase] | None = None,
+        interval=None,
+    ) -> StorageTracker:
         """create object that can be used as a tracker to fill this storage
 
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then stored. This allows to store derived
+                quantities of the field during calculations. The argument needs to be a
+                callable function taking 1 or 2 arguments. The first argument always is
+                the current field, while the optional second argument is the associated
+                time.
 
         Returns:
             :class:`StorageTracker`: The tracker that fills the current storage
-        """
-        return StorageTracker(storage=self, interval=interval)
 
-    def start_writing(self, field: FieldBase, info: Optional[InfoDict] = None) -> None:
+        Example:
+            The `transformation` argument allows storing additional fields:
+
+            .. code-block:: python
+
+                def add_to_state(state):
+                    transformed_field = state.smooth(1)
+                    return field.append(transformed_field)
+
+                storage = pde.MemoryStorage()
+                tracker = storage.tracker(1, transformation=add_to_state)
+                eq.solve(..., tracker=tracker)
+
+            In this example, :obj:`storage` will contain a trajectory of the fields of
+            the simulation as well as the smoothed fields. Other transformations are
+            possible by defining appropriate :func:`add_to_state`
+        """
+        return StorageTracker(
+            storage=self,
+            interrupts=interrupts,
+            transformation=transformation,
+            interval=interval,
+        )
+
+    def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
         """initialize the storage for writing data
 
         Args:
@@ -306,11 +343,10 @@ class StorageBase(metaclass=ABCMeta):
 
     def end_writing(self) -> None:
         """finalize the storage after writing"""
-        pass
 
     def extract_field(
-        self, field_id: Union[int, str], label: Optional[str] = None
-    ) -> "MemoryStorage":
+        self, field_id: int | str, label: str | None = None
+    ) -> MemoryStorage:
         """extract the time course of a single field from a collection
 
         Note:
@@ -361,8 +397,8 @@ class StorageBase(metaclass=ABCMeta):
         )
 
     def extract_time_range(
-        self, t_range: Union[float, Tuple[float, float], None] = None
-    ) -> "MemoryStorage":
+        self, t_range: float | tuple[float, float] | None = None
+    ) -> MemoryStorage:
         """extract a particular time interval
 
         Note:
@@ -395,8 +431,8 @@ class StorageBase(metaclass=ABCMeta):
 
         # extract the actual memory
         return MemoryStorage(
-            times=self.times[i_start:i_end],  # type: ignore
-            data=self.data[i_start:i_end],  # type: ignore
+            times=self.times[i_start:i_end],
+            data=self.data[i_start:i_end],
             field_obj=self._field,
             info=self.info,
         )
@@ -404,7 +440,7 @@ class StorageBase(metaclass=ABCMeta):
     def apply(
         self,
         func: Callable,
-        out: Optional[StorageBase] = None,
+        out: StorageBase | None = None,
         *,
         progress: bool = False,
     ) -> StorageBase:
@@ -466,7 +502,7 @@ class StorageBase(metaclass=ABCMeta):
         return out
 
     def copy(
-        self, out: Optional[StorageBase] = None, *, progress: bool = False
+        self, out: StorageBase | None = None, *, progress: bool = False
     ) -> StorageBase:
         """copies all fields in a storage to a new one
 
@@ -494,18 +530,44 @@ class StorageTracker(TrackerBase):
     """
 
     @fill_in_docstring
-    def __init__(self, storage, interval: IntervalData = 1):
+    def __init__(
+        self,
+        storage,
+        interrupts: InterruptData = 1,
+        *,
+        transformation: Callable[[FieldBase, float], FieldBase] | None = None,
+        interval=None,
+    ):
         """
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
                 Storage instance to which the data is written
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then stored. This allows to store derived
+                quantities of the field during calculations. The argument needs to be a
+                callable function taking 1 or 2 arguments. The first argument always is
+                the current field, while the optional second argument is the associated
+                time.
         """
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
         self.storage = storage
+        if transformation is not None and not callable(transformation):
+            raise TypeError("`transformation` must be callable")
+        self.transformation = transformation
 
-    def initialize(self, field: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def _transform(self, field: FieldBase, t: float) -> FieldBase:
+        """transforms the field according to the defined transformation"""
+        if self.transformation is None:
+            return field
+        elif self.transformation.__code__.co_argcount == 1:
+            return self.transformation(field)  # type: ignore
+        else:
+            return self.transformation(field, t)
+
+    def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -517,7 +579,7 @@ class StorageTracker(TrackerBase):
             float: The first time the tracker needs to handle data
         """
         result = super().initialize(field, info)
-        self.storage.start_writing(field, info)
+        self.storage.start_writing(self._transform(field, 0), info)
         return result
 
     def handle(self, field: FieldBase, t: float) -> None:
@@ -528,9 +590,9 @@ class StorageTracker(TrackerBase):
                 The current state of the simulation
             t (float): The associated time
         """
-        self.storage.append(field, time=t)
+        self.storage.append(self._transform(field, t), time=t)
 
-    def finalize(self, info: Optional[InfoDict] = None) -> None:
+    def finalize(self, info: InfoDict | None = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:

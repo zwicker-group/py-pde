@@ -14,9 +14,10 @@
 import os.path
 import sys
 
-sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, ".")
-sys.path.append(os.path.abspath("../sphinx_ext/"))
+sys.path.insert(0, os.path.abspath("../.."))
+sys.path.insert(0, os.path.abspath("../../scripts"))
+sys.path.insert(0, os.path.abspath("../sphinx_ext/"))
 
 from datetime import date
 
@@ -26,6 +27,7 @@ project = "py-pde"
 module_name = "pde"
 author = "Zwicker Group"
 copyright = f"{date.today().year}, {author}"  # @ReservedAssignment
+html_logo = "_images/logo_small.png"
 
 # Determine the version from the actual package
 import pde
@@ -33,6 +35,14 @@ import pde
 version = pde.__version__.split("-")[0]
 release = pde.__version__
 
+from create_requirements import MAX_PYTHON_VERSION, MIN_PYTHON_VERSION
+
+# make the parameters available in RST
+rst_prolog = f"""
+.. |ProjectVersion| replace:: {version}
+.. |PythonMinVersion| replace:: {MIN_PYTHON_VERSION}
+.. |PythonMaxVersion| replace:: {MAX_PYTHON_VERSION}
+"""
 
 # -- General configuration ---------------------------------------------------
 
@@ -45,11 +55,12 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.inheritance_diagram",
+    "sphinxcontrib.jquery",
     "sphinx_gallery.gen_gallery",
     # our own extensions
     "toctree_filter",
     "package_config",
-    # "simplify_typehints",
+    "simplify_typehints",
 ]
 
 templates_path = ["_templates"]
@@ -95,9 +106,11 @@ html_theme_options = {
     "collapse_navigation": False,
     "sticky_navigation": True,
     "navigation_depth": 4,
+    "logo_only": True,
     #     'includehidden': True,
     #     'titles_only': False
 }
+html_secnumber_suffix = " "
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -141,6 +154,7 @@ latex_elements = {
     # Latex figure (float) alignment
     #
     # 'figure_align': 'htbp',
+    "preamble": r"\setcounter{tocdepth}{4}"
 }
 
 # Grouping the document tree into LaTeX files. List of tuples

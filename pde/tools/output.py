@@ -13,23 +13,28 @@ Python functions for handling output
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import sys
-import warnings
 from abc import ABCMeta, abstractmethod
 from typing import List, Type  # @UnusedImport
 
 import tqdm
 
 
-def get_progress_bar_class():
+def get_progress_bar_class(fancy: bool = True):
     """returns a class that behaves as progress bar.
 
-    This either uses classes from the optional `tqdm` package or a simple
-    version that writes dots to stderr, if the class it not available.
+    This either uses classes from the optional `tqdm` package or a simple version that
+    writes dots to stderr, if the class it not available.
+
+    Args:
+        fancy (bool):
+            Flag determining whether a fancy progress bar should be used in jupyter
+            notebooks (if :mod:`ipywidgets` is installed)
     """
-    tqdm_version = tuple(int(v) for v in tqdm.__version__.split(".")[:2])
-    if tqdm_version >= (4, 40):
-        # optionally import notebook progress bar in recent version
+    if fancy:
+        # try using notebook progress bar
         try:
             # check whether progress bar can use a widget
             import ipywidgets  # @UnusedImport
@@ -40,12 +45,8 @@ def get_progress_bar_class():
             # use the fancier version of the progress bar in jupyter
             from tqdm.auto import tqdm as progress_bar_class
     else:
-        # only import text progress bar in older version
+        # only import text progress bar
         progress_bar_class = tqdm.tqdm
-        warnings.warn(
-            "Your version of tqdm is outdated. To get a nicer "
-            "progress bar update to at least version 4.40."
-        )
 
     return progress_bar_class
 
@@ -75,11 +76,15 @@ class OutputBase(metaclass=ABCMeta):
 
     @abstractmethod
     def __call__(self, line: str):
-        pass
+        """add a line of text
+
+        Args:
+            line (str): The text line
+        """
 
     @abstractmethod
     def show(self):
-        pass
+        """shows the actual text"""
 
 
 class BasicOutput(OutputBase):
@@ -93,15 +98,9 @@ class BasicOutput(OutputBase):
         self.stream = stream
 
     def __call__(self, line: str):
-        """add a line of text
-
-        Args:
-            line (str): The text line
-        """
         self.stream.write(line + "\n")
 
     def show(self):
-        """shows the actual text"""
         self.stream.flush()
 
 
@@ -116,18 +115,12 @@ class JupyterOutput(OutputBase):
         """
         self.header = header
         self.footer = footer
-        self.lines: List[str] = []
+        self.lines: list[str] = []
 
     def __call__(self, line: str):
-        """add a line of text
-
-        Args:
-            line (str): The text line
-        """
         self.lines.append(line)
 
     def show(self):
-        """shows the actual html in a jupyter cell"""
         try:
             from IPython.display import HTML, display
         except ImportError:

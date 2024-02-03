@@ -12,7 +12,7 @@ The package focuses on simple geometries, which work well for the employed finit
 difference scheme.
 Grids are defined by instance of various classes that capture the symmetries of the 
 underlying space.
-In particular, the package offers Cartesian grids of `1` to `3` dimensions via   
+In particular, the package offers Cartesian grids of `1` to `3` dimensions via
 :class:`~pde.grids.cartesian.CartesianGrid`, as well as curvilinear coordinate for
 spherically symmetric systems in two dimension (:class:`~pde.grids.spherical.PolarSymGrid`)
 and three dimensions (:class:`~pde.grids.spherical.SphericalSymGrid`), as well as the
@@ -73,7 +73,7 @@ pre-defined in the module :mod:`pde.pdes`.
 Moreover, the special class :class:`~pde.pdes.pde.PDE` allows defining PDEs by simply
 specifying the expression on their right hand side.
 To see how this works in practice, let us consider the `Kuramoto–Sivashinsky equation 
-<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_,     
+<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_,
 :math:`\partial_t u = - \nabla^4 u - \nabla^2 u - \frac{1}{2} |\nabla u|^2`,
 which describes the time evolution of a scalar field :math:`u`.
 A simple implementation of this equation reads 

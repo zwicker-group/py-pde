@@ -10,9 +10,11 @@ Handles configuration variables of the package
    check_package_version
    packages_from_requirements
    environment
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
+
+from __future__ import annotations
 
 import collections
 import contextlib
@@ -21,39 +23,42 @@ import re
 import sys
 import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from .misc import module_available
 from .parameters import Parameter
 
 # define default parameter values
-DEFAULT_CONFIG: List[Parameter] = [
+DEFAULT_CONFIG: list[Parameter] = [
     Parameter(
         "numba.debug",
         False,
         bool,
-        "Determines whether numba used the debug mode for compilation. If enabled, "
+        "Determines whether numba uses the debug mode for compilation. If enabled, "
         "this emits extra information that might be useful for debugging.",
     ),
     Parameter(
         "numba.fastmath",
         True,
         bool,
-        "Determines whether the fastmath flag is set during compilation. This affects "
-        "the precision of the mathematical calculations.",
+        "Determines whether the fastmath flag is set during compilation. If enabled, "
+        "some mathematical operations might be faster, but less precise. This flag "
+        "does not affect infinity detection and NaN handling.",
     ),
     Parameter(
         "numba.multithreading",
         True,
         bool,
-        "Determines whether multiple threads are used in numba-compiled code.",
+        "Determines whether multiple threads are used in numba-compiled code. Enabling "
+        "this option accelerates a small subset of operators applied to fields defined "
+        "on large grids.",
     ),
     Parameter(
         "numba.multithreading_threshold",
         256**2,
         int,
-        "Minimal number of support points before multithreading is enabled in numba "
-        "compilations.",
+        "Minimal number of support points of grids before multithreading is enabled in "
+        "numba compilations. Has no effect when `numba.multithreading` is `False`.",
     ),
 ]
 
@@ -61,7 +66,7 @@ DEFAULT_CONFIG: List[Parameter] = [
 class Config(collections.UserDict):
     """class handling the package configuration"""
 
-    def __init__(self, items: Optional[Dict[str, Any]] = None, mode: str = "update"):
+    def __init__(self, items: dict[str, Any] | None = None, mode: str = "update"):
         """
         Args:
             items (dict, optional):
@@ -83,30 +88,8 @@ class Config(collections.UserDict):
             self.update(items)
         self.mode = mode
 
-    def _translate_deprecated_key(self, key: str) -> str:
-        """helper function that allows using deprecated config items"""
-        # the depreciations have been introduced on 2022-09-04 and are scheduled to be
-        # removed after 2023-03-04
-        if key == "numba.parallel":
-            warnings.warn(
-                "Option `numba.parallel` has been renamed to `numba.multithreading`",
-                DeprecationWarning,
-            )
-            return "numba.multithreading"
-
-        elif key == "numba.parallel_threshold":
-            warnings.warn(
-                "Option `numba.parallel_threshold` has been renamed to "
-                "`numba.multithreading_threshold`",
-                DeprecationWarning,
-            )
-            return "numba.multithreading_threshold"
-
-        return key
-
     def __getitem__(self, key: str):
         """retrieve item `key`"""
-        key = self._translate_deprecated_key(key)
         parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
@@ -115,7 +98,6 @@ class Config(collections.UserDict):
 
     def __setitem__(self, key: str, value):
         """update item `key` with `value`"""
-        key = self._translate_deprecated_key(key)
         if self.mode == "insert":
             self.data[key] = value
 
@@ -136,13 +118,12 @@ class Config(collections.UserDict):
 
     def __delitem__(self, key: str):
         """removes item `key`"""
-        key = self._translate_deprecated_key(key)
         if self.mode == "insert":
             del self.data[key]
         else:
             raise RuntimeError("Configuration is not in `insert` mode")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """convert the configuration to a simple dictionary
 
         Returns:
@@ -155,7 +136,7 @@ class Config(collections.UserDict):
         return f"{self.__class__.__name__}({repr(self.to_dict())})"
 
     @contextlib.contextmanager
-    def __call__(self, values: Optional[Dict[str, Any]] = None, **kwargs):
+    def __call__(self, values: dict[str, Any] | None = None, **kwargs):
         """context manager temporarily changing the configuration
 
         Args:
@@ -173,8 +154,8 @@ class Config(collections.UserDict):
 
 
 def get_package_versions(
-    packages: List[str], *, na_str="not available"
-) -> Dict[str, str]:
+    packages: list[str], *, na_str="not available"
+) -> dict[str, str]:
     """tries to load certain python packages and returns their version
 
     Args:
@@ -184,7 +165,7 @@ def get_package_versions(
     Returns:
         dict: Dictionary with version for each package name
     """
-    versions: Dict[str, str] = {}
+    versions: dict[str, str] = {}
     for name in sorted(packages):
         try:
             module = importlib.import_module(name.replace("-", "_"))
@@ -195,7 +176,7 @@ def get_package_versions(
     return versions
 
 
-def parse_version_str(ver_str: str) -> List[int]:
+def parse_version_str(ver_str: str) -> list[int]:
     """helper function converting a version string into a list of integers"""
     result = []
     for token in ver_str.split(".")[:3]:
@@ -223,7 +204,7 @@ def check_package_version(package_name: str, min_version: str):
             warnings.warn(f"{msg} (installed: {version})")
 
 
-def packages_from_requirements(requirements_file: Union[Path, str]) -> List[str]:
+def packages_from_requirements(requirements_file: Path | str) -> list[str]:
     """read package names from a requirements file
 
     Args:
@@ -234,18 +215,22 @@ def packages_from_requirements(requirements_file: Union[Path, str]) -> List[str]
         list of package names
     """
     result = []
-    with open(requirements_file) as fp:
-        for line in fp:
-            line_s = line.strip()
-            if line_s.startswith("#"):
-                continue
-            res = re.search(r"[a-zA-Z0-9_\-]+", line_s)
-            if res:
-                result.append(res.group(0))
+    try:
+        with open(requirements_file) as fp:
+            for line in fp:
+                line_s = line.strip()
+                if line_s.startswith("#"):
+                    continue
+                res = re.search(r"[a-zA-Z0-9_\-]+", line_s)
+                if res:
+                    result.append(res.group(0))
+    except FileNotFoundError:
+        result.append(f"Could not open {requirements_file:s}")
+
     return result
 
 
-def environment() -> Dict[str, Any]:
+def environment() -> dict[str, Any]:
     """obtain information about the compute environment
 
     Returns:
@@ -259,9 +244,9 @@ def environment() -> Dict[str, Any]:
     from .numba import numba_environment
     from .plotting import get_plotting_context
 
-    PACKAGE_PATH = Path(__file__).resolve().parents[2]
+    RESOURCE_PATH = Path(__file__).resolve().parents[1] / "tools" / "resources"
 
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     result["package version"] = package_version
     result["python version"] = sys.version
     result["platform"] = sys.platform
@@ -270,7 +255,7 @@ def environment() -> Dict[str, Any]:
     result["config"] = config.to_dict()
 
     # add details for mandatory packages
-    packages_min = packages_from_requirements(PACKAGE_PATH / "requirements.txt")
+    packages_min = packages_from_requirements(RESOURCE_PATH / "requirements_basic.txt")
     result["mandatory packages"] = get_package_versions(packages_min)
     result["matplotlib environment"] = {
         "backend": mpl.get_backend(),
@@ -278,16 +263,15 @@ def environment() -> Dict[str, Any]:
     }
 
     # add details about optional packages
-    tests_folder = PACKAGE_PATH / "tests"
-    packages = set(packages_from_requirements(tests_folder / "requirements_full.txt"))
-    packages |= set(packages_from_requirements(tests_folder / "requirements_mpi.txt"))
+    packages = set(packages_from_requirements(RESOURCE_PATH / "requirements_full.txt"))
+    packages |= set(packages_from_requirements(RESOURCE_PATH / "requirements_mpi.txt"))
     packages -= set(packages_min)
     result["optional packages"] = get_package_versions(sorted(packages))
     if module_available("numba"):
         result["numba environment"] = numba_environment()
 
     # add information about MPI environment
-    if mpi.size > 1:
+    if mpi.initialized:
         result["multiprocessing"] = {"initialized": True, "size": mpi.size}
     else:
         result["multiprocessing"] = {"initialized": False}

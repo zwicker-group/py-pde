@@ -24,15 +24,16 @@ import functools
 import logging
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Type  # @UnusedImport
+from typing import TYPE_CHECKING, Any, Generator, Literal
 
 from ..tools.docstrings import replace_in_docstring
 
 if TYPE_CHECKING:
-    import matplotlib.cm  # @UnusedImport
-    import napari  # @UnusedImport
+    import matplotlib.cm
+    import matplotlib.figure as mpl_figure
+    import napari
 
-    from ..grids.base import GridBase  # @UnusedImport
+    from ..grids.base import GridBase
 
 
 def add_scaled_colorbar(
@@ -95,7 +96,7 @@ def add_scaled_colorbar(
             return rel_size, abs_size
 
     if ax is None:
-        ax = axes_image.axes
+        ax = axes_image.axes  # type: ignore
 
     # make space for the colorbar and generate its axes
     divider = axes_grid1.make_axes_locatable(ax)
@@ -107,8 +108,14 @@ def add_scaled_colorbar(
     cbar = ax.figure.colorbar(axes_image, cax=cax, **kwargs)
 
     # disable the offset that matplotlib sometimes shows
-    cax.get_xaxis().get_major_formatter().set_useOffset(False)
-    cax.get_yaxis().get_major_formatter().set_useOffset(False)
+    try:
+        cax.get_xaxis().get_major_formatter().set_useOffset(False)
+    except AttributeError:
+        pass  # can happen for logarithmically formatted axes
+    try:
+        cax.get_yaxis().get_major_formatter().set_useOffset(False)
+    except AttributeError:
+        pass  # can happen for logarithmically formatted axes
 
     if label:
         cbar.set_label(label)
@@ -134,7 +141,7 @@ class nested_plotting_check:
 
     _is_plotting = False  # class variable keeping track of nesting
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.is_nested = None  # determines whether the this context is nested
 
     def __enter__(self):
@@ -172,7 +179,7 @@ class PlotReference:
 
     __slots__ = ["ax", "element", "parameters"]
 
-    def __init__(self, ax, element: Any, parameters: Optional[Dict[str, Any]] = None):
+    def __init__(self, ax, element: Any, parameters: dict[str, Any] | None = None):
         """
         Args:
             ax (:class:`matplotlib.axes.Axes`): The axes of the element
@@ -182,6 +189,9 @@ class PlotReference:
         self.ax = ax
         self.element = element
         self.parameters = {} if parameters is None else parameters
+
+
+PlotActionType = Literal["auto", "close", "none", "sca", "show"]
 
 
 def plot_on_axes(wrapped=None, update_method=None):
@@ -199,7 +209,7 @@ def plot_on_axes(wrapped=None, update_method=None):
         `update_method` will allow efficient dynamical plotting::
 
             class State:
-                def __init__(self):
+                def __init__(self) -> None:
                     self.data = np.arange(8)
 
                 def _update_plot(self, reference):
@@ -232,11 +242,11 @@ def plot_on_axes(wrapped=None, update_method=None):
 
     def wrapper(
         *args,
-        title: Optional[str] = None,
-        filename: Optional[str] = None,
-        action: str = "auto",
-        ax_style: Optional[Dict[str, Any]] = None,
-        fig_style: Optional[Dict[str, Any]] = None,
+        title: str | None = None,
+        filename: str | None = None,
+        action: PlotActionType = "auto",
+        ax_style: dict[str, Any] | None = None,
+        fig_style: dict[str, Any] | None = None,
         ax=None,
         **kwargs,
     ):
@@ -284,10 +294,8 @@ def plot_on_axes(wrapped=None, update_method=None):
 
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
-
             # disable interactive plotting temporarily
             with disable_interactive():
-
                 if ax is None:
                     # create new figure
                     backend = mpl.get_backend()
@@ -398,7 +406,7 @@ def plot_on_figure(wrapped=None, update_method=None):
         `update_method` will allow efficient dynamical plotting::
 
             class State:
-                def __init__(self):
+                def __init__(self) -> None:
                     self.data = np.random.random((2, 8))
 
                 def _update_plot(self, reference):
@@ -438,11 +446,11 @@ def plot_on_figure(wrapped=None, update_method=None):
 
     def wrapper(
         *args,
-        title: Optional[str] = None,
+        title: str | None = None,
         constrained_layout: bool = True,
-        filename: Optional[str] = None,
-        action: str = "auto",
-        fig_style: Optional[Dict[str, Any]] = None,
+        filename: str | None = None,
+        action: PlotActionType = "auto",
+        fig_style: dict[str, Any] | None = None,
         fig=None,
         **kwargs,
     ):
@@ -479,10 +487,8 @@ def plot_on_figure(wrapped=None, update_method=None):
 
         # some logic to check for nested plotting calls:
         with nested_plotting_check() as is_outermost_plot_call:
-
             # disable interactive plotting temporarily
             with disable_interactive():
-
                 if fig is None:
                     # create new figure
                     backend = mpl.get_backend()
@@ -571,7 +577,9 @@ class PlottingContextBase:
     """ flag indicating whether the context supports that plots can be updated
     with out redrawing the entire plot """
 
-    def __init__(self, title: Optional[str] = None, show: bool = True):
+    fig: mpl_figure.Figure | None
+
+    def __init__(self, title: str | None = None, show: bool = True):
         """
         Args:
             title (str): The shown in the plot
@@ -590,7 +598,7 @@ class PlottingContextBase:
         if self.fig is not None:
             import matplotlib.pyplot as plt
 
-            plt.figure(self.fig.number)
+            self.fig = plt.figure(self.fig.number)
 
     def __exit__(self, *exc):
         if self.initial_plot or not self.supports_update:
@@ -631,7 +639,7 @@ class PlottingContextBase:
 class BasicPlottingContext(PlottingContextBase):
     """basic plotting using just matplotlib"""
 
-    def __init__(self, fig_or_ax=None, title: Optional[str] = None, show: bool = True):
+    def __init__(self, fig_or_ax=None, title: str | None = None, show: bool = True):
         """
         Args:
             fig_or_ax:
@@ -649,7 +657,8 @@ class BasicPlottingContext(PlottingContextBase):
 
         # determine which figure to modify
         if isinstance(fig_or_ax, mpl_axes.Axes):
-            self.fig = fig_or_ax.get_figure()  # assume that axes are given
+            # assume that axes are given
+            self.fig = fig_or_ax.get_figure()
         elif isinstance(fig_or_ax, mpl_figure.Figure):
             self.fig = fig_or_ax
 
@@ -722,7 +731,7 @@ class JupyterPlottingContext(PlottingContextBase):
 
 
 def get_plotting_context(
-    context=None, title: Optional[str] = None, show: bool = True
+    context=None, title: str | None = None, show: bool = True
 ) -> PlottingContextBase:
     """returns a suitable plotting context
 
@@ -754,7 +763,7 @@ def get_plotting_context(
                 from IPython.display import display  # @UnusedImport
                 from ipywidgets import Output  # @UnusedImport
             except ImportError:
-                context_class: Type[PlottingContextBase] = BasicPlottingContext
+                context_class: type[PlottingContextBase] = BasicPlottingContext
             else:
                 context_class = JupyterPlottingContext
 
@@ -789,7 +798,7 @@ def in_ipython() -> bool:
 
 @contextlib.contextmanager
 def napari_viewer(
-    grid: GridBase, run: Optional[bool] = None, close: bool = False, **kwargs
+    grid: GridBase, run: bool | None = None, close: bool = False, **kwargs
 ) -> Generator[napari.viewer.Viewer, None, None]:
     """creates an napari viewer for interactive plotting
 
@@ -826,7 +835,7 @@ def napari_viewer(
 
 
 def napari_add_layers(
-    viewer: napari.viewer.Viewer, layers_data: Dict[str, Dict[str, Any]]
+    viewer: napari.viewer.Viewer, layers_data: dict[str, dict[str, Any]]
 ):
     """adds layers to a `napari <http://napari.org/>`__ viewer
 

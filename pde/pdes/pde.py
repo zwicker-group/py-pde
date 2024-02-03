@@ -7,11 +7,11 @@ Defines a PDE class whose right hand side is given as a string
 from __future__ import annotations
 
 import re
-from typing import Any, Callable, Dict, Optional, Tuple
+from typing import Any, Callable, Literal
 
 import numba as nb
 import numpy as np
-from numba.typed import Dict as NumbaDict
+from numba.typed import Dict as NumbaDict  # @UnresolvedImport
 from sympy import Symbol
 from sympy.core.function import UndefinedFunction
 
@@ -19,7 +19,7 @@ from ..fields import FieldCollection, VectorField
 from ..fields.base import DataFieldBase, FieldBase
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
-from ..pdes.base import PDEBase
+from ..pdes.base import PDEBase, TState
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
 from ..tools.typing import ArrayLike, NumberOrArray
@@ -27,7 +27,7 @@ from ..tools.typing import ArrayLike, NumberOrArray
 # Define short notations that can appear in mathematical equations and need to be
 # expanded. Since these replacements are replaced in order, it's advisable to start with
 # more complex expressions first
-_EXPRESSION_REPLACEMENT: Dict[str, str] = {
+_EXPRESSION_REPLACEMENT: dict[str, str] = {
     r"\|\s*∇\s*(\w+)\s*\|(²|\*\*2)": r"gradient_squared(\1)",  # |∇c|² or |∇c|**2
     r"∇(²|\*\*2)\s*(\w+)": r"laplace(\2)",  # ∇²c or ∇**2 c
     r"∇(²|\*\*2)\s*\(": r"laplace(",  # ∇²(c) or ∇**2(c)
@@ -48,13 +48,14 @@ class PDE(PDEBase):
     @fill_in_docstring
     def __init__(
         self,
-        rhs: Dict[str, str],
+        rhs: dict[str, str],
         *,
-        noise: ArrayLike = 0,
         bc: BoundariesData = "auto_periodic_neumann",
-        bc_ops: Optional[Dict[str, BoundariesData]] = None,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
+        bc_ops: dict[str, BoundariesData] | None = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        noise: ArrayLike = 0,
+        rng: np.random.Generator | None = None,
     ):
         r"""
         Warning:
@@ -77,12 +78,6 @@ class PDE(PDEBase):
                 `integral(field)` denotes an integral over a field.
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
-            noise (float or :class:`~numpy.ndarray`):
-                Magnitude of additive Gaussian white noise. The default value of zero
-                implies deterministic partial differential equations will be solved.
-                Different noise magnitudes can be supplied for each field in coupled
-                PDEs by either specifying a sequence of numbers or a dictionary with
-                values for each field.
             bc:
                 Boundary conditions for the operators used in the expression. The
                 conditions here are applied to all operators that do not have a
@@ -104,6 +99,19 @@ class PDE(PDEBase):
                 A dictionary with user defined constants that can be used in the
                 expression. These can be either scalar numbers or fields defined on the
                 same grid as the actual simulation.
+            noise (float or :class:`~numpy.ndarray`):
+                Variance of additive Gaussian white noise. The default value of zero
+                implies deterministic partial differential equations will be solved.
+                Different noise magnitudes can be supplied for each field in coupled
+                PDEs by either specifying a sequence of numbers or a dictionary with
+                values for each field.
+            rng (:class:`~numpy.random.Generator`):
+                Random number generator (default: :func:`~numpy.random.default_rng()`)
+                used for stochastic simulations. Note that this random number generator
+                is only used for numpy function, while compiled numba code uses the
+                random number generator of numba. Moreover, in simulations using
+                multiprocessing, setting the same generator in all processes might yield
+                unintended correlations in the simulation results.
 
         Note:
             The order in which the fields are given in `rhs` defines the order in which
@@ -121,7 +129,7 @@ class PDE(PDEBase):
         if hasattr(noise, "__iter__") and len(noise) != len(rhs):  # type: ignore
             raise ValueError("Number of noise strengths does not match field count")
 
-        super().__init__(noise=noise)
+        super().__init__(noise=noise, rng=rng)
 
         # validate input
         if not isinstance(rhs, dict):
@@ -145,7 +153,7 @@ class PDE(PDEBase):
                     self._logger.info("Transformed expression to `%s`", rhs_item)
 
             # create placeholder dictionary of constants that will be specified later
-            consts_d: Dict[str, NumberOrArray] = {name: 0 for name in consts}
+            consts_d: dict[str, NumberOrArray] = {name: 0 for name in consts}
             rhs_expr = ScalarExpression(
                 rhs_item,
                 user_funcs=user_funcs,
@@ -183,7 +191,7 @@ class PDE(PDEBase):
                 self._logger.warning("Found default BCs in `bcs` and `bc_ops`")
             bcs["*:*"] = bc  # append default boundary conditions
 
-        self.bcs: Dict[str, Any] = {}
+        self.bcs: dict[str, Any] = {}
         for key_str, value in bcs.items():
             # split on . and :
             parts = re.split(r"\.|:", key_str)
@@ -211,19 +219,19 @@ class PDE(PDEBase):
             "complex_valued_rhs": complex_valued,
             "operators": list(sorted(set().union(*self._operators.values()))),
         }
-        self._cache: Dict[str, Dict[str, Any]] = {}
+        self._cache: dict[str, dict[str, Any]] = {}
 
     @property
-    def expressions(self) -> Dict[str, str]:
+    def expressions(self) -> dict[str, str]:
         """show the expressions of the PDE"""
         return {k: v.expression for k, v in self._rhs_expr.items()}
 
     def _compile_rhs_single(
         self,
         var: str,
-        ops: Dict[str, Callable],
+        ops: dict[str, Callable],
         state: FieldBase,
-        backend: str = "numpy",
+        backend: Literal["numpy", "numba"] = "numpy",
     ):
         """compile a function determining the right hand side for one variable
 
@@ -254,8 +262,9 @@ class PDE(PDEBase):
                 bc_var, bc_func = bc_key.split(":")
                 var_match = bc_var == var or bc_var == "*"
                 func_match = bc_func == func or bc_func == "*"
-                if var_match and func_match:
-                    break  # found a matching boundary condition
+                if var_match and func_match:  # found a matching boundary condition
+                    self.diagnostics["pde"]["bcs_used"].add(bc_key)  # register it
+                    break  # continue with this BC
             else:
                 raise RuntimeError(
                     "Could not find suitable boundary condition for function "
@@ -272,6 +281,12 @@ class PDE(PDEBase):
             except BCDataError:
                 # wrong data was supplied for the boundary condition
                 raise
+            except Exception as err:
+                err.args += (
+                    f"Problems in boundary condition `{bc}` for operator `{func}` in "
+                    f"PDE for `{var}`",
+                )
+                raise err
 
             # add `bc_args` as an argument to the call of the operators to be able
             # to pass additional information, like time
@@ -335,8 +350,8 @@ class PDE(PDEBase):
         return rhs_func
 
     def _prepare_cache(
-        self, state: FieldBase, backend: str = "numpy"
-    ) -> Dict[str, Any]:
+        self, state: TState, backend: Literal["numpy", "numba"] = "numpy"
+    ) -> dict[str, Any]:
         """prepare the expression by setting internal variables in the cache
 
         Note that the expensive calculations in this method are only carried out if the
@@ -363,7 +378,7 @@ class PDE(PDEBase):
             raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
 
         # check whether the state is compatible with the PDE
-        num_fields = len(self.variables)
+        num_fields: int = len(self.variables)
         self.diagnostics["pde"]["num_fields"] = num_fields
         if isinstance(state, FieldCollection):
             if num_fields != len(state):
@@ -384,8 +399,13 @@ class PDE(PDEBase):
             if np.isscalar(value):
                 pass  # this simple case is fine
             elif isinstance(value, DataFieldBase):
-                value.grid.assert_grid_compatible(state.grid)
-                value = value.data  # just keep the actual discretized data
+                # constant is a field, which might need to be split in MPI simulation
+                if state.grid._mesh is not None:
+                    value.grid.assert_grid_compatible(state.grid._mesh.basegrid)
+                    value = state.grid._mesh.split_field_data_mpi(value.data)
+                else:
+                    value.grid.assert_grid_compatible(state.grid)
+                    value = value.data  # just keep the actual discretized data
             else:
                 raise TypeError(f"Constant has unsupported type {value.__class__}")
 
@@ -393,7 +413,7 @@ class PDE(PDEBase):
                 rhs.consts[name] = value  # type: ignore
 
         # obtain functions used in the expression
-        ops_general: Dict[str, Callable] = {}
+        ops_general: dict[str, Callable] = {}
 
         # create special operators if necessary
         operators = self.diagnostics["pde"]["operators"]
@@ -417,24 +437,32 @@ class PDE(PDEBase):
 
         # Create the right hand sides for all variables. It is important to do this in a
         # separate function, so the closures work reliably
+        self.diagnostics["pde"]["bcs_used"] = set()  # keep track of the used BCs
         cache["rhs_funcs"] = [
             self._compile_rhs_single(var, ops_general.copy(), state, backend)
             for var in self.variables
         ]
 
+        # check whether there are boundary conditions that have not been used
+        bcs_left = set(self.bcs.keys()) - self.diagnostics["pde"]["bcs_used"] - {"*:*"}
+        if bcs_left:
+            self._logger.warning("Unused BCs: %s", list(sorted(bcs_left)))
+
         # add extra information for field collection
         if isinstance(state, FieldCollection):
             # isscalar be False even if start == stop (e.g. vector fields)
-            isscalar = tuple(field.rank == 0 for field in state)
-            starts = tuple(slc.start for slc in state._slices)
-            stops = tuple(slc.stop for slc in state._slices)
+            isscalar: tuple[bool, ...] = tuple(field.rank == 0 for field in state)
+            starts: tuple[int, ...] = tuple(slc.start for slc in state._slices)
+            stops: tuple[int, ...] = tuple(slc.stop for slc in state._slices)
 
-            def get_data_tuple(state_data: np.ndarray) -> Tuple[np.ndarray, ...]:
+            def get_data_tuple(state_data: np.ndarray) -> tuple[np.ndarray, ...]:
                 """helper for turning state_data into a tuple of field data"""
                 return tuple(
-                    state_data[starts[i]]
-                    if isscalar[i]
-                    else state_data[starts[i] : stops[i]]
+                    (
+                        state_data[starts[i]]
+                        if isscalar[i]
+                        else state_data[starts[i] : stops[i]]
+                    )
                     for i in range(num_fields)
                 )
 
@@ -447,7 +475,7 @@ class PDE(PDEBase):
         cache["state_attributes"] = state.attributes
         return cache
 
-    def evolution_rate(self, state: FieldBase, t: float = 0.0) -> FieldBase:
+    def evolution_rate(self, state: TState, t: float = 0.0) -> TState:
         """evaluate the right hand side of the PDE
 
         Args:
@@ -474,7 +502,7 @@ class PDE(PDEBase):
             # state is a collection of fields
             for i in range(len(state)):
                 data_tpl = cache["get_data_tuple"](state.data)
-                result[i].data[:] = cache["rhs_funcs"][i](*data_tpl, t)  # type: ignore
+                result[i].data[:] = cache["rhs_funcs"][i](*data_tpl, t)
 
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
@@ -482,7 +510,7 @@ class PDE(PDEBase):
         return result
 
     def _make_pde_rhs_numba_coll(
-        self, state: FieldCollection, cache: Dict[str, Any]
+        self, state: FieldCollection, cache: dict[str, Any]
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create the compiled rhs if `state` is a field collection
 
@@ -518,7 +546,7 @@ class PDE(PDEBase):
 
         def chain(
             i: int = 0,
-            inner: Optional[Callable[[np.ndarray, float, np.ndarray], None]] = None,
+            inner: Callable[[np.ndarray, float, np.ndarray], None] | None = None,
         ) -> Callable[[np.ndarray, float], np.ndarray]:
             """recursive helper function for applying all rhs"""
             # run through all functions
@@ -555,8 +583,8 @@ class PDE(PDEBase):
         # compile the recursive chain
         return chain()
 
-    def _make_pde_rhs_numba(
-        self, state: FieldBase, **kwargs
+    def _make_pde_rhs_numba(  # type: ignore
+        self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """create a compiled function evaluating the right hand side of the PDE
 

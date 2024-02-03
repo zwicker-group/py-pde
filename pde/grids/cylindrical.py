@@ -2,26 +2,32 @@
 Cylindrical grids with azimuthal symmetry
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
- 
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Sequence, Tuple, Union
+from typing import TYPE_CHECKING, Any, Generator, Literal, Sequence
 
 import numpy as np
 
 from ..tools.cache import cached_property
-from .base import DimensionError, GridBase, _check_shape, discretize_interval
+from .base import (
+    CoordsType,
+    DimensionError,
+    GridBase,
+    _check_shape,
+    discretize_interval,
+)
 from .cartesian import CartesianGrid
+from .coordinates import CylindricalCoordinates
 
 if TYPE_CHECKING:
-    from .boundaries.axes import Boundaries, BoundariesData  # @UnusedImport
-    from .spherical import PolarSymGrid  # @UnusedImport
+    from .boundaries.axes import Boundaries, BoundariesData
+    from .spherical import PolarSymGrid
 
 
-class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
-    r""" 3-dimensional cylindrical grid assuming polar symmetry 
+class CylindricalSymGrid(GridBase):
+    r"""3-dimensional cylindrical grid assuming polar symmetry 
 
     The polar symmetry implies that states only depend on the radial and axial
     coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly as
@@ -30,9 +36,10 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         :nowrap:
 
         \begin{align*}
-            r_i &= \left(i + \frac12\right) \Delta r
+            r_i &= R_\mathrm{inner} + \left(i + \frac12\right) \Delta r
             &&\quad \text{for} \quad i = 0, \ldots, N_r - 1
-            &&\quad \text{with} \quad \Delta r = \frac{R}{N_r}
+            &&\quad \text{with} \quad
+                \Delta r = \frac{R_\mathrm{outer} - R_\mathrm{inner}}{N_r}
         \\
             z_j &= z_\mathrm{min} + \left(j + \frac12\right) \Delta z
             &&\quad \text{for} \quad j = 0, \ldots, N_z - 1
@@ -40,24 +47,23 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
                 \quad \Delta z = \frac{z_\mathrm{max} - z_\mathrm{min}}{N_z}
         \end{align*}
 
-    where :math:`R` is the radius of the cylindrical grid, :math:`z_\mathrm{min}` and
-    :math:`z_\mathrm{max}` denote the respective lower and upper bounds of the axial
-    direction, so that :math:`z_\mathrm{max} - z_\mathrm{min}` is the total height. The
-    two axes are discretized by :math:`N_r` and :math:`N_z` support points, respectively.
+    where :math:`R_\mathrm{outer}` is the outer radius of the grid,
+    :math:`R_\mathrm{inner}` corresponds to a possible inner radius (which is
+    zero by default), and :math:`z_\mathrm{min}` and :math:`z_\mathrm{max}` denote the
+    respective lower and upper bounds of the axial direction, so that
+    :math:`z_\mathrm{max} - z_\mathrm{min}` is the total height. The two axes are
+    discretized by :math:`N_r` and :math:`N_z` support points, respectively.
 
     Warning:
-        The order of components in the vector and tensor fields defined on this grid is
-        different than in ordinary math. While it is common to use :math:`(r, \phi, z)`,
-        we here use the order :math:`(r, z, \phi)`. It might thus be best to access
-        components by name instead of index, e.g., use  :code:`field['z']` instead of
-        :code:`field[1]`.
+        The order of components in the vector and tensor fields defined on this grid are
+        still :math:`(r, \phi, z)`. To avoid any confusion it might thus be best to
+        access components by name instead of index, e.g., use  :code:`field['z']`
+        instead of :code:`field[2]`.
     """
 
-    dim = 3  # dimension of the described space
-    num_axes = 2  # number of independent axes
-    axes = ["r", "z"]  # name of the actual axes
-    axes_symmetric = ["phi"]
-    coordinate_constraints = [0, 1]  # constraint Cartesian coordinates
+    c = CylindricalCoordinates()  # associated coordinates
+    _axes_symmetric = (1,)  # the angular axis is not described
+    coordinate_constraints = [0, 1]  # constraint Cartesian x and y coordinates
     boundary_names = {  # name all the boundaries
         "inner": (0, False),
         "outer": (0, True),
@@ -67,15 +73,17 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
 
     def __init__(
         self,
-        radius: float,
-        bounds_z: Tuple[float, float],
-        shape: Union[int, Sequence[int]],
+        radius: float | tuple[float, float],
+        bounds_z: tuple[float, float],
+        shape: int | Sequence[int],
         periodic_z: bool = False,
     ):
-        """
+        r"""
         Args:
-            radius (float):
-                The radius of the cylinder
+            radius (float or tuple of floats):
+                radius :math:`R_\mathrm{outer}` in case a simple float is given.
+                If a tuple is supplied it is interpreted as the inner and outer
+                radius, :math:`(R_\mathrm{inner}, R_\mathrm{outer})`.
             bounds_z (tuple):
                 The lower and upper bound of the z-axis
             shape (tuple):
@@ -87,7 +95,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         super().__init__()
         shape_list = _check_shape(shape)
         if len(shape_list) == 1:
-            self._shape: Tuple[int, int] = (shape_list[0], shape_list[0])
+            self._shape: tuple[int, int] = (shape_list[0], shape_list[0])
         elif len(shape_list) == 2:
             self._shape = tuple(shape_list)  # type: ignore
         else:
@@ -97,24 +105,33 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
                 "Lower and upper value of the axial coordinate must be specified"
             )
         self._periodic_z: bool = bool(periodic_z)  # might cast from np.bool_
-        self.periodic = [False, self._periodic_z]
+        self._periodic = [False, self._periodic_z]
 
         # radial discretization
-        dr = radius / self.shape[0]
-        rs = (np.arange(self.shape[0]) + 0.5) * dr
-        assert np.isclose(rs[-1] + dr / 2, radius)
+        try:
+            r_inner, r_outer = radius  # type: ignore
+        except TypeError:
+            r_inner, r_outer = 0, float(radius)  # type: ignore
+
+        if r_inner < 0:
+            raise ValueError("Inner radius must be positive")
+        if r_inner >= r_outer:
+            raise ValueError("Outer radius must be larger than inner radius")
+
+        # radial discretization
+        rs, dr = discretize_interval(r_inner, r_outer, self.shape[0])
 
         # axial discretization
         zs, dz = discretize_interval(*bounds_z, self.shape[1])
         assert np.isclose(zs[-1] + dz / 2, bounds_z[1])
 
         self._axes_coords = (rs, zs)
-        self._axes_bounds = ((0.0, radius), tuple(bounds_z))  # type: ignore
+        self._axes_bounds = ((r_inner, r_outer), tuple(bounds_z))  # type: ignore
         self._discretization = np.array((dr, dz))
 
     @property
-    def state(self) -> Dict[str, Any]:
-        """state: the state of the grid"""
+    def state(self) -> dict[str, Any]:
+        """dict: all information required for reconstructing the grid"""
         radius = self.axes_bounds[0][1]
         return {
             "radius": radius,
@@ -124,7 +141,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         }
 
     @classmethod
-    def from_state(cls, state: Dict[str, Any]) -> "CylindricalSymGrid":  # type: ignore
+    def from_state(cls, state: dict[str, Any]) -> CylindricalSymGrid:  # type: ignore
         """create a field from a stored `state`.
 
         Args:
@@ -145,7 +162,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     @classmethod
     def from_bounds(
         cls,
-        bounds: Sequence[Tuple[float, float]],
+        bounds: Sequence[tuple[float, float]],
         shape: Sequence[int],
         periodic: Sequence[bool],
     ) -> CylindricalSymGrid:
@@ -163,7 +180,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
                 entry is ignored.
 
         Returns:
-            CylindricalGrid representing the region chosen by bounds
+            :class:`CylindricalSymGrid`: grid representing the region chosen by bounds
         """
         radii, bounds_z = bounds
         if radii[0] != 0:
@@ -171,9 +188,18 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         return cls(radii[1], bounds_z, shape, periodic_z=periodic[1])
 
     @property
-    def radius(self) -> float:
-        """float: radius of the cylinder"""
-        return self.axes_bounds[0][1]
+    def has_hole(self) -> bool:
+        """bool: whether the inner radius is larger than zero"""
+        return self.axes_bounds[0][0] > 0
+
+    @property
+    def radius(self) -> float | tuple[float, float]:
+        """float: radius of the sphere"""
+        r_inner, r_outer = self.axes_bounds[0]
+        if r_inner == 0:
+            return r_outer
+        else:
+            return r_inner, r_outer
 
     @property
     def length(self) -> float:
@@ -183,27 +209,25 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
     @property
     def volume(self) -> float:
         """float: total volume of the grid"""
-        return float(np.pi * self.radius**2 * self.length)
+        r_inner, r_outer = self.axes_bounds[0]
+        return float(np.pi * self.length * (r_outer**2 - r_inner**2))
 
     def get_random_point(
         self,
         *,
         boundary_distance: float = 0,
         avoid_center: bool = False,
-        coords: str = "cartesian",
-        rng: Optional[np.random.Generator] = None,
+        coords: CoordsType = "cartesian",
+        rng: np.random.Generator | None = None,
     ) -> np.ndarray:
         """return a random point within the grid
 
-        Note that these points will be uniformly distributed on the radial axis,
-        which implies that they are not uniformly distributed in the volume.
-
         Args:
-            boundary_distance (float): The minimal distance this point needs to
-                have from all boundaries.
-            avoid_center (bool): Determines whether the boundary distance
-                should also be kept from the center, i.e., whether points close
-                to the center are returned.
+            boundary_distance (float):
+                The minimal distance this point needs to have from all boundaries.
+            avoid_center (bool):
+                Determines whether the boundary distance should also be kept from the
+                center, i.e., whether points close to the center are returned.
             coords (str):
                 Determines the coordinate system in which the point is specified. Valid
                 values are `cartesian`, `cell`, and `grid`;
@@ -218,21 +242,20 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             rng = np.random.default_rng()
 
         # handle the boundary distance
-        r_min = boundary_distance if avoid_center else 0
-        r_max = self.radius - boundary_distance
-        z_min, z_max = self.axes_bounds[1]
-        if boundary_distance != 0:
-            z_min += boundary_distance
-            z_max -= boundary_distance
-            if r_max <= r_min or z_max <= z_min:
-                raise RuntimeError("Random points would be too close to boundary")
+        r_inner, r_outer = self.axes_bounds[0]
+        r_min = r_inner + boundary_distance if avoid_center else r_inner
+        r_max = r_outer - boundary_distance
+        z_min = self.axes_bounds[1][0] + boundary_distance
+        z_max = self.axes_bounds[1][1] - boundary_distance
+        if r_max <= r_min or z_max <= z_min:
+            raise RuntimeError("Random points would be too close to boundary")
 
         # create random point
         r = np.sqrt(rng.uniform(r_min**2, r_max**2))
         z = rng.uniform(z_min, z_max)
         if coords == "cartesian":
             φ = rng.uniform(0, 2 * np.pi)  # additional random angle
-            return self.point_to_cartesian(np.array([r, z, φ]), full=True)
+            return self.c._pos_to_cart(np.array([r, φ, z]))
 
         elif coords == "cell":
             return self.transform(np.array([r, z]), "grid", "cell")
@@ -243,7 +266,14 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         else:
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> Dict[str, Any]:
+    def difference_vector(
+        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
+    ) -> np.ndarray:
+        return self._difference_vector(
+            p1, p2, coords=coords, periodic=self.periodic, axes_bounds=self.axes_bounds
+        )
+
+    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
         """return a line cut for the cylindrical grid
 
         Args:
@@ -259,9 +289,10 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
                   position (radial average).
                 * `project_r` or `project_radial`: average values for each
                   radial position (axial average)
+
         Returns:
-            A dictionary with information about the line cut, which is
-            convenient for plotting.
+            dict: A dictionary with information about the line cut, which is convenient
+            for plotting.
         """
         if extract == "auto":
             extract = "cut_axial"
@@ -269,7 +300,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         if extract == "cut_z" or extract == "cut_axial":
             # do a cut along the z axis for r=0
             axis = 1
-            data_y: Union[np.ndarray, Tuple[np.ndarray]] = data[..., 0, :]
+            data_y: np.ndarray | tuple[np.ndarray] = data[..., 0, :]
             label_y = "Cut along z"
 
         elif extract == "project_z" or extract == "project_axial":
@@ -295,22 +326,31 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             "label_y": label_y,
         }
 
-    def get_image_data(self, data: np.ndarray) -> Dict[str, Any]:
+    def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
         """return a 2d-image of the data
 
         Args:
-            data (:class:`~numpy.ndarray`): The values at the grid points
+            data (:class:`~numpy.ndarray`):
+                The values at the grid points
 
         Returns:
-            A dictionary with information about the image, which is  convenient
+            dict: A dictionary with information about the image, which is  convenient
             for plotting.
         """
         bounds_r, bounds_z = self.axes_bounds
+
+        if self.has_hole:
+            image_data = data
+            extent = (bounds_r[0], bounds_r[1], bounds_z[0], bounds_z[1])
+        else:
+            image_data = np.vstack((data[::-1, :], data))
+            extent = (-bounds_r[1], bounds_r[1], bounds_z[0], bounds_z[1])
+
         return {
-            "data": np.vstack((data[::-1, :], data)),
+            "data": image_data,
             "x": self.axes_coords[0],
             "y": self.axes_coords[1],
-            "extent": (-bounds_r[1], bounds_r[1], bounds_z[0], bounds_z[1]),
+            "extent": extent,
             "label_x": self.axes[0],
             "label_y": self.axes[1],
         }
@@ -321,9 +361,12 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         """generates all mirror points corresponding to `point`
 
         Args:
-            point (:class:`~numpy.ndarray`): the point within the grid
-            with_self (bool): whether to include the point itself
-            only_periodic (bool): whether to only mirror along periodic axes
+            point (:class:`~numpy.ndarray`):
+                The point within the grid
+            with_self (bool):
+                Whether to include the point itself
+            only_periodic (bool):
+                Whether to only mirror along periodic axes
 
         Returns:
             A generator yielding the coordinates that correspond to mirrors
@@ -338,109 +381,35 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
             yield point + np.array([self.length, 0, 0])
 
     @cached_property()
-    def cell_volume_data(self) -> Tuple[np.ndarray, float]:
+    def cell_volume_data(self) -> tuple[np.ndarray, float]:
         """:class:`~numpy.ndarray`: the volumes of all cells"""
         dr, dz = self.discretization
-        rs = np.arange(self.shape[0] + 1) * dr
-        areas = np.pi * rs**2
-        r_vols = np.diff(areas).reshape(self.shape[0], 1)
+        rs = self.axes_coords[0]
+        r_vols = 2 * np.pi * dr * rs
+        # same as r_vols = np.pi * ((rs + dr / 2) ** 2 - (rs - dr / 2)**2)
         return (r_vols, dz)
 
-    def point_to_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
-        """convert coordinates of a point to Cartesian coordinates
-
-        Args:
-            points (:class:`~numpy.ndarray`): The grid coordinates of the points
-            full (bool): Flag indicating whether angular coordinates are specified
-
-        Returns:
-            :class:`~numpy.ndarray`: The Cartesian coordinates of the point
-        """
-        points = np.atleast_1d(points)
-
-        z = points[..., 1]
-        if full:
-            if points.shape[-1] != self.dim:
-                raise DimensionError(f"Shape {points.shape} cannot denote full points")
-            x = points[..., 0] * np.cos(points[..., 2])
-            y = points[..., 0] * np.sin(points[..., 2])
-        else:
-            if points.shape[-1] != self.num_axes:
-                raise DimensionError(f"Shape {points.shape} cannot denote grid points")
-            x = points[..., 0]
-            y = np.zeros_like(x)
-        return np.stack((x, y, z), axis=-1)
-
-    def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
-        """convert points given in Cartesian coordinates to this grid
-
-        This function returns points restricted to the x-z plane, i.e., the
-        y-coordinate will be zero.
-
-        Args:
-            points (:class:`~numpy.ndarray`):
-                Points given in Cartesian coordinates.
-
-        Returns:
-            :class:`~numpy.ndarray`: Points given in the coordinates of the grid
-        """
-        points = np.atleast_1d(points)
-        assert points.shape[-1] == self.dim, f"Point must have {self.dim} coordinates"
-
-        rs = np.hypot(points[..., 0], points[..., 1])
-        zs = points[..., 2]
-        return np.stack((rs, zs), axis=-1)
-
-    def polar_coordinates_real(
-        self, origin: np.ndarray, *, ret_angle: bool = False
-    ) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
-        """return spherical coordinates associated with the grid
-
-        Args:
-            origin (:class:`~numpy.ndarray`): Coordinates of the origin at which the polar
-                coordinate system is anchored. Note that this must be of the
-                form `[0, 0, z_val]`, where only `z_val` can be chosen freely.
-            ret_angle (bool): Determines whether the azimuthal angle is returned
-                alongside the distance. If `False` only the distance to the
-                origin is  returned for each support point of the grid.
-                If `True`, the distance and angles are returned.
-        """
-        origin = np.array(origin, dtype=np.double, ndmin=1)
-        if len(origin) != self.dim:
-            raise DimensionError("Dimensions are not compatible")
-
-        if origin[0] != 0 or origin[1] != 0:
-            raise RuntimeError("Origin must lie on symmetry axis for cylindrical grid")
-
-        # calculate the difference vector between all cells and the origin
-        diff = self.difference_vector_real(np.array([0, origin[2]]), self.cell_coords)
-        dist: np.ndarray = np.linalg.norm(diff, axis=-1)  # get distance
-
-        if ret_angle:
-            return dist, np.arctan2(diff[:, :, 0], diff[:, :, 1])
-        else:
-            return dist
-
-    def get_cartesian_grid(self, mode: str = "valid") -> CartesianGrid:
+    def get_cartesian_grid(
+        self, mode: Literal["valid", "full"] = "valid"
+    ) -> CartesianGrid:
         """return a Cartesian grid for this Cylindrical one
 
         Args:
             mode (str):
-                Determines how the grid is determined. Setting it to 'valid'
-                only returns points that are fully resolved in the cylindrical
-                grid, e.g., the cylinder is circumscribed. Conversely, 'full'
-                returns all data, so the cylinder is inscribed.
+                Determines how the grid is determined. Setting it to 'valid' only
+                returns points that are fully resolved in the cylindrical grid, e.g.,
+                the cylinder is circumscribed. Conversely, 'full' returns all data, so
+                the cylinder is inscribed.
 
         Returns:
             :class:`pde.grids.cartesian.CartesianGrid`: The requested grid
         """
         # Pick the grid instance
+        radius_outer = self.axes_bounds[0][1]
         if mode == "valid":
-            bounds = self.radius / np.sqrt(self.dim)
+            bounds = radius_outer / np.sqrt(2)
         elif mode == "full":
-            bounds = self.radius
+            bounds = radius_outer
         else:
             raise ValueError(f"Unsupported mode `{mode}`")
 
@@ -450,7 +419,7 @@ class CylindricalSymGrid(GridBase):  # lgtm [py/missing-equals]
         grid_shape = 2 * num, 2 * num, self.shape[1]
         return CartesianGrid(grid_bounds, grid_shape)
 
-    def slice(self, indices: Sequence[int]) -> Union["CartesianGrid", "PolarSymGrid"]:
+    def slice(self, indices: Sequence[int]) -> CartesianGrid | PolarSymGrid:
         """return a subgrid of only the specified axes
 
         Args:

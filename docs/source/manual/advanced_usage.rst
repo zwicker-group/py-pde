@@ -31,7 +31,7 @@ Vectorial boundary conditions, e.g., to calculate the vector gradient or tensor
 divergence, can have vectorial values for the boundary condition.
 Generally, only the normal components at a boundary need to be specified if an operator
 reduces the rank of a field, e.g., for divergences. Otherwise, e.g., for gradients and
-Laplacians, the full field needs to be specified at the boundary.  
+Laplacians, the full field needs to be specified at the boundary.
 
 Boundary values that depend on space can be set by specifying a mathematical expression,
 which may depend on the coordinates of all axes:
@@ -59,10 +59,12 @@ There exist also special boundary conditions that impose a more complex value of
 field (:code:`bc='value_expression'`) or its derivative
 (:code:`bc='derivative_expression'`). Beyond the spatial coordinates that are already
 supported for the constant conditions above, the expressions of these boundary
-conditions can depend on the time variable :code:`t`. Note that PDEs need to supply the
-current time when setting the boundary conditions, e.g., when applying the differential
-operators. The pre-defined PDEs and the general class :class:`~pde.pdes.pde.PDE` already
-support time-dependent boundary conditions.
+conditions can depend on the time variable :code:`t`. Moreover, these boundary
+conditions also except python functions (with signature `adjacent_value, dx, *coords, t`),
+thus greatly enlarging the flexibility with which boundary conditions can be expressed.
+Note that PDEs need to supply the current time `t` when setting the boundary conditions,
+e.g., when applying the differential operators. The pre-defined PDEs and the general
+class :class:`~pde.pdes.pde.PDE` already support time-dependent boundary conditions.
 
 One important aspect about boundary conditions is that they need to respect the
 periodicity of the underlying grid. For instance, in a 2d grid with one periodic axis,
@@ -100,6 +102,9 @@ In summary, we have the following options for boundary conditions on a field :ma
    * -
      - :math:`c = f(x, t)`
      - :code:`{"value_expression": "sin(x)"}`
+   * -
+     - :math:`c = f(x, t)`
+     - :code:`{"value_expression": func}` with function :code:`func(value, dx, *coords, t)`
    * - Neumann
      - :math:`\partial_n c = 0`
      - :code:`"neumann"` or :code:`"derivative"`
@@ -112,6 +117,9 @@ In summary, we have the following options for boundary conditions on a field :ma
    * - Robin
      - :math:`\partial_n c + \textrm{value}\cdot c = \textrm{const}`
      - :code:`{"type": "mixed", "value": 2, "const": 7}`
+   * -
+     - :math:`\partial_n c + \textrm{value}\cdot c = \textrm{const}`
+     - :code:`{"type": "mixed_expression", "value": "exp(t)", "const": "3 * x"}`
    * - Curvature
      - :math:`\partial_n^2 c = \textrm{const}`
      - :code:`{"curvature": 3}`
@@ -282,10 +290,13 @@ The :code:`make_operator` method of the grids generally supports the following
 differential operators: :code:`'laplacian'`, :code:`'gradient'`,
 :code:`'gradient_squared'`, :code:`'divergence'`, :code:`'vector_gradient'`,
 :code:`'vector_laplace'`, and :code:`'tensor_divergence'`.
-However, a complete list of operators supported by a certain grid class can be
-obtained from the class property :attr:`GridClass.operators`.
-New operators can be added using the class method
-:meth:`GridClass.register_operator`.
+Moreover, generic operators that perform a derivative along a single axis are supported:
+Specifying :code:`'d_dx'` for instance performs a single derivative along the `x`-direction,
+:code:`'d_dy_forward'` uses a forward derivative along the `y`-direction, and
+:code:`'d_d2r'` performs a second derivative in `r`-direction.
+A complete list of operators supported by a certain grid class can be obtained from the
+class property :attr:`GridClass.operators`.
+New operators can be added using the class method :meth:`GridClass.register_operator`.
 
 
 Field integration

@@ -7,7 +7,7 @@ Functions and classes for visualizing simulations.
 
    movies
    plotting
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

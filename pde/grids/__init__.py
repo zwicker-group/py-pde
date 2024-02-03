@@ -16,7 +16,7 @@ using the method :meth:`transform`.
    ~spherical.PolarSymGrid
    ~spherical.SphericalSymGrid
    ~cylindrical.CylindricalSymGrid
-   
+
 Inheritance structure of the classes:
 
 .. inheritance-diagram:: cartesian.UnitGrid cartesian.CartesianGrid

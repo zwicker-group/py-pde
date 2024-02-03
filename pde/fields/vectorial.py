@@ -6,43 +6,46 @@ Defines a vectorial field over a grid
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Any, Callable, Literal, Sequence
 
 import numba as nb
 import numpy as np
+from numba.extending import overload, register_jitable
 from numpy.typing import DTypeLike
 
-try:
-    from numba.core.extending import register_jitable
-except ImportError:
-    # assume older numba module structure
-    from numba.extending import register_jitable
-
 from ..grids.base import DimensionError, GridBase
+from ..grids.boundaries.axes import BoundariesData
+from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
-from ..tools.misc import get_common_dtype
-from ..tools.numba import get_common_numba_dtype
+from ..tools.misc import Number, get_common_dtype
+from ..tools.numba import get_common_numba_dtype, jit
 from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 from .scalar import ScalarField
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
-    from .tensorial import Tensor2Field  # @UnusedImport
+    from .tensorial import Tensor2Field
 
 
 class VectorField(DataFieldBase):
-    """Vector field discretized on a grid"""
+    """Vector field discretized on a grid
+
+    Warning:
+        Components of the vector field are given in the local basis. While the local
+        basis is identical to the global basis in Cartesian coordinates, the local basis
+        depends on position in curvilinear coordinate systems. Moreover, the field
+        always contains all components, even if the underlying grid assumes symmetries.
+    """
 
     rank = 1
 
     @classmethod
     def from_scalars(
         cls,
-        fields: List[ScalarField],
+        fields: list[ScalarField],
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> VectorField:
         """create a vector field from a list of ScalarFields
 
@@ -82,8 +85,10 @@ class VectorField(DataFieldBase):
         grid: GridBase,
         expressions: Sequence[str],
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> VectorField:
         """create a vector field on a grid from given expressions
 
@@ -100,6 +105,13 @@ class VectorField(DataFieldBase):
                 functions and they may depend on the axes labels of the grid.
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
+            user_funcs (dict, optional):
+                A dictionary with user defined functions that can be used in the
+                expression
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
@@ -115,29 +127,37 @@ class VectorField(DataFieldBase):
             )
 
         # obtain the coordinates of the grid points
-        points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
+        points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
         # evaluate all vector components at all points
         data = []
         for expression in expressions:
-            expr = ScalarExpression(expression=expression, signature=grid.axes)
-            values = np.broadcast_to(expr(**points), grid.shape)
+            expr = ScalarExpression(
+                expression=expression,
+                signature=grid.axes,
+                user_funcs=user_funcs,
+                consts=consts,
+                repl=grid.c._axes_alt_repl,
+            )
+            values = np.broadcast_to(expr(*points), grid.shape)
             data.append(values)
 
         # create vector field from the data
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
-    def __getitem__(self, key: Union[int, str]) -> ScalarField:
+    def __getitem__(self, key: int | str) -> ScalarField:
         """extract a component of the VectorField"""
+        axis = self.grid.get_axis_index(key)
+        comp_name = self.grid.c.axes[axis]
+        if self.label:
+            label = self.label + f"_{comp_name}"
+        else:
+            label = f"{comp_name} component"
         return ScalarField(
-            self.grid,
-            data=self._data_full[self.grid.get_axis_index(key)],
-            with_ghost_cells=True,
+            self.grid, data=self._data_full[axis], label=label, with_ghost_cells=True
         )
 
-    def __setitem__(
-        self, key: Union[int, str], value: Union[NumberOrArray, ScalarField]
-    ):
+    def __setitem__(self, key: int | str, value: NumberOrArray | ScalarField):
         """set a component of the VectorField"""
         idx = self.grid.get_axis_index(key)
         if isinstance(value, ScalarField):
@@ -148,12 +168,12 @@ class VectorField(DataFieldBase):
 
     def dot(
         self,
-        other: Union[VectorField, "Tensor2Field"],
-        out: Union[ScalarField, VectorField, None] = None,
+        other: VectorField | Tensor2Field,
+        out: ScalarField | VectorField | None = None,
         *,
         conjugate: bool = True,
         label: str = "dot product",
-    ) -> Union[ScalarField, VectorField]:
+    ) -> ScalarField | VectorField:
         """calculate the dot product involving a vector field
 
         This supports the dot product between two vectors fields as well as the
@@ -164,7 +184,7 @@ class VectorField(DataFieldBase):
             other (VectorField or Tensor2Field):
                 the second field
             out (ScalarField or VectorField, optional):
-                Optional field to which the  result is written.
+                Optional field to which the result is written.
             conjugate (bool):
                 Whether to use the complex conjugate for the second operand
             label (str, optional):
@@ -201,151 +221,13 @@ class VectorField(DataFieldBase):
 
     __matmul__ = dot  # support python @-syntax for matrix multiplication
 
-    def make_dot_operator(
-        self, backend: str = "numba", *, conjugate: bool = True
-    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
-        """return operator calculating the dot product involving vector fields
-
-        This supports both products between two vectors as well as products between a
-        vector and a tensor.
-
-        Warning:
-            This function does not check types or dimensions.
-
-        Args:
-            backend (str):
-                The backend (e.g., 'numba' or 'scipy') used for this operator.
-            conjugate (bool):
-                Whether to use the complex conjugate for the second operand
-
-        Returns:
-            function that takes two instance of :class:`~numpy.ndarray`, which contain
-            the discretized data of the two operands. An optional third argument can
-            specify the output array to which the result is written. Note that the
-            returned function is jitted with numba for speed.
-        """
-        dim = self.grid.dim
-
-        if backend == "numba":
-            # create the dot product using a numba compiled function
-
-            if conjugate:
-                # create inner function calculating the dot product using conjugate
-
-                @register_jitable
-                def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """calculate dot product between fields `a` and `b`"""
-                    out[:] = a[0] * b[0].conjugate()  # overwrite potential data in out
-                    for i in range(1, dim):
-                        out[:] += a[i] * b[i].conjugate()
-                    return out
-
-            else:
-                # create the inner function calculating the dot product
-
-                @register_jitable
-                def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                    """calculate dot product between fields `a` and `b`"""
-                    out[:] = a[0] * b[0]  # overwrite potential data in out
-                    for i in range(1, dim):
-                        out[:] += a[i] * b[i]
-                    return out
-
-            # build the outer function with the correct signature
-            if nb.config.DISABLE_JIT:  # @UndefinedVariable
-
-                def dot(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if out is None:
-                        out = np.empty(b.shape[1:], dtype=get_common_dtype(a, b))
-                    return calc(a, b, out)  # type: ignore
-
-            else:
-
-                @nb.generated_jit
-                def dot(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if isinstance(a, nb.types.Number):
-                        # simple scalar call -> do not need to allocate anything
-                        raise RuntimeError("Dot needs to be called with fields")
-
-                    elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                        # function is called without `out`
-                        dtype = get_common_numba_dtype(a, b)
-
-                        def f_with_allocated_out(
-                            a: np.ndarray, b: np.ndarray, out: np.ndarray
-                        ) -> np.ndarray:
-                            """helper function allocating output array"""
-                            out = np.empty(b.shape[1:], dtype=dtype)
-                            return calc(a, b, out=out)  # type: ignore
-
-                        return f_with_allocated_out  # type: ignore
-
-                    else:
-                        # function is called with `out` argument
-                        return calc  # type: ignore
-
-        elif backend == "numpy":
-            # create the dot product using basic numpy functions
-
-            def calc(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-            ) -> np.ndarray:
-                """inner function doing the actual calculation of the dot product"""
-                if a.shape == b.shape:
-                    # dot product between vector and vector
-                    if out is None:
-                        # TODO: Remove this construct once we make numpy 1.20 a minimal
-                        # requirement. Earlier version of numpy do not support out=None
-                        # correctly and we thus had to use this work-around
-                        return np.einsum("i...,i...->...", a, b)  # type: ignore
-                    else:
-                        return np.einsum("i...,i...->...", a, b, out=out)
-
-                elif a.shape == b.shape[1:]:
-                    # dot product between vector and tensor
-                    if out is None:
-                        # TODO: Remove this construct once we make numpy 1.20 a minimal
-                        # requirement. Earlier version of numpy do not support out=None
-                        # correctly and we thus had to use this work-around
-                        return np.einsum("i...,ij...->j...", a, b)  # type: ignore
-                    else:
-                        return np.einsum("i...,ij...->j...", a, b, out=out)
-
-                else:
-                    raise ValueError(f"Unsupported shapes ({a.shape}, {b.shape})")
-
-            if conjugate:
-                # create inner function calculating the dot product using conjugate
-
-                def dot(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """dot product with conjugated second operand"""
-                    return calc(a, b.conjugate(), out=out)  # type: ignore
-
-            else:
-                dot = calc
-
-        else:
-            raise ValueError(f"Undefined backend `{backend}")
-
-        return dot
-
     def outer_product(
         self,
         other: VectorField,
-        out: Optional["Tensor2Field"] = None,
+        out: Tensor2Field | None = None,
         *,
-        label: Optional[str] = None,
-    ) -> "Tensor2Field":
+        label: str | None = None,
+    ) -> Tensor2Field:
         """calculate the outer product of this vector field with another
 
         Args:
@@ -376,8 +258,8 @@ class VectorField(DataFieldBase):
         return out
 
     def make_outer_prod_operator(
-        self, backend: str = "numba"
-    ) -> Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]], np.ndarray]:
+        self, backend: Literal["numpy", "numba"] = "numba"
+    ) -> Callable[[np.ndarray, np.ndarray, np.ndarray | None], np.ndarray]:
         """return operator calculating the outer product of two vector fields
 
         Warning:
@@ -393,86 +275,95 @@ class VectorField(DataFieldBase):
             specify the output array to which the result is written. Note that the
             returned function is jitted with numba for speed.
         """
-        dim = self.grid.dim
 
-        if backend == "numba":
-            # create the dot product using a numba compiled function
+        def outer(
+            a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
+        ) -> np.ndarray:
+            """calculate the outer product using numpy"""
+            return np.einsum("i...,j...->ij...", a, b, out=out)
 
-            # create the inner function calculating the dot product
+        if backend == "numpy":
+            # return the bare dot operator without the numba-overloaded version
+            return outer
+
+        elif backend == "numba":
+            # overload `outer` with a numba-compiled version
+
+            dim = self.grid.dim
+            num_axes = self.grid.num_axes
+
+            def check_rank(arr: nb.types.Type | nb.types.Optional) -> None:
+                """determine rank of field with type `arr`"""
+                arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
+                if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
+                    raise nb.errors.TypingError(
+                        f"Arguments must be array, not  {arr_typ.__class__}"
+                    )
+                assert arr_typ.ndim == 1 + num_axes
+
+            # create the inner function calculating the outer product
             @register_jitable
             def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                """calculate dot product between fields `a` and `b`"""
+                """calculate outer product between fields `a` and `b`"""
                 for i in range(0, dim):
                     for j in range(0, dim):
                         out[i, j, :] = a[i] * b[j]
                 return out
 
-            # build the outer function with the correct signature
-            if nb.config.DISABLE_JIT:
-
-                def outer(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if out is None:
-                        out = np.empty(
-                            (len(a),) + b.shape, dtype=get_common_dtype(a, b)
-                        )
-                    return calc(a, b, out)  # type: ignore
-
-            else:
-
-                @nb.generated_jit
-                def outer(
-                    a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
-                ) -> np.ndarray:
-                    """wrapper deciding whether the underlying function is called
-                    with or without `out`."""
-                    if isinstance(a, nb.types.Number):
-                        # simple scalar call -> do not need to allocate anything
-                        raise RuntimeError("Dot needs to be called with fields")
-
-                    elif isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
-                        # function is called without `out`
-                        dtype = get_common_numba_dtype(a, b)
-
-                        def f_with_allocated_out(
-                            a: np.ndarray, b: np.ndarray, out: np.ndarray
-                        ) -> np.ndarray:
-                            """helper function allocating output array"""
-                            out = np.empty((len(a),) + b.shape, dtype=dtype)
-                            return calc(a, b, out=out)  # type: ignore
-
-                        return f_with_allocated_out  # type: ignore
-
-                    else:
-                        # function is called with `out` argument
-                        return calc  # type: ignore
-
-        elif backend == "numpy":
-            # create the dot product using basic numpy functions
-
-            def outer(
-                a: np.ndarray, b: np.ndarray, out: Optional[np.ndarray] = None
+            @overload(outer, inline="always")
+            def outer_ol(
+                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
-                """calculates the outer product between two vector fields"""
-                if out is None:
-                    # TODO: Remove this construct once we make numpy 1.20 a minimal
-                    # requirement. Earlier version of numpy do not support out=None
-                    # correctly and we thus had to use this work-around
-                    return np.einsum("i...,j...->ij...", a, b)  # type: ignore
+                """numba implementation to calculate outer product between two fields"""
+                # get (and check) rank of the input arrays
+                check_rank(a)
+                check_rank(b)
+                in_shape = (dim,) + self.grid.shape
+                out_shape = (dim, dim) + self.grid.shape
+
+                if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
+                    # function is called without `out` -> allocate memory
+                    dtype = get_common_numba_dtype(a, b)
+
+                    def outer_impl(
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
+                    ) -> np.ndarray:
+                        """helper function allocating output array"""
+                        assert a.shape == b.shape == in_shape
+                        out = np.empty(out_shape, dtype=dtype)
+                        calc(a, b, out)
+                        return out
+
                 else:
-                    return np.einsum("i...,j...->ij...", a, b, out=out)
+                    # function is called with `out` argument -> reuse `out` array
+
+                    def outer_impl(
+                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
+                    ) -> np.ndarray:
+                        """helper function without allocating output array"""
+                        # check input
+                        assert a.shape == b.shape == in_shape
+                        assert out.shape == out_shape  # type: ignore
+                        calc(a, b, out)
+                        return out  # type: ignore
+
+                return outer_impl  # type: ignore
+
+            @jit
+            def outer_compiled(
+                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
+            ) -> np.ndarray:
+                """numba implementation to calculate outer product between two fields"""
+                return outer(a, b, out)
+
+            return outer_compiled  # type: ignore
 
         else:
-            raise ValueError(f"Undefined backend `{backend}")
-
-        return outer
+            raise ValueError(f"Unsupported backend `{backend}")
 
     @fill_in_docstring
     def divergence(
-        self, bc: Optional[BoundariesData], out: Optional[ScalarField] = None, **kwargs
+        self, bc: BoundariesData | None, out: ScalarField | None = None, **kwargs
     ) -> ScalarField:
         """apply divergence operator and return result as a field
 
@@ -488,17 +379,17 @@ class VectorField(DataFieldBase):
                 Additional arguments affecting how the operator behaves.
 
         Returns:
-            :class:`~pde.fields.scalar.ScalarField`: result of applying the operator
+            :class:`~pde.fields.scalar.ScalarField`: Divergence of the field
         """
-        return self._apply_operator("divergence", bc=bc, out=out, **kwargs)  # type: ignore
+        return self.apply_operator("divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
     @fill_in_docstring
     def gradient(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional["Tensor2Field"] = None,
+        bc: BoundariesData | None,
+        out: Tensor2Field | None = None,
         **kwargs,
-    ) -> "Tensor2Field":
+    ) -> Tensor2Field:
         r"""apply vector gradient operator and return result as a field
 
         The vector gradient field is a tensor field :math:`t_{\alpha\beta}` that
@@ -518,13 +409,13 @@ class VectorField(DataFieldBase):
                 Additional arguments affecting how the operator behaves.
 
         Returns:
-            :class:`~pde.fields.tensorial.Tensor2Field`: result of applying the operator
+            :class:`~pde.fields.tensorial.Tensor2Field`: Gradient of the field
         """
-        return self._apply_operator("vector_gradient", bc=bc, out=out, **kwargs)  # type: ignore
+        return self.apply_operator("vector_gradient", bc=bc, out=out, **kwargs)  # type: ignore
 
     @fill_in_docstring
     def laplace(
-        self, bc: Optional[BoundariesData], out: Optional[VectorField] = None, **kwargs
+        self, bc: BoundariesData | None, out: VectorField | None = None, **kwargs
     ) -> VectorField:
         r"""apply vector Laplace operator and return result as a field
 
@@ -548,9 +439,9 @@ class VectorField(DataFieldBase):
                 Additional arguments affecting how the operator behaves.
 
         Returns:
-            :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
+            :class:`~pde.fields.vectorial.VectorField`: Laplacian of the field
         """
-        return self._apply_operator("vector_laplace", bc=bc, out=out, **kwargs)  # type: ignore
+        return self.apply_operator("vector_laplace", bc=bc, out=out, **kwargs)  # type: ignore
 
     @property
     def integral(self) -> np.ndarray:
@@ -559,11 +450,11 @@ class VectorField(DataFieldBase):
 
     def to_scalar(
         self,
-        scalar: Union[str, int] = "auto",
+        scalar: str | int = "auto",
         *,
-        label: Optional[str] = "scalar `{scalar}`",
+        label: str | None = "scalar `{scalar}`",
     ) -> ScalarField:
-        """return a scalar field by applying `method`
+        """return scalar variant of the field
 
         Args:
             scalar (str):
@@ -577,8 +468,8 @@ class VectorField(DataFieldBase):
                 Name of the returned field
 
         Returns:
-            :class:`pde.fields.scalar.ScalarField`: the scalar field after
-            applying the operation
+            :class:`pde.fields.scalar.ScalarField`:
+                The scalar field after applying the operation
         """
         if scalar == "auto":
             if self.grid.dim > 1 or np.iscomplexobj(self.data):
@@ -613,8 +504,8 @@ class VectorField(DataFieldBase):
         return ScalarField(self.grid, data, label=label)
 
     def get_vector_data(
-        self, transpose: bool = False, max_points: Optional[int] = None, **kwargs
-    ) -> Dict[str, Any]:
+        self, transpose: bool = False, max_points: int | None = None, **kwargs
+    ) -> dict[str, Any]:
         r"""return data for a vector plot of the field
 
         Args:
@@ -623,24 +514,18 @@ class VectorField(DataFieldBase):
             max_points (int):
                 The maximal number of points that is used along each axis. This
                 option can be used to sub-sample the data.
-            \**kwargs: Additional parameters are forwarded to
-                `grid.get_image_data`
+            \**kwargs:
+                Additional parameters forwarded to `grid.get_image_data`
 
         Returns:
             dict: Information useful for plotting an vector field
         """
-        # TODO: Handle Spherical and Cartesian grids, too. This could be
-        # implemented by adding a get_vector_data method to the grids
-        if self.grid.dim == 2:
-            vx = self[0].get_image_data(**kwargs)
-            vy = self[1].get_image_data(**kwargs)
-            data = vx  # use one of the fields to extract basic information
-            data["data_x"] = vx.pop("data")
-            data["data_y"] = vy["data"]
-            data["title"] = self.label
+        if self.is_complex:
+            self._logger.warning("Only the real part of complex data is shown")
 
-        else:
-            raise NotImplementedError("Only supports 2d grids")
+        # extract the image data
+        data = self.grid.get_vector_data(self.data.real, **kwargs)
+        data["title"] = self.label
 
         # transpose the data if requested
         if transpose:
@@ -672,15 +557,76 @@ class VectorField(DataFieldBase):
 
         return data
 
+    @fill_in_docstring
+    def interpolate_to_grid(
+        self: VectorField,
+        grid: GridBase,
+        *,
+        bc: BoundariesData | None = None,
+        fill: Number | None = None,
+        label: str | None = None,
+    ) -> VectorField:
+        """interpolate the data of this vector field to another grid.
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid of the new field onto which the current field is interpolated.
+            bc:
+                The boundary conditions applied to the field, which affects values close
+                to the boundary. If omitted, the argument `fill` is used to determine
+                values outside the domain.
+                {ARG_BOUNDARIES_OPTIONAL}
+            fill (Number, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            Field of the same rank as the current one.
+        """
+        if self.grid.dim != grid.dim:
+            raise DimensionError(
+                f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
+            )
+
+        # determine the points at which data needs to be calculated
+        if isinstance(grid, CartesianGrid):
+            # convert Cartesian coordinates to coordinates in current grid
+            points = self.grid.c.pos_from_cart(grid.cell_coords)
+            points_grid_sym = self.grid._coords_symmetric(points)
+            # interpolate the data to the grid; this gives the vector in the grid basis
+            data_grid = self.interpolate(points_grid_sym, bc=bc, fill=fill)
+            # convert the vector to the cartesian basis
+            data = self.grid._vector_to_cartesian(points, data_grid)
+
+        elif (
+            self.grid.__class__ is grid.__class__
+            and self.grid.num_axes == grid.num_axes
+        ):
+            # convert within the same grid class
+            points = grid.cell_coords
+            # vectors are already given in the correct basis
+            data = self.interpolate(points, bc=bc, fill=fill)
+
+        else:
+            # this type of interpolation is not supported
+            grid_in = self.grid.__class__.__name__
+            grid_out = grid.__class__.__name__
+            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
+
+        return self.__class__(grid, data, label=label)
+
     def _get_napari_layer_data(  # type: ignore
-        self, max_points: Optional[int] = None, args: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, max_points: int | None = None, args: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """returns data for plotting on a single napari layer
 
         Args:
             max_points (int):
-                The maximal number of points that is used along each axis. This
-                option can be used to subsample the data.
+                The maximal number of points that is used along each axis. This option
+                can be used to subsample the data.
             args (dict):
                 Additional arguments returned in the result, which affect how the layer
                 is shown.

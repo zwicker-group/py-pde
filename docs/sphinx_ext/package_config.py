@@ -3,7 +3,7 @@ from sphinx.util.docutils import SphinxDirective
 
 
 class PackageConfigDirective(SphinxDirective):
-    """ directive that displays all package configuration items """
+    """directive that displays all package configuration items"""
 
     has_content = True
     required_arguments = 0

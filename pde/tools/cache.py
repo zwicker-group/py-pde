@@ -13,19 +13,17 @@ Functions, classes, and decorators for managing caches
    DictFiniteCapacity
    SerializedDict
 
-
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from __future__ import division
+from __future__ import annotations
 
-import collections  # @UnusedImport
-import collections.abc
+import collections
 import functools
 import logging
 import numbers
 from hashlib import sha1
-from typing import Callable, Dict, Iterable, Optional, TypeVar
+from typing import Callable, Iterable, Literal, TypeVar
 
 import numpy as np
 from scipy import sparse
@@ -197,10 +195,15 @@ def hash_readable(obj) -> str:
             if not k.startswith("_")
         )
 
-        return "{name}({args})".format(name=obj.__class__.__name__, args=args)
+        return f"{obj.__class__.__name__}({args})"
 
 
-def make_serializer(method: str) -> Callable:
+SerializerMethod = Literal[
+    "hash", "hash_mutable", "hash_readable", "json", "pickle", "yaml"
+]
+
+
+def make_serializer(method: SerializerMethod) -> Callable:
     """returns a function that serialize data with the given method. Note that
     some of the methods destroy information and cannot be reverted.
 
@@ -244,7 +247,7 @@ def make_serializer(method: str) -> Callable:
     raise ValueError("Unknown serialization method `%s`" % method)
 
 
-def make_unserializer(method: str) -> Callable:
+def make_unserializer(method: SerializerMethod) -> Callable:
     """returns a function that unserialize data with the  given method
 
     This is the inverse function of :func:`make_serializer`.
@@ -293,7 +296,7 @@ class DictFiniteCapacity(collections.OrderedDict):
 
     def __init__(self, *args, **kwargs):
         self.capacity = kwargs.pop("capacity", self.default_capacity)
-        super(DictFiniteCapacity, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def check_length(self):
         """ensures that the dictionary does not grow beyond its capacity"""
@@ -307,11 +310,11 @@ class DictFiniteCapacity(collections.OrderedDict):
         return super().__ne__(other) or self.capacity != other.capacity
 
     def __setitem__(self, key, value):
-        super(DictFiniteCapacity, self).__setitem__(key, value)
+        super().__setitem__(key, value)
         self.check_length()
 
     def update(self, values):
-        super(DictFiniteCapacity, self).update(values)
+        super().update(values)
         self.check_length()
 
 
@@ -323,9 +326,9 @@ class SerializedDict(collections.abc.MutableMapping):
 
     def __init__(
         self,
-        key_serialization: str = "pickle",
-        value_serialization: str = "pickle",
-        storage_dict: Optional[Dict] = None,
+        key_serialization: SerializerMethod = "pickle",
+        value_serialization: SerializerMethod = "pickle",
+        storage_dict: dict | None = None,
     ):
         """provides a dictionary whose keys and values are serialized
 

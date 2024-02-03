@@ -10,7 +10,7 @@ coupling,
 
     \partial_t u &= D_0 \nabla^2 u + a - (1 + b) u + v u^2 \\
     \partial_t v &= D_1 \nabla^2 v + b u - v u^2
-    
+
 Here, :math:`D_0` and :math:`D_1` are the respective diffusivity and the
 parameters :math:`a` and :math:`b` are related to reaction rates.
 
@@ -38,5 +38,5 @@ v = b / a + 0.1 * ScalarField.random_normal(grid, label="Field $v$")
 state = FieldCollection([u, v])
 
 # simulate the pde
-tracker = PlotTracker(interval=1, plot_args={"vmin": 0, "vmax": 5})
+tracker = PlotTracker(interrupts=1, plot_args={"vmin": 0, "vmax": 5})
 sol = eq.solve(state, t_range=20, dt=1e-3, tracker=tracker)

@@ -8,7 +8,7 @@ This module handles the boundaries of all axes of a grid. It only defines
 
 from __future__ import annotations
 
-from typing import List, Optional, Sequence, Union
+from typing import Sequence, Union
 
 import numpy as np
 from numba.extending import register_jitable
@@ -84,7 +84,19 @@ class Boundaries(list):
         # check whether this is already the correct class
         if isinstance(boundaries, Boundaries):
             # boundaries are already in the correct format
-            assert boundaries.grid == grid
+            if boundaries.grid._mesh is not None:
+                # we need to exclude this case since otherwise we get into a rabit hole
+                # where it is not clear what grid boundary conditions belong to. The
+                # idea is that users only create boundary conditions for the full grid
+                # and that the splitting onto subgrids is only done once, automatically,
+                # and without involving calls to `from_data`
+                raise ValueError("Cannot create MPI subgrid BC from data")
+
+            if boundaries.grid != grid:
+                raise ValueError(
+                    "The grid of the supplied boundary condition is incompatible with "
+                    f"the current grid ({boundaries.grid!r} != {grid!r})"
+                )
             boundaries.check_value_rank(rank)
             return boundaries
 
@@ -184,7 +196,7 @@ class Boundaries(list):
         return self.__class__([bc.copy() for bc in self])
 
     @property
-    def periodic(self) -> List[bool]:
+    def periodic(self) -> list[bool]:
         """:class:`~numpy.ndarray`: a boolean array indicating which dimensions
         are periodic according to the boundary conditions"""
         return self.grid.periodic
@@ -287,7 +299,7 @@ class Boundaries(list):
         # return set_ghost_cells
 
         def chain(
-            fs: Sequence[GhostCellSetter], inner: Optional[GhostCellSetter] = None
+            fs: Sequence[GhostCellSetter], inner: GhostCellSetter | None = None
         ) -> GhostCellSetter:
             """helper function composing setters of all axes recursively"""
 
@@ -303,7 +315,7 @@ class Boundaries(list):
 
                 @register_jitable
                 def wrap(data_full: np.ndarray, args=None) -> None:
-                    inner(data_full, args=args)  # type: ignore
+                    inner(data_full, args=args)
                     first(data_full, args=args)
 
             if rest:

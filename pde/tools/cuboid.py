@@ -7,10 +7,12 @@ cuboid that is aligned with the axes of a Cartesian coordinate system.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import itertools
-from typing import List, Tuple
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 from .typing import FloatNumerical
 
@@ -56,7 +58,7 @@ class Cuboid:
         self._size.flags.writeable = self.mutable
 
     @property
-    def corners(self) -> Tuple[np.ndarray, np.ndarray]:
+    def corners(self) -> tuple[np.ndarray, np.ndarray]:
         """return coordinates of two extreme corners defining the cuboid"""
         return np.copy(self.pos), self.pos + self.size
 
@@ -71,7 +73,7 @@ class Cuboid:
         self._size.flags.writeable = self._mutable
 
     @classmethod
-    def from_points(cls, p1: np.ndarray, p2: np.ndarray, **kwargs) -> "Cuboid":
+    def from_points(cls, p1: np.ndarray, p2: np.ndarray, **kwargs) -> Cuboid:
         """create cuboid from two points
 
         Args:
@@ -86,7 +88,7 @@ class Cuboid:
         return cls(p1, p2 - p1, **kwargs)
 
     @classmethod
-    def from_bounds(cls, bounds: np.ndarray, **kwargs) -> "Cuboid":
+    def from_bounds(cls, bounds: np.ndarray, **kwargs) -> Cuboid:
         """create cuboid from bounds
 
         Args:
@@ -101,7 +103,7 @@ class Cuboid:
     @classmethod
     def from_centerpoint(
         cls, centerpoint: np.ndarray, size: np.ndarray, **kwargs
-    ) -> "Cuboid":
+    ) -> Cuboid:
         """create cuboid from two points
 
         Args:
@@ -115,7 +117,7 @@ class Cuboid:
         size = np.asarray(size)
         return cls(centerpoint - size / 2, size, **kwargs)
 
-    def copy(self) -> "Cuboid":
+    def copy(self) -> Cuboid:
         return self.__class__(self.pos, self.size)
 
     def __repr__(self):
@@ -123,7 +125,7 @@ class Cuboid:
             cls=self.__class__.__name__, pos=self.pos, size=self.size
         )
 
-    def __add__(self, other: "Cuboid") -> "Cuboid":
+    def __add__(self, other: Cuboid) -> Cuboid:
         """The sum of two cuboids is the minimal cuboid enclosing both"""
         if isinstance(other, Cuboid):
             if self.dim != other.dim:
@@ -146,11 +148,11 @@ class Cuboid:
         return len(self.pos)
 
     @property
-    def bounds(self) -> Tuple[Tuple[float, float], ...]:
+    def bounds(self) -> tuple[tuple[float, float], ...]:
         return tuple((p, p + s) for p, s in zip(self.pos, self.size))
 
     @property
-    def vertices(self) -> List[List[float]]:
+    def vertices(self) -> list[list[float]]:
         """return the coordinates of all the corners"""
         return list(itertools.product(*self.bounds))  # type: ignore
 
@@ -192,7 +194,7 @@ class Cuboid:
     def volume(self) -> float:
         return np.prod(self.size)  # type: ignore
 
-    def buffer(self, amount: FloatNumerical = 0, inplace=False) -> "Cuboid":
+    def buffer(self, amount: FloatNumerical = 0, inplace=False) -> Cuboid:
         """dilate the cuboid by a certain amount in all directions"""
         amount = np.asarray(amount)
         if inplace:
@@ -225,7 +227,7 @@ class Cuboid:
         return np.all(c1 <= points, axis=-1) & np.all(points <= c2, axis=-1)  # type: ignore
 
 
-def asanyarray_flags(data: np.ndarray, dtype=None, writeable: bool = True):
+def asanyarray_flags(data: np.ndarray, dtype: DTypeLike = None, writeable: bool = True):
     """turns data into an array and sets the respective flags.
 
     A copy is only made if necessary

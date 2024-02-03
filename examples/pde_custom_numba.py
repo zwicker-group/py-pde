@@ -35,7 +35,7 @@ class KuramotoSivashinskyPDE(PDEBase):
         gradient_squared = state.grid.make_operator("gradient_squared", bc=self.bc)
         laplace = state.grid.make_operator("laplace", bc=self.bc)
 
-        @nb.jit
+        @nb.njit
         def pde_rhs(data, t):
             return -0.5 * gradient_squared(data) - laplace(data + laplace(data))
 

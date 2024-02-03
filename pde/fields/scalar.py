@@ -8,21 +8,21 @@ from __future__ import annotations
 
 import numbers
 from pathlib import Path
-from typing import List  # @UnusedImport
-from typing import TYPE_CHECKING, Callable, Dict, Optional, Sequence, Union
+from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 import numpy as np
 from numpy.typing import DTypeLike
 
 from ..grids import CartesianGrid, UnitGrid
-from ..grids.base import DomainError, GridBase
+from ..grids.base import DimensionError, DomainError, GridBase
+from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number
+from ..tools.typing import NumberOrArray
 from .base import DataFieldBase
 
 if TYPE_CHECKING:
-    from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
-    from .vectorial import VectorField  # @UnusedImport
+    from .vectorial import VectorField
 
 
 class ScalarField(DataFieldBase):
@@ -37,8 +37,10 @@ class ScalarField(DataFieldBase):
         grid: GridBase,
         expression: str,
         *,
-        label: Optional[str] = None,
-        dtype: Optional[DTypeLike] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        label: str | None = None,
+        dtype: DTypeLike | None = None,
     ) -> ScalarField:
         """create a scalar field on a grid from a given expression
 
@@ -54,6 +56,13 @@ class ScalarField(DataFieldBase):
                 functions and it may depend on the axes labels of the grid.
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
+            user_funcs (dict, optional):
+                A dictionary with user defined functions that can be used in the
+                expression
+            consts (dict, optional):
+                A dictionary with user defined constants that can be used in the
+                expression. The values of these constants should either be numbers or
+                :class:`~numpy.ndarray`.
             label (str, optional):
                 Name of the field
             dtype (numpy dtype):
@@ -62,28 +71,36 @@ class ScalarField(DataFieldBase):
         """
         from ..tools.expressions import ScalarExpression
 
-        expr = ScalarExpression(expression=expression, signature=grid.axes)
-        points = {name: grid.cell_coords[..., i] for i, name in enumerate(grid.axes)}
+        # parse the expression
+        expr = ScalarExpression(
+            expression=expression,
+            signature=grid.axes,
+            user_funcs=user_funcs,
+            consts=consts,
+            repl=grid.c._axes_alt_repl,
+        )
+        # obtain the coordinates of the grid points
+        points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
         try:
             # try evaluating the expression using a vectorized call
-            data = expr(**points)
+            data = expr(*points)
         except ValueError:
             # if this fails, evaluate expression point-wise
             data = np.empty(grid.shape)
             for cells in np.ndindex(*grid.shape):
-                data[cells] = expr(grid.cell_coords[cells])
+                data[cells] = expr(*grid.cell_coords[cells])
 
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
     @classmethod
     def from_image(
         cls,
-        path: Union[Path, str],
+        path: Path | str,
         bounds=None,
         periodic=False,
         *,
-        label: Optional[str] = None,
+        label: str | None = None,
     ) -> ScalarField:
         """create a scalar field from an image
 
@@ -141,7 +158,9 @@ class ScalarField(DataFieldBase):
                     arrs.append(arg)
                 elif isinstance(arg, np.ndarray):
                     if arg.shape != self.data.shape:
-                        raise RuntimeError("Data shapes incompatible")
+                        raise RuntimeError(
+                            f"Data shapes incompatible ({arg.shape} != {self.data.shape}"
+                        )
                     arrs.append(arg)
                 elif isinstance(arg, self.__class__):
                     self.assert_field_compatible(arg)
@@ -166,8 +185,8 @@ class ScalarField(DataFieldBase):
     @fill_in_docstring
     def laplace(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional[ScalarField] = None,
+        bc: BoundariesData | None,
+        out: ScalarField | None = None,
         **kwargs,
     ) -> ScalarField:
         """apply Laplace operator and return result as a field
@@ -186,13 +205,13 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the Laplacian of the field
         """
-        return self._apply_operator("laplace", bc=bc, out=out, **kwargs)  # type: ignore
+        return self.apply_operator("laplace", bc=bc, out=out, **kwargs)  # type: ignore
 
     @fill_in_docstring
     def gradient_squared(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional[ScalarField] = None,
+        bc: BoundariesData | None,
+        out: ScalarField | None = None,
         **kwargs,
     ) -> ScalarField:
         r"""apply squared gradient operator and return result as a field
@@ -217,15 +236,15 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the squared gradient of the field
         """
-        return self._apply_operator("gradient_squared", bc=bc, out=out, **kwargs)  # type: ignore
+        return self.apply_operator("gradient_squared", bc=bc, out=out, **kwargs)  # type: ignore
 
     @fill_in_docstring
     def gradient(
         self,
-        bc: Optional[BoundariesData],
-        out: Optional["VectorField"] = None,
+        bc: BoundariesData | None,
+        out: VectorField | None = None,
         **kwargs,
-    ) -> "VectorField":
+    ) -> VectorField:
         """apply gradient operator and return result as a field
 
         Args:
@@ -240,7 +259,7 @@ class ScalarField(DataFieldBase):
         Returns:
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        return self._apply_operator("gradient", bc=bc, out=out, **kwargs)  # type: ignore
+        return self.apply_operator("gradient", bc=bc, out=out, **kwargs)  # type: ignore
 
     @property
     def integral(self) -> Number:
@@ -249,9 +268,9 @@ class ScalarField(DataFieldBase):
 
     def project(
         self,
-        axes: Union[str, Sequence[str]],
-        method: str = "integral",
-        label: Optional[str] = None,
+        axes: str | Sequence[str],
+        method: Literal["integral", "average", "mean"] = "integral",
+        label: str | None = None,
     ) -> ScalarField:
         """project scalar field along given axes
 
@@ -304,25 +323,30 @@ class ScalarField(DataFieldBase):
 
     def slice(
         self,
-        position: Dict[str, float],
+        position: dict[str, float],
         *,
-        method: str = "nearest",
-        label: Optional[str] = None,
+        method: Literal["nearest"] = "nearest",
+        label: str | None = None,
     ) -> ScalarField:
         """slice data at a given position
 
+        Note:
+            This method should not be used to evaluate fields right at the boundary
+            since it does not respect boundary conditions. Use
+            :meth:`~ScalarField.get_boundary_field` to obtain the values directly on the
+            boundary.
+
         Args:
             position (dict):
-                Determines the location of the slice using a dictionary
-                supplying coordinate values for a subset of axes. Axes not
-                mentioned in the dictionary are retained and form the slice.
-                For instance, in a 2d Cartesian grid, `position = {'x': 1}`
-                slices along the y-direction at x=1. Additionally, the special
-                positions 'low', 'mid', and 'high' are supported to reference
-                relative positions along the axis.
+                Determines the location of the slice using a dictionary supplying
+                coordinate values for a subset of axes. Axes not mentioned in the
+                dictionary are retained and form the slice. For instance, in a 2d
+                Cartesian grid, `position = {'x': 1}` slices along the y-direction at
+                x=1. Additionally, the special positions 'low', 'mid', and 'high' are
+                supported to reference relative positions along the axis.
             method (str):
-                The method used for slicing. `nearest` takes data from cells
-                defined on the grid.
+                The method used for slicing. Currently, we only support `nearest`, which
+                takes data from cells defined on the grid.
             label (str, optional):
                 The label of the returned field
 
@@ -365,7 +389,7 @@ class ScalarField(DataFieldBase):
 
         # obtain the sliced data
         if method == "nearest":
-            idx: List[Union[int, slice]] = []
+            idx: list[int | slice] = []
             for i in range(grid.num_axes):
                 if i in ax_remove:
                     pos = pos_values[i]
@@ -387,7 +411,7 @@ class ScalarField(DataFieldBase):
         return self.__class__(grid=sliced_grid, data=subdata, label=label)
 
     def to_scalar(
-        self, scalar: Union[str, Callable] = "auto", *, label: Optional[str] = None
+        self, scalar: str | Callable = "auto", *, label: str | None = None
     ) -> ScalarField:
         """return a modified scalar field by applying method `scalar`
 
@@ -422,3 +446,98 @@ class ScalarField(DataFieldBase):
             raise ValueError(f"Unknown method `{scalar}` for `to_scalar`")
 
         return ScalarField(grid=self.grid, data=data, label=label)
+
+    @fill_in_docstring
+    def interpolate_to_grid(
+        self: ScalarField,
+        grid: GridBase,
+        *,
+        bc: BoundariesData | None = None,
+        fill: Number | None = None,
+        label: str | None = None,
+    ) -> ScalarField:
+        """interpolate the data of this scalar field to another grid.
+
+        Args:
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid of the new field onto which the current field is interpolated.
+            bc:
+                The boundary conditions applied to the field, which affects values close
+                to the boundary. If omitted, the argument `fill` is used to determine
+                values outside the domain.
+                {ARG_BOUNDARIES_OPTIONAL}
+            fill (Number, optional):
+                Determines how values out of bounds are handled. If `None`, a
+                `ValueError` is raised when out-of-bounds points are requested.
+                Otherwise, the given value is returned.
+            label (str, optional):
+                Name of the returned field
+
+        Returns:
+            Field of the same rank as the current one.
+        """
+        if self.grid.dim != grid.dim:
+            raise DimensionError(
+                f"Incompatible grid dimensions ({self.grid.dim:d} != {grid.dim:d})"
+            )
+
+        # determine the points at which data needs to be calculated
+        if isinstance(grid, CartesianGrid):
+            # convert Cartesian coordinates to coordinates in current grid
+            points = self.grid.transform(grid.cell_coords, "cartesian", "grid")
+
+        elif (
+            self.grid.__class__ is grid.__class__
+            and self.grid.num_axes == grid.num_axes
+        ):
+            # convert within the same grid class
+            points = grid.cell_coords
+
+        else:
+            # this type of interpolation is not supported
+            grid_in = self.grid.__class__.__name__
+            grid_out = grid.__class__.__name__
+            raise NotImplementedError(f"Can't interpolate from {grid_in} to {grid_out}")
+
+        # interpolate the data to the grid
+        data = self.interpolate(points, bc=bc, fill=fill)
+        return self.__class__(grid, data, label=label)
+
+    @fill_in_docstring
+    def get_boundary_field(
+        self,
+        index: str | tuple[int, bool],
+        bc: BoundariesData | None = None,
+        *,
+        label: str | None = None,
+    ) -> ScalarField:
+        """get the field on the specified boundary
+
+        Args:
+            index (str or tuple):
+                Index specifying the boundary. Can be either a string given in
+                :attr:`~pde.grids.base.GridBase.boundary_names`, like :code:`"left"`, or
+                a tuple of the axis index perpendicular to the boundary and a boolean
+                specifying whether the boundary is at the upper side of the axis or not,
+                e.g., :code:`(1, True)`.
+            bc:
+                The boundary conditions applied to the field.
+                {ARG_BOUNDARIES_OPTIONAL}
+            label (str):
+                Label of the returned field
+
+        Returns:
+            :class:`~pde.fields.scalar.ScalarField`: The field on the boundary
+        """
+        axis, upper = self.grid._get_boundary_index(index)
+        data = self.get_boundary_values(axis, upper, bc)
+
+        boundary_axes = tuple(i for i in range(self.grid.num_axes) if i != axis)
+        if boundary_axes:
+            # the boundary is an actual field (the original grid had more than 2 axes)
+            grid = self.grid.slice(boundary_axes)
+        else:
+            # the boundary is a singular point => return a UnitGrid
+            grid = UnitGrid([1])
+
+        return self.__class__(grid=grid, data=data, label=label, dtype=self.dtype)

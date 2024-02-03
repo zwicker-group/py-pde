@@ -6,12 +6,9 @@
 [![PyPI version](https://badge.fury.io/py/py-pde.svg)](https://badge.fury.io/py/py-pde)
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/py-pde.svg)](https://anaconda.org/conda-forge/py-pde)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-
 [![Build Status](https://github.com/zwicker-group/py-pde/actions/workflows/tests_all.yml/badge.svg)](https://github.com/zwicker-group/py-pde/actions/workflows/tests_all.yml)
 [![codecov](https://codecov.io/gh/zwicker-group/py-pde/branch/master/graph/badge.svg)](https://codecov.io/gh/zwicker-group/py-pde)
-[![Language grade: Python](https://img.shields.io/lgtm/grade/python/g/zwicker-group/py-pde.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/zwicker-group/py-pde/context:python)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
-
 [![Documentation Status](https://readthedocs.org/projects/py-pde/badge/?version=latest)](https://py-pde.readthedocs.io/en/latest/?badge=latest)
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.02158/status.svg)](https://doi.org/10.21105/joss.02158)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -25,36 +22,35 @@ dynamical systems in physics. The focus of the package lies on easy usage to
 explore the behavior of PDEs. However, core computations can be compiled
 transparently using numba for speed.
 
-[Try it out online!](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
+[Try it online!](https://mybinder.org/v2/gh/zwicker-group/py-pde/master?filepath=examples%2Fjupyter)
 
 
 Installation
 ------------
 
-`py-pde` is available on `pypi`, so you should be able to install it through
-`pip`:
+`py-pde` is available on `pypi`, so you should be able to install it through `pip`:
 
 ```bash
 pip install py-pde
 ```
 
-In order to have all features of the package available, you might also want to 
+In order to have all features of the package available, you might want to 
 install the following optional packages:
 
 ```bash
-pip install h5py pandas tqdm
+pip install h5py pandas mpi4py numba-mpi
 ```
 
 Moreover, `ffmpeg` needs to be installed for creating movies.
 
 As an alternative, you can install `py-pde` through [conda](https://docs.conda.io/en/latest/)
-using [conda-forge](https://conda-forge.org/) channel:
+using the [conda-forge](https://conda-forge.org/) channel:
 
 ```bash
 conda install -c conda-forge py-pde
 ```
 
-Installation with `conda` includes all required dependencies to have all features of `py-pde`.
+Installation with `conda` includes all dependencies of `py-pde`.
 
 Usage
 -----

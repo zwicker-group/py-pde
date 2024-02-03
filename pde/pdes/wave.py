@@ -1,10 +1,12 @@
 """
-A simple diffusion equation
+A simple wave equation
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, Dict, Optional
+from __future__ import annotations
+
+from typing import Callable
 
 import numba as nb
 import numpy as np
@@ -17,20 +19,19 @@ from .base import PDEBase, expr_prod
 
 
 class WavePDE(PDEBase):
-    r""" A simple wave equation
+    r"""A simple wave equation
 
-    The mathematical definition,
+    The mathematical definition, :math:`\partial_t^2 u = c^2 \nabla^2 u`, is implemented
+    as two first-order equations,
 
-    .. math::
-        \partial_t^2 u = c^2 \nabla^2 u
-
-    is implemented as two first-order equations:
-    
     .. math::
         \partial_t u &= v \\
         \partial_t v &= c^2 \nabla^2 u
 
-    where :math:`u` is the density field that and :math:`c` sets the wave speed.
+    where :math:`c` sets the wave speed and :math:`v` is an auxiallary field. Note that
+    the class expects an initial condition specifying both fields, which can be created
+    using the :meth:`WavePDE.get_initial_condition` method. The result will also return
+    two fields.
     """
 
     explicit_time_dependence = False
@@ -42,7 +43,7 @@ class WavePDE(PDEBase):
             speed (float):
                 The speed :math:`c` of the wave
             bc:
-                The boundary conditions applied to the field.
+                The boundary conditions applied to the field :math:`u`.
                 {ARG_BOUNDARIES}
         """
         super().__init__()
@@ -50,7 +51,7 @@ class WavePDE(PDEBase):
         self.speed = speed
         self.bc = bc
 
-    def get_initial_condition(self, u: ScalarField, v: Optional[ScalarField] = None):
+    def get_initial_condition(self, u: ScalarField, v: ScalarField | None = None):
         """create a suitable initial condition
 
         Args:
@@ -69,7 +70,7 @@ class WavePDE(PDEBase):
         return FieldCollection([u, v], labels=["u", "v"])
 
     @property
-    def expressions(self) -> Dict[str, str]:
+    def expressions(self) -> dict[str, str]:
         """dict: the expressions of the right hand side of this PDE"""
         return {"u": "v", "v": expr_prod(self.speed**2, "∇²u")}
 
@@ -82,13 +83,13 @@ class WavePDE(PDEBase):
 
         Args:
             state (:class:`~pde.fields.FieldCollection`):
-                The fields :math:`u` and :math:`v` distribution
+                The fields :math:`u` and :math:`v`
             t (float):
                 The current time point
 
         Returns:
             :class:`~pde.fields.FieldCollection`:
-            Scalar field describing the evolution rate of the PDE
+            Fields describing the evolution rates of the PDE
         """
         assert isinstance(state, FieldCollection), "`state` must be FieldCollection"
         assert len(state) == 2, "`state` must contain two fields"
@@ -107,10 +108,9 @@ class WavePDE(PDEBase):
                 An example for the state defining the grid and data types
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
-            the evolution rate.
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of :class:`~numpy.ndarray` of the state data and the time to
+            obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
         """
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)

@@ -19,6 +19,6 @@ Package containing several tools required in py-pde
    plotting
    spectral
    typing
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """

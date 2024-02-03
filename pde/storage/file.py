@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional, Tuple  # @UnusedImport
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -17,7 +17,7 @@ from numpy.typing import DTypeLike
 from ..fields.base import FieldBase
 from ..tools import mpi
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
-from .base import InfoDict, StorageBase
+from .base import InfoDict, StorageBase, WriteModeType
 
 
 class FileStorage(StorageBase):
@@ -26,10 +26,10 @@ class FileStorage(StorageBase):
     def __init__(
         self,
         filename: str,
-        info: Optional[InfoDict] = None,
         *,
-        write_mode: str = "truncate_once",
-        max_length: Optional[int] = None,
+        info: InfoDict | None = None,
+        write_mode: WriteModeType = "truncate_once",
+        max_length: int | None = None,
         compression: bool = True,
         keep_opened: bool = True,
         check_mpi: bool = True,
@@ -73,7 +73,7 @@ class FileStorage(StorageBase):
         self._file: Any = None
         self._is_writing = False
         self._data_length: int = None  # type: ignore
-        self._max_length: Optional[int] = max_length
+        self._max_length: int | None = max_length
 
         if not self.check_mpi or mpi.is_main:
             # we are on the main process and can thus open the file directly
@@ -118,7 +118,7 @@ class FileStorage(StorageBase):
     def _create_hdf_dataset(
         self,
         name: str,
-        shape: Tuple[int, ...] = tuple(),
+        shape: tuple[int, ...] = tuple(),
         dtype: DTypeLike = np.double,
     ):
         """create a hdf5 dataset with the given name and data_shape
@@ -145,7 +145,11 @@ class FileStorage(StorageBase):
                 **kwargs,
             )
 
-    def _open(self, mode: str = "reading", info: Optional[InfoDict] = None) -> None:
+    def _open(
+        self,
+        mode: Literal["reading", "appending", "writing", "closed"] = "reading",
+        info: InfoDict | None = None,
+    ) -> None:
         """open the hdf file in a particular mode
 
         Args:
@@ -308,7 +312,7 @@ class FileStorage(StorageBase):
 
         super().clear(clear_data_shape=clear_data_shape)
 
-    def start_writing(self, field: FieldBase, info: Optional[InfoDict] = None) -> None:
+    def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
         """initialize the storage for writing data
 
         Args:

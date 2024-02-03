@@ -7,7 +7,7 @@ Auxiliary mathematical functions
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import numba as nb
 import numpy as np
@@ -26,7 +26,7 @@ class SmoothData1D:
     sigma_auto_scale: float = 10
     """float: scale for setting automatic values for sigma"""
 
-    def __init__(self, x, y, sigma: Optional[float] = None):
+    def __init__(self, x, y, sigma: float | None = None):
         """initialize with data
 
         Args:
@@ -55,7 +55,7 @@ class SmoothData1D:
             self.sigma = sigma
 
     @property
-    def bounds(self) -> Tuple[float, float]:
+    def bounds(self) -> tuple[float, float]:
         """return minimal and maximal `x` values"""
         return float(self.x.min()), float(self.x.max())
 
@@ -134,7 +134,7 @@ class OnlineStatistics:
     count: int
     """int: recorded number of items"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.min = np.inf
         self.max = -np.inf
         self.mean = 0
@@ -168,7 +168,7 @@ class OnlineStatistics:
         self.mean += delta / self.count
         self._mean2 += delta * (value - self.mean)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """return the information as a dictionary"""
         return {
             "min": self.min,

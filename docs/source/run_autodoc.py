@@ -16,7 +16,7 @@ REPLACEMENTS = {
 
 
 def replace_in_file(infile, replacements, outfile=None):
-    """ reads in a file, replaces the given data using python formatting and
+    """reads in a file, replaces the given data using python formatting and
     writes back the result to a file.
 
     Args:
@@ -32,7 +32,7 @@ def replace_in_file(infile, replacements, outfile=None):
     if outfile is None:
         outfile = infile
 
-    with open(infile, "r") as fp:
+    with open(infile) as fp:
         content = fp.read()
 
     for key, value in replacements.items():

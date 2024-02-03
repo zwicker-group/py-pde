@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-#
 # This script formats the code of this package
-#
 
-echo "Formatting imports"
+echo "Upgrading python syntax..."
+pushd .. > /dev/null
+find . -name '*.py' -exec pyupgrade --py38-plus {} +
+popd > /dev/null
+
+echo "Formating import statements..."
 isort ..
 
-for dir in pde examples scripts tests; do
-    echo "Formatting files in ${dir}:"
-
-    # black format all code
-    black -t py38 --exclude scripts/templates ../${dir}
-done
+echo "Formating source code..."
+black ..

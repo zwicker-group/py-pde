@@ -12,7 +12,7 @@ individuals:
     \partial_t s &= D \nabla^2 s - \beta is \\
     \partial_t i &= D \nabla^2 i + \beta is - \gamma i \\
     \partial_t r &= D \nabla^2 r + \gamma i
-    
+
 Here, :math:`D` is the diffusivity, :math:`\beta` the infection rate, and
 :math:`\gamma` the recovery rate.
 """
@@ -64,5 +64,5 @@ i.data[0, 0] = 1
 state = eq.get_state(s, i)
 
 # simulate the pde
-tracker = PlotTracker(interval=10, plot_args={"vmin": 0, "vmax": 1})
+tracker = PlotTracker(interrupts=10, plot_args={"vmin": 0, "vmax": 1})
 sol = eq.solve(state, t_range=50, dt=1e-2, tracker=["progress", tracker])

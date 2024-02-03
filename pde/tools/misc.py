@@ -8,7 +8,6 @@ Miscellaneous python functions
    ensure_directory_exists
    preserve_scalars
    decorator_arguments
-   skipUnlessModule
    import_class
    classproperty
    hybridmethod
@@ -21,16 +20,20 @@ Miscellaneous python functions
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import errno
 import functools
 import importlib
 import json
 import os
 import unittest
+import warnings
 from pathlib import Path
-from typing import Any, Callable, Dict, Optional, Sequence, TypeVar, Union
+from typing import Any, Callable, Sequence, TypeVar
 
 import numpy as np
+from numpy.typing import DTypeLike
 
 from .typing import ArrayLike, Number
 
@@ -54,7 +57,7 @@ def module_available(module_name: str) -> bool:
         return True
 
 
-def ensure_directory_exists(folder: Union[str, Path]):
+def ensure_directory_exists(folder: str | Path):
     """creates a folder if it not already exists
 
     Args:
@@ -123,9 +126,7 @@ def decorator_arguments(decorator: Callable) -> Callable:
     return new_decorator
 
 
-def skipUnlessModule(
-    module_names: Union[Sequence[str], str]
-) -> Callable[[TFunc], TFunc]:
+def skipUnlessModule(module_names: str | Sequence[str]) -> Callable[[TFunc], TFunc]:
     """decorator that skips a test when a module is not available
 
     Args:
@@ -134,6 +135,13 @@ def skipUnlessModule(
     Returns:
         A function, so this can be used as a decorator
     """
+    # deprecated since 2024-01-03
+    warnings.warn(
+        "`skipUnlessModule` is deprecated. Use "
+        '`@pytest.mark.skipif(not module_available("module"))` instead.',
+        DeprecationWarning,
+    )
+
     if isinstance(module_names, str):
         module_names = [module_names]
 
@@ -297,7 +305,7 @@ def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
 
 def hdf_write_attributes(
     hdf_path,
-    attributes: Optional[Dict[str, Any]] = None,
+    attributes: dict[str, Any] | None = None,
     raise_serialization_error: bool = False,
 ) -> None:
     """write (JSON-serialized) attributes to a hdf file
@@ -324,7 +332,7 @@ def hdf_write_attributes(
             hdf_path.attrs[key] = value_serialized
 
 
-def number(value: Union[Number, str]) -> Number:
+def number(value: Number | str) -> Number:
     """convert a value into a float or complex number
 
     Args:
@@ -352,7 +360,9 @@ def get_common_dtype(*args):
     return np.double
 
 
-def number_array(data: ArrayLike, dtype=None, copy: bool = True) -> np.ndarray:
+def number_array(
+    data: ArrayLike, dtype: DTypeLike = None, copy: bool = True
+) -> np.ndarray:
     """convert an array with arbitrary dtype either to np.double or np.cdouble
 
     Args:

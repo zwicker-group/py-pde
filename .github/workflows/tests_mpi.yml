@@ -6,14 +6,16 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest] #, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.11'
     - uses: mpi4py/setup-mpi@v1
 
     - name: Install dependencies
@@ -28,5 +30,5 @@ jobs:
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
-        cd tests
+        cd scripts
         python run_tests.py --unit --use_mpi --showconfig

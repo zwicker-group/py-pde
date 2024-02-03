@@ -8,12 +8,14 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
-        python-version: '3.10'
+        python-version: '3.11'
 
     - name: Install dependencies
       # install all requirements
@@ -27,5 +29,5 @@ jobs:
         NUMBA_WARNINGS: 1
         MPLBACKEND: agg
       run: |
-        cd tests
-        python run_tests.py --unit --num_cores auto --showconfig
+        cd scripts
+        python run_tests.py --unit --runslow --num_cores auto --showconfig

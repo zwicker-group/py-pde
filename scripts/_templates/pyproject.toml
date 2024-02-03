@@ -1,0 +1,109 @@
+[project]
+name = "py-pde"
+description = "Python package for solving partial differential equations"
+authors = [
+    {name = "David Zwicker", email="david.zwicker@ds.mpg.de"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=$MIN_PYTHON_VERSION,<$MAX_PYTHON_VERSION_NEXT"
+dynamic = ["version"]
+
+keywords = ["pdes", "partial-differential-equations", "dynamical-systems"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+]
+
+# Requirements for setuptools
+dependencies = $INSTALL_REQUIRES
+
+[project.optional-dependencies]
+hdf = ["$h5py"]
+io = ["$h5py", "$pandas"]
+interactive = ["$napari", "$ipywidgets"]
+mpi = ["$numba_mpi", "$mpi4py"]
+
+[project.urls]
+homepage = "https://github.com/zwicker-group/py-pde"
+documentation = "http://py-pde.readthedocs.io"
+repository = "https://github.com/zwicker-group/py-pde"
+
+[build-system]
+requires = [
+    "setuptools>=61",
+    "setuptools_scm[toml]>=6.2",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false  # required for mypy to find the py.typed file
+
+[tool.setuptools.packages.find]
+include = ["pde*"]
+namespaces = false
+
+[tool.setuptools_scm]
+write_to = "pde/_version.py"
+
+[tool.black]
+target_version = ["py$MIN_PYTHON_VERSION_NODOT"]
+exclude = "scripts/templates"
+
+[tool.isort]
+profile = "black"
+src_paths = ["pde", "examples", "scripts", "tests"]
+known_self = ["pde", "fixtures"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "SELF", "LOCALFOLDER"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+filterwarnings = [
+    'ignore:.*importing the ABCs from.*:DeprecationWarning',
+    'ignore:.*IPython.utils.signatures backport for Python 2 is deprecated.*:DeprecationWarning',
+    'ignore:.*scipy.sparse.*:DeprecationWarning',
+]
+
+[tool.mypy]
+python_version = "$MIN_PYTHON_VERSION"
+plugins = "numpy.typing.mypy_plugin"
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = "numba.*"
+ignore_missing_imports = true
+ignore_errors = false
+follow_imports = "skip"
+follow_imports_for_stubs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "h5py.*",
+    "IPython.*",
+    "ipywidgets.*",
+    "matplotlib.*",
+    "mpl_toolkits.*",
+    "mpi4py.*",
+    "napari.*",
+    "numba_mpi.*",
+    "numpy.*",
+    "pandas.*",
+    "pyfftw.*",
+    "pytest.*",
+    "qtpy.*",
+    "scipy.*",
+    "sympy.*",
+    "tqdm.*",
+]
+ignore_missing_imports = true

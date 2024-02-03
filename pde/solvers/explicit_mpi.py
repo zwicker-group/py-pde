@@ -1,10 +1,12 @@
 """
 Defines an explicit solver using multiprocessing via MPI
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, List, Union
+from __future__ import annotations
+
+from typing import Callable, Literal
 
 import numpy as np
 from numba.extending import register_jitable
@@ -14,13 +16,17 @@ from ..grids._mesh import GridMesh
 from ..pdes.base import PDEBase
 from ..tools import mpi
 from ..tools.math import OnlineStatistics
+from ..tools.typing import BackendType
 from .explicit import ExplicitSolver
 
 
 class ExplicitMPISolver(ExplicitSolver):
-    """class for solving partial differential equations explicitly using MPI
+    """various explicit PDE solve using MPI
 
-    This solver can only be used if MPI is properly installed.
+    Warning:
+        This solver can only be used if MPI is properly installed. In particular, python
+        scripts then need to be started using :code:`mpirun` or :code:`mpiexec`. Please
+        refer to the documentation of your MPI distribution for details.
 
     The main idea of the solver is to take the full initial state in the main node
     (ID 0) and split the grid into roughly equal subgrids. The main node then
@@ -34,8 +40,39 @@ class ExplicitMPISolver(ExplicitSolver):
     are only handled on the main node.
 
     Warning:
-        `modify_after_step` can only be used to do local modifications since the field
-        data supplied to the function is local to each MPI node.
+        The function providing the right hand side of the PDE needs to support MPI. This
+        is automatically the case for local evaluations (which only use the field value
+        at the current position), for the differential operators provided by :mod:`pde`,
+        and integration of fields. Similarly, `modify_after_step` can only be used to do
+        local modifications since the field data supplied to the function is local to
+        each MPI node.
+
+    Example:
+        A minimal example using the MPI solver is
+
+        .. code-block:: python
+
+           from pde import DiffusionPDE, ScalarField, UnitGrid
+
+           grid = UnitGrid([64, 64])
+           state = ScalarField.random_uniform(grid, 0.2, 0.3)
+
+           eq = DiffusionPDE(diffusivity=0.1)
+           result = eq.solve(state, t_range=10, dt=0.1, method="explicit_mpi")
+
+           if result is not None:  # restrict the output to the main node
+              result.plot()
+
+        Saving this script as `multiprocessing.py`, a parallel simulation is started by
+
+        .. code-block:: bash
+
+            mpiexec -n 2 python3 multiprocessing.py
+
+        Here, the number `2` determines the number of cores that will be used. Note that
+        macOS might require an additional hint on how to connect the processes even
+        when they are run on the same machine (e.g., your workstation). It might help to
+        run :code:`mpiexec -n 2 -host localhost python3 multiprocessing.py` in this case
     """
 
     name = "explicit_mpi"
@@ -43,10 +80,10 @@ class ExplicitMPISolver(ExplicitSolver):
     def __init__(
         self,
         pde: PDEBase,
-        scheme: str = "euler",
-        decomposition: Union[int, List[int]] = -1,
+        scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
+        decomposition: int | list[int] = -1,
         *,
-        backend: str = "auto",
+        backend: BackendType = "auto",
         adaptive: bool = False,
         tolerance: float = 1e-4,
     ):
@@ -84,16 +121,12 @@ class ExplicitMPISolver(ExplicitSolver):
         """return helper function that synchronizes errors between multiple processes"""
         if mpi.parallel_run:
             # in a parallel run, we need to return the maximal error
-            from numba_mpi import Operator
-
             from ..tools.mpi import mpi_allreduce
-
-            operator_max_int = int(Operator.MAX)
 
             @register_jitable
             def synchronize_errors(error: float) -> float:
                 """return maximal error accross all cores"""
-                return mpi_allreduce(error, operator_max_int)  # type: ignore
+                return mpi_allreduce(error, "MAX")  # type: ignore
 
             return synchronize_errors  # type: ignore
         else:
@@ -135,7 +168,9 @@ class ExplicitMPISolver(ExplicitSolver):
                 )
 
         self.info["dt"] = dt
+        self.info["dt_adaptive"] = self.adaptive
         self.info["steps"] = 0
+        self.info["stochastic"] = self.pde.is_sde
         self.info["state_modifications"] = 0.0
         self.info["use_mpi"] = True
         self.info["scheme"] = self.scheme
@@ -148,7 +183,7 @@ class ExplicitMPISolver(ExplicitSolver):
         if self.adaptive:
             # create stepper with adaptive steps
             self.info["dt_statistics"] = OnlineStatistics()
-            adaptive_stepper = self._make_adaptive_stepper(sub_state, dt)
+            adaptive_stepper = self._make_adaptive_stepper(sub_state)
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float

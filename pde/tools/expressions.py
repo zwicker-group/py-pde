@@ -12,7 +12,7 @@ representations using :mod:`sympy`.
    ScalarExpression
    TensorExpression
    evaluate
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
@@ -25,34 +25,23 @@ import math
 import numbers
 import re
 from abc import ABCMeta, abstractmethod
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Callable, Mapping, Sequence, Union
 
-import numba as nb  # lgtm [py/import-and-import-from]
 import numpy as np
 import sympy
+from numba import vectorize
 from sympy.core import basic
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
 from ..fields.base import DataFieldBase, FieldBase
+from ..fields.collection import FieldCollection
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .misc import Number, number, number_array
-from .numba import convert_scalar, jit
+from .numba import jit
 from .typing import NumberOrArray
 
 try:
@@ -64,7 +53,7 @@ except ImportError:
 
 @fill_in_docstring
 def parse_number(
-    expression: Union[str, Number], variables: Optional[Mapping[str, Number]] = None
+    expression: str | Number, variables: Mapping[str, Number] | None = None
 ) -> Number:
     r"""return a number compiled from an expression
 
@@ -97,8 +86,9 @@ def parse_number(
     return value
 
 
-def _heaviside_implemention(x1, x2=0.5):
-    """implementation of the Heaviside function used for numba and sympy
+@vectorize()
+def _heaviside_implemention_ufunc(x1, x2):
+    """ufunc implementation of the Heaviside function used for numba and sympy
 
     Args:
         x1 (float): Argument of the function
@@ -115,6 +105,21 @@ def _heaviside_implemention(x1, x2=0.5):
         return 0.0
     else:
         return 1.0
+
+
+def _heaviside_implemention(x1, x2):
+    """normal implementation of the Heaviside function used for numba and sympy
+
+    Args:
+        x1 (float): Argument of the function
+        x2 (float): Value returned when the argument is zero
+
+    Returns:
+        float: 0 if x1 is negative, 1 if x1 is positive, and x2 if x1 == 0
+    """
+    # this extra function is necessary since the `overload` wrapper cannot deal properly
+    # with the `_DUFunc` returned by `vectorize`
+    return _heaviside_implemention_ufunc(x1, x2)
 
 
 @overload(np.heaviside)
@@ -177,7 +182,19 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
     fill_locals(symbols, sympy_cls=sympy.Symbol)
     fill_locals(functions, sympy_cls=sympy.Function)
 
-    return sympy_parser.parse_expr(expression, local_dict=local_dict)  # type: ignore
+    expr = sympy_parser.parse_expr(expression, local_dict=local_dict)
+
+    # replace lower-case heaviside (which would translate to numpy function) by
+    # upper-case Heaviside, which is directly recognized by sympy. Down the line, this
+    # allows easier handling of special cases
+    def substitude(expr):
+        """helper function substituting expressions"""
+        if isinstance(expr, list):
+            return [substitude(e) for e in expr]
+        else:
+            return expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
+
+    return substitude(expr)  # type: ignore
 
 
 ExpressionType = Union[float, str, np.ndarray, basic.Basic, "ExpressionBase"]
@@ -190,10 +207,11 @@ class ExpressionBase(metaclass=ABCMeta):
     def __init__(
         self,
         expression: basic.Basic,
-        signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        signature: Sequence[str | list[str]] | None = None,
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        repl: dict[str, str] | None = None,
     ):
         """
         Warning:
@@ -205,27 +223,30 @@ class ExpressionBase(metaclass=ABCMeta):
                 instance of :class:`~sympy.core.expr.Expr` or
                 :class:`~sympy.tensor.array.ndim_array.NDimArray`.
             signature (list of str, optional):
-                The signature defines which variables are expected in the
-                expression. This is typically a list of strings identifying
-                the variable names. Individual names can be specified as list,
-                in which case any of these names can be used. The first item in
-                such a list is the definite name and if another name of the list
-                is used, the associated variable is renamed to the definite
-                name. If signature is `None`, all variables in `expressions`
-                are allowed.
+                The signature defines which variables are expected in the expression.
+                This is typically a list of strings identifying the variable names.
+                Individual names can be specified as list, in which case any of these
+                names can be used. The first item in such a list is the definite name
+                and if another name of the list is used, the associated variable is
+                renamed to the definite name. If signature is `None`, all variables in
+                `expressions` are allowed.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that can be used in the
-                expression.
+                A dictionary with user defined functions that used in the expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
                 :class:`~numpy.ndarray`.
+            repl (dict, optional):
+                Replacements that are applied to symbols before turning the expression
+                into a python equivalent.
         """
         try:
             self._sympy_expr = sympy.simplify(expression)
         except TypeError:
             # work-around for sympy bug (github.com/sympy/sympy/issues/19829)
             self._sympy_expr = expression
+        if repl is not None:
+            self._sympy_expr = self._sympy_expr.subs(repl)
         self._logger = logging.getLogger(self.__class__.__name__)
         self.user_funcs = {} if user_funcs is None else user_funcs
         self.consts = {} if consts is None else consts
@@ -264,7 +285,7 @@ class ExpressionBase(metaclass=ABCMeta):
             return diff == 0
 
     @property
-    def _free_symbols(self) -> Set:
+    def _free_symbols(self) -> set:
         """return symbols that appear in the expression and are not in self.consts"""
         return {
             sym for sym in self._sympy_expr.free_symbols if sym.name not in self.consts
@@ -282,23 +303,21 @@ class ExpressionBase(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def shape(self) -> Tuple[int, ...]:
-        pass
+    def shape(self) -> tuple[int, ...]:
+        """tuple: the shape of the tensor"""
 
-    def _check_signature(
-        self, signature: Optional[Sequence[Union[str, List[str]]]] = None
-    ):
+    def _check_signature(self, signature: Sequence[str | list[str]] | None = None):
         """validate the variables of the expression against the signature"""
         # get arguments of the expressions
         if self.constant:
             # constant expression do not depend on any variables
-            args: Set[str] = set()
+            args: set[str] = set()
             if signature is None:
                 signature = []
 
         else:
             # general expressions might have a variable
-            args = set(str(s).split("[")[0] for s in self._free_symbols)
+            args = {str(s).split("[")[0] for s in self._free_symbols}
             if signature is None:
                 # create signature from arguments
                 signature = list(sorted(args))
@@ -365,7 +384,7 @@ class ExpressionBase(metaclass=ABCMeta):
     def _get_function(
         self,
         single_arg: bool = False,
-        user_funcs: Optional[Dict[str, Callable]] = None,
+        user_funcs: dict[str, Callable] | None = None,
         prepare_compilation: bool = False,
     ) -> Callable[..., NumberOrArray]:
         """return function evaluating expression
@@ -403,7 +422,7 @@ class ExpressionBase(metaclass=ABCMeta):
 
         # initialize the printer that deals with numpy arrays correctly
         if prepare_compilation:
-            printer_class: Type[PythonCodePrinter] = ListArrayPrinter
+            printer_class: type[PythonCodePrinter] = ListArrayPrinter
         else:
             printer_class = NumpyArrayPrinter
         printer = printer_class(
@@ -454,9 +473,8 @@ class ExpressionBase(metaclass=ABCMeta):
 
         Args:
             single_arg (bool):
-                Determines whether the returned function accepts all variables
-                in a single argument as an array or whether all variables need
-                to be supplied separately
+                Determines whether the function takes all variables in a single argument
+                as an array or whether all variables need to be supplied separately.
             prepare_compilation (bool):
                 Determines whether all user functions are marked with
                 :func:`numba.extending.register_jitable` to prepare for compilation.
@@ -475,9 +493,9 @@ class ExpressionBase(metaclass=ABCMeta):
         """return numba function evaluating expression
 
         Args:
-            single_arg (bool): Determines whether the returned function accepts
-                all variables in a single argument as an array or whether all
-                variables need to be supplied separately
+            single_arg (bool):
+                Determines whether the function takes all variables in a single argument
+                as an array or whether all variables need to be supplied separately.
 
         Returns:
             function: the compiled function
@@ -492,17 +510,18 @@ class ExpressionBase(metaclass=ABCMeta):
 class ScalarExpression(ExpressionBase):
     """describes a mathematical expression of a scalar quantity"""
 
-    shape: Tuple[int, ...] = tuple()
+    shape: tuple[int, ...] = tuple()
 
     @fill_in_docstring
     def __init__(
         self,
         expression: ExpressionType = 0,
-        signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        signature: Sequence[str | list[str]] | None = None,
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        explicit_symbols: Optional[Sequence[str]] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        repl: dict[str, str] | None = None,
+        explicit_symbols: Sequence[str] | None = None,
         allow_indexed: bool = False,
     ):
         """
@@ -511,8 +530,7 @@ class ScalarExpression(ExpressionBase):
 
         Args:
             expression (str or float):
-                The expression, which is either a number or a string that sympy
-                can parse
+                The expression, either a number or a string that sympy can parse.
             signature (list of str):
                 The signature defines which variables are expected in the expression.
                 This is typically a list of strings identifying the variable names.
@@ -522,12 +540,14 @@ class ScalarExpression(ExpressionBase):
                 renamed to the definite name. If signature is `None`, all variables in
                 `expressions` are allowed.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that can be used in the
-                expression
+                A dictionary with user defined functions that used in the expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
                 :class:`~numpy.ndarray`.
+            repl (dict, optional):
+                Replacements that are applied to symbols before turning the expression
+                into a python equivalent.
             explicit_symbols (list of str):
                 List of symbols that need to be interpreted as general sympy symbols
             allow_indexed (bool):
@@ -580,6 +600,7 @@ class ScalarExpression(ExpressionBase):
             signature=signature,
             user_funcs=user_funcs,
             consts=consts,
+            repl=repl,
         )
 
     def copy(self) -> ScalarExpression:
@@ -701,11 +722,12 @@ class TensorExpression(ExpressionBase):
     def __init__(
         self,
         expression: ExpressionType,
-        signature: Optional[Sequence[Union[str, List[str]]]] = None,
+        signature: Sequence[str | list[str]] | None = None,
         *,
-        user_funcs: Optional[Dict[str, Callable]] = None,
-        consts: Optional[Dict[str, NumberOrArray]] = None,
-        explicit_symbols: Optional[Sequence[str]] = None,
+        user_funcs: dict[str, Callable] | None = None,
+        consts: dict[str, NumberOrArray] | None = None,
+        repl: dict[str, str] | None = None,
+        explicit_symbols: Sequence[str] | None = None,
     ):
         """
         Warning:
@@ -713,24 +735,24 @@ class TensorExpression(ExpressionBase):
 
         Args:
             expression (str or float):
-                The expression, which is either a number or a string that sympy
-                can parse
+                The expression, either a number or a string that sympy can parse.
             signature (list of str):
-                The signature defines which variables are expected in the
-                expression. This is typically a list of strings identifying
-                the variable names. Individual names can be specified as list,
-                in which case any of these names can be used. The first item in
-                such a list is the definite name and if another name of the list
-                is used, the associated variable is renamed to the definite
-                name. If signature is `None`, all variables in `expressions`
-                are allowed.
+                The signature defines which variables are expected in the expression.
+                This is typically a list of strings identifying the variable names.
+                Individual names can be specified as list, in which case any of these
+                names can be used. The first item in such a list is the definite name
+                and if another name of the list is used, the associated variable is
+                renamed to the definite name. If signature is `None`, all variables in
+                `expressions` are allowed.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that can be used in the
-                expression.
+                A dictionary with user defined functions that used in the expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
                 :class:`~numpy.ndarray`.
+            repl (dict, optional):
+                Replacements that are applied to symbols before turning the expression
+                into a python equivalent.
             explicit_symbols (list of str):
                 List of symbols that need to be interpreted as general sympy symbols
         """
@@ -767,6 +789,7 @@ class TensorExpression(ExpressionBase):
             signature=signature,
             user_funcs=user_funcs,
             consts=consts,
+            repl=repl,
         )
 
     def __repr__(self):
@@ -777,9 +800,13 @@ class TensorExpression(ExpressionBase):
             return super().__repr__()
 
     @property
-    def shape(self) -> Tuple[int, ...]:
-        """tuple: the shape of the tensor"""
+    def shape(self) -> tuple[int, ...]:
         return self._sympy_expr.shape  # type: ignore
+
+    @property
+    def rank(self) -> int:
+        """int: rank of the tensor expression"""
+        return len(self.shape)
 
     def __getitem__(self, index):
         expr = self._sympy_expr[index]
@@ -840,7 +867,7 @@ class TensorExpression(ExpressionBase):
 
     def get_compiled_array(
         self, single_arg: bool = True
-    ) -> Callable[[np.ndarray, Optional[np.ndarray]], np.ndarray]:
+    ) -> Callable[[np.ndarray, np.ndarray | None], np.ndarray]:
         """compile the tensor expression such that a numpy array is returned
 
         Args:
@@ -852,19 +879,10 @@ class TensorExpression(ExpressionBase):
         variables = ", ".join(v for v in self.vars)
         shape = self._sympy_expr.shape
 
-        if nb.config.DISABLE_JIT:
-            # special path used by coverage test without jitting. This can be
-            # removed once the `convert_scalar` wrapper is obsolete
-            lines = [
-                f"    out[{str(idx + (...,))[1:-1]}] = {self._sympy_expr[idx]}"
-                for idx in np.ndindex(*self._sympy_expr.shape)
-            ]
-        else:
-            lines = [
-                f"    out[{str(idx + (...,))[1:-1]}] = "
-                f"convert_scalar({self._sympy_expr[idx]})"
-                for idx in np.ndindex(*self._sympy_expr.shape)
-            ]
+        lines = [
+            f"    out[{str(idx + (...,))[1:-1]}] = {self._sympy_expr[idx]}"
+            for idx in np.ndindex(*self._sympy_expr.shape)
+        ]
         # TODO: replace the np.ndindex with np.ndenumerate eventually. This does not
         # work with numpy 1.18, so we have the work around using np.ndindex
 
@@ -905,10 +923,9 @@ class TensorExpression(ExpressionBase):
         self._logger.debug("Code for `get_compiled_array`: %s", code)
 
         namespace = _get_namespace("numpy")
-        namespace["convert_scalar"] = convert_scalar
         namespace["builtins"] = builtins
         namespace.update(self.user_funcs)
-        local_vars: Dict[str, Any] = {}
+        local_vars: dict[str, Any] = {}
         exec(code, namespace, local_vars)
         function = local_vars["_generated_function"]
 
@@ -918,13 +935,13 @@ class TensorExpression(ExpressionBase):
 @fill_in_docstring
 def evaluate(
     expression: str,
-    fields: Dict[str, DataFieldBase],
+    fields: dict[str, DataFieldBase] | FieldCollection,
     *,
     bc: BoundariesData = "auto_periodic_neumann",
-    bc_ops: Optional[Dict[str, BoundariesData]] = None,
-    user_funcs: Optional[Dict[str, Callable]] = None,
-    consts: Optional[Dict[str, NumberOrArray]] = None,
-    label: Optional[str] = None,
+    bc_ops: dict[str, BoundariesData] | None = None,
+    user_funcs: dict[str, Callable] | None = None,
+    consts: dict[str, NumberOrArray] | None = None,
+    label: str | None = None,
 ) -> DataFieldBase:
     """evaluate an expression involving fields
 
@@ -943,8 +960,10 @@ def evaluate(
             expression, and `outer(field1, field2)` calculates an outer product.
             More information can be found in the
             :ref:`expression documentation <documentation-expressions>`.
-        fields (dict):
-            Dictionary of the fields involved in the expression.
+        fields (dict or :class:`~pde.fields.collection.FieldCollection`):
+            Dictionary of the fields involved in the expression. The dictionary keys
+            specify the field names allowed in `expression`. Alternatively, `fields` can
+            be a :class:`~pde.fields.collection.FieldCollection` with unique labels.
         bc:
             Boundary conditions for the operators used in the expression. The conditions
             here are applied to all operators that do not have a specialized condition
@@ -977,6 +996,18 @@ def evaluate(
     if consts is None:
         consts = {}
 
+    # get keys and values from input
+    if isinstance(fields, FieldCollection):
+        fields_keys = fields.labels
+        fields_values = fields.fields
+        if len(set(fields_keys)) != len(fields_values):
+            raise RuntimeError("Field names need to be unique")
+    elif isinstance(fields, dict):
+        fields_keys = fields.keys()  # type: ignore
+        fields_values = fields.values()  # type: ignore
+    else:
+        raise TypeError("`fields` must be dict or FieldCollection")
+
     # turn the expression strings into sympy expressions
     expr = ScalarExpression(expression, user_funcs=user_funcs, consts=consts)
 
@@ -989,7 +1020,7 @@ def evaluate(
 
     # setup boundary conditions
     if bc_ops is None:
-        bcs: Dict[str, Any] = {"*": bc}
+        bcs: dict[str, Any] = {"*": bc}
     else:
         bcs = dict(bc_ops)
         if "*" in bcs and bc != "auto_periodic_neumann":
@@ -998,7 +1029,7 @@ def evaluate(
 
     # check whether all fields have the same grid
     grid = None
-    for field in fields.values():
+    for field in fields_values:
         if grid is None:
             grid = field.grid
         else:
@@ -1009,12 +1040,13 @@ def evaluate(
     # prepare the differential operators
 
     # check whether PDE has variables with same names as grid axes
-    name_overlap = set(fields) & set(grid.axes)
+    name_overlap = set(fields_keys) & set(grid.axes)
     if name_overlap:
         raise ValueError(f"Coordinate {name_overlap} cannot be used as field name")
 
     # obtain the (differential) operators
-    ops: Dict[str, Callable] = {}
+    bcs_used = set()
+    ops: dict[str, Callable] = {}
     for func in operators:
         if func == "dot" or func == "inner":
             # add dot product between two vector fields. This can for instance
@@ -1028,8 +1060,9 @@ def evaluate(
         else:
             # determine boundary conditions for this operator and variable
             for bc_key, bc in bcs.items():
-                if bc_key == func or bc_key == "*":
-                    break  # found a matching boundary condition
+                if bc_key == func or bc_key == "*":  # found a matching condition
+                    bcs_used.add(bc_key)  # mark it as being used
+                    break
             else:
                 raise RuntimeError(
                     f"Could not find suitable boundary condition for function `{func}`"
@@ -1049,8 +1082,13 @@ def evaluate(
                 # we (almost) silently assume that sympy defines the operator
                 logger.info("Assuming that sympy knows undefined operator `%s`", func)
 
+    # check whether there are boundary conditions that have not been used
+    bcs_left = set(bcs.keys()) - bcs_used - {"*:*", "*"}
+    if bcs_left:
+        logger.warning("Unused BCs: %s", list(sorted(bcs_left)))
+
     # obtain the function to calculate the right hand side
-    signature = tuple(fields.keys()) + ("none", "bc_args")
+    signature = tuple(fields_keys) + ("none", "bc_args")
 
     # check whether this function depends on additional input
     if any(expr.depends_on(c) for c in grid.axes):
@@ -1077,7 +1115,7 @@ def evaluate(
     logger.info("Expression has signature %s", signature)
 
     # extract input field data and calculate result
-    field_data = [field.data for field in fields.values()]
+    field_data = [field.data for field in fields_values]
 
     # calculate the result of the expression
     func = expr._get_function(single_arg=False, user_funcs=ops)

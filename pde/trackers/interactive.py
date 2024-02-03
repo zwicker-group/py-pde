@@ -4,26 +4,28 @@ Special module for defining an interactive tracker that uses napari to display f
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 import logging
 import multiprocessing as mp
 import platform
 import queue
 import signal
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.plotting import napari_add_layers
 from .base import InfoDict, TrackerBase
-from .interrupts import IntervalData
+from .interrupts import InterruptData
 
 
 def napari_process(
     data_channel: mp.Queue,
-    initial_data: Dict[str, Dict[str, Any]],
-    t_initial: Optional[float] = None,
-    viewer_args: Optional[Dict[str, Any]] = None,
+    initial_data: dict[str, dict[str, Any]],
+    t_initial: float | None = None,
+    viewer_args: dict[str, Any] | None = None,
 ):
     """:mod:`multiprocessing.Process` running `napari <https://napari.org>`__
 
@@ -60,71 +62,71 @@ def napari_process(
     if viewer_args is None:
         viewer_args = {}
 
-    # start napari Qt GUI
-    with napari.gui_qt():
+    # create and initialize the viewer
+    viewer = napari.Viewer(**viewer_args)
+    napari_add_layers(viewer, initial_data)
 
-        # create and initialize the viewer
-        viewer = napari.Viewer(**viewer_args)
-        napari_add_layers(viewer, initial_data)
+    # add time if given
+    if t_initial is not None:
+        from qtpy.QtWidgets import QLabel
 
-        # add time if given
-        if t_initial is not None:
-            from qtpy.QtWidgets import QLabel
+        label = QLabel()
+        label.setText(f"Time: {t_initial}")
+        viewer.window.add_dock_widget(label)
+    else:
+        label = None
 
-            label = QLabel()
-            label.setText(f"Time: {t_initial}")
-            viewer.window.add_dock_widget(label)
+    def check_signal(msg: str | None):
+        """helper function that processes messages by the listener thread"""
+        if msg is None:
+            return  # do nothing
+        elif msg == "close":
+            viewer.close()
         else:
-            label = None
+            raise RuntimeError(f"Unknown message from listener: {msg}")
 
-        def check_signal(msg: Optional[str]):
-            """helper function that processes messages by the listener thread"""
-            if msg is None:
-                return  # do nothing
-            elif msg == "close":
-                viewer.close()
-            else:
-                raise RuntimeError(f"Unknown message from listener: {msg}")
+    @thread_worker(connect={"yielded": check_signal})
+    def update_listener():
+        """helper thread that listens to the data_channel"""
+        logger.info("Start napari thread to receive data")
 
-        @thread_worker(connect={"yielded": check_signal})
-        def update_listener():
-            """helper thread that listens to the data_channel"""
-            logger.info("Start napari thread to receive data")
-
-            # infinite loop waiting for events in the queue
+        # infinite loop waiting for events in the queue
+        while True:
+            # get all items from the queue and display the last update
+            update_data = None  # nothing to update yet
             while True:
-                # get all items from the queue and display the last update
-                update_data = None  # nothing to update yet
-                while True:
-                    time.sleep(0.02)  # read queue with 50 fps
-                    try:
-                        action, data = data_channel.get(block=False)
-                    except queue.Empty:
-                        break
+                time.sleep(0.02)  # read queue with 50 fps
+                try:
+                    action, data = data_channel.get(block=False)
+                except queue.Empty:
+                    break
 
-                    if action == "close":
-                        logger.info("Forced closing of napari...")
-                        yield "close"  # signal to napari process to shut down
-                        break
-                    elif action == "update":
-                        update_data = data
-                        # continue running until the queue is empty
-                    else:
-                        logger.warning(f"Unexpected action: {action}")
+                if action == "close":
+                    logger.info("Forced closing of napari...")
+                    yield "close"  # signal to napari process to shut down
+                    break
+                elif action == "update":
+                    update_data = data
+                    # continue running until the queue is empty
+                else:
+                    logger.warning(f"Unexpected action: {action}")
 
-                # update napari view when there is data
-                if update_data is not None:
-                    logger.debug(f"Update napari layer...")
-                    layer_data, t = update_data
-                    if label is not None:
-                        label.setText(f"Time: {t}")
-                    for name, layer_data in layer_data.items():
-                        viewer.layers[name].data = layer_data["data"]
+            # update napari view when there is data
+            if update_data is not None:
+                logger.debug(f"Update napari layer...")
+                layer_data, t = update_data
+                if label is not None:
+                    label.setText(f"Time: {t}")
+                for name, layer_data in layer_data.items():
+                    viewer.layers[name].data = layer_data["data"]
 
-                yield
+            yield
 
-        # start worker thread that listens to the data_channel
-        update_listener()
+    # start worker thread that listens to the data_channel
+    update_listener()
+
+    # start napari
+    napari.run()
 
     logger.info("Shutting down napari process")
 
@@ -132,7 +134,7 @@ def napari_process(
 class NapariViewer:
     """allows viewing and updating data in a separate napari process"""
 
-    def __init__(self, state: FieldBase, t_initial: Optional[float] = None):
+    def __init__(self, state: FieldBase, t_initial: float | None = None):
         """
         Args:
             state (:class:`pde.fields.base.FieldBase`): The initial state to be shown
@@ -248,14 +250,16 @@ class InteractivePlotTracker(TrackerBase):
     @fill_in_docstring
     def __init__(
         self,
-        interval: IntervalData = "0:01",
+        interrupts: InterruptData = "0:01",
+        *,
         close: bool = True,
         show_time: bool = False,
+        interval=None,
     ):
         """
         Args:
-            interval:
-                {ARG_TRACKER_INTERVAL}
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             close (bool):
                 Flag indicating whether the napari window is closed automatically at the
                 end of the simulation. If `False`, the tracker blocks when `finalize` is
@@ -263,12 +267,11 @@ class InteractivePlotTracker(TrackerBase):
             show_time (bool):
                 Whether to indicate the time
         """
-        # initialize the tracker
-        super().__init__(interval=interval)
+        super().__init__(interrupts=interrupts, interval=interval)
         self.close = close
         self.show_time = show_time
 
-    def initialize(self, state: FieldBase, info: Optional[InfoDict] = None) -> float:
+    def initialize(self, state: FieldBase, info: InfoDict | None = None) -> float:
         """initialize the tracker with information about the simulation
 
         Args:
@@ -299,7 +302,7 @@ class InteractivePlotTracker(TrackerBase):
         """
         self._viewer.update(state, t)
 
-    def finalize(self, info: Optional[InfoDict] = None) -> None:
+    def finalize(self, info: InfoDict | None = None) -> None:
         """finalize the tracker, supplying additional information
 
         Args:

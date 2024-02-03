@@ -8,9 +8,11 @@ import subprocess as sp
 from dataclasses import dataclass, field
 from pathlib import Path
 from string import Template
-from typing import List, Set
+from typing import List, Optional, Set
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
+MIN_PYTHON_VERSION = "3.8"
+MAX_PYTHON_VERSION = "3.11"
 
 
 @dataclass
@@ -18,8 +20,9 @@ class Requirement:
     """simple class collecting data for a single required python package"""
 
     name: str  # name of the python package
-    version: str  # minimal version
+    version_min: str  # minimal version
     usage: str = ""  # description for how the package is used in py-pde
+    relation: Optional[str] = None  # relation used to compare version number
     essential: bool = False  # basic requirement for the package
     docs_only: bool = False  # only required for creating documentation
     tests_only: bool = False  # only required for running tests
@@ -27,8 +30,8 @@ class Requirement:
 
     @property
     def short_version(self) -> str:
-        """str: simplified version string"""
-        version = self.version
+        """str: simplified version_min string"""
+        version = self.version_min.split(",")[0]  # only use the first part
         processing = True
         while processing:
             if version.endswith(".0"):
@@ -41,124 +44,136 @@ class Requirement:
         """create a line for a requirements file
 
         Args:
-            relation (str): The relation used for version comparison
+            relation (str):
+                The relation used for version_min comparison if self.relation is None
 
         Returns:
             str: A string that can be written to a requirements file
         """
-        return f"{self.name}{relation}{self.version}"
+        if self.relation is not None:
+            relation = self.relation
+        return f"{self.name}{relation}{self.version_min}"
 
 
 REQUIREMENTS = [
     # essential requirements
     Requirement(
         name="matplotlib",
-        version="3.1.0",
+        version_min="3.1.0",
         usage="Visualizing results",
         essential=True,
     ),
     Requirement(
         name="numba",
-        version="0.56.0",
+        version_min="0.56.0",
         usage="Just-in-time compilation to accelerate numerics",
         essential=True,
     ),
     Requirement(
         name="numpy",
-        version="1.22.0",
+        version_min="1.22.0",
         usage="Handling numerical data",
         essential=True,
     ),
     Requirement(
         name="py-modelrunner",
-        version="0.3",
+        version_min="0.15",
         usage="Handling input/output",
         essential=True,
     ),
     Requirement(
         name="scipy",
-        version="1.4.0",
+        version_min="1.10.0",
         usage="Miscellaneous scientific functions",
         essential=True,
     ),
     Requirement(
         name="sympy",
-        version="1.5.0",
+        version_min="1.9.0",
         usage="Dealing with user-defined mathematical expressions",
         essential=True,
     ),
     Requirement(
         name="tqdm",
-        version="4.60",
+        version_min="4.60",
         usage="Display progress bars during calculations",
         essential=True,
     ),
     # general, optional requirements
     Requirement(
         name="h5py",
-        version="2.10",
+        version_min="2.10",
         usage="Storing data in the hierarchical file format",
         collections={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="pandas",
-        version="1.2",
+        version_min="1.2",
         usage="Handling tabular data",
         collections={"full", "multiprocessing", "docs"},
     ),
     Requirement(
         name="pyfftw",
-        version="0.12",
+        version_min="0.12",
         usage="Faster Fourier transforms",
         collections={"full"},
     ),
     Requirement(
+        name="rocket-fft",
+        version_min="0.2",
+        usage="Numba-compiled fast Fourier transforms",
+        collections={"full"},
+    ),
+    Requirement(
         name="ipywidgets",
-        version="7",
+        version_min="7",
         usage="Jupyter notebook support",
         collections={"interactive"},
     ),
     Requirement(
         name="mpi4py",
-        version="3",
+        version_min="3",
         usage="Parallel processing using MPI",
         collections={"multiprocessing"},
     ),
     Requirement(
         name="napari",
-        version="0.4.8",
+        version_min="0.4.8",
         usage="Displaying images interactively",
         collections={"interactive"},
     ),
     Requirement(
         name="numba-mpi",
-        version="0.18",
+        version_min="0.22",
         usage="Parallel processing using MPI+numba",
         collections={"multiprocessing"},
     ),
     # for documentation only
-    Requirement(name="Sphinx", version="4", docs_only=True),
-    Requirement(name="sphinx-autodoc-annotation", version="1.0", docs_only=True),
-    Requirement(name="sphinx-gallery", version="0.6", docs_only=True),
-    Requirement(name="sphinx-rtd-theme", version="0.4", docs_only=True),
-    Requirement(name="Pillow", version="7.0", docs_only=True),
+    Requirement(name="Sphinx", version_min="4", docs_only=True),
+    Requirement(name="sphinx-autodoc-annotation", version_min="1.0", docs_only=True),
+    Requirement(name="sphinx-gallery", version_min="0.6", docs_only=True),
+    Requirement(name="sphinx-rtd-theme", version_min="1", docs_only=True),
+    Requirement(name="Pillow", version_min="7.0", docs_only=True),
     # for tests only
-    Requirement(name="jupyter_contrib_nbextensions", version="0.5", tests_only=True),
-    Requirement(name="black", version="19.*", tests_only=True),
-    Requirement(name="isort", version="5.1", tests_only=True),
-    Requirement(name="mypy", version="0.770", tests_only=True),
-    Requirement(name="pyinstrument", version="3", tests_only=True),
-    Requirement(name="pytest", version="5.4", tests_only=True),
-    Requirement(name="pytest-cov", version="2.8", tests_only=True),
-    Requirement(name="pytest-xdist", version="1.30", tests_only=True),
+    Requirement(
+        name="jupyter_contrib_nbextensions", version_min="0.5", tests_only=True
+    ),
+    Requirement(name="black", version_min="24.*", tests_only=True),
+    Requirement(name="importlib-metadata", version_min="5", tests_only=True),
+    Requirement(name="isort", version_min="5.1", tests_only=True),
+    Requirement(name="mypy", version_min="0.770", tests_only=True),
+    Requirement(name="notebook", version_min="6.5", relation="~=", tests_only=True),
+    Requirement(name="pyupgrade", version_min="3", tests_only=True),
+    Requirement(name="pytest", version_min="5.4", tests_only=True),
+    Requirement(name="pytest-cov", version_min="2.8", tests_only=True),
+    Requirement(name="pytest-xdist", version_min="1.30", tests_only=True),
 ]
 
 
-SETUP_WARNING = """
-# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
-# If you want to adjust settings in this file, change scripts/templates/setup.py
-
-"""
+SETUP_WARNING = (
+    "# THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN\n"
+    "# If you want to adjust settings in this file, change scripts/_templates/{}\n\n"
+)
 
 
 def write_requirements_txt(
@@ -179,6 +194,7 @@ def write_requirements_txt(
         comment (str): An optional comment on top of the requirements file
     """
     print(f"Write `{path}`")
+    path.parent.mkdir(exist_ok=True, parents=True)  # ensure path exists
     with open(path, "w") as fp:
         if comment:
             fp.write(f"# {comment}\n")
@@ -224,7 +240,7 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
 
     # read user-created content of file
     content = []
-    with open(path, "r") as fp:
+    with open(path) as fp:
         for line in fp:
             if "GENERATED CODE" in line:
                 content.append(line)
@@ -235,7 +251,7 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
 
     # add generated code
     for r in sorted(requirements, key=lambda r: r.name.lower()):
-        content.append(f'check_package_version("{r.name}", "{r.version}")\n')
+        content.append(f'check_package_version("{r.name}", "{r.version_min}")\n')
     content.append("del check_package_version\n")
 
     # write content back to file
@@ -243,36 +259,59 @@ def write_requirements_py(path: Path, requirements: List[Requirement]):
         fp.writelines(content)
 
 
-def write_script(path: Path, requirements: List[Requirement], template_name: str):
-    """write script based on a template
+def write_from_template(
+    path: Path,
+    template_name: str,
+    *,
+    requirements: Optional[List[Requirement]] = None,
+    fix_format: bool = False,
+    add_warning: bool = True,
+):
+    """write file based on a template
 
     Args:
         path (:class:`Path`): The path where the requirements are written
-        requirements (list): The requirements to be written
         template_name (str): The name of the template
+        requirements (list): The requirements to be written
+        fix_format (bool): If True, script will be formated using `black`
+        add_warning (bool): If True, adds a warning that file is generated
     """
     print(f"Write `{path}`")
 
-    # format requirements list
-    req_list = "[" + ", ".join('"' + ref.line(">=") + '"' for ref in requirements) + "]"
-
     # load template data
-    template_path = Path(__file__).parent / "templates" / template_name
+    template_path = Path(__file__).parent / "_templates" / template_name
     with template_path.open("r") as fp:
         template = Template(fp.read())
 
-    # format template
-    substitutes = {"INSTALL_REQUIRES": req_list}
+    # parse python version_min
+    major, minor = MAX_PYTHON_VERSION.split(".")
+    minor_next = int(minor) + 1
+
+    # determine template substitutes
+    substitutes = {
+        "MIN_PYTHON_VERSION": MIN_PYTHON_VERSION,
+        "MIN_PYTHON_VERSION_NODOT": MIN_PYTHON_VERSION.replace(".", ""),
+        "MAX_PYTHON_VERSION": MAX_PYTHON_VERSION,
+        "MAX_PYTHON_VERSION_NEXT": f"{major}.{minor_next}",
+    }
+    if requirements:
+        req_list = (
+            "[" + ", ".join('"' + ref.line(">=") + '"' for ref in requirements) + "]"
+        )
+        substitutes["INSTALL_REQUIRES"] = req_list
     for ref in REQUIREMENTS:
         substitutes[ref.name.replace("-", "_")] = ref.line(">=")
     content = template.substitute(substitutes)
 
     # write content to file
     with open(path, "w") as fp:
-        fp.writelines(SETUP_WARNING + content)
+        if add_warning:
+            fp.writelines(SETUP_WARNING.format(template_name))
+        fp.writelines(content)
 
     # call black formatter on it
-    sp.check_call(["black", "-q", "-t", "py38", str(path)])
+    if fix_format:
+        sp.check_call(["black", "-q", "-t", "py38", str(path)])
 
 
 def main():
@@ -283,6 +322,12 @@ def main():
     write_requirements_txt(
         root / "requirements.txt",
         [r for r in REQUIREMENTS if r.essential],
+    )
+    # write basic requirements
+    write_requirements_txt(
+        root / "pde" / "tools" / "resources" / "requirements_basic.txt",
+        [r for r in REQUIREMENTS if r.essential],
+        comment="These are the basic requirements for the package",
     )
 
     # write minimal requirements to tests folder
@@ -299,12 +344,23 @@ def main():
         [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
         comment="These are the full requirements used to test all functions",
     )
+    # write full requirements to tests folder
+    write_requirements_txt(
+        root / "pde" / "tools" / "resources" / "requirements_full.txt",
+        [r for r in REQUIREMENTS if r.essential or "full" in r.collections],
+        comment="These are the full requirements used to test all functions",
+    )
 
     # write full requirements to tests folder
     write_requirements_txt(
         root / "tests" / "requirements_mpi.txt",
         [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
         comment="These are requirements used to test multiprocessing",
+    )
+    write_requirements_txt(
+        root / "pde" / "tools" / "resources" / "requirements_mpi.txt",
+        [r for r in REQUIREMENTS if r.essential or "multiprocessing" in r.collections],
+        comment="These are requirements for supporting multiprocessing",
     )
 
     # write requirements to tests folder
@@ -333,16 +389,15 @@ def main():
         [r for r in REQUIREMENTS if not (r.essential or r.tests_only or r.docs_only)],
     )
 
-    # write version.py
-    write_requirements_py(
-        root / "pde" / "__init__.py",
-        [r for r in REQUIREMENTS if r.essential],
+    # write pyproject.toml
+    write_from_template(
+        root / "pyproject.toml",
+        "pyproject.toml",
+        requirements=[r for r in REQUIREMENTS if r.essential],
     )
 
-    # write setup.py
-    write_script(
-        root / "setup.py", [r for r in REQUIREMENTS if r.essential], "setup.py"
-    )
+    # write pyproject.toml
+    write_from_template(root / "runtime.txt", "runtime.txt", add_warning=False)
 
 
 if __name__ == "__main__":

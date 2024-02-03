@@ -65,9 +65,8 @@ The documentation, including the docstrings, are written using `reStructuredText
 following `cheatsheet
 <https://github.com/ralsina/rst-cheatsheet/blob/master/rst-cheatsheet.rst>`_.
 To ensure the integrity of the code, we also try to provide many test functions,
-which are typically contained in separate modules in sub-packages called
-:mod:`tests`.
-These tests can be ran using scripts in the :file:`tests` subfolder in the root
+contained in the separate sub-folder :file:`tests`.
+These tests can be ran using scripts in the :file:`scripts` subfolder in the root
 folder.
 This folder also contain a script :file:`tests_types.sh`, which uses :mod:`mypy`
 to check the consistency of the python type annotations.
@@ -86,21 +85,18 @@ being created.
 
 Running unit tests
 """"""""""""""""""
-The :mod:`pde` package contains several unit tests, typically contained in 
-sub-module :mod:`tests` in the folder of a given module. These tests ensure that
-basic functions work as expected, in particular when code is changed in future
-versions. To run all tests, there are a few convenience scripts in the root
-directory :file:`tests`. The most basic script is :file:`tests_run.sh`, which
-uses :mod:`pytest` to run the tests in the sub-modules of the :mod:`pde`
-package. Clearly, the python package :mod:`pytest` needs to be installed. There
-are also additional scripts that for instance run tests in parallel (need the
-python package :mod:`pytest-xdist` installed), measure test coverage (need
-package :mod:`pytest-cov` installed), and make simple performance measurements.
-Moreover, there is a script :file:`test_types.sh`, which uses :mod:`mypy` to
-check the consistency of the python type annotations and there is a script
-:file:`format_code.sh`, which formats the code automatically to adhere to our style.
+The :mod:`pde` package contains several unit tests, collection in the :file:`tests`
+folder in the project root. These tests ensure that basic functions work as expected,
+in particular when code is changed in future versions. To run all tests, there are a
+few convenience scripts in the root directory :file:`scripts`. The most basic script is
+:file:`tests_run.sh`, which uses :mod:`pytest` to run the tests. Clearly, the python
+package :mod:`pytest` needs to be installed. There are also additional scripts that for
+instance run tests in parallel (needs the python package :mod:`pytest-xdist` installed),
+measure test coverage (needs package :mod:`pytest-cov` installed), and make simple
+performance measurements. Moreover, there is a script :file:`test_types.sh`, which uses
+:mod:`mypy` to check the consistency of the python type annotations and there is a
+script :file:`format_code.sh`, which formats the code automatically to adhere to our style.
 
-Before committing a change to the code repository, it is good practice to run
-the tests, check the type annotations, and the coding style with the scripts
-described above.
+Before committing a change to the code repository, it is good practice to run the tests,
+check the type annotations, and the coding style with the scripts described above.
 

@@ -1,26 +1,24 @@
 """
-Defines an implicit solver
-   
+Defines an implicit Euler solver
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import Callable, Tuple
+from __future__ import annotations
+
+from typing import Callable
 
 import numba as nb
 import numpy as np
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
-from ..tools.numba import jit
-from .base import SolverBase
-
-
-class ConvergenceError(RuntimeError):
-    pass
+from ..tools.typing import BackendType
+from .base import ConvergenceError, SolverBase
 
 
 class ImplicitSolver(SolverBase):
-    """class for solving partial differential equations implicitly"""
+    """implicit (backward) Euler PDE solver"""
 
     name = "implicit"
 
@@ -29,7 +27,7 @@ class ImplicitSolver(SolverBase):
         pde: PDEBase,
         maxiter: int = 100,
         maxerror: float = 1e-4,
-        backend: str = "auto",
+        backend: BackendType = "auto",
     ):
         """
         Args:
@@ -40,43 +38,29 @@ class ImplicitSolver(SolverBase):
             maxerror (float):
                 The maximal error that is permitted in each step
             backend (str):
-                Determines how the function is created. Accepted  values are
-                'numpy` and 'numba'. Alternatively, 'auto' lets the code decide
-                for the most optimal backend.
+                Determines how the function is created. Accepted  values are 'numpy` and
+                'numba'. Alternatively, 'auto' lets the code decide for the most optimal
+                backend.
         """
-        super().__init__(pde)
+        super().__init__(pde, backend=backend)
         self.maxiter = maxiter
         self.maxerror = maxerror
-        self.backend = backend
 
-    def make_stepper(
-        self, state: FieldBase, dt=None
-    ) -> Callable[[FieldBase, float, float], float]:
-        """return a stepper function using an implicit scheme
+    def _make_single_step_fixed_dt_deterministic(
+        self, state: FieldBase, dt: float
+    ) -> Callable[[np.ndarray, float], None]:
+        """return a function doing a deterministic step with an implicit Euler scheme
 
         Args:
-            state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other
-                information can be extracted
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
             dt (float):
-                Time step of the explicit stepping. If `None`, this solver
-                specifies 1e-3 as a default value.
-
-        Returns:
-            Function that can be called to advance the `state` from time
-            `t_start` to time `t_end`. The function call signature is
-            `(state: numpy.ndarray, t_start: float, t_end: float)`
+                Time step of the implicit step
         """
         if self.pde.is_sde:
             raise RuntimeError("Cannot use implicit stepper with stochastic equation")
 
-        # support `None` as a default value, so the controller can signal that
-        # the solver should use a default time step
-        if dt is None:
-            dt = 1e-3
-
-        self.info["dt"] = dt
-        self.info["steps"] = 0
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
@@ -87,67 +71,135 @@ class ImplicitSolver(SolverBase):
         maxerror2 = self.maxerror**2
 
         # handle deterministic version of the pde
-        def inner_stepper(
-            state_data: np.ndarray, t_start: float, steps: int
-        ) -> Tuple[float, int]:
+        def implicit_step(state_data: np.ndarray, t: float) -> None:
             """compiled inner loop for speed"""
             nfev = 0  # count function evaluations
-            for i in range(steps):
-                t = t_start + i * dt  # current time point
-                tn = t + dt  # next time point
 
-                # estimate state at next time point
-                evolution_last = dt * rhs(state_data, t)
+            # save state at current time point t for stepping
+            state_t = state_data.copy()
 
-                for n in range(maxiter):
-                    # fixed point iteration for improving state after dt
-                    state_guess = state_data + evolution_last
-                    evolution_this = dt * rhs(state_guess, tn)
+            # estimate state at next time point
+            state_data[:] = state_t + dt * rhs(state_data, t)
+            state_prev = np.empty_like(state_data)
 
-                    # calculate mean squared error
-                    err = 0.0
-                    for j in range(state_data.size):
-                        diff = (
-                            state_guess.flat[j]
-                            - state_data.flat[j]
-                            - evolution_this.flat[j]
-                        )
-                        err += (diff.conjugate() * diff).real
-                    err /= state_data.size
+            # fixed point iteration for improving state after dt
+            for n in range(maxiter):
+                state_prev[:] = state_data  # keep previous state to judge convergence
+                # another interation to improve estimate
+                state_data[:] = state_t + dt * rhs(state_data, t + dt)
 
-                    if err < maxerror2:
-                        # fix point iteration converged
-                        break
+                # calculate mean squared error to judge convergence
+                err = 0.0
+                for j in range(state_data.size):
+                    diff = state_data.flat[j] - state_prev.flat[j]
+                    err += (diff.conjugate() * diff).real
+                err /= state_data.size
 
-                    evolution_last = evolution_this
-                else:
-                    with nb.objmode:
-                        self._logger.warning(
-                            "Implicit Euler step did not converge after %d iterations "
-                            "at t=%g (error=%g)",
-                            maxiter,
-                            t,
-                            err,
-                        )
-                    raise ConvergenceError("Implicit Euler step did not converge.")
-                nfev += n + 1
-                state_data += evolution_this
+                if err < maxerror2:
+                    # fix point iteration converged
+                    break
+            else:
+                with nb.objmode:
+                    self._logger.warning(
+                        "Implicit Euler step did not converge after %d iterations "
+                        "at t=%g (error=%g)",
+                        maxiter,
+                        t,
+                        err,
+                    )
+                raise ConvergenceError("Implicit Euler step did not converge.")
+            nfev += n + 1
 
-            return tn, nfev
+        self._logger.info("Init implicit Euler stepper with dt=%g", dt)
+        return implicit_step
 
-        if self.info["backend"] == "numba":
-            # compile inner step
-            sig = (nb.typeof(state.data), nb.double, nb.int_)
-            inner_stepper = jit(sig)(inner_stepper)
+    def _make_single_step_fixed_dt_stochastic(
+        self, state: FieldBase, dt: float
+    ) -> Callable[[np.ndarray, float], None]:
+        """return a function doing a step for a SDE with an implicit Euler scheme
 
-        def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """use Euler stepping to advance `state` from `t_start` to `t_end`"""
-            # calculate number of steps (which is at least 1)
-            steps = max(1, int(np.ceil((t_end - t_start) / dt)))
-            t_last, nfev = inner_stepper(state.data, t_start, steps)
-            self.info["steps"] += steps
-            self.info["function_evaluations"] += nfev
-            return t_last
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step of the implicit step
+        """
+        self.info["function_evaluations"] = 0
+        self.info["scheme"] = "implicit-euler-maruyama"
+        self.info["stochastic"] = True
+        self.info["dt_adaptive"] = False
 
-        self._logger.info(f"Initialized implicit Euler stepper with dt=%g", dt)
-        return stepper
+        rhs = self.pde.make_pde_rhs(state, backend=self.backend)  # type: ignore
+        rhs_sde = self._make_sde_rhs(state, backend=self.backend)
+        maxiter = int(self.maxiter)
+        maxerror2 = self.maxerror**2
+
+        # handle deterministic version of the pde
+        def implicit_step(state_data: np.ndarray, t: float) -> None:
+            """compiled inner loop for speed"""
+            nfev = 0  # count function evaluations
+
+            # save state at current time point t for stepping
+            state_t = state_data.copy()
+
+            # estimate state at next time point
+            evolution_rate, noise_realization = rhs_sde(state_data, t)
+            state_data[:] = state_t + dt * evolution_rate  # estimated state
+
+            if noise_realization is not None:
+                # add the noise to the reference state at the current time point and
+                # adept the state at the next time point iteratively below
+                state_t += np.sqrt(dt) * noise_realization
+
+            state_prev = np.empty_like(state_data)
+
+            # fixed point iteration for improving state after dt
+            for n in range(maxiter):
+                state_prev[:] = state_data  # keep previous state to judge convergence
+                # another interation to improve estimate
+                state_data[:] = state_t + dt * rhs(state_data, t + dt)
+
+                # calculate mean squared error to judge convergence
+                err = 0.0
+                for j in range(state_data.size):
+                    diff = state_data.flat[j] - state_prev.flat[j]
+                    err += (diff.conjugate() * diff).real
+                err /= state_data.size
+
+                if err < maxerror2:
+                    # fix point iteration converged
+                    break
+            else:
+                with nb.objmode:
+                    self._logger.warning(
+                        "Semi-implicit Euler-Maruyama step did not converge after %d "
+                        "iterations at t=%g (error=%g)",
+                        maxiter,
+                        t,
+                        err,
+                    )
+                raise ConvergenceError(
+                    "Semi-implicit Euler-Maruyama step did not converge."
+                )
+            nfev += n + 1
+
+        self._logger.info("Init semi-implicit Euler-Maruyama stepper with dt=%g", dt)
+        return implicit_step
+
+    def _make_single_step_fixed_dt(
+        self, state: FieldBase, dt: float
+    ) -> Callable[[np.ndarray, float], None]:
+        """return a function doing a single step with an implicit Euler scheme
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+            dt (float):
+                Time step of the implicit step
+        """
+        if self.pde.is_sde:
+            return self._make_single_step_fixed_dt_stochastic(state, dt)
+        else:
+            return self._make_single_step_fixed_dt_deterministic(state, dt)

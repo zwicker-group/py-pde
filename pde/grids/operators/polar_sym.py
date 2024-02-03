@@ -9,12 +9,14 @@ This module implements differential operators on polar grids
    make_divergence
    make_vector_gradient
    make_tensor_divergence
-   
-   
+   make_poisson_solver
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Tuple
+from __future__ import annotations
+
+from typing import Literal
 
 import numpy as np
 
@@ -45,7 +47,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
     # calculate preliminary quantities
     dim_r = grid.shape[0]
     dr = grid.discretization[0]
-    rs = grid.axes_coords[0]
+    factor_r = 1 / (2 * grid.axes_coords[0] * dr)
     dr_2 = 1 / dr**2
 
     @jit
@@ -53,7 +55,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
         """apply laplace operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
             out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr_2
-            out[i - 1] += (arr[i + 1] - arr[i - 1]) / (2 * rs[i - 1] * dr)
+            out[i - 1] += (arr[i + 1] - arr[i - 1]) * factor_r[i - 1]
 
     return laplace  # type: ignore
 
@@ -251,7 +253,7 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
 
 
 @fill_in_docstring
-def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     """get sparse matrix for laplace operator on a polar grid
 
     Args:
@@ -286,7 +288,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
                 matrix[i, i + 1] = 2 * scale
                 continue  # the special case of the inner boundary is handled
             else:
-                const, entries = bcs[0].get_data((-1,))
+                const, entries = bcs[0].get_sparse_matrix_data((-1,))
                 factor = scale - scale_i
                 vector[i] += const * factor
                 for k, v in entries.items():
@@ -296,7 +298,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
             matrix[i, i - 1] = scale - scale_i
 
         if i == dim_r - 1:
-            const, entries = bcs[0].get_data((dim_r,))
+            const, entries = bcs[0].get_sparse_matrix_data((dim_r,))
             factor = scale + scale_i
             vector[i] += const * factor
             for k, v in entries.items():
@@ -310,7 +312,9 @@ def _get_laplace_matrix(bcs: Boundaries) -> Tuple[np.ndarray, np.ndarray]:
 
 @PolarSymGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_poisson_solver(bcs: Boundaries, method: str = "auto") -> OperatorType:
+def make_poisson_solver(
+    bcs: Boundaries, method: Literal["auto", "scipy"] = "auto"
+) -> OperatorType:
     """make a operator that solves Poisson's equation
 
     {DESCR_POLAR_GRID}
