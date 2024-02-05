@@ -111,7 +111,7 @@ REQUIREMENTS = [
         name="pyfftw",
         version_min="0.12",
         usage="Faster Fourier transforms",
-        collections={"full"},
+        collections={},  # include in "full" collection when pyfftw supports python 3.12
     ),
     Requirement(
         name="rocket-fft",
