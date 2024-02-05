@@ -3,4 +3,4 @@ numba>=0.59
 numpy>=1.22
 scipy>=1.10
 sympy>=1.9
-tqdm>=4.60
+tqdm>=4.66

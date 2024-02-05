@@ -8,4 +8,4 @@ numpy>=1.22
 pandas>=1.2
 scipy>=1.10
 sympy>=1.9
-tqdm>=4.60
+tqdm>=4.66

@@ -90,7 +90,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="tqdm",
-        version_min="4.60",
+        version_min="4.66",
         usage="Display progress bars during calculations",
         essential=True,
     ),
@@ -121,7 +121,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="ipywidgets",
-        version_min="7",
+        version_min="8",
         usage="Jupyter notebook support",
         collections={"interactive"},
     ),
@@ -157,7 +157,7 @@ REQUIREMENTS = [
     Requirement(name="importlib-metadata", version_min="5", tests_only=True),
     Requirement(name="isort", version_min="5.1", tests_only=True),
     Requirement(name="mypy", version_min="0.770", tests_only=True),
-    Requirement(name="notebook", version_min="6.5", relation="~=", tests_only=True),
+    Requirement(name="notebook", version_min="7", relation="~=", tests_only=True),
     Requirement(name="pyupgrade", version_min="3", tests_only=True),
     Requirement(name="pytest", version_min="5.4", tests_only=True),
     Requirement(name="pytest-cov", version_min="2.8", tests_only=True),
