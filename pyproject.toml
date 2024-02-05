@@ -31,7 +31,7 @@ dependencies = ["matplotlib>=3.1", "numba>=0.59", "numpy>=1.22", "scipy>=1.10", 
 
 [project.optional-dependencies]
 hdf = ["h5py>=2.10"]
-io = ["h5py>=2.10", "pandas>=1.2"]
+io = ["h5py>=2.10", "pandas>=2"]
 interactive = ["napari>=0.4.8", "ipywidgets>=8"]
 mpi = ["numba-mpi>=0.22", "mpi4py>=3"]
 
