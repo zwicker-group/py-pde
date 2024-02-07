@@ -115,7 +115,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="rocket-fft",
-        version_min="0.2",
+        version_min="0.2.4",
         usage="Numba-compiled fast Fourier transforms",
         collections={"full"},
     ),
