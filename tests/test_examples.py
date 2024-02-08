@@ -106,4 +106,4 @@ def test_jupyter_notebooks(path, tmp_path):
         )
     else:
         # run the notebook
-        sp.check_call([sys.executable, "-m", "jupyter", "run", path], env=my_env)
+        sp.check_call([sys.executable, "-m", "jupyter", "execute", path], env=my_env)
