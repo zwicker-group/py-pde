@@ -9,7 +9,8 @@ from __future__ import annotations
 import json
 import logging
 import warnings
-from typing import Any, Callable, Iterator, Literal, Mapping, Sequence, overload
+from collections.abc import Iterator, Mapping, Sequence
+from typing import Any, Callable, Literal, overload
 
 import numpy as np
 from matplotlib import cm
@@ -20,7 +21,6 @@ try:
     from matplotlib.colormaps import get_cmap
 except ImportError:
     from matplotlib.cm import get_cmap
-
 
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring

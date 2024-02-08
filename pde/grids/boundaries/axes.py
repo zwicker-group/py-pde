@@ -8,7 +8,8 @@ This module handles the boundaries of all axes of a grid. It only defines
 
 from __future__ import annotations
 
-from typing import Sequence, Union
+from collections.abc import Sequence
+from typing import Union
 
 import numpy as np
 from numba.extending import register_jitable

@@ -6,7 +6,8 @@ Cylindrical grids with azimuthal symmetry
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generator, Literal, Sequence
+from collections.abc import Generator, Sequence
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 

@@ -17,7 +17,7 @@ PACKAGE_PATH = Path(__file__).resolve().parents[1]
 EXAMPLES = (PACKAGE_PATH / "examples").glob("*.py")
 NOTEBOOKS = (PACKAGE_PATH / "examples").glob("*/*.ipynb")
 
-SKIP_EXAMPLES: List[str] = []
+SKIP_EXAMPLES: list[str] = []
 if not Movie.is_available():
     SKIP_EXAMPLES.extend(["make_movie_live.py", "make_movie_storage.py"])
 if not module_available("mpi4py"):
@@ -106,4 +106,4 @@ def test_jupyter_notebooks(path, tmp_path):
         )
     else:
         # run the notebook
-        sp.check_call([sys.executable, "-m", "jupyter", "run", path], env=my_env)
+        sp.check_call([sys.executable, "-m", "jupyter", "execute", path], env=my_env)

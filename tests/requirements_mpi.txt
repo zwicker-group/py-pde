@@ -1,11 +1,11 @@
 # These are requirements used to test multiprocessing
 h5py>=2.10
-matplotlib>=3.1.0
+matplotlib>=3.1
 mpi4py>=3
-numba>=0.56.0
+numba>=0.59
 numba-mpi>=0.22
-numpy>=1.22.0
-pandas>=1.2
-scipy>=1.10.0
-sympy>=1.9.0
-tqdm>=4.60
+numpy>=1.22
+pandas>=2
+scipy>=1.10
+sympy>=1.9
+tqdm>=4.66

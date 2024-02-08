@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, TypeVar, Union
 
 from .. import __version__
 from ..tools import mpi
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from ..fields.base import FieldBase
 
 
-TRangeType = Union[float, Tuple[float, float]]
+TRangeType = Union[float, tuple[float, float]]
 TState = TypeVar("TState", bound="FieldBase")
 
 

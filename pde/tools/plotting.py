@@ -24,7 +24,8 @@ import functools
 import logging
 import sys
 import warnings
-from typing import TYPE_CHECKING, Any, Generator, Literal
+from collections.abc import Generator
+from typing import TYPE_CHECKING, Any, Literal
 
 from ..tools.docstrings import replace_in_docstring
 

@@ -7,8 +7,9 @@ Defines a scalar field over a grid
 from __future__ import annotations
 
 import numbers
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Literal, Sequence
+from typing import TYPE_CHECKING, Callable, Literal
 
 import numpy as np
 from numpy.typing import DTypeLike

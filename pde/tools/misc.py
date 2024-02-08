@@ -29,8 +29,9 @@ import json
 import os
 import unittest
 import warnings
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Callable, Sequence, TypeVar
+from typing import Any, Callable, TypeVar
 
 import numpy as np
 from numpy.typing import DTypeLike

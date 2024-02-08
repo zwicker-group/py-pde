@@ -8,7 +8,9 @@ jobs:
     timeout-minutes: 15
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+
     - uses: ammaraskar/sphinx-action@master
       with:
         docs-folder: "docs/"
+        pre-build-command: "pip install --upgrade pip"

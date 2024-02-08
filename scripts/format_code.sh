@@ -3,7 +3,7 @@
 
 echo "Upgrading python syntax..."
 pushd .. > /dev/null
-find . -name '*.py' -exec pyupgrade --py38-plus {} +
+find . -name '*.py' -exec pyupgrade --py39-plus {} +
 popd > /dev/null
 
 echo "Formating import statements..."

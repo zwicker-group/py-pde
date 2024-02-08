@@ -9,7 +9,7 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.8,<3.12"
+requires-python = ">=3.9,<3.13"
 dynamic = ["version"]
 
 keywords = ["pdes", "partial-differential-equations", "dynamical-systems"]
@@ -20,19 +20,19 @@ classifiers = [
     "Topic :: Scientific/Engineering",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 
 # Requirements for setuptools
-dependencies = ["matplotlib>=3.1.0", "numba>=0.56.0", "numpy>=1.22.0", "scipy>=1.10.0", "sympy>=1.9.0", "tqdm>=4.60"]
+dependencies = ["matplotlib>=3.1", "numba>=0.59", "numpy>=1.22", "scipy>=1.10", "sympy>=1.9", "tqdm>=4.66"]
 
 [project.optional-dependencies]
 hdf = ["h5py>=2.10"]
-io = ["h5py>=2.10", "pandas>=1.2"]
-interactive = ["napari>=0.4.8", "ipywidgets>=7"]
+io = ["h5py>=2.10", "pandas>=2"]
+interactive = ["napari>=0.4.8", "ipywidgets>=8"]
 mpi = ["numba-mpi>=0.22", "mpi4py>=3"]
 
 [project.urls]
@@ -59,7 +59,7 @@ namespaces = false
 write_to = "pde/_version.py"
 
 [tool.black]
-target_version = ["py38"]
+target_version = ["py39"]
 exclude = "scripts/templates"
 
 [tool.isort]
@@ -77,7 +77,7 @@ filterwarnings = [
 ]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 plugins = "numpy.typing.mypy_plugin"
 warn_return_any = true
 warn_unused_configs = true

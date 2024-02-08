@@ -9,7 +9,9 @@ Functions making use of spectral decompositions
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-from typing import Callable, Optional, Tuple
+from __future__ import annotations
+
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -22,11 +24,11 @@ except ImportError:
 
 
 def make_colored_noise(
-    shape: Tuple[int, ...],
+    shape: tuple[int, ...],
     dx=1.0,
     exponent: float = 0,
     scale: float = 1,
-    rng: Optional[np.random.Generator] = None,
+    rng: np.random.Generator | None = None,
 ) -> Callable[[], np.ndarray]:
     r"""Return a function creating an array of random values that obey
 

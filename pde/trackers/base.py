@@ -10,7 +10,8 @@ import logging
 import math
 import warnings
 from abc import ABCMeta, abstractmethod
-from typing import Any, Dict, Optional, Sequence, Union
+from collections.abc import Sequence
+from typing import Any, Optional, Union
 
 import numpy as np
 
@@ -19,7 +20,7 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from .interrupts import InterruptData, parse_interrupt
 
-InfoDict = Optional[Dict[str, Any]]
+InfoDict = Optional[dict[str, Any]]
 TrackerDataType = Union["TrackerBase", str]
 
 

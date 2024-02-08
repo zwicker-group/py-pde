@@ -38,7 +38,7 @@ from ..tools.plotting import (
 )
 
 _logger = logging.getLogger(__name__)
-ScaleData = Union[str, float, Tuple[float, float]]
+ScaleData = Union[str, float, tuple[float, float]]
 
 
 def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:

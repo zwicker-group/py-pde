@@ -30,7 +30,7 @@ except ImportError:
     ExplicitMPISolver = None  # type: ignore
 
 
-def registered_solvers() -> List[str]:
+def registered_solvers() -> list[str]:
     """returns all solvers that are currently registered
 
     Returns:

@@ -22,8 +22,9 @@ import collections
 import functools
 import logging
 import numbers
+from collections.abc import Iterable
 from hashlib import sha1
-from typing import Callable, Iterable, Literal, TypeVar
+from typing import Callable, Literal, TypeVar
 
 import numpy as np
 from scipy import sparse

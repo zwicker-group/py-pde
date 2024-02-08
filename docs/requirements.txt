@@ -1,6 +1,6 @@
 -r ../requirements.txt
 h5py>=2.10
-pandas>=1.2
+pandas>=2
 Pillow>=7.0
 Sphinx>=4
 sphinx-autodoc-annotation>=1.0

@@ -65,7 +65,7 @@ import os
 import warnings
 from abc import ABCMeta, abstractmethod
 from numbers import Number
-from typing import TYPE_CHECKING, Any, Callable, Dict, Literal, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar, Union
 
 import numba as nb
 import numpy as np
@@ -86,7 +86,7 @@ if TYPE_CHECKING:
     from .._mesh import GridMesh
 
 
-BoundaryData = Union[Dict, str, "BCBase"]
+BoundaryData = Union[dict, str, "BCBase"]
 
 
 class BCDataError(ValueError):
@@ -166,7 +166,7 @@ def _make_get_arr_1d(
         Consequently, `i = idx[axis]` and `arr[..., idx] == arr_1d[..., i]`.
     """
     assert 0 <= axis < dim
-    ResultType = Tuple[np.ndarray, int, Tuple]
+    ResultType = tuple[np.ndarray, int, tuple]
 
     # extract the correct indices
     if dim == 1:

@@ -25,7 +25,8 @@ import math
 import numbers
 import re
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, Mapping, Sequence, Union
+from collections.abc import Mapping, Sequence
+from typing import Any, Callable, Union
 
 import numpy as np
 import sympy
