@@ -8,7 +8,7 @@ This module handles the boundaries of all axes of a grid. It only defines
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from typing import Union
 
 import numpy as np
@@ -17,7 +17,7 @@ from numba.extending import register_jitable
 from ...tools.typing import GhostCellSetter
 from ..base import GridBase, PeriodicityError
 from .axis import BoundaryPair, BoundaryPairData, get_boundary_axis
-from .local import BCDataError
+from .local import BCBase, BCDataError
 
 BoundariesData = Union[BoundaryPairData, Sequence[BoundaryPairData]]
 
@@ -169,6 +169,13 @@ class Boundaries(list):
         if not isinstance(other, Boundaries):
             return NotImplemented
         return super().__eq__(other) and self.grid == other.grid
+
+    @property
+    def boundaries(self) -> Iterator[BCBase]:
+        """iterator over all non-periodic boundaries"""
+        for boundary_axis in self:  # iterate all axes
+            if not boundary_axis.periodic:  # skip periodic axes
+                yield from boundary_axis
 
     def check_value_rank(self, rank: int) -> None:
         """check whether the values at the boundaries have the correct rank
