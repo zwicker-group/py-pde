@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import copy
 import logging
-import warnings
 from abc import ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
@@ -585,14 +584,6 @@ class PDEBase(metaclass=ABCMeta):
         """
         from ..solvers import Controller
         from ..solvers.base import SolverBase  # @Reimport
-
-        # warn on deprecated argument (deprecated on 2023-05-26)
-        if solver == "explicit" and "method" in kwargs:
-            warnings.warn(
-                "Argument `method` has been renamed to `solver` in `solve` method",
-                DeprecationWarning,
-            )
-            solver = kwargs.pop("method")
 
         # create solver instance
         if callable(solver):
