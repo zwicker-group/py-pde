@@ -34,7 +34,7 @@ state = ScalarField.from_expression(grid, "sin(x)")
 # solve the equation and store the trajectory
 storage = MemoryStorage()
 eq = KortewegDeVriesPDE()
-eq.solve(state, t_range=3, method="scipy", tracker=storage.tracker(0.1))
+eq.solve(state, t_range=3, solver="scipy", tracker=storage.tracker(0.1))
 
 # plot the trajectory as a space-time plot
 plot_kymograph(storage)
