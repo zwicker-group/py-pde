@@ -957,10 +957,10 @@ class FieldCollection(FieldBase):
         Args:
             kind (str or list of str):
                 Determines the kind of the visualizations. Supported values are `image`,
-                `line`, `vector`, `interactive`, or `rgb`. Alternatively, `auto`
+                `line`, `vector`, `interactive`, or `merged`. Alternatively, `auto`
                 determines the best visualization based on each field itself. Instead of
                 a single value for all fields, a list with individual values can be
-                given, unless `rgb` is chosen.
+                given, unless `merged` is chosen.
             figsize (str or tuple of numbers):
                 Determines the figure size. The figure size is unchanged if the string
                 `default` is passed. Conversely, the size is adjusted automatically when
