@@ -11,6 +11,7 @@ from pde import ScalarField, UnitGrid
 from pde.grids.base import PeriodicityError
 from pde.grids.boundaries.axes import BCDataError, Boundaries
 from pde.grids.boundaries.axis import BoundaryPair, BoundaryPeriodic, get_boundary_axis
+from pde.grids.boundaries.local import NeumannBC
 
 
 def test_boundaries():
@@ -181,4 +182,17 @@ def test_setting_specific_bcs():
     with pytest.raises(KeyError):
         bcs["nonsense"] = None
 
-    # test different ranks
+
+def test_boundaries_property():
+    """test boundaries property"""
+    g = UnitGrid([2, 2])
+    bc = Boundaries.from_data(g, ["neumann", "dirichlet"])
+    assert len(list(bc.boundaries)) == 4
+
+    bc = Boundaries.from_data(g, "neumann")
+    for b in bc.boundaries:
+        assert isinstance(b, NeumannBC)
+
+    g = UnitGrid([2, 2], periodic=[True, False])
+    bc = Boundaries.from_data(g, "auto_periodic_neumann")
+    assert len(list(bc.boundaries)) == 2
