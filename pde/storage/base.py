@@ -16,7 +16,7 @@ import numpy as np
 from numpy.typing import DTypeLike
 
 from ..fields import FieldCollection, ScalarField, Tensor2Field, VectorField
-from ..fields.base import FieldBase
+from ..fields.base import DataFieldBase, FieldBase
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
@@ -29,7 +29,8 @@ if TYPE_CHECKING:
 
 WriteModeType = Literal[
     "append",
-    "readonly" "truncate",
+    "readonly",
+    "truncate",
     "truncate_once",
 ]
 
@@ -42,7 +43,7 @@ class StorageBase(metaclass=ABCMeta):
     will return the fields in order and individual time points can also be accessed.
     """
 
-    times: Sequence[float]  # :class:`~numpy.ndarray`): stored time points
+    times: Sequence[float]  # stored time points
     data: Any  # actual data for all the stored times
     write_mode: WriteModeType  # mode determining how the storage behaves
 
@@ -602,3 +603,54 @@ class StorageTracker(TrackerBase):
         """
         super().finalize(info)
         self.storage.end_writing()
+
+
+class StorageView:
+    """represents a view into a storage that extracts a particular field"""
+
+    has_collection: bool = False
+
+    def __init__(self, storage: StorageBase, *, field: int | str):
+        """
+        Args:
+            storage (:class:`~pde.storage.base.StorageBase`):
+                The storage providing the basic data
+            field (int or str):
+                The index into the field collection determining which field of the
+                collection is returned. Instead of a numerical index, the field label
+                can also be supplied. If there are multiple fields with the same label,
+                only the first field is returned.
+        """
+        self.storage = storage
+        if not self.storage.has_collection:
+            raise RuntimeError("Can only create view into Storage of field collection")
+
+        if isinstance(field, str):
+            self.field_index = self.storage._field.labels.index(field)  # type: ignore
+        else:
+            self.field_index = field
+
+    @property
+    def times(self) -> Sequence[float]:
+        return self.storage.times
+
+    @property
+    def grid(self) -> GridBase | None:
+        return self.storage.grid
+
+    def __len__(self):
+        return len(self.storage)
+
+    def __getitem__(self, key: int) -> DataFieldBase:
+        """return field at given index or a list of fields for a slice"""
+        return self.storage[key][self.field_index]  # type: ignore
+
+    def __iter__(self) -> Iterator[DataFieldBase]:
+        """iterate over all stored fields"""
+        for fields in self.storage:
+            yield fields[self.field_index]  # type: ignore
+
+    def items(self) -> Iterator[tuple[float, DataFieldBase]]:
+        """iterate over all times and stored fields, returning pairs"""
+        for k, v in self.storage.items():
+            yield k, v[self.field_index]  # type: ignore
