@@ -10,9 +10,9 @@ import pytest
 
 from pde import DiffusionPDE, FileStorage, MemoryStorage, UnitGrid
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
+from pde.storage.base import StorageView
 from pde.tools import mpi
 from pde.tools.misc import module_available
-from pde.storage.base import StorageView
 
 STORAGE_CLASSES = [MemoryStorage, FileStorage]
 
