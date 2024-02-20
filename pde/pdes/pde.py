@@ -533,15 +533,6 @@ class PDE(PDEBase):
 
         starts = tuple(slc.start for slc in state._slices)
         stops = tuple(slc.stop for slc in state._slices)
-
-        # In the future, the following should be possible:
-        #         @jit
-        #         def evolution_rate(state_data, t, out):
-        #             """ evolve all agents explicitly """
-        #             for i in nb.literal_unroll(range(num_fields)):
-        #                 out[i] = rhs_list[i](*state_data, t)
-        #         return evolver
-
         get_data_tuple = cache["get_data_tuple"]
 
         def chain(

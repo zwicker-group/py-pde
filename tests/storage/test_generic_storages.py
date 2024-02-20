@@ -10,6 +10,7 @@ import pytest
 
 from pde import DiffusionPDE, FileStorage, MemoryStorage, UnitGrid
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
+from pde.storage.base import StorageView
 from pde.tools import mpi
 from pde.tools.misc import module_available
 
@@ -300,3 +301,35 @@ def test_storing_transformation_scalar(storage_factory, rng):
     assert not storage.has_collection
     for sol in storage:
         np.testing.assert_allclose(sol.data, field.data**2)
+
+
+@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
+def test_storage_view(storage_factory, rng):
+    """test StorageView"""
+    grid = UnitGrid([2, 2])
+    f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="a", rng=rng)
+    f2 = VectorField.random_uniform(grid, 0.1, 0.4, label="b", rng=rng)
+    fc = FieldCollection([f1, f2])
+
+    # store some data
+    storage = storage_factory()
+    storage.start_writing(fc)
+    storage.append(fc, 0)
+    storage.append(fc, 1)
+    storage.append(fc, 2)
+    storage.end_writing()
+
+    view = StorageView(storage, field=0)
+    assert not view.has_collection
+    np.testing.assert_allclose(view.times, range(3))
+    assert len(view) == 3
+    assert view[0] == f1
+    for field in view:
+        assert field == f1
+    for i, (j, field) in enumerate(view.items()):
+        assert i == j
+        assert field == f1
+
+    assert StorageView(storage, field="a")[0] == f1
+    assert StorageView(storage, field="b")[0] == f2
+    assert StorageView(storage, field=1)[0] == f2
