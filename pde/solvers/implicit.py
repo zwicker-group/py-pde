@@ -142,17 +142,15 @@ class ImplicitSolver(SolverBase):
 
             # save state at current time point t for stepping
             state_t = state_data.copy()
+            state_prev = np.empty_like(state_data)
 
             # estimate state at next time point
             evolution_rate, noise_realization = rhs_sde(state_data, t)
-            state_data[:] = state_t + dt * evolution_rate  # estimated state
-
             if noise_realization is not None:
                 # add the noise to the reference state at the current time point and
                 # adept the state at the next time point iteratively below
                 state_t += np.sqrt(dt) * noise_realization
-
-            state_prev = np.empty_like(state_data)
+            state_data[:] = state_t + dt * evolution_rate  # estimated new state
 
             # fixed point iteration for improving state after dt
             for n in range(maxiter):
