@@ -346,14 +346,30 @@ class StorageBase(metaclass=ABCMeta):
     def end_writing(self) -> None:
         """finalize the storage after writing"""
 
+    def view_field(self, field_id: int | str) -> StorageView:
+        """returns a view into this storage focusing on a particular field
+
+        Note:
+            Modifying data returned by the view will modify the underlying storage
+
+        Args:
+            field_id (int or str):
+                The index into the field collection. This determines which field of the
+                collection is returned. Instead of a numerical index, the field label
+                can also be supplied. If there are multiple fields with the same label,
+                only the first field is returned.
+
+        Returns:
+            :class:`StorageView`: A view into the storage only returning a single field
+        """
+        return StorageView(storage=self, field=field_id)
+
     def extract_field(
         self, field_id: int | str, label: str | None = None
     ) -> MemoryStorage:
         """extract the time course of a single field from a collection
 
-        Note:
-            This might return a view into the original data, so modifying the returned
-            data can also change the underlying original data.
+        This method makes a copy of the underlying data.
 
         Args:
             field_id (int or str):
@@ -391,7 +407,10 @@ class StorageBase(metaclass=ABCMeta):
         if label:
             field_obj.label = label
         field_slice = self._field._slices[field_index]
-        data = [d[field_slice].reshape(field_obj.data.shape) for d in self.data]
+        data = [
+            np.copy(data_timepoint[field_slice].reshape(field_obj.data.shape))
+            for data_timepoint in self.data
+        ]
 
         # create the corresponding MemoryStorage
         return MemoryStorage(
