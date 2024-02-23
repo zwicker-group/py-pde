@@ -165,6 +165,15 @@ def test_storing_collection(storage_factory, rng):
     with pytest.raises(ValueError):
         storage.extract_field("nonsense")
 
+    assert storage.view_field(0)[0] == f1
+    assert storage.view_field(1)[0] == f2
+    assert storage.view_field(2)[0] == f3
+    assert storage.view_field("a")[0] == f1
+    assert storage.view_field("b")[0] == f2
+    assert storage.view_field("c")[0] == f3
+    with pytest.raises(ValueError):
+        storage.view_field("nonsense")
+
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES + [None])
 def test_storage_apply(storage_factory):
