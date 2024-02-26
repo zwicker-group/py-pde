@@ -47,9 +47,10 @@ class PDEBase(metaclass=ABCMeta):
     cache_rhs: bool = False
     """bool: Flag indicating whether the right hand side of the equation should be
     cached. If True, the same implementation is used in subsequent calls to `solve`.
-    Note that this might lead to wrong results if the parameters of the PDE are changed
-    after the first call. This option is thus disabled by default and should be used
-    with care."""
+    Note that the cache is only invalidated when the grid of the underlying state
+    changes. Consequently, the simulation might lead to wrong results if the parameters
+    of the PDE are changed after the first call. This option is thus disabled by default
+    and should be used with care."""
 
     explicit_time_dependence: bool | None = None
     """bool: Flag indicating whether the right hand side of the PDE has an explicit
@@ -264,7 +265,9 @@ class PDEBase(metaclass=ABCMeta):
                 rhs._backend = "numba"  # type: ignore
 
         if backend == "numpy":
-            state = state.copy()
+            # this will be called if backend was chosen explicitely or if it was set to
+            # "auto" and the numba compilation is not available
+            state = state.copy()  # save this exact state for the closure
 
             def evolution_rate_numpy(state_data: np.ndarray, t: float) -> np.ndarray:
                 """evaluate the rhs given only a state without the grid"""
@@ -275,6 +278,7 @@ class PDEBase(metaclass=ABCMeta):
             rhs._backend = "numpy"  # type: ignore
 
         elif backend == "numba":
+            # this will not be called if backend is "auto" and numba compilation worked
             rhs = self._make_pde_rhs_numba_cached(state, **kwargs)
             rhs._backend = "numba"  # type: ignore
 
