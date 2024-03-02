@@ -74,7 +74,8 @@ class VectorField(DataFieldBase):
 
         data = []
         for field in fields:
-            assert field.grid.compatible_with(grid)
+            if not field.grid.compatible_with(grid):
+                raise ValueError("Grids are incompatible")
             data.append(field.data)
 
         return cls(grid, data, label=label, dtype=dtype)
@@ -209,7 +210,8 @@ class VectorField(DataFieldBase):
         if out is None:
             out = result_type(self.grid, dtype=get_common_dtype(self, other))
         else:
-            assert isinstance(out, result_type), f"`out` must be {result_type}"
+            if not isinstance(out, result_type):
+                raise TypeError(f"`out` must be of type `{result_type}`")
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result

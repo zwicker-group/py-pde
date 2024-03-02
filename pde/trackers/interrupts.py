@@ -71,7 +71,8 @@ class FixedInterrupts(InterruptsBase):
 
     def __init__(self, interrupts: np.ndarray | Sequence[float]):
         self.interrupts = np.atleast_1d(interrupts)
-        assert self.interrupts.ndim == 1
+        if self.interrupts.ndim != 1:
+            raise ValueError("`interrupts` must be a 1d sequence")
 
     def __repr__(self):
         return f"{self.__class__.__name__}(interrupts={self.interrupts})"

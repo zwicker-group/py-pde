@@ -205,7 +205,8 @@ class ScalarFieldPlot:
             :class:`~pde.visualization.plotting.ScalarFieldPlot`
         """
         fields = storage[0]
-        assert isinstance(fields, FieldBase), "Storage must contain fields"
+        if not isinstance(fields, FieldBase):
+            raise RuntimeError("Storage must contain fields")
 
         # prepare the data that needs to be plotted
         quantities = cls._prepare_quantities(fields, quantities=quantities, scale=scale)
@@ -393,7 +394,8 @@ class ScalarFieldPlot:
                 The title of this view. If `None`, the current title is not
                 changed.
         """
-        assert isinstance(fields, FieldBase), "Fields must inherit from FieldBase"
+        if not isinstance(fields, FieldBase):
+            raise TypeError("`fields` must be of type FieldBase")
 
         if title:
             self.sup_title.set_text(title)
@@ -520,7 +522,8 @@ def plot_magnitudes(
     """
     if quantities is None:
         fields = storage[0]
-        assert isinstance(fields, FieldBase), "Storage must contain fields"
+        if not isinstance(fields, FieldBase):
+            raise TypeError("`fields` must be of type FieldBase")
         if fields.label:
             label_base = fields.label
         else:

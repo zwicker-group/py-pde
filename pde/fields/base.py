@@ -252,8 +252,8 @@ class FieldBase(metaclass=ABCMeta):
 
             else:
                 raise RuntimeError(
-                    "Multiple data fields were found in the "
-                    "file but no FieldCollection is expected"
+                    "Multiple data fields were found in the file but no "
+                    "`FieldCollection` is expected."
                 )
         return obj
 
@@ -684,7 +684,8 @@ class FieldBase(metaclass=ABCMeta):
         else:
             raise TypeError("`func` must be string or callable")
 
-        assert isinstance(out, FieldBase)
+        if not isinstance(out, FieldBase):
+            raise TypeError("`out` must be of type `FieldBase`")
         if label:
             out.label = label
         return out  # type: ignore
@@ -1659,7 +1660,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             rank_b = b.ndim - num_axes
             if rank_a < 1 or rank_b < 1:
                 raise TypeError("Fields in dot product must have rank >= 1")
-            assert a.shape[rank_a:] == b.shape[rank_b:]
+            if a.shape[rank_a:] != b.shape[rank_b:]:
+                raise ValueError("Shapes of fields are not compatible for dot product")
 
             if rank_a == 1 and rank_b == 1:  # result is scalar field
                 return np.einsum("i...,i...->...", a, maybe_conj(b), out=out)

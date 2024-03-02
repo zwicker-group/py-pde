@@ -202,7 +202,8 @@ class MemoryStorage(StorageBase):
             data (:class:`~numpy.ndarray`): The actual data
             time (float, optional): The time point associated with the data
         """
-        assert data.shape == self.data_shape, f"Data must have shape {self.data_shape}"
+        if data.shape != self.data_shape:
+            raise ValueError(f"Data must have shape {self.data_shape}")
         self.data.append(np.array(data))  # store copy of the data
         self.times.append(time)
 

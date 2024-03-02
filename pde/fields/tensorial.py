@@ -153,7 +153,8 @@ class Tensor2Field(DataFieldBase):
         self._data_full = data_full
 
         # ensure that no copying happend
-        assert np.may_share_memory(self.data, value)
+        if not np.may_share_memory(self.data, value):
+            raise RuntimeError("Spurious copy detected!")
 
     def dot(
         self,
@@ -192,7 +193,8 @@ class Tensor2Field(DataFieldBase):
         if out is None:
             out = other.__class__(self.grid, dtype=get_common_dtype(self, other))
         else:
-            assert isinstance(out, other.__class__), f"`out` must be {other.__class__}"
+            if not isinstance(out, other.__class__):
+                raise TypeError(f"`out` must be of type `{other.__class__}`")
             self.grid.assert_grid_compatible(out.grid)
 
         # calculate the result

@@ -268,5 +268,6 @@ class CoordinatesBase:
 
         # convert the basis of the vectors to Cartesian
         basis = self.basis_rotation(points)
-        assert basis.shape == (self.dim, self.dim) + shape
+        if basis.shape != (self.dim, self.dim) + shape:
+            raise DimensionError("Incompatible dimensions in rotation matrix")
         return np.einsum("j...,ji...->i...", components, basis)  # type: ignore
