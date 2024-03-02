@@ -185,7 +185,7 @@ class PDE(PDEBase):
         # setup boundary conditions
         if bc_ops is None:
             bcs = {"*:*": bc}
-        elif isinstance(bcs, dict):
+        elif isinstance(bc_ops, dict):
             bcs = dict(bc_ops)
             if "*:*" in bcs and bc != "auto_periodic_neumann":
                 self._logger.warning("Found default BCs in `bcs` and `bc_ops`")
