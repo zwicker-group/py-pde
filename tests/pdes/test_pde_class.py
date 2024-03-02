@@ -6,6 +6,7 @@ import logging
 
 import numpy as np
 import pytest
+import sympy
 from scipy import stats
 
 from pde import PDE, MemoryStorage, SwiftHohenbergPDE, grids
@@ -390,3 +391,62 @@ def test_pde_heaviside(backend):
     eq = PDE({"c": "Heaviside(x)"})
     res = eq.solve(field, 0.999, dt=0.1, backend=backend, tracker=None)
     np.testing.assert_allclose(res.data, np.array([-1.0, 2]))
+
+
+def test_jacobian():
+    """test jacobian method"""
+    eq = PDE({"c": "laplace(c**3 - c - laplace(c))"})
+    expected = "q**2*(-3*c**2 - q**2 + 1)"
+    expr = eq._jacobian_expression()[0]
+    assert expr.expand() == sympy.parse_expr(expected).expand()
+    expr = eq._jacobian_expression(state_hom=1)
+    np.testing.assert_equal(sympy.matrix2numpy(expr.subs("q", 1)), np.array([[-3]]))
+
+    eq = PDE({"c": "divergence(c * gradient(c**3 - c - laplace(c)))"})
+    expected = "2*c*q**2*(-2*c**2 - q**2 + 1)"
+    expr = eq._jacobian_expression()[0, 0]
+    assert expr.expand() == sympy.parse_expr(expected).expand()
+    expr = eq._jacobian_expression(state_hom=1)
+    np.testing.assert_equal(sympy.matrix2numpy(expr.subs("q", 1)), np.array([[-4]]))
+
+    eq = PDE({"a": "laplace(a) + (b - 1)**2", "b": "laplace(a + b**2)"})
+    jac = eq._jacobian_expression(state_hom=[0, 1])
+    assert jac[0, 0].expand() == sympy.parse_expr("-q**2").expand()
+    assert jac[0, 1].expand() == sympy.parse_expr("0").expand()
+    assert jac[1, 0].expand() == sympy.parse_expr("-q**2").expand()
+    assert jac[1, 1].expand() == sympy.parse_expr("-2*q**2").expand()
+
+
+def test_jacobian_bad_input():
+    """test jacobian method with bad input"""
+    with pytest.raises(ValueError):
+        PDE({"a": "a"})._jacobian_expression(wave_vector="t")
+    with pytest.raises(ValueError):
+        PDE({"a": "a"})._jacobian_expression(wave_vector="a")
+    with pytest.raises(TypeError):
+        PDE({"a": "a"})._jacobian_expression(state_hom="1")
+    with pytest.raises(TypeError):
+        PDE({"a": "a"})._jacobian_expression(state_hom=[np.arange(3)])
+    with pytest.raises(ValueError):
+        PDE({"a": "a"})._jacobian_expression(state_hom=np.arange(2))
+    with pytest.raises(RuntimeError):
+        PDE({"a": "a"})._jacobian_expression(state_hom=0.1)
+    with pytest.raises(TypeError):
+        PDE({"a": "inner(a, a)"})._jacobian_expression(state_hom=0)
+    with pytest.raises(TypeError):
+        PDE({"a": "b"}, consts={"b": 1})._jacobian_expression(state_hom=0)
+
+
+def test_dispersion_relationn():
+    """test dispersion_relation method"""
+    eq = PDE({"c": "laplace(c**3 - c - laplace(c))"})
+    qs, evs = eq._dispersion_relation(state_hom=0, qs=[0, 0.5, 1])
+    np.testing.assert_allclose(qs, np.array([0, 0.5, 1]))
+    np.testing.assert_allclose(evs[:, 0], np.array([0, 3 / 16, 0]))
+
+    eq = PDE({"a": "laplace(a) + (b - 1)**2", "b": "laplace(a + b**2)"})
+    qs, evs = eq._dispersion_relation(state_hom=[0, 1], qs=[0, 0.5, 1])
+    np.testing.assert_allclose(qs, np.array([0, 0.5, 1]))
+    np.testing.assert_allclose(evs[0], np.array([0, 0]))
+    np.testing.assert_allclose(np.sort(evs[1]), np.array([-0.5, -0.25]))
+    np.testing.assert_allclose(np.sort(evs[2]), np.array([-2, -1]))
