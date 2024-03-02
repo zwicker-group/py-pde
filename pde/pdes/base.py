@@ -367,7 +367,8 @@ class PDEBase(metaclass=ABCMeta):
             cell_volume: Callable[[int], float] = state.grid.make_cell_volume_compiled(
                 flat_index=True
             )
-            assert state.dtype == float
+            if state.dtype != float:
+                raise TypeError("Noise is only supported for float types")
 
             if isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field

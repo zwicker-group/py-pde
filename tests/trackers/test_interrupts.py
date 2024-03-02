@@ -113,5 +113,5 @@ def test_interrupt_fixed():
     ival = FixedInterrupts(1)
     assert ival.initialize(0) == pytest.approx(1)
     assert np.isinf(ival.next(0))
-    with pytest.raises(AssertionError):
+    with pytest.raises(ValueError):
         ival = FixedInterrupts([[1]])

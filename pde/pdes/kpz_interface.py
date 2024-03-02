@@ -92,7 +92,8 @@ class KPZInterfacePDE(PDEBase):
             :class:`~pde.fields.ScalarField`:
             Scalar field describing the evolution rate of the PDE
         """
-        assert isinstance(state, ScalarField), "`state` must be ScalarField"
+        if not isinstance(state, ScalarField):
+            raise ValueError("`state` must be ScalarField")
         result = self.nu * state.laplace(bc=self.bc, args={"t": t})
         result += self.lmbda * state.gradient_squared(bc=self.bc, args={"t": t})
         result.label = "evolution rate"
