@@ -185,11 +185,13 @@ class PDE(PDEBase):
         # setup boundary conditions
         if bc_ops is None:
             bcs = {"*:*": bc}
-        else:
+        elif isinstance(bc_ops, dict):
             bcs = dict(bc_ops)
             if "*:*" in bcs and bc != "auto_periodic_neumann":
                 self._logger.warning("Found default BCs in `bcs` and `bc_ops`")
             bcs["*:*"] = bc  # append default boundary conditions
+        else:
+            raise TypeError(f'`bc_ops` must be a dictionary, but got {type(bc_ops)}"')
 
         self.bcs: dict[str, Any] = {}
         for key_str, value in bcs.items():
