@@ -6,8 +6,10 @@ Defines a PDE class whose right hand side is given as a string
 
 from __future__ import annotations
 
+import numbers
 import re
-from typing import Any, Callable, Literal
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -24,6 +26,10 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
 from ..tools.typing import ArrayLike, NumberOrArray
 
+if TYPE_CHECKING:
+    import sympy
+
+
 # Define short notations that can appear in mathematical equations and need to be
 # expanded. Since these replacements are replaced in order, it's advisable to start with
 # more complex expressions first
@@ -33,6 +39,14 @@ _EXPRESSION_REPLACEMENT: dict[str, str] = {
     r"∇(²|\*\*2)\s*\(": r"laplace(",  # ∇²(c) or ∇**2(c)
     r"²": r"**2",
     r"³": r"**3",
+}
+
+# Define how common operators map to Fourier space
+_OPERATOR_FOURIER_MAPPING = {
+    "laplace": "-wave_vector**2 * argument",
+    "gradient": "I * wave_vector * argument",
+    "divergence": "I * wave_vector * argument",
+    # "gradient_squared": "wave_vector**2 * argument**2", # or "0"? <- CHECK
 }
 
 
@@ -602,3 +616,135 @@ class PDE(PDEBase):
 
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
+
+    def _jacobian_spectral(
+        self,
+        state_hom: numbers.Number | list | dict[str, float] | None = None,
+        *,
+        t: float = 0,
+        wave_vector: str | sympy.Symbol = "q",
+        check_steady_state: bool = True,
+    ) -> sympy.Matrix:
+        """calculate the Jacobian in spectral representation
+
+        Note:
+            This method currently only supports scalar fields, so that inner and outer
+            products are not permissible. Moreover, `user_funcs` are typically not
+            supported and `integral` does not work.
+
+        Args:
+            state_hom (number or list or dict):
+                Field values of a homogeneous state around which the Jacobian is
+                determined. If only a single value is given, this value is used for all
+                fields. If omitted, general expressions containing the fields are
+                returned.
+            t (float):
+                Time point necessary for explicit time dependences
+            wave_vector (str or :class:`~sympy.Symbol`):
+                Symbol denoting the wave vector.
+            check_steady_state (bool):
+                Checks whether a supplied `state_hom` is a stationary state and raises
+                an `RuntimeError` otherwise.
+
+        Returns:
+            :class:`~sympy.Matrix`: The Jacobian matrix (evaluated at the homogeneous
+            state `state_hom` if provided).
+        """
+        import sympy
+
+        # basic checks
+        if wave_vector == "t":
+            raise ValueError("`wave_vector` must not be `t`")
+        if wave_vector in self.variables:
+            raise ValueError(f"`wave_vector` must be different from {self.variables}")
+
+        if state_hom is None:
+            state_dict: Mapping[str, float | complex] | None = None
+        else:
+            # prepare homogeneous state
+            if isinstance(state_hom, dict):
+                state_dict = state_hom
+            else:
+                dim = len(self.variables)
+                if isinstance(state_hom, numbers.Number):
+                    state_dict = {v: state_hom for v in self.variables}  # type: ignore
+                elif len(state_hom) != dim:
+                    raise ValueError(f"Expect {dim} values in `state_hom`")
+                else:
+                    state_dict = {v: state_hom[i] for i, v in enumerate(self.variables)}
+            for v, state in state_dict.items():
+                if not isinstance(state, numbers.Number):
+                    raise TypeError(f"Value for field `{v}` is not a number")
+
+        # prepare fourier transformed operators
+        q_sym = sympy.symbols(wave_vector)
+        q_sym_def = sympy.symbols("wave_vector")
+        arg = sympy.symbols("argument")
+        fourier_repl = {}
+        for op, opF in _OPERATOR_FOURIER_MAPPING.items():
+            opF_expr = sympy.parse_expr(opF).subs(q_sym_def, q_sym)
+            op_sym = sympy.symbols(op, cls=sympy.Function)
+            fourier_repl[op_sym] = sympy.Lambda(arg, opF_expr)
+
+        # collect the entries of the Jacobian matrix
+        jacobian = []
+        for v1 in self.variables:
+            # convert expressions to Fourier space (by replacing derivatives)
+            expr = self._rhs_expr[v1]._sympy_expr.subs("t", t)
+            exprF = expr.subs(fourier_repl)
+
+            # check that state_hom marks a stationary state
+            if check_steady_state and state_dict is not None:
+                exprF0 = exprF.subs(wave_vector, 0)
+                try:
+                    exprF0_val = float(exprF0.subs(state_dict))
+                except Exception as e:
+                    if len(e.args) >= 1:
+                        e.args = (e.args[0] + f" (Expression: {exprF0})",) + e.args[1:]
+                    raise
+                if not np.isclose(exprF0_val, 0):
+                    raise RuntimeError("State is not a stationary state")
+
+            # calculate Jacobian
+            jac_line = []
+            for v2 in self.variables:
+                el = exprF.diff(v2)
+                if state_dict is not None:
+                    el = el.subs(state_dict)
+                jac_line.append(sympy.simplify(el))
+            jacobian.append(jac_line)
+        return sympy.Matrix(jacobian)
+
+    def _dispersion_relation(
+        self,
+        state_hom: list | dict[str, float],
+        qs: np.ndarray | None = None,
+        *,
+        t: float = 0,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """evaluate the dispersion relation
+
+        Args:
+            state_hom (list or dict):
+                Field values for the homogeneous state around which the Jacobian is
+                determined.
+            qs (:class:`~numpy.ndarray`):
+                Wave vectors at which the dispersion relation is evaluated.
+            t (float):
+                Time point necessary for explicit time dependences
+
+        Returns:
+            tuple of :class:`~numpy.ndarray`: Wave vectors and associated eigenvalues of
+            the Jacobian
+        """
+        import sympy
+
+        if qs is None:
+            qs = np.linspace(0, 1)
+        jac = self._jacobian_spectral(state_hom, t=t, wave_vector="wave_vector")
+        evs_list = []
+        for q in qs:
+            jacN = sympy.matrix2numpy(jac.subs("wave_vector", q), dtype=complex)
+            evs = np.linalg.eigvals(jacN)
+            evs_list.append(evs)
+        return qs, np.array(evs_list)
