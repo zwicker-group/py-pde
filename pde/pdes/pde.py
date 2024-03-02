@@ -191,7 +191,7 @@ class PDE(PDEBase):
                 self._logger.warning("Found default BCs in `bcs` and `bc_ops`")
             bcs["*:*"] = bc  # append default boundary conditions
         else:
-            raise TypeError('`bc_ops` must be a dictionary')
+            raise TypeError(f'`bc_ops` must be a dictionary, but got {type(bc_ops)}"')
 
         self.bcs: dict[str, Any] = {}
         for key_str, value in bcs.items():
