@@ -41,12 +41,12 @@ _EXPRESSION_REPLACEMENT: dict[str, str] = {
     r"³": r"**3",
 }
 
-# Define how common operators map to fourier space
+# Define how common operators map to Fourier space
 _OPERATOR_FOURIER_MAPPING = {
     "laplace": "-wave_vector**2 * argument",
     "gradient": "I * wave_vector * argument",
     "divergence": "I * wave_vector * argument",
-    "gradient_squared": "wave_vector**2 * argument**2",
+    # "gradient_squared": "wave_vector**2 * argument**2", # or "0"? <- CHECK
 }
 
 
@@ -617,7 +617,7 @@ class PDE(PDEBase):
         else:
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
 
-    def _jacobian_expression(
+    def _jacobian_spectral(
         self,
         state_hom: numbers.Number | list | dict[str, float] | None = None,
         *,
@@ -625,7 +625,7 @@ class PDE(PDEBase):
         wave_vector: str | sympy.Symbol = "q",
         check_steady_state: bool = True,
     ) -> sympy.Matrix:
-        """calculate the sympy expression for the fourier-transformed Jacobian
+        """calculate the Jacobian in spectral representation
 
         Note:
             This method currently only supports scalar fields, so that inner and outer
@@ -741,7 +741,7 @@ class PDE(PDEBase):
 
         if qs is None:
             qs = np.linspace(0, 1)
-        jac = self._jacobian_expression(state_hom, t=t, wave_vector="wave_vector")
+        jac = self._jacobian_spectral(state_hom, t=t, wave_vector="wave_vector")
         evs_list = []
         for q in qs:
             jacN = sympy.matrix2numpy(jac.subs("wave_vector", q), dtype=complex)

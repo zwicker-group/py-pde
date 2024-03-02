@@ -393,48 +393,48 @@ def test_pde_heaviside(backend):
     np.testing.assert_allclose(res.data, np.array([-1.0, 2]))
 
 
-def test_jacobian():
-    """test jacobian method"""
+def test_jacobian_spectral():
+    """test jacobian_spectral method"""
     eq = PDE({"c": "laplace(c**3 - c - laplace(c))"})
     expected = "q**2*(-3*c**2 - q**2 + 1)"
-    expr = eq._jacobian_expression()[0]
+    expr = eq._jacobian_spectral()[0]
     assert expr.expand() == sympy.parse_expr(expected).expand()
-    expr = eq._jacobian_expression(state_hom=1)
+    expr = eq._jacobian_spectral(state_hom=1)
     np.testing.assert_equal(sympy.matrix2numpy(expr.subs("q", 1)), np.array([[-3]]))
 
     eq = PDE({"c": "divergence(c * gradient(c**3 - c - laplace(c)))"})
     expected = "2*c*q**2*(-2*c**2 - q**2 + 1)"
-    expr = eq._jacobian_expression()[0, 0]
+    expr = eq._jacobian_spectral()[0, 0]
     assert expr.expand() == sympy.parse_expr(expected).expand()
-    expr = eq._jacobian_expression(state_hom=1)
+    expr = eq._jacobian_spectral(state_hom=1)
     np.testing.assert_equal(sympy.matrix2numpy(expr.subs("q", 1)), np.array([[-4]]))
 
     eq = PDE({"a": "laplace(a) + (b - 1)**2", "b": "laplace(a + b**2)"})
-    jac = eq._jacobian_expression(state_hom=[0, 1])
+    jac = eq._jacobian_spectral(state_hom=[0, 1])
     assert jac[0, 0].expand() == sympy.parse_expr("-q**2").expand()
     assert jac[0, 1].expand() == sympy.parse_expr("0").expand()
     assert jac[1, 0].expand() == sympy.parse_expr("-q**2").expand()
     assert jac[1, 1].expand() == sympy.parse_expr("-2*q**2").expand()
 
 
-def test_jacobian_bad_input():
-    """test jacobian method with bad input"""
+def test_jacobian_spectral_bad_input():
+    """test jacobian_spectral method with bad input"""
     with pytest.raises(ValueError):
-        PDE({"a": "a"})._jacobian_expression(wave_vector="t")
+        PDE({"a": "a"})._jacobian_spectral(wave_vector="t")
     with pytest.raises(ValueError):
-        PDE({"a": "a"})._jacobian_expression(wave_vector="a")
+        PDE({"a": "a"})._jacobian_spectral(wave_vector="a")
     with pytest.raises(TypeError):
-        PDE({"a": "a"})._jacobian_expression(state_hom="1")
+        PDE({"a": "a"})._jacobian_spectral(state_hom="1")
     with pytest.raises(TypeError):
-        PDE({"a": "a"})._jacobian_expression(state_hom=[np.arange(3)])
+        PDE({"a": "a"})._jacobian_spectral(state_hom=[np.arange(3)])
     with pytest.raises(ValueError):
-        PDE({"a": "a"})._jacobian_expression(state_hom=np.arange(2))
+        PDE({"a": "a"})._jacobian_spectral(state_hom=np.arange(2))
     with pytest.raises(RuntimeError):
-        PDE({"a": "a"})._jacobian_expression(state_hom=0.1)
+        PDE({"a": "a"})._jacobian_spectral(state_hom=0.1)
     with pytest.raises(TypeError):
-        PDE({"a": "inner(a, a)"})._jacobian_expression(state_hom=0)
+        PDE({"a": "inner(a, a)"})._jacobian_spectral(state_hom=0)
     with pytest.raises(TypeError):
-        PDE({"a": "b"}, consts={"b": 1})._jacobian_expression(state_hom=0)
+        PDE({"a": "b"}, consts={"b": 1})._jacobian_spectral(state_hom=0)
 
 
 def test_dispersion_relationn():
