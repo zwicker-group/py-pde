@@ -13,19 +13,19 @@ import json
 import logging
 import shlex
 from collections.abc import Iterator
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal
 
 import numpy as np
 from matplotlib.colors import Normalize
-from numpy.typing import ArrayLike, DTypeLike
+from numpy.typing import ArrayLike
 
 from ..fields import FieldCollection, ScalarField
 from ..fields.base import FieldBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..trackers.interrupts import ConstantInterrupts
+from . import _ffmpeg as FFmpeg
 from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 
 
@@ -37,31 +37,11 @@ def _get_limits(value: float | ArrayLike, dim: int) -> np.ndarray:
         return np.atleast_1d(value)[:dim]
 
 
-@dataclass
-class FFmpegPixelFormat:
-    pix_fmt: str
-    channels: int
-    value_max: int
-    dtype: DTypeLike
-
-    def data_to_frame(self, normalized_data: np.ndarray) -> np.ndarray:
-        return (normalized_data * self.value_max).astype(self.dtype)
-
-    def data_from_frame(self, frame_data: np.ndarray):
-        return frame_data.astype(float) / self.value_max
-
-
-FFmpegPixelFormats = {
-    "gray": FFmpegPixelFormat(
-        pix_fmt="gray", channels=1, value_max=255, dtype=np.uint8
-    ),
-    "rgb24": FFmpegPixelFormat(
-        pix_fmt="rgb24", channels=3, value_max=255, dtype=np.uint8
-    ),
-}
-
-
 class MovieStorage(StorageBase):
+
+    codecs: list[str] = ["libx264", "libx264rgb", "libx265"]
+    """list: List of prefered codecs"""
+
     def __init__(
         self,
         filename: str | Path,
@@ -97,6 +77,9 @@ class MovieStorage(StorageBase):
             - allow more bits for colorchannels
             - allow choosing bitrate for video
             - support different write_mode
+            - support different video codecs (from a list of priorities)
+               Check in order which one supports the chosen pixel format (and store that
+               information)
             - track whether times roughly work (checking for frame drops)
             - we could embedd extra information (like time, and maybe colorscaling) in
               the individual frames if we extended the shape
@@ -159,6 +142,7 @@ class MovieStorage(StorageBase):
         import ffmpeg
 
         info = ffmpeg.probe(self.filename)
+        # TODO: Check stored pixel format against the one
 
         # sanity checks on the video
         nb_streams = info["format"]["nb_streams"]
@@ -179,12 +163,13 @@ class MovieStorage(StorageBase):
         self.info["num_frames"] = int(stream["nb_frames"])
         self.info["width"] = stream["coded_width"]
         self.info["height"] = stream["coded_height"]
-        if stream["pix_fmt"] == "gray":
-            self.info["channels"] = 1
-        elif stream["pix_fmt"] in {"rgb24", "yuv420p"}:
-            self.info["channels"] = 3
-        else:
-            self._logger.warning(f"Unknown pixel format {stream['pix_fmt']}")
+        if self.info["pixel_format"] != stream["pix_fmt"]:
+            self._logger.warning(
+                f"Inconsistent pixel format {self.info['pixel_format']} != "
+                f"{stream['pix_fmt']}"
+            )
+        if self.info["pixel_format"] not in FFmpeg.pixel_formats:
+            self._logger.warning(f"Unknown pixel format {self.info['pixel_format']}")
 
     def _init_normalization(self, field: FieldBase, *, inverse: bool = False) -> None:
         """initialize the normalizations of the color information
@@ -268,10 +253,12 @@ class MovieStorage(StorageBase):
 
         # get color channel information
         if isinstance(field, ScalarField):
+            codec = "libx264"
             self.info["pixel_format"] = "gray"
         else:
+            codec = "libx264rgb"
             self.info["pixel_format"] = "rgb24"
-        self._pix_fmt = FFmpegPixelFormats[self.info["pixel_format"]]
+        self._pix_fmt = FFmpeg.pixel_formats[self.info["pixel_format"]]
         self._data_shape = (width, height, self._pix_fmt.channels)
         self.info["frame_shape"] = self._data_shape
         self.info["field_shape"] = field.data.shape
@@ -292,6 +279,8 @@ class MovieStorage(StorageBase):
         f_input = ffmpeg.input("pipe:", **args)
         # set output format
         args = {
+            "vcodec": codec,
+            "crf": "0",  # Constant Rate Factor - aim for lossless compression
             "pix_fmt": self._pix_fmt.pix_fmt,
             "metadata": "comment=" + shlex.quote(self._get_metadata()),
         }
@@ -354,7 +343,11 @@ class MovieStorage(StorageBase):
     @property
     def times(self):
         """:class:`~numpy.ndarray`: The times at which data is available"""
-        return np.arange(self.t_start, len(self), self.dt)
+        t_start = self.info.get("t_start")
+        if t_start is None:
+            t_start = 0
+        dt = self.info.get("dt", 1)
+        return t_start + dt * np.arange(len(self))
 
     @property
     def data(self):
@@ -370,10 +363,10 @@ class MovieStorage(StorageBase):
         if self._field is None:
             self._init_field()
         self._init_normalization(self._field, inverse=True)
-        # frame_shape = (self.info["width"], self.info["height"], self.info["channels"])
+        pix_fmt = FFmpeg.pixel_formats[self.info["pixel_format"]]
+        frame_shape = (self.info["width"], self.info["height"], pix_fmt.channels)
         data_shape = (self.info["width"], self.info["height"], len(self._norms))
         data = np.empty(data_shape, dtype=self._dtype)
-        pix_fmt = FFmpegPixelFormats[self.info["pixel_format"]]
 
         # iterate over entire movie
         f_input = ffmpeg.input(self.filename, loglevel="warning")
@@ -385,7 +378,7 @@ class MovieStorage(StorageBase):
             read_bytes = proc.stdout.read(np.prod(data_shape))
             if not read_bytes:
                 break
-            frame = np.frombuffer(read_bytes, pix_fmt.dtype).reshape(data_shape)
+            frame = np.frombuffer(read_bytes, pix_fmt.dtype).reshape(frame_shape)
 
             for i, norm in enumerate(self._norms):
                 data[..., i] = norm(pix_fmt.data_from_frame(frame[:, :, i]))
@@ -415,8 +408,8 @@ class MovieStorage(StorageBase):
         """create object that can be used as a tracker to fill this storage
 
         Args:
-            interrupts:
-                {ARG_TRACKER_INTERRUPT}
+            interrupts (:class:`~pde.tracker.ConstantInterrupts` or float):
+                Time interval with which the tracker is being called
             transformation (callable, optional):
                 A function that transforms the current state into a new field or field
                 collection, which is then stored. This allows to store derived

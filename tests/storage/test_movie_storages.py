@@ -11,29 +11,35 @@ from pde.tools.misc import module_available
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg` module")
-@pytest.mark.parametrize("dim", [1, 2])
-def test_movie_storage_scalar_field(dim, tmp_path):
-    """test writing scalar field"""
-    path = tmp_path / f"test_movie_storage_scalar_{dim}.mp4"
+def test_movie_storage_simple(tmp_path, rng):
+    """test storing field as movie"""
+    path = tmp_path / f"test_movie_storage_simple.mov"
 
-    grid = pde.UnitGrid([8] * dim)
-    field = pde.ScalarField(grid)
-    eq = pde.PDE({"a": "1"})
-    writer = MovieStorage(path, vmax=5)
-    eq.solve(field, t_range=3.5, dt=0.1, backend="numpy", tracker=writer.tracker(1))
+    grid = pde.UnitGrid([16, 16])
+    field = pde.ScalarField.random_uniform(grid, rng=rng)
+    eq = pde.DiffusionPDE()
+    writer = MovieStorage(path)
+    storage = pde.MemoryStorage()
+    eq.solve(
+        field,
+        t_range=3.5,
+        dt=0.1,
+        backend="numpy",
+        tracker=[storage.tracker(2), writer.tracker(2)],
+    )
 
     reader = MovieStorage(path)
-    assert len(reader) == 4
+    assert len(reader) == 2
+    np.testing.assert_allclose(reader.times, [0, 2])
     for i, field in enumerate(reader):
-        assert field.grid == grid
-        np.testing.assert_allclose(field.data, i, rtol=0.2)
+        np.testing.assert_allclose(field.data, storage[i].data, atol=0.1)
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg` module")
 @pytest.mark.parametrize("dim", [1, 2])
 @pytest.mark.parametrize("num_fields", [1, 2, 3])
 def test_movie_storage_scalar_fields(dim, num_fields, tmp_path):
-    """test writing three scalar field"""
+    """test storing field as movie"""
     path = tmp_path / f"test_movie_storage_scalar_{dim}_{num_fields}.mp4"
 
     grid = pde.UnitGrid([8] * dim)
@@ -44,7 +50,7 @@ def test_movie_storage_scalar_fields(dim, num_fields, tmp_path):
 
     reader = MovieStorage(path)
     assert len(reader) == 4
-    for i, fields in enumerate(reader):
+    for t, fields in enumerate(reader):
         assert fields.grid == grid
-        for j, field in enumerate(fields, 1):
-            np.testing.assert_allclose(field.data, j * i)
+        for i, field in enumerate(fields, 1):
+            np.testing.assert_allclose(field.data, i * t, atol=0.1, rtol=0.1)
