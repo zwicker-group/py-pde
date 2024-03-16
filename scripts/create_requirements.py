@@ -96,6 +96,12 @@ REQUIREMENTS = [
     ),
     # general, optional requirements
     Requirement(
+        name="ffmpeg-python",
+        version_min="0.2",
+        usage="Reading and writing videos",
+        collections={"full"},
+    ),
+    Requirement(
         name="h5py",
         version_min="2.10",
         usage="Storing data in the hierarchical file format",

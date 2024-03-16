@@ -14,3 +14,4 @@ Module defining classes for storing simulation data.
 
 from .file import FileStorage
 from .memory import MemoryStorage, get_memory_storage
+from .movie import MovieStorage

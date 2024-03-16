@@ -13,12 +13,13 @@ import json
 import logging
 import shlex
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Literal
 
 import numpy as np
 from matplotlib.colors import Normalize
-from numpy.typing import ArrayLike
+from numpy.typing import ArrayLike, DTypeLike
 
 from ..fields import FieldCollection, ScalarField
 from ..fields.base import FieldBase
@@ -36,6 +37,30 @@ def _get_limits(value: float | ArrayLike, dim: int) -> np.ndarray:
         return np.atleast_1d(value)[:dim]
 
 
+@dataclass
+class FFmpegPixelFormat:
+    pix_fmt: str
+    channels: int
+    value_max: int
+    dtype: DTypeLike
+
+    def data_to_frame(self, normalized_data: np.ndarray) -> np.ndarray:
+        return (normalized_data * self.value_max).astype(self.dtype)
+
+    def data_from_frame(self, frame_data: np.ndarray):
+        return frame_data.astype(float) / self.value_max
+
+
+FFmpegPixelFormats = {
+    "gray": FFmpegPixelFormat(
+        pix_fmt="gray", channels=1, value_max=255, dtype=np.uint8
+    ),
+    "rgb24": FFmpegPixelFormat(
+        pix_fmt="rgb24", channels=3, value_max=255, dtype=np.uint8
+    ),
+}
+
+
 class MovieStorage(StorageBase):
     def __init__(
         self,
@@ -43,6 +68,7 @@ class MovieStorage(StorageBase):
         *,
         vmin: float | ArrayLike = 0,
         vmax: float | ArrayLike = 1,
+        bitrate: int = -1,
         info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",
     ):
@@ -54,6 +80,9 @@ class MovieStorage(StorageBase):
                 Lowest values that are encoded (per field)
             vmax (float or array):
                 Highest values that are encoded (per field)
+            bitrate (float):
+                The bitrate of the movie (in kilobits per second). The default value of
+                -1 let's the encode choose an appropriate bit rate.
             info (dict):
                 Supplies extra information that is stored in the storage
             write_mode (str):
@@ -71,6 +100,9 @@ class MovieStorage(StorageBase):
             - track whether times roughly work (checking for frame drops)
             - we could embedd extra information (like time, and maybe colorscaling) in
               the individual frames if we extended the shape
+            - introduce encode/decode method for images
+              (provide abstract classes that manage bit depth, color channels and ffmpeg
+              codes)
         """
         if not module_available("ffmpeg"):
             raise ModuleNotFoundError("`MovieStorage` needs `ffmpeg-python` package")
@@ -79,8 +111,7 @@ class MovieStorage(StorageBase):
         self.filename = Path(filename)
         self.vmin = vmin
         self.vmax = vmax
-        self.dt = None
-        self.t_start = None
+        self.bitrate = bitrate
 
         self._logger = logging.getLogger(self.__class__.__name__)
         self._ffmpeg: Any = None
@@ -155,9 +186,7 @@ class MovieStorage(StorageBase):
         else:
             self._logger.warning(f"Unknown pixel format {stream['pix_fmt']}")
 
-    def _init_normalization(
-        self, field: FieldBase, *, inverse: bool = False
-    ) -> list[Callable]:
+    def _init_normalization(self, field: FieldBase, *, inverse: bool = False) -> None:
         """initialize the normalizations of the color information
 
         Args:
@@ -167,7 +196,7 @@ class MovieStorage(StorageBase):
                 Whether inverse normalization function should be returned
         """
         self._norms = []
-        fields = field if isinstance(field, FieldCollection) else [field]
+        fields = field.fields if isinstance(field, FieldCollection) else [field]
         vmin = _get_limits(self.vmin, len(fields))
         vmax = _get_limits(self.vmax, len(fields))
         for f_id, f in enumerate(fields):
@@ -179,13 +208,27 @@ class MovieStorage(StorageBase):
             self._norms.extend([norm] * num)
 
     def _reshape_data(self, data: np.ndarray) -> np.ndarray:
-        """reshape data such that it has exactly three dimensions"""
-        data = np.copy(data)
-        if data.ndim < 3:
-            data = data.reshape(data.shape + (1,) * (3 - data.ndim))  # set ndim=3
+        """reshape data such that it has exactly three dimensions
+
+        Assumes that that the input data has the spatial dimension last. The returned
+        data will have two spatial dimensions and all other dimensions (tensorial and
+        field collections) collapsed to the last dimension
+        """
+        data = np.copy(data)  # safety, so we don't change the shape of the original
+
+        # make sure there are two spatial dimensions
+        grid_dim = self._grid.num_axes
+        if grid_dim > 2:
+            raise NotImplementedError
+        if grid_dim == 1:
+            data = data.reshape(data.shape + (1,))
+        assert data.ndim >= 2
+        if data.ndim == 2:
+            return data.reshape(data.shape + (1,))  # explicitly scalar data
         elif data.ndim > 3:
-            data = data.reshape(data.shape[:2] + (-1,))  # collapse last axes
-        return data
+            # collapse first dimensions, so we have three in total
+            data = data.reshape((-1,) + data.shape[-2:])
+        return np.moveaxis(data, 0, -1)
 
     def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
         """initialize the storage for writing data
@@ -215,21 +258,21 @@ class MovieStorage(StorageBase):
             self.info.update(info)
 
         # get spatial dimension of the video
-        grid = field.grid
-        if grid.num_axes == 1:
+        self._grid = field.grid
+        if self._grid.num_axes == 1:
             width, height = field.grid.shape[0], 1
-        elif grid.num_axes == 2:
+        elif self._grid.num_axes == 2:
             width, height = field.grid.shape
         else:
             raise RuntimeError("Cannot use grid with more than two axes")
 
         # get color channel information
         if isinstance(field, ScalarField):
-            pix_fmt = "gray"  # 1 color channel
-            self._data_shape = (width, height, 1)
+            self.info["pixel_format"] = "gray"
         else:
-            pix_fmt = "rgb24"  # 3 color channels
-            self._data_shape = (width, height, 3)
+            self.info["pixel_format"] = "rgb24"
+        self._pix_fmt = FFmpegPixelFormats[self.info["pixel_format"]]
+        self._data_shape = (width, height, self._pix_fmt.channels)
         self.info["frame_shape"] = self._data_shape
         self.info["field_shape"] = field.data.shape
         if field.is_complex:
@@ -240,16 +283,23 @@ class MovieStorage(StorageBase):
 
         # set input
         self._logger.debug(f"Start ffmpeg process for `{self.filename}`")
-        f_input = ffmpeg.input(
-            "pipe:", format="rawvideo", pix_fmt=pix_fmt, s=f"{width}x{height}"
-        )
+        args = {
+            "format": "rawvideo",
+            "s": f"{width}x{height}",
+            "pix_fmt": self._pix_fmt.pix_fmt,
+            "loglevel": "warning",
+        }
+        f_input = ffmpeg.input("pipe:", **args)
         # set output format
-        f_output = f_input.output(
-            filename=self.filename,
-            pix_fmt=pix_fmt,
-            metadata="comment=" + shlex.quote(self._get_metadata()),
-        )
-        f_output = f_output.overwrite_output()  # allow overwriting file
+        args = {
+            "pix_fmt": self._pix_fmt.pix_fmt,
+            "metadata": "comment=" + shlex.quote(self._get_metadata()),
+        }
+        if self.bitrate > 0:
+            args["video_bitrate"] = self.bitrate
+        f_output = f_input.output(filename=self.filename, **args)
+        if self.write_mode in {"truncate", "truncate_once"}:
+            f_output = f_output.overwrite_output()  # allow overwriting file
         self._ffmpeg = f_output.run_async(pipe_stdin=True)  # start process
         self._state = "writing"
 
@@ -265,34 +315,28 @@ class MovieStorage(StorageBase):
                 "Writing not initialized. Call "
                 f"`{self.__class__.__name__}.start_writing`"
             )
-
         # ensure the data has the shape width x height x depth
         data = self._reshape_data(data)
         assert len(self._data_shape) == data.ndim == 3
+        assert data.shape[2] == len(self._norms)
         if self._data_shape[2] == 1:
             # single color channel
             data = data.reshape(self._data_shape)
         elif self._data_shape[2] == 3:
             # three color channels
-            if data.shape[2] == 1:
-                z = np.zeros(data.shape[:2] + (1,), dtype=self._dtype)
-                data = np.dstack((data, z, z))
-            elif data.shape[2] == 2:
-                z = np.zeros(data.shape[:2] + (1,), dtype=self._dtype)
-                data = np.dstack((data[..., 0], data[..., 1], z))
+            if data.shape[2] < 3:
+                zero_shape = data.shape[:2] + (3 - data.shape[2],)
+                data = np.dstack((data, np.zeros(zero_shape, dtype=self._dtype)))
         else:
             raise RuntimeError
-
         assert data.shape == self._data_shape
-        assert data.shape[2] == len(self._norms)
 
         # map values to [0, 1] float values
-        for i in range(data.shape[2]):
-            data[..., i] = self._norms[i](data[..., i])
-        data *= 256
+        for i, norm in enumerate(self._norms):
+            data[..., i] = norm(data[..., i])
 
         # write the new data
-        self._ffmpeg.stdin.write(data.astype(np.uint8).tobytes())
+        self._ffmpeg.stdin.write(self._pix_fmt.data_to_frame(data).tobytes())
 
     def end_writing(self) -> None:
         """finalize the storage after writing"""
@@ -329,21 +373,22 @@ class MovieStorage(StorageBase):
         # frame_shape = (self.info["width"], self.info["height"], self.info["channels"])
         data_shape = (self.info["width"], self.info["height"], len(self._norms))
         data = np.empty(data_shape, dtype=self._dtype)
+        pix_fmt = FFmpegPixelFormats[self.info["pixel_format"]]
 
         # iterate over entire movie
-        f_input = ffmpeg.input(self.filename)
+        f_input = ffmpeg.input(self.filename, loglevel="warning")
         f_output = f_input.output(
-            "pipe:", format="rawvideo", pix_fmt="rgb24", vframes=8
+            "pipe:", format="rawvideo", pix_fmt=pix_fmt.pix_fmt, vframes=8
         )
         proc = f_output.run_async(pipe_stdout=True)
         while True:
             read_bytes = proc.stdout.read(np.prod(data_shape))
             if not read_bytes:
                 break
-            frame = np.frombuffer(read_bytes, np.uint8).reshape(data_shape)
+            frame = np.frombuffer(read_bytes, pix_fmt.dtype).reshape(data_shape)
 
             for i, norm in enumerate(self._norms):
-                data[..., i] = norm(frame[:, :, i] / 256)
+                data[..., i] = norm(pix_fmt.data_from_frame(frame[:, :, i]))
 
             # create the field with the data of the given index
             assert self._field is not None
