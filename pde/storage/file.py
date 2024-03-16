@@ -25,7 +25,7 @@ class FileStorage(StorageBase):
 
     def __init__(
         self,
-        filename: str,
+        filename: str | Path,
         *,
         info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",

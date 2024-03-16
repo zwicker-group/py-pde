@@ -19,7 +19,7 @@ import logging
 import math
 import time
 import warnings
-from typing import Any, Callable, Literal, Tuple, Union
+from typing import Any, Callable, Literal, Union
 
 import numpy as np
 
