@@ -38,7 +38,15 @@ class FFmpegFormat:
 
     @property
     def pix_fmt_data(self) -> str:
-        return {1: "gray", 3: "rgb24", 4: "rgba"}[self.channels]
+        """return a suitable pixel format for the field data"""
+        if self.channels == 1:
+            return "gray"
+        elif self.channels == 3:
+            return "rgb24"
+        elif self.channels == 4:
+            return "rgba"
+        else:
+            raise NotImplementedError(f"Cannot deal with {self.channels} channels")
 
     def data_to_frame(self, normalized_data: np.ndarray) -> np.ndarray:
         return (normalized_data * self.value_max).astype(self.dtype)

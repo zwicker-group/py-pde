@@ -9,11 +9,10 @@ reading and writing movies.
 
 # TODO:
 #     - allow more bits for colorchannels
-#     - allow reading single frames
-#     - support different write_mode
 #     - track whether times roughly work (checking for frame drops)
 #     - we could embedd extra information (like time, and maybe colorscaling) in
-#       the individual frames if we extended the shape
+#       the individual frames if we extended the shape (or we could potentially use
+#       subtitles?)
 
 from __future__ import annotations
 
@@ -483,7 +482,7 @@ class MovieStorage(StorageBase):
         """create object that can be used as a tracker to fill this storage
 
         Args:
-            interrupts (:class:`~pde.tracker.ConstantInterrupts` or float):
+            interrupts (:class:`~pde.trackers.interrupts.ConstantInterrupts` or float):
                 Time interval with which the tracker is being called
             transformation (callable, optional):
                 A function that transforms the current state into a new field or field
