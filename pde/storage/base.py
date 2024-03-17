@@ -599,9 +599,9 @@ class StorageTracker(TrackerBase):
         Returns:
             float: The first time the tracker needs to handle data
         """
-        result = super().initialize(field, info)
-        self.storage.start_writing(self._transform(field, 0), info)
-        return result
+        t_first = super().initialize(field, info)
+        self.storage.start_writing(self._transform(field, t_first), info)
+        return t_first
 
     def handle(self, field: FieldBase, t: float) -> None:
         """handle data supplied to this tracker

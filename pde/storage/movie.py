@@ -48,11 +48,18 @@ def _get_limits(value: float | ArrayLike, dim: int) -> np.ndarray:
 class MovieStorage(StorageBase):
     """store discretized fields in a movie file
 
+    This storage only works when the `ffmpeg` program and :mod:`ffmpeg` is installed.
+
     Warning:
         This storage potentially compresses data and can thus lead to loss of some
         information. The data quality depends on many parameters, but most important are
         the bit depth of the video format, the range that is encoded (determined by
         `vmin` and `vmax`), and the target bitrate.
+
+        Note also that selecting individual time points might be quite slow since the
+        video needs to be read from the beginning each time. Instead, it is much more
+        efficient to process entire videos (by iterating over them or using
+        :func:`~pde.storage.movie.MovieStorage.items()`).
     """
 
     def __init__(
@@ -227,8 +234,13 @@ class MovieStorage(StorageBase):
 
         # delete data if truncation is requested. This is for instance necessary
         # to remove older data with incompatible data_shape
-        if self.write_mode == "truncate" or self.write_mode == "truncate_once":
+        if self.write_mode == "truncate":
             self.clear()
+        elif self.write_mode == "truncate_once":
+            self.clear()
+            self.write_mode = "append"  # do not truncate in subsequent calls
+        elif self.write_mode == "append":
+            raise NotImplementedError("Appending to movies is not possible")
 
         # initialize the writing, setting current data shape
         super().start_writing(field, info=info)
@@ -253,35 +265,39 @@ class MovieStorage(StorageBase):
         else:
             self.info["video_format"] = self.video_format
         self._format = FFmpeg.formats[self.info["video_format"]]
-        self._data_shape = (width, height, self._format.channels)
         if field.is_complex:
             raise NotImplementedError("MovieStorage does not support complex values")
+        self._frame_shape = (width, height, self._format.channels)
 
         # set up the normalization
         self._init_normalization(field, inverse=False)
 
         # set input
         self._logger.debug(f"Start ffmpeg process for `{self.filename}`")
-        args = {
+        input_args = {
             "format": "rawvideo",
             "s": f"{width}x{height}",
             "pix_fmt": self._format.pix_fmt_data,
             "loglevel": self.loglevel,
         }
-        f_input = ffmpeg.input("pipe:", **args)
+        f_input = ffmpeg.input("pipe:", **input_args)
         # set output format
-        args = {
+        output_args = {
             "vcodec": self._format.codec,
-            "crf": "10",  # Constant Rate Factor - lower values for less compression
+            "crf": "0",  # Constant Rate Factor - lower values for less compression
             "pix_fmt": self._format.pix_fmt_file,
             "metadata": "comment=" + shlex.quote(self._get_metadata()),
         }
+        if "264" in self._format.codec:
+            # make the H.264 codec use the full color range
+            output_args["bsf"] = "h264_metadata=video_full_range_flag=1"
         if self.bitrate > 0:
-            args["video_bitrate"] = str(self.bitrate)
-        f_output = f_input.output(filename=self.filename, **args)
-        if self.write_mode in {"truncate", "truncate_once"}:
-            f_output = f_output.overwrite_output()  # allow overwriting file
+            # set the specified bitrate
+            output_args["video_bitrate"] = str(self.bitrate)
+        f_output = f_input.output(filename=self.filename, **output_args)
         self._ffmpeg = f_output.run_async(pipe_stdin=True)  # start process
+
+        self.info["num_frames"] = 0
         self._state = "writing"
 
     def _append_data(self, data: np.ndarray, time: float) -> None:
@@ -304,8 +320,9 @@ class MovieStorage(StorageBase):
             raise NotImplementedError
         if grid_dim == 1:
             data = data.reshape(data.shape + (1,))
+        # check spatial dimensions
         assert data.ndim >= 2
-        assert data.shape[-2:] == self._data_shape[:2]  # check spatial dimensions
+        assert data.shape[-2:] == self._frame_shape[:2]
 
         # ensure the data has the shape extra_dim x width x height
         # where `extra_dim` are separated fields or capture the rank of the field
@@ -314,17 +331,18 @@ class MovieStorage(StorageBase):
         elif data.ndim > 3:
             # collapse first dimensions, so we have three in total
             data = data.reshape((-1,) + data.shape[-2:])
-        assert len(self._data_shape) == data.ndim == 3
+        assert len(self._frame_shape) == data.ndim == 3
         assert len(self._norms) == data.shape[0]  # same non-spatial dimension
 
         # map data values to frame values
-        frame_data = np.zeros(self._data_shape, dtype=self._format.dtype)
+        frame_data = np.zeros(self._frame_shape, dtype=self._format.dtype)
         for i, norm in enumerate(self._norms):
             data_norm = norm(data[i, ...])
             frame_data[..., i] = self._format.data_to_frame(data_norm)
 
         # write the new data
         self._ffmpeg.stdin.write(frame_data.tobytes())
+        self.info["num_frames"] += 1
 
     def end_writing(self) -> None:
         """finalize the storage after writing"""
@@ -367,7 +385,45 @@ class MovieStorage(StorageBase):
             :class:`~pde.fields.FieldBase`:
             The field class containing the grid and data
         """
-        raise NotImplementedError
+        import ffmpeg
+
+        if t_index < 0:
+            t_index += len(self)
+
+        if not 0 <= t_index < len(self):
+            raise IndexError("Time index out of range")
+
+        if "width" not in self.info:
+            self._read_metadata()
+        if self._field is None:
+            self._init_field()
+        assert self._field is not None
+        self._init_normalization(self._field, inverse=True)
+        assert self._norms is not None
+        frame_shape = (self.info["width"], self.info["height"], self._format.channels)
+        data_shape = (len(self._norms), self.info["width"], self.info["height"])
+        data = np.empty(data_shape, dtype=self._dtype)
+
+        # iterate over entire movie
+        f_input = ffmpeg.input(self.filename, loglevel=self.loglevel)
+        f_input = f_input.filter("select", f"gte(n,{t_index})")
+        f_output = f_input.output(
+            "pipe:", vframes=1, format="rawvideo", pix_fmt=self._format.pix_fmt_data
+        )
+        read_bytes, _ = f_output.run(capture_stdout=True)
+        if not read_bytes:
+            raise OSError("Could not read any data")
+        frame = np.frombuffer(read_bytes, self._format.dtype).reshape(frame_shape)
+
+        for i, norm in enumerate(self._norms):
+            frame_data = self._format.data_from_frame(frame[:, :, i])
+            data[i, :, :] = norm.inverse(frame_data)
+
+        # create the field with the data of the given index
+        assert self._field is not None
+        field = self._field.copy()
+        field.data = data.reshape(field.data.shape)
+        return field
 
     def __iter__(self) -> Iterator[FieldBase]:
         """iterate over all stored fields"""
@@ -390,9 +446,7 @@ class MovieStorage(StorageBase):
             "pipe:", format="rawvideo", pix_fmt=self._format.pix_fmt_data
         )
         proc = f_output.run_async(pipe_stdout=True)
-        f_id = 0
         while True:
-            f_id += 1
             read_bytes = proc.stdout.read(np.prod(frame_shape))
             if not read_bytes:
                 break
@@ -411,7 +465,9 @@ class MovieStorage(StorageBase):
     def items(self) -> Iterator[tuple[float, FieldBase]]:
         """iterate over all times and stored fields, returning pairs"""
         # iterate over entire movie
-        t = self.info.get("t_start", 0)
+        t = self.info.get("t_start")
+        if t is None:
+            t = 0
         dt = self.info.get("dt", 1)
         for field in self:
             yield t, field

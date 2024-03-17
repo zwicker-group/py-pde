@@ -19,7 +19,7 @@ def test_movie_storage_scalar(dim, tmp_path, rng):
     grid = pde.UnitGrid([16] * dim)
     field = pde.ScalarField.random_uniform(grid, rng=rng)
     eq = pde.DiffusionPDE()
-    writer = MovieStorage(path)
+    writer = MovieStorage(path, loglevel="info")
     storage = pde.MemoryStorage()
     eq.solve(
         field,
@@ -34,7 +34,7 @@ def test_movie_storage_scalar(dim, tmp_path, rng):
     np.testing.assert_allclose(reader.times, [0, 2])
     for i, field in enumerate(reader):
         assert field.grid == grid
-        np.testing.assert_allclose(field.data, storage[i].data, atol=0.1)
+        np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
@@ -48,14 +48,7 @@ def test_movie_storage_collection(dim, num_fields, tmp_path):
     field = pde.FieldCollection([pde.ScalarField(grid)] * num_fields, copy_fields=True)
     eq = pde.PDE(dict([("a", "1"), ("b", "2"), ("c", "3")][:num_fields]))
     writer = MovieStorage(path, vmax=[5, 10, 15])
-    storage = pde.MemoryStorage()
-    eq.solve(
-        field,
-        t_range=3.5,
-        dt=0.1,
-        backend="numpy",
-        tracker=[storage.tracker(1), writer.tracker(1)],
-    )
+    eq.solve(field, t_range=3.5, dt=0.1, backend="numpy", tracker=writer.tracker(1))
 
     reader = MovieStorage(path)
     assert len(reader) == 4
@@ -63,8 +56,7 @@ def test_movie_storage_collection(dim, num_fields, tmp_path):
     for t, fields in enumerate(reader):
         assert fields.grid == grid
         for i, field in enumerate(fields):
-            np.testing.assert_allclose(field.data, (i + 1) * t, atol=0.1, rtol=0.1)
-            # np.testing.assert_allclose(field.data, storage[t][i].data)
+            np.testing.assert_allclose(field.data, (i + 1) * t, atol=0.02, rtol=0.02)
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
@@ -94,7 +86,7 @@ def test_movie_storage_vector(dim, tmp_path, rng):
         assert field.grid == grid
         assert isinstance(field, pde.VectorField)
         assert field.data.shape == (dim,) + grid.shape
-        np.testing.assert_allclose(field.data, storage[i].data, atol=0.1)
+        np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
 # test all pixel formats
