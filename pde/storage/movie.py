@@ -75,7 +75,7 @@ class MovieStorage(StorageBase):
             filename (str):
                 The path where the movie is stored. The file extension determines the
                 container format of the movie. The standard codec FFV1 plays well with
-                the ".avi" and ".mkv" container format.
+                the ".avi" container format.
             vmin (float or array):
                 Lowest values that are encoded (per field). Smaller values are clipped
                 to this value.
@@ -181,14 +181,26 @@ class MovieStorage(StorageBase):
         self.vmax = metadata.pop("vmax", 1)
         self.info.update(metadata)
 
+        # read information from the first stream
         stream = info["streams"][0]
-        self.info["num_frames"] = int(stream["nb_frames"])
-        self.info["width"] = stream["coded_width"]
-        self.info["height"] = stream["coded_height"]
         try:
-            self._format = FFmpeg.formats[self.info["video_format"]]
+            self.info["num_frames"] = int(stream["nb_frames"])
         except KeyError:
-            self._logger.warning(f"Unknown pixel format `{self.info['pixel_format']}`")
+            self.info["num_frames"] = None  # number of frames was not stored
+        self.info["width"] = stream["width"]
+        self.info["height"] = stream["height"]
+        video_format = self.info.get("video_format")
+        if video_format is None:
+            video_format = stream.get("pix_fmt")
+        if video_format is None:
+            if self.video_format == "auto":
+                raise RuntimeError("Could not determine video format from file")
+            else:
+                video_format = self.video_format
+        try:
+            self._format = FFmpeg.formats[video_format]
+        except KeyError:
+            self._logger.warning(f"Unknown pixel format `{video_format}`")
         else:
             if self._format.pix_fmt_file != stream["pix_fmt"]:
                 self._logger.info(
@@ -285,7 +297,7 @@ class MovieStorage(StorageBase):
         input_args = {
             "format": "rawvideo",
             "s": f"{width}x{height}",
-            "pix_fmt": self._format.pix_fmt_data,
+            "pixel_format": self._format.pix_fmt_data,
             "loglevel": self.loglevel,
         }
         f_input = ffmpeg.input("pipe:", **input_args)
@@ -321,7 +333,9 @@ class MovieStorage(StorageBase):
                 "Writing not initialized. Call "
                 f"`{self.__class__.__name__}.start_writing`"
             )
-        assert self._norms is not None  # normalization has been initialized
+        # normalization and video format have been initialized
+        assert self._norms is not None
+        assert self._format is not None
 
         # make sure there are two spatial dimensions
         grid_dim = self._grid.num_axes

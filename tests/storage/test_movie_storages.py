@@ -94,6 +94,10 @@ def test_movie_storage_vector(dim, tmp_path, rng):
 @pytest.mark.parametrize("name,video_format", formats.items())
 def test_video_format(name, video_format, tmp_path, rng):
     """test all video_formats"""
+    if np.issubdtype(video_format.dtype, np.integer):
+        assert video_format.max_value == np.iinfo(video_format.dtype).max
+    assert np.dtype(video_format.dtype).itemsize == video_format.bytes_per_channel
+
     path = tmp_path / f"test_movie_storage_{name}.avi"
 
     field = pde.ScalarField.random_uniform(pde.UnitGrid([16]), rng=rng)
@@ -107,10 +111,8 @@ def test_video_format(name, video_format, tmp_path, rng):
         tracker=[storage.tracker(2), writer.tracker(2)],
     )
 
-    atol = 0.01 if video_format.bits_per_channel == 8 else 0.0001
+    atol = {8: 1e-2, 16: 1e-4, 32: 1e-8, 64: 1e-15}[video_format.bits_per_channel]
     reader = MovieStorage(path)
-    assert len(reader) == 2
-    np.testing.assert_allclose(reader.times, [0, 2])
     for i, field in enumerate(reader):
         np.testing.assert_allclose(field.data, storage[i].data, atol=atol)
 

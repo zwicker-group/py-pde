@@ -12,7 +12,7 @@ Functions for interacting with FFmpeg
 """
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -31,36 +31,16 @@ class FFmpegFormat:
 
     pix_fmt_file: str
     """str: name of the pixel format used in the codec"""
+    pix_fmt_data: str
+    """str: name of the pixel format used in the frame data"""
     channels: int
     """int: number of color channels in this pixel format"""
     bits_per_channel: int
     """int: number of bits per color channel in this pixel format"""
+    dtype: DTypeLike
+    """numpy dtype corresponding to the data of a single channel"""
     codec: str = "ffv1"
     """str: name of the codec that supports this pixel format"""
-
-    @property
-    def pix_fmt_data(self) -> str:
-        """return a suitable pixel format for the field data"""
-        if self.bits_per_channel == 8:
-            if self.channels == 1:
-                return "gray"
-            elif self.channels == 3:
-                return "rgb24"
-            elif self.channels == 4:
-                return "rgba"
-            else:
-                raise NotImplementedError(f"Cannot deal with {self.channels} channels")
-        elif self.bits_per_channel == 16:
-            if self.channels == 1:
-                return "gray16le"
-            elif self.channels == 3:
-                return "gbrp16le"
-            elif self.channels == 4:
-                return "rgba64le"
-            else:
-                raise NotImplementedError(f"Cannot deal with {self.channels} channels")
-        else:
-            raise NotImplementedError(f"Cannot use {self.bits_per_channel} bits")
 
     @property
     def bytes_per_channel(self) -> int:
@@ -68,36 +48,91 @@ class FFmpegFormat:
         return self.bits_per_channel // 8
 
     @property
-    def dtype(self) -> DTypeLike:
-        """numpy dtype corresponding to the data of a single channel"""
-        if self.bits_per_channel == 8:
-            return np.uint8
-        elif self.bits_per_channel == 16:
-            return np.uint16
-        else:
-            raise NotImplementedError(f"Cannot use {self.bits_per_channel} bits")
-
-    @property
-    def value_max(self) -> int:
+    def max_value(self) -> Union[float, int]:
         """maximal value stored in a color channel"""
-        return 2**self.bits_per_channel - 1  # type: ignore
+        if np.issubdtype(self.dtype, np.integer):
+            return 2**self.bits_per_channel - 1  # type: ignore
+        else:
+            return 1.0
 
     def data_to_frame(self, normalized_data: np.ndarray) -> np.ndarray:
         """converts normalized data to data being stored in a color channel"""
-        return (normalized_data * self.value_max).astype(self.dtype)
+        return np.ascontiguousarray(normalized_data * self.max_value, dtype=self.dtype)
 
     def data_from_frame(self, frame_data: np.ndarray):
         """converts data stored in a color channel to normalized data"""
-        return frame_data.astype(float) / self.value_max
+        return frame_data.astype(float) / self.max_value
 
 
 formats = {
-    "gray": FFmpegFormat(pix_fmt_file="gray", channels=1, bits_per_channel=8),
-    "rgb24": FFmpegFormat(pix_fmt_file="rgb24", channels=3, bits_per_channel=8),
-    "rgb32": FFmpegFormat(pix_fmt_file="rgb32", channels=4, bits_per_channel=8),
-    "gray16le": FFmpegFormat(pix_fmt_file="gray16le", channels=1, bits_per_channel=16),
-    "gbrp16le": FFmpegFormat(pix_fmt_file="gbrp16le", channels=3, bits_per_channel=16),
-    "rgba64le": FFmpegFormat(pix_fmt_file="rgba64le", channels=4, bits_per_channel=16),
+    # 8 bit formats
+    "gray": FFmpegFormat(
+        pix_fmt_file="gray",
+        pix_fmt_data="gray",
+        channels=1,
+        bits_per_channel=8,
+        dtype=np.uint8,
+    ),
+    "rgb24": FFmpegFormat(
+        pix_fmt_file="rgb24",
+        pix_fmt_data="rgb24",
+        channels=3,
+        bits_per_channel=8,
+        dtype=np.uint8,
+    ),
+    "rgb32": FFmpegFormat(
+        pix_fmt_file="rgb32",
+        pix_fmt_data="rgb32",
+        channels=4,
+        bits_per_channel=8,
+        dtype=np.uint8,
+    ),
+    # 16 bit formats
+    "gray16le": FFmpegFormat(
+        pix_fmt_file="gray16le",
+        pix_fmt_data="gray16le",
+        channels=1,
+        bits_per_channel=16,
+        dtype=np.dtype("<u2"),
+    ),
+    "gbrp16le": FFmpegFormat(
+        pix_fmt_file="gbrp16le",
+        pix_fmt_data="gbrp16le",
+        channels=3,
+        bits_per_channel=16,
+        dtype=np.dtype("<u2"),
+    ),
+    "gbrap16le": FFmpegFormat(
+        pix_fmt_file="gbrap16le",
+        pix_fmt_data="gbrap16le",
+        channels=4,
+        bits_per_channel=16,
+        dtype=np.dtype("<u2"),
+    ),
+    # 32 bit formats
+    # "grayf32le": FFmpegFormat(
+    #     pix_fmt_file="grayf32le",
+    #     pix_fmt_data="grayf32le",
+    #     codec="pfm",  # pfm or dpx
+    #     channels=1,
+    #     bits_per_channel=32,
+    #     dtype=np.dtype("<f4"),
+    # ),
+    # "gbrpf32le": FFmpegFormat(
+    #     pix_fmt_file="gbrpf32le",
+    #     pix_fmt_data="gbrpf32le",
+    #     codec="pfm",  # or dpx?
+    #     channels=3,
+    #     bits_per_channel=32,
+    #     dtype=np.dtype("<f4"),
+    # ),
+    # "gbrapf32le": FFmpegFormat(
+    #     pix_fmt_file="gbrapf32le",
+    #     pix_fmt_data="gbrapf32le",
+    #     channels=4,
+    #     bits_per_channel=32,
+    #     dtype=np.dtype("<f4"),
+    # ),
 }
 """dict of :class:`FFmpegFormat` formats"""
 
