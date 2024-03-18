@@ -1,41 +1,42 @@
 """
 Functions for interacting with FFmpeg
 
+.. autosummary::
+   :nosignatures:
+
+   FFmpegFormat
+   formats
+   find_format
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from dataclasses import dataclass
-
-# import subprocess as sp
 from typing import Optional
 
 import numpy as np
 from numpy.typing import DTypeLike
 
-# def _run_ffmpeg(args: list[str]):
-#     return sp.check_output(["ffmpeg"] + args)
-#
-#
-# def codecs() -> list[str]:
-#     """list: all supported ffmpeg codecs"""
-#     res = _run_ffmpeg(["-codecs"])
-#
-#
-# def get_pixel_formats(encoder=None):
-#     if encoder is None:
-#         res = _run_ffmpeg(["-pix_fmts"])
-#     else:
-#         res = _run_ffmpeg(["-h", f"encoder={encoder}"])
-
 
 @dataclass
 class FFmpegFormat:
-    """defines a FFmpeg format used for storing field data in a video"""
+    """defines a FFmpeg format used for storing field data in a video
+
+    All pixel formats supported by FFmpeg can be obtained by running
+    :code:`ffmpeg -pix_fmts`. However, not all pixel formats are supported by all
+    codecs. Supported pixel formats are listed in the output of
+    :code:`ffmpeg -h encoder=<ENCODER>`, where `<ENCODER>` is one of the encoders listed
+    in :code:`ffmpeg -codecs`.
+    """
 
     pix_fmt_file: str
+    """str: name of the pixel format used in the codec"""
     channels: int
+    """int: number of color channels in this pixel format"""
     bits_per_channel: int
+    """int: number of bits per color channel in this pixel format"""
     codec: str = "ffv1"
+    """str: name of the codec that supports this pixel format"""
 
     @property
     def pix_fmt_data(self) -> str:
@@ -63,10 +64,12 @@ class FFmpegFormat:
 
     @property
     def bytes_per_channel(self) -> int:
+        """int:number of bytes per color channel"""
         return self.bits_per_channel // 8
 
     @property
     def dtype(self) -> DTypeLike:
+        """numpy dtype corresponding to the data of a single channel"""
         if self.bits_per_channel == 8:
             return np.uint8
         elif self.bits_per_channel == 16:
@@ -76,12 +79,15 @@ class FFmpegFormat:
 
     @property
     def value_max(self) -> int:
+        """maximal value stored in a color channel"""
         return 2**self.bits_per_channel - 1  # type: ignore
 
     def data_to_frame(self, normalized_data: np.ndarray) -> np.ndarray:
+        """converts normalized data to data being stored in a color channel"""
         return (normalized_data * self.value_max).astype(self.dtype)
 
     def data_from_frame(self, frame_data: np.ndarray):
+        """converts data stored in a color channel to normalized data"""
         return frame_data.astype(float) / self.value_max
 
 
@@ -93,6 +99,7 @@ formats = {
     "gbrp16le": FFmpegFormat(pix_fmt_file="gbrp16le", channels=3, bits_per_channel=16),
     "rgba64le": FFmpegFormat(pix_fmt_file="rgba64le", channels=4, bits_per_channel=16),
 }
+"""dict of :class:`FFmpegFormat` formats"""
 
 
 def find_format(channels: int, bits_per_channel: int = 8) -> Optional[str]:

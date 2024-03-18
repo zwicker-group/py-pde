@@ -90,6 +90,7 @@ def test_movie_storage_vector(dim, tmp_path, rng):
         np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
 
 
+@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 @pytest.mark.parametrize("name,video_format", formats.items())
 def test_video_format(name, video_format, tmp_path, rng):
     """test all video_formats"""
@@ -114,6 +115,7 @@ def test_video_format(name, video_format, tmp_path, rng):
         np.testing.assert_allclose(field.data, storage[i].data, atol=atol)
 
 
+@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 def test_too_many_channels(tmp_path, rng):
     """test that data with too many channels throws an error"""
     path = tmp_path / f"test_movie_complex.avi"
@@ -125,6 +127,7 @@ def test_too_many_channels(tmp_path, rng):
         eq.solve(field, t_range=3.5, backend="numpy", tracker=writer.tracker(2))
 
 
+@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 def test_complex_data(tmp_path, rng):
     """test that complex data throws an error"""
     path = tmp_path / f"test_movie_complex.avi"
