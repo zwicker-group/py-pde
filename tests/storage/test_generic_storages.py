@@ -32,7 +32,7 @@ def storage_factory(tmp_path, storage_class):
         # provide factory that initializes a MovieStorage with a file
         if not module_available("ffmpeg"):
             pytest.skip("No module `ffmpeg-python`")
-        file_path = tmp_path / "test_storage_write.mp4"
+        file_path = tmp_path / "test_storage_write.avi"
         return functools.partial(MovieStorage, file_path, vmax=5)
 
     # simply return the storage class assuming it is a factory function already

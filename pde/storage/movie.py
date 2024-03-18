@@ -7,13 +7,9 @@ reading and writing movies.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-# TODO:
-#     - allow more bits for colorchannels
-#     - track whether times roughly work (checking for frame drops)
-#     - we could embedd extra information (like time, and maybe colorscaling) in
-#       the individual frames if we extended the shape (or we could potentially use
-#       subtitles?)
-
+# TODO: write time as the time stamps (potentially using a factor to convert simulation
+#       time to real time); this might not be possible with rawvideo. An alternative
+#       might be to store the time stamps and apply them later, e.g., using `mkvmerge`
 from __future__ import annotations
 
 import json
@@ -27,12 +23,12 @@ import numpy as np
 from matplotlib.colors import Normalize
 from numpy.typing import ArrayLike
 
-from ..fields import FieldCollection, ScalarField
+from ..fields import FieldCollection
 from ..fields.base import DataFieldBase, FieldBase
+from ..tools import ffmpeg as FFmpeg
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..trackers.interrupts import ConstantInterrupts
-from . import _ffmpeg as FFmpeg
 from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 
 
@@ -52,8 +48,8 @@ class MovieStorage(StorageBase):
     Warning:
         This storage potentially compresses data and can thus lead to loss of some
         information. The data quality depends on many parameters, but most important are
-        the bit depth of the video format, the range that is encoded (determined by
-        `vmin` and `vmax`), and the target bitrate.
+        the bits per channel of the video format, the range that is encoded (determined
+        by `vmin` and `vmax`), and the target bitrate.
 
         Note also that selecting individual time points might be quite slow since the
         video needs to be read from the beginning each time. Instead, it is much more
@@ -67,6 +63,7 @@ class MovieStorage(StorageBase):
         *,
         vmin: float | ArrayLike = 0,
         vmax: float | ArrayLike = 1,
+        bits_per_channel: int = 8,
         video_format: str = "auto",
         bitrate: int = -1,
         info: InfoDict | None = None,
@@ -77,23 +74,28 @@ class MovieStorage(StorageBase):
         Args:
             filename (str):
                 The path where the movie is stored. The file extension determines the
-                container format of the movie.
+                container format of the movie. The standard codec FFV1 plays well with
+                the ".avi" and ".mkv" container format.
             vmin (float or array):
-                Lowest values that are encoded (per field). Lower values are clipped to
-                this value.
+                Lowest values that are encoded (per field). Smaller values are clipped
+                to this value.
             vmax (float or array):
                 Highest values that are encoded (per field). Larger values are clipped
                 to this value.
+            bits_per_channel (int):
+                The number of bits used per color channel. Typical values are 8 and 16.
+                The relative accuracy of stored values is 0.01 and 0.0001, respectively.
             video_format (str):
-                How to write data to the movie. This determines the number of color
-                channels and the bit depth of individual colors. Available options are
-                listed in :func:`~pde.storage._ffmpeg.formats`. The special value
-                `auto` tries to find a suitable format automatically.
+                Identifier for a video format from :data:`~pde.tools.ffmpeg.formats`,
+                which determines the number of channels, the bit depth of individual
+                colors, and the codec. The special value `auto` tries to find a suitable
+                format automatically, taking `bits_per_channel` into account.
             bitrate (float):
                 The bitrate of the movie (in kilobits per second). The default value of
-                -1 let's the encode choose an appropriate bit rate.
+                -1 let's the encoder choose an appropriate bit rate.
             info (dict):
-                Supplies extra information that is stored in the storage
+                Supplies extra information that is stored in the storage alongside
+                additional information necessary to reconstruct fields and grids.
             write_mode (str):
                 Determines how new data is added to already existing data. Possible
                 values are: 'append' (data is always appended), 'truncate' (data is
@@ -101,7 +103,9 @@ class MovieStorage(StorageBase):
                 (data is cleared for the first writing, but appended subsequently).
                 Alternatively, specifying 'readonly' will disable writing completely.
             loglevel (str):
-                FFmpeg log level
+                FFmpeg log level determining the amount of data sent to stdout. The
+                default only emits warnings and errors, but setting this to `"info"` can
+                be useful to get additioanl information about the encoding.
         """
         if not module_available("ffmpeg"):
             raise ModuleNotFoundError("`MovieStorage` needs `ffmpeg-python` package")
@@ -110,6 +114,7 @@ class MovieStorage(StorageBase):
         self.filename = Path(filename)
         self.vmin = vmin
         self.vmax = vmax
+        self.bits_per_channel = bits_per_channel
         self.video_format = video_format
         self.bitrate = bitrate
         self.loglevel = loglevel
@@ -257,10 +262,14 @@ class MovieStorage(StorageBase):
 
         # get color channel information
         if self.video_format == "auto":
-            if isinstance(field, ScalarField):
-                self.info["video_format"] = "gray"
-            else:
-                self.info["video_format"] = "rgb24"
+            channels = field._data_flat.shape[0]
+            video_format = FFmpeg.find_format(channels, self.bits_per_channel)
+            if video_format is None:
+                raise RuntimeError(
+                    f"Could not find a video format with {channels} channels and "
+                    f"{self.bits_per_channel} bits per channel."
+                )
+            self.info["video_format"] = video_format
         else:
             self.info["video_format"] = self.video_format
         self._format = FFmpeg.formats[self.info["video_format"]]
@@ -283,12 +292,13 @@ class MovieStorage(StorageBase):
         # set output format
         output_args = {
             "vcodec": self._format.codec,
-            "crf": "0",  # Constant Rate Factor - lower values for less compression
             "pix_fmt": self._format.pix_fmt_file,
             "metadata": "comment=" + shlex.quote(self._get_metadata()),
         }
         if "264" in self._format.codec:
-            # make the H.264 codec use the full color range
+            # set extra options for the H.264 codec
+            output_args["crf"] = "0"  # Constant Rate Factor (lower = less compression)
+            # make the H.264 codec use the full color range:
             output_args["bsf"] = "h264_metadata=video_full_range_flag=1"
         if self.bitrate > 0:
             # set the specified bitrate
@@ -438,6 +448,7 @@ class MovieStorage(StorageBase):
         frame_shape = (self.info["width"], self.info["height"], self._format.channels)
         data_shape = (len(self._norms), self.info["width"], self.info["height"])
         data = np.empty(data_shape, dtype=self._dtype)
+        frame_bytes = np.prod(frame_shape) * self._format.bytes_per_channel
 
         # iterate over entire movie
         f_input = ffmpeg.input(self.filename, loglevel=self.loglevel)
@@ -446,7 +457,7 @@ class MovieStorage(StorageBase):
         )
         proc = f_output.run_async(pipe_stdout=True)
         while True:
-            read_bytes = proc.stdout.read(np.prod(frame_shape))
+            read_bytes = proc.stdout.read(frame_bytes)
             if not read_bytes:
                 break
             frame = np.frombuffer(read_bytes, self._format.dtype).reshape(frame_shape)
