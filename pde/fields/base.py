@@ -1372,7 +1372,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         if bc is not None:
             # impose boundary conditions and then interpolate using ghost cells
-            self.set_ghost_cells(bc)
+            self.set_ghost_cells(bc, set_corners=True)
             interpolator = self.make_interpolator(fill=fill, with_ghost_cells=True)
 
         else:
@@ -1502,19 +1502,23 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return (self._data_full[i_wall] + self._data_full[i_ghost]) / 2  # type: ignore
 
     @fill_in_docstring
-    def set_ghost_cells(self, bc: BoundariesData, *, args=None) -> None:
+    def set_ghost_cells(
+        self, bc: BoundariesData, *, set_corners: bool = False, args=None
+    ) -> None:
         """set the boundary values on virtual points for all boundaries
 
         Args:
             bc (str or list or tuple or dict):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
+            set_corners (bool):
+                Determines whether the corner cells are set using interpolation
             args:
                 Additional arguments that might be supported by special boundary
                 conditions.
         """
         bcs = self.grid.get_boundary_conditions(bc, rank=self.rank)
-        bcs.set_ghost_cells(self._data_full, args=args)
+        bcs.set_ghost_cells(self._data_full, args=args, set_corners=set_corners)
 
     @property
     @abstractmethod

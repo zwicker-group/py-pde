@@ -8,6 +8,8 @@ This module handles the boundaries of all axes of a grid. It only defines
 
 from __future__ import annotations
 
+import itertools
+import logging
 from collections.abc import Iterator, Sequence
 from typing import Union
 
@@ -277,18 +279,48 @@ class Boundaries(list):
 
         return "\n".join(result)
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(
+        self, data_full: np.ndarray, *, set_corners: bool = False, args=None
+    ) -> None:
         """set the ghost cells for all boundaries
 
         Args:
             data_full (:class:`~numpy.ndarray`):
                 The full field data including ghost points
+            set_corners (bool):
+                Determines whether the corner cells are set using interpolation
             args:
                 Additional arguments that might be supported by special boundary
                 conditions.
         """
         for b in self:
             b.set_ghost_cells(data_full, args=args)
+
+        if set_corners and self.grid.num_axes >= 2:
+            d = data_full  # abbreviation
+            nxt = [1, -2]  # maps 0 to 1 and -1 to -2 to obtain neighboring cells
+            if self.grid.num_axes == 2:
+                # iterate all corners
+                for i, j in itertools.product([0, -1], [0, -1]):
+                    d[..., i, j] = (d[..., nxt[i], j] + d[..., i, nxt[j]]) / 2
+
+            elif self.grid.num_axes >= 3:
+                # iterate all edges
+                for i, j in itertools.product([0, -1], [0, -1]):
+                    d[..., :, i, j] = (+d[..., :, nxt[i], j] + d[..., :, i, nxt[j]]) / 2
+                    d[..., i, :, j] = (+d[..., nxt[i], :, j] + d[..., i, :, nxt[j]]) / 2
+                    d[..., i, j, :] = (+d[..., nxt[i], j, :] + d[..., i, nxt[j], :]) / 2
+                # iterate all corners
+                for i, j, k in itertools.product(*[[0, -1]] * 3):
+                    d[..., i, j, k] = (
+                        d[..., nxt[i], j, k]
+                        + d[..., i, nxt[j], k]
+                        + d[..., i, j, nxt[k]]
+                    ) / 3
+            else:
+                logging.getLogger(self.__class__.__name__).warning(
+                    f"Can't interpolate corners for grid with {self.grid.num_axes} axes"
+                )
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
         """return function that sets the ghost cells on a full array"""
