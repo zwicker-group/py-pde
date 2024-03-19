@@ -22,11 +22,12 @@ from numpy.typing import DTypeLike
 class FFmpegFormat:
     """defines a FFmpeg format used for storing field data in a video
 
-    All pixel formats supported by FFmpeg can be obtained by running
-    :code:`ffmpeg -pix_fmts`. However, not all pixel formats are supported by all
-    codecs. Supported pixel formats are listed in the output of
-    :code:`ffmpeg -h encoder=<ENCODER>`, where `<ENCODER>` is one of the encoders listed
-    in :code:`ffmpeg -codecs`.
+    Note:
+        All pixel formats supported by FFmpeg can be obtained by running
+        :code:`ffmpeg -pix_fmts`. However, not all pixel formats are supported by all
+        codecs. Supported pixel formats are listed in the output of
+        :code:`ffmpeg -h encoder=<ENCODER>`, where `<ENCODER>` is one of the encoders
+        listed in :code:`ffmpeg -codecs`.
     """
 
     pix_fmt_file: str
@@ -134,7 +135,7 @@ formats = {
     #     dtype=np.dtype("<f4"),
     # ),
 }
-"""dict of :class:`FFmpegFormat` formats"""
+"""dict of pre-defined :class:`FFmpegFormat` formats"""
 
 
 def find_format(channels: int, bits_per_channel: int = 8) -> Optional[str]:
@@ -160,5 +161,6 @@ def find_format(channels: int, bits_per_channel: int = 8) -> Optional[str]:
                 or f.bits_per_channel < f_best.bits_per_channel
                 or f.channels < f_best.channels
             ):
+                # the current format is better than the previous one
                 n_best, f_best = n, f
     return n_best

@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import shlex
 from collections.abc import Iterator, Sequence
+from fractions import Fraction
 from pathlib import Path
 from typing import Any, Callable, Literal
 
@@ -24,6 +25,7 @@ from ..fields.base import DataFieldBase, FieldBase
 from ..tools import ffmpeg as FFmpeg
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
+from ..tools.parse_duration import parse_duration
 from ..trackers.interrupts import ConstantInterrupts
 from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 
@@ -40,12 +42,15 @@ class MovieStorage(StorageBase):
     """store discretized fields in a movie file
 
     This storage only works when the `ffmpeg` program and :mod:`ffmpeg` is installed.
+    The default codec is `FFV1 <https://en.m.wikipedia.org/wiki/FFV1>`_, which supports
+    lossless compression for various configurations. Not all video players support this
+    codec, but `VLC <https://www.videolan.org>`_ usually works quite well.
 
     Warning:
         This storage potentially compresses data and can thus lead to loss of some
         information. The data quality depends on many parameters, but most important are
-        the bits per channel of the video format, the range that is encoded (determined
-        by `vmin` and `vmax`), and the target bitrate.
+        the bits per channel of the video format and the range that is encoded
+        (determined by `vmin` and `vmax`).
 
         Note also that selecting individual time points might be quite slow since the
         video needs to be read from the beginning each time. Instead, it is much more
@@ -71,7 +76,7 @@ class MovieStorage(StorageBase):
             filename (str):
                 The path where the movie is stored. The file extension determines the
                 container format of the movie. The standard codec FFV1 plays well with
-                the ".avi" container format.
+                the ".avi", ".mkv", and ".mov" container format.
             vmin (float or array):
                 Lowest values that are encoded (per field). Smaller values are clipped
                 to this value.
@@ -166,7 +171,11 @@ class MovieStorage(StorageBase):
         if nb_streams != 1:
             self._logger.warning(f"Only using first of {nb_streams} streams")
 
-        raw_comment = info["format"].get("tags", {}).get("comment", "{}")
+        tags = info["format"].get("tags", {})
+        # read comment field, which can be either lower case or upper case
+        raw_comment = tags.get("comment", tags.get("COMMENT", "{}"))
+        if raw_comment == "{}":
+            self._logger.warning("Could not find metadata written by `py-pde`")
         metadata = json.loads(shlex.split(raw_comment)[0])
 
         version = metadata.pop("version", 1)
@@ -181,7 +190,15 @@ class MovieStorage(StorageBase):
         try:
             self.info["num_frames"] = int(stream["nb_frames"])
         except KeyError:
-            self.info["num_frames"] = None  # number of frames was not stored
+            # frame count is not directly in the video
+            # => try determining it from the duration
+            try:
+                fps = Fraction(stream.get("avg_frame_rate", None))
+                duration = parse_duration(stream.get("tags", {}).get("DURATION"))
+            except TypeError:
+                raise RuntimeError("Frame count could not be read from video")
+            else:
+                self.info["num_frames"] = int(duration.total_seconds() * float(fps))
         self.info["width"] = stream["width"]
         self.info["height"] = stream["height"]
         if self.video_format == "auto":
@@ -331,6 +348,17 @@ class MovieStorage(StorageBase):
         # normalization and video format have been initialized
         assert self._norms is not None
         assert self._format is not None
+
+        # check time
+        t_start = self.info.get("t_start")
+        if t_start is None:
+            t_start = 0
+        dt = self.info.get("dt", 1)
+        time_expect = t_start + dt * self.info["num_frames"]
+        if not np.isclose(time, time_expect):
+            if self.info.get("time_mismatch", False):
+                self._logger.warning(f"Detected time mismatch: {time} != {time_expect}")
+                self.info["time_mismatch"] = True
 
         # make sure there are two spatial dimensions
         grid_dim = self._grid.num_axes

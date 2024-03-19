@@ -91,6 +91,33 @@ def test_movie_storage_vector(dim, tmp_path, rng):
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.parametrize("ext", [".mov", ".avi", ".mkv"])
+def test_movie_storage_containers(ext, tmp_path, rng):
+    """test storing scalar field as movie with different extensions"""
+    path = tmp_path / f"test_movie_storage_scalar{ext}"
+
+    grid = pde.UnitGrid([16])
+    field = pde.ScalarField.random_uniform(grid, rng=rng)
+    eq = pde.DiffusionPDE()
+    writer = MovieStorage(path)
+    storage = pde.MemoryStorage()
+    eq.solve(
+        field,
+        t_range=3.5,
+        dt=0.1,
+        backend="numpy",
+        tracker=[storage.tracker(2), writer.tracker(2)],
+    )
+
+    reader = MovieStorage(path)
+    assert len(reader) == 2
+    np.testing.assert_allclose(reader.times, [0, 2])
+    for i, field in enumerate(reader):
+        assert field.grid == grid
+        np.testing.assert_allclose(field.data, storage[i].data, atol=0.01)
+
+
+@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 @pytest.mark.parametrize("name,video_format", formats.items())
 def test_video_format(name, video_format, tmp_path, rng):
     """test all video_formats"""
