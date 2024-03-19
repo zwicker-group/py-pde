@@ -558,3 +558,27 @@ def test_field_split(decomp, rng):
         np.testing.assert_allclose(field.data, field_data)
     else:
         assert field_data is None
+
+
+def test_field_corner_interpolation_2d():
+    """test corner interpolation for a 2d field"""
+    f = ScalarField(UnitGrid([1, 1]), 0)
+    bc_x = [{"value": -1}, {"value": 2}]
+    bc_y = [{"value": -2}, {"value": 1}]
+    f.set_ghost_cells(bc=[bc_x, bc_y], set_corners=True)
+    expect = np.array([[-1.5, -2, 0], [-1, 0, 2], [0, 1, 1.5]])
+    np.testing.assert_allclose(f._data_full, 2 * expect.T)
+
+
+def test_field_corner_interpolation_3d():
+    """test corner interpolation for a 3d field"""
+    f = ScalarField(UnitGrid([1, 1, 1]), 0)
+    f.set_ghost_cells(bc=[[{"value": -3}, {"value": 3}]] * 3, set_corners=True)
+    expect = np.array(
+        [
+            [[-6, -6, -2], [-6, -6, 0], [-2, 0, 2]],
+            [[-6, -6, 0], [-6, 0, 6], [0, 6, 6]],
+            [[-2, 0, 2], [0, 6, 6], [2, 6, 6]],
+        ]
+    )
+    np.testing.assert_allclose(f._data_full, expect)
