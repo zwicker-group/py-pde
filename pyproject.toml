@@ -92,6 +92,7 @@ follow_imports_for_stubs = true
 
 [[tool.mypy.overrides]]
 module = [
+    "ffmpeg.*",
     "h5py.*",
     "IPython.*",
     "ipywidgets.*",

@@ -9,6 +9,7 @@ Package containing several tools required in py-pde
    cuboid
    docstrings
    expressions
+   ffmpeg
    math
    misc
    mpi

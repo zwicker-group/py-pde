@@ -8,13 +8,14 @@ import platform
 import numpy as np
 import pytest
 
-from pde import DiffusionPDE, FileStorage, MemoryStorage, UnitGrid
+from pde import DiffusionPDE, FileStorage, MemoryStorage, MovieStorage, UnitGrid
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.storage.base import StorageView
 from pde.tools import mpi
 from pde.tools.misc import module_available
 
 STORAGE_CLASSES = [MemoryStorage, FileStorage]
+STORAGE_CLASSES_ALL = [(0, MemoryStorage), (0, FileStorage), (0.1, MovieStorage)]
 
 
 @pytest.fixture
@@ -27,12 +28,19 @@ def storage_factory(tmp_path, storage_class):
         file_path = tmp_path / "test_storage_write.hdf5"
         return functools.partial(FileStorage, file_path)
 
+    if storage_class is MovieStorage:
+        # provide factory that initializes a MovieStorage with a file
+        if not module_available("ffmpeg"):
+            pytest.skip("No module `ffmpeg-python`")
+        file_path = tmp_path / "test_storage_write.avi"
+        return functools.partial(MovieStorage, file_path, vmax=5)
+
     # simply return the storage class assuming it is a factory function already
     return storage_class
 
 
-@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storage_write(storage_factory):
+@pytest.mark.parametrize("atol,storage_class", STORAGE_CLASSES_ALL)
+def test_storage_write(atol, storage_factory):
     """test simple memory storage"""
     dim = 5
     grid = UnitGrid([dim])
@@ -50,20 +58,22 @@ def test_storage_write(storage_factory):
 
     np.testing.assert_allclose(storage.times, np.arange(2))
     for f in storage:
-        np.testing.assert_array_equal(f.data, np.arange(dim))
+        np.testing.assert_allclose(f.data, np.arange(dim), atol=atol)
     for i in range(2):
-        np.testing.assert_array_equal(storage[i].data, np.arange(dim))
+        np.testing.assert_allclose(storage[i].data, np.arange(dim), atol=atol)
     assert {"a": 1, "b": 2}.items() <= storage.info.items()
 
-    storage = storage_factory()
-    storage.clear()
-    for i in range(3):
-        storage.start_writing(field)
-        field.data = np.arange(dim) + i
-        storage.append(field, i)
-        storage.end_writing()
+    if not isinstance(storage, MovieStorage):
+        storage = storage_factory()
+        storage.clear()
+        for i in range(3):
+            storage.start_writing(field)
+            field.data = np.arange(dim) + i
+            storage.append(field, i)
+            storage.end_writing()
 
-    np.testing.assert_allclose(storage.times, np.arange(3))
+        assert len(storage) == 3
+        np.testing.assert_allclose(storage.times, np.arange(3))
 
 
 def test_storage_truncation(tmp_path, rng):
@@ -100,8 +110,8 @@ def test_storage_truncation(tmp_path, rng):
         assert not storage.has_collection
 
 
-@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storing_extract_range(storage_factory):
+@pytest.mark.parametrize("atol,storage_class", STORAGE_CLASSES_ALL)
+def test_storing_extract_range(atol, storage_factory):
     """test methods specific to FieldCollections in memory storage"""
     sf = ScalarField(UnitGrid([1]))
 
@@ -125,15 +135,16 @@ def test_storing_extract_range(storage_factory):
         s1[-3]
 
     # test extraction
-    s2 = s1.extract_time_range()
-    assert s2.times == list(s1.times)
-    np.testing.assert_allclose(s2.data, s1.data)
-    s3 = s1.extract_time_range(0.5)
-    assert s3.times == s1.times[:1]
-    np.testing.assert_allclose(s3.data, s1.data[:1])
-    s4 = s1.extract_time_range((0.5, 1.5))
-    assert s4.times == s1.times[1:]
-    np.testing.assert_allclose(s4.data, s1.data[1:])
+    if not isinstance(s1, MovieStorage):
+        s2 = s1.extract_time_range()
+        assert s2.times == list(s1.times)
+        np.testing.assert_allclose(s2.data, s1.data)
+        s3 = s1.extract_time_range(0.5)
+        assert s3.times == s1.times[:1]
+        np.testing.assert_allclose(s3.data, s1.data[:1])
+        s4 = s1.extract_time_range((0.5, 1.5))
+        assert s4.times == s1.times[1:]
+        np.testing.assert_allclose(s4.data, s1.data[1:])
 
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
@@ -175,8 +186,8 @@ def test_storing_collection(storage_factory, rng):
         storage.view_field("nonsense")
 
 
-@pytest.mark.parametrize("storage_class", STORAGE_CLASSES + [None])
-def test_storage_apply(storage_factory):
+@pytest.mark.parametrize("atol,storage_class", STORAGE_CLASSES_ALL + [(0, None)])
+def test_storage_apply(atol, storage_factory):
     """test the apply function of StorageBase"""
     grid = UnitGrid([2])
     field = ScalarField(grid)
@@ -203,8 +214,8 @@ def test_storage_apply(storage_factory):
     assert len(s2) == 0
 
 
-@pytest.mark.parametrize("storage_class", STORAGE_CLASSES + [None])
-def test_storage_copy(storage_factory):
+@pytest.mark.parametrize("atol,storage_class", STORAGE_CLASSES_ALL + [(0, None)])
+def test_storage_copy(atol, storage_factory):
     """test the copy function of StorageBase"""
     grid = UnitGrid([2])
     field = ScalarField(grid)
@@ -253,8 +264,8 @@ def test_storage_types(storage_factory, dtype, rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storage_mpi(storage_factory, rng):
+@pytest.mark.parametrize("atol,storage_class", STORAGE_CLASSES_ALL)
+def test_storage_mpi(atol, storage_factory, rng):
     """test writing data using MPI"""
     eq = DiffusionPDE()
     grid = UnitGrid([8])
@@ -270,8 +281,8 @@ def test_storage_mpi(storage_factory, rng):
         assert len(storage) == 11
 
 
-@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storing_transformation_collection(storage_factory, rng):
+@pytest.mark.parametrize("atol,storage_class", STORAGE_CLASSES_ALL)
+def test_storing_transformation_collection(atol, storage_factory, rng):
     """test transformation yielding field collections in storage classes"""
     grid = UnitGrid([8])
     field = ScalarField.random_normal(grid, rng=rng).smooth(1)
@@ -293,14 +304,14 @@ def test_storing_transformation_collection(storage_factory, rng):
     assert storage.has_collection
     for t, sol in storage.items():
         a, a2 = sol
-        np.testing.assert_allclose(a2.data, 2 * a.data + t)
+        np.testing.assert_allclose(a2.data, 2 * a.data + t, atol=atol)
 
 
-@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storing_transformation_scalar(storage_factory, rng):
+@pytest.mark.parametrize("atol,storage_class", STORAGE_CLASSES_ALL)
+def test_storing_transformation_scalar(atol, storage_factory, rng):
     """test transformations yielding scalar fields in storage classes"""
     grid = UnitGrid([8])
-    field = ScalarField.random_normal(grid, rng=rng).smooth(1)
+    field = ScalarField.random_uniform(grid, rng=rng).smooth(1)
 
     storage = storage_factory()
     eq = DiffusionPDE(diffusivity=0)
@@ -309,11 +320,14 @@ def test_storing_transformation_scalar(storage_factory, rng):
 
     assert not storage.has_collection
     for sol in storage:
-        np.testing.assert_allclose(sol.data, field.data**2)
+        if isinstance(storage, MovieStorage):
+            np.testing.assert_allclose(sol.data, field.data**2, atol=0.1)
+        else:
+            np.testing.assert_allclose(sol.data, field.data**2)
 
 
-@pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
-def test_storage_view(storage_factory, rng):
+@pytest.mark.parametrize("atol,storage_class", STORAGE_CLASSES_ALL)
+def test_storage_view(atol, storage_factory, rng):
     """test StorageView"""
     grid = UnitGrid([2, 2])
     f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="a", rng=rng)
@@ -332,13 +346,16 @@ def test_storage_view(storage_factory, rng):
     assert not view.has_collection
     np.testing.assert_allclose(view.times, range(3))
     assert len(view) == 3
-    assert view[0] == f1
+    np.testing.assert_allclose(view[0].data, f1.data, atol=atol)
     for field in view:
-        assert field == f1
+        np.testing.assert_allclose(field.data, f1.data, atol=atol)
     for i, (j, field) in enumerate(view.items()):
         assert i == j
-        assert field == f1
+        np.testing.assert_allclose(field.data, f1.data, atol=atol)
 
-    assert StorageView(storage, field="a")[0] == f1
-    assert StorageView(storage, field="b")[0] == f2
-    assert StorageView(storage, field=1)[0] == f2
+    field = StorageView(storage, field="a")[0]
+    np.testing.assert_allclose(field.data, f1.data, atol=atol)
+    field = StorageView(storage, field="b")[0]
+    np.testing.assert_allclose(field.data, f2.data, atol=atol)
+    field = StorageView(storage, field=1)[0]
+    np.testing.assert_allclose(field.data, f2.data, atol=atol)
