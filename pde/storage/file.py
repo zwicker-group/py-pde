@@ -7,7 +7,6 @@ Defines a class storing data on the file system using the hierarchical data form
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 from typing import Any, Literal
 
@@ -69,7 +68,6 @@ class FileStorage(StorageBase):
         self.keep_opened = keep_opened
         self.check_mpi = check_mpi
 
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._file: Any = None
         self._is_writing = False
         self._data_length: int = None  # type: ignore

@@ -7,13 +7,9 @@ reading and writing movies.
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-# TODO: write time as the time stamps (potentially using a factor to convert simulation
-#       time to real time); this might not be possible with rawvideo. An alternative
-#       might be to store the time stamps and apply them later, e.g., using `mkvmerge`
 from __future__ import annotations
 
 import json
-import logging
 import shlex
 from collections.abc import Iterator, Sequence
 from pathlib import Path
@@ -119,7 +115,6 @@ class MovieStorage(StorageBase):
         self.bitrate = bitrate
         self.loglevel = loglevel
 
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._ffmpeg: Any = None
         self._state: Literal["closed", "reading", "writing"] = "closed"
         self._norms: list[Normalize] | None = None
@@ -189,26 +184,26 @@ class MovieStorage(StorageBase):
             self.info["num_frames"] = None  # number of frames was not stored
         self.info["width"] = stream["width"]
         self.info["height"] = stream["height"]
-        video_format = self.info.get("video_format")
-        if video_format is None:
-            video_format = stream.get("pix_fmt")
-        if video_format is None:
-            if self.video_format == "auto":
+        if self.video_format == "auto":
+            video_format = self.info.get("video_format")
+            if video_format is None:
+                video_format = stream.get("pix_fmt")
+            if video_format is None:
                 raise RuntimeError("Could not determine video format from file")
-            else:
-                video_format = self.video_format
+        else:
+            video_format = self.video_format
         try:
             self._format = FFmpeg.formats[video_format]
         except KeyError:
             self._logger.warning(f"Unknown pixel format `{video_format}`")
         else:
-            if self._format.pix_fmt_file != stream["pix_fmt"]:
+            if self._format.pix_fmt_file != stream.get("pix_fmt"):
                 self._logger.info(
                     "Pixel format differs from requested one: "
-                    f"{self._format.pix_fmt_file} != {stream['pix_fmt']}"
+                    f"{self._format.pix_fmt_file} != {stream.get('pix_fmt')}"
                 )
 
-    def _init_normalization(self, field: FieldBase, *, inverse: bool = False) -> None:
+    def _init_normalization(self, field: FieldBase) -> None:
         """initialize the normalizations of the color information
 
         Args:
@@ -290,7 +285,7 @@ class MovieStorage(StorageBase):
         self._frame_shape = (width, height, self._format.channels)
 
         # set up the normalization
-        self._init_normalization(field, inverse=False)
+        self._init_normalization(field)
 
         # set input
         self._logger.debug(f"Start ffmpeg process for `{self.filename}`")
@@ -421,7 +416,7 @@ class MovieStorage(StorageBase):
         if self._field is None:
             self._init_field()
         assert self._field is not None
-        self._init_normalization(self._field, inverse=True)
+        self._init_normalization(self._field)
         assert self._norms is not None
         frame_shape = (self.info["width"], self.info["height"], self._format.channels)
         data_shape = (len(self._norms), self.info["width"], self.info["height"])
@@ -457,7 +452,7 @@ class MovieStorage(StorageBase):
         if self._field is None:
             self._init_field()
         assert self._field is not None
-        self._init_normalization(self._field, inverse=True)
+        self._init_normalization(self._field)
         assert self._norms is not None
         frame_shape = (self.info["width"], self.info["height"], self._format.channels)
         data_shape = (len(self._norms), self.info["width"], self.info["height"])
