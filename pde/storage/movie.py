@@ -393,7 +393,8 @@ class MovieStorage(StorageBase):
             if not self._warned_normalization:
                 if np.any(data[i, ...] < norm.vmin) or np.any(data[i, ...] > norm.vmax):
                     self._logger.warning(
-                        "Data outside range specified by `vmin` and `vmax`"
+                        f"Data outside range specified by `vmin={norm.vmin}` and "
+                        f"`vmax={norm.vmax}`"
                     )
                 self._warned_normalization = True  # only warn once
             data_norm = norm(data[i, ...])
