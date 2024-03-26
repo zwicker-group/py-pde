@@ -46,6 +46,9 @@ class MovieStorage(StorageBase):
     lossless compression for various configurations. Not all video players support this
     codec, but `VLC <https://www.videolan.org>`_ usually works quite well.
 
+    Note that important metainformation is stored as a comment in the movie, so this
+    data must not be deleted or altered if the video should be read again.
+
     Warning:
         This storage potentially compresses data and can thus lead to loss of some
         information. The data quality depends on many parameters, but most important are
@@ -162,9 +165,12 @@ class MovieStorage(StorageBase):
 
     def _read_metadata(self) -> None:
         """read metadata from video and store it in :attr:`info`"""
-        import ffmpeg
+        import ffmpeg  # lazy loading so it's not a hard dependence
 
-        info = ffmpeg.probe(self.filename)
+        path = Path(self.filename)
+        if not path.exists():
+            raise OSError(f"File `{path}` does not exist")
+        info = ffmpeg.probe(path)
 
         # sanity checks on the video
         nb_streams = info["format"]["nb_streams"]
@@ -253,7 +259,7 @@ class MovieStorage(StorageBase):
             info (dict):
                 Supplies extra information that is stored in the storage
         """
-        import ffmpeg
+        import ffmpeg  # lazy loading so it's not a hard dependence
 
         if self._is_writing:
             raise RuntimeError(f"{self.__class__.__name__} is already in writing mode")
@@ -331,6 +337,7 @@ class MovieStorage(StorageBase):
         self._ffmpeg = f_output.run_async(pipe_stdin=True)  # start process
 
         self.info["num_frames"] = 0
+        self._warned_normalization = False
         self._state = "writing"
 
     def _append_data(self, data: np.ndarray, time: float) -> None:
@@ -383,6 +390,13 @@ class MovieStorage(StorageBase):
         # map data values to frame values
         frame_data = np.zeros(self._frame_shape, dtype=self._format.dtype)
         for i, norm in enumerate(self._norms):
+            if not self._warned_normalization:
+                if np.any(data[i, ...] < norm.vmin) or np.any(data[i, ...] > norm.vmax):
+                    self._logger.warning(
+                        f"Data outside range specified by `vmin={norm.vmin}` and "
+                        f"`vmax={norm.vmax}`"
+                    )
+                self._warned_normalization = True  # only warn once
             data_norm = norm(data[i, ...])
             frame_data[..., i] = self._format.data_to_frame(data_norm)
 
@@ -407,6 +421,8 @@ class MovieStorage(StorageBase):
     @property
     def times(self):
         """:class:`~numpy.ndarray`: The times at which data is available"""
+        if "video_format" not in self.info:
+            self._read_metadata()
         t_start = self.info.get("t_start")
         if t_start is None:
             t_start = 0
@@ -431,7 +447,7 @@ class MovieStorage(StorageBase):
             :class:`~pde.fields.FieldBase`:
             The field class containing the grid and data
         """
-        import ffmpeg
+        import ffmpeg  # lazy loading so it's not a hard dependence
 
         if t_index < 0:
             t_index += len(self)
@@ -473,7 +489,7 @@ class MovieStorage(StorageBase):
 
     def __iter__(self) -> Iterator[FieldBase]:
         """iterate over all stored fields"""
-        import ffmpeg
+        import ffmpeg  # lazy loading so it's not a hard dependence
 
         if "width" not in self.info:
             self._read_metadata()
