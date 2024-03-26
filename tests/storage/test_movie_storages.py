@@ -2,13 +2,17 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 import pde
-from pde import MovieStorage
+from pde import FileStorage, MovieStorage
 from pde.tools.ffmpeg import formats
 from pde.tools.misc import module_available
+
+RESOURCES_PATH = Path(__file__).resolve().parent / "resources"
 
 
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
@@ -167,3 +171,34 @@ def test_complex_data(tmp_path, rng):
         pde.DiffusionPDE().solve(
             field, t_range=3.5, backend="numpy", tracker=writer.tracker(2)
         )
+
+
+@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+def test_wrong_format():
+    """test how wrong files are dealt with"""
+    reader = MovieStorage(RESOURCES_PATH / "does_not_exist.avi")
+    with pytest.raises(OSError):
+        reader.times
+
+    reader = MovieStorage(RESOURCES_PATH / "empty.avi")
+    with pytest.raises(Exception):
+        reader.times
+
+    reader = MovieStorage(RESOURCES_PATH / "no_metadata.avi")
+    np.testing.assert_allclose(reader.times, [0, 1])
+    with pytest.raises(RuntimeError):
+        reader[0]
+
+
+@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.parametrize("path", RESOURCES_PATH.glob("*.hdf5"))
+def test_stored_files(path):
+    """test stored files"""
+    file_reader = FileStorage(path)
+    movie_reader = MovieStorage(path.with_suffix(".avi"))
+
+    np.testing.assert_allclose(file_reader.times, movie_reader.times)
+    assert file_reader.info["payload"] == movie_reader.info["payload"]
+    for a, b in zip(file_reader, movie_reader):
+        assert a.grid == b.grid
+        np.testing.assert_allclose(a.data, b.data, atol=1e-4)
