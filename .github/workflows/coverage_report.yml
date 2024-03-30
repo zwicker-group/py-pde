@@ -9,10 +9,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Install FFmpeg
-      continue-on-error: true
-      run: |
-        sudo apt-get install ffmpeg
 
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
