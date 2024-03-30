@@ -6,8 +6,8 @@ The provided interrupt classes are:
 .. autosummary::
    :nosignatures:
 
-   FixedInterrupts
    ConstantInterrupts
+   FixedInterrupts
    LogarithmicInterrupts
    RealtimeInterrupts
 
