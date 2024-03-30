@@ -21,22 +21,27 @@ def create_storage_test_resources(path, num):
     eq = pde.DiffusionPDE()
     info = {"payload": "storage-test"}
     movie_writer = pde.MovieStorage(
-        path / f"storage_{num}.avi", info=info, vmax=4, bits_per_channel=16
+        path / f"storage_{num}.avi",
+        info=info,
+        vmax=4,
+        bits_per_channel=16,
+        write_times=True,
     )
     file_writer = pde.FileStorage(path / f"storage_{num}.hdf5", info=info)
+    interrupts = pde.FixedInterrupts([0.1, 0.7, 2.9])
     eq.solve(
         field,
         t_range=3.5,
         dt=0.1,
         backend="numpy",
-        tracker=[movie_writer.tracker(2), file_writer.tracker(2)],
+        tracker=[movie_writer.tracker(interrupts), file_writer.tracker(interrupts)],
     )
 
 
 def main():
     """main function creating all the requirements"""
     root = Path(PACKAGE_PATH)
-    create_storage_test_resources(root / "tests" / "storage" / "resources", 1)
+    create_storage_test_resources(root / "tests" / "storage" / "resources", 2)
 
 
 if __name__ == "__main__":

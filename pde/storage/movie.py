@@ -583,8 +583,8 @@ class MovieStorage(StorageBase):
         """create object that can be used as a tracker to fill this storage
 
         Args:
-            interrupts (:class:`~pde.trackers.interrupts.ConstantInterrupts` or float):
-                Time interval with which the tracker is being called
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
             transformation (callable, optional):
                 A function that transforms the current state into a new field or field
                 collection, which is then stored. This allows to store derived
