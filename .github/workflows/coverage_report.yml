@@ -19,6 +19,13 @@ jobs:
       with:
         python-version: '3.11'
 
+    - uses: FedericoCarboni/setup-ffmpeg@v3
+      # install ffmpeg as special requirement
+      id: setup-ffmpeg
+      with:
+        ffmpeg-version: release
+        github-token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
