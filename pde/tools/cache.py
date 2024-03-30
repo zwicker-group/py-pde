@@ -209,8 +209,8 @@ def make_serializer(method: SerializerMethod) -> Callable:
     some of the methods destroy information and cannot be reverted.
 
     Args:
-        method (str): An identifier determining the serializer that will be
-            returned
+        method (str):
+            An identifier determining the serializer that will be returned
 
     Returns:
         callable: A function that serializes objects
@@ -254,8 +254,8 @@ def make_unserializer(method: SerializerMethod) -> Callable:
     This is the inverse function of :func:`make_serializer`.
 
     Args:
-        method (str): An identifier determining the unserializer that will be
-            returned
+        method (str):
+            An identifier determining the unserializer that will be returned
 
     Returns:
         callable: A function that serializes objects
@@ -321,8 +321,9 @@ class DictFiniteCapacity(collections.OrderedDict):
 
 class SerializedDict(collections.abc.MutableMapping):
     """a key value database which is stored on the disk
-    This class provides hooks for converting arbitrary keys and values to
-    strings, which are then stored in the database.
+
+    This class provides hooks for converting arbitrary keys and values to strings, which
+    are then stored in the database.
     """
 
     def __init__(
@@ -403,8 +404,8 @@ class _class_cache:
         doc=None,
         name=None,
     ):
-        r"""decorator that caches calls in a dictionary attached to the
-        instances. This can be used with most classes
+        r"""decorator that caches calls in a dictionary attached to the instances. This
+        can be used with most classes
 
         Example:
             An example for using the class is::
@@ -424,18 +425,17 @@ class _class_cache:
                 foo.property
                 foo.method()
 
-        The cache can be cleared by setting `foo.\_cache\_methods = {}` if
-        the cache factory is a simple dict, i.e, if `factory == None`.
-        Alternatively, each cached method has a :func:`clear_cache_of_obj`
-        method, which clears the cache of this particular method. In the example
-        above we could thus call `foo.bar.clear\_cache\_of\_obj(foo)` to
-        clear the cache.
-        Note that the object instance has to be passed as a parameter, since the
-        method :func:`bar` is defined on the class, not the instance, i.e., we
-        could also call `Foo.bar.clear\_cache\_of\_obj(foo)`. To clear the
-        cache from within a method, one can thus call
-        `self.method_name.clear\_cache\_of\_obj(self)`, where
-        `method\_name` is the name of the method whose cache is cleared
+        The cache can be cleared by setting :code:`foo.\_cache\_methods = {}` if the
+        cache factory is a simple dict, i.e, if :code:`factory == None`. Alternatively,
+        each cached method has a :func:`clear_cache_of_obj` method, which clears the
+        cache of this particular method. In the example above we could thus call
+        :code:`foo.bar.clear\_cache\_of\_obj(foo)` to clear the cache.
+
+        Note that the object instance has to be passed as a parameter, since the method
+        :func:`bar` is defined on the class, not the instance, i.e., we could also call
+        :code:`Foo.bar.clear\_cache\_of\_obj(foo)`. To clear the cache from within a
+        method, one can thus call :code:`self.method_name.clear\_cache\_of\_obj(self)`,
+        where `method\_name` is the name of the method whose cache is cleared
 
         Example:
             An advanced example is::
@@ -452,24 +452,20 @@ class _class_cache:
 
         Args:
             factory (callable):
-                Function/class creating an empty cache. `dict` by default.
-                This can be used with user-supplied storage backends by. The
-                cache factory should return a dict-like object that handles the
-                cache for the given method.
+                Function/class creating an empty cache. `dict` by default. This can be
+                used with user-supplied storage backends by. The cache factory should
+                return a dict-like object that handles the cache for the given method.
             extra_args (list):
-                List of attributes of the class that are included in the cache
-                key. They are then treated as if they are supplied as arguments
-                to the method. This is important to include when the result of
-                a method depends not only on method arguments but also on
-                instance attributes.
+                List of attributes of the class that are included in the cache key. They
+                are then treated as if they are supplied as arguments to the method.
+                This is important to include when the result of a method depends not
+                only on method arguments but also on instance attributes.
             ignore_args (list):
-                List of keyword arguments that are not included in the cache
-                key. These should be arguments that do not influence the result
-                of a method, e.g., because they only affect how intermediate
-                results are displayed.
+                List of keyword arguments that are not included in the cache key. These
+                should be arguments that do not influence the result of a method, e.g.,
+                because they only affect how intermediate results are displayed.
             hash_function (str):
-                An identifier determining what hash function is used on the
-                argument list.
+                An identifier determining what hash function is used on the arguments
             doc (str):
                 Optional string giving the docstring of the decorated method
             name (str):
@@ -592,8 +588,8 @@ class _class_cache:
 class cached_property(_class_cache):
     r"""Decorator to use a method as a cached property
 
-    The function is only called the first time and each successive call returns
-    the cached result of the first call.
+    The function is only called the first time and each successive call returns the
+    cached result of the first call.
 
     Example:
         Here is an example for how to use the decorator::
@@ -608,11 +604,11 @@ class cached_property(_class_cache):
             foo = Foo()
             result = foo.bar
 
-    The data is stored in a dictionary named `_cache_methods` attached to
-    the instance of each object. The cache can thus be cleared by setting
-    `self.\_cache\_methods = {}`. The cache of specific property can be
-    cleared using `self._cache_methods[property_name] = {}`, where
-    `property\_name` is the name of the property
+    The data is stored in a dictionary named `_cache_methods` attached to the instance
+    of each object. The cache can thus be cleared by setting
+    :code:`self.\_cache\_methods = {}`. The cache of specific property can be cleared
+    using :code:`self._cache_methods[property_name] = {}`, where `property\_name` is the
+    name of the property.
 
     Adapted from <https://wiki.python.org/moin/PythonDecoratorLibrary>.
     """
@@ -637,8 +633,8 @@ class cached_property(_class_cache):
 class cached_method(_class_cache):
     r"""Decorator to enable caching of a method
 
-    The function is only called the first time and each successive call returns
-    the cached result of the first call.
+    The function is only called the first time and each successive call returns the
+    cached result of the first call.
 
     Example:
         The decorator can be used like so::
@@ -653,11 +649,11 @@ class cached_method(_class_cache):
             foo = Foo()
             result = foo.bar()
 
-    The data is stored in a dictionary named `\_cache\_methods` attached to
-    the instance of each object. The cache can thus be cleared by setting
-    `self.\_cache\_methods = {}`. The cache of specific property can be
-    cleared using `self.\_cache\_methods[property\_name] = {}`, where
-    `property\_name` is the name of the property
+    The data is stored in a dictionary named :attr:`\_cache\_methods` attached to the
+    instance of each object. The cache can thus be cleared by setting
+    :code:`self.\_cache\_methods = {}`. The cache of specific property can be cleared
+    using :code:`self.\_cache\_methods[property\_name] = {}`, where `property\_name` is
+    the name of the property.
     """
 
     def __call__(self, method: TFunc) -> TFunc:

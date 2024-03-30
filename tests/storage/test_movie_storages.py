@@ -202,3 +202,30 @@ def test_stored_files(path):
     for a, b in zip(file_reader, movie_reader):
         assert a.grid == b.grid
         np.testing.assert_allclose(a.data, b.data, atol=1e-4)
+
+
+@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+@pytest.mark.parametrize(
+    "interrupt, expected",
+    [
+        (pde.FixedInterrupts([0.5, 0.7, 1.4]), [0.5, 0.7, 1.4]),
+        (pde.ConstantInterrupts(1, t_start=1), [1, 2]),
+        (2, [0, 2]),
+        (pde.LogarithmicInterrupts(0.5, 2), [0, 0.5, 1.5]),
+    ],
+)
+def test_stored_times(interrupt, expected, tmp_path):
+    """test how times are stored"""
+    path = tmp_path / f"test_movie_times.avi"
+
+    field = pde.ScalarField(pde.UnitGrid([3]))
+    writer = MovieStorage(path, write_times=True)
+    eq = pde.DiffusionPDE()
+    eq.solve(
+        field, t_range=2.1, dt=0.1, backend="numpy", tracker=writer.tracker(interrupt)
+    )
+
+    assert writer._filename_times.exists()
+
+    reader = MovieStorage(path, write_mode="reading")
+    np.testing.assert_allclose(reader.times, expected, atol=0.01)

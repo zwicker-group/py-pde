@@ -15,7 +15,9 @@ from pde.tools import mpi
 from pde.tools.misc import module_available
 
 STORAGE_CLASSES = [MemoryStorage, FileStorage]
-STORAGE_CLASSES_ALL = [(0, MemoryStorage), (0, FileStorage), (0.1, MovieStorage)]
+STORAGE_CLASSES_ALL = [(0, MemoryStorage), (0, FileStorage)]
+if module_available("ffmpeg"):
+    STORAGE_CLASSES_ALL.append((0.1, MovieStorage))
 
 
 @pytest.fixture

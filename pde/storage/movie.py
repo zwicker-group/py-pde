@@ -9,6 +9,7 @@ reading and writing movies.
 
 from __future__ import annotations
 
+import io
 import json
 import shlex
 from collections.abc import Iterator, Sequence
@@ -23,10 +24,11 @@ from numpy.typing import ArrayLike
 from ..fields import FieldCollection
 from ..fields.base import DataFieldBase, FieldBase
 from ..tools import ffmpeg as FFmpeg
+from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.parse_duration import parse_duration
-from ..trackers.interrupts import ConstantInterrupts
+from ..trackers.interrupts import ConstantInterrupts, InterruptData, parse_interrupt
 from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 
 
@@ -72,6 +74,7 @@ class MovieStorage(StorageBase):
         bitrate: int = -1,
         info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",
+        write_times: bool = False,
         loglevel: str = "warning",
     ):
         """
@@ -106,6 +109,11 @@ class MovieStorage(StorageBase):
                 cleared every time this storage is used for writing), or 'truncate_once'
                 (data is cleared for the first writing, but appended subsequently).
                 Alternatively, specifying 'readonly' will disable writing completely.
+            write_times (bool):
+                Flag determining whether timestamps are written to a file. If True, a
+                separate file with name :code:`filename + ".times"` is created where the
+                times are written as plain text. Without these timestamps, the time
+                information might be inaccurate.
             loglevel (str):
                 FFmpeg log level determining the amount of data sent to stdout. The
                 default only emits warnings and errors, but setting this to `"info"` can
@@ -122,8 +130,10 @@ class MovieStorage(StorageBase):
         self.video_format = video_format
         self.bitrate = bitrate
         self.loglevel = loglevel
+        self.write_times = write_times
 
         self._ffmpeg: Any = None
+        self._times_file: io.TextIOBase | None = None
         self._state: Literal["closed", "reading", "writing"] = "closed"
         self._norms: list[Normalize] | None = None
         self._is_writing = False
@@ -142,7 +152,12 @@ class MovieStorage(StorageBase):
                 self._ffmpeg.stdout.close()
                 self._ffmpeg.wait()
             self._ffmpeg = None
-            self._state = "closed"
+
+        if self._times_file is not None:
+            self._times_file.close()
+            self._times_file = None
+
+        self._state = "closed"
 
     def __enter__(self) -> MovieStorage:
         return self
@@ -161,6 +176,7 @@ class MovieStorage(StorageBase):
         info["version"] = 1
         info["vmin"] = self.vmin
         info["vmax"] = self.vmax
+        info["write_times"] = self.write_times
         return json.dumps(info)
 
     def _read_metadata(self) -> None:
@@ -249,6 +265,11 @@ class MovieStorage(StorageBase):
             num = f.grid.dim**f.rank  # independent components in the field
             self._norms.extend([norm] * num)
 
+    @property
+    def _filename_times(self) -> Path:
+        """str: the filename of the file to whichtime stamps are written"""
+        return self.filename.with_suffix(self.filename.suffix + ".times")
+
     def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
         """initialize the storage for writing data
 
@@ -336,6 +357,9 @@ class MovieStorage(StorageBase):
         f_output = f_input.output(filename=self.filename, **output_args)
         self._ffmpeg = f_output.run_async(pipe_stdin=True)  # start process
 
+        if self.write_times:
+            self._times_file = open(self._filename_times, "w")
+
         self.info["num_frames"] = 0
         self._warned_normalization = False
         self._state = "writing"
@@ -356,16 +380,20 @@ class MovieStorage(StorageBase):
         assert self._norms is not None
         assert self._format is not None
 
-        # check time
-        t_start = self.info.get("t_start")
-        if t_start is None:
-            t_start = 0
-        dt = self.info.get("dt", 1)
-        time_expect = t_start + dt * self.info["num_frames"]
-        if not np.isclose(time, time_expect):
-            if self.info.get("time_mismatch", False):
-                self._logger.warning(f"Detected time mismatch: {time} != {time_expect}")
-                self.info["time_mismatch"] = True
+        if self._times_file:
+            # write exact time to file
+            self._times_file.write(f"{time}\n")
+        else:
+            # check whether time increases as expected
+            t_start = self.info.get("t_start")
+            if t_start is None:
+                t_start = 0
+            dt = self.info.get("dt", 1)
+            time_expect = t_start + dt * self.info["num_frames"]
+            if not np.isclose(time, time_expect):
+                if self.info.get("time_mismatch", False):
+                    self._logger.warning(f"Time mismatch: {time} != {time_expect}")
+                    self.info["time_mismatch"] = True
 
         # make sure there are two spatial dimensions
         grid_dim = self._grid.num_axes
@@ -418,16 +446,32 @@ class MovieStorage(StorageBase):
             self._read_metadata()
         return self.info["num_frames"]
 
-    @property
+    @cached_property()
     def times(self):
         """:class:`~numpy.ndarray`: The times at which data is available"""
+        times = None
         if "video_format" not in self.info:
             self._read_metadata()
-        t_start = self.info.get("t_start")
-        if t_start is None:
-            t_start = 0
-        dt = self.info.get("dt", 1)
-        return t_start + dt * np.arange(len(self))
+
+        if self.info.get("write_times", False):
+            # video announces that timestamps have been written to file
+            try:
+                times = np.loadtxt(self._filename_times)
+            except OSError:
+                self._logger.warning(
+                    f"Could not read time stamps from file `{self._filename_times}`. "
+                    "Return equidistant times instead."
+                )
+
+        if times is None:
+            # The times need to be re-created from the start and dt information
+            t_start = self.info.get("t_start")
+            if t_start is None:
+                t_start = 0
+            dt = self.info.get("dt", 1)
+            times = t_start + dt * np.arange(len(self))
+
+        return times
 
     @property
     def data(self):
@@ -527,19 +571,12 @@ class MovieStorage(StorageBase):
 
     def items(self) -> Iterator[tuple[float, FieldBase]]:
         """iterate over all times and stored fields, returning pairs"""
-        # iterate over entire movie
-        t = self.info.get("t_start")
-        if t is None:
-            t = 0
-        dt = self.info.get("dt", 1)
-        for field in self:
-            yield t, field
-            t += dt
+        yield from zip(self.times, self)
 
     @fill_in_docstring
     def tracker(  # type: ignore
         self,
-        interrupts: ConstantInterrupts | float = 1,
+        interrupts: InterruptData = 1,
         *,
         transformation: Callable[[FieldBase, float], FieldBase] | None = None,
     ) -> StorageTracker:
@@ -576,12 +613,16 @@ class MovieStorage(StorageBase):
             the simulation as well as the smoothed fields. Other transformations are
             possible by defining appropriate :func:`add_to_state`
         """
-        if np.isscalar(interrupts):
-            interrupts = ConstantInterrupts(interrupts)  # type: ignore
-        if not isinstance(interrupts, ConstantInterrupts):
-            self._logger.warning("`VideoTracker` can only use `ConstantInterrupts`")
-        self.info["dt"] = interrupts.dt  # type: ignore
-        self.info["t_start"] = interrupts.t_start  # type: ignore
+        interrupts = parse_interrupt(interrupts)
+
+        if not (self.write_times or isinstance(interrupts, ConstantInterrupts)):
+            self._logger.warning(
+                f"Use `write_times=True` to write times for complex interrupts"
+            )
+        # store data for common case of constant intervals
+        self.info["dt"] = getattr(interrupts, "dt", 1)
+        self.info["t_start"] = getattr(interrupts, "t_start", 0)
+
         return StorageTracker(
             storage=self, interrupts=interrupts, transformation=transformation
         )
