@@ -199,6 +199,7 @@ def test_stored_files(path):
 
     np.testing.assert_allclose(file_reader.times, movie_reader.times)
     assert file_reader.info["payload"] == movie_reader.info["payload"]
+    np.testing.assert_allclose(file_reader.times, movie_reader.times)
     for a, b in zip(file_reader, movie_reader):
         assert a.grid == b.grid
         np.testing.assert_allclose(a.data, b.data, atol=1e-4)
