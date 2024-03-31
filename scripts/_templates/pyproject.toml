@@ -27,8 +27,7 @@ classifiers = [
 dependencies = $INSTALL_REQUIRES
 
 [project.optional-dependencies]
-hdf = ["$h5py"]
-io = ["$h5py", "$pandas"]
+io = ["$h5py", "$pandas", "$ffmpeg_python"]
 interactive = ["$napari", "$ipywidgets"]
 mpi = ["$numba_mpi", "$mpi4py"]
 
