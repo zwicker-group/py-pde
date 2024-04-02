@@ -391,7 +391,7 @@ class MovieStorage(StorageBase):
             dt = self.info.get("dt", 1)
             time_expect = t_start + dt * self.info["num_frames"]
             if not np.isclose(time, time_expect):
-                if self.info.get("time_mismatch", False):
+                if not self.info.get("time_mismatch", False):
                     self._logger.warning(f"Time mismatch: {time} != {time_expect}")
                     self.info["time_mismatch"] = True
 
