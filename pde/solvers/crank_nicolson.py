@@ -18,7 +18,7 @@ from .base import ConvergenceError, SolverBase
 
 
 class CrankNicolsonSolver(SolverBase):
-    """solving partial differential equations using the Crank-Nicolson scheme"""
+    """Crank-Nicolson solver"""
 
     name = "crank-nicolson"
 
