@@ -9,6 +9,7 @@ Solvers define how a PDE is solved, i.e., how the initial state is advanced in t
    ~explicit_mpi.ExplicitMPISolver
    ~implicit.ImplicitSolver
    ~crank_nicolson.CrankNicolsonSolver
+   ~adams_bashforth.AdamsBashforthSolver
    ~scipy.ScipySolver
    ~registered_solvers
 
@@ -17,6 +18,7 @@ Solvers define how a PDE is solved, i.e., how the initial state is advanced in t
 
 from typing import List
 
+from .adams_bashforth import AdamsBashforthSolver
 from .controller import Controller
 from .crank_nicolson import CrankNicolsonSolver
 from .explicit import ExplicitSolver
@@ -46,6 +48,7 @@ __all__ = [
     "ExplicitSolver",
     "ImplicitSolver",
     "CrankNicolsonSolver",
+    "AdamsBashforthSolver",
     "ScipySolver",
     "registered_solvers",
 ]
