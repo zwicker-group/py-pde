@@ -7,6 +7,7 @@ import pytest
 
 from pde import PDE, DiffusionPDE, FieldCollection, MemoryStorage, ScalarField, UnitGrid
 from pde.solvers import (
+    AdamsBashforthSolver,
     Controller,
     CrankNicolsonSolver,
     ExplicitSolver,
@@ -16,7 +17,13 @@ from pde.solvers import (
 )
 from pde.solvers.base import AdaptiveSolverBase
 
-SOLVER_CLASSES = [ExplicitSolver, ImplicitSolver, CrankNicolsonSolver, ScipySolver]
+SOLVER_CLASSES = [
+    ExplicitSolver,
+    ImplicitSolver,
+    CrankNicolsonSolver,
+    AdamsBashforthSolver,
+    ScipySolver,
+]
 
 
 def test_solver_registration():
