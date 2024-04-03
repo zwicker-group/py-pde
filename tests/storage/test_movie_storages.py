@@ -2,6 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -230,3 +231,22 @@ def test_stored_times(interrupt, expected, tmp_path):
 
     reader = MovieStorage(path, write_mode="reading")
     np.testing.assert_allclose(reader.times, expected, atol=0.01)
+
+
+@pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
+def test_unequal_spaced_times(tmp_path, caplog):
+    """test whether a warning is generated for unequally spaced times"""
+    path = tmp_path / f"test_movie_unequal_times.avi"
+
+    field = pde.ScalarField(pde.UnitGrid([3]))
+    writer = MovieStorage(path, write_times=False)
+    tracker = writer.tracker(pde.FixedInterrupts([0.5, 0.7, 1.4]))
+    eq = pde.DiffusionPDE()
+    with caplog.at_level(logging.WARNING):
+        eq.solve(field, t_range=2.1, dt=0.1, backend="numpy", tracker=tracker)
+
+    assert "write_times=True" in caplog.text
+    assert "Time mismatch" in caplog.text
+
+    reader = MovieStorage(path, write_mode="reading")
+    np.testing.assert_allclose(reader.times, [0, 1, 2], atol=0.01)
