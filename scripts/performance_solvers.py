@@ -13,7 +13,13 @@ sys.path.insert(0, str(PACKAGE_PATH))
 import numpy as np
 
 from pde import CahnHilliardPDE, Controller, DiffusionPDE, ScalarField, UnitGrid
-from pde.solvers import CrankNicolsonSolver, ExplicitSolver, ImplicitSolver, ScipySolver
+from pde.solvers import (
+    AdamsBashforthSolver,
+    CrankNicolsonSolver,
+    ExplicitSolver,
+    ImplicitSolver,
+    ScipySolver,
+)
 
 
 def main(
@@ -57,6 +63,7 @@ def main(
         "Runge-Kutta, fixed": (1e-2, ExplicitSolver(eq, scheme="rk", adaptive=False)),
         "Runge-Kutta, adaptive": (1e-2, ExplicitSolver(eq, scheme="rk", adaptive=True)),
         "Implicit": (1e-2, ImplicitSolver(eq)),
+        "Adams-Bashforth": (1e-2, AdamsBashforthSolver(eq)),
         "Crank-Nicolson": (1e-2, CrankNicolsonSolver(eq)),
         "Scipy": (None, ScipySolver(eq)),
     }

@@ -1,6 +1,6 @@
 """
-Defines an explicit solver supporting various methods
-   
+Defines an explicit Adams-Bashforth solver
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
@@ -17,7 +17,7 @@ from .base import SolverBase
 
 
 class AdamsBashforthSolver(SolverBase):
-    """solving partial differential equations using an Adams-Bashforth scheme"""
+    """explicit Adams-Bashforth multi-step solver"""
 
     name = "adams–bashforth"
 
