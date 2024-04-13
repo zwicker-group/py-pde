@@ -20,7 +20,8 @@ from numpy.typing import DTypeLike
 try:
     from matplotlib import colormaps
 except ImportError:
-    from matplotlib import cm as colormaps  # to access cm.get_cmap
+    # fall-back to access cm.get_cmap
+    from matplotlib import cm as colormaps  # type: ignore
 
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring

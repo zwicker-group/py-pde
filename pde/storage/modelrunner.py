@@ -14,7 +14,23 @@ from .base import InfoDict, StorageBase, WriteModeType
 
 
 class ModelrunnerStorage(StorageBase):
-    """store discretized fields in a :mod:`modelrunner` storage"""
+    """store discretized fields in a :mod:`modelrunner` storage
+
+    This storage class acts as a wrapper for the :mod:`~modelrunner.storage.trajectory`
+    module, which allows handling time-dependent data in :mod:`modelrunner` storages.
+    In principle, all backends are supported, but it is advisable to use binary formats
+    like :class:`~modelrunner.storage.backend.hdf.HDFStorage` or
+    :class:`~modelrunner.storage.backend.zarr.ZarrStorage` to write large amounts of
+    data.
+
+    .. code-block:: python
+
+        from modelrunner import Result
+        r = Result.from_file("data.hdf5")
+        r.result.plot()  # plots the final state
+        r.storage["trajectory"]  # allows accessing the stored trajectory
+
+    """
 
     def __init__(
         self,

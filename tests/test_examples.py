@@ -26,6 +26,8 @@ if not module_available("napari"):
     SKIP_EXAMPLES.extend(["tracker_interactive", "show_3d_field_interactively"])
 if not module_available("h5py"):
     SKIP_EXAMPLES.extend(["trajectory_io"])
+if not all(module_available(m) for m in ["modelrunner", "h5py"]):
+    SKIP_EXAMPLES.extend(["py_modelrunner"])
 
 
 @pytest.mark.slow
