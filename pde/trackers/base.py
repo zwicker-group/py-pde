@@ -178,7 +178,7 @@ class TrackerCollection:
             trackers = [data]
         elif isinstance(data, str):
             trackers = [TrackerBase.from_data(data, **kwargs)]
-        else:
+        elif isinstance(data, (list, tuple)):
             # initialize trackers from a sequence
             trackers, interrupt_ids = [], set()
             for tracker in data:
@@ -190,6 +190,8 @@ class TrackerCollection:
                         tracker_obj.interrupt = tracker_obj.interrupt.copy()
                     interrupt_ids.add(id(tracker_obj.interrupt))
                     trackers.append(tracker_obj)
+        else:
+            raise TypeError(f"Cannot initialize trackers from class `{data.__class__}`")
 
         return cls(trackers)
 

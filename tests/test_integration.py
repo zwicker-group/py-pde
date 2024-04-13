@@ -4,11 +4,14 @@ Integration tests that use multiple modules together
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
 from pde import CartesianGrid, DiffusionPDE, FileStorage, PDEBase, ScalarField, UnitGrid
 from pde.tools import misc, mpi, numba
+from pde.tools.misc import module_available
 
 
 @pytest.mark.skipif(not misc.module_available("h5py"), reason="requires `h5py` module")
@@ -123,3 +126,75 @@ def test_custom_pde_mpi(caplog, rng):
             assert info["steps"] == 11
             assert info["use_mpi"]
             assert info["state_modifications"] == info3["solver"]["state_modifications"]
+
+
+@pytest.mark.skipif(
+    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+)
+def test_modelrunner_storage_one(tmp_path, capsys):
+    """test how modelrunner storage can be used"""
+    import modelrunner as mr
+
+    SCRIPT_PATH = Path(__file__).parent / "resources"
+    assert SCRIPT_PATH.is_dir()
+    output = tmp_path / "result.yaml"
+    assert not output.is_file()
+
+    outs, errs = mr.submit_job(
+        SCRIPT_PATH / "run_pde.py",
+        output=output,
+        parameters={"t_range": 1.5},
+        method="foreground",
+        overwrite_strategy="error",
+    )
+    assert outs == errs == ""
+    captured = capsys.readouterr()
+    assert captured.out == captured.err == ""
+    assert output.is_file()
+
+    # read result
+    with mr.open_storage(output, mode="read") as storage_obj:
+        np.testing.assert_allclose(storage_obj["trajectory"].times, [0, 1])
+    result = mr.Result.from_file(output)
+    assert isinstance(result.data["field"], ScalarField)
+
+    # delete temporary files
+    for path in tmp_path.iterdir():
+        path.unlink()
+
+
+@pytest.mark.skipif(
+    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+)
+def test_modelrunner_storage_many(tmp_path):
+    """test how modelrunner storage can be used"""
+    import modelrunner as mr
+
+    SCRIPT_PATH = Path(__file__).parent / "resources"
+    assert SCRIPT_PATH.is_dir()
+
+    num_jobs = mr.submit_jobs(
+        SCRIPT_PATH / "run_pde.py",
+        output_folder=tmp_path,
+        parameters={"t_range": [1.5, 2.5]},
+        log_folder=tmp_path,
+        method="foreground",
+        overwrite_strategy="error",
+    )
+    assert num_jobs == 2
+
+    # read result
+    results = mr.ResultCollection.from_folder(tmp_path)
+    assert len(results) == num_jobs
+    assert isinstance(results[0].data["field"], ScalarField)
+
+    # check whether data was written
+    for path in tmp_path.iterdir():
+        if path.is_file() and not path.name.endswith("txt"):
+            with mr.open_storage(path) as storage:
+                assert "trajectory" in storage.keys()
+                assert "result" in storage.keys()
+
+    # delete temporary files
+    for path in tmp_path.iterdir():
+        path.unlink()
