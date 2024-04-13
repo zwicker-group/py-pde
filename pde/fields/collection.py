@@ -18,9 +18,9 @@ from matplotlib.colors import LinearSegmentedColormap, Normalize
 from numpy.typing import DTypeLike
 
 try:
-    from matplotlib.colormaps import get_cmap
+    from matplotlib import colormaps
 except ImportError:
-    from matplotlib.cm import get_cmap
+    from matplotlib import cm as colormaps  # to access cm.get_cmap
 
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
@@ -769,7 +769,7 @@ class FieldCollection(FieldBase):
             field_data = f.get_image_data(transpose=transpose)
             norm = Normalize(vmin=vmin[i], vmax=vmax[i], clip=True)  # type: ignore
             try:
-                cmap = get_cmap(colors[i])
+                cmap = colormaps.get_cmap(colors[i])
             except ValueError:
                 cmap = LinearSegmentedColormap.from_list(
                     "", [background_color, colors[i]]
