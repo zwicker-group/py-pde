@@ -143,6 +143,7 @@ def test_modelrunner_storage_one(tmp_path, capsys):
     outs, errs = mr.submit_job(
         SCRIPT_PATH / "run_pde.py",
         output=output,
+        log_folder=tmp_path,
         parameters={"t_range": 1.5},
         method="foreground",
         overwrite_strategy="error",
