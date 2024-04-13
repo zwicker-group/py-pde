@@ -473,10 +473,51 @@ class MovieStorage(StorageBase):
 
         return times
 
+    def _iter_data(self) -> Iterator[np.ndarray]:
+        """iterate over all stored fields"""
+        import ffmpeg  # lazy loading so it's not a hard dependence
+
+        if "width" not in self.info:
+            self._read_metadata()
+        if self._field is None:
+            self._init_field()
+        assert self._field is not None
+        self._init_normalization(self._field)
+        assert self._norms is not None
+        frame_shape = (self.info["width"], self.info["height"], self._format.channels)
+        data_shape = (len(self._norms), self.info["width"], self.info["height"])
+        data = np.empty(data_shape, dtype=self._dtype)
+        frame_bytes = np.prod(frame_shape) * self._format.bytes_per_channel
+
+        # iterate over entire movie
+        f_input = ffmpeg.input(self.filename, loglevel=self.loglevel)
+        f_output = f_input.output(
+            "pipe:", format="rawvideo", pix_fmt=self._format.pix_fmt_data
+        )
+        proc = f_output.run_async(pipe_stdout=True)
+        while True:
+            read_bytes = proc.stdout.read(frame_bytes)
+            if not read_bytes:
+                break
+            frame = np.frombuffer(read_bytes, self._format.dtype).reshape(frame_shape)
+
+            for i, norm in enumerate(self._norms):
+                frame_data = self._format.data_from_frame(frame[:, :, i])
+                data[i, :, :] = norm.inverse(frame_data)
+
+            yield data
+
     @property
     def data(self):
-        """:class:`~numpy.ndarray`: The actual data for all time"""
-        raise NotImplementedError
+        """:class:`~numpy.ndarray`: The actual data for all times"""
+        it = self._iter_data()  # get the iterater of all data
+        first_frame = next(it)  # get the first frame to obtain necessary information
+        # allocate memory for all data
+        data = np.empty((len(self),) + first_frame.shape, dtype=first_frame.dtype)
+        data[0] = first_frame  # set the first frame
+        for i, frame_data in enumerate(it, 1):  # set all subsequent frames
+            data[i] = frame_data
+        return data
 
     def _get_field(self, t_index: int) -> FieldBase:
         """return the field corresponding to the given time index
@@ -533,36 +574,7 @@ class MovieStorage(StorageBase):
 
     def __iter__(self) -> Iterator[FieldBase]:
         """iterate over all stored fields"""
-        import ffmpeg  # lazy loading so it's not a hard dependence
-
-        if "width" not in self.info:
-            self._read_metadata()
-        if self._field is None:
-            self._init_field()
-        assert self._field is not None
-        self._init_normalization(self._field)
-        assert self._norms is not None
-        frame_shape = (self.info["width"], self.info["height"], self._format.channels)
-        data_shape = (len(self._norms), self.info["width"], self.info["height"])
-        data = np.empty(data_shape, dtype=self._dtype)
-        frame_bytes = np.prod(frame_shape) * self._format.bytes_per_channel
-
-        # iterate over entire movie
-        f_input = ffmpeg.input(self.filename, loglevel=self.loglevel)
-        f_output = f_input.output(
-            "pipe:", format="rawvideo", pix_fmt=self._format.pix_fmt_data
-        )
-        proc = f_output.run_async(pipe_stdout=True)
-        while True:
-            read_bytes = proc.stdout.read(frame_bytes)
-            if not read_bytes:
-                break
-            frame = np.frombuffer(read_bytes, self._format.dtype).reshape(frame_shape)
-
-            for i, norm in enumerate(self._norms):
-                frame_data = self._format.data_from_frame(frame[:, :, i])
-                data[i, :, :] = norm.inverse(frame_data)
-
+        for data in self._iter_data():
             # create the field with the data of the given index
             assert self._field is not None
             field = self._field.copy()

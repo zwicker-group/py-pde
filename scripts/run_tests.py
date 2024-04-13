@@ -121,6 +121,7 @@ def run_unit_tests(
     coverage: bool = False,
     nojit: bool = False,
     early: bool = False,
+    debug: bool = False,
     pattern: str = None,
 ) -> int:
     """run the unit tests
@@ -133,6 +134,7 @@ def run_unit_tests(
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
         early (bool): Whether to fail at the first test
+        debug (bool): Whether extra output useful for debugging should be emitted
         pattern (str): A pattern that determines which tests are ran
 
     Returns:
@@ -172,6 +174,9 @@ def run_unit_tests(
         args.append("--runslow")  # also run slow tests
     if runinteractive:
         args.append("--runinteractive")  # also run interactive tests
+    if debug:
+        # show debug log entries live
+        args.extend(["-o", "log_cli=true", "--log-cli-level=debug"])
     if use_mpi:
         try:
             import numba_mpi  # @UnusedImport
@@ -307,6 +312,12 @@ def main() -> int:
         help="Return at first failed test",
     )
     group.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Show extra debug output",
+    )
+    group.add_argument(
         "--pattern",
         metavar="PATTERN",
         type=str,
@@ -346,6 +357,7 @@ def main() -> int:
             num_cores=args.num_cores,
             nojit=args.nojit,
             early=args.early,
+            debug=args.debug,
             pattern=args.pattern,
         )
         retcodes.append(retcode)
