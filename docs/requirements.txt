@@ -2,7 +2,7 @@
 h5py>=2.10
 pandas>=2
 Pillow>=7.0
-py-modelrunner>=0.17
+py-modelrunner>=0.17.1
 Sphinx>=4
 sphinx-autodoc-annotation>=1.0
 sphinx-gallery>=0.6

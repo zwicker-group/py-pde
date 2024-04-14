@@ -155,7 +155,7 @@ def test_modelrunner_storage_one(tmp_path, capsys):
 
     # read result
     with mr.open_storage(output, mode="read") as storage_obj:
-        np.testing.assert_allclose(storage_obj["trajectory"].times, [0, 1])
+        np.testing.assert_allclose(storage_obj["data/trajectory"].times, [0, 1])
     result = mr.Result.from_file(output)
     assert isinstance(result.data["field"], ScalarField)
 
@@ -193,7 +193,7 @@ def test_modelrunner_storage_many(tmp_path):
     for path in tmp_path.iterdir():
         if path.is_file() and not path.name.endswith("txt"):
             with mr.open_storage(path) as storage:
-                assert "trajectory" in storage.keys()
+                assert "trajectory" in storage["data"].keys()
                 assert "result" in storage.keys()
 
     # delete temporary files
