@@ -33,6 +33,7 @@ def run(storage, diffusivity=0.1):
     """
     # initialize the model
     state = ScalarField.random_uniform(UnitGrid([64, 64]), 0.2, 0.3)
+    storage["initia_state"] = state  # store initial state with simulation
     eq = DiffusionPDE(diffusivity=diffusivity)
 
     # store trajectory in storage
