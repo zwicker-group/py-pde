@@ -137,7 +137,7 @@ def test_modelrunner_storage_one(tmp_path, capsys):
 
     SCRIPT_PATH = Path(__file__).parent / "resources"
     assert SCRIPT_PATH.is_dir()
-    output = tmp_path / "result.yaml"
+    output = tmp_path / "result.json"
     assert not output.is_file()
 
     outs, errs = mr.submit_job(
