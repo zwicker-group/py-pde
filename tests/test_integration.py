@@ -4,6 +4,7 @@ Integration tests that use multiple modules together
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -128,6 +129,7 @@ def test_custom_pde_mpi(caplog, rng):
             assert info["state_modifications"] == info3["solver"]["state_modifications"]
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="submit_job has issues on windows")
 @pytest.mark.skipif(
     not module_available("modelrunner"), reason="requires `py-modelrunner`"
 )
@@ -168,6 +170,7 @@ def test_modelrunner_storage_one(tmp_path, capsys):
         path.unlink()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="submit_jobs has issues on windows")
 @pytest.mark.skipif(
     not module_available("modelrunner"), reason="requires `py-modelrunner`"
 )
