@@ -155,9 +155,13 @@ def test_modelrunner_storage_one(tmp_path, capsys):
 
     # read result
     with mr.open_storage(output, mode="read") as storage_obj:
-        np.testing.assert_allclose(storage_obj["data/trajectory"].times, [0, 1])
+        np.testing.assert_allclose(storage_obj["storage/trajectory"].times, [0, 1])
+        assert isinstance(storage_obj["storage/initial_state"], ScalarField)
+
     result = mr.Result.from_file(output)
-    assert isinstance(result.data["field"], ScalarField)
+    assert isinstance(result.result["field"], ScalarField)
+    assert isinstance(result.storage["initial_state"], ScalarField)
+    np.testing.assert_allclose(result.storage["trajectory"].times, [0, 1])
 
     # delete temporary files
     for path in tmp_path.iterdir():
@@ -187,13 +191,20 @@ def test_modelrunner_storage_many(tmp_path):
     # read result
     results = mr.ResultCollection.from_folder(tmp_path)
     assert len(results) == num_jobs
-    assert isinstance(results[0].data["field"], ScalarField)
+    for result in results:
+        t_range = result.model.parameters["t_range"]
+        assert isinstance(result.result["field"], ScalarField)
+        assert isinstance(result.storage["initial_state"], ScalarField)
+        np.testing.assert_allclose(
+            result.storage["trajectory"].times, range(int(t_range) + 1)
+        )
 
     # check whether data was written
     for path in tmp_path.iterdir():
         if path.is_file() and not path.name.endswith("txt"):
             with mr.open_storage(path) as storage:
-                assert "trajectory" in storage["data"].keys()
+                assert "initial_state" in storage["storage"].keys()
+                assert "trajectory" in storage["storage"].keys()
                 assert "result" in storage.keys()
 
     # delete temporary files
