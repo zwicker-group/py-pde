@@ -139,13 +139,13 @@ def test_modelrunner_storage_one(tmp_path, capsys):
 
     SCRIPT_PATH = Path(__file__).parent / "resources"
     assert SCRIPT_PATH.is_dir()
-    output = tmp_path / "result.json"
+    output = tmp_path / "result.yaml"  # TODO: Change back to JSON
     assert not output.is_file()
 
     outs, errs = mr.submit_job(
         SCRIPT_PATH / "run_pde.py",
         output=output,
-        log_folder=tmp_path,
+        # log_folder=tmp_path,
         parameters={"t_range": 1.5},
         method="foreground",
         overwrite_strategy="error",
@@ -155,11 +155,16 @@ def test_modelrunner_storage_one(tmp_path, capsys):
     assert captured.out == captured.err == ""
     assert output.is_file()
 
-    # read result
+    print("=" * 40)
+    print(open(output).read())
+    print("=" * 40)
+
+    # read storage manually
     with mr.open_storage(output, mode="read") as storage_obj:
         np.testing.assert_allclose(storage_obj["storage/trajectory"].times, [0, 1])
         assert isinstance(storage_obj["storage/initial_state"], ScalarField)
 
+    # read storage using `Result` class
     result = mr.Result.from_file(output)
     assert isinstance(result.result["field"], ScalarField)
     assert isinstance(result.storage["initial_state"], ScalarField)
@@ -191,7 +196,15 @@ def test_modelrunner_storage_many(tmp_path):
     )
     assert num_jobs == 2
 
-    # read result
+    # read storage manually
+    for path in tmp_path.iterdir():
+        if path.is_file() and not path.name.endswith("txt"):
+            with mr.open_storage(path) as storage:
+                assert "initial_state" in storage["storage"].keys()
+                assert "trajectory" in storage["storage"].keys()
+                assert "result" in storage.keys()
+
+    # read result using ResultCollection
     results = mr.ResultCollection.from_folder(tmp_path)
     assert len(results) == num_jobs
     for result in results:
@@ -201,14 +214,6 @@ def test_modelrunner_storage_many(tmp_path):
         np.testing.assert_allclose(
             result.storage["trajectory"].times, range(int(t_range) + 1)
         )
-
-    # check whether data was written
-    for path in tmp_path.iterdir():
-        if path.is_file() and not path.name.endswith("txt"):
-            with mr.open_storage(path) as storage:
-                assert "initial_state" in storage["storage"].keys()
-                assert "trajectory" in storage["storage"].keys()
-                assert "result" in storage.keys()
 
     # delete temporary files
     for path in tmp_path.iterdir():

@@ -15,6 +15,7 @@ from pde.grids.base import (
     discretize_interval,
     registered_operators,
 )
+from pde.tools.misc import module_available
 
 
 def iter_grids():
@@ -190,3 +191,20 @@ def test_cell_volumes(grid):
     x_high = grid._coords_full(grid.cell_coords + d2, value="max")
     cell_vols = grid.c.cell_volume(x_low, x_high)
     np.testing.assert_allclose(cell_vols, grid.cell_volumes)
+
+
+@pytest.mark.skipif(
+    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+)
+@pytest.mark.parametrize("grid", iter_grids())
+def test_grid_modelrunner_storage(grid, tmp_path):
+    """test storing grids in modelrunner storages"""
+    from modelrunner import open_storage
+
+    path = tmp_path / "grid.json"
+
+    with open_storage(path, mode="truncate") as storage:
+        storage["grid"] = grid
+
+    with open_storage(path, mode="read") as storage:
+        assert storage["grid"] == grid

@@ -17,7 +17,7 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.plotting import PlotReference, plot_on_figure
 from ..tools.typing import NumberOrArray
-from .base import DataFieldBase
+from .datafield_base import DataFieldBase
 from .scalar import ScalarField
 from .vectorial import VectorField
 

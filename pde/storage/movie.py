@@ -22,7 +22,8 @@ from matplotlib.colors import Normalize
 from numpy.typing import ArrayLike
 
 from ..fields import FieldCollection
-from ..fields.base import DataFieldBase, FieldBase
+from ..fields.base import FieldBase
+from ..fields.datafield_base import DataFieldBase
 from ..tools import ffmpeg as FFmpeg
 from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring

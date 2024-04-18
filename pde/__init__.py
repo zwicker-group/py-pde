@@ -33,3 +33,8 @@ from .storage import *  # @UnusedWildImport
 from .tools.parameters import Parameter
 from .trackers import *  # @UnusedWildImport
 from .visualization import *  # @UnusedWildImport
+
+try:
+    from .tools.modelrunner import *
+except ImportError:
+    pass  # modelrunner extensions are simply not loaded

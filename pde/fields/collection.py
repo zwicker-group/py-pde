@@ -28,7 +28,8 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
 from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
 from ..tools.typing import NumberOrArray
-from .base import DataFieldBase, FieldBase
+from .base import FieldBase
+from .datafield_base import DataFieldBase
 from .scalar import ScalarField
 
 

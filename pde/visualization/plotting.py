@@ -24,7 +24,8 @@ from typing import Any, Callable, Literal, Union
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import DataFieldBase, FieldBase
+from ..fields.base import FieldBase
+from ..fields.datafield_base import DataFieldBase
 from ..storage.base import StorageBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available

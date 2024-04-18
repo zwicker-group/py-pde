@@ -15,8 +15,6 @@ The results can be read by the following code
     r = Result.from_file("data.hdf5")
     r.result.plot()  # plots the final state
     r.storage["trajectory"]  # allows accessing the stored trajectory
-
-
 """
 
 from pde import DiffusionPDE, ModelrunnerStorage, ScalarField, UnitGrid
