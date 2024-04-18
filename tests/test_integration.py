@@ -4,6 +4,7 @@ Integration tests that use multiple modules together
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -128,6 +129,7 @@ def test_custom_pde_mpi(caplog, rng):
             assert info["state_modifications"] == info3["solver"]["state_modifications"]
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="submit_job has issues on windows")
 @pytest.mark.skipif(
     not module_available("modelrunner"), reason="requires `py-modelrunner`"
 )
@@ -137,12 +139,13 @@ def test_modelrunner_storage_one(tmp_path, capsys):
 
     SCRIPT_PATH = Path(__file__).parent / "resources"
     assert SCRIPT_PATH.is_dir()
-    output = tmp_path / "result.yaml"
+    output = tmp_path / "result.yaml"  # TODO: Change back to JSON
     assert not output.is_file()
 
     outs, errs = mr.submit_job(
         SCRIPT_PATH / "run_pde.py",
         output=output,
+        # log_folder=tmp_path,
         parameters={"t_range": 1.5},
         method="foreground",
         overwrite_strategy="error",
@@ -152,17 +155,27 @@ def test_modelrunner_storage_one(tmp_path, capsys):
     assert captured.out == captured.err == ""
     assert output.is_file()
 
-    # read result
+    print("=" * 40)
+    print(open(output).read())
+    print("=" * 40)
+
+    # read storage manually
     with mr.open_storage(output, mode="read") as storage_obj:
-        np.testing.assert_allclose(storage_obj["trajectory"].times, [0, 1])
+        np.testing.assert_allclose(storage_obj["storage/trajectory"].times, [0, 1])
+        assert isinstance(storage_obj["storage/initial_state"], ScalarField)
+
+    # read storage using `Result` class
     result = mr.Result.from_file(output)
-    assert isinstance(result.data["field"], ScalarField)
+    assert isinstance(result.result["field"], ScalarField)
+    assert isinstance(result.storage["initial_state"], ScalarField)
+    np.testing.assert_allclose(result.storage["trajectory"].times, [0, 1])
 
     # delete temporary files
     for path in tmp_path.iterdir():
         path.unlink()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="submit_jobs has issues on windows")
 @pytest.mark.skipif(
     not module_available("modelrunner"), reason="requires `py-modelrunner`"
 )
@@ -183,17 +196,24 @@ def test_modelrunner_storage_many(tmp_path):
     )
     assert num_jobs == 2
 
-    # read result
-    results = mr.ResultCollection.from_folder(tmp_path)
-    assert len(results) == num_jobs
-    assert isinstance(results[0].data["field"], ScalarField)
-
-    # check whether data was written
+    # read storage manually
     for path in tmp_path.iterdir():
         if path.is_file() and not path.name.endswith("txt"):
             with mr.open_storage(path) as storage:
-                assert "trajectory" in storage.keys()
+                assert "initial_state" in storage["storage"].keys()
+                assert "trajectory" in storage["storage"].keys()
                 assert "result" in storage.keys()
+
+    # read result using ResultCollection
+    results = mr.ResultCollection.from_folder(tmp_path)
+    assert len(results) == num_jobs
+    for result in results:
+        t_range = result.model.parameters["t_range"]
+        assert isinstance(result.result["field"], ScalarField)
+        assert isinstance(result.storage["initial_state"], ScalarField)
+        np.testing.assert_allclose(
+            result.storage["trajectory"].times, range(int(t_range) + 1)
+        )
 
     # delete temporary files
     for path in tmp_path.iterdir():

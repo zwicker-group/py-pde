@@ -238,6 +238,7 @@ napoleon_custom_sections = None
 intersphinx_mapping = {
     "h5py": ("https://docs.h5py.org/en/latest", None),
     "matplotlib": ("https://matplotlib.org/stable", None),
+    "modelrunner": ("https://py-modelrunner.readthedocs.io/en/latest", None),
     "napari": ("https://napari.org/", None),
     "numba": ("https://numba.pydata.org/numba-doc/latest/", None),
     "numpy": ("https://numpy.org/doc/stable", None),
@@ -263,7 +264,7 @@ sphinx_gallery_conf = {
     "examples_dirs": "../../examples",
     "gallery_dirs": "examples_gallery",
     "filename_pattern": "/",
-    "ignore_pattern": r".*movie.*|.*interactive.*|.*parallel.*",
+    "ignore_pattern": r".*movie.*|.*interactive.*|.*parallel.*|.*modelrunner.*",
     "capture_repr": (),
     "show_signature": False,
 }

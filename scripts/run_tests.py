@@ -120,9 +120,8 @@ def run_unit_tests(
     num_cores: str | int = 1,
     coverage: bool = False,
     nojit: bool = False,
-    early: bool = False,
-    debug: bool = False,
     pattern: str = None,
+    pytest_args: list[str] = [],
 ) -> int:
     """run the unit tests
 
@@ -133,9 +132,10 @@ def run_unit_tests(
         num_cores (int or str): Number of cores to use (`auto` for automatic choice)
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
-        early (bool): Whether to fail at the first test
-        debug (bool): Whether extra output useful for debugging should be emitted
         pattern (str): A pattern that determines which tests are ran
+        pytest_args (list of str):
+            Additional arguments forwarded to py.test. For instance ["--maxfail=1"]
+            fails tests early.
 
     Returns:
         int: The return code indicating success or failure
@@ -174,19 +174,12 @@ def run_unit_tests(
         args.append("--runslow")  # also run slow tests
     if runinteractive:
         args.append("--runinteractive")  # also run interactive tests
-    if debug:
-        # show debug log entries live
-        args.extend(["-o", "log_cli=true", "--log-cli-level=debug"])
     if use_mpi:
         try:
             import numba_mpi  # @UnusedImport
         except ImportError:
             raise RuntimeError("Moduled `numba_mpi` is required to test with MPI")
         args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
-
-    # fail early if requested
-    if early:
-        args.append("--maxfail=1")
 
     # run tests using multiple cores?
     if num_cores == "auto":
@@ -214,6 +207,8 @@ def run_unit_tests(
         if use_mpi:
             # this is a hack to allow appending the coverage report
             args.append("--cov-append")
+
+    args.extend(pytest_args)
 
     # specify the package to run
     args.append("tests")
@@ -306,18 +301,6 @@ def main() -> int:
         help="Do not use just-in-time compilation of numba",
     )
     group.add_argument(
-        "--early",
-        action="store_true",
-        default=False,
-        help="Return at first failed test",
-    )
-    group.add_argument(
-        "--debug",
-        action="store_true",
-        default=False,
-        help="Show extra debug output",
-    )
-    group.add_argument(
         "--pattern",
         metavar="PATTERN",
         type=str,
@@ -329,6 +312,13 @@ def main() -> int:
         default=False,
         help="Write a report of the results",
     )
+
+    # set py.test arguments
+    group = parser.add_argument_group(
+        "py.test arguments",
+        description="Additional arguments separated by `--` are forward to py.test",
+    )
+    group.add_argument("pytest_args", nargs="*", help=argparse.SUPPRESS)
 
     # parse the command line arguments
     args = parser.parse_args()
@@ -356,9 +346,8 @@ def main() -> int:
             coverage=args.coverage,
             num_cores=args.num_cores,
             nojit=args.nojit,
-            early=args.early,
-            debug=args.debug,
             pattern=args.pattern,
+            pytest_args=args.pytest_args,
         )
         retcodes.append(retcode)
 

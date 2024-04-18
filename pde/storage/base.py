@@ -16,7 +16,8 @@ import numpy as np
 from numpy.typing import DTypeLike
 
 from ..fields import FieldCollection, ScalarField, Tensor2Field, VectorField
-from ..fields.base import DataFieldBase, FieldBase
+from ..fields.base import FieldBase
+from ..fields.datafield_base import DataFieldBase
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress

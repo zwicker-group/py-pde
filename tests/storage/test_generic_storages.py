@@ -33,7 +33,10 @@ if module_available("ffmpeg"):
 if mr is not None:
     STORAGE_CLASSES_ALL.append((0, False, mr.storage.MemoryStorage))
     STORAGE_CLASSES_ALL.append((0, False, mr.storage.JSONStorage))
-    STORAGE_CLASSES_ALL.append((0, False, mr.storage.ZarrStorage))
+    if module_available("yaml"):
+        STORAGE_CLASSES_ALL.append((0, False, mr.storage.YAMLStorage))
+    if module_available("zarr"):
+        STORAGE_CLASSES_ALL.append((0, False, mr.storage.ZarrStorage))
     if module_available("h5py"):
         STORAGE_CLASSES_ALL.append((0, False, mr.storage.HDFStorage))
 

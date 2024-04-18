@@ -16,8 +16,6 @@ Solvers define how a PDE is solved, i.e., how the initial state is advanced in t
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
-from typing import List
-
 from .adams_bashforth import AdamsBashforthSolver
 from .controller import Controller
 from .crank_nicolson import CrankNicolsonSolver

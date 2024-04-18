@@ -20,7 +20,7 @@ from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number
 from ..tools.typing import NumberOrArray
-from .base import DataFieldBase
+from .datafield_base import DataFieldBase
 
 if TYPE_CHECKING:
     from .vectorial import VectorField

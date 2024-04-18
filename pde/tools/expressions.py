@@ -35,8 +35,9 @@ from sympy.core import basic
 from sympy.printing.pycode import PythonCodePrinter
 from sympy.utilities.lambdify import _get_namespace
 
-from ..fields.base import DataFieldBase, FieldBase
+from ..fields.base import FieldBase
 from ..fields.collection import FieldCollection
+from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from .cache import cached_method, cached_property

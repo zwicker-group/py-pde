@@ -7,9 +7,10 @@ import numpy as np
 import pytest
 from scipy import ndimage
 
-from fixtures.fields import iter_grids
+from fixtures.fields import iter_fields, iter_grids
 from pde.fields import FieldCollection, ScalarField, Tensor2Field, VectorField
-from pde.fields.base import DataFieldBase, FieldBase
+from pde.fields.base import FieldBase
+from pde.fields.datafield_base import DataFieldBase
 from pde.grids import (
     CartesianGrid,
     CylindricalSymGrid,
@@ -600,3 +601,20 @@ def test_get_field_class_by_rank():
     assert DataFieldBase.get_class_by_rank(2) is Tensor2Field
     with pytest.raises(RuntimeError):
         DataFieldBase.get_class_by_rank(3)
+
+
+@pytest.mark.skipif(
+    not module_available("modelrunner"), reason="requires `py-modelrunner`"
+)
+@pytest.mark.parametrize("field", iter_fields())
+def test_field_modelrunner_storage(field, tmp_path):
+    """test storing fields in modelrunner storages"""
+    from modelrunner import open_storage
+
+    path = tmp_path / "field.json"
+
+    with open_storage(path, mode="truncate") as storage:
+        storage["field"] = field
+
+    with open_storage(path, mode="read") as storage:
+        assert storage["field"] == field

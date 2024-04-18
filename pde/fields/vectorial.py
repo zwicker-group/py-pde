@@ -21,7 +21,7 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, get_common_dtype
 from ..tools.numba import get_common_numba_dtype, jit
 from ..tools.typing import NumberOrArray
-from .base import DataFieldBase
+from .datafield_base import DataFieldBase
 from .scalar import ScalarField
 
 if TYPE_CHECKING:

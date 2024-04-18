@@ -171,6 +171,16 @@ class GridBase(metaclass=ABCMeta):
             cls._subclasses[cls.__name__] = cls
         cls._operators = {}
 
+    def __getstate__(self) -> dict[str, Any]:
+        state = self.__dict__.copy()
+        del state["_logger"]
+        state.pop("_cache_methods", None)  # delete method cache if present
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._logger = logging.getLogger(self.__class__.__name__)
+
     @classmethod
     def from_state(cls, state: str | dict[str, Any]) -> GridBase:
         """create a field from a stored `state`.

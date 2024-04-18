@@ -14,7 +14,8 @@ from typing import Any, TypeVar
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import DataFieldBase, FieldBase
+from ..fields.base import FieldBase
+from ..fields.datafield_base import DataFieldBase
 from ..tools import mpi
 from ..tools.cache import cached_method
 from ..tools.plotting import plot_on_axes

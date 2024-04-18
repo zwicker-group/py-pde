@@ -18,7 +18,8 @@ from sympy import Symbol
 from sympy.core.function import UndefinedFunction
 
 from ..fields import FieldCollection, VectorField
-from ..fields.base import DataFieldBase, FieldBase
+from ..fields.base import FieldBase
+from ..fields.datafield_base import DataFieldBase
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase, TState

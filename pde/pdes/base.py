@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 import numpy as np
 
 from ..fields import FieldCollection
-from ..fields.base import DataFieldBase, FieldBase
+from ..fields.base import FieldBase
+from ..fields.datafield_base import DataFieldBase
 from ..tools.numba import jit
 from ..tools.typing import ArrayLike
 from ..trackers.base import TrackerCollectionDataType
@@ -87,6 +88,17 @@ class PDEBase(metaclass=ABCMeta):
         self.diagnostics = {}
         self.noise = np.asanyarray(noise)
         self.rng = rng if rng is not None else np.random.default_rng()
+
+    def __getstate__(self) -> dict[str, Any]:
+        state = self.__dict__.copy()
+        del state["_logger"]
+        del state["_cache"]
+        return state
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._cache = {}
 
     @property
     def is_sde(self) -> bool:

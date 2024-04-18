@@ -108,6 +108,12 @@ REQUIREMENTS = [
         collections={"full", "multiprocessing", "docs"},
     ),
     Requirement(
+        name="py-modelrunner",
+        version_min="0.18",
+        usage="Running simulations and handling I/O",
+        collections={"full", "docs"},
+    ),
+    Requirement(
         name="pandas",
         version_min="2",
         usage="Handling tabular data",
