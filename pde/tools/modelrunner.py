@@ -1,6 +1,10 @@
 """
 Establishes hooks for the interplay between :mod:`pde` and :mod:`modelrunner`
 
+This package is usually loaded automatically during import if :mod:`modelrunner` is
+available. In this case, grids and fields of :mod:`pde` can be directly written to
+storages from :mod:`modelrunner.storage`.
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
@@ -65,7 +69,7 @@ def load_field(storage: StorageBase, loc: Sequence[str]) -> FieldBase:
     Returns:
         :class:`~pde.fields.base.FieldBase`: the loaded field
     """
-    # get grid class that was stored
+    # get field class that was stored
     stored_cls = decode_class(storage._read_attrs(loc).get("__class__"))
     attributes = stored_cls.unserialize_attributes(storage.read_attrs(loc))  # type: ignore
     return stored_cls.from_state(attributes, data=storage.read_array(loc))  # type: ignore
