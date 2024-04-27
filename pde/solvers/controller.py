@@ -33,7 +33,11 @@ class Controller:
     """class controlling a simulation
 
     The controller calls a solver to advance the simulation into the future and it takes
-    care of trackers that analyze and modify the state periodically.
+    care of trackers that analyze and modify the state periodically. The controller also
+    handles errors in the simulations and the trackers, as well as user-induced
+    interrupts, e.g., by hitting Ctrl-C or Cmd-C to cause a :class:`KeyboardInterrupt`.
+    In case of problems, the Controller writes additional information into
+    :attr:`~Controller.diagnostics`, which can help to diagnose problems.
     """
 
     diagnostics: dict[str, Any]
@@ -212,7 +216,10 @@ class Controller:
 
         except StopIteration as err:
             # iteration has been interrupted by a tracker
+            self.info["stop_reason"] = "Tracker raised StopIteration"
             msg_level, msg = handle_stop_iteration(err, t)
+            self.diagnostics["last_tracker_time"] = t
+            self.diagnostics["last_state"] = state
 
         except KeyboardInterrupt:
             # iteration has been interrupted by the user
@@ -220,6 +227,14 @@ class Controller:
             self.info["stop_reason"] = "User interrupted simulation"
             msg = f"Simulation interrupted at t={t}"
             msg_level = logging.INFO
+            self.diagnostics["last_tracker_time"] = t
+            self.diagnostics["last_state"] = state
+
+        except Exception:
+            # any other exception
+            self.diagnostics["last_tracker_time"] = t
+            self.diagnostics["last_state"] = state
+            raise
 
         else:
             # reached final time
