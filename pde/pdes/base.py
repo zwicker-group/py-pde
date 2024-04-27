@@ -618,13 +618,14 @@ class PDEBase(metaclass=ABCMeta):
         controller = Controller(solver_obj, t_range=t_range, tracker=tracker)
 
         # run the simulation
-        final_state = controller.run(state, dt)
-
-        # copy diagnostic information to the PDE instance
-        if hasattr(self, "diagnostics"):
-            self.diagnostics.update(controller.diagnostics)
-        else:
-            self.diagnostics = copy.copy(controller.diagnostics)
+        try:
+            final_state = controller.run(state, dt)
+        finally:
+            # copy diagnostic information to the PDE instance
+            if hasattr(self, "diagnostics"):
+                self.diagnostics.update(controller.diagnostics)
+            else:
+                self.diagnostics = copy.copy(controller.diagnostics)
 
         if ret_info:
             # return a copy of the diagnostic information so it will not be overwritten
