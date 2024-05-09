@@ -32,8 +32,8 @@ def make_derivative(
         axis (int):
             The axis along which the derivative will be taken
         method (str):
-            The method for calculating the derivative. Possible values are
-            'central', 'forward', and 'backward'.
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an full array of values including those at

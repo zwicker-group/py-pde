@@ -168,13 +168,14 @@ def test_gradient_1d():
 
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
+@pytest.mark.parametrize("method", ["central", "forward", "backward"])
 @pytest.mark.parametrize("periodic", [True, False])
-def test_gradient_cart(ndim, periodic, rng):
+def test_gradient_cart(ndim, method, periodic, rng):
     """test different gradient operators"""
     bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic)
     field = ScalarField.random_uniform(bcs.grid, rng=rng)
-    res1 = field.gradient(bcs, backend="scipy").data
-    res2 = field.gradient(bcs, backend="numba").data
+    res1 = field.gradient(bcs, backend="scipy", method=method).data
+    res2 = field.gradient(bcs, backend="numba", method=method).data
     assert res1.shape == (ndim,) + bcs.grid.shape
     np.testing.assert_allclose(res1, res2)
 

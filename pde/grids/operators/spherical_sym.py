@@ -87,7 +87,10 @@ def make_laplace(grid: SphericalSymGrid, conservative: bool = True) -> OperatorT
 
 @SphericalSymGrid.register_operator("gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
-def make_gradient(grid: SphericalSymGrid) -> OperatorType:
+def make_gradient(
+    grid: SphericalSymGrid,
+    method: Literal["central", "forward", "backward"] = "central",
+) -> OperatorType:
     """make a discretized gradient operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -95,6 +98,9 @@ def make_gradient(grid: SphericalSymGrid) -> OperatorType:
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The polar grid for which this operator will be defined
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
@@ -103,15 +109,23 @@ def make_gradient(grid: SphericalSymGrid) -> OperatorType:
 
     # calculate preliminary quantities
     dim_r = grid.shape[0]
-    dr = grid.discretization[0]
-
-    scale_r = 1 / (2 * dr)
+    if method == "central":
+        scale_r = 0.5 / grid.discretization[0]
+    elif method in {"forward", "backward"}:
+        scale_r = 1 / grid.discretization[0]
+    else:
+        raise ValueError(f"Unknown derivative type `{method}`")
 
     @jit
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
-            out[0, i - 1] = (arr[i + 1] - arr[i - 1]) * scale_r
+            if method == "central":
+                out[0, i - 1] = (arr[i + 1] - arr[i - 1]) * scale_r
+            elif method == "forward":
+                out[0, i - 1] = (arr[i + 1] - arr[i]) * scale_r
+            elif method == "backward":
+                out[0, i - 1] = (arr[i] - arr[i - 1]) * scale_r
             out[1, i - 1] = out[2, i - 1] = 0  # no angular dependence by definition
 
     return gradient  # type: ignore
