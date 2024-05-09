@@ -30,6 +30,10 @@ def test_findiff_polar():
     np.testing.assert_allclose(grad.data[0, :], [1, 3, -6])
     grad = s.gradient(bc="derivative")
     np.testing.assert_allclose(grad.data[0, :], [1, 3, 2])
+    grad = s.gradient(bc="derivative", method="forward")
+    np.testing.assert_allclose(grad.data[0, :], [2, 4, 0])
+    grad = s.gradient(bc="derivative", method="backward")
+    np.testing.assert_allclose(grad.data[0, :], [0, 2, 4])
 
     # test divergence
     div = v.divergence(bc=["derivative", "value"])

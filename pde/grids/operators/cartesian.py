@@ -515,21 +515,35 @@ def make_laplace(
     return laplace
 
 
-def _make_gradient_scipy_nd(grid: CartesianGrid) -> OperatorType:
+def _make_gradient_scipy_nd(
+    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+) -> OperatorType:
     """make a gradient operator using the scipy module
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
     """
     from scipy import ndimage
 
-    scaling = 0.5 / grid.discretization
+    scaling = 1 / grid.discretization
     dim = grid.dim
     shape_out = (dim,) + grid.shape
+
+    if method == "central":
+        stencil = [-0.5, 0, 0.5]
+    elif method == "forward":
+        stencil = [0, -1, 1]
+    elif method == "backward":
+        stencil = [-1, 1, 0]
+    else:
+        raise ValueError(f"Unknown derivative type `{method}`")
 
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
@@ -543,45 +557,68 @@ def _make_gradient_scipy_nd(grid: CartesianGrid) -> OperatorType:
         with np.errstate(all="ignore"):
             # some errors can happen for ghost cells
             for i in range(dim):
-                out[i] = ndimage.convolve1d(arr, [1, 0, -1], axis=i)[valid] * scaling[i]
+                out[i] = ndimage.correlate1d(arr, stencil, axis=i)[valid] * scaling[i]
 
     return gradient
 
 
-def _make_gradient_numba_1d(grid: CartesianGrid) -> OperatorType:
+def _make_gradient_numba_1d(
+    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+) -> OperatorType:
     """make a 1d gradient operator using numba compilation
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
     """
+    if method not in {"central", "forward", "backward"}:
+        raise ValueError(f"Unknown derivative type `{method}`")
+
     dim_x = grid.shape[0]
-    scale = 0.5 / grid.discretization[0]
+    dx = grid.discretization[0]
 
     @jit
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
-            out[0, i - 1] = (arr[i + 1] - arr[i - 1]) * scale
+            if method == "central":
+                out[0, i - 1] = (arr[i + 1] - arr[i - 1]) / (2 * dx)
+            elif method == "forward":
+                out[0, i - 1] = (arr[i + 1] - arr[i]) / dx
+            elif method == "backward":
+                out[0, i - 1] = (arr[i] - arr[i - 1]) / dx
 
     return gradient  # type: ignore
 
 
-def _make_gradient_numba_2d(grid: CartesianGrid) -> OperatorType:
+def _make_gradient_numba_2d(
+    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+) -> OperatorType:
     """make a 2d gradient operator using numba compilation
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
     """
     dim_x, dim_y = grid.shape
-    scale_x, scale_y = 0.5 / grid.discretization
+    if method == "central":
+        scale_x, scale_y = 0.5 / grid.discretization
+    elif method in {"forward", "backward"}:
+        scale_x, scale_y = 1 / grid.discretization
+    else:
+        raise ValueError(f"Unknown derivative type `{method}`")
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
@@ -591,24 +628,41 @@ def _make_gradient_numba_2d(grid: CartesianGrid) -> OperatorType:
         """apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
-                out[0, i - 1, j - 1] = (arr[i + 1, j] - arr[i - 1, j]) * scale_x
-                out[1, i - 1, j - 1] = (arr[i, j + 1] - arr[i, j - 1]) * scale_y
+                if method == "central":
+                    out[0, i - 1, j - 1] = (arr[i + 1, j] - arr[i - 1, j]) * scale_x
+                    out[1, i - 1, j - 1] = (arr[i, j + 1] - arr[i, j - 1]) * scale_y
+                elif method == "forward":
+                    out[0, i - 1, j - 1] = (arr[i + 1, j] - arr[i, j]) * scale_x
+                    out[1, i - 1, j - 1] = (arr[i, j + 1] - arr[i, j]) * scale_y
+                elif method == "backward":
+                    out[0, i - 1, j - 1] = (arr[i, j] - arr[i - 1, j]) * scale_x
+                    out[1, i - 1, j - 1] = (arr[i, j] - arr[i, j - 1]) * scale_y
 
     return gradient  # type: ignore
 
 
-def _make_gradient_numba_3d(grid: CartesianGrid) -> OperatorType:
+def _make_gradient_numba_3d(
+    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+) -> OperatorType:
     """make a 3d gradient operator using numba compilation
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
     """
     dim_x, dim_y, dim_z = grid.shape
-    scale_x, scale_y, scale_z = 0.5 / grid.discretization
+    if method == "central":
+        scale_x, scale_y, scale_z = 0.5 / grid.discretization
+    elif method in {"forward", "backward"}:
+        scale_x, scale_y, scale_z = 1 / grid.discretization
+    else:
+        raise ValueError(f"Unknown derivative type `{method}`")
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
@@ -619,22 +673,45 @@ def _make_gradient_numba_3d(grid: CartesianGrid) -> OperatorType:
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 for k in range(1, dim_z + 1):
-                    out[0, i - 1, j - 1, k - 1] = (
-                        arr[i + 1, j, k] - arr[i - 1, j, k]
-                    ) * scale_x
-                    out[1, i - 1, j - 1, k - 1] = (
-                        arr[i, j + 1, k] - arr[i, j - 1, k]
-                    ) * scale_y
-                    out[2, i - 1, j - 1, k - 1] = (
-                        arr[i, j, k + 1] - arr[i, j, k - 1]
-                    ) * scale_z
+                    if method == "central":
+                        out[0, i - 1, j - 1, k - 1] = (
+                            arr[i + 1, j, k] - arr[i - 1, j, k]
+                        ) * scale_x
+                        out[1, i - 1, j - 1, k - 1] = (
+                            arr[i, j + 1, k] - arr[i, j - 1, k]
+                        ) * scale_y
+                        out[2, i - 1, j - 1, k - 1] = (
+                            arr[i, j, k + 1] - arr[i, j, k - 1]
+                        ) * scale_z
+                    elif method == "forward":
+                        out[0, i - 1, j - 1, k - 1] = (
+                            arr[i + 1, j, k] - arr[i, j, k]
+                        ) * scale_x
+                        out[1, i - 1, j - 1, k - 1] = (
+                            arr[i, j + 1, k] - arr[i, j, k]
+                        ) * scale_y
+                        out[2, i - 1, j - 1, k - 1] = (
+                            arr[i, j, k + 1] - arr[i, j, k]
+                        ) * scale_z
+                    elif method == "backward":
+                        out[0, i - 1, j - 1, k - 1] = (
+                            arr[i, j, k] - arr[i - 1, j, k]
+                        ) * scale_x
+                        out[1, i - 1, j - 1, k - 1] = (
+                            arr[i, j, k] - arr[i, j - 1, k]
+                        ) * scale_y
+                        out[2, i - 1, j - 1, k - 1] = (
+                            arr[i, j, k] - arr[i, j, k - 1]
+                        ) * scale_z
 
     return gradient  # type: ignore
 
 
 @CartesianGrid.register_operator("gradient", rank_in=0, rank_out=1)
 def make_gradient(
-    grid: CartesianGrid, backend: Literal["auto", "numba", "scipy"] = "auto"
+    grid: CartesianGrid,
+    backend: Literal["auto", "numba", "scipy"] = "auto",
+    method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """make a gradient operator on a Cartesian grid
 
@@ -644,6 +721,9 @@ def make_gradient(
         backend (str):
             Backend used for calculating the gradient operator.
             If backend='auto', a suitable backend is chosen automatically.
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
@@ -659,18 +739,18 @@ def make_gradient(
 
     if backend == "numba":
         if dim == 1:
-            gradient = _make_gradient_numba_1d(grid)
+            gradient = _make_gradient_numba_1d(grid, method=method)
         elif dim == 2:
-            gradient = _make_gradient_numba_2d(grid)
+            gradient = _make_gradient_numba_2d(grid, method=method)
         elif dim == 3:
-            gradient = _make_gradient_numba_3d(grid)
+            gradient = _make_gradient_numba_3d(grid, method=method)
         else:
             raise NotImplementedError(
                 f"Numba gradient operator not implemented for dimension {dim}"
             )
 
     elif backend == "scipy":
-        gradient = _make_gradient_scipy_nd(grid)
+        gradient = _make_gradient_scipy_nd(grid, method=method)
 
     else:
         raise ValueError(f"Backend `{backend}` is not defined")
