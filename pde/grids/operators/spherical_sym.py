@@ -263,7 +263,11 @@ def make_divergence(
 
 @SphericalSymGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
-def make_vector_gradient(grid: SphericalSymGrid, safe: bool = True) -> OperatorType:
+def make_vector_gradient(
+    grid: SphericalSymGrid,
+    method: Literal["central", "forward", "backward"] = "central",
+    safe: bool = True,
+) -> OperatorType:
     """make a discretized vector gradient operator for a spherical grid
 
     Warning:
@@ -276,6 +280,9 @@ def make_vector_gradient(grid: SphericalSymGrid, safe: bool = True) -> OperatorT
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The polar grid for which this operator will be defined
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
         safe (bool):
             Add extra checks for the validity of the input
 
@@ -287,8 +294,12 @@ def make_vector_gradient(grid: SphericalSymGrid, safe: bool = True) -> OperatorT
     # calculate preliminary quantities
     dim_r = grid.shape[0]
     rs = grid.axes_coords[0]
-    dr = grid.discretization[0]
-    scale_r = 1 / (2 * dr)
+    if method == "central":
+        scale_r = 0.5 / grid.discretization[0]
+    elif method in {"forward", "backward"}:
+        scale_r = 1 / grid.discretization[0]
+    else:
+        raise ValueError(f"Unknown derivative type `{method}`")
 
     @jit
     def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
@@ -315,7 +326,12 @@ def make_vector_gradient(grid: SphericalSymGrid, safe: bool = True) -> OperatorT
 
         # inner radial boundary condition
         for i in range(1, dim_r + 1):  # iterate radial points
-            out_rr[i - 1] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
+            if method == "central":
+                out_rr[i - 1] = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
+            elif method == "forward":
+                out_rr[i - 1] = (arr_r[i + 1] - arr_r[i]) * scale_r
+            elif method == "backward":
+                out_rr[i - 1] = (arr_r[i] - arr_r[i - 1]) * scale_r
             out_θθ[i - 1] = arr_r[i] / rs[i - 1]
             out_φφ[i - 1] = arr_r[i] / rs[i - 1]
 
