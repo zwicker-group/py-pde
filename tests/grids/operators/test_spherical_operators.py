@@ -175,19 +175,21 @@ def test_examples_scalar_sph():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-def test_examples_vector_sph():
+def test_examples_vector_sph_div():
     """compare derivatives of vector fields for spherical grids"""
     grid = SphericalSymGrid(1, 32)
-
-    # divergence
     vf = VectorField.from_expression(grid, ["r**3", 0, "r**2"])
     res = vf.divergence([{"derivative": 0}, {"value": 1}])
     expect = ScalarField.from_expression(grid, "5 * r**2")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
-    # vector gradient
+
+@pytest.mark.parametrize("method", ["central", "forward", "backward"])
+def test_examples_vector_sph_grad(method):
+    """compare derivatives of vector fields for spherical grids"""
+    grid = SphericalSymGrid(1, 32)
     vf = VectorField.from_expression(grid, ["r**3", 0, 0])
-    res = vf.gradient([{"derivative": 0}, {"value": [1, 1, 1]}])
+    res = vf.gradient([{"derivative": 0}, {"value": [1, 1, 1]}], method=method)
     expr = [["3 * r**2", 0, 0], [0, "r**2", 0], [0, 0, "r**2"]]
     expect = Tensor2Field.from_expression(grid, expr)
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
