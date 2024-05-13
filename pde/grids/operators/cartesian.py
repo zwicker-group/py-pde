@@ -955,12 +955,17 @@ def make_gradient_squared(grid: CartesianGrid, central: bool = True) -> Operator
     return gradient_squared
 
 
-def _make_divergence_scipy_nd(grid: CartesianGrid) -> OperatorType:
+def _make_divergence_scipy_nd(
+    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+) -> OperatorType:
     """make a divergence operator using the scipy module
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
@@ -968,7 +973,15 @@ def _make_divergence_scipy_nd(grid: CartesianGrid) -> OperatorType:
     from scipy import ndimage
 
     data_shape = grid._shape_full
-    scale = 0.5 / grid.discretization
+    scale = 1 / grid.discretization
+    if method == "central":
+        stencil = [-0.5, 0, 0.5]
+    elif method == "forward":
+        stencil = [0, -1, 1]
+    elif method == "backward":
+        stencil = [-1, 1, 0]
+    else:
+        raise ValueError(f"Unknown derivative type `{method}`")
 
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply divergence operator to array `arr`"""
@@ -984,45 +997,67 @@ def _make_divergence_scipy_nd(grid: CartesianGrid) -> OperatorType:
         with np.errstate(all="ignore"):
             # some errors can happen for ghost cells
             for i in range(len(data_shape)):
-                out += ndimage.convolve1d(arr[i], [1, 0, -1], axis=i)[valid] * scale[i]
+                out += ndimage.correlate1d(arr[i], stencil, axis=i)[valid] * scale[i]
 
     return divergence
 
 
-def _make_divergence_numba_1d(grid: CartesianGrid) -> OperatorType:
+def _make_divergence_numba_1d(
+    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+) -> OperatorType:
     """make a 1d divergence operator using numba compilation
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
     """
+    if method not in {"central", "forward", "backward"}:
+        raise ValueError(f"Unknown derivative type `{method}`")
     dim_x = grid.shape[0]
-    scale = 0.5 / grid.discretization[0]
+    dx = grid.discretization[0]
 
     @jit
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
-            out[i - 1] = (arr[0, i + 1] - arr[0, i - 1]) * scale
+            if method == "central":
+                out[i - 1] = (arr[0, i + 1] - arr[0, i - 1]) / (2 * dx)
+            elif method == "forward":
+                out[i - 1] = (arr[0, i + 1] - arr[0, i]) / dx
+            elif method == "backward":
+                out[i - 1] = (arr[0, i] - arr[0, i - 1]) / dx
 
     return divergence  # type: ignore
 
 
-def _make_divergence_numba_2d(grid: CartesianGrid) -> OperatorType:
+def _make_divergence_numba_2d(
+    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+) -> OperatorType:
     """make a 2d divergence operator using numba compilation
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
     """
     dim_x, dim_y = grid.shape
-    scale_x, scale_y = 0.5 / grid.discretization
+    if method == "central":
+        scale_x, scale_y = 0.5 / grid.discretization
+    elif method in {"forward", "backward"}:
+        scale_x, scale_y = 1 / grid.discretization
+    else:
+        raise ValueError(f"Unknown derivative type `{method}`")
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
@@ -1032,25 +1067,42 @@ def _make_divergence_numba_2d(grid: CartesianGrid) -> OperatorType:
         """apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
-                d_x = (arr[0, i + 1, j] - arr[0, i - 1, j]) * scale_x
-                d_y = (arr[1, i, j + 1] - arr[1, i, j - 1]) * scale_y
+                if method == "central":
+                    d_x = (arr[0, i + 1, j] - arr[0, i - 1, j]) * scale_x
+                    d_y = (arr[1, i, j + 1] - arr[1, i, j - 1]) * scale_y
+                elif method == "forward":
+                    d_x = (arr[0, i + 1, j] - arr[0, i, j]) * scale_x
+                    d_y = (arr[1, i, j + 1] - arr[1, i, j]) * scale_y
+                elif method == "backward":
+                    d_x = (arr[0, i, j] - arr[0, i - 1, j]) * scale_x
+                    d_y = (arr[1, i, j] - arr[1, i, j - 1]) * scale_y
                 out[i - 1, j - 1] = d_x + d_y
 
     return divergence  # type: ignore
 
 
-def _make_divergence_numba_3d(grid: CartesianGrid) -> OperatorType:
+def _make_divergence_numba_3d(
+    grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
+) -> OperatorType:
     """make a 3d divergence operator using numba compilation
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
     """
     dim_x, dim_y, dim_z = grid.shape
-    scale_x, scale_y, scale_z = 0.5 / grid.discretization
+    if method == "central":
+        scale_x, scale_y, scale_z = 0.5 / grid.discretization
+    elif method in {"forward", "backward"}:
+        scale_x, scale_y, scale_z = 1 / grid.discretization
+    else:
+        raise ValueError(f"Unknown derivative type `{method}`")
 
     # use parallel processing for large enough arrays
     parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
@@ -1061,9 +1113,18 @@ def _make_divergence_numba_3d(grid: CartesianGrid) -> OperatorType:
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 for k in range(1, dim_z + 1):
-                    d_x = (arr[0, i + 1, j, k] - arr[0, i - 1, j, k]) * scale_x
-                    d_y = (arr[1, i, j + 1, k] - arr[1, i, j - 1, k]) * scale_y
-                    d_z = (arr[2, i, j, k + 1] - arr[2, i, j, k - 1]) * scale_z
+                    if method == "central":
+                        d_x = (arr[0, i + 1, j, k] - arr[0, i - 1, j, k]) * scale_x
+                        d_y = (arr[1, i, j + 1, k] - arr[1, i, j - 1, k]) * scale_y
+                        d_z = (arr[2, i, j, k + 1] - arr[2, i, j, k - 1]) * scale_z
+                    elif method == "forward":
+                        d_x = (arr[0, i + 1, j, k] - arr[0, i, j, k]) * scale_x
+                        d_y = (arr[1, i, j + 1, k] - arr[1, i, j, k]) * scale_y
+                        d_z = (arr[2, i, j, k + 1] - arr[2, i, j, k]) * scale_z
+                    elif method == "backward":
+                        d_x = (arr[0, i, j, k] - arr[0, i - 1, j, k]) * scale_x
+                        d_y = (arr[1, i, j, k] - arr[1, i, j - 1, k]) * scale_y
+                        d_z = (arr[2, i, j, k] - arr[2, i, j, k - 1]) * scale_z
                     out[i - 1, j - 1, k - 1] = d_x + d_y + d_z
 
     return divergence  # type: ignore
@@ -1071,7 +1132,9 @@ def _make_divergence_numba_3d(grid: CartesianGrid) -> OperatorType:
 
 @CartesianGrid.register_operator("divergence", rank_in=1, rank_out=0)
 def make_divergence(
-    grid: CartesianGrid, backend: Literal["auto", "numba", "scipy"] = "auto"
+    grid: CartesianGrid,
+    backend: Literal["auto", "numba", "scipy"] = "auto",
+    method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """make a divergence operator on a Cartesian grid
 
@@ -1081,6 +1144,9 @@ def make_divergence(
         backend (str):
             Backend used for calculating the divergence operator.
             If backend='auto', a suitable backend is chosen automatically.
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
@@ -1096,18 +1162,18 @@ def make_divergence(
 
     if backend == "numba":
         if dim == 1:
-            divergence = _make_divergence_numba_1d(grid)
+            divergence = _make_divergence_numba_1d(grid, method=method)
         elif dim == 2:
-            divergence = _make_divergence_numba_2d(grid)
+            divergence = _make_divergence_numba_2d(grid, method=method)
         elif dim == 3:
-            divergence = _make_divergence_numba_3d(grid)
+            divergence = _make_divergence_numba_3d(grid, method=method)
         else:
             raise NotImplementedError(
                 f"Numba divergence operator not implemented for dimension {dim}"
             )
 
     elif backend == "scipy":
-        divergence = _make_divergence_scipy_nd(grid)
+        divergence = _make_divergence_scipy_nd(grid, method=method)
 
     else:
         raise ValueError(f"Backend `{backend}` is not defined")

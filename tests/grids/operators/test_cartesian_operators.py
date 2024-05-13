@@ -181,13 +181,14 @@ def test_gradient_cart(ndim, method, periodic, rng):
 
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
+@pytest.mark.parametrize("method", ["central", "forward", "backward"])
 @pytest.mark.parametrize("periodic", [True, False])
-def test_divergence_cart(ndim, periodic, rng):
+def test_divergence_cart(ndim, method, periodic, rng):
     """test different divergence operators"""
     bcs = _get_random_grid_bcs(ndim, dx="uniform", periodic=periodic, rank=1)
     field = VectorField.random_uniform(bcs.grid, rng=rng)
-    res1 = field.divergence(bcs, backend="scipy").data
-    res2 = field.divergence(bcs, backend="numba").data
+    res1 = field.divergence(bcs, backend="scipy", method=method).data
+    res2 = field.divergence(bcs, backend="numba", method=method).data
     np.testing.assert_allclose(res1, res2)
 
 
