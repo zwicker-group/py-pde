@@ -63,7 +63,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
 @PolarSymGrid.register_operator("gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(
-    grid: PolarSymGrid, method: Literal["central", "forward", "backward"] = "central"
+    grid: PolarSymGrid, *, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
     """make a discretized gradient operator for a polar grid
 
@@ -107,7 +107,7 @@ def make_gradient(
 
 @PolarSymGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_gradient_squared(grid: PolarSymGrid, central: bool = True) -> OperatorType:
+def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> OperatorType:
     """make a discretized gradient squared operator for a polar grid
 
     {DESCR_POLAR_GRID}
@@ -327,7 +327,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 @PolarSymGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(
-    bcs: Boundaries, method: Literal["auto", "scipy"] = "auto"
+    bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
     """make a operator that solves Poisson's equation
 
