@@ -183,7 +183,10 @@ def make_gradient_squared(grid: SphericalSymGrid, central: bool = True) -> Opera
 @SphericalSymGrid.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(
-    grid: SphericalSymGrid, safe: bool = True, conservative: bool = True
+    grid: SphericalSymGrid,
+    safe: bool = True,
+    conservative: bool = True,
+    method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """make a discretized divergence operator for a spherical grid
 
@@ -203,6 +206,9 @@ def make_divergence(
             Flag indicating whether the operator should be conservative (which results
             in slightly slower computations). Conservative operators ensure mass
             conservation.
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
@@ -234,13 +240,19 @@ def make_divergence(
 
             arr_r = arr[0, :]
             for i in range(1, dim_r + 1):  # iterate radial points
-                term_h = factor_h[i - 1] * (arr_r[i] + arr_r[i + 1])
-                term_l = factor_l[i - 1] * (arr_r[i - 1] + arr_r[i])
+                if method == "central":
+                    term_h = factor_h[i - 1] * (arr_r[i] + arr_r[i + 1])
+                    term_l = factor_l[i - 1] * (arr_r[i - 1] + arr_r[i])
+                elif method == "forward":
+                    term_h = 2 * factor_h[i - 1] * arr_r[i + 1]
+                    term_l = 2 * factor_l[i - 1] * arr_r[i]
+                elif method == "backward":
+                    term_h = 2 * factor_h[i - 1] * arr_r[i]
+                    term_l = 2 * factor_l[i - 1] * arr_r[i - 1]
                 out[i - 1] = term_h - term_l
 
     else:
         # implement naive divergence operator
-        scale_r = 1 / (2 * dr)
         factors = 2 / rs  # factors that need to be multiplied below
 
         @jit
@@ -255,7 +267,12 @@ def make_divergence(
 
             arr_r = arr[0, :]
             for i in range(1, dim_r + 1):  # iterate radial points
-                diff_r = (arr_r[i + 1] - arr_r[i - 1]) * scale_r
+                if method == "central":
+                    diff_r = (arr_r[i + 1] - arr_r[i - 1]) / (2 * dr)
+                elif method == "forward":
+                    diff_r = (arr_r[i + 1] - arr_r[i]) / dr
+                elif method == "backward":
+                    diff_r = (arr_r[i] - arr_r[i - 1]) / dr
                 out[i - 1] = diff_r + factors[i - 1] * arr_r[i]
 
     return divergence  # type: ignore

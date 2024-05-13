@@ -510,13 +510,23 @@ Consequently, we find
 	\partial_\alpha v_{\alpha} \sim
 	 \frac{r_{n + \frac12}^2 v_r(r_{n + \frac12}) - r_{n - \frac12}^2 v_r(r_{n - \frac12})}{V_n}
 \end{align}
-where $V_n$ is given by \Eqref{eqn:spherical_shell_volume}. 
+where $V_n$ is given by \Eqref{eqn:spherical_shell_volume}.
+We obtain different estimates for different finite difference schemes:
+
+\paragraph{Central differences:}
 Here, we approximate the function values at the midpoints using a simple average,
 \begin{align}
 	v_r(r_{n + \frac12}) &\approx \frac{v_r(r_{n}) + v_r(r_{n+1})}{2}
 	\;,
 \end{align}
 which might introduced uncontrolled artifacts.
+
+\paragraph{Forward difference:}
+Use $v_r(r_{n + \frac12}) \approx v_r(r_{n+1})$.
+
+\paragraph{Backward difference:}
+Use $v_r(r_{n + \frac12}) \approx v_r(r_{n})$.
+
 
 
 \subsection{Conservative tensor divergence operator}
