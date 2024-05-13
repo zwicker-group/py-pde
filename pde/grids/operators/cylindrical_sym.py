@@ -433,7 +433,7 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
 @CylindricalSymGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(
-    bcs: Boundaries, method: Literal["auto", "scipy"] = "auto"
+    bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
     """make a operator that solves Poisson's equation
 

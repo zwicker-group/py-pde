@@ -30,7 +30,7 @@ from .common import make_general_poisson_solver
 
 @SphericalSymGrid.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_laplace(grid: SphericalSymGrid, conservative: bool = True) -> OperatorType:
+def make_laplace(grid: SphericalSymGrid, *, conservative: bool = True) -> OperatorType:
     """make a discretized laplace operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -89,6 +89,7 @@ def make_laplace(grid: SphericalSymGrid, conservative: bool = True) -> OperatorT
 @fill_in_docstring
 def make_gradient(
     grid: SphericalSymGrid,
+    *,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """make a discretized gradient operator for a spherical grid
@@ -133,7 +134,9 @@ def make_gradient(
 
 @SphericalSymGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_gradient_squared(grid: SphericalSymGrid, central: bool = True) -> OperatorType:
+def make_gradient_squared(
+    grid: SphericalSymGrid, *, central: bool = True
+) -> OperatorType:
     """make a discretized gradient squared operator for a spherical grid
 
     {DESCR_SPHERICAL_GRID}
@@ -184,6 +187,7 @@ def make_gradient_squared(grid: SphericalSymGrid, central: bool = True) -> Opera
 @fill_in_docstring
 def make_divergence(
     grid: SphericalSymGrid,
+    *,
     safe: bool = True,
     conservative: bool = True,
     method: Literal["central", "forward", "backward"] = "central",
@@ -282,6 +286,7 @@ def make_divergence(
 @fill_in_docstring
 def make_vector_gradient(
     grid: SphericalSymGrid,
+    *,
     method: Literal["central", "forward", "backward"] = "central",
     safe: bool = True,
 ) -> OperatorType:
@@ -358,7 +363,7 @@ def make_vector_gradient(
 @SphericalSymGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(
-    grid: SphericalSymGrid, safe: bool = True, conservative: bool = False
+    grid: SphericalSymGrid, *, safe: bool = True, conservative: bool = False
 ) -> OperatorType:
     """make a discretized tensor divergence operator for a spherical grid
 
@@ -461,7 +466,7 @@ def make_tensor_divergence(
 @SphericalSymGrid.register_operator("tensor_double_divergence", rank_in=2, rank_out=0)
 @fill_in_docstring
 def make_tensor_double_divergence(
-    grid: SphericalSymGrid, safe: bool = True, conservative: bool = True
+    grid: SphericalSymGrid, *, safe: bool = True, conservative: bool = True
 ) -> OperatorType:
     """make a discretized tensor double divergence operator for a spherical grid
 
@@ -636,7 +641,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 @SphericalSymGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(
-    bcs: Boundaries, method: Literal["auto", "scipy"] = "auto"
+    bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
     """make a operator that solves Poisson's equation
 

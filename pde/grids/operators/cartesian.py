@@ -461,6 +461,7 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
 @CartesianGrid.register_operator("laplace", rank_in=0, rank_out=0)
 def make_laplace(
     grid: CartesianGrid,
+    *,
     backend: Literal["auto", "numba", "numba-spectral", "scipy"] = "auto",
 ) -> OperatorType:
     """make a Laplace operator on a Cartesian grid
@@ -710,6 +711,7 @@ def _make_gradient_numba_3d(
 @CartesianGrid.register_operator("gradient", rank_in=0, rank_out=1)
 def make_gradient(
     grid: CartesianGrid,
+    *,
     backend: Literal["auto", "numba", "scipy"] = "auto",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
@@ -924,7 +926,7 @@ def _make_gradient_squared_numba_3d(
 
 
 @CartesianGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
-def make_gradient_squared(grid: CartesianGrid, central: bool = True) -> OperatorType:
+def make_gradient_squared(grid: CartesianGrid, *, central: bool = True) -> OperatorType:
     """make a gradient operator on a Cartesian grid
 
     Args:
@@ -1133,6 +1135,7 @@ def _make_divergence_numba_3d(
 @CartesianGrid.register_operator("divergence", rank_in=1, rank_out=0)
 def make_divergence(
     grid: CartesianGrid,
+    *,
     backend: Literal["auto", "numba", "scipy"] = "auto",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
@@ -1186,6 +1189,7 @@ def _vectorize_operator(
     grid: CartesianGrid,
     *,
     backend: Literal["auto", "numba", "scipy"] = "numba",
+    **kwargs,
 ) -> OperatorType:
     """apply an operator to on all dimensions of a vector
 
@@ -1201,7 +1205,7 @@ def _vectorize_operator(
         A function that can be applied to an array of values
     """
     dim = grid.dim
-    operator = make_operator(grid, backend=backend)
+    operator = make_operator(grid, backend=backend, **kwargs)
 
     def vectorized_operator(arr: np.ndarray, out: np.ndarray) -> None:
         """apply vector gradient operator to array `arr`"""
@@ -1216,7 +1220,10 @@ def _vectorize_operator(
 
 @CartesianGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 def make_vector_gradient(
-    grid: CartesianGrid, backend: Literal["auto", "numba", "scipy"] = "numba"
+    grid: CartesianGrid,
+    *,
+    backend: Literal["auto", "numba", "scipy"] = "numba",
+    method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """make a vector gradient operator on a Cartesian grid
 
@@ -1225,16 +1232,19 @@ def make_vector_gradient(
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the vector gradient operator.
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
     """
-    return _vectorize_operator(make_gradient, grid, backend=backend)
+    return _vectorize_operator(make_gradient, grid, backend=backend, method=method)
 
 
 @CartesianGrid.register_operator("vector_laplace", rank_in=1, rank_out=1)
 def make_vector_laplace(
-    grid: CartesianGrid, backend: Literal["auto", "numba", "scipy"] = "numba"
+    grid: CartesianGrid, *, backend: Literal["auto", "numba", "scipy"] = "numba"
 ) -> OperatorType:
     """make a vector Laplacian on a Cartesian grid
 
@@ -1252,7 +1262,10 @@ def make_vector_laplace(
 
 @CartesianGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 def make_tensor_divergence(
-    grid: CartesianGrid, backend: Literal["auto", "numba", "scipy"] = "numba"
+    grid: CartesianGrid,
+    *,
+    backend: Literal["auto", "numba", "scipy"] = "numba",
+    method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """make a tensor divergence operator on a Cartesian grid
 
@@ -1261,16 +1274,19 @@ def make_tensor_divergence(
             The grid for which the operator is created
         backend (str):
             Backend used for calculating the tensor divergence operator.
+        method (str):
+            The method for calculating the derivative. Possible values are 'central',
+            'forward', and 'backward'.
 
     Returns:
         A function that can be applied to an array of values
     """
-    return _vectorize_operator(make_divergence, grid, backend=backend)
+    return _vectorize_operator(make_divergence, grid, backend=backend, method=method)
 
 
 @CartesianGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 def make_poisson_solver(
-    bcs: Boundaries, method: Literal["auto", "scipy"] = "auto"
+    bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
     """make a operator that solves Poisson's equation
 
