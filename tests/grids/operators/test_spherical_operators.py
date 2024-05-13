@@ -38,8 +38,10 @@ def test_findiff_sph():
     # test divergence
     div = v.divergence(bc=["derivative", "value"], conservative=False)
     np.testing.assert_allclose(div.data, [9, 3 + 4 / r1, -6 + 8 / r2])
-    div = v.divergence(bc="derivative", conservative=False)
-    np.testing.assert_allclose(div.data, [9, 3 + 4 / r1, 2 + 8 / r2])
+    div = v.divergence(bc="derivative", method="forward", conservative=False)
+    np.testing.assert_allclose(div.data, [10, 4 + 4 / r1, 8 / r2])
+    div = v.divergence(bc="derivative", method="backward", conservative=False)
+    np.testing.assert_allclose(div.data, [8, 2 + 4 / r1, 4 + 8 / r2])
 
 
 def test_conservative_sph():
@@ -48,9 +50,10 @@ def test_conservative_sph():
     expr = "1 / cosh((r - 1) * 10)"
 
     # test divergence of vector field
-    vf = VectorField.from_expression(grid, [expr, 0, 0])
-    div = vf.divergence(bc="derivative", conservative=True)
-    assert div.integral == pytest.approx(0, abs=1e-2)
+    for method in ["central", "forward", "backward"]:
+        vf = VectorField.from_expression(grid, [expr, 0, 0])
+        div = vf.divergence(bc="derivative", conservative=True, method=method)
+        assert div.integral == pytest.approx(0, abs=1e-2)
 
     # test laplacian of scalar field
     lap = vf[0].laplace("derivative")
