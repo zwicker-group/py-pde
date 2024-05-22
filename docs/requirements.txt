@@ -1,4 +1,5 @@
 -r ../requirements.txt
+ffmpeg-python>=0.2
 h5py>=2.10
 pandas>=2
 Pillow>=7.0
