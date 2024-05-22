@@ -11,6 +11,7 @@ build:
   tools:
     python: "3.11"
   apt_packages:
+    - ffmpeg
     - graphviz
 
 # Build documentation in the docs/ directory with Sphinx
