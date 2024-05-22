@@ -54,6 +54,8 @@ def test_example_scripts(path):
     # delete files that might be created by the test
     try:
         os.remove(PACKAGE_PATH / "diffusion.mov")
+        os.remove(PACKAGE_PATH / "allen_cahn.avi")
+        os.remove(PACKAGE_PATH / "allen_cahn.hdf")
     except OSError:
         pass
 

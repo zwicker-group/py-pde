@@ -32,7 +32,7 @@ Additionally, we offer two solvers for typical elliptical PDEs:
    ~laplace.solve_laplace_equation
    ~laplace.solve_poisson_equation
 
-   
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
 """
 
