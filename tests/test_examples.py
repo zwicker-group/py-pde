@@ -18,7 +18,7 @@ NOTEBOOKS = (PACKAGE_PATH / "examples").glob("*/*.ipynb")
 
 SKIP_EXAMPLES: list[str] = []
 if not Movie.is_available():
-    SKIP_EXAMPLES.extend(["make_movie_live.py", "make_movie_storage.py"])
+    SKIP_EXAMPLES.extend(["make_movie_live.py", "make_movie_storage.py", "storages.py"])
 if not module_available("mpi4py"):
     SKIP_EXAMPLES.extend(["mpi_parallel_run"])
 if not module_available("napari"):
@@ -54,6 +54,8 @@ def test_example_scripts(path):
     # delete files that might be created by the test
     try:
         os.remove(PACKAGE_PATH / "diffusion.mov")
+        os.remove(PACKAGE_PATH / "allen_cahn.avi")
+        os.remove(PACKAGE_PATH / "allen_cahn.hdf")
     except OSError:
         pass
 

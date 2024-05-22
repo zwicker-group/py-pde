@@ -99,7 +99,7 @@ REQUIREMENTS = [
         name="ffmpeg-python",
         version_min="0.2",
         usage="Reading and writing videos",
-        collections={"full"},
+        collections={"full", "docs"},
     ),
     Requirement(
         name="h5py",

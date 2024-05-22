@@ -70,7 +70,7 @@ class MovieStorage(StorageBase):
         *,
         vmin: float | ArrayLike = 0,
         vmax: float | ArrayLike = 1,
-        bits_per_channel: int = 8,
+        bits_per_channel: int = 16,
         video_format: str = "auto",
         bitrate: int = -1,
         info: InfoDict | None = None,
