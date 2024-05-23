@@ -227,12 +227,8 @@ class ScalarField(DataFieldBase):
                 Optional vector field to which the result is written.
             label (str, optional):
                 Name of the returned field
-            central (bool):
-                Determines whether a central difference approximation is used for the
-                gradient operator or not. If not, the squared gradient is calculated as
-                the mean of the squared values of the forward and backward derivatives,
-                which thus includes the value at a support point in the result at the
-                same point.
+            \**kwargs:
+                Forward to :meth:`~pde.fields.datafield_base.DataFieldBase.apply_operator`
 
         Returns:
             :class:`~pde.fields.scalar.ScalarField`: the squared gradient of the field
