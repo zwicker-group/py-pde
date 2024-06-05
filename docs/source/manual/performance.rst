@@ -109,7 +109,7 @@ Taken together, a minimal example reads
    state = ScalarField.random_uniform(grid, 0.2, 0.3)
 
    eq = DiffusionPDE(diffusivity=0.1)
-   result = eq.solve(state, t_range=10, dt=0.1, method="explicit_mpi")
+   result = eq.solve(state, t_range=10, dt=0.1, solver="explicit_mpi")
 
    if result is not None:  # restrict the output to the main node
       result.plot()

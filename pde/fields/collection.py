@@ -316,6 +316,7 @@ class FieldCollection(FieldBase):
                 The data type of the field. All the numpy dtypes are supported. If
                 omitted, it will be determined from `data` automatically.
         """
+        data = np.asanyarray(data)
         # extract data from individual fields
         fields = []
         start = 0
