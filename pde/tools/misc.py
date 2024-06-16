@@ -364,15 +364,16 @@ def get_common_dtype(*args):
 def number_array(
     data: ArrayLike, dtype: DTypeLike = None, copy: bool | None = None
 ) -> np.ndarray:
-    """convert an array with arbitrary dtype either to np.double or np.cdouble
+    """convert data into an array, assuming float numbers if no dtype is given
 
     Args:
         data (:class:`~numpy.ndarray`):
-            The data that needs to be converted to a float array. This can also be any
+            The data that needs to be converted to a number array. This can also be any
             iterable of numbers.
         dtype (numpy dtype):
             The data type of the field. All the numpy dtypes are supported. If omitted,
-            it will be determined from `data` automatically.
+            it will be :class:`~numpy.double` unless `data` contains complex numbers in
+            which case it will be :class:`~numpy.cdouble`.
         copy (bool):
             Whether the data must be copied (in which case the original array is left
             untouched). The default `None` implies that data is only copied if
@@ -381,6 +382,9 @@ def number_array(
     Returns:
         :class:`~numpy.ndarray`: An array with the correct dtype
     """
+    if np.__version__.startswith("1") and copy is None:
+        copy = False  # fall-back for numpy 1
+
     if dtype is None:
         # dtype needs to be determined automatically
         try:

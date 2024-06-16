@@ -122,7 +122,7 @@ class FieldCollection(FieldBase):
             dof += len(this_data)
 
         # initialize the data from the individual fields
-        data_arr = number_array(fields_data, dtype=dtype, copy=False)
+        data_arr = number_array(fields_data, dtype=dtype, copy=None)
 
         # initialize the class
         super().__init__(grid, data_arr, label=label)
