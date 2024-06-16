@@ -90,7 +90,7 @@ def preserve_scalars(method: TFunc) -> TFunc:
 
     @functools.wraps(method)
     def wrapper(self, *args):
-        args = [number_array(arg, copy=False) for arg in args]
+        args = [number_array(arg, copy=None) for arg in args]
         if args[0].ndim == 0:
             args = [arg[None] for arg in args]
             return method(self, *args)[0]
@@ -362,7 +362,7 @@ def get_common_dtype(*args):
 
 
 def number_array(
-    data: ArrayLike, dtype: DTypeLike = None, copy: bool = True
+    data: ArrayLike, dtype: DTypeLike = None, copy: bool | None = None
 ) -> np.ndarray:
     """convert an array with arbitrary dtype either to np.double or np.cdouble
 
@@ -375,7 +375,8 @@ def number_array(
             it will be determined from `data` automatically.
         copy (bool):
             Whether the data must be copied (in which case the original array is left
-            untouched). Note that data will always be copied when changing the dtype.
+            untouched). The default `None` implies that data is only copied if
+            necessary, e.g., when changing the dtype.
 
     Returns:
         :class:`~numpy.ndarray`: An array with the correct dtype
