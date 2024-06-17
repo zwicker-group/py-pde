@@ -3,8 +3,15 @@
 """
 
 import numpy as np
+import pytest
 
-from pde.tools.numba import Counter, flat_idx, jit, numba_environment
+from pde.tools.numba import (
+    Counter,
+    flat_idx,
+    jit,
+    make_array_constructor,
+    numba_environment,
+)
 
 
 def test_environment():
@@ -45,3 +52,14 @@ def test_counter():
     c2 = Counter(3)
     assert c1 is not c2
     assert c1 == c2
+
+
+@pytest.mark.parametrize(
+    "arr", [np.arange(5), np.linspace(0, 1, 3), np.arange(12).reshape(3, 4)[1:, 2:]]
+)
+def test_make_array_constructor(arr):
+    """test implementation to create array"""
+    constructor = jit(make_array_constructor(arr))
+    arr2 = constructor()
+    np.testing.assert_equal(arr, arr2)
+    assert np.shares_memory(arr, arr2)
