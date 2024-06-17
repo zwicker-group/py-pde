@@ -50,7 +50,7 @@ class SmoothData1D:
             self.y = self.y[idx]
 
         if sigma is None:
-            self.sigma = float(self.sigma_auto_scale * self.x.ptp() / len(self.x))
+            self.sigma = float(self.sigma_auto_scale * np.ptp(self.x) / len(self.x))
         else:
             self.sigma = sigma
 
