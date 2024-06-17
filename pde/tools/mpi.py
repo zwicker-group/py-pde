@@ -27,6 +27,11 @@ import numpy as np
 from numba import types
 from numba.extending import overload, register_jitable
 
+try:
+    from numba.types import Literal
+except ImportError:
+    from numba.types.misc import Literal
+
 if TYPE_CHECKING:
     from numba_mpi import Operator
 
@@ -184,12 +189,16 @@ def ol_mpi_allreduce(data, operator: int | str | None = None):
 
     if operator is None or isinstance(operator, nb.types.NoneType):
         op_id = -1  # value will not be used
-    elif isinstance(operator, nb.types.misc.StringLiteral):
-        op_id = Operator.id(operator.literal_value)
-    elif isinstance(operator, nb.types.misc.Literal):
-        op_id = int(operator)
+    elif isinstance(operator, Literal):
+        # an operator is specified (using a literal value
+        if isinstance(operator.literal_value, str):
+            # an operator is specified by it's name
+            op_id = Operator.id(operator.literal_value)
+        else:
+            # assume an operator is specified by it's id
+            op_id = int(operator.literal_value)
     else:
-        raise RuntimeError("`operator` must be a literal type")
+        raise RuntimeError(f"`operator` must be a literal type, not {operator}")
 
     @register_jitable
     def _allreduce(sendobj, recvobj, operator: int | str | None = None) -> int:
