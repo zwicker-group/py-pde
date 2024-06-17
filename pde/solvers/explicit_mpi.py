@@ -121,12 +121,14 @@ class ExplicitMPISolver(ExplicitSolver):
         """return helper function that synchronizes errors between multiple processes"""
         if mpi.parallel_run:
             # in a parallel run, we need to return the maximal error
-            from ..tools.mpi import mpi_allreduce
+            from ..tools.mpi import Operator, mpi_allreduce
+
+            operator_max_id = Operator.MAX
 
             @register_jitable
             def synchronize_errors(error: float) -> float:
                 """return maximal error accross all cores"""
-                return mpi_allreduce(error, "MAX")  # type: ignore
+                return mpi_allreduce(error, operator_max_id)  # type: ignore
 
             return synchronize_errors  # type: ignore
         else:

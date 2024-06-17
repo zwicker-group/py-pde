@@ -197,6 +197,8 @@ def ol_mpi_allreduce(data, operator: int | str | None = None):
         else:
             # assume an operator is specified by it's id
             op_id = int(operator.literal_value)
+    elif isinstance(operator, nb.types.Integer):
+        op_id = None  # use given value of operator
     else:
         raise RuntimeError(f"`operator` must be a literal type, not {operator}")
 
@@ -205,6 +207,8 @@ def ol_mpi_allreduce(data, operator: int | str | None = None):
         """helper function that calls `numba_mpi.allreduce`"""
         if operator is None:
             return numba_mpi.allreduce(sendobj, recvobj)  # type: ignore
+        elif op_id is None:
+            return numba_mpi.allreduce(sendobj, recvobj, operator)  # type: ignore
         else:
             return numba_mpi.allreduce(sendobj, recvobj, op_id)  # type: ignore
 
