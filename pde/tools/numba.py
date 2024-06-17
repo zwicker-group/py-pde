@@ -15,7 +15,6 @@ import numba as nb
 import numpy as np
 from numba.core.types import npytypes, scalars
 from numba.extending import overload, register_jitable
-from numba.np.arrayobj import reshape_unchecked
 from numba.typed import Dict as NumbaDict  # @UnresolvedImport
 
 from .. import config
@@ -275,12 +274,7 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
         """helper that reconstructs the array from the pointer and structural info"""
         data: np.ndarray = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
         if strides is not None:
-            # We need to reshape the array and set the strides. With numpy<2, we could
-            # simply use
-            #    data = np.lib.index_tricks.as_strided(data, shape, strides)
-            # However, the `as_strided` function is now private in numpy 2.0, so we need
-            # use a work-around, which relies on an internal function of `numba`.
-            data = reshape_unchecked(data, shape, strides)
+            data = np.lib.stride_tricks.as_strided(data, shape, strides)
         return data
 
     return array_constructor  # type: ignore
