@@ -76,7 +76,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # use full data without copying (unless necessary)
             if data is None or isinstance(data, str):
                 raise ValueError("`data` must be supplied if with_ghost_cells==True")
-            data_arr = number_array(data, dtype=dtype, copy=False)
+            data_arr = number_array(data, dtype=dtype, copy=None)
             super().__init__(grid, data=data_arr, label=label)
 
         else:
@@ -108,7 +108,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             else:
                 # initialize empty data and set the valid data
-                data_arr = number_array(data, dtype=dtype, copy=False)
+                data_arr = number_array(data, dtype=dtype, copy=None)
                 empty_data = np.empty(full_shape, dtype=data_arr.dtype)
                 super().__init__(grid, data=empty_data, label=label)
                 self.data = data_arr

@@ -90,7 +90,7 @@ def preserve_scalars(method: TFunc) -> TFunc:
 
     @functools.wraps(method)
     def wrapper(self, *args):
-        args = [number_array(arg, copy=False) for arg in args]
+        args = [number_array(arg, copy=None) for arg in args]
         if args[0].ndim == 0:
             args = [arg[None] for arg in args]
             return method(self, *args)[0]
@@ -362,37 +362,42 @@ def get_common_dtype(*args):
 
 
 def number_array(
-    data: ArrayLike, dtype: DTypeLike = None, copy: bool = True
+    data: ArrayLike, dtype: DTypeLike = None, copy: bool | None = None
 ) -> np.ndarray:
-    """convert an array with arbitrary dtype either to np.double or np.cdouble
+    """convert data into an array, assuming float numbers if no dtype is given
 
     Args:
         data (:class:`~numpy.ndarray`):
-            The data that needs to be converted to a float array. This can also be any
+            The data that needs to be converted to a number array. This can also be any
             iterable of numbers.
         dtype (numpy dtype):
             The data type of the field. All the numpy dtypes are supported. If omitted,
-            it will be determined from `data` automatically.
+            it will be :class:`~numpy.double` unless `data` contains complex numbers in
+            which case it will be :class:`~numpy.cdouble`.
         copy (bool):
             Whether the data must be copied (in which case the original array is left
-            untouched). Note that data will always be copied when changing the dtype.
+            untouched). The default `None` implies that data is only copied if
+            necessary, e.g., when changing the dtype.
 
     Returns:
         :class:`~numpy.ndarray`: An array with the correct dtype
     """
+    if np.__version__.startswith("1") and copy is None:
+        copy = False  # fall-back for numpy 1
+
     if dtype is None:
         # dtype needs to be determined automatically
         try:
             # convert the result to a numpy array with the given dtype
-            result = np.array(data, dtype=get_common_dtype(data), copy=copy)
+            result = np.array(data, dtype=get_common_dtype(data), copy=copy)  # type: ignore
         except TypeError:
             # Conversion can fail when `data` contains a complex sympy number, i.e.,
             # sympy.I. In this case, we simply try to convert the expression using a
             # complex dtype
-            result = np.array(data, dtype=np.cdouble, copy=copy)
+            result = np.array(data, dtype=np.cdouble, copy=copy)  # type: ignore
 
     else:
         # a specific dtype is requested
-        result = np.array(data, dtype=np.dtype(dtype), copy=copy)
+        result = np.array(data, dtype=np.dtype(dtype), copy=copy)  # type: ignore
 
     return result

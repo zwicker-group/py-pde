@@ -95,10 +95,9 @@ class CahnHilliardPDE(PDEBase):
                 An example for the state defining the grid and data types
 
         Returns:
-            A function with signature `(state_data, t)`, which can be called
-            with an instance of :class:`~numpy.ndarray` of the state data and
-            the time to obtained an instance of :class:`~numpy.ndarray` giving
-            the evolution rate.
+            A function with signature `(state_data, t)`, which can be called with an
+            instance of :class:`~numpy.ndarray` of the state data and the time to
+            obtained an instance of :class:`~numpy.ndarray` giving the evolution rate.
         """
         arr_type = nb.typeof(state.data)
         signature = arr_type(arr_type, nb.double)
