@@ -165,7 +165,7 @@ REQUIREMENTS = [
     Requirement(
         name="jupyter_contrib_nbextensions", version_min="0.5", tests_only=True
     ),
-    Requirement(name="black", version_min="24.*", tests_only=True),
+    Requirement(name="black", version_min="24", tests_only=True),
     Requirement(name="importlib-metadata", version_min="5", tests_only=True),
     Requirement(name="isort", version_min="5.1", tests_only=True),
     Requirement(name="mypy", version_min="1.8", tests_only=True),
