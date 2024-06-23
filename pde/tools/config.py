@@ -262,6 +262,18 @@ def environment() -> dict[str, Any]:
         "plotting context": get_plotting_context().__class__.__name__,
     }
 
+    # add information about jupyter environment
+    result["jupyter environment"] = get_package_versions(
+        [
+            "ipykernel",
+            "ipywidgets",
+            "jupyter_client",
+            "jupyter_core",
+            "jupyter_server",
+            "notebook",
+        ]
+    )
+
     # add details about optional packages
     packages = set(packages_from_requirements(RESOURCE_PATH / "requirements_full.txt"))
     packages |= set(packages_from_requirements(RESOURCE_PATH / "requirements_mpi.txt"))
