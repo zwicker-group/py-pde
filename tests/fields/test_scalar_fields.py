@@ -542,7 +542,7 @@ def test_boundary_expressions_with_t():
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("decomp", [(-1, 1), (1, -1)])
+@pytest.mark.parametrize("decomp", ["auto", (-1, 1), (1, -1)])
 def test_field_split(decomp, rng):
     """test the field splitting function in an MPI context"""
     grid = UnitGrid([4, 4])

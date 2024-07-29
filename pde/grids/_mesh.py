@@ -9,7 +9,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from enum import IntEnum
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 import numpy as np
 
@@ -48,6 +48,43 @@ class MPIFlags(IntEnum):
             return 2 * my_id + cls._boundary_upper
         else:
             return 2 * other_id + cls._boundary_lower
+
+
+def _get_optimal_decomposition(shape: Sequence[int], mpi_size: int) -> list[int]:
+    """determine optimal decomposition of a grid into several chunks
+
+    Args:
+        shape (list of int):
+            Size of each axis of the grid
+        mpi_size (int):
+            Number of nodes for decomposition
+
+    Results:
+        list of int: The number of decompositions of each axis
+    """
+    shape_arr = np.asarray(shape)
+    decomposition = [-1] * len(shape)
+    order = np.argsort(shape_arr)
+    size_left = mpi_size  # size of axes that have been determined
+    # iterate through dimensions along increasing axes length
+    for dim_count, dim in enumerate(order):
+        # get length of all axes that are left to be determined
+        shape_left = shape_arr[order[dim_count:]]
+        # determine the number of cells in these axes
+        size_undetermined = np.prod(shape_left)
+        # estimate optimal number of grid points on each node
+        node_size_estimate = size_undetermined // size_left
+        # estimate optimal length of each remaining axis
+        node_axis_len_est = node_size_estimate ** (1 / len(shape_left))
+        node_axis_len = max(1, int(np.floor(node_axis_len_est)))
+        # get estimate for the number of subdivision for current axis
+        decomp_axis_est = shape[dim] // node_axis_len
+        # restrict the number of subdivisions to sensible range
+        decomposition[dim] = np.clip(decomp_axis_est, 1, size_left)
+        # calculate the number of nodes that are left
+        size_left //= decomposition[dim]
+    assert np.prod(np.asarray(decomposition)) <= mpi_size
+    return decomposition
 
 
 def _subdivide(num: int, chunks: int) -> np.ndarray:
@@ -144,7 +181,9 @@ class GridMesh:
         assert basegrid.num_axes == self.subgrids.ndim
 
     @classmethod
-    def from_grid(cls, grid: GridBase, decomposition: int | list[int] = -1) -> GridMesh:
+    def from_grid(
+        cls, grid: GridBase, decomposition: Literal["auto"] | int | list[int] = "auto"
+    ) -> GridMesh:
         """subdivide the grid into subgrids
 
         Args:
@@ -154,40 +193,44 @@ class GridMesh:
                 Number of subdivision in each direction. Should be a list of length
                 `grid.num_axes` specifying the number of nodes for this axis. If one
                 value is `-1`, its value will be determined from the number of available
-                nodes. The default value decomposed the first axis using all available
-                nodes.
+                nodes. The default value `auto` tries to determine an optimal
+                decomposition by minimizing communication between nodes.
 
         Returns:
             :class:`GridMesh`: The grid mesh created from the grid
         """
-        # parse `decomposition`
-        try:
-            decomposition = [int(d) for d in decomposition]  # type: ignore
-        except TypeError:
-            decomposition = [int(decomposition)]  # type: ignore
+        if decomposition == "auto":
+            # determine decomposition automatically
+            decomposition = _get_optimal_decomposition(grid.shape, mpi.size)
+        else:
+            # parse `decomposition`
+            try:
+                decomposition = [int(d) for d in decomposition]  # type: ignore
+            except TypeError:
+                decomposition = [int(decomposition)]  # type: ignore
 
-        size, var_index = 1, None
-        for i, num in enumerate(decomposition):
-            if num == -1:
-                if var_index is None:
-                    var_index = i
+            size, var_index = 1, None
+            for i, num in enumerate(decomposition):
+                if num == -1:
+                    if var_index is None:
+                        var_index = i
+                    else:
+                        raise ValueError("Can only specify one unknown dimension")
+                elif num > 0:
+                    size *= num
                 else:
-                    raise ValueError("can only specify one unknown dimension")
-            elif num > 0:
-                size *= num
-            else:
-                raise RuntimeError(f"Unknown size `{num}`")
+                    raise RuntimeError(f"Unknown size `{num}`")
 
-        # replace potential variable index with correct value
-        if var_index is not None:
-            dim = mpi.size // size
-            if dim > 0:
-                decomposition[var_index] = dim
-            else:
-                raise RuntimeError("Not enough nodes to satisfy decomposition")
+            # replace potential variable index with correct value
+            if var_index is not None:
+                dim = mpi.size // size
+                if dim > 0:
+                    decomposition[var_index] = dim
+                else:
+                    raise RuntimeError("Not enough nodes to satisfy decomposition")
 
-        # fill up with 1s until the grid size is met
-        decomposition += [1] * (grid.num_axes - len(decomposition))
+            # fill up with 1s until the grid size is met
+            decomposition += [1] * (grid.num_axes - len(decomposition))
 
         # check compatibility with number of nodes
         if mpi.size > 1 and math.prod(decomposition) != mpi.size:

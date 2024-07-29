@@ -12,7 +12,8 @@ from pde.tools import mpi
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize(
-    "scheme, decomposition", [("euler", [1, -1]), ("runge-kutta", [-1, 1])]
+    "scheme, decomposition",
+    [("euler", "auto"), ("euler", [1, -1]), ("runge-kutta", [-1, 1])],
 )
 def test_simple_pde_mpi(scheme, decomposition, rng):
     """test setting boundary conditions using numba"""
@@ -45,11 +46,12 @@ def test_simple_pde_mpi(scheme, decomposition, rng):
         for info in [info1, info2]:
             assert info["solver"]["steps"] == 11
             assert info["solver"]["use_mpi"]
-            for i in range(2):
-                if decomposition[i] == 1:
-                    assert info["solver"]["grid_decomposition"][i] == 1
-                else:
-                    assert info["solver"]["grid_decomposition"][i] == mpi.size
+            if decomposition != "auto":
+                for i in range(2):
+                    if decomposition[i] == 1:
+                        assert info["solver"]["grid_decomposition"][i] == 1
+                    else:
+                        assert info["solver"]["grid_decomposition"][i] == mpi.size
 
 
 @pytest.mark.multiprocessing
