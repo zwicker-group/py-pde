@@ -81,7 +81,7 @@ class ExplicitMPISolver(ExplicitSolver):
         self,
         pde: PDEBase,
         scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
-        decomposition: int | list[int] = -1,
+        decomposition: Literal["auto"] | int | list[int] = -1,
         *,
         backend: BackendType = "auto",
         adaptive: bool = False,
@@ -96,10 +96,10 @@ class ExplicitMPISolver(ExplicitSolver):
                 'runge-kutta' (or 'rk' for short).
             decomposition (list of ints):
                 Number of subdivision in each direction. Should be a list of length
-                `grid.num_axes` specifying the number of nodes along this axis. If one
+                `grid.num_axes` specifying the number of nodes for this axis. If one
                 value is `-1`, its value will be determined from the number of available
-                nodes. The default value decomposed the first axis using all available
-                nodes.
+                nodes. The default value `auto` tries to determine an optimal
+                decomposition by minimizing communication between nodes.
             backend (str):
                 Determines how the function is created. Accepted  values are 'numpy` and
                 'numba'. Alternatively, 'auto' lets the code decide for the most optimal

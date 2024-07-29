@@ -469,7 +469,9 @@ class UnitGrid(CartesianGrid):
     :math:`[0, n]` along this dimension.
     """
 
-    def __init__(self, shape: Sequence[int], periodic: bool | Sequence[bool] = False):
+    def __init__(
+        self, shape: int | Sequence[int], periodic: bool | Sequence[bool] = False
+    ):
         """
         Args:
             shape (list):

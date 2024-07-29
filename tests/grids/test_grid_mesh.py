@@ -7,7 +7,7 @@ import pytest
 
 from pde import DiffusionPDE, FieldCollection, ScalarField, Tensor2Field, VectorField
 from pde.grids import CylindricalSymGrid, PolarSymGrid, SphericalSymGrid, UnitGrid
-from pde.grids._mesh import GridMesh
+from pde.grids._mesh import GridMesh, _get_optimal_decomposition
 from pde.tools import mpi
 
 GRIDS = [
@@ -44,7 +44,7 @@ def test_generic_meshes(grid, decomposition):
     mesh.plot(action="close")
 
 
-@pytest.mark.parametrize("decomp", [(1, 1), (2, 1), (1, 2), (2, 2)])
+@pytest.mark.parametrize("decomp", ["auto", (1, 1), (2, 1), (1, 2), (2, 2)])
 def test_split_fields(decomp, rng):
     """test splitting and recombining fields"""
     grid = UnitGrid([8, 8])
@@ -59,7 +59,7 @@ def test_split_fields(decomp, rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("decomp", [(-1,), (-1, 1), (1, -1)])
+@pytest.mark.parametrize("decomp", ["auto", (-1,), (-1, 1), (1, -1)])
 @pytest.mark.parametrize("dtype", [int, float, complex])
 def test_split_fields_mpi(decomp, dtype, rng):
     """test splitting and recombining fields using multiprocessing"""
@@ -107,7 +107,7 @@ def test_split_fields_mpi(decomp, dtype, rng):
 
 
 @pytest.mark.multiprocessing
-@pytest.mark.parametrize("decomp", [(-1,), (-1, 1), (1, -1)])
+@pytest.mark.parametrize("decomp", ["auto", (-1,), (-1, 1), (1, -1)])
 def test_split_fieldcollections_mpi(decomp, rng):
     """test splitting and recombining field collections using multiprocessing"""
     dim = len(decomp)
@@ -261,3 +261,26 @@ def test_integration_parallel(grid, decomposition, rank):
     res = subfield.grid.make_integrator()(subfield.data)
     assert rank > 0 or np.isscalar(res)
     np.testing.assert_allclose(res, expected)
+
+
+def test_get_optimal_decomposition():
+    """test _get_optimal_decomposition function"""
+    assert _get_optimal_decomposition([1], 1) == [1]
+    assert _get_optimal_decomposition([1], 2) == [1]
+
+    assert _get_optimal_decomposition([1, 2], 1) == [1, 1]
+    assert _get_optimal_decomposition([1, 2], 2) == [1, 2]
+    assert _get_optimal_decomposition([1, 2], 3) == [1, 2]
+    assert _get_optimal_decomposition([100, 2], 1) == [1, 1]
+    assert _get_optimal_decomposition([100, 2], 2) == [2, 1]
+    assert _get_optimal_decomposition([100, 2], 3) == [3, 1]
+    assert _get_optimal_decomposition([100, 2], 200) == [100, 2]
+    assert _get_optimal_decomposition([2, 100], 1) == [1, 1]
+    assert _get_optimal_decomposition([2, 100], 2) == [1, 2]
+    assert _get_optimal_decomposition([2, 100], 3) == [1, 3]
+    assert _get_optimal_decomposition([2, 100], 200) == [2, 100]
+
+    assert _get_optimal_decomposition([4, 8, 2], 2) == [1, 2, 1]
+    assert _get_optimal_decomposition([4, 8, 2], 8) == [2, 4, 1]
+    assert _get_optimal_decomposition([4, 8, 2], 6) == [2, 3, 1]
+    assert _get_optimal_decomposition([3, 8, 2], 6) == [1, 6, 1]

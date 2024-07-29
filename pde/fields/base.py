@@ -11,7 +11,7 @@ import logging
 import warnings
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
 
 import numpy as np
 from numpy.typing import DTypeLike
@@ -756,7 +756,9 @@ class FieldBase(metaclass=ABCMeta):
         with napari_viewer(self.grid, **viewer_args) as viewer:
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
-    def split_mpi(self: TField, decomposition: int | list[int] = -1) -> TField:
+    def split_mpi(
+        self: TField, decomposition: Literal["auto"] | int | list[int] = -1
+    ) -> TField:
         """splits the field onto subgrids in an MPI run
 
         In a normal serial simulation, the method simply returns the field itself. In
@@ -767,10 +769,10 @@ class FieldBase(metaclass=ABCMeta):
         Args:
             decomposition (list of ints):
                 Number of subdivision in each direction. Should be a list of length
-                `field.grid.num_axes` specifying the number of nodes for this axis. If
-                one value is `-1`, its value will be determined from the number of
-                available nodes. The default value decomposed the first axis using all
-                available nodes
+                `grid.num_axes` specifying the number of nodes for this axis. If one
+                value is `-1`, its value will be determined from the number of available
+                nodes. The default value `auto` tries to determine an optimal
+                decomposition by minimizing communication between nodes.
 
         Returns:
             :class:`FieldBase`: The part of the field that corresponds to the subgrid

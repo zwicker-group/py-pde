@@ -42,7 +42,7 @@ def test_colored_noise(rng):
     grid = UnitGrid([64, 64], periodic=True)
     for exponent in [0, -1, 2]:
         scale = rng.uniform(1, 10)
-        noise = make_colored_noise(grid.shape, grid.discretization, exponent, scale)
+        noise = make_colored_noise(grid.shape, grid.discretization[0], exponent, scale)
         x = noise()
         assert (
             stats.normaltest(x.flat).pvalue > 2e-5
@@ -58,7 +58,7 @@ def test_noise_scaling(rng):
     grid = CartesianGrid([[x, x + w]], size, periodic=True)
 
     # colored noise
-    noise_colored = make_colored_noise(grid.shape, grid.discretization, exponent=2)
+    noise_colored = make_colored_noise(grid.shape, grid.discretization[0], exponent=2)
 
     # divergence of white noise
     shape = (grid.dim,) + grid.shape
@@ -72,7 +72,7 @@ def test_noise_scaling(rng):
     for noise_func in [noise_colored, noise_div]:
 
         def get_noise():
-            k, density = spectral_density(data=noise_func(), dx=grid.discretization)
+            k, density = spectral_density(data=noise_func(), dx=grid.discretization[0])
             assert k[0] == 0
             assert density[0] == pytest.approx(0)
             return np.log(density[1])  # log of spectral density

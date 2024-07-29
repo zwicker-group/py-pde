@@ -12,7 +12,8 @@ from pde.tools import mpi
 
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize(
-    "scheme, decomposition", [("euler", [1, -1]), ("runge-kutta", [-1, 1])]
+    "scheme, decomposition",
+    [("euler", "auto"), ("euler", [1, -1]), ("runge-kutta", [-1, 1])],
 )
 def test_simple_pde_mpi(scheme, decomposition, rng):
     """test setting boundary conditions using numba"""
