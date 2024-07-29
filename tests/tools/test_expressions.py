@@ -49,37 +49,39 @@ def test_parse_expr_guarded():
     assert peg("field + 1", symbols={"field": 1, "a": 2}).subs("field", 1) == 2
 
 
-def test_const(caplog):
-    """test simple expressions"""
-    # test scalar expressions with constants
-    for expr in [None, 1, "1", "a - a"]:
-        e = ScalarExpression() if expr is None else ScalarExpression(expr)
-        val = 0 if expr is None or expr == "a - a" else float(expr)
-        assert e.constant
-        assert e.value == val
-        assert e() == val
-        assert e.get_compiled()() == val
-        assert not e.depends_on("a")
-        assert e.differentiate("a").value == 0
-        assert e.shape == tuple()
-        assert e.rank == 0
-        assert bool(e) == (val != 0)
-        assert e.is_zero == (val == 0)
-        assert not e.complex
+@pytest.mark.parametrize("expr", [None, 1, "1", "a - a"])
+def test_const(expr):
+    """test simple expressions with constants"""
+    e = ScalarExpression() if expr is None else ScalarExpression(expr)
+    val = 0 if expr is None or expr == "a - a" else float(expr)
+    assert e.constant
+    assert e.value == val
+    assert e() == val
+    assert e.get_compiled()() == val
+    assert not e.depends_on("a")
+    assert e.differentiate("a").value == 0
+    assert e.shape == tuple()
+    assert e.rank == 0
+    assert bool(e) == (val != 0)
+    assert e.is_zero == (val == 0)
+    assert not e.complex
 
-        g = e.derivatives
-        assert g.constant
-        assert isinstance(str(g), str)
-        np.testing.assert_equal(g.value, [])
+    g = e.derivatives
+    assert g.constant
+    assert isinstance(str(g), str)
+    np.testing.assert_equal(g.value, [])
 
-        for f in [
-            ScalarExpression(e),
-            ScalarExpression(e.expression),
-            ScalarExpression(e.value),
-        ]:
-            assert e is not f
-            assert e._sympy_expr == f._sympy_expr
+    for f in [
+        ScalarExpression(e),
+        ScalarExpression(e.expression),
+        ScalarExpression(e.value),
+    ]:
+        assert e is not f
+        assert e._sympy_expr.equals(f._sympy_expr)
 
+
+def test_wrong_const(caplog):
+    """test simple expressions with wrong_constants"""
     # test whether wrong constants are check for
     field = ScalarField(UnitGrid([3]))
     e = ScalarExpression("scalar_field", consts={"scalar_field": field})
