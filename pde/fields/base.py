@@ -757,7 +757,7 @@ class FieldBase(metaclass=ABCMeta):
             napari_add_layers(viewer, self._get_napari_data(**kwargs))
 
     def split_mpi(
-        self: TField, decomposition: Literal["auto"] | int | list[int] = -1
+        self: TField, decomposition: Literal["auto"] | int | list[int] = "auto"
     ) -> TField:
         """splits the field onto subgrids in an MPI run
 

@@ -81,7 +81,7 @@ class ExplicitMPISolver(ExplicitSolver):
         self,
         pde: PDEBase,
         scheme: Literal["euler", "runge-kutta", "rk", "rk45"] = "euler",
-        decomposition: Literal["auto"] | int | list[int] = -1,
+        decomposition: Literal["auto"] | int | list[int] = "auto",
         *,
         backend: BackendType = "auto",
         adaptive: bool = False,
