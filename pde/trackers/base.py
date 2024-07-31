@@ -1,5 +1,4 @@
-"""
-Base classes for trackers 
+"""Base classes for trackers.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -25,11 +24,11 @@ TrackerDataType = Union["TrackerBase", str]
 
 
 class FinishedSimulation(StopIteration):
-    """exception for signaling that simulation finished successfully"""
+    """Exception for signaling that simulation finished successfully."""
 
 
 class TrackerBase(metaclass=ABCMeta):
-    """base class for implementing trackers"""
+    """Base class for implementing trackers."""
 
     _subclasses: dict[str, type[TrackerBase]] = {}  # all inheriting classes
 
@@ -51,7 +50,7 @@ class TrackerBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """register all subclassess to reconstruct them later"""
+        """Register all subclassess to reconstruct them later."""
         super().__init_subclass__(**kwargs)
         if hasattr(cls, "name"):
             assert cls.name != "auto"
@@ -59,7 +58,7 @@ class TrackerBase(metaclass=ABCMeta):
 
     @classmethod
     def from_data(cls, data: TrackerDataType, **kwargs) -> TrackerBase:
-        """create tracker class from given data
+        """Create tracker class from given data.
 
         Args:
             data (str or TrackerBase): Data describing the tracker
@@ -80,7 +79,7 @@ class TrackerBase(metaclass=ABCMeta):
             raise ValueError(f"Unsupported tracker format: `{data}`.")
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
-        """initialize the tracker with information about the simulation
+        """Initialize the tracker with information about the simulation.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -99,7 +98,7 @@ class TrackerBase(metaclass=ABCMeta):
 
     @abstractmethod
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -109,7 +108,7 @@ class TrackerBase(metaclass=ABCMeta):
         """
 
     def finalize(self, info: InfoDict | None = None) -> None:
-        """finalize the tracker, supplying additional information
+        """Finalize the tracker, supplying additional information.
 
         Args:
             info (dict):
@@ -121,7 +120,7 @@ TrackerCollectionDataType = Union[Sequence[TrackerDataType], TrackerDataType, No
 
 
 class TrackerCollection:
-    """List of trackers providing methods to handle them efficiently
+    """List of trackers providing methods to handle them efficiently.
 
     Attributes:
         trackers (list):
@@ -150,12 +149,12 @@ class TrackerCollection:
         self.time_next_action = math.inf
 
     def __len__(self) -> int:
-        """returns the number of trackers in the collection"""
+        """Returns the number of trackers in the collection."""
         return len(self.trackers)
 
     @classmethod
     def from_data(cls, data: TrackerCollectionDataType, **kwargs) -> TrackerCollection:
-        """create tracker collection from given data
+        """Create tracker collection from given data.
 
         Args:
             data: Data describing the tracker collection
@@ -196,7 +195,7 @@ class TrackerCollection:
         return cls(trackers)
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
-        """initialize the tracker with information about the simulation
+        """Initialize the tracker with information about the simulation.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -221,7 +220,7 @@ class TrackerCollection:
         return self.time_next_action
 
     def handle(self, state: FieldBase, t: float, atol: float = 1.0e-8) -> float:
-        """handle all trackers
+        """Handle all trackers.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -260,7 +259,7 @@ class TrackerCollection:
         return self.time_next_action
 
     def finalize(self, info: InfoDict | None = None) -> None:
-        """finalize the tracker, supplying additional information
+        """Finalize the tracker, supplying additional information.
 
         Args:
             info (dict):
@@ -271,7 +270,7 @@ class TrackerCollection:
 
 
 def get_named_trackers() -> dict[str, type[TrackerBase]]:
-    """returns all named trackers
+    """Returns all named trackers.
 
     Returns:
         dict: a mapping of names to the actual tracker classes.

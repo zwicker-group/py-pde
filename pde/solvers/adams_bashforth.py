@@ -1,7 +1,6 @@
-"""
-Defines an explicit Adams-Bashforth solver
+"""Defines an explicit Adams-Bashforth solver.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -17,14 +16,14 @@ from .base import SolverBase
 
 
 class AdamsBashforthSolver(SolverBase):
-    """explicit Adams-Bashforth multi-step solver"""
+    """Explicit Adams-Bashforth multi-step solver."""
 
     name = "adams–bashforth"
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float
     ) -> Callable[[np.ndarray, float, int], tuple[float, float]]:
-        """return a stepper function using an explicit scheme with fixed time steps
+        """Return a stepper function using an explicit scheme with fixed time steps.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -43,7 +42,7 @@ class AdamsBashforthSolver(SolverBase):
         def single_step(
             state_data: np.ndarray, t: float, state_prev: np.ndarray
         ) -> None:
-            """perform a single Adams-Bashforth step"""
+            """Perform a single Adams-Bashforth step."""
             rhs_prev = rhs_pde(state_prev, t - dt).copy()
             rhs_cur = rhs_pde(state_data, t)
             state_prev[:] = state_data  # save the previous state
@@ -60,7 +59,7 @@ class AdamsBashforthSolver(SolverBase):
         def fixed_stepper(
             state_data: np.ndarray, t_start: float, steps: int
         ) -> tuple[float, float]:
-            """perform `steps` steps with fixed time steps"""
+            """Perform `steps` steps with fixed time steps."""
             nonlocal state_prev, init_state_prev
 
             if init_state_prev:

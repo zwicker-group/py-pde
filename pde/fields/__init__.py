@@ -1,5 +1,4 @@
-"""
-Defines fields, which contain the actual data stored on a discrete grid.
+"""Defines fields, which contain the actual data stored on a discrete grid.
 
 .. autosummary::
    :nosignatures:

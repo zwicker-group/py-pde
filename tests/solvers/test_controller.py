@@ -8,7 +8,7 @@ from pde import PDEBase, ScalarField, UnitGrid
 
 
 def test_controller_abort():
-    """test how controller deals with errors"""
+    """Test how controller deals with errors."""
 
     class ErrorPDEException(RuntimeError): ...
 

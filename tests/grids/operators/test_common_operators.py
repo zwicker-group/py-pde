@@ -13,7 +13,7 @@ from pde.grids.operators import cartesian as ops
 
 @pytest.mark.parametrize("ndim,axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)])
 def test_make_derivative(ndim, axis, rng):
-    """test the _make_derivative function"""
+    """Test the _make_derivative function."""
     periodic = random.choice([True, False])
     grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
     field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add, rng=rng)
@@ -34,7 +34,7 @@ def test_make_derivative(ndim, axis, rng):
 
 @pytest.mark.parametrize("ndim,axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)])
 def test_make_derivative2(ndim, axis, rng):
-    """test the _make_derivative2 function"""
+    """Test the _make_derivative2 function."""
     periodic = random.choice([True, False])
     grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
     field = ScalarField.random_harmonic(grid, modes=1, axis_combination=np.add, rng=rng)

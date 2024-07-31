@@ -1,5 +1,4 @@
-"""
-Miscellaneous python functions 
+"""Miscellaneous python functions.
 
 .. autosummary::
    :nosignatures:
@@ -42,7 +41,7 @@ TFunc = TypeVar("TFunc", bound=Callable[..., Any])
 
 
 def module_available(module_name: str) -> bool:
-    """check whether a python module is available
+    """Check whether a python module is available.
 
     Args:
         module_name (str): The name of the module
@@ -59,7 +58,7 @@ def module_available(module_name: str) -> bool:
 
 
 def ensure_directory_exists(folder: str | Path):
-    """creates a folder if it not already exists
+    """Creates a folder if it not already exists.
 
     Args:
         folder (str): path of the new folder
@@ -75,7 +74,7 @@ def ensure_directory_exists(folder: str | Path):
 
 
 def preserve_scalars(method: TFunc) -> TFunc:
-    """decorator that makes vectorized methods work with scalars
+    """Decorator that makes vectorized methods work with scalars.
 
     This decorator allows to call functions that are written to work on numpy
     arrays to also accept python scalars, like `int` and `float`. Essentially,
@@ -128,7 +127,7 @@ def decorator_arguments(decorator: Callable) -> Callable:
 
 
 def skipUnlessModule(module_names: str | Sequence[str]) -> Callable[[TFunc], TFunc]:
-    """decorator that skips a test when a module is not available
+    """Decorator that skips a test when a module is not available.
 
     Args:
         module_names (str): The name of the required module(s)
@@ -159,7 +158,7 @@ def skipUnlessModule(module_names: str | Sequence[str]) -> Callable[[TFunc], TFu
 
 
 def import_class(identifier: str):
-    """import a class or module given an identifier
+    """Import a class or module given an identifier.
 
     Args:
         identifier (str):
@@ -178,7 +177,7 @@ def import_class(identifier: str):
 
 
 class classproperty(property):
-    """decorator that can be used to define read-only properties for classes.
+    """Decorator that can be used to define read-only properties for classes.
 
     This is inspired by the implementation of :mod:`astropy`, see
     `astropy.org <http://astropy.org/>`_.
@@ -243,9 +242,8 @@ class classproperty(property):
 
 
 class hybridmethod:
-    """
-    descriptor that can be used as a decorator to allow calling a method both
-    as a classmethod and an instance method
+    """Descriptor that can be used as a decorator to allow calling a method both as a
+    classmethod and an instance method.
 
     Adapted from https://stackoverflow.com/a/28238047
     """
@@ -274,7 +272,7 @@ class hybridmethod:
 
 
 def estimate_computation_speed(func: Callable, *args, **kwargs) -> float:
-    """estimates the computation speed of a function
+    """Estimates the computation speed of a function.
 
     Args:
         func (callable): The function to call
@@ -309,7 +307,7 @@ def hdf_write_attributes(
     attributes: dict[str, Any] | None = None,
     raise_serialization_error: bool = False,
 ) -> None:
-    """write (JSON-serialized) attributes to a hdf file
+    """Write (JSON-serialized) attributes to a hdf file.
 
     Args:
         hdf_path:
@@ -334,7 +332,7 @@ def hdf_write_attributes(
 
 
 def number(value: Number | str) -> Number:
-    """convert a value into a float or complex number
+    """Convert a value into a float or complex number.
 
     Args:
         value (Number or str):
@@ -348,7 +346,7 @@ def number(value: Number | str) -> Number:
 
 
 def get_common_dtype(*args):
-    r"""returns a dtype in which all arguments can be represented
+    r"""Returns a dtype in which all arguments can be represented.
 
     Args:
         *args: All items (arrays, scalars, etc) to be checked
@@ -364,7 +362,7 @@ def get_common_dtype(*args):
 def number_array(
     data: ArrayLike, dtype: DTypeLike = None, copy: bool | None = None
 ) -> np.ndarray:
-    """convert data into an array, assuming float numbers if no dtype is given
+    """Convert data into an array, assuming float numbers if no dtype is given.
 
     Args:
         data (:class:`~numpy.ndarray`):

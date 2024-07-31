@@ -1,5 +1,5 @@
-"""
-Special module for defining an interactive tracker that uses napari to display fields
+"""Special module for defining an interactive tracker that uses napari to display
+fields.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -77,7 +77,7 @@ def napari_process(
         label = None
 
     def check_signal(msg: str | None):
-        """helper function that processes messages by the listener thread"""
+        """Helper function that processes messages by the listener thread."""
         if msg is None:
             return  # do nothing
         elif msg == "close":
@@ -87,7 +87,7 @@ def napari_process(
 
     @thread_worker(connect={"yielded": check_signal})
     def update_listener():
-        """helper thread that listens to the data_channel"""
+        """Helper thread that listens to the data_channel."""
         logger.info("Start napari thread to receive data")
 
         # infinite loop waiting for events in the queue
@@ -132,7 +132,7 @@ def napari_process(
 
 
 class NapariViewer:
-    """allows viewing and updating data in a separate napari process"""
+    """Allows viewing and updating data in a separate napari process."""
 
     def __init__(self, state: FieldBase, t_initial: float | None = None):
         """
@@ -180,7 +180,7 @@ class NapariViewer:
             self._logger.exception("Could not launch napari process")
 
     def update(self, state: FieldBase, t: float):
-        """update the state in the napari viewer
+        """Update the state in the napari viewer.
 
         Args:
             state (:class:`pde.fields.base.FieldBase`): The new state
@@ -199,7 +199,7 @@ class NapariViewer:
                 pass
 
     def close(self, force: bool = True):
-        """closes the napari process
+        """Closes the napari process.
 
         Args:
             force (bool):
@@ -221,7 +221,7 @@ class NapariViewer:
 
 
 class InteractivePlotTracker(TrackerBase):
-    """Tracker showing the state interactively in napari
+    """Tracker showing the state interactively in napari.
 
     Note:
         The interactive tracker uses the python :mod:`multiprocessing` module to run
@@ -242,7 +242,6 @@ class InteractivePlotTracker(TrackerBase):
 
         The last two lines ensure that the `main` function is only called when the
         module is run initially and not again when it is re-imported.
-
     """
 
     name = "interactive"
@@ -272,7 +271,7 @@ class InteractivePlotTracker(TrackerBase):
         self.show_time = show_time
 
     def initialize(self, state: FieldBase, info: InfoDict | None = None) -> float:
-        """initialize the tracker with information about the simulation
+        """Initialize the tracker with information about the simulation.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -292,7 +291,7 @@ class InteractivePlotTracker(TrackerBase):
         return super().initialize(state, info=info)
 
     def handle(self, state: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -303,7 +302,7 @@ class InteractivePlotTracker(TrackerBase):
         self._viewer.update(state, t)
 
     def finalize(self, info: InfoDict | None = None) -> None:
-        """finalize the tracker, supplying additional information
+        """Finalize the tracker, supplying additional information.
 
         Args:
             info (dict):

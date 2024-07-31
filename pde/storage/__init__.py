@@ -1,5 +1,4 @@
-"""
-Module defining classes for storing simulation data.
+"""Module defining classes for storing simulation data.
 
 .. autosummary::
    :nosignatures:
@@ -10,7 +9,7 @@ Module defining classes for storing simulation data.
    ~file.FileStorage
    ~movie.MovieStorage
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from .file import FileStorage

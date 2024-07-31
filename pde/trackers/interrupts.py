@@ -1,5 +1,4 @@
-"""
-Module defining classes for time interrupts for trackers
+"""Module defining classes for time interrupts for trackers.
 
 The provided interrupt classes are:
 
@@ -11,7 +10,7 @@ The provided interrupt classes are:
    LogarithmicInterrupts
    RealtimeInterrupts
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -32,18 +31,18 @@ TInterrupt = TypeVar("TInterrupt", bound="InterruptsBase")
 
 
 class InterruptsBase(metaclass=ABCMeta):
-    """base class for implementing interrupts"""
+    """Base class for implementing interrupts."""
 
     dt: float
     """float: current time difference between interrupts"""
 
     @abstractmethod
     def copy(self: TInterrupt) -> TInterrupt:
-        """return a copy of this instance"""
+        """Return a copy of this instance."""
 
     @abstractmethod
     def initialize(self, t: float) -> float:
-        """initialize the interrupt class
+        """Initialize the interrupt class.
 
         Args:
             t (float): The starting time of the simulation
@@ -54,7 +53,7 @@ class InterruptsBase(metaclass=ABCMeta):
 
     @abstractmethod
     def next(self, t: float) -> float:
-        """computes the next time point
+        """Computes the next time point.
 
         Args:
             t (float):
@@ -67,7 +66,7 @@ class InterruptsBase(metaclass=ABCMeta):
 
 
 class FixedInterrupts(InterruptsBase):
-    """class representing a list of interrupt times"""
+    """Class representing a list of interrupt times."""
 
     def __init__(self, interrupts: np.ndarray | Sequence[float]):
         self.interrupts = np.atleast_1d(interrupts)
@@ -109,7 +108,7 @@ class FixedInterrupts(InterruptsBase):
 
 
 class ConstantInterrupts(InterruptsBase):
-    """class representing equidistantly spaced time interrupts"""
+    """Class representing equidistantly spaced time interrupts."""
 
     def __init__(self, dt: float = 1, t_start: float | None = None):
         """
@@ -156,7 +155,7 @@ class ConstantInterrupts(InterruptsBase):
 
 
 class LogarithmicInterrupts(ConstantInterrupts):
-    """class representing logarithmically spaced time interrupts"""
+    """Class representing logarithmically spaced time interrupts."""
 
     def __init__(
         self, dt_initial: float = 1, factor: float = 1, t_start: float | None = None
@@ -190,7 +189,7 @@ class LogarithmicInterrupts(ConstantInterrupts):
 
 
 class RealtimeInterrupts(ConstantInterrupts):
-    """class representing time interrupts spaced equidistantly in real time
+    """Class representing time interrupts spaced equidistantly in real time.
 
     This spacing is only achieved approximately and depends on the initial value
     set by `dt_initial` and the actual variation in computation speed.
@@ -248,7 +247,7 @@ InterruptData = Union[InterruptsBase, float, str, Sequence[float], np.ndarray]
 
 
 def parse_interrupt(data: InterruptData) -> InterruptsBase:
-    """create interrupt class from various data formats
+    """Create interrupt class from various data formats.
 
     Args:
         data (str or number or :class:`InterruptsBase`):

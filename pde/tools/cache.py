@@ -1,5 +1,4 @@
-"""
-Functions, classes, and decorators for managing caches
+"""Functions, classes, and decorators for managing caches.
 
 .. autosummary::
    :nosignatures:
@@ -33,7 +32,7 @@ TFunc = TypeVar("TFunc", bound="Callable")
 
 
 def objects_equal(a, b) -> bool:
-    """compares two objects to see whether they are equal
+    """Compares two objects to see whether they are equal.
 
     In particular, this uses :func:`numpy.array_equal` to check for numpy arrays
 
@@ -69,12 +68,12 @@ def objects_equal(a, b) -> bool:
 
 
 def _hash_iter(it: Iterable) -> int:
-    """get hash of an iterable but turning it into a tuple first"""
+    """Get hash of an iterable but turning it into a tuple first."""
     return hash(tuple(it))
 
 
 def hash_mutable(obj) -> int:
-    """return hash also for (nested) mutable objects.
+    """Return hash also for (nested) mutable objects.
 
     Notes:
         This function might be a bit slow, since it iterates over all containers and
@@ -136,7 +135,7 @@ def hash_mutable(obj) -> int:
 
 
 def hash_readable(obj) -> str:
-    """return human readable hash also for (nested) mutable objects.
+    """Return human readable hash also for (nested) mutable objects.
 
     This function returns a JSON-like representation of the object. The function might
     be a bit slow, since it iterates over all containers and hashes objects recursively.
@@ -205,8 +204,8 @@ SerializerMethod = Literal[
 
 
 def make_serializer(method: SerializerMethod) -> Callable:
-    """returns a function that serialize data with the given method. Note that
-    some of the methods destroy information and cannot be reverted.
+    """Returns a function that serialize data with the given method. Note that some of
+    the methods destroy information and cannot be reverted.
 
     Args:
         method (str):
@@ -249,7 +248,7 @@ def make_serializer(method: SerializerMethod) -> Callable:
 
 
 def make_unserializer(method: SerializerMethod) -> Callable:
-    """returns a function that unserialize data with the  given method
+    """Returns a function that unserialize data with the  given method.
 
     This is the inverse function of :func:`make_serializer`.
 
@@ -259,7 +258,6 @@ def make_unserializer(method: SerializerMethod) -> Callable:
 
     Returns:
         callable: A function that serializes objects
-
     """
     if callable(method):
         return method
@@ -291,7 +289,7 @@ def make_unserializer(method: SerializerMethod) -> Callable:
 
 
 class DictFiniteCapacity(collections.OrderedDict):
-    """cache with a limited number of items"""
+    """Cache with a limited number of items."""
 
     default_capacity: int = 100
 
@@ -300,7 +298,7 @@ class DictFiniteCapacity(collections.OrderedDict):
         super().__init__(*args, **kwargs)
 
     def check_length(self):
-        """ensures that the dictionary does not grow beyond its capacity"""
+        """Ensures that the dictionary does not grow beyond its capacity."""
         while len(self) > self.capacity:
             self.popitem(last=False)
 
@@ -320,7 +318,7 @@ class DictFiniteCapacity(collections.OrderedDict):
 
 
 class SerializedDict(collections.abc.MutableMapping):
-    """a key value database which is stored on the disk
+    """A key value database which is stored on the disk.
 
     This class provides hooks for converting arbitrary keys and values to strings, which
     are then stored in the database.
@@ -332,7 +330,7 @@ class SerializedDict(collections.abc.MutableMapping):
         value_serialization: SerializerMethod = "pickle",
         storage_dict: dict | None = None,
     ):
-        """provides a dictionary whose keys and values are serialized
+        """Provides a dictionary whose keys and values are serialized.
 
         Args:
             key_serialization (str):
@@ -393,7 +391,7 @@ class SerializedDict(collections.abc.MutableMapping):
 
 
 class _class_cache:
-    """class handling the caching of results of methods and properties"""
+    """Class handling the caching of results of methods and properties."""
 
     def __init__(
         self,
@@ -404,8 +402,8 @@ class _class_cache:
         doc=None,
         name=None,
     ):
-        r"""decorator that caches calls in a dictionary attached to the instances. This
-        can be used with most classes
+        r"""Decorator that caches calls in a dictionary attached to the instances. This
+        can be used with most classes.
 
         Example:
             An example for using the class is::
@@ -495,11 +493,11 @@ class _class_cache:
             self.factory = factory
 
     def _get_clear_cache_method(self):
-        """return a method that can be attached to classes to clear the cache
-        of the wrapped method"""
+        """Return a method that can be attached to classes to clear the cache of the
+        wrapped method."""
 
         def clear_cache(obj) -> None:
-            """clears the cache associated with this method"""
+            """Clears the cache associated with this method."""
             try:
                 # try getting an initialized cache
                 cache = obj._cache_methods[self.name]
@@ -520,7 +518,7 @@ class _class_cache:
         return clear_cache
 
     def _get_wrapped_function(self, func: TFunc) -> TFunc:
-        """return the wrapped method, which implements the cache"""
+        """Return the wrapped method, which implements the cache."""
 
         if self.name is None:
             self.name = func.__name__
@@ -586,7 +584,7 @@ class _class_cache:
 
 
 class cached_property(_class_cache):
-    r"""Decorator to use a method as a cached property
+    r"""Decorator to use a method as a cached property.
 
     The function is only called the first time and each successive call returns the
     cached result of the first call.
@@ -614,7 +612,7 @@ class cached_property(_class_cache):
     """
 
     def __call__(self, method):
-        """apply the cache decorator to the property"""
+        """Apply the cache decorator to the property."""
         # save name, e.g., to be able to delete cache later
         self._cache_name = self.name
         self.clear_cache_of_obj = self._get_clear_cache_method()
@@ -626,12 +624,12 @@ class cached_property(_class_cache):
         return self
 
     def __get__(self, obj, owner):
-        """call the method to obtain the result for this property"""
+        """Call the method to obtain the result for this property."""
         return self.func(obj)
 
 
 class cached_method(_class_cache):
-    r"""Decorator to enable caching of a method
+    r"""Decorator to enable caching of a method.
 
     The function is only called the first time and each successive call returns the
     cached result of the first call.
@@ -657,7 +655,7 @@ class cached_method(_class_cache):
     """
 
     def __call__(self, method: TFunc) -> TFunc:
-        """apply the cache decorator to the method"""
+        """Apply the cache decorator to the method."""
 
         wrapper = self._get_wrapped_function(method)
 

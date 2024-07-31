@@ -1,7 +1,6 @@
-"""
-A Cahn-Hilliard equation
+"""A Cahn-Hilliard equation.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from .base import PDEBase, expr_prod
 
 
 class CahnHilliardPDE(PDEBase):
-    r"""A simple Cahn-Hilliard equation
+    r"""A simple Cahn-Hilliard equation.
 
     The mathematical definition is
 
@@ -68,7 +67,7 @@ class CahnHilliardPDE(PDEBase):
         state: ScalarField,
         t: float = 0,
     ) -> ScalarField:
-        """evaluate the right hand side of the PDE
+        """Evaluate the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
@@ -88,7 +87,7 @@ class CahnHilliardPDE(PDEBase):
     def _make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create a compiled function evaluating the right hand side of the PDE
+        """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
@@ -108,7 +107,7 @@ class CahnHilliardPDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """compiled helper function evaluating right hand side"""
+            """Compiled helper function evaluating right hand side."""
             mu = (
                 state_data**3
                 - state_data

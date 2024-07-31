@@ -1,7 +1,6 @@
-"""
-Defines an explicit solver using multiprocessing via MPI
+"""Defines an explicit solver using multiprocessing via MPI.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ from .explicit import ExplicitSolver
 
 
 class ExplicitMPISolver(ExplicitSolver):
-    """various explicit PDE solve using MPI
+    """Various explicit PDE solve using MPI.
 
     Warning:
         This solver can only be used if MPI is properly installed. In particular, python
@@ -118,7 +117,8 @@ class ExplicitMPISolver(ExplicitSolver):
         self.decomposition = decomposition
 
     def _make_error_synchronizer(self) -> Callable[[float], float]:
-        """return helper function that synchronizes errors between multiple processes"""
+        """Return helper function that synchronizes errors between multiple
+        processes."""
         if mpi.parallel_run:
             # in a parallel run, we need to return the maximal error
             from ..tools.mpi import Operator, mpi_allreduce
@@ -127,7 +127,7 @@ class ExplicitMPISolver(ExplicitSolver):
 
             @register_jitable
             def synchronize_errors(error: float) -> float:
-                """return maximal error accross all cores"""
+                """Return maximal error accross all cores."""
                 return mpi_allreduce(error, operator_max_id)  # type: ignore
 
             return synchronize_errors  # type: ignore
@@ -137,7 +137,7 @@ class ExplicitMPISolver(ExplicitSolver):
     def make_stepper(
         self, state: FieldBase, dt=None
     ) -> Callable[[FieldBase, float, float], float]:
-        """return a stepper function using an explicit scheme
+        """Return a stepper function using an explicit scheme.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -190,7 +190,7 @@ class ExplicitMPISolver(ExplicitSolver):
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
             ) -> float:
-                """advance `state` from `t_start` to `t_end` using adaptive steps"""
+                """Advance `state` from `t_start` to `t_end` using adaptive steps."""
                 nonlocal dt  # `dt` stores value for the next call
 
                 # distribute the end time and the field to all nodes
@@ -224,7 +224,7 @@ class ExplicitMPISolver(ExplicitSolver):
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
             ) -> float:
-                """advance `state` from `t_start` to `t_end` using fixed steps"""
+                """Advance `state` from `t_start` to `t_end` using fixed steps."""
                 # calculate number of steps (which is at least 1)
                 steps = max(1, int(np.ceil((t_end - t_start) / dt)))
 

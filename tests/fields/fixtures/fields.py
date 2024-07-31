@@ -18,7 +18,7 @@ from pde import (
 
 
 def iter_grids():
-    """generator providing some test grids"""
+    """Generator providing some test grids."""
     for periodic in [True, False]:
         yield UnitGrid([3], periodic=periodic)
         yield UnitGrid([3, 3, 3], periodic=periodic)
@@ -29,7 +29,7 @@ def iter_grids():
 
 
 def iter_fields():
-    """generator providing some test fields"""
+    """Generator providing some test fields."""
     yield ScalarField(UnitGrid([1, 2, 3]), 1)
     yield VectorField.from_expression(PolarSymGrid(2, 3), ["r**2", "r"])
     yield Tensor2Field.random_normal(
@@ -41,7 +41,7 @@ def iter_fields():
 
 
 def get_cartesian_grid(dim=2, periodic=True):
-    """return a random Cartesian grid of given dimension"""
+    """Return a random Cartesian grid of given dimension."""
     rng = np.random.default_rng(0)
     bounds = [[0, 1 + rng.random()] for _ in range(dim)]
     shape = rng.integers(32, 64, size=dim)

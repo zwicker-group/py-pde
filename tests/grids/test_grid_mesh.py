@@ -20,7 +20,7 @@ GRIDS = [
 
 @pytest.mark.multiprocessing
 def test_basic_mpi_methods():
-    """test very basic methods"""
+    """Test very basic methods."""
     mesh = GridMesh.from_grid(UnitGrid([4]))
 
     value = mesh.broadcast(mpi.rank)
@@ -38,7 +38,7 @@ def test_basic_mpi_methods():
 
 @pytest.mark.parametrize("grid, decomposition", GRIDS)
 def test_generic_meshes(grid, decomposition):
-    """test generic functions of the grid mesh"""
+    """Test generic functions of the grid mesh."""
     mesh = GridMesh.from_grid(grid, decomposition)
     assert len(mesh) == mpi.size
     mesh.plot(action="close")
@@ -46,7 +46,7 @@ def test_generic_meshes(grid, decomposition):
 
 @pytest.mark.parametrize("decomp", ["auto", (1, 1), (2, 1), (1, 2), (2, 2)])
 def test_split_fields(decomp, rng):
-    """test splitting and recombining fields"""
+    """Test splitting and recombining fields."""
     grid = UnitGrid([8, 8])
     mesh = GridMesh.from_grid(grid, decomp)
 
@@ -62,7 +62,7 @@ def test_split_fields(decomp, rng):
 @pytest.mark.parametrize("decomp", ["auto", (-1,), (-1, 1), (1, -1)])
 @pytest.mark.parametrize("dtype", [int, float, complex])
 def test_split_fields_mpi(decomp, dtype, rng):
-    """test splitting and recombining fields using multiprocessing"""
+    """Test splitting and recombining fields using multiprocessing."""
     dim = len(decomp)
     grid = UnitGrid([8] * dim)
     mesh = GridMesh.from_grid(grid, decomp)
@@ -109,7 +109,7 @@ def test_split_fields_mpi(decomp, dtype, rng):
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("decomp", ["auto", (-1,), (-1, 1), (1, -1)])
 def test_split_fieldcollections_mpi(decomp, rng):
-    """test splitting and recombining field collections using multiprocessing"""
+    """Test splitting and recombining field collections using multiprocessing."""
     dim = len(decomp)
     grid = UnitGrid([8] * dim)
     mesh = GridMesh.from_grid(grid, decomp)
@@ -156,7 +156,7 @@ def test_split_fieldcollections_mpi(decomp, rng):
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("bc", ["periodic", "value", "derivative", "curvature"])
 def test_boundary_conditions_numpy(bc, rng):
-    """test setting boundary conditions using numpy"""
+    """Test setting boundary conditions using numpy."""
     grid = UnitGrid([8, 8], periodic=(bc == "periodic"))
     mesh = GridMesh.from_grid(grid)
 
@@ -177,7 +177,7 @@ def test_boundary_conditions_numpy(bc, rng):
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("bc", ["periodic", "value", "derivative", "curvature"])
 def test_boundary_conditions_numba(bc, rng):
-    """test setting boundary conditions using numba"""
+    """Test setting boundary conditions using numba."""
     grid = UnitGrid([8, 8], periodic=(bc == "periodic"))
     mesh = GridMesh.from_grid(grid)
 
@@ -199,7 +199,7 @@ def test_boundary_conditions_numba(bc, rng):
 
 @pytest.mark.multiprocessing
 def test_vector_boundary_conditions(rng):
-    """test setting vectorial boundary conditions"""
+    """Test setting vectorial boundary conditions."""
     grid = UnitGrid([8, 8])
     mesh = GridMesh.from_grid(grid)
 
@@ -220,7 +220,7 @@ def test_vector_boundary_conditions(rng):
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("grid, decomposition", GRIDS)
 def test_noncartesian_grids(grid, decomposition, rng):
-    """test whether we can deal with non-cartesian grids"""
+    """Test whether we can deal with non-cartesian grids."""
     field = ScalarField.random_uniform(grid, rng=rng)
     eq = DiffusionPDE()
 
@@ -243,7 +243,7 @@ def test_noncartesian_grids(grid, decomposition, rng):
 @pytest.mark.parametrize("grid, decomposition", GRIDS)
 @pytest.mark.parametrize("rank", [0, 2])
 def test_integration_parallel(grid, decomposition, rank):
-    """test integration of fields over grids"""
+    """Test integration of fields over grids."""
     mesh = GridMesh.from_grid(grid, decomposition=decomposition)
     if rank == 0:
         field = ScalarField(grid, 1)
@@ -264,7 +264,7 @@ def test_integration_parallel(grid, decomposition, rank):
 
 
 def test_get_optimal_decomposition():
-    """test _get_optimal_decomposition function"""
+    """Test _get_optimal_decomposition function."""
     assert _get_optimal_decomposition([1], 1) == [1]
     assert _get_optimal_decomposition([1], 2) == [1]
 

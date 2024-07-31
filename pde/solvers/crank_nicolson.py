@@ -1,7 +1,6 @@
-"""
-Defines a Crank-Nicolson solver
+"""Defines a Crank-Nicolson solver.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ from .base import ConvergenceError, SolverBase
 
 
 class CrankNicolsonSolver(SolverBase):
-    """Crank-Nicolson solver"""
+    """Crank-Nicolson solver."""
 
     name = "crank-nicolson"
 
@@ -57,7 +56,7 @@ class CrankNicolsonSolver(SolverBase):
     def _make_single_step_fixed_dt(
         self, state: FieldBase, dt: float
     ) -> Callable[[np.ndarray, float], None]:
-        """return a function doing a single step with an implicit Euler scheme
+        """Return a function doing a single step with an implicit Euler scheme.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -81,7 +80,7 @@ class CrankNicolsonSolver(SolverBase):
 
         # handle deterministic version of the pde
         def crank_nicolson_step(state_data: np.ndarray, t: float) -> None:
-            """compiled inner loop for speed"""
+            """Compiled inner loop for speed."""
             nfev = 0  # count function evaluations
 
             # keep values at the current time t point used in iteration

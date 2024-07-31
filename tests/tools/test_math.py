@@ -9,7 +9,7 @@ from pde.tools.math import OnlineStatistics, SmoothData1D
 
 
 def test_SmoothData1D(rng):
-    """test smoothing"""
+    """Test smoothing."""
     x = rng.uniform(0, 1, 500)
     xs = np.linspace(0, 1, 16)[1:-1]
 
@@ -38,7 +38,7 @@ def test_SmoothData1D(rng):
 
 
 def test_online_statistics():
-    """test OnlineStatistics class"""
+    """Test OnlineStatistics class."""
     stat = OnlineStatistics()
 
     stat.add(1)

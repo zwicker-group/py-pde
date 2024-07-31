@@ -1,5 +1,4 @@
-"""
-Defines a collection of fields to represent multiple fields defined on a common grid.
+"""Defines a collection of fields to represent multiple fields defined on a common grid.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -34,7 +33,7 @@ from .scalar import ScalarField
 
 
 class FieldCollection(FieldBase):
-    """Collection of fields defined on the same grid
+    """Collection of fields defined on the same grid.
 
     Note:
         All fields in a collection must have the same data type. This might lead to
@@ -143,7 +142,7 @@ class FieldCollection(FieldBase):
             self.labels = labels  # type: ignore
 
     def __repr__(self):
-        """return instance as string"""
+        """Return instance as string."""
         fields = []
         for f in self.fields:
             name = f.__class__.__name__
@@ -154,11 +153,11 @@ class FieldCollection(FieldBase):
         return f"{self.__class__.__name__}({', '.join(fields)})"
 
     def __len__(self):
-        """return the number of stored fields"""
+        """Return the number of stored fields."""
         return len(self.fields)
 
     def __iter__(self) -> Iterator[DataFieldBase]:
-        """return iterator over the actual fields"""
+        """Return iterator over the actual fields."""
         return iter(self.fields)
 
     @overload
@@ -168,7 +167,7 @@ class FieldCollection(FieldBase):
     def __getitem__(self, index: slice) -> FieldCollection: ...
 
     def __getitem__(self, index: int | str | slice) -> DataFieldBase | FieldCollection:
-        """returns one or many fields from the collection
+        """Returns one or many fields from the collection.
 
         If `index` is an integer or string, the field at this position or with this
         label is returned, respectively. If `index` is a :class:`slice`, a collection is
@@ -193,7 +192,7 @@ class FieldCollection(FieldBase):
             raise TypeError(f"Unsupported index `{index}`")
 
     def __setitem__(self, index: int | str, value: NumberOrArray):
-        """set the value of a specific field
+        """Set the value of a specific field.
 
         Args:
             index (int or str):
@@ -230,7 +229,7 @@ class FieldCollection(FieldBase):
 
     @property
     def labels(self) -> _FieldLabels:
-        """:class:`_FieldLabels`: the labels of all fields
+        """:class:`_FieldLabels`: the labels of all fields.
 
         Note:
             The attribute returns a special class :class:`_FieldLabels` to allow
@@ -242,14 +241,14 @@ class FieldCollection(FieldBase):
 
     @labels.setter
     def labels(self, values: list[str | None]):
-        """sets the labels of all fields"""
+        """Sets the labels of all fields."""
         if len(values) != len(self):
             raise ValueError("Require a label for each field")
         for field, value in zip(self.fields, values):
             field.label = value
 
     def __eq__(self, other):
-        """test fields for equality, ignoring the label"""
+        """Test fields for equality, ignoring the label."""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return self.fields == other.fields
@@ -258,7 +257,7 @@ class FieldCollection(FieldBase):
     def from_state(
         cls, attributes: dict[str, Any], data: np.ndarray | None = None
     ) -> FieldCollection:
-        """create a field collection from given state.
+        """Create a field collection from given state.
 
         Args:
             attributes (dict):
@@ -296,7 +295,7 @@ class FieldCollection(FieldBase):
         labels: list[str | None] | _FieldLabels | None = None,
         dtype: DTypeLike = None,
     ):
-        """create a field collection from classes and data
+        """Create a field collection from classes and data.
 
         Args:
             field_classes (list):
@@ -336,7 +335,7 @@ class FieldCollection(FieldBase):
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> FieldCollection:
-        """construct the class by reading data from an hdf5 dataset"""
+        """Construct the class by reading data from an hdf5 dataset."""
         # copy attributes from hdf
         attributes = dict(dataset.attrs)
 
@@ -356,7 +355,7 @@ class FieldCollection(FieldBase):
         return cls(fields, **attributes)  # type: ignore
 
     def _write_hdf_dataset(self, hdf_path):
-        """write data to a given hdf5 path `hdf_path`"""
+        """Write data to a given hdf5 path `hdf_path`"""
         # write attributes of the collection
         for key, value in self.attributes_serialized.items():
             hdf_path.attrs[key] = value
@@ -366,7 +365,7 @@ class FieldCollection(FieldBase):
             field._write_hdf_dataset(hdf_path, f"field_{i}")
 
     def assert_field_compatible(self, other: FieldBase, accept_scalar: bool = False):
-        """checks whether `other` is compatible with the current field
+        """Checks whether `other` is compatible with the current field.
 
         Args:
             other (FieldBase): Other field this is compared to
@@ -394,7 +393,7 @@ class FieldCollection(FieldBase):
         labels: Sequence[str] | None = None,
         dtype: DTypeLike = None,
     ) -> FieldCollection:
-        """create a field collection on a grid from given expressions
+        """Create a field collection on a grid from given expressions.
 
         Warning:
             {WARNING_EXEC}
@@ -457,7 +456,7 @@ class FieldCollection(FieldBase):
         labels: Sequence[str] | None = None,
         rng: np.random.Generator | None = None,
     ) -> FieldCollection:
-        """create scalar fields with random values between `vmin` and `vmax`
+        """Create scalar fields with random values between `vmin` and `vmax`
 
         Args:
             num_fields (int):
@@ -515,7 +514,7 @@ class FieldCollection(FieldBase):
 
     @classmethod
     def unserialize_attributes(cls, attributes: dict[str, str]) -> dict[str, Any]:
-        """unserializes the given attributes
+        """Unserializes the given attributes.
 
         Args:
             attributes (dict):
@@ -541,7 +540,7 @@ class FieldCollection(FieldBase):
         label: str | None = None,
         dtype: DTypeLike = None,
     ) -> FieldCollection:
-        """return a copy of the data, but not of the grid
+        """Return a copy of the data, but not of the grid.
 
         Args:
             label (str, optional):
@@ -562,7 +561,7 @@ class FieldCollection(FieldBase):
         *fields: DataFieldBase | FieldCollection,
         label: str | None = None,
     ) -> FieldCollection:
-        """create new collection with appended field(s)
+        """Create new collection with appended field(s)
 
         Args:
             fields (`FieldCollection` or `DataFieldBase`):
@@ -594,7 +593,7 @@ class FieldCollection(FieldBase):
         )
 
     def _unary_operation(self: FieldCollection, op: Callable) -> FieldCollection:
-        """perform an unary operation on this field collection
+        """Perform an unary operation on this field collection.
 
         Args:
             op (callable):
@@ -613,7 +612,7 @@ class FieldCollection(FieldBase):
         fill: Number | None = None,
         label: str | None = None,
     ) -> FieldCollection:
-        """interpolate the data of this field collection to another grid.
+        """Interpolate the data of this field collection to another grid.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -641,7 +640,7 @@ class FieldCollection(FieldBase):
         out: FieldCollection | None = None,
         label: str | None = None,
     ) -> FieldCollection:
-        """applies Gaussian smoothing with the given standard deviation
+        """Applies Gaussian smoothing with the given standard deviation.
 
         This function respects periodic boundary conditions of the underlying
         grid, using reflection when no periodicity is specified.
@@ -673,17 +672,17 @@ class FieldCollection(FieldBase):
 
     @property
     def integrals(self) -> list:
-        """integrals of all fields"""
+        """Integrals of all fields."""
         return [field.integral for field in self]
 
     @property
     def averages(self) -> list:
-        """averages of all fields"""
+        """Averages of all fields."""
         return [field.average for field in self]
 
     @property
     def magnitudes(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: scalar magnitudes of all fields"""
+        """:class:`~numpy.ndarray`: scalar magnitudes of all fields."""
         return np.array([field.magnitude for field in self])
 
     def get_line_data(  # type: ignore
@@ -692,7 +691,7 @@ class FieldCollection(FieldBase):
         scalar: str = "auto",
         extract: str = "auto",
     ) -> dict[str, Any]:
-        r"""return data for a line plot of the field
+        r"""Return data for a line plot of the field.
 
         Args:
             index (int):
@@ -710,7 +709,7 @@ class FieldCollection(FieldBase):
         return self[index].get_line_data(scalar=scalar, extract=extract)
 
     def get_image_data(self, index: int = 0, **kwargs) -> dict[str, Any]:
-        r"""return data for plotting an image of the field
+        r"""Return data for plotting an image of the field.
 
         Args:
             index (int): Index of the field whose data is returned
@@ -732,7 +731,7 @@ class FieldCollection(FieldBase):
         vmin: float | list[float | None] | None = None,
         vmax: float | list[float | None] | None = None,
     ) -> tuple[np.ndarray, dict[str, Any]]:
-        """obtain data required for a merged plot
+        """Obtain data required for a merged plot.
 
         Args:
             colors (list):
@@ -802,7 +801,7 @@ class FieldCollection(FieldBase):
         return rgb_arr, field_data
 
     def _update_merged_image_plot(self, reference: PlotReference) -> None:
-        """update an merged image plot with the current field values
+        """Update an merged image plot with the current field values.
 
         Args:
             reference (:class:`PlotReference`):
@@ -828,7 +827,7 @@ class FieldCollection(FieldBase):
         vmax: float | list[float | None] | None = None,
         **kwargs,
     ) -> PlotReference:
-        r"""visualize fields by mapping to different color chanels in a 2d density plot
+        r"""Visualize fields by mapping to different color chanels in a 2d density plot.
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -899,7 +898,7 @@ class FieldCollection(FieldBase):
         vmax: float | list[float | None] | None = None,
         **kwargs,
     ) -> PlotReference:
-        r"""visualize fields by mapping to different color chanels in a 2d density plot
+        r"""Visualize fields by mapping to different color chanels in a 2d density plot.
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -935,7 +934,7 @@ class FieldCollection(FieldBase):
         )
 
     def _update_plot(self, reference: list[PlotReference]) -> None:
-        """update a plot collection with the current field values
+        """Update a plot collection with the current field values.
 
         Args:
             reference (list of :class:`PlotReference`):
@@ -957,7 +956,7 @@ class FieldCollection(FieldBase):
         subplot_args=None,
         **kwargs,
     ) -> list[PlotReference]:
-        r"""visualize all the fields in the collection
+        r"""Visualize all the fields in the collection.
 
         Args:
             kind (str or list of str):
@@ -1051,7 +1050,7 @@ class FieldCollection(FieldBase):
         return reference
 
     def _get_napari_data(self, **kwargs) -> dict[str, dict[str, Any]]:
-        r"""returns data for plotting all fields
+        r"""Returns data for plotting all fields.
 
         Args:
             \**kwargs: all arguments are forwarded to `_get_napari_layer_data`
@@ -1067,7 +1066,7 @@ class FieldCollection(FieldBase):
 
 
 class _FieldLabels:
-    """helper class that allows manipulating all labels of field collections"""
+    """Helper class that allows manipulating all labels of field collections."""
 
     def __init__(self, collection: FieldCollection):
         """
@@ -1094,7 +1093,7 @@ class _FieldLabels:
             yield field.label
 
     def __getitem__(self, index: int | slice) -> str | None | list[str | None]:
-        """return one or many labels of a field in the collection"""
+        """Return one or many labels of a field in the collection."""
         if isinstance(index, int):
             return self.collection[index].label
         elif isinstance(index, slice):
@@ -1103,7 +1102,7 @@ class _FieldLabels:
             raise TypeError("Unsupported index type")
 
     def __setitem__(self, index: int | slice, value: None | str | list[str | None]):
-        """change one or many labels of a field in the collection"""
+        """Change one or many labels of a field in the collection."""
         if isinstance(index, int):
             self.collection.fields[index].label = value  # type: ignore
         elif isinstance(index, slice):
@@ -1118,7 +1117,7 @@ class _FieldLabels:
             raise TypeError("Unsupported index type")
 
     def index(self, label: str) -> int:
-        """return the index in the field labels where a certain label is stored
+        """Return the index in the field labels where a certain label is stored.
 
         Args:
             label (str):

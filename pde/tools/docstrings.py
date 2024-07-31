@@ -1,5 +1,4 @@
-"""
-Methods for automatic transformation of docstrings  
+"""Methods for automatic transformation of docstrings.
 
 .. autosummary::
    :nosignatures:
@@ -109,7 +108,7 @@ DOCSTRING_REPLACEMENTS = {k: v[1:-1] for k, v in DOCSTRING_REPLACEMENTS.items()}
 
 
 def get_text_block(identifier: str) -> str:
-    """return a single text block
+    """Return a single text block.
 
     Args:
         identifier (str): The name of the text block
@@ -127,7 +126,7 @@ TFunc = TypeVar("TFunc")
 def replace_in_docstring(
     f: TFunc, token: str, value: str, docstring: str | None = None
 ) -> TFunc:
-    """replace a text in a docstring using the correct indentation
+    """Replace a text in a docstring using the correct indentation.
 
     Args:
         f (callable): The function with the docstring to handle
@@ -141,7 +140,7 @@ def replace_in_docstring(
     # initialize textwrapper for formatting docstring
 
     def repl(matchobj) -> str:
-        """helper function replacing token in docstring"""
+        """Helper function replacing token in docstring."""
         bare_text = textwrap.dedent(value).strip()
         return textwrap.indent(bare_text, matchobj.group(1))
 
@@ -160,7 +159,7 @@ def replace_in_docstring(
 
 
 def fill_in_docstring(f: TFunc) -> TFunc:
-    """decorator that replaces text in the docstring of a function"""
+    """Decorator that replaces text in the docstring of a function."""
     tw = textwrap.TextWrapper(
         width=80, expand_tabs=True, replace_whitespace=True, drop_whitespace=True
     )
@@ -168,7 +167,7 @@ def fill_in_docstring(f: TFunc) -> TFunc:
     for name, value in DOCSTRING_REPLACEMENTS.items():
 
         def repl(matchobj) -> str:
-            """helper function replacing token in docstring"""
+            """Helper function replacing token in docstring."""
             tw.initial_indent = tw.subsequent_indent = matchobj.group(1)
             return tw.fill(textwrap.dedent(value))
 

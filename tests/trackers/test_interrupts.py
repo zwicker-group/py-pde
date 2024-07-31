@@ -15,7 +15,7 @@ from pde.trackers.interrupts import (
 
 
 def test_interrupt_constant():
-    """test the ConstantInterrupts class"""
+    """Test the ConstantInterrupts class."""
     ival1 = ConstantInterrupts(2)
     ival2 = ival1.copy()  # test copying too
 
@@ -43,7 +43,7 @@ def test_interrupt_constant():
 
 
 def test_interrupt_tstart():
-    """test the t_start argument of interrupts"""
+    """Test the t_start argument of interrupts."""
     ival = ConstantInterrupts(dt=2, t_start=7)
     assert ival.initialize(0) == pytest.approx(7)
     assert ival.next(3) == pytest.approx(9)
@@ -53,7 +53,7 @@ def test_interrupt_tstart():
 
 
 def test_interrupt_logarithmic():
-    """test the LogarithmicInterrupts class"""
+    """Test the LogarithmicInterrupts class."""
     ival = LogarithmicInterrupts(2, factor=2)
     assert ival.initialize(0) == pytest.approx(0)
     assert ival.dt == 1
@@ -66,7 +66,7 @@ def test_interrupt_logarithmic():
 
 
 def test_interrupt_realtime():
-    """test the RealtimeInterrupts class"""
+    """Test the RealtimeInterrupts class."""
     for ival in [RealtimeInterrupts("0:01"), parse_interrupt("0:01")]:
         assert ival.initialize(0) == pytest.approx(0)
         i1, i2, i3 = ival.next(1), ival.next(1), ival.next(1)
@@ -74,7 +74,7 @@ def test_interrupt_realtime():
 
 
 def test_interrupt_fixed():
-    """test the FixedInterrupts class"""
+    """Test the FixedInterrupts class."""
     ival = FixedInterrupts([1, 3])
     assert ival.initialize(0) == pytest.approx(1)
     assert ival.dt == 1

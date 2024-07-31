@@ -1,7 +1,6 @@
-"""
-Defines a class storing data in memory. 
-   
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+"""Defines a class storing data in memory.
+
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -17,7 +16,7 @@ from .base import InfoDict, StorageBase, WriteModeType
 
 
 class MemoryStorage(StorageBase):
-    """store discretized fields in memory"""
+    """Store discretized fields in memory."""
 
     def __init__(
         self,
@@ -71,7 +70,7 @@ class MemoryStorage(StorageBase):
         info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",
     ) -> MemoryStorage:
-        """create MemoryStorage from a list of fields
+        """Create MemoryStorage from a list of fields.
 
         Args:
             times (:class:`~numpy.ndarray`):
@@ -111,7 +110,7 @@ class MemoryStorage(StorageBase):
         rtol: float = 1.0e-5,
         atol: float = 1.0e-8,
     ) -> MemoryStorage:
-        """combine multiple memory storages into one
+        """Combine multiple memory storages into one.
 
         This method can be used to combine multiple time series of different fields into
         a single representation. This requires that all time series contain data at the
@@ -152,7 +151,7 @@ class MemoryStorage(StorageBase):
         return cls.from_fields(times, fields=fields)
 
     def clear(self, clear_data_shape: bool = False) -> None:
-        """truncate the storage by removing all stored data.
+        """Truncate the storage by removing all stored data.
 
         Args:
             clear_data_shape (bool):
@@ -163,7 +162,7 @@ class MemoryStorage(StorageBase):
         super().clear(clear_data_shape=clear_data_shape)
 
     def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
-        """initialize the storage for writing data
+        """Initialize the storage for writing data.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -196,7 +195,7 @@ class MemoryStorage(StorageBase):
             )
 
     def _append_data(self, data: np.ndarray, time: float) -> None:
-        """append a new data set
+        """Append a new data set.
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
@@ -210,7 +209,7 @@ class MemoryStorage(StorageBase):
 
 @contextmanager
 def get_memory_storage(field: FieldBase, info: InfoDict | None = None):
-    """a context manager that can be used to create a MemoryStorage
+    """A context manager that can be used to create a MemoryStorage.
 
     Example:
         This can be used to quickly store data::

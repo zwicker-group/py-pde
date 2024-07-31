@@ -18,7 +18,7 @@ from pde.visualization.movies import Movie
 
 
 def test_plot_tracker(tmp_path, rng):
-    """test whether the plot tracker creates files without errors"""
+    """Test whether the plot tracker creates files without errors."""
     output_file = tmp_path / "img.png"
 
     def get_title(state, t):
@@ -42,7 +42,7 @@ def test_plot_tracker(tmp_path, rng):
 
 @pytest.mark.skipif(not Movie.is_available(), reason="no ffmpeg")
 def test_plot_movie_tracker(tmp_path, rng):
-    """test whether the plot tracker creates files without errors"""
+    """Test whether the plot tracker creates files without errors."""
     output_file = tmp_path / "movie.mov"
 
     grid = UnitGrid([4, 4])
@@ -58,7 +58,7 @@ def test_plot_movie_tracker(tmp_path, rng):
 
 
 def test_simple_progress():
-    """simple test for basic progress bar"""
+    """Simple test for basic progress bar."""
     pbar = trackers.ProgressTracker(interrupts=1)
     field = ScalarField(UnitGrid([3]))
     pbar.initialize(field)
@@ -67,7 +67,7 @@ def test_simple_progress():
 
 
 def test_trackers(rng):
-    """test whether simple trackers can be used"""
+    """Test whether simple trackers can be used."""
     times = []
 
     def store_time(state, t):
@@ -102,7 +102,7 @@ def test_trackers(rng):
 
 
 def test_callback_tracker(rng):
-    """test trackers that support a callback"""
+    """Test trackers that support a callback."""
     data = []
 
     def store_mean_data(state):
@@ -142,7 +142,7 @@ def test_callback_tracker(rng):
 
 
 def test_data_tracker(tmp_path):
-    """test the DataTracker"""
+    """Test the DataTracker."""
     field = ScalarField(UnitGrid([4, 4]))
     eq = DiffusionPDE()
 
@@ -161,7 +161,7 @@ def test_data_tracker(tmp_path):
 
 
 def test_steady_state_tracker():
-    """test the SteadyStateTracker"""
+    """Test the SteadyStateTracker."""
     storage = MemoryStorage()
     c0 = ScalarField.from_expression(UnitGrid([5]), "sin(x)")
     eq = DiffusionPDE()
@@ -183,8 +183,8 @@ def test_steady_state_tracker():
 
 
 def test_small_tracker_dt(rng):
-    """test the case where the dt of the tracker is smaller than the dt
-    of the simulation"""
+    """Test the case where the dt of the tracker is smaller than the dt of the
+    simulation."""
     storage = MemoryStorage()
     eq = DiffusionPDE()
     c0 = ScalarField.random_uniform(UnitGrid([4, 4]), 0.1, 0.2, rng=rng)
@@ -195,7 +195,7 @@ def test_small_tracker_dt(rng):
 
 
 def test_runtime_tracker(rng):
-    """test the RuntimeTracker"""
+    """Test the RuntimeTracker."""
     s = ScalarField.random_uniform(UnitGrid([128]), rng=rng)
     tracker = trackers.RuntimeTracker("0:01")
     sol = ExplicitSolver(DiffusionPDE())
@@ -204,7 +204,7 @@ def test_runtime_tracker(rng):
 
 
 def test_consistency_tracker(rng):
-    """test the ConsistencyTracker"""
+    """Test the ConsistencyTracker."""
     s = ScalarField.random_uniform(UnitGrid([128]), rng=rng)
     sol = ExplicitSolver(DiffusionPDE(1e3))
     con = Controller(sol, t_range=1e5, tracker=["consistency"])
@@ -214,7 +214,7 @@ def test_consistency_tracker(rng):
 
 
 def test_material_conservation_tracker(rng):
-    """test the MaterialConservationTracker"""
+    """Test the MaterialConservationTracker."""
     state = ScalarField.random_uniform(UnitGrid([8, 8]), 0, 1, rng=rng)
 
     solver = ExplicitSolver(CahnHilliardPDE())
@@ -229,7 +229,7 @@ def test_material_conservation_tracker(rng):
 
 
 def test_get_named_trackers():
-    """test the get_named_trackers function"""
+    """Test the get_named_trackers function."""
     for name, cls in get_named_trackers().items():
         assert isinstance(name, str)
         tracker = TrackerBase.from_data(name)
@@ -237,7 +237,7 @@ def test_get_named_trackers():
 
 
 def test_double_tracker(rng):
-    """simple test for using a custom tracker twice"""
+    """Simple test for using a custom tracker twice."""
     interrupts = ConstantInterrupts(1)
     times1, times2 = [], []
     t1 = trackers.CallbackTracker(lambda s, t: times1.append(t), interrupts=interrupts)

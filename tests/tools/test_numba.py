@@ -15,12 +15,12 @@ from pde.tools.numba import (
 
 
 def test_environment():
-    """test function signature checks"""
+    """Test function signature checks."""
     assert isinstance(numba_environment(), dict)
 
 
 def test_flat_idx():
-    """test flat_idx function"""
+    """Test flat_idx function."""
     # testing the numpy version
     assert flat_idx(2, 1) == 2
     assert flat_idx(np.arange(2), 1) == 1
@@ -37,7 +37,7 @@ def test_flat_idx():
 
 
 def test_counter():
-    """test Counter implementation"""
+    """Test Counter implementation."""
     c1 = Counter()
     assert int(c1) is 0
     assert c1 == 0
@@ -58,7 +58,7 @@ def test_counter():
     "arr", [np.arange(5), np.linspace(0, 1, 3), np.arange(12).reshape(3, 4)[1:, 2:]]
 )
 def test_make_array_constructor(arr):
-    """test implementation to create array"""
+    """Test implementation to create array."""
     constructor = jit(make_array_constructor(arr))
     arr2 = constructor()
     np.testing.assert_equal(arr, arr2)

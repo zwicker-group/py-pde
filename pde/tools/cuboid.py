@@ -1,5 +1,4 @@
-"""
-An n-dimensional, axes-aligned cuboid
+"""An n-dimensional, axes-aligned cuboid.
 
 This module defines the :class:`Cuboid` class, which represents an n-dimensional
 cuboid that is aligned with the axes of a Cartesian coordinate system.
@@ -18,10 +17,10 @@ from .typing import FloatNumerical
 
 
 class Cuboid:
-    """class that represents a cuboid in :math:`n` dimensions"""
+    """Class that represents a cuboid in :math:`n` dimensions."""
 
     def __init__(self, pos, size, mutable: bool = True):
-        """defines a cuboid from a position and a size vector
+        """Defines a cuboid from a position and a size vector.
 
         Args:
             pos (list):
@@ -59,7 +58,7 @@ class Cuboid:
 
     @property
     def corners(self) -> tuple[np.ndarray, np.ndarray]:
-        """return coordinates of two extreme corners defining the cuboid"""
+        """Return coordinates of two extreme corners defining the cuboid."""
         return np.copy(self.pos), self.pos + self.size
 
     @property
@@ -74,7 +73,7 @@ class Cuboid:
 
     @classmethod
     def from_points(cls, p1: np.ndarray, p2: np.ndarray, **kwargs) -> Cuboid:
-        """create cuboid from two points
+        """Create cuboid from two points.
 
         Args:
             p1 (list): Coordinates of first corner point
@@ -89,7 +88,7 @@ class Cuboid:
 
     @classmethod
     def from_bounds(cls, bounds: np.ndarray, **kwargs) -> Cuboid:
-        """create cuboid from bounds
+        """Create cuboid from bounds.
 
         Args:
             bounds (list): Two dimensional array of axes bounds
@@ -104,7 +103,7 @@ class Cuboid:
     def from_centerpoint(
         cls, centerpoint: np.ndarray, size: np.ndarray, **kwargs
     ) -> Cuboid:
-        """create cuboid from two points
+        """Create cuboid from two points.
 
         Args:
             centerpoint (list): Coordinates of the center
@@ -126,7 +125,7 @@ class Cuboid:
         )
 
     def __add__(self, other: Cuboid) -> Cuboid:
-        """The sum of two cuboids is the minimal cuboid enclosing both"""
+        """The sum of two cuboids is the minimal cuboid enclosing both."""
         if isinstance(other, Cuboid):
             if self.dim != other.dim:
                 raise RuntimeError("Incompatible dimensions")
@@ -138,7 +137,7 @@ class Cuboid:
             return NotImplemented
 
     def __eq__(self, other) -> bool:
-        """override the default equality test"""
+        """Override the default equality test."""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return np.all(self.pos == other.pos) and np.all(self.size == other.size)  # type: ignore
@@ -153,17 +152,17 @@ class Cuboid:
 
     @property
     def vertices(self) -> list[list[float]]:
-        """return the coordinates of all the corners"""
+        """Return the coordinates of all the corners."""
         return list(itertools.product(*self.bounds))  # type: ignore
 
     @property
     def diagonal(self) -> float:
-        """returns the length of the diagonal"""
+        """Returns the length of the diagonal."""
         return np.linalg.norm(self.size)  # type: ignore
 
     @property
     def surface_area(self) -> float:
-        """surface area of a cuboid in :math:`n` dimensions.
+        """Surface area of a cuboid in :math:`n` dimensions.
 
         The surface area is the volume of the (:math:`n-1`)-dimensional
         hypercubes that bound the current cuboid:
@@ -195,7 +194,7 @@ class Cuboid:
         return np.prod(self.size)  # type: ignore
 
     def buffer(self, amount: FloatNumerical = 0, inplace=False) -> Cuboid:
-        """dilate the cuboid by a certain amount in all directions"""
+        """Dilate the cuboid by a certain amount in all directions."""
         amount = np.asarray(amount)
         if inplace:
             self.pos -= amount
@@ -205,7 +204,7 @@ class Cuboid:
             return self.__class__(self.pos - amount, self.size + 2 * amount)
 
     def contains_point(self, points: np.ndarray) -> np.ndarray:
-        """returns a True when `points` are within the Cuboid
+        """Returns a True when `points` are within the Cuboid.
 
         Args:
             points (:class:`~numpy.ndarray`): List of point coordinates
@@ -228,7 +227,7 @@ class Cuboid:
 
 
 def asanyarray_flags(data: np.ndarray, dtype: DTypeLike = None, writeable: bool = True):
-    """turns data into an array and sets the respective flags.
+    """Turns data into an array and sets the respective flags.
 
     A copy is only made if necessary
 

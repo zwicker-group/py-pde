@@ -12,7 +12,7 @@ from pde.tools import mpi
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_implicit_solvers_simple_fixed(backend):
-    """test implicit solvers"""
+    """Test implicit solvers."""
     grid = UnitGrid([4])
     xs = grid.axes_coords[0]
     field = ScalarField.from_expression(grid, "x")
@@ -31,7 +31,7 @@ def test_implicit_solvers_simple_fixed(backend):
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_implicit_stochastic_solvers(backend, rng):
-    """test simple version of the stochastic implicit solver"""
+    """Test simple version of the stochastic implicit solver."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE()
     seq = DiffusionPDE(noise=1e-10)

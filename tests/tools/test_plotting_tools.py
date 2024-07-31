@@ -10,7 +10,7 @@ from pde.tools.plotting import add_scaled_colorbar, plot_on_axes, plot_on_figure
 
 
 def test_plot_on_axes(tmp_path):
-    """test the plot_on_axes decorator"""
+    """Test the plot_on_axes decorator."""
 
     @plot_on_axes
     def plot(ax):
@@ -22,7 +22,7 @@ def test_plot_on_axes(tmp_path):
 
 
 def test_plot_on_figure(tmp_path):
-    """test the plot_on_figure decorator"""
+    """Test the plot_on_figure decorator."""
 
     @plot_on_figure
     def plot(fig):
@@ -37,7 +37,7 @@ def test_plot_on_figure(tmp_path):
 
 @pytest.mark.interactive
 def test_plot_colorbar(tmp_path, rng):
-    """test the plot_on_axes decorator"""
+    """Test the plot_on_axes decorator."""
     data = rng.normal(size=(3, 3))
 
     # do not specify axis

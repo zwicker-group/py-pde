@@ -18,7 +18,7 @@ from pde.grids.operators.cylindrical_sym import _get_laplace_matrix
 
 
 def test_laplacian_field_cyl():
-    """test the gradient operator"""
+    """Test the gradient operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     s = ScalarField(grid, data=np.cos(r) + np.sin(z))
@@ -29,7 +29,7 @@ def test_laplacian_field_cyl():
 
 
 def test_gradient_field_cyl():
-    """test the gradient operator"""
+    """Test the gradient operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     s = ScalarField(grid, data=np.cos(r) + np.sin(z))
@@ -41,7 +41,7 @@ def test_gradient_field_cyl():
 
 
 def test_divergence_field_cyl():
-    """test the divergence operator"""
+    """Test the divergence operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [16, 32], periodic_z=True)
     v = VectorField.from_expression(grid, ["cos(r) + sin(z)**2", "z * cos(r)**2", 0])
     s = v.divergence(bc="auto_periodic_neumann")
@@ -70,7 +70,7 @@ def test_divergence_field_cyl():
 
 
 def test_vector_gradient_divergence_field_cyl():
-    """test the divergence operator"""
+    """Test the divergence operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], [8, 16], periodic_z=True)
     r, z = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(r) + np.sin(z) ** 2, np.cos(r) ** 2 + np.sin(z), np.zeros_like(r)]
@@ -82,8 +82,10 @@ def test_vector_gradient_divergence_field_cyl():
 
 
 def test_findiff_cyl():
-    """test operator for a simple cylindrical grid. Note that we only
-    really test the polar symmetry"""
+    """Test operator for a simple cylindrical grid.
+
+    Note that we only really test the polar symmetry
+    """
     grid = CylindricalSymGrid(1.5, [0, 1], (3, 2), periodic_z=True)
     _, r1, r2 = grid.axes_coords[0]
     np.testing.assert_array_equal(grid.discretization, np.full(2, 0.5))
@@ -100,7 +102,7 @@ def test_findiff_cyl():
 
 
 def test_grid_laplace():
-    """test the cylindrical implementation of the laplace operator"""
+    """Test the cylindrical implementation of the laplace operator."""
     grid_cyl = CylindricalSymGrid(7, (0, 4), (4, 4))
     grid_cart = CartesianGrid([[-5, 5], [-5, 5], [0, 4]], [10, 10, 4])
 
@@ -115,7 +117,7 @@ def test_grid_laplace():
 
 
 def test_gradient_squared_cyl(rng):
-    """compare gradient squared operator"""
+    """Compare gradient squared operator."""
     grid = CylindricalSymGrid(2 * np.pi, [0, 2 * np.pi], 64)
     field = ScalarField.random_harmonic(grid, modes=1, rng=rng)
     s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
@@ -127,7 +129,7 @@ def test_gradient_squared_cyl(rng):
 
 
 def test_grid_div_grad_cyl():
-    """compare div grad to laplacian"""
+    """Compare div grad to laplacian."""
     grid = CylindricalSymGrid(2 * np.pi, (0, 2 * np.pi), (16, 16), periodic_z=True)
     field = ScalarField.from_expression(grid, "cos(r) + sin(z)")
 
@@ -143,7 +145,7 @@ def test_grid_div_grad_cyl():
 
 
 def test_examples_scalar_cyl():
-    """compare derivatives of scalar fields for cylindrical grids"""
+    """Compare derivatives of scalar fields for cylindrical grids."""
     grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32)
     expr = "r**3 * sin(z)"
     sf = ScalarField.from_expression(grid, expr)
@@ -171,7 +173,7 @@ def test_examples_scalar_cyl():
 
 
 def test_examples_vector_cyl():
-    """compare derivatives of vector fields for cylindrical grids"""
+    """Compare derivatives of vector fields for cylindrical grids."""
     grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32)
     e_r = "r**3 * sin(z)"
     e_φ = "r**2 * sin(z)"
@@ -213,7 +215,7 @@ def test_examples_vector_cyl():
 
 
 def test_examples_tensor_cyl():
-    """compare derivatives of tensorial fields for cylindrical grids"""
+    """Compare derivatives of tensorial fields for cylindrical grids."""
     grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32, periodic_z=True)
     tf = Tensor2Field.from_expression(grid, [["r**3 * sin(z)"] * 3] * 3)
 
@@ -235,7 +237,7 @@ def test_examples_tensor_cyl():
 
 @pytest.mark.parametrize("r_inner", (0, 1))
 def test_laplace_matrix(r_inner, rng):
-    """test laplace operator implemented using matrix multiplication"""
+    """Test laplace operator implemented using matrix multiplication."""
     grid = CylindricalSymGrid((r_inner, 2), (2.5, 4.3), 16)
     if r_inner == 0:
         bcs = ["neumann", {"derivative": "cos(r) + z"}]
@@ -253,7 +255,7 @@ def test_laplace_matrix(r_inner, rng):
 
 @pytest.mark.parametrize("r_inner", (0, 1))
 def test_poisson_solver_cylindrical(r_inner, rng):
-    """test the poisson solver on Cylindrical grids"""
+    """Test the poisson solver on Cylindrical grids."""
     grid = CylindricalSymGrid((r_inner, 2), (2.5, 4.3), 16)
     if r_inner == 0:
         bcs = ["neumann", {"value": "cos(r) + z"}]

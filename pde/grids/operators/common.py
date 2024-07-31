@@ -1,5 +1,4 @@
-"""
-Common functions that are used by many operators 
+"""Common functions that are used by many operators.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -24,7 +23,7 @@ def make_derivative(
     axis: int = 0,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
-    """make a derivative operator along a single axis using numba compilation
+    """Make a derivative operator along a single axis using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.base.GridBase`):
@@ -60,7 +59,7 @@ def make_derivative(
 
         @jit
         def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 1d array `arr`"""
+            """Calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
                 if method == "central":
                     out[i - 1] = (arr[i + 1] - arr[i - 1]) / (2 * dx)
@@ -73,7 +72,7 @@ def make_derivative(
 
         @jit
         def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 2d array `arr`"""
+            """Calculate derivative of 2d array `arr`"""
             for i in range(1, shape[0] + 1):
                 for j in range(1, shape[1] + 1):
                     arr_l = arr[i - di, j - dj]
@@ -89,7 +88,7 @@ def make_derivative(
 
         @jit
         def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 3d array `arr`"""
+            """Calculate derivative of 3d array `arr`"""
             for i in range(1, shape[0] + 1):
                 for j in range(1, shape[1] + 1):
                     for k in range(1, shape[2] + 1):
@@ -111,7 +110,7 @@ def make_derivative(
 
 
 def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
-    """make a second-order derivative operator along a single axis
+    """Make a second-order derivative operator along a single axis.
 
     Args:
         grid (:class:`~pde.grids.base.GridBase`):
@@ -141,7 +140,7 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
 
         @jit
         def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 1d array `arr`"""
+            """Calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
                 out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * scale
 
@@ -149,7 +148,7 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
 
         @jit
         def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 2d array `arr`"""
+            """Calculate derivative of 2d array `arr`"""
             for i in range(1, shape[0] + 1):
                 for j in range(1, shape[1] + 1):
                     arr_l = arr[i - di, j - dj]
@@ -160,7 +159,7 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
 
         @jit
         def diff(arr: np.ndarray, out: np.ndarray) -> None:
-            """calculate derivative of 3d array `arr`"""
+            """Calculate derivative of 3d array `arr`"""
             for i in range(1, shape[0] + 1):
                 for j in range(1, shape[1] + 1):
                     for k in range(1, shape[2] + 1):
@@ -179,7 +178,7 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
 
 
 def uniform_discretization(grid: GridBase) -> float:
-    """returns the uniform discretization or raises RuntimeError
+    """Returns the uniform discretization or raises RuntimeError.
 
     Args:
         grid (:class:`~pde.grids.base.GridBase`):
@@ -201,7 +200,7 @@ def uniform_discretization(grid: GridBase) -> float:
 def make_laplace_from_matrix(
     matrix, vector
 ) -> Callable[[np.ndarray, np.ndarray | None], np.ndarray]:
-    """make a Laplace operator using matrix vector products
+    """Make a Laplace operator using matrix vector products.
 
     Args:
         matrix:
@@ -217,7 +216,7 @@ def make_laplace_from_matrix(
     vec = vector.toarray()[:, 0]
 
     def laplace(arr: np.ndarray, out: np.ndarray | None = None) -> np.ndarray:
-        """apply the laplace operator to `arr`"""
+        """Apply the laplace operator to `arr`"""
         result = mat.dot(arr.flat) + vec
         if out is None:
             out = result.reshape(arr.shape)
@@ -231,7 +230,7 @@ def make_laplace_from_matrix(
 def make_general_poisson_solver(
     matrix, vector, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
-    """make an operator that solves Poisson's problem
+    """Make an operator that solves Poisson's problem.
 
     Args:
         matrix:
@@ -261,7 +260,7 @@ def make_general_poisson_solver(
     vec = vector.toarray()[:, 0]
 
     def solve_poisson(arr: np.ndarray, out: np.ndarray) -> None:
-        """solves Poisson's equation using sparse linear algebra"""
+        """Solves Poisson's equation using sparse linear algebra."""
         # prepare the right hand side vector
         rhs = np.ravel(arr) - vec
 

@@ -11,7 +11,7 @@ from pde.grids import coordinates
 
 
 def iter_coordinates():
-    """generator providing some test coordinate systems"""
+    """Generator providing some test coordinate systems."""
     yield coordinates.CartesianCoordinates(1)
     yield coordinates.CartesianCoordinates(2)
     yield coordinates.CartesianCoordinates(3)
@@ -26,7 +26,7 @@ def iter_coordinates():
 
 @pytest.mark.parametrize("c", iter_coordinates())
 def test_basic_coordinates(c, rng):
-    """test basic coordinate properties"""
+    """Test basic coordinate properties."""
     assert len(c.coordinate_limits) == c.dim
     assert len(c.axes) == c.dim
     x = rng.uniform(size=c.dim)
@@ -38,7 +38,7 @@ def test_basic_coordinates(c, rng):
 
 @pytest.mark.parametrize("c", iter_coordinates())
 def test_coordinate_volume_factors(c, rng):
-    """test basic coordinate properties"""
+    """Test basic coordinate properties."""
     p1 = c.pos_from_cart(rng.uniform(-1, 1, size=c.dim))
     p2 = c.pos_from_cart(rng.uniform(-1, 1, size=c.dim))
     p_l = np.minimum(p1, p2)
@@ -72,7 +72,7 @@ def test_coordinate_metric(c, rng):
 
 @pytest.mark.parametrize("c", iter_coordinates())
 def test_coordinate_vector_fields(c, rng):
-    """test basic coordinate properties"""
+    """Test basic coordinate properties."""
     # anchor point
     x1 = rng.uniform(-1, 1, size=c.dim)
     p = c.pos_from_cart(x1)
@@ -94,7 +94,7 @@ def test_coordinate_vector_fields(c, rng):
 
 
 def test_invalid_coordinates():
-    """test some invalid initializations"""
+    """Test some invalid initializations."""
     with pytest.raises(ValueError):
         coordinates.CartesianCoordinates(0)
     with pytest.raises(ValueError):

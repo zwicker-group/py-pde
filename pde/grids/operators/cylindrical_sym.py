@@ -1,5 +1,4 @@
-r"""
-This module implements differential operators on cylindrical grids 
+r"""This module implements differential operators on cylindrical grids.
 
 .. autosummary::
    :nosignatures:
@@ -32,7 +31,7 @@ from .common import make_general_poisson_solver
 
 
 def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for Laplace operator on a cylindrical grid
+    """Get sparse matrix for Laplace operator on a cylindrical grid.
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -55,7 +54,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     factor_r = 1 / (2 * grid.axes_coords[0] * grid.discretization[0])
 
     def i(r, z):
-        """helper function for flattening the inder
+        """Helper function for flattening the inder.
 
         This is equivalent to np.ravel_multi_inder((r, z), (dim_r, dim_z))
         """
@@ -106,7 +105,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 @CylindricalSymGrid.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
-    """make a discretized laplace operator for a cylindrical grid
+    """Make a discretized laplace operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
 
@@ -128,7 +127,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply laplace operator to array `arr`"""
+        """Apply laplace operator to array `arr`"""
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
                 arr_z_l, arr_z_h = arr[i, j - 1], arr[i, j + 1]
@@ -145,7 +144,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
 @CylindricalSymGrid.register_operator("gradient", rank_in=0, rank_out=1)
 @fill_in_docstring
 def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
-    """make a discretized gradient operator for a cylindrical grid
+    """Make a discretized gradient operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
 
@@ -165,7 +164,7 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
                 out[0, i - 1, j - 1] = (arr[i + 1, j] - arr[i - 1, j]) * scale_r
@@ -180,7 +179,7 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
 def make_gradient_squared(
     grid: CylindricalSymGrid, central: bool = True
 ) -> OperatorType:
-    """make a discretized gradient squared operator for a cylindrical grid
+    """Make a discretized gradient squared operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
 
@@ -206,7 +205,7 @@ def make_gradient_squared(
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply gradient operator to array `arr`"""
+            """Apply gradient operator to array `arr`"""
             for i in nb.prange(1, dim_r + 1):  # iterate radial points
                 for j in range(1, dim_z + 1):  # iterate axial points
                     term_r = (arr[i + 1, j] - arr[i - 1, j]) ** 2
@@ -219,7 +218,7 @@ def make_gradient_squared(
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply gradient operator to array `arr`"""
+            """Apply gradient operator to array `arr`"""
             for i in nb.prange(1, dim_r + 1):  # iterate radial points
                 for j in range(1, dim_z + 1):  # iterate axial points
                     arr_z_l, arr_c, arr_z_h = arr[i, j - 1], arr[i, j], arr[i, j + 1]
@@ -233,7 +232,7 @@ def make_gradient_squared(
 @CylindricalSymGrid.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
-    """make a discretized divergence operator for a cylindrical grid
+    """Make a discretized divergence operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
 
@@ -254,7 +253,7 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply divergence operator to array `arr`"""
+        """Apply divergence operator to array `arr`"""
         arr_r, arr_z = arr[0], arr[1]
 
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
@@ -271,7 +270,7 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
 @CylindricalSymGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
-    """make a discretized vector gradient operator for a cylindrical grid
+    """Make a discretized vector gradient operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
 
@@ -292,7 +291,7 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         # assign aliases
         arr_r, arr_z, arr_φ = arr
         out_rr, out_rz, out_rφ = out[0, 0], out[0, 1], out[0, 2]
@@ -319,7 +318,7 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
 @CylindricalSymGrid.register_operator("vector_laplace", rank_in=1, rank_out=1)
 @fill_in_docstring
 def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
-    """make a discretized vector laplace operator for a cylindrical grid
+    """Make a discretized vector laplace operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
 
@@ -343,7 +342,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply vector laplace operator to array `arr`"""
+        """Apply vector laplace operator to array `arr`"""
         # assign aliases
         arr_r, arr_z, arr_φ = arr
         out_r, out_z, out_φ = out
@@ -379,7 +378,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
 @CylindricalSymGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
-    """make a discretized tensor divergence operator for a cylindrical grid
+    """Make a discretized tensor divergence operator for a cylindrical grid.
 
     {DESCR_CYLINDRICAL_GRID}
 
@@ -400,7 +399,7 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply tensor divergence operator to array `arr`"""
+        """Apply tensor divergence operator to array `arr`"""
         # assign aliases
         arr_rr, arr_rz, arr_rφ = arr[0, 0], arr[0, 1], arr[0, 2]
         arr_zr, arr_zz, _ = arr[1, 0], arr[1, 1], arr[1, 2]
@@ -435,7 +434,7 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
 def make_poisson_solver(
     bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
-    """make a operator that solves Poisson's equation
+    """Make a operator that solves Poisson's equation.
 
     {DESCR_CYLINDRICAL_GRID}
 

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-This script creates storage files for backwards compatibility tests
-"""
+"""This script creates storage files for backwards compatibility tests."""
 
 from __future__ import annotations
 
@@ -15,7 +13,7 @@ import pde
 
 
 def create_storage_test_resources(path, num):
-    """test storing scalar field as movie"""
+    """Test storing scalar field as movie."""
     grid = pde.CylindricalSymGrid(3, [1, 2], [2, 2])
     field = pde.ScalarField(grid, [[1, 3], [2, 4]])
     eq = pde.DiffusionPDE()
@@ -39,7 +37,7 @@ def create_storage_test_resources(path, num):
 
 
 def main():
-    """main function creating all the requirements"""
+    """Main function creating all the requirements."""
     root = Path(PACKAGE_PATH)
     create_storage_test_resources(root / "tests" / "storage" / "resources", 2)
 

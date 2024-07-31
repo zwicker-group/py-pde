@@ -34,7 +34,7 @@ if not all(module_available(m) for m in ["modelrunner", "h5py"]):
 @pytest.mark.skipif(sys.platform == "win32", reason="Assumes unix setup")
 @pytest.mark.parametrize("path", EXAMPLES)
 def test_example_scripts(path):
-    """runs an example script given by path"""
+    """Runs an example script given by path."""
     # check whether this test needs to be run
     if path.name.startswith("_"):
         pytest.skip("skip examples starting with an underscore")
@@ -76,7 +76,7 @@ def test_example_scripts(path):
 @pytest.mark.skipif(not module_available("nbconvert"), reason="requires `nbconvert`")
 @pytest.mark.parametrize("path", NOTEBOOKS)
 def test_jupyter_notebooks(path, tmp_path):
-    """run the jupyter notebooks"""
+    """Run the jupyter notebooks."""
     import notebook as jupyter_notebook
 
     if path.name.startswith("_"):

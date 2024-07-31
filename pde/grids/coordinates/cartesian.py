@@ -11,7 +11,7 @@ from .base import CoordinatesBase
 
 
 class CartesianCoordinates(CoordinatesBase):
-    """n-dimensional Cartesian coordinates"""
+    """N-dimensional Cartesian coordinates."""
 
     _objs: dict[int, CartesianCoordinates] = {}
 
@@ -40,7 +40,7 @@ class CartesianCoordinates(CoordinatesBase):
         self.coordinate_limits = [(-np.inf, np.inf)] * self.dim
 
     def __repr__(self) -> str:
-        """return instance as string"""
+        """Return instance as string."""
         return f"{self.__class__.__name__}(dim={self.dim})"
 
     def __eq__(self, other):

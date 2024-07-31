@@ -27,7 +27,7 @@ SOLVER_CLASSES = [
 
 
 def test_solver_registration():
-    """test solver registration"""
+    """Test solver registration."""
     solvers = registered_solvers()
     assert "explicit" in solvers
     assert "implicit" in solvers
@@ -36,7 +36,7 @@ def test_solver_registration():
 
 
 def test_solver_in_pde_class(rng):
-    """test whether solver instances can be used in pde instances"""
+    """Test whether solver instances can be used in pde instances."""
     field = ScalarField.random_uniform(UnitGrid([16, 16]), -1, 1, rng=rng)
     eq = DiffusionPDE()
     eq.solve(field, t_range=1, solver=ScipySolver, tracker=None)
@@ -44,7 +44,7 @@ def test_solver_in_pde_class(rng):
 
 @pytest.mark.parametrize("solver_class", SOLVER_CLASSES)
 def test_compare_solvers(solver_class, rng):
-    """compare several solvers"""
+    """Compare several solvers."""
     field = ScalarField.random_uniform(UnitGrid([8, 8]), -1, 1, rng=rng)
     eq = DiffusionPDE()
 
@@ -62,7 +62,7 @@ def test_compare_solvers(solver_class, rng):
 @pytest.mark.parametrize("solver_class", SOLVER_CLASSES)
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_solvers_complex(solver_class, backend):
-    """test solvers with a complex PDE"""
+    """Test solvers with a complex PDE."""
     r = FieldCollection.scalar_random_uniform(2, UnitGrid([3]), labels=["a", "b"])
     c = r["a"] + 1j * r["b"]
     assert c.is_complex
@@ -80,7 +80,7 @@ def test_solvers_complex(solver_class, backend):
 
 
 def test_basic_adaptive_solver():
-    """test basic adaptive solvers"""
+    """Test basic adaptive solvers."""
     grid = UnitGrid([4])
     y0 = np.array([1e-3, 1e-3, 1e3, 1e3])
     field = ScalarField(grid, y0)

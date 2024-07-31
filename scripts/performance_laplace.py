@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-"""
-This script tests the performance of the implementation of the laplace operator as a
-primary example for the differential operators supplied by `py-pde`.
-"""
+"""This script tests the performance of the implementation of the laplace operator as a
+primary example for the differential operators supplied by `py-pde`."""
 
 import sys
 from pathlib import Path
@@ -22,14 +20,14 @@ config["numba.multithreading"] = False
 
 
 def custom_laplace_2d_periodic(shape, dx=1):
-    """make laplace operator with periodic boundary conditions"""
+    """Make laplace operator with periodic boundary conditions."""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def laplace(arr, out=None):
-        """apply laplace operator to array `arr`"""
+        """Apply laplace operator to array `arr`"""
         if out is None:
             out = np.empty((dim_x, dim_y))
 
@@ -60,14 +58,14 @@ def custom_laplace_2d_periodic(shape, dx=1):
 
 
 def custom_laplace_2d_neumann(shape, dx=1):
-    """make laplace operator with Neumann boundary conditions"""
+    """Make laplace operator with Neumann boundary conditions."""
     dx_2 = 1 / dx**2
     dim_x, dim_y = shape
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
     def laplace(arr, out=None):
-        """apply laplace operator to array `arr`"""
+        """Apply laplace operator to array `arr`"""
         if out is None:
             out = np.empty((dim_x, dim_y))
 
@@ -87,7 +85,7 @@ def custom_laplace_2d_neumann(shape, dx=1):
 
 
 def custom_laplace_2d(shape, periodic, dx=1):
-    """make laplace operator with Neumann or periodic boundary conditions"""
+    """Make laplace operator with Neumann or periodic boundary conditions."""
     if periodic:
         return custom_laplace_2d_periodic(shape, dx=dx)
     else:
@@ -95,14 +93,14 @@ def custom_laplace_2d(shape, periodic, dx=1):
 
 
 def optimized_laplace_2d(bcs):
-    """make laplace operator with flexible boundary conditions"""
+    """Make laplace operator with flexible boundary conditions."""
     set_ghost_cells = bcs.make_ghost_cell_setter()
     apply_laplace = bcs.grid.make_operator_no_bc("laplace")
     shape = bcs.grid.shape
 
     @jit
     def laplace(arr):
-        """apply laplace operator to array `arr`"""
+        """Apply laplace operator to array `arr`"""
         set_ghost_cells(arr)
         out = np.empty(shape)
         apply_laplace(arr, out)
@@ -112,14 +110,14 @@ def optimized_laplace_2d(bcs):
 
 
 def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
-    """make laplace operator with Neumann boundary conditions"""
+    """Make laplace operator with Neumann boundary conditions."""
     dim_r, dim_z = shape
     dr_2 = 1 / dr**2
     dz_2 = 1 / dz**2
 
     @jit
     def laplace(arr, out=None):
-        """apply laplace operator to array `arr`"""
+        """Apply laplace operator to array `arr`"""
         if out is None:
             out = np.empty((dim_r, dim_z))
 
@@ -154,7 +152,7 @@ def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
 
 
 def main():
-    """main routine testing the performance"""
+    """Main routine testing the performance."""
     print("Reports calls-per-second (larger is better)")
     print("  The `CUSTOM` method implemented by hand is the baseline case.")
     print("  The `OPTIMIZED` uses some infrastructure form the py-pde package.")

@@ -1,10 +1,9 @@
-"""
-Package that contains base classes for solvers.
+"""Package that contains base classes for solvers.
 
 Beside the abstract base class defining the interfaces, we also provide
 :class:`AdaptiveSolverBase`, which contains methods for implementing adaptive solvers.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -28,11 +27,11 @@ from ..tools.typing import BackendType
 
 
 class ConvergenceError(RuntimeError):
-    """indicates that an implicit step did not converge"""
+    """Indicates that an implicit step did not converge."""
 
 
 class SolverBase(metaclass=ABCMeta):
-    """base class for PDE solvers"""
+    """Base class for PDE solvers."""
 
     dt_default: float = 1e-3
     """float: default time step used if no time step was specified"""
@@ -61,7 +60,7 @@ class SolverBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """register all subclassess to reconstruct them later"""
+        """Register all subclassess to reconstruct them later."""
         super().__init_subclass__(**kwargs)
         if not isabstract(cls):
             if cls.__name__ in cls._subclasses:
@@ -74,7 +73,7 @@ class SolverBase(metaclass=ABCMeta):
 
     @classmethod
     def from_name(cls, name: str, pde: PDEBase, **kwargs) -> SolverBase:
-        r"""create solver class based on its name
+        r"""Create solver class based on its name.
 
         Solver classes are automatically registered when they inherit from
         :class:`SolverBase`. Note that this also requires that the respective python
@@ -123,7 +122,7 @@ class SolverBase(metaclass=ABCMeta):
     def _make_modify_after_step(
         self, state: FieldBase
     ) -> Callable[[np.ndarray], float]:
-        """create a function that modifies a state after each step
+        """Create a function that modifies a state after each step.
 
         A noop function will be returned if `_modify_state_after_step` is `False`,
 
@@ -149,7 +148,7 @@ class SolverBase(metaclass=ABCMeta):
     def _make_pde_rhs(
         self, state: FieldBase, backend: BackendType = "auto"
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """obtain a function for evaluating the right hand side
+        """Obtain a function for evaluating the right hand side.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -188,7 +187,7 @@ class SolverBase(metaclass=ABCMeta):
     def _make_sde_rhs(
         self, state: FieldBase, backend: str = "auto"
     ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
-        """obtain a function for evaluating the right hand side
+        """Obtain a function for evaluating the right hand side.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -222,7 +221,7 @@ class SolverBase(metaclass=ABCMeta):
     def _make_single_step_fixed_dt(
         self, state: FieldBase, dt: float
     ) -> Callable[[np.ndarray, float], None]:
-        """return a function doing a single step with a fixed time step
+        """Return a function doing a single step with a fixed time step.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -236,7 +235,7 @@ class SolverBase(metaclass=ABCMeta):
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float
     ) -> Callable[[np.ndarray, float, int], tuple[float, float]]:
-        """return a stepper function using an explicit scheme with fixed time steps
+        """Return a stepper function using an explicit scheme with fixed time steps.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -256,7 +255,7 @@ class SolverBase(metaclass=ABCMeta):
         def fixed_stepper(
             state_data: np.ndarray, t_start: float, steps: int
         ) -> tuple[float, float]:
-            """perform `steps` steps with fixed time steps"""
+            """Perform `steps` steps with fixed time steps."""
             modifications = 0.0
             for i in range(steps):
                 # calculate the right hand side
@@ -276,7 +275,7 @@ class SolverBase(metaclass=ABCMeta):
     def make_stepper(
         self, state: FieldBase, dt: float | None = None
     ) -> Callable[[FieldBase, float, float], float]:
-        """return a stepper function using an explicit scheme
+        """Return a stepper function using an explicit scheme.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -312,7 +311,7 @@ class SolverBase(metaclass=ABCMeta):
         fixed_stepper = self._make_fixed_stepper(state, dt_float)
 
         def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """advance `state` from `t_start` to `t_end` using fixed steps"""
+            """Advance `state` from `t_start` to `t_end` using fixed steps."""
             # calculate number of steps (which is at least 1)
             steps = max(1, int(np.ceil((t_end - t_start) / dt_float)))
             t_last, modifications = fixed_stepper(state.data, t_start, steps)
@@ -324,7 +323,7 @@ class SolverBase(metaclass=ABCMeta):
 
 
 class AdaptiveSolverBase(SolverBase):
-    """base class for adaptive time steppers"""
+    """Base class for adaptive time steppers."""
 
     dt_min: float = 1e-10
     """float: minimal time step that the adaptive solver will use"""
@@ -360,7 +359,8 @@ class AdaptiveSolverBase(SolverBase):
         self.tolerance = tolerance
 
     def _make_error_synchronizer(self) -> Callable[[float], float]:
-        """return helper function that synchronizes errors between multiple processes"""
+        """Return helper function that synchronizes errors between multiple
+        processes."""
 
         @register_jitable
         def synchronize_errors(error: float) -> float:
@@ -369,14 +369,14 @@ class AdaptiveSolverBase(SolverBase):
         return synchronize_errors  # type: ignore
 
     def _make_dt_adjuster(self) -> Callable[[float, float], float]:
-        """return a function that can be used to adjust time steps"""
+        """Return a function that can be used to adjust time steps."""
         dt_min = self.dt_min
         dt_min_nan_err = f"Encountered NaN even though dt < {dt_min}"
         dt_min_err = f"Time step below {dt_min}"
         dt_max = self.dt_max
 
         def adjust_dt(dt: float, error_rel: float) -> float:
-            """helper function that adjust the time step
+            """Helper function that adjust the time step.
 
             The goal is to keep the relative error `error_rel` close to 1.
 
@@ -419,7 +419,7 @@ class AdaptiveSolverBase(SolverBase):
     def _make_single_step_variable_dt(
         self, state: FieldBase
     ) -> Callable[[np.ndarray, float, float], np.ndarray]:
-        """return a function doing a single step with a variable time step
+        """Return a function doing a single step with a variable time step.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -434,7 +434,7 @@ class AdaptiveSolverBase(SolverBase):
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
 
         def single_step(state_data: np.ndarray, t: float, dt: float) -> np.ndarray:
-            """basic implementation of Euler scheme"""
+            """Basic implementation of Euler scheme."""
             return state_data + dt * rhs_pde(state_data, t)  # type: ignore
 
         return single_step
@@ -442,7 +442,7 @@ class AdaptiveSolverBase(SolverBase):
     def _make_single_step_error_estimate(
         self, state: FieldBase
     ) -> Callable[[np.ndarray, float, float], tuple[np.ndarray, float]]:
-        """make a stepper that also estimates the error
+        """Make a stepper that also estimates the error.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -460,7 +460,7 @@ class AdaptiveSolverBase(SolverBase):
         def single_step_error_estimate(
             state_data: np.ndarray, t: float, dt: float
         ) -> tuple[np.ndarray, float]:
-            """basic stepper to estimate error"""
+            """Basic stepper to estimate error."""
             # single step with dt
             k1 = single_step(state_data, t, dt)
 
@@ -479,7 +479,7 @@ class AdaptiveSolverBase(SolverBase):
         [np.ndarray, float, float, float, OnlineStatistics | None],
         tuple[float, float, int, float],
     ]:
-        """make an adaptive Euler stepper
+        """Make an adaptive Euler stepper.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -514,7 +514,7 @@ class AdaptiveSolverBase(SolverBase):
             dt_init: float,
             dt_stats: OnlineStatistics | None = None,
         ) -> tuple[float, float, int, float]:
-            """adaptive stepper that advances the state in time"""
+            """Adaptive stepper that advances the state in time."""
             modifications = 0.0
             dt_opt = dt_init
             t = t_start
@@ -565,7 +565,7 @@ class AdaptiveSolverBase(SolverBase):
     def make_stepper(
         self, state: FieldBase, dt: float | None = None
     ) -> Callable[[FieldBase, float, float], float]:
-        """return a stepper function using an explicit scheme
+        """Return a stepper function using an explicit scheme.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -602,7 +602,7 @@ class AdaptiveSolverBase(SolverBase):
         adaptive_stepper = self._make_adaptive_stepper(state)
 
         def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """advance `state` from `t_start` to `t_end` using adaptive steps"""
+            """Advance `state` from `t_start` to `t_end` using adaptive steps."""
             nonlocal dt_float  # `dt_float` stores value for the next call
 
             t_last, dt_float, steps, modifications = adaptive_stepper(

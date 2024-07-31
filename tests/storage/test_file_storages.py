@@ -13,7 +13,7 @@ from pde.tools.misc import module_available
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
 @pytest.mark.parametrize("collection", [True, False])
 def test_storage_persistence(collection, tmp_path):
-    """test writing to persistent trackers"""
+    """Test writing to persistent trackers."""
     dim = 5
     grid = UnitGrid([dim])
     scalar = ScalarField(grid)
@@ -24,7 +24,7 @@ def test_storage_persistence(collection, tmp_path):
         state = scalar
 
     def assert_storage_content(storage, expect):
-        """helper function testing storage content"""
+        """Helper function testing storage content."""
         if collection:
             for i in range(2):
                 field_data = storage.extract_field(i).data
@@ -79,7 +79,7 @@ def test_storage_persistence(collection, tmp_path):
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
 @pytest.mark.parametrize("compression", [True, False])
 def test_simulation_persistence(compression, tmp_path, rng):
-    """test whether a tracker can accurately store information about simulation"""
+    """Test whether a tracker can accurately store information about simulation."""
     path = tmp_path / "test_simulation_persistence.hdf5"
     storage = FileStorage(path, compression=compression)
 
@@ -104,7 +104,7 @@ def test_simulation_persistence(compression, tmp_path, rng):
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
 @pytest.mark.parametrize("compression", [True, False])
 def test_storage_fixed_size(compression, tmp_path):
-    """test setting fixed size of FileStorage objects"""
+    """Test setting fixed size of FileStorage objects."""
     c = ScalarField(UnitGrid([2]), data=1)
 
     for fixed in [True, False]:
@@ -132,7 +132,7 @@ def test_storage_fixed_size(compression, tmp_path):
 
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
 def test_appending(tmp_path):
-    """test the appending data"""
+    """Test the appending data."""
     path = tmp_path / "test_appending.hdf5"
 
     c = ScalarField(UnitGrid([2]), data=1)
@@ -154,7 +154,7 @@ def test_appending(tmp_path):
 
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
 def test_keep_opened(tmp_path):
-    """test the keep opened option"""
+    """Test the keep opened option."""
     path = tmp_path / "test_keep_opened.hdf5"
 
     c = ScalarField(UnitGrid([2]), data=1)
@@ -183,7 +183,7 @@ def test_keep_opened(tmp_path):
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
 @pytest.mark.parametrize("dtype", [bool, float, complex])
 def test_write_types(dtype, tmp_path, rng):
-    """test whether complex data can be written"""
+    """Test whether complex data can be written."""
     path = tmp_path / "test_type_writing.hdf5"
 
     grid = UnitGrid([32])

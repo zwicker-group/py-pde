@@ -1,7 +1,6 @@
-"""
-A Allen-Cahn equation
+"""A Allen-Cahn equation.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from .base import PDEBase, expr_prod
 
 
 class AllenCahnPDE(PDEBase):
-    r"""A simple Allen-Cahn equation
+    r"""A simple Allen-Cahn equation.
 
     The mathematical definition is
 
@@ -71,7 +70,7 @@ class AllenCahnPDE(PDEBase):
         state: ScalarField,
         t: float = 0,
     ) -> ScalarField:
-        """evaluate the right hand side of the PDE
+        """Evaluate the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
@@ -92,7 +91,7 @@ class AllenCahnPDE(PDEBase):
     def _make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create a compiled function evaluating the right hand side of the PDE
+        """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
@@ -113,7 +112,7 @@ class AllenCahnPDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float) -> np.ndarray:
-            """compiled helper function evaluating right hand side"""
+            """Compiled helper function evaluating right hand side."""
             return mobility * (  # type: ignore
                 interface_width * laplace(state_data, args={"t": t})
                 - state_data**3

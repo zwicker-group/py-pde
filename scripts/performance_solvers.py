@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-This script tests the performance of different solvers
-"""
+"""This script tests the performance of different solvers."""
 
 import sys
 from pathlib import Path
@@ -27,7 +25,7 @@ def main(
     t_range: float = 100,
     size: int = 32,
 ):
-    """main routine testing the performance
+    """Main routine testing the performance.
 
     Args:
         equation (str):

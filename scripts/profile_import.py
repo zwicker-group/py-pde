@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""
-This scripts measures the total time it takes to import the module. The total time
-should ideally be below 1 second.
+"""This scripts measures the total time it takes to import the module.
+
+The total time should ideally be below 1 second.
 """
 
 import sys

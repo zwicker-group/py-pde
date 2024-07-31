@@ -12,7 +12,7 @@ from pde.tools.misc import module_available
 
 
 def test_vectors_basic():
-    """test some vector fields"""
+    """Test some vector fields."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     v1 = VectorField(grid, np.full((2,) + grid.shape, 1))
     v2 = VectorField(grid, np.full((2,) + grid.shape, 2))
@@ -75,7 +75,7 @@ def test_vectors_basic():
 
 
 def test_divergence():
-    """test the divergence operator"""
+    """Test the divergence operator."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(x) + y, np.sin(y) - x]
@@ -92,7 +92,7 @@ def test_divergence():
 
 
 def test_vector_gradient_field():
-    """test the vector gradient operator"""
+    """Test the vector gradient operator."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(x) + y, np.sin(y) - x]
@@ -117,7 +117,7 @@ def test_vector_gradient_field():
 
 
 def test_vector_laplace():
-    """test the laplace operator"""
+    """Test the laplace operator."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 2 * np.pi]], [16, 16], periodic=True)
     x, y = grid.cell_coords[..., 0], grid.cell_coords[..., 1]
     data = [np.cos(x) + np.sin(y), np.sin(y) - np.cos(x)]
@@ -133,7 +133,7 @@ def test_vector_laplace():
 
 
 def test_vector_boundary_conditions():
-    """test some boundary conditions of operators of vector fields"""
+    """Test some boundary conditions of operators of vector fields."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], 32, periodic=[False, True])
     vf = VectorField.from_expression(grid, ["sin(x)", "0"])
 
@@ -148,7 +148,7 @@ def test_vector_boundary_conditions():
 
 
 def test_outer_product():
-    """test outer product of vector fields"""
+    """Test outer product of vector fields."""
     vf = VectorField(UnitGrid([1, 1]), [[[1]], [[2]]])
 
     for backend in ["numpy", "numba"]:
@@ -168,7 +168,7 @@ def test_outer_product():
 
 
 def test_from_expressions():
-    """test initializing vector fields with expressions"""
+    """Test initializing vector fields with expressions."""
     grid = UnitGrid([4, 4])
     vf = VectorField.from_expression(grid, ["x**2", "x * y"])
     xs = grid.cell_coords[..., 0]
@@ -204,7 +204,7 @@ def test_from_expressions():
 
 
 def test_vector_plot_quiver_reduction(rng):
-    """test whether quiver plots reduce the resolution"""
+    """Test whether quiver plots reduce the resolution."""
     grid = UnitGrid([6, 6])
     field = VectorField.random_normal(grid, rng=rng)
     ref = field.plot(method="quiver", max_points=4)
@@ -212,7 +212,7 @@ def test_vector_plot_quiver_reduction(rng):
 
 
 def test_boundary_interpolation_vector(rng):
-    """test boundary interpolation"""
+    """Test boundary interpolation."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 3])
     field = VectorField.random_normal(grid, rng=rng)
 
@@ -225,7 +225,7 @@ def test_boundary_interpolation_vector(rng):
 
 @pytest.mark.parametrize("transpose", [True, False])
 def test_vector_plotting_2d(transpose, rng):
-    """test plotting of 2d vector fields"""
+    """Test plotting of 2d vector fields."""
     grid = UnitGrid([3, 4])
     field = VectorField.random_uniform(grid, 0.1, 0.9, rng=rng)
 
@@ -242,14 +242,14 @@ def test_vector_plotting_2d(transpose, rng):
 @pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.interactive
 def test_interactive_vector_plotting(rng):
-    """test the interactive plotting"""
+    """Test the interactive plotting."""
     grid = UnitGrid([3, 3])
     field = VectorField.random_uniform(grid, 0.1, 0.9, rng=rng)
     field.plot_interactive(viewer_args={"show": False, "close": True})
 
 
 def test_complex_vectors(rng):
-    """test some complex vector fields"""
+    """Test some complex vector fields."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     shape = (2, 2) + grid.shape
     numbers = rng.random(shape) + rng.random(shape) * 1j
@@ -279,7 +279,7 @@ def test_complex_vectors(rng):
 
 
 def test_vector_bcs():
-    """test boundary conditions on vector fields"""
+    """Test boundary conditions on vector fields."""
     grid = UnitGrid([3, 3], periodic=False)
     v = VectorField.from_expression(grid, ["x", "cos(y)"])
 
@@ -295,7 +295,7 @@ def test_vector_bcs():
 
 
 def test_interpolation_vector_fields_cylindrical():
-    """test interpolation of a vector field on cylindrical coordinates"""
+    """Test interpolation of a vector field on cylindrical coordinates."""
     grid = CylindricalSymGrid(5, [-2, 3], 10)
     vf = VectorField.from_expression(grid, ["r", "1", "z"])
     grid_cart = grid.get_cartesian_grid(mode="valid")
@@ -312,7 +312,7 @@ def test_interpolation_vector_fields_cylindrical():
 
 
 def test_interpolation_vector_fields_polar():
-    """test interpolation of a vector field on polar coordinates"""
+    """Test interpolation of a vector field on polar coordinates."""
     grid = PolarSymGrid(5, 10)
     vf = VectorField.from_expression(grid, ["r", "1"])
     grid_cart = grid.get_cartesian_grid(mode="valid")
@@ -328,7 +328,7 @@ def test_interpolation_vector_fields_polar():
 
 
 def test_interpolation_vector_fields_spherical():
-    """test interpolation of a vector field on polar coordinates"""
+    """Test interpolation of a vector field on polar coordinates."""
     grid = SphericalSymGrid(5, 10)
     vf = VectorField.from_expression(grid, ["r", "1", "r"])
     grid_cart = grid.get_cartesian_grid(mode="valid")

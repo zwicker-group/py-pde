@@ -1,5 +1,4 @@
-"""
-Defines base class of fields or collections, which are discretized on grids
+"""Defines base class of fields or collections, which are discretized on grids.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -28,11 +27,11 @@ TField = TypeVar("TField", bound="FieldBase")
 
 
 class RankError(TypeError):
-    """error indicating that the field has the wrong rank"""
+    """Error indicating that the field has the wrong rank."""
 
 
 class FieldBase(metaclass=ABCMeta):
-    """abstract base class for describing (discretized) fields"""
+    """Abstract base class for describing (discretized) fields."""
 
     _subclasses: dict[str, type[FieldBase]] = {}  # all classes inheriting from this
     _grid: GridBase  # the grid on which the field is defined
@@ -63,7 +62,7 @@ class FieldBase(metaclass=ABCMeta):
         self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """register all subclassess to reconstruct them later"""
+        """Register all subclassess to reconstruct them later."""
         super().__init_subclass__(**kwargs)
 
         if cls is not FieldBase:
@@ -83,12 +82,12 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def data(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: discretized data at the support points"""
+        """:class:`~numpy.ndarray`: discretized data at the support points."""
         return self._data_valid
 
     @data.setter
     def data(self, value: NumberOrArray) -> None:
-        """set the valid data of the field
+        """Set the valid data of the field.
 
         Args:
             value:
@@ -110,12 +109,12 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def _data_full(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: the full data including ghost cells"""
+        """:class:`~numpy.ndarray`: the full data including ghost cells."""
         return self.__data_full
 
     @_data_full.setter
     def _data_full(self, value: NumberOrArray) -> None:
-        """set the full data including ghost cells
+        """Set the full data including ghost cells.
 
         Args:
             value:
@@ -147,7 +146,8 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def _data_flat(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: flat version of discretized data with ghost cells"""
+        """:class:`~numpy.ndarray`: flat version of discretized data with ghost
+        cells."""
         # flatten the first dimension of the internal data by creating a view and then
         # setting the new shape. This disallows accidental copying of the data
         data_flat = self._data_full.view()
@@ -156,7 +156,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @_data_flat.setter
     def _data_flat(self, value: np.ndarray) -> None:
-        """set the full data including ghost cells from a flattened array"""
+        """Set the full data including ghost cells from a flattened array."""
         # simply set the data -> this might need to be overwritten
         self._data_full = value
 
@@ -167,7 +167,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @writeable.setter
     def writeable(self, value: bool) -> None:
-        """set whether the field data can be changed or not"""
+        """Set whether the field data can be changed or not."""
         self._data_full.flags.writeable = value
         self._data_valid.flags.writeable = value
 
@@ -178,7 +178,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @label.setter
     def label(self, value: str | None = None):
-        """set the new label of the field"""
+        """Set the new label of the field."""
         if value is None or isinstance(value, str):
             self._label = value
         else:
@@ -188,7 +188,7 @@ class FieldBase(metaclass=ABCMeta):
     def from_state(
         cls, attributes: dict[str, Any], data: np.ndarray | None = None
     ) -> FieldBase:
-        """create a field from given state.
+        """Create a field from given state.
 
         Args:
             attributes (dict):
@@ -210,7 +210,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def from_file(cls, filename: str) -> FieldBase:
-        """create field from data stored in a file
+        """Create field from data stored in a file.
 
         Field can be written to a file using :meth:`FieldBase.to_file`.
 
@@ -255,7 +255,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def _from_hdf_dataset(cls, dataset) -> FieldBase:
-        """construct a field by reading data from an hdf5 dataset"""
+        """Construct a field by reading data from an hdf5 dataset."""
         # copy attributes from hdf
         attributes = dict(dataset.attrs)
 
@@ -269,11 +269,11 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def grid(self) -> GridBase:
-        """:class:`~pde.grids.base,GridBase`: The grid on which the field is defined"""
+        """:class:`~pde.grids.base,GridBase`: The grid on which the field is defined."""
         return self._grid
 
     def to_file(self, filename: str, **kwargs) -> None:
-        r"""store field in a file
+        r"""Store field in a file.
 
         The extension of the filename determines what format is being used. If it ends
         in `.h5` or `.hdf`, the Hierarchical Data Format is used. The other supported
@@ -314,7 +314,7 @@ class FieldBase(metaclass=ABCMeta):
             raise ValueError(f"Do not know how to save data to `*{extension}`")
 
     def _write_hdf_dataset(self, hdf_path, key: str = "data") -> None:
-        """write data to a given hdf5 path `hdf_path`"""
+        """Write data to a given hdf5 path `hdf_path`"""
         # write the data
         dataset = hdf_path.create_dataset(key, data=self.data)
 
@@ -323,7 +323,7 @@ class FieldBase(metaclass=ABCMeta):
             dataset.attrs[key] = value
 
     def _write_to_image(self, filename: str, **kwargs):
-        """write data to image
+        """Write data to image.
 
         Args:
             filename (str): The path to the image that will be created
@@ -334,7 +334,7 @@ class FieldBase(metaclass=ABCMeta):
     def copy(
         self: TField, *, label: str | None = None, dtype: DTypeLike | None = None
     ) -> TField:
-        """return a new field with the data (but not the grid) copied
+        """Return a new field with the data (but not the grid) copied.
 
         Args:
             label (str, optional):
@@ -350,7 +350,7 @@ class FieldBase(metaclass=ABCMeta):
     def assert_field_compatible(
         self, other: FieldBase, accept_scalar: bool = False
     ) -> None:
-        """checks whether `other` is compatible with the current field
+        """Checks whether `other` is compatible with the current field.
 
         Args:
             other (FieldBase):
@@ -373,7 +373,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def dtype(self) -> DTypeLike:
-        """:class:`~DTypeLike`: the numpy dtype of the underlying data"""
+        """:class:`~DTypeLike`: the numpy dtype of the underlying data."""
         # this property is necessary to support np.iscomplexobj for DataFieldBases
         return self.data.dtype  # type: ignore
 
@@ -407,7 +407,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def unserialize_attributes(cls, attributes: dict[str, str]) -> dict[str, Any]:
-        """unserializes the given attributes
+        """Unserializes the given attributes.
 
         Args:
             attributes (dict):
@@ -426,13 +426,13 @@ class FieldBase(metaclass=ABCMeta):
         return cls._subclasses[class_name].unserialize_attributes(attributes)
 
     def __eq__(self, other):
-        """test fields for equality, ignoring the label"""
+        """Test fields for equality, ignoring the label."""
         if not isinstance(other, self.__class__):
             return NotImplemented
         return self.grid == other.grid and np.array_equal(self.data, other.data)
 
     def _unary_operation(self: TField, op: Callable) -> TField:
-        """perform an unary operation on this field
+        """Perform an unary operation on this field.
 
         Args:
             op (callable):
@@ -445,16 +445,16 @@ class FieldBase(metaclass=ABCMeta):
 
     @property
     def real(self: TField) -> TField:
-        """:class:`FieldBase`: Real part of the field"""
+        """:class:`FieldBase`: Real part of the field."""
         return self._unary_operation(np.real)
 
     @property
     def imag(self: TField) -> TField:
-        """:class:`FieldBase`: Imaginary part of the field"""
+        """:class:`FieldBase`: Imaginary part of the field."""
         return self._unary_operation(np.imag)
 
     def conjugate(self: TField) -> TField:
-        """returns complex conjugate of the field
+        """Returns complex conjugate of the field.
 
         Returns:
             :class:`FieldBase`: the complex conjugated field
@@ -462,7 +462,7 @@ class FieldBase(metaclass=ABCMeta):
         return self._unary_operation(np.conjugate)
 
     def __neg__(self):
-        """return the negative of the current field
+        """Return the negative of the current field.
 
         :class:`FieldBase`: The negative of the current field
         """
@@ -471,7 +471,7 @@ class FieldBase(metaclass=ABCMeta):
     def _binary_operation(
         self, other, op: Callable, scalar_second: bool = True
     ) -> FieldBase:
-        """perform a binary operation between this field and `other`
+        """Perform a binary operation between this field and `other`
 
         Args:
             other (number of FieldBase):
@@ -524,7 +524,7 @@ class FieldBase(metaclass=ABCMeta):
     def _binary_operation_inplace(
         self: TField, other, op_inplace: Callable, scalar_second: bool = True
     ) -> TField:
-        """perform an in-place binary operation between this field and `other`
+        """Perform an in-place binary operation between this field and `other`
 
         Args:
             other (number of FieldBase):
@@ -560,45 +560,45 @@ class FieldBase(metaclass=ABCMeta):
         return self
 
     def __add__(self, other) -> FieldBase:
-        """add two fields"""
+        """Add two fields."""
         return self._binary_operation(other, np.add, scalar_second=False)
 
     __radd__ = __add__
 
     def __iadd__(self: TField, other) -> TField:
-        """add `other` to the current field"""
+        """Add `other` to the current field."""
         return self._binary_operation_inplace(other, np.add, scalar_second=False)
 
     def __sub__(self, other) -> FieldBase:
-        """subtract two fields"""
+        """Subtract two fields."""
         return self._binary_operation(other, np.subtract, scalar_second=False)
 
     def __rsub__(self, other) -> FieldBase:
-        """subtract two fields"""
+        """Subtract two fields."""
         return self._binary_operation(
             other, lambda x, y, out: np.subtract(y, x, out=out), scalar_second=False
         )
 
     def __isub__(self: TField, other) -> TField:
-        """add `other` to the current field"""
+        """Add `other` to the current field."""
         return self._binary_operation_inplace(other, np.subtract, scalar_second=False)
 
     def __mul__(self, other) -> FieldBase:
-        """multiply field by value"""
+        """Multiply field by value."""
         return self._binary_operation(other, np.multiply, scalar_second=False)
 
     __rmul__ = __mul__
 
     def __imul__(self: TField, other) -> TField:
-        """multiply field by value"""
+        """Multiply field by value."""
         return self._binary_operation_inplace(other, np.multiply, scalar_second=False)
 
     def __truediv__(self, other) -> FieldBase:
-        """divide field by value"""
+        """Divide field by value."""
         return self._binary_operation(other, np.true_divide, scalar_second=True)
 
     def __rtruediv__(self, other) -> FieldBase:
-        """divide field by value"""
+        """Divide field by value."""
 
         def rdivision(x, y, **kwargs):
             return np.true_divide(y, x, **kwargs)
@@ -606,17 +606,17 @@ class FieldBase(metaclass=ABCMeta):
         return self._binary_operation(other, rdivision, scalar_second=True)
 
     def __itruediv__(self: TField, other) -> TField:
-        """divide field by value"""
+        """Divide field by value."""
         return self._binary_operation_inplace(other, np.true_divide, scalar_second=True)
 
     def __pow__(self, exponent: float) -> FieldBase:
-        """raise data of the field to a certain power"""
+        """Raise data of the field to a certain power."""
         if not np.isscalar(exponent):
             raise NotImplementedError("Only scalar exponents are supported")
         return self._binary_operation(exponent, np.power, scalar_second=True)
 
     def __ipow__(self: TField, exponent: float) -> TField:
-        """raise data of the field to a certain power in-place"""
+        """Raise data of the field to a certain power in-place."""
         if not np.isscalar(exponent):
             raise NotImplementedError("Only scalar exponents are supported")
         self.data **= exponent
@@ -630,7 +630,7 @@ class FieldBase(metaclass=ABCMeta):
         label: str | None = None,
         evaluate_args: dict[str, Any] | None = None,
     ) -> TField:
-        """applies a function/expression to the data and returns it as a field
+        """Applies a function/expression to the data and returns it as a field.
 
         Args:
             func (callable or str):
@@ -692,7 +692,7 @@ class FieldBase(metaclass=ABCMeta):
     def get_line_data(
         self, scalar: str = "auto", extract: str = "auto"
     ) -> dict[str, Any]:
-        """return data for a line plot of the field
+        """Return data for a line plot of the field.
 
         Args:
             scalar (str or int):
@@ -708,7 +708,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @abstractmethod
     def get_image_data(self) -> dict[str, Any]:
-        r"""return data for plotting an image of the field
+        r"""Return data for plotting an image of the field.
 
         Args:
             scalar (str or int):
@@ -725,16 +725,16 @@ class FieldBase(metaclass=ABCMeta):
 
     @abstractmethod
     def plot(self, *args, **kwargs):
-        """visualize the field"""
+        """Visualize the field."""
 
     @abstractmethod
     def _get_napari_data(self, **kwargs) -> dict[str, dict[str, Any]]:
-        """returns data for plotting this field using :mod:`napari`"""
+        """Returns data for plotting this field using :mod:`napari`"""
 
     def plot_interactive(
         self, viewer_args: dict[str, Any] | None = None, **kwargs
     ) -> None:
-        """create an interactive plot of the field using :mod:`napari`
+        """Create an interactive plot of the field using :mod:`napari`
 
         For a detailed description of the launched program, see the
         `napari webpage <http://napari.org/>`_.
@@ -759,7 +759,7 @@ class FieldBase(metaclass=ABCMeta):
     def split_mpi(
         self: TField, decomposition: Literal["auto"] | int | list[int] = "auto"
     ) -> TField:
-        """splits the field onto subgrids in an MPI run
+        """Splits the field onto subgrids in an MPI run.
 
         In a normal serial simulation, the method simply returns the field itself. In
         contrast, in an MPI simulation, the field provided on the main node is split

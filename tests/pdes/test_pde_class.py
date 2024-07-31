@@ -15,7 +15,7 @@ from pde.grids.boundaries.local import BCDataError
 
 
 def iter_grids():
-    """generate some test grids"""
+    """Generate some test grids."""
     yield grids.UnitGrid([2, 2], periodic=[True, False])
     yield grids.CartesianGrid([[0, 1]], [2], periodic=[False])
     yield grids.CylindricalSymGrid(2, (0, 2), (2, 2), periodic_z=True)
@@ -24,7 +24,7 @@ def iter_grids():
 
 
 def test_pde_critical_input(rng):
-    """test some wrong input and edge cases"""
+    """Test some wrong input and edge cases."""
     # test whether reserved symbols can be used as variables
     grid = grids.UnitGrid([4])
     eq = PDE({"E": 1})
@@ -55,7 +55,7 @@ def test_pde_critical_input(rng):
 
 
 def test_pde_scalar(rng):
-    """test PDE with a single scalar field"""
+    """Test PDE with a single scalar field."""
     eq = PDE({"u": "laplace(u) + exp(-t) + sin(t)"})
     assert eq.explicit_time_dependence
     assert not eq.complex_valued
@@ -70,7 +70,7 @@ def test_pde_scalar(rng):
 
 
 def test_pde_vector(rng):
-    """test PDE with a single vector field"""
+    """Test PDE with a single vector field."""
     eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
     assert eq.explicit_time_dependence
     assert not eq.complex_valued
@@ -85,7 +85,7 @@ def test_pde_vector(rng):
 
 
 def test_pde_2scalar():
-    """test PDE with two scalar fields"""
+    """Test PDE with two scalar fields."""
     eq = PDE({"u": "laplace(u) - u", "v": "- u * v"})
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
@@ -101,7 +101,7 @@ def test_pde_2scalar():
 
 @pytest.mark.slow
 def test_pde_vector_scalar(rng):
-    """test PDE with a vector and a scalar field"""
+    """Test PDE with a vector and a scalar field."""
     eq = PDE({"u": "vector_laplace(u) - u + gradient(v)", "v": "- divergence(u)"})
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
@@ -122,7 +122,7 @@ def test_pde_vector_scalar(rng):
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_compare_swift_hohenberg(grid, rng):
-    """compare custom class to swift-Hohenberg"""
+    """Compare custom class to swift-Hohenberg."""
     rate, kc2, delta = rng.uniform(0.5, 2, size=3)
     eq1 = SwiftHohenbergPDE(rate=rate, kc2=kc2, delta=delta)
     eq2 = PDE(
@@ -143,7 +143,7 @@ def test_compare_swift_hohenberg(grid, rng):
 
 
 def test_custom_operators(rng):
-    """test using a custom operator"""
+    """Test using a custom operator."""
     grid = grids.UnitGrid([32])
     field = ScalarField.random_normal(grid, rng=rng)
     eq = PDE({"u": "undefined(u)"})
@@ -168,7 +168,7 @@ def test_custom_operators(rng):
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_noise(backend, rng):
-    """test noise operator on PDE class"""
+    """Test noise operator on PDE class."""
     grid = grids.UnitGrid([128, 128])
     state = FieldCollection([ScalarField(grid), ScalarField(grid)])
 
@@ -193,7 +193,7 @@ def test_pde_noise(backend, rng):
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_spatial_args(backend):
-    """test PDE with spatial dependence"""
+    """Test PDE with spatial dependence."""
     field = ScalarField(grids.UnitGrid([4]))
 
     eq = PDE({"a": "x"})
@@ -213,7 +213,7 @@ def test_pde_spatial_args(backend):
 
 
 def test_pde_user_funcs(rng):
-    """test user supplied functions"""
+    """Test user supplied functions."""
     # test a simple case
     eq = PDE({"u": "get_x(gradient(u))"}, user_funcs={"get_x": lambda arr: arr[0]})
     field = ScalarField.random_colored(grids.UnitGrid([32, 32]), rng=rng)
@@ -228,7 +228,7 @@ def test_pde_user_funcs(rng):
 
 
 def test_pde_complex_serial(rng):
-    """test complex valued PDE"""
+    """Test complex valued PDE."""
     eq = PDE({"p": "I * laplace(p)"})
     assert not eq.explicit_time_dependence
     assert eq.complex_valued
@@ -244,7 +244,7 @@ def test_pde_complex_serial(rng):
 
 
 def test_pde_product_operators():
-    """test inner and outer products"""
+    """Test inner and outer products."""
     eq = PDE(
         {"p": "gradient(dot(p, p) + inner(p, p)) + tensor_divergence(outer(p, p))"}
     )
@@ -256,7 +256,7 @@ def test_pde_product_operators():
 
 
 def test_pde_setting_noise():
-    """test setting the noise strength"""
+    """Test setting the noise strength."""
     for noise in [[0, 1], {"b": 1}, {"b": 1, "a": 0}, {"b": 1, "c": 1}]:
         eq = PDE({"a": "0", "b": "0"}, noise=noise)
         assert eq.is_sde
@@ -271,7 +271,7 @@ def test_pde_setting_noise():
 
 
 def test_pde_consts():
-    """test using the consts argument in PDE"""
+    """Test using the consts argument in PDE."""
     field = ScalarField(grids.UnitGrid([3]), 1)
 
     eq = PDE({"a": "b"}, consts={"b": 2})
@@ -294,7 +294,7 @@ def test_pde_consts():
 
 @pytest.mark.parametrize("bc", ["auto_periodic_neumann", {"value": 1}])
 def test_pde_bcs(bc, rng):
-    """test PDE with boundary conditions"""
+    """Test PDE with boundary conditions."""
     eq = PDE({"u": "laplace(u)"}, bc=bc)
     assert not eq.explicit_time_dependence
     assert not eq.complex_valued
@@ -309,7 +309,7 @@ def test_pde_bcs(bc, rng):
 
 
 def test_pde_bcs_warning(caplog):
-    """test whether a warning is thrown correctly"""
+    """Test whether a warning is thrown correctly."""
     with caplog.at_level(logging.WARNING):
         eq = PDE({"u": "laplace(u)"}, bc_ops={"u:gradient": "value"})
         eq.evolution_rate(ScalarField(grids.UnitGrid([6])))
@@ -323,7 +323,7 @@ def test_pde_bcs_warning(caplog):
 
 @pytest.mark.parametrize("bc", ["asdf", [{"value": 1}] * 3])
 def test_pde_bcs_error(bc, rng):
-    """test PDE with wrong boundary conditions"""
+    """Test PDE with wrong boundary conditions."""
     eq = PDE({"u": "laplace(u)"}, bc=bc)
     grid = grids.UnitGrid([8, 8])
     field = ScalarField.random_normal(grid, rng=rng)
@@ -335,7 +335,7 @@ def test_pde_bcs_error(bc, rng):
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_time_dependent_bcs(backend):
-    """test PDE with time-dependent BCs"""
+    """Test PDE with time-dependent BCs."""
     field = ScalarField(grids.UnitGrid([3]))
 
     eq = PDE({"c": "laplace(c)"}, bc={"value_expression": "Heaviside(t - 1.5)"})
@@ -349,7 +349,7 @@ def test_pde_time_dependent_bcs(backend):
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_integral(backend, rng):
-    """test PDE with integral"""
+    """Test PDE with integral."""
     grid = grids.UnitGrid([16])
     field = ScalarField.random_uniform(grid, rng=rng)
     eq = PDE({"c": "-integral(c)"})
@@ -366,7 +366,7 @@ def test_pde_integral(backend, rng):
 
 
 def test_anti_periodic_bcs():
-    """test a simulation with anti-periodic BCs"""
+    """Test a simulation with anti-periodic BCs."""
     grid = grids.CartesianGrid([[-10, 10]], 32, periodic=True)
     field = ScalarField.from_expression(grid, "0.01 * x**2")
     field -= field.average
@@ -386,7 +386,7 @@ def test_anti_periodic_bcs():
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_heaviside(backend):
-    """test PDE with a heaviside right hand side"""
+    """Test PDE with a heaviside right hand side."""
     field = ScalarField(grids.CartesianGrid([[-1, 1]], 2), [-1, 1])
     eq = PDE({"c": "Heaviside(x)"})
     res = eq.solve(field, 0.999, dt=0.1, backend=backend, tracker=None)
@@ -394,7 +394,7 @@ def test_pde_heaviside(backend):
 
 
 def test_jacobian_spectral():
-    """test jacobian_spectral method"""
+    """Test jacobian_spectral method."""
     eq = PDE({"c": "laplace(c**3 - c - laplace(c))"})
     expected = "q**2*(-3*c**2 - q**2 + 1)"
     expr = eq._jacobian_spectral()[0]
@@ -418,7 +418,7 @@ def test_jacobian_spectral():
 
 
 def test_jacobian_spectral_bad_input():
-    """test jacobian_spectral method with bad input"""
+    """Test jacobian_spectral method with bad input."""
     with pytest.raises(ValueError):
         PDE({"a": "a"})._jacobian_spectral(wave_vector="t")
     with pytest.raises(ValueError):
@@ -438,7 +438,7 @@ def test_jacobian_spectral_bad_input():
 
 
 def test_dispersion_relationn():
-    """test dispersion_relation method"""
+    """Test dispersion_relation method."""
     eq = PDE({"c": "laplace(c**3 - c - laplace(c))"})
     qs, evs = eq._dispersion_relation(state_hom=0, qs=[0, 0.5, 1])
     np.testing.assert_allclose(qs, np.array([0, 0.5, 1]))

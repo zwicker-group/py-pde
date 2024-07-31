@@ -11,7 +11,7 @@ from .base import CoordinatesBase
 
 
 class PolarCoordinates(CoordinatesBase):
-    """2-dimensional polar coordinates"""
+    """2-dimensional polar coordinates."""
 
     dim = 2
     axes = ["r", "φ"]
@@ -27,7 +27,7 @@ class PolarCoordinates(CoordinatesBase):
         return cls._singleton
 
     def __repr__(self) -> str:
-        """return instance as string"""
+        """Return instance as string."""
         return f"{self.__class__.__name__}()"
 
     def __eq__(self, other):

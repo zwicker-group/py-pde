@@ -1,5 +1,4 @@
-"""
-Solvers define how a PDE is solved, i.e., how the initial state is advanced in time.
+"""Solvers define how a PDE is solved, i.e., how the initial state is advanced in time.
 
 .. autosummary::
    :nosignatures:
@@ -13,7 +12,7 @@ Solvers define how a PDE is solved, i.e., how the initial state is advanced in t
    ~scipy.ScipySolver
    ~registered_solvers
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from .adams_bashforth import AdamsBashforthSolver
@@ -31,7 +30,7 @@ except ImportError:
 
 
 def registered_solvers() -> list[str]:
-    """returns all solvers that are currently registered
+    """Returns all solvers that are currently registered.
 
     Returns:
         list of str: List with the names of the solvers

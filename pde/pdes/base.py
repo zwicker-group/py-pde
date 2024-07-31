@@ -1,7 +1,6 @@
-"""
-Base class for defining partial differential equations
+"""Base class for defining partial differential equations.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -29,7 +28,7 @@ TState = TypeVar("TState", FieldCollection, DataFieldBase)
 
 
 class PDEBase(metaclass=ABCMeta):
-    """base class for defining partial differential equations (PDEs)
+    """Base class for defining partial differential equations (PDEs)
 
     Custom PDEs can be implemented by subclassing :class:`PDEBase` to specify the
     evolution rate. In the simple case of deterministic PDEs, the methods
@@ -112,7 +111,7 @@ class PDEBase(metaclass=ABCMeta):
         return hasattr(self, "noise") and np.any(self.noise != 0)  # type: ignore
 
     def make_modify_after_step(self, state: FieldBase) -> Callable[[np.ndarray], float]:
-        """returns a function that can be called to modify a state
+        """Returns a function that can be called to modify a state.
 
         This function is applied to the state after each integration step when an
         explicit stepper is used. The default behavior is to not change the state.
@@ -128,14 +127,14 @@ class PDEBase(metaclass=ABCMeta):
         """
 
         def modify_after_step(state_data: np.ndarray) -> float:
-            """no-op function"""
+            """No-op function."""
             return 0
 
         return modify_after_step
 
     @abstractmethod
     def evolution_rate(self, state: TState, t: float = 0) -> TState:
-        """evaluate the right hand side of the PDE
+        """Evaluate the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -151,7 +150,7 @@ class PDEBase(metaclass=ABCMeta):
     def _make_pde_rhs_numba(
         self, state: FieldBase, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create a compiled function for evaluating the right hand side"""
+        """Create a compiled function for evaluating the right hand side."""
         raise NotImplementedError("No backend `numba`")
 
     def check_rhs_consistency(
@@ -163,7 +162,7 @@ class PDEBase(metaclass=ABCMeta):
         rhs_numba: Callable | None = None,
         **kwargs,
     ) -> None:
-        """check the numba compiled right hand side versus the numpy variant
+        """Check the numba compiled right hand side versus the numpy variant.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -208,7 +207,7 @@ class PDEBase(metaclass=ABCMeta):
     def _make_pde_rhs_numba_cached(
         self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create a compiled function for evaluating the right hand side
+        """Create a compiled function for evaluating the right hand side.
 
         This method implements caching and checking of the actual method, which is
         defined by overwriting the method `_make_pde_rhs_numba`.
@@ -255,7 +254,7 @@ class PDEBase(metaclass=ABCMeta):
         backend: Literal["auto", "numpy", "numba"] = "auto",
         **kwargs,
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """return a function for evaluating the right hand side of the PDE
+        """Return a function for evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -282,7 +281,7 @@ class PDEBase(metaclass=ABCMeta):
             state = state.copy()  # save this exact state for the closure
 
             def evolution_rate_numpy(state_data: np.ndarray, t: float) -> np.ndarray:
-                """evaluate the rhs given only a state without the grid"""
+                """Evaluate the rhs given only a state without the grid."""
                 state.data = state_data
                 return self.evolution_rate(state, t, **kwargs).data
 
@@ -305,7 +304,7 @@ class PDEBase(metaclass=ABCMeta):
     def noise_realization(
         self, state: TState, t: float = 0, *, label: str = "Noise realization"
     ) -> TState:
-        """returns a realization for the noise
+        """Returns a realization for the noise.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
@@ -363,7 +362,7 @@ class PDEBase(metaclass=ABCMeta):
     def _make_noise_realization_numba(
         self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """return a function for evaluating the noise term of the PDE
+        """Return a function for evaluating the noise term of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -390,7 +389,7 @@ class PDEBase(metaclass=ABCMeta):
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
-                    """helper function returning a noise realization"""
+                    """Helper function returning a noise realization."""
                     out = np.empty(data_shape)
                     for n in range(len(state_data)):
                         if noises_var[n] == 0:
@@ -407,7 +406,7 @@ class PDEBase(metaclass=ABCMeta):
 
                 @jit
                 def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
-                    """helper function returning a noise realization"""
+                    """Helper function returning a noise realization."""
                     out = np.empty(state_data.shape)
                     for i in range(state_data.size):
                         scale = noise_var / cell_volume(i)
@@ -418,7 +417,7 @@ class PDEBase(metaclass=ABCMeta):
 
             @jit
             def noise_realization(state_data: np.ndarray, t: float) -> None:
-                """helper function returning a noise realization"""
+                """Helper function returning a noise realization."""
                 return None
 
         return noise_realization  # type: ignore
@@ -426,7 +425,7 @@ class PDEBase(metaclass=ABCMeta):
     def _make_sde_rhs_numba(
         self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
-        """return a function for evaluating the noise term of the PDE
+        """Return a function for evaluating the noise term of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -441,7 +440,7 @@ class PDEBase(metaclass=ABCMeta):
 
         @jit
         def sde_rhs(state_data: np.ndarray, t: float) -> tuple[np.ndarray, np.ndarray]:
-            """compiled helper function returning a noise realization"""
+            """Compiled helper function returning a noise realization."""
             return (evolution_rate(state_data, t), noise_realization(state_data, t))
 
         return sde_rhs  # type: ignore
@@ -449,7 +448,7 @@ class PDEBase(metaclass=ABCMeta):
     def _make_sde_rhs_numba_cached(
         self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
-        """create a compiled function for evaluating the noise term of the PDE
+        """Create a compiled function for evaluating the noise term of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -483,7 +482,7 @@ class PDEBase(metaclass=ABCMeta):
         backend: Literal["auto", "numpy", "numba"] = "auto",
         **kwargs,
     ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
-        """return a function for evaluating the right hand side of the SDE
+        """Return a function for evaluating the right hand side of the SDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -515,7 +514,7 @@ class PDEBase(metaclass=ABCMeta):
             def sde_rhs(
                 state_data: np.ndarray, t: float
             ) -> tuple[np.ndarray, np.ndarray]:
-                """evaluate the rhs given only a state without the grid"""
+                """Evaluate the rhs given only a state without the grid."""
                 state.data = state_data
                 return (
                     self.evolution_rate(state, t, **kwargs).data,
@@ -540,7 +539,7 @@ class PDEBase(metaclass=ABCMeta):
         ret_info: bool = False,
         **kwargs,
     ) -> None | TState | tuple[TState | None, dict[str, Any]]:
-        """solves the partial differential equation
+        """Solves the partial differential equation.
 
         The method constructs a suitable solver (:class:`~pde.solvers.base.SolverBase`)
         and controller (:class:`~pde.controller.Controller`) to advance the state over
@@ -636,7 +635,7 @@ class PDEBase(metaclass=ABCMeta):
 
 
 def expr_prod(factor: float, expression: str) -> str:
-    """helper function for building an expression with an (optional) pre-factor
+    """Helper function for building an expression with an (optional) pre-factor.
 
     Args:
         factor (float): The value of the prefactor

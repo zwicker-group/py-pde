@@ -1,5 +1,6 @@
 -r ../requirements.txt
 black>=24
+docformatter>=1.7
 importlib-metadata>=5
 isort>=5.1
 jupyter_contrib_nbextensions>=0.5

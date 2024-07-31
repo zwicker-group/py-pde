@@ -1,5 +1,4 @@
-r"""
-This module implements differential operators on polar grids 
+r"""This module implements differential operators on polar grids.
 
 .. autosummary::
    :nosignatures:
@@ -31,7 +30,7 @@ from .common import make_general_poisson_solver
 @PolarSymGrid.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_laplace(grid: PolarSymGrid) -> OperatorType:
-    """make a discretized laplace operator for a polar grid
+    """Make a discretized laplace operator for a polar grid.
 
     {DESCR_POLAR_GRID}
 
@@ -52,7 +51,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
 
     @jit
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply laplace operator to array `arr`"""
+        """Apply laplace operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
             out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr_2
             out[i - 1] += (arr[i + 1] - arr[i - 1]) * factor_r[i - 1]
@@ -65,7 +64,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
 def make_gradient(
     grid: PolarSymGrid, *, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
-    """make a discretized gradient operator for a polar grid
+    """Make a discretized gradient operator for a polar grid.
 
     {DESCR_POLAR_GRID}
 
@@ -92,7 +91,7 @@ def make_gradient(
 
     @jit
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
             if method == "central":
                 out[0, i - 1] = (arr[i + 1] - arr[i - 1]) * scale_r
@@ -108,7 +107,7 @@ def make_gradient(
 @PolarSymGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> OperatorType:
-    """make a discretized gradient squared operator for a polar grid
+    """Make a discretized gradient squared operator for a polar grid.
 
     {DESCR_POLAR_GRID}
 
@@ -136,7 +135,7 @@ def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> Operat
 
         @jit
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply squared gradient operator to array `arr`"""
+            """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
                 out[i - 1] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
 
@@ -146,7 +145,7 @@ def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> Operat
 
         @jit
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply squared gradient operator to array `arr`"""
+            """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
                 term = (arr[i + 1] - arr[i]) ** 2 + (arr[i] - arr[i - 1]) ** 2
                 out[i - 1] = term * scale
@@ -157,7 +156,7 @@ def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> Operat
 @PolarSymGrid.register_operator("divergence", rank_in=1, rank_out=0)
 @fill_in_docstring
 def make_divergence(grid: PolarSymGrid) -> OperatorType:
-    """make a discretized divergence operator for a polar grid
+    """Make a discretized divergence operator for a polar grid.
 
     {DESCR_POLAR_GRID}
 
@@ -178,7 +177,7 @@ def make_divergence(grid: PolarSymGrid) -> OperatorType:
 
     @jit
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply divergence operator to array `arr`"""
+        """Apply divergence operator to array `arr`"""
         # inner radial boundary condition
         for i in range(1, dim_r + 1):  # iterate radial points
             out[i - 1] = (arr[0, i + 1] - arr[0, i - 1]) * scale_r
@@ -190,7 +189,7 @@ def make_divergence(grid: PolarSymGrid) -> OperatorType:
 @PolarSymGrid.register_operator("vector_gradient", rank_in=1, rank_out=2)
 @fill_in_docstring
 def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
-    """make a discretized vector gradient operator for a polar grid
+    """Make a discretized vector gradient operator for a polar grid.
 
     {DESCR_POLAR_GRID}
 
@@ -211,7 +210,7 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
 
     @jit
     def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply vector gradient operator to array `arr`"""
+        """Apply vector gradient operator to array `arr`"""
         # assign aliases
         arr_r, arr_φ = arr
         out_rr, out_rφ = out[0, 0, :], out[0, 1, :]
@@ -229,7 +228,7 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
 @PolarSymGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
-    """make a discretized tensor divergence operator for a polar grid
+    """Make a discretized tensor divergence operator for a polar grid.
 
     {DESCR_POLAR_GRID}
 
@@ -250,7 +249,7 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
 
     @jit
     def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply tensor divergence operator to array `arr`"""
+        """Apply tensor divergence operator to array `arr`"""
         # assign aliases
         arr_rr, arr_rφ = arr[0, 0, :], arr[0, 1, :]
         arr_φr, arr_φφ = arr[1, 0, :], arr[1, 1, :]
@@ -268,7 +267,7 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
 
 @fill_in_docstring
 def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for laplace operator on a polar grid
+    """Get sparse matrix for laplace operator on a polar grid.
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -329,7 +328,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 def make_poisson_solver(
     bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
-    """make a operator that solves Poisson's equation
+    """Make a operator that solves Poisson's equation.
 
     {DESCR_POLAR_GRID}
 

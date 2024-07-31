@@ -1,5 +1,4 @@
-"""
-Provides support for mypy type checking of the package
+"""Provides support for mypy type checking of the package.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -22,36 +21,36 @@ BackendType = Literal["auto", "numpy", "numba"]
 
 
 class OperatorType(Protocol):
-    """an operator that acts on an array"""
+    """An operator that acts on an array."""
 
     def __call__(self, arr: np.ndarray, out: np.ndarray) -> None:
-        """evaluate the operator"""
+        """Evaluate the operator."""
 
 
 class OperatorFactory(Protocol):
-    """a factory function that creates an operator for a particular grid"""
+    """A factory function that creates an operator for a particular grid."""
 
     def __call__(self, grid: GridBase, **kwargs) -> OperatorType:
-        """create the operator"""
+        """Create the operator."""
 
 
 class CellVolume(Protocol):
     def __call__(self, *args: int) -> float:
-        """calculate the volume of the cell at the given position"""
+        """Calculate the volume of the cell at the given position."""
 
 
 class VirtualPointEvaluator(Protocol):
     def __call__(self, arr: np.ndarray, idx: tuple[int, ...], args=None) -> float:
-        """evaluate the virtual point at the given position"""
+        """Evaluate the virtual point at the given position."""
 
 
 class AdjacentEvaluator(Protocol):
     def __call__(
         self, arr_1d: np.ndarray, i_point: int, bc_idx: tuple[int, ...]
     ) -> float:
-        """evaluate the values at adjecent points"""
+        """Evaluate the values at adjecent points."""
 
 
 class GhostCellSetter(Protocol):
     def __call__(self, data_full: np.ndarray, args=None) -> None:
-        """set the ghost cells"""
+        """Set the ghost cells."""

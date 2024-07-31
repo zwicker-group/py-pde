@@ -1,5 +1,4 @@
-"""
-Defines base class of single fields with arbitrary rank
+"""Defines base class of single fields with arbitrary rank.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -35,7 +34,7 @@ TDataField = TypeVar("TDataField", bound="DataFieldBase")
 
 
 class DataFieldBase(FieldBase, metaclass=ABCMeta):
-    """abstract base class for describing fields of single entities"""
+    """Abstract base class for describing fields of single entities."""
 
     rank: int  # the rank of the tensor field
 
@@ -114,7 +113,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 self.data = data_arr
 
     def __repr__(self) -> str:
-        """return instance as string"""
+        """Return instance as string."""
         class_name = self.__class__.__name__
         result = f"{class_name}(grid={self.grid!r}, data={self.data}"
         if self.label:
@@ -124,7 +123,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return result + ")"
 
     def __str__(self) -> str:
-        """return instance as string"""
+        """Return instance as string."""
         result = (
             f"{self.__class__.__name__}(grid={self.grid}, "
             f"data=Array{self.data.shape}"
@@ -146,7 +145,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
     ) -> TDataField:
-        """create field with uniform distributed random values
+        """Create field with uniform distributed random values.
 
         These values are uncorrelated in space.
 
@@ -194,7 +193,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
     ) -> TDataField:
-        """create field with normal distributed random values
+        """Create field with normal distributed random values.
 
         These values are uncorrelated in space. A complex field is returned when either
         `mean` or `std` is a complex number. In this case, the real and imaginary parts
@@ -260,7 +259,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
     ) -> TDataField:
-        r"""create a random field build from harmonics
+        r"""Create a random field build from harmonics.
 
         The resulting fields will be highly correlated in space and can thus
         serve for testing differential operators.
@@ -335,7 +334,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
     ) -> TDataField:
-        r"""create a field of random values with colored noise
+        r"""Create a field of random values with colored noise.
 
         The spatially correlated values obey
 
@@ -381,7 +380,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def get_class_by_rank(cls, rank: int) -> type[DataFieldBase]:
-        """return a :class:`DataFieldBase` subclass describing a field with a given rank
+        """Return a :class:`DataFieldBase` subclass describing a field with a given
+        rank.
 
         Args:
             rank (int): The rank of the tensor field
@@ -404,7 +404,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         attributes: dict[str, Any],
         data: np.ndarray | None = None,
     ) -> TDataField:
-        """create a field from given state.
+        """Create a field from given state.
 
         Args:
             attributes (dict):
@@ -448,7 +448,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @classmethod
     def unserialize_attributes(cls, attributes: dict[str, str]) -> dict[str, Any]:
-        """unserializes the given attributes
+        """Unserializes the given attributes.
 
         Args:
             attributes (dict):
@@ -466,7 +466,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return results
 
     def _write_to_image(self, filename: str, **kwargs) -> None:
-        r"""write data to image
+        r"""Write data to image.
 
         Args:
             filename (str):
@@ -499,7 +499,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         fill: Number | None = None,
         with_ghost_cells: bool = False,
     ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
-        r"""returns a function that can be used to interpolate values.
+        r"""Returns a function that can be used to interpolate values.
 
         Args:
             fill (Number, optional):
@@ -543,7 +543,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         def interpolator(
             point: np.ndarray, data: np.ndarray | None = None
         ) -> np.ndarray:
-            """return the interpolated value at the position `point`
+            """Return the interpolated value at the position `point`
 
             Args:
                 point (:class:`~numpy.ndarray`):
@@ -590,7 +590,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         bc: BoundariesData | None = None,
         fill: Number | None = None,
     ) -> np.ndarray:
-        r"""interpolate the field to points between support points
+        r"""Interpolate the field to points between support points.
 
         Args:
             point (:class:`~numpy.ndarray`):
@@ -630,7 +630,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         fill: Number | None = None,
         label: str | None = None,
     ) -> TDataField:
-        """interpolate the data of this field to another grid.
+        """Interpolate the data of this field to another grid.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -654,7 +654,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         raise NotImplementedError(f"Cannot interpolate {self.__class__.__name__}")
 
     def insert(self, point: np.ndarray, amount: ArrayLike) -> None:
-        """adds an (integrated) value to the field at an interpolated position
+        """Adds an (integrated) value to the field at an interpolated position.
 
         Args:
             point (:class:`~numpy.ndarray`):
@@ -710,7 +710,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def get_boundary_values(
         self, axis: int, upper: bool, bc: BoundariesData | None = None
     ) -> NumberOrArray:
-        """get the field values directly on the specified boundary
+        """Get the field values directly on the specified boundary.
 
         Args:
             axis (int):
@@ -744,7 +744,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def set_ghost_cells(
         self, bc: BoundariesData, *, set_corners: bool = False, args=None
     ) -> None:
-        """set the boundary values on virtual points for all boundaries
+        """Set the boundary values on virtual points for all boundaries.
 
         Args:
             bc (str or list or tuple or dict):
@@ -762,26 +762,26 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @property
     @abstractmethod
     def integral(self) -> NumberOrArray:
-        """integral of the scalar field over space"""
+        """Integral of the scalar field over space."""
 
     @abstractmethod
     def to_scalar(
         self, scalar: str = "auto", *, label: str | None = None
     ) -> ScalarField:
-        """return scalar variant of the field"""
+        """Return scalar variant of the field."""
 
     @property
     def average(self) -> NumberOrArray:
-        """float or :class:`~numpy.ndarray`: the average of data
+        """Float or :class:`~numpy.ndarray`: the average of data.
 
-        This is calculated by integrating each component of the field over space
-        and dividing by the grid volume
+        This is calculated by integrating each component of the field over space and
+        dividing by the grid volume
         """
         return self.integral / self.grid.volume
 
     @property
     def fluctuations(self) -> NumberOrArray:
-        """float or :class:`~numpy.ndarray`: quantification of the average fluctuations
+        """Float or :class:`~numpy.ndarray`: quantification of the average fluctuations.
 
         The fluctuations are defined as the standard deviation of the data scaled by the
         cell volume. This definition makes the fluctuations independent of the
@@ -824,7 +824,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         args: dict[str, Any] | None = None,
         **kwargs,
     ) -> DataFieldBase:
-        r"""apply a (differential) operator and return result as a field
+        r"""Apply a (differential) operator and return result as a field.
 
         Args:
             operator (str):
@@ -871,7 +871,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def make_dot_operator(
         self, backend: Literal["numpy", "numba"] = "numba", *, conjugate: bool = True
     ) -> Callable[[np.ndarray, np.ndarray, np.ndarray | None], np.ndarray]:
-        """return operator calculating the dot product between two fields
+        """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
         between a vector and a tensor.
@@ -892,13 +892,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         @register_jitable
         def maybe_conj(arr: np.ndarray) -> np.ndarray:
-            """helper function implementing optional conjugation"""
+            """Helper function implementing optional conjugation."""
             return arr.conjugate() if conjugate else arr
 
         def dot(
             a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
         ) -> np.ndarray:
-            """numpy implementation to calculate dot product between two fields"""
+            """Numpy implementation to calculate dot product between two fields."""
             rank_a = a.ndim - num_axes
             rank_b = b.ndim - num_axes
             if rank_a < 1 or rank_b < 1:
@@ -929,7 +929,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # overload `dot` and return a compiled version
 
             def get_rank(arr: nb.types.Type | nb.types.Optional) -> int:
-                """determine rank of field with type `arr`"""
+                """Determine rank of field with type `arr`"""
                 arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
                 if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
                     raise nb.errors.TypingError(
@@ -947,7 +947,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             def dot_ol(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
-                """numba implementation to calculate dot product between two fields"""
+                """Numba implementation to calculate dot product between two fields."""
                 # get (and check) rank of the input arrays
                 rank_a = get_rank(a)
                 rank_b = get_rank(b)
@@ -1002,7 +1002,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     def dot_impl(
                         a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
-                        """helper function allocating output array"""
+                        """Helper function allocating output array."""
                         assert a.shape == a_shape
                         assert b.shape == b_shape
                         out = np.empty(out_shape, dtype=dtype)
@@ -1015,7 +1015,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     def dot_impl(
                         a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
-                        """helper function without allocating output array"""
+                        """Helper function without allocating output array."""
                         assert a.shape == a_shape
                         assert b.shape == b_shape
                         assert out.shape == out_shape  # type: ignore
@@ -1028,7 +1028,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             def dot_compiled(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
-                """numba implementation to calculate dot product between two fields"""
+                """Numba implementation to calculate dot product between two fields."""
                 return dot(a, b, out)
 
             return dot_compiled  # type: ignore
@@ -1043,7 +1043,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         out: TDataField | None = None,
         label: str | None = None,
     ) -> TDataField:
-        """applies Gaussian smoothing with the given standard deviation
+        """Applies Gaussian smoothing with the given standard deviation.
 
         This function respects periodic boundary conditions of the underlying grid,
         using reflection when no periodicity is specified.
@@ -1125,7 +1125,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return data
 
     def get_vector_data(self, transpose: bool = False, **kwargs) -> dict[str, Any]:
-        r"""return data for a vector plot of the field
+        r"""Return data for a vector plot of the field.
 
         Args:
             \**kwargs: Additional parameters are forwarded to
@@ -1145,7 +1145,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         ylim: tuple[float, float] | None = None,
         **kwargs,
     ) -> PlotReference:
-        r"""visualize a field using a 1d line plot
+        r"""Visualize a field using a 1d line plot.
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -1193,7 +1193,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         )
 
     def _update_line_plot(self, reference: PlotReference) -> None:
-        """update a line plot with the current field values
+        """Update a line plot with the current field values.
 
         Args:
             reference (:class:`PlotReference`):
@@ -1223,7 +1223,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         transpose: bool = False,
         **kwargs,
     ) -> PlotReference:
-        r"""visualize a field using a 2d density plot
+        r"""Visualize a field using a 2d density plot.
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -1276,7 +1276,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return PlotReference(ax, axes_image, parameters)
 
     def _update_image_plot(self, reference: PlotReference) -> None:
-        """update an image plot with the current field values
+        """Update an image plot with the current field values.
 
         Args:
             reference (:class:`PlotReference`):
@@ -1304,7 +1304,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         max_points: int | None = 16,
         **kwargs,
     ) -> PlotReference:
-        r"""visualize a field using a 2d vector plot
+        r"""Visualize a field using a 2d vector plot.
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -1361,7 +1361,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return PlotReference(ax, element, parameters)
 
     def _update_vector_plot(self, reference: PlotReference) -> None:
-        """update a vector plot with the current field values
+        """Update a vector plot with the current field values.
 
         Args:
             reference (:class:`PlotReference`):
@@ -1392,7 +1392,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             raise ValueError(f"Vector plot `{method}` is not supported.")
 
     def _update_plot(self, reference: PlotReference) -> None:
-        """update a plot with the current field values
+        """Update a plot with the current field values.
 
         Args:
             reference (:class:`PlotReference`):
@@ -1413,7 +1413,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     @plot_on_axes(update_method="_update_plot")
     def plot(self, kind: str = "auto", **kwargs) -> PlotReference:
-        r"""visualize the field
+        r"""Visualize the field.
 
         Args:
             kind (str):
@@ -1456,7 +1456,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
               - `max_points` Sets max. number of points along each axis in quiver plots
               - Additional arguments are passed to :func:`matplotlib.pyplot.quiver` or
                 :func:`matplotlib.pyplot.streamplot`.
-
         """
         # determine the correct kind of plotting
         if kind == "auto":
@@ -1498,7 +1497,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def _get_napari_layer_data(
         self, scalar: str = "auto", args: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        """returns data for plotting on a single napari layer
+        """Returns data for plotting on a single napari layer.
 
         Args:
             scalar (str):
@@ -1519,7 +1518,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return result
 
     def _get_napari_data(self, **kwargs) -> dict[str, dict[str, Any]]:
-        r"""returns data for plotting this field using :mod:`napari`
+        r"""Returns data for plotting this field using :mod:`napari`
 
         Args:
             \**kwargs: all arguments are forwarded to `_get_napari_layer_data`

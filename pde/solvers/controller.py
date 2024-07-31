@@ -1,5 +1,4 @@
-"""
-Defines a class controlling the simulations of PDEs
+"""Defines a class controlling the simulations of PDEs.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -30,7 +29,7 @@ TState = TypeVar("TState", bound="FieldBase")
 
 
 class Controller:
-    """class controlling a simulation
+    """Class controlling a simulation.
 
     The controller calls a solver to advance the simulation into the future and it takes
     care of trackers that analyze and modify the state periodically. The controller also
@@ -94,7 +93,7 @@ class Controller:
 
     @t_range.setter
     def t_range(self, value: TRangeType):
-        """set start and end time of the simulation
+        """Set start and end time of the simulation.
 
         Args:
             value (float or tuple):
@@ -114,10 +113,10 @@ class Controller:
                 )
 
     def _get_stop_handler(self) -> Callable[[Exception, float], tuple[int, str]]:
-        """return function that handles messaging"""
+        """Return function that handles messaging."""
 
         def _handle_stop_iteration(err: Exception, t: float) -> tuple[int, str]:
-            """helper function for handling interrupts raised by trackers"""
+            """Helper function for handling interrupts raised by trackers."""
             if isinstance(err, FinishedSimulation):
                 # tracker determined that the simulation finished
                 self.info["successful"] = True
@@ -145,7 +144,7 @@ class Controller:
         return _handle_stop_iteration
 
     def _run_single(self, state: TState, dt: float | None = None) -> None:
-        """run the simulation
+        """Run the simulation.
 
         Diagnostic information about the solver procedure are available in the
         `diagnostics` property of the instance after this function has been called.
@@ -279,7 +278,7 @@ class Controller:
             )
 
     def _run_mpi_client(self, state: TState, dt: float | None = None) -> None:
-        """loop for run the simulation on client nodes during an MPI run
+        """Loop for run the simulation on client nodes during an MPI run.
 
         This function just loops the stepper advancing the sub field of the current node
         in time. All other logic, including trackers, are done in the main node.
@@ -310,7 +309,7 @@ class Controller:
             t = stepper(state, t, t_end)
 
     def run(self, initial_state: TState, dt: float | None = None) -> TState | None:
-        """run the simulation
+        """Run the simulation.
 
         Diagnostic information about the solver are available in the
         :attr:`~Controller.diagnostics` property after this function has been called.

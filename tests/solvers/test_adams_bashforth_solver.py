@@ -8,7 +8,7 @@ import pde
 
 
 def test_adams_bashforth():
-    """test the adams_bashforth method"""
+    """Test the adams_bashforth method."""
     eq = pde.PDE({"y": "y"})
     state = pde.ScalarField(pde.UnitGrid([1]), 1)
     storage = pde.MemoryStorage()

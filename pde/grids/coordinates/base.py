@@ -12,11 +12,11 @@ from scipy import integrate, optimize
 
 
 class DimensionError(ValueError):
-    """exception indicating that dimensions were inconsistent"""
+    """Exception indicating that dimensions were inconsistent."""
 
 
 class CoordinatesBase:
-    """Base class for orthonormal coordinate systems"""
+    """Base class for orthonormal coordinate systems."""
 
     # properties that are defined in subclasses
     dim: int
@@ -45,7 +45,7 @@ class CoordinatesBase:
         raise NotImplementedError
 
     def pos_to_cart(self, points: np.ndarray) -> np.ndarray:
-        """convert coordinates to Cartesian coordinates
+        """Convert coordinates to Cartesian coordinates.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -64,7 +64,7 @@ class CoordinatesBase:
         raise NotImplementedError
 
     def pos_from_cart(self, points: np.ndarray) -> np.ndarray:
-        """convert Cartesian coordinates to coordinates in this system
+        """Convert Cartesian coordinates to coordinates in this system.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -79,7 +79,7 @@ class CoordinatesBase:
         return self._pos_from_cart(points)
 
     def pos_diff(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """return Cartesian vector(s) pointing from p1 to p2
+        """Return Cartesian vector(s) pointing from p1 to p2.
 
         Args:
             p1 (:class:`~numpy.ndarray`):
@@ -98,7 +98,7 @@ class CoordinatesBase:
         return self.pos_to_cart(p2) - self.pos_to_cart(p1)  # type: ignore
 
     def distance(self, p1: np.ndarray, p2: np.ndarray) -> float:
-        """Calculate the distance between two points
+        """Calculate the distance between two points.
 
         Args:
             p1 (:class:`~numpy.ndarray`):
@@ -118,7 +118,7 @@ class CoordinatesBase:
         return np.diag(self.metric(points)) ** 2
 
     def scale_factors(self, points: np.ndarray) -> np.ndarray:
-        """calculate the scale factors at various points
+        """Calculate the scale factors at various points.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -144,7 +144,7 @@ class CoordinatesBase:
         return jac
 
     def mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
-        """returns the Jacobian matrix of the coordinate mapping
+        """Returns the Jacobian matrix of the coordinate mapping.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -163,7 +163,7 @@ class CoordinatesBase:
         return np.prod(self._scale_factors(points), axis=0)  # type: ignore
 
     def volume_factor(self, points: np.ndarray) -> ArrayLike:
-        """calculate the volume factors at various points
+        """Calculate the volume factors at various points.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -188,7 +188,7 @@ class CoordinatesBase:
         return cell_volumes
 
     def cell_volume(self, c_low: np.ndarray, c_high: np.ndarray) -> np.ndarray:
-        """calculate the volume between coordinate lines
+        """Calculate the volume between coordinate lines.
 
         Args:
             c_low (:class:`~numpy.ndarray`):
@@ -208,7 +208,7 @@ class CoordinatesBase:
         return self._cell_volume(c_low, c_high)
 
     def metric(self, points: np.ndarray) -> np.ndarray:
-        """calculate the metric tensor at coordinate points
+        """Calculate the metric tensor at coordinate points.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -227,7 +227,7 @@ class CoordinatesBase:
         raise NotImplementedError
 
     def basis_rotation(self, points: np.ndarray) -> np.ndarray:
-        """returns rotation matrix rotating basis vectors to Cartesian coordinates
+        """Returns rotation matrix rotating basis vectors to Cartesian coordinates.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -244,7 +244,7 @@ class CoordinatesBase:
         return self._basis_rotation(points)
 
     def vec_to_cart(self, points: np.ndarray, components: np.ndarray) -> np.ndarray:
-        """convert the vectors at given points to a Cartesian basis
+        """Convert the vectors at given points to a Cartesian basis.
 
         Args:
             points (:class:`~numpy.ndarray`):

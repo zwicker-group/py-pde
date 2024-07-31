@@ -14,7 +14,7 @@ from pde.tools import mpi
 @pytest.mark.parametrize("dim", [1, 2, 3])
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_complex_bcs_mpi(dim, backend, rng):
-    """test PDE with complex BCs using multiprocessing"""
+    """Test PDE with complex BCs using multiprocessing."""
     eq = DiffusionPDE()
     grid = grids.UnitGrid([8] * dim)
     field = ScalarField.random_normal(grid, rng=rng).smooth(1)
@@ -35,7 +35,7 @@ def test_pde_complex_bcs_mpi(dim, backend, rng):
 
 @pytest.mark.multiprocessing
 def test_pde_vector_mpi(rng):
-    """test PDE with a single vector field using multiprocessing"""
+    """Test PDE with a single vector field using multiprocessing."""
     eq = PDE({"u": "vector_laplace(u) + exp(-t)"})
     assert eq.explicit_time_dependence
     assert not eq.complex_valued
@@ -58,7 +58,7 @@ def test_pde_vector_mpi(rng):
 
 @pytest.mark.multiprocessing
 def test_pde_complex_mpi(rng):
-    """test complex valued PDE"""
+    """Test complex valued PDE."""
     eq = PDE({"p": "I * laplace(p)"})
     assert not eq.explicit_time_dependence
     assert eq.complex_valued
@@ -92,7 +92,7 @@ def test_pde_complex_mpi(rng):
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_pde_const_mpi(backend):
-    """test PDE with a field constant using multiprocessing"""
+    """Test PDE with a field constant using multiprocessing."""
     grid = grids.UnitGrid([8])
     eq = PDE({"u": "k"}, consts={"k": ScalarField.from_expression(grid, "x")})
 

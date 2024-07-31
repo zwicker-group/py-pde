@@ -25,7 +25,7 @@ from pde import FieldCollection, PDEBase, PlotTracker, ScalarField, UnitGrid
 
 
 class BrusselatorPDE(PDEBase):
-    """Brusselator with diffusive mobility"""
+    """Brusselator with diffusive mobility."""
 
     def __init__(self, a=1, b=3, diffusivity=[1, 0.1], bc="auto_periodic_neumann"):
         super().__init__()
@@ -35,13 +35,13 @@ class BrusselatorPDE(PDEBase):
         self.bc = bc  # boundary condition
 
     def get_initial_state(self, grid):
-        """prepare a useful initial state"""
+        """Prepare a useful initial state."""
         u = ScalarField(grid, self.a, label="Field $u$")
         v = self.b / self.a + 0.1 * ScalarField.random_normal(grid, label="Field $v$")
         return FieldCollection([u, v])
 
     def evolution_rate(self, state, t=0):
-        """pure python implementation of the PDE"""
+        """Pure python implementation of the PDE."""
         u, v = state
         rhs = state.copy()
         d0, d1 = self.diffusivity
@@ -50,7 +50,7 @@ class BrusselatorPDE(PDEBase):
         return rhs
 
     def _make_pde_rhs_numba(self, state):
-        """nunmba-compiled implementation of the PDE"""
+        """Nunmba-compiled implementation of the PDE."""
         d0, d1 = self.diffusivity
         a, b = self.a, self.b
         laplace = state.grid.make_operator("laplace", bc=self.bc)

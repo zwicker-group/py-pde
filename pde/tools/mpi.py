@@ -1,5 +1,4 @@
-"""
-Auxillary functions and variables for dealing with MPI multiprocessing
+"""Auxillary functions and variables for dealing with MPI multiprocessing.
 
 Warning:
     These functions are mostly no-ops unless MPI is properly installed and python code
@@ -62,7 +61,7 @@ else:
     rank = MPI.COMM_WORLD.rank
 
     class _OperatorRegistry:
-        """collection of operators that MPI supports"""
+        """Collection of operators that MPI supports."""
 
         _name_ids: dict[str, int]
         _ids_operators: dict[int, MPI.Op]
@@ -106,7 +105,7 @@ is_main: bool = rank == 0
 
 
 def mpi_send(data, dest: int, tag: int) -> None:
-    """send data to another MPI node
+    """Send data to another MPI node.
 
     Args:
         data: The data being send
@@ -118,11 +117,11 @@ def mpi_send(data, dest: int, tag: int) -> None:
 
 @overload(mpi_send)
 def ol_mpi_send(data, dest: int, tag: int):
-    """overload the `mpi_send` function"""
+    """Overload the `mpi_send` function."""
     import numba_mpi
 
     def impl(data, dest: int, tag: int) -> None:
-        """reduce a single number across all cores"""
+        """Reduce a single number across all cores."""
         status = numba_mpi.send(data, dest, tag)
         assert status == 0
 
@@ -130,30 +129,28 @@ def ol_mpi_send(data, dest: int, tag: int):
 
 
 def mpi_recv(data, source, tag) -> None:
-    """receive data from another MPI node
+    """Receive data from another MPI node.
 
     Args:
         data: A buffer into which the received data is written
         dest (int): The ID of the sending node
         tag (int): A numeric tag identifying the message
-
     """
     data[...] = MPI.COMM_WORLD.recv(source=source, tag=tag)
 
 
 @overload(mpi_recv)
 def ol_mpi_recv(data, source: int, tag: int):
-    """overload the `mpi_recv` function"""
+    """Overload the `mpi_recv` function."""
     import numba_mpi
 
     def impl(data, source: int, tag: int) -> None:
-        """receive data from another MPI node
+        """Receive data from another MPI node.
 
         Args:
             data: A buffer into which the received data is written
             dest (int): The ID of the sending node
             tag (int): A numeric tag identifying the message
-
         """
         status = numba_mpi.recv(data, source, tag)
         assert status == 0
@@ -162,7 +159,7 @@ def ol_mpi_recv(data, source: int, tag: int):
 
 
 def mpi_allreduce(data, operator: int | str | None = None):
-    """combines data from all MPI nodes
+    """Combines data from all MPI nodes.
 
     Note that complex datatypes and user-defined functions are not properly supported.
 
@@ -184,7 +181,7 @@ def mpi_allreduce(data, operator: int | str | None = None):
 
 @overload(mpi_allreduce)
 def ol_mpi_allreduce(data, operator: int | str | None = None):
-    """overload the `mpi_allreduce` function"""
+    """Overload the `mpi_allreduce` function."""
     import numba_mpi
 
     if operator is None or isinstance(operator, nb.types.NoneType):
@@ -204,7 +201,7 @@ def ol_mpi_allreduce(data, operator: int | str | None = None):
 
     @register_jitable
     def _allreduce(sendobj, recvobj, operator: int | str | None = None) -> int:
-        """helper function that calls `numba_mpi.allreduce`"""
+        """Helper function that calls `numba_mpi.allreduce`"""
         if operator is None:
             return numba_mpi.allreduce(sendobj, recvobj)  # type: ignore
         elif op_id is None:
@@ -215,7 +212,7 @@ def ol_mpi_allreduce(data, operator: int | str | None = None):
     if isinstance(data, types.Number):
 
         def impl(data, operator: int | str | None = None):
-            """reduce a single number across all cores"""
+            """Reduce a single number across all cores."""
             sendobj = np.array([data])
             recvobj = np.empty((1,), sendobj.dtype)
             status = _allreduce(sendobj, recvobj, operator)
@@ -225,7 +222,7 @@ def ol_mpi_allreduce(data, operator: int | str | None = None):
     elif isinstance(data, types.Array):
 
         def impl(data, operator: int | str | None = None):
-            """reduce an array across all cores"""
+            """Reduce an array across all cores."""
             recvobj = np.empty(data.shape, data.dtype)
             status = _allreduce(data, recvobj, operator)
             assert status == 0

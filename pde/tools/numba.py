@@ -1,5 +1,4 @@
-"""
-Helper functions for just-in-time compilation with numba
+"""Helper functions for just-in-time compilation with numba.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -29,7 +28,7 @@ except ImportError:
     # for earlier version of numba, we need to define the function
 
     def is_jitted(function: Callable) -> bool:
-        """determine whether a function has already been jitted"""
+        """Determine whether a function has already been jitted."""
         try:
             from numba.core.dispatcher import Dispatcher
         except ImportError:
@@ -43,7 +42,7 @@ NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
 
 
 class Counter:
-    """helper class for implementing JIT_COUNT
+    """Helper class for implementing JIT_COUNT.
 
     We cannot use a simple integer for this, since integers are immutable, so if one
     imports JIT_COUNT from this module it would always stay at the fixed value it had
@@ -82,7 +81,7 @@ TFunc = TypeVar("TFunc", bound="Callable")
 
 
 def numba_environment() -> dict[str, Any]:
-    """return information about the numba setup used
+    """Return information about the numba setup used.
 
     Returns:
         (dict) information about the numba setup
@@ -141,7 +140,7 @@ def numba_environment() -> dict[str, Any]:
 
 
 def flat_idx(arr: np.ndarray, i: int) -> Number:
-    """helper function allowing indexing of scalars as if they arrays
+    """Helper function allowing indexing of scalars as if they arrays.
 
     Args:
         arr
@@ -154,7 +153,7 @@ def flat_idx(arr: np.ndarray, i: int) -> Number:
 
 @overload(flat_idx)
 def ol_flat_idx(arr, i):
-    """helper function allowing indexing of scalars as if they arrays"""
+    """Helper function allowing indexing of scalars as if they arrays."""
     if isinstance(arr, nb.types.Number):
         return lambda arr, i: arr
     else:
@@ -163,7 +162,7 @@ def ol_flat_idx(arr, i):
 
 @decorator_arguments
 def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TFunc:
-    """apply nb.jit with predefined arguments
+    """Apply nb.jit with predefined arguments.
 
     Args:
         function: The function which is jitted
@@ -207,7 +206,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
 if nb.config.DISABLE_JIT:  # @UndefinedVariable
     # dummy function that creates a ctypes pointer
     def address_as_void_pointer(addr):
-        """returns a void pointer from a given memory address
+        """Returns a void pointer from a given memory address.
 
         Example:
             This can for instance be used together with `numba.carray`:
@@ -229,7 +228,7 @@ else:
     # actually useful function that creates a numba pointer
     @nb.extending.intrinsic
     def address_as_void_pointer(typingctx, src):
-        """returns a void pointer from a given memory address
+        """Returns a void pointer from a given memory address.
 
         Example:
             This can for instance be used together with `numba.carray`:
@@ -254,7 +253,7 @@ else:
 
 
 def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
-    """returns an array within a jitted function using basic information
+    """Returns an array within a jitted function using basic information.
 
     Args:
         arr (:class:`~numpy.ndarray`): The array that should be accessible within jit
@@ -271,7 +270,7 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
 
     @register_jitable
     def array_constructor() -> np.ndarray:
-        """helper that reconstructs the array from the pointer and structural info"""
+        """Helper that reconstructs the array from the pointer and structural info."""
         data: np.ndarray = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
         if strides is not None:
             data = np.lib.stride_tricks.as_strided(data, shape, strides)
@@ -281,7 +280,7 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
 
 
 def numba_dict(data: dict[str, Any] | None = None) -> NumbaDict | None:
-    """converts a python dictionary to a numba typed dictionary"""
+    """Converts a python dictionary to a numba typed dictionary."""
     if data is None:
         return None
     nb_dict = NumbaDict()
@@ -291,7 +290,7 @@ def numba_dict(data: dict[str, Any] | None = None) -> NumbaDict | None:
 
 
 def get_common_numba_dtype(*args):
-    r"""returns a numba numerical type in which all arrays can be represented
+    r"""Returns a numba numerical type in which all arrays can be represented.
 
     Args:
         *args: All items to be tested
@@ -311,12 +310,12 @@ def get_common_numba_dtype(*args):
 
 @jit(nopython=True, nogil=True)
 def _random_seed_compiled(seed: int) -> None:
-    """sets the seed of the random number generator of numba"""
+    """Sets the seed of the random number generator of numba."""
     np.random.seed(seed)
 
 
 def random_seed(seed: int = 0) -> None:
-    """sets the seed of the random number generator of numpy and numba
+    """Sets the seed of the random number generator of numpy and numba.
 
     Args:
         seed (int): Sets random seed

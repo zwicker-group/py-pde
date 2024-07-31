@@ -15,7 +15,7 @@ from pde.tools import mpi
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_solvers_simple_fixed(scheme, backend):
-    """test explicit solvers"""
+    """Test explicit solvers."""
     grid = UnitGrid([4])
     xs = grid.axes_coords[0]
     field = ScalarField.from_expression(grid, "x")
@@ -40,7 +40,7 @@ def test_solvers_simple_fixed(scheme, backend):
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_solvers_simple_adaptive(scheme, backend):
-    """test explicit solvers"""
+    """Test explicit solvers."""
     grid = UnitGrid([4])
     y0 = np.array([1e-3, 1e-3, 1e3, 1e3])
     field = ScalarField(grid, y0)
@@ -71,7 +71,7 @@ def test_solvers_simple_adaptive(scheme, backend):
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
 @pytest.mark.parametrize("adaptive", [True, False])
 def test_solvers_time_dependent(scheme, adaptive):
-    """test explicit solvers with a simple ODE"""
+    """Test explicit solvers with a simple ODE."""
     grid = UnitGrid([1])
     field = ScalarField(grid, 1)
     eq = PDE({"y": "2*sin(t) - y"})
@@ -96,7 +96,7 @@ def test_solvers_time_dependent(scheme, adaptive):
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
 def test_stochastic_solvers(backend, rng):
-    """test simple version of the stochastic solver"""
+    """Test simple version of the stochastic solver."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE()
     seq = DiffusionPDE(noise=1e-10)
@@ -118,7 +118,7 @@ def test_stochastic_solvers(backend, rng):
 
 
 def test_stochastic_adaptive_solver(caplog, rng):
-    """test using an adaptive, stochastic solver"""
+    """Test using an adaptive, stochastic solver."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE(noise=1e-6)
 
@@ -129,7 +129,7 @@ def test_stochastic_adaptive_solver(caplog, rng):
 
 
 def test_unsupported_stochastic_solvers(rng):
-    """test some solvers that do not support stochasticity"""
+    """Test some solvers that do not support stochasticity."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE(noise=1)
 
@@ -141,13 +141,13 @@ def test_unsupported_stochastic_solvers(rng):
 
 @pytest.mark.parametrize("scheme", ["euler", "runge-kutta"])
 def test_adaptive_solver_nan(scheme):
-    """test whether the adaptive solver can treat nans"""
+    """Test whether the adaptive solver can treat nans."""
     # Note for programmer: A similar test for the `numba` backend is difficult to
     # implement, since we only want to fail very rarely. We tried doing it with random
     # failure, but this often resulted in hitting the minimal time step.
 
     class MockPDE(PDEBase):
-        """simple PDE which returns NaN every 5 evaluations"""
+        """Simple PDE which returns NaN every 5 evaluations."""
 
         evaluations = 0
 

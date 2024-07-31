@@ -1,7 +1,6 @@
-"""
-Defines a solver using :mod:`scipy.integrate`
-   
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+"""Defines a solver using :mod:`scipy.integrate`
+
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -44,7 +43,7 @@ class ScipySolver(SolverBase):
     def make_stepper(
         self, state: FieldBase, dt: float | None = None
     ) -> Callable[[FieldBase, float, float], float]:
-        """return a stepper function
+        """Return a stepper function.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -72,7 +71,7 @@ class ScipySolver(SolverBase):
         rhs = self._make_pde_rhs(state, backend=self.backend)
 
         def rhs_helper(t: float, state_flat: np.ndarray) -> np.ndarray:
-            """helper function to provide the correct call convention"""
+            """Helper function to provide the correct call convention."""
             rhs_value = rhs(state_flat.reshape(shape), t)
             y = np.broadcast_to(rhs_value, shape).flat
             if np.any(np.isnan(y)):
@@ -83,7 +82,8 @@ class ScipySolver(SolverBase):
             return y  # type: ignore
 
         def stepper(state: FieldBase, t_start: float, t_end: float) -> float:
-            """use scipy.integrate.odeint to advance `state` from `t_start` to `t_end`"""
+            """Use scipy.integrate.odeint to advance `state` from `t_start` to
+            `t_end`"""
             if dt is not None:
                 self.solver_params["first_step"] = min(t_end - t_start, dt)
 

@@ -23,7 +23,7 @@ from pde.tools.misc import module_available
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
 def test_set_label(field_class):
-    """test setting the field labels"""
+    """Test setting the field labels."""
     grid = UnitGrid([2])
     assert field_class(grid).label is None
     f = field_class(grid, label="a")
@@ -42,7 +42,7 @@ def test_set_label(field_class):
 @pytest.mark.parametrize("grid", iter_grids())
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
 def test_interpolation_natural(grid, field_class, rng):
-    """test some interpolation for natural boundary conditions"""
+    """Test some interpolation for natural boundary conditions."""
     msg = f"grid={grid}, field={field_class}"
     f = field_class.random_uniform(grid, rng=rng)
 
@@ -64,7 +64,7 @@ def test_interpolation_natural(grid, field_class, rng):
 @pytest.mark.parametrize("num", [1, 3])
 @pytest.mark.parametrize("grid", iter_grids())
 def test_shapes_nfields(num, grid, rng):
-    """test single component field"""
+    """Test single component field."""
     fields = [ScalarField.random_uniform(grid, rng=rng) for _ in range(num)]
     field = FieldCollection(fields)
     data_shape = (num,) + grid.shape
@@ -79,7 +79,7 @@ def test_shapes_nfields(num, grid, rng):
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
 def test_arithmetics(field_class):
-    """test simple arithmetics for fields"""
+    """Test simple arithmetics for fields."""
     grid = UnitGrid([2, 2])
     f1 = field_class(grid, data=1)
     f2 = field_class(grid, data=2)
@@ -134,7 +134,7 @@ def test_arithmetics(field_class):
 
 
 def test_scalar_arithmetics(rng):
-    """test simple arithmetics involving scalar fields"""
+    """Test simple arithmetics involving scalar fields."""
     grid = UnitGrid([3, 4])
     s = ScalarField(grid, data=2)
     v = VectorField.random_uniform(grid, rng=rng)
@@ -168,7 +168,7 @@ def test_scalar_arithmetics(rng):
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
 def test_data_managment(field_class):
-    """test how data is set"""
+    """Test how data is set."""
     grid = UnitGrid([2, 2])
     s1 = field_class(grid, data=1)
     np.testing.assert_allclose(s1.data, 1)
@@ -203,7 +203,7 @@ def test_data_managment(field_class):
 
 @pytest.mark.parametrize("field_class", [ScalarField, VectorField, Tensor2Field])
 def test_complex_fields(field_class, rng):
-    """test operations on complex fields"""
+    """Test operations on complex fields."""
     grid = UnitGrid([3])
 
     field = field_class.random_uniform(grid, 0, 1 + 1j, rng=rng)
@@ -217,7 +217,7 @@ def test_complex_fields(field_class, rng):
 
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py` module")
 def test_hdf_input_output(tmp_path, rng):
-    """test writing and reading files"""
+    """Test writing and reading files."""
     grid = UnitGrid([4, 4])
     s = ScalarField.random_uniform(grid, label="scalar", rng=rng)
     v = VectorField.random_uniform(grid, label="vector", rng=rng)
@@ -235,7 +235,7 @@ def test_hdf_input_output(tmp_path, rng):
 
 
 def test_writing_images(tmp_path, rng):
-    """test writing and reading files"""
+    """Test writing and reading files."""
     from matplotlib.pyplot import imread
 
     grid = UnitGrid([4, 4])
@@ -253,7 +253,7 @@ def test_writing_images(tmp_path, rng):
 
 @pytest.mark.parametrize("ndim", [1, 2])
 def test_interpolation_to_grid_fields(ndim):
-    """test whether data is interpolated correctly for different fields"""
+    """Test whether data is interpolated correctly for different fields."""
     grid = CartesianGrid([[0, 2 * np.pi]] * ndim, 6)
     grid2 = CartesianGrid([[0, 2 * np.pi]] * ndim, 8)
     fc = FieldCollection.from_scalar_expressions(grid, ["cos(x)", "sin(x)"])
@@ -271,7 +271,7 @@ def test_interpolation_to_grid_fields(ndim):
 
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
 def test_interpolation_values(field_cls, rng):
-    """test whether data is interpolated correctly for different fields"""
+    """Test whether data is interpolated correctly for different fields."""
     grid = UnitGrid([3, 4])
     f = field_cls.random_uniform(grid, rng=rng)
     f.set_ghost_cells("auto_periodic_neumann")
@@ -292,7 +292,7 @@ def test_interpolation_values(field_cls, rng):
 
 
 def test_interpolation_ghost_cells():
-    """test whether data is interpolated correctly with or without ghost cells"""
+    """Test whether data is interpolated correctly with or without ghost cells."""
     grid = UnitGrid([3])
     f = ScalarField(grid, [1, 2, 3])
     f.set_ghost_cells({"value": 0})
@@ -328,7 +328,7 @@ def test_interpolation_ghost_cells():
     ],
 )
 def test_interpolation_to_cartesian(grid):
-    """test whether data is interpolated correctly to Cartesian grid"""
+    """Test whether data is interpolated correctly to Cartesian grid."""
     dim = grid.dim
     sf = ScalarField(grid, 2)
     fc = FieldCollection([sf, sf])
@@ -352,7 +352,7 @@ def test_interpolation_to_cartesian(grid):
     [PolarSymGrid(6, 4), SphericalSymGrid(7, 4), CylindricalSymGrid(6, (0, 8), (7, 8))],
 )
 def test_get_cartesian_grid(grid):
-    """test whether Cartesian grids can be created"""
+    """Test whether Cartesian grids can be created."""
     cart = grid.get_cartesian_grid(mode="valid")
     assert cart.volume < grid.volume
     cart = grid.get_cartesian_grid(mode="full")
@@ -361,7 +361,7 @@ def test_get_cartesian_grid(grid):
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_simple_plotting(grid, rng):
-    """test simple plotting of various fields on various grids"""
+    """Test simple plotting of various fields on various grids."""
     vf = VectorField.random_uniform(grid, rng=rng)
     tf = Tensor2Field.random_uniform(grid, rng=rng)
     sf = tf[0, 0]  # test extraction of fields
@@ -378,7 +378,7 @@ def test_simple_plotting(grid, rng):
 
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
 def test_random_uniform(field_cls, rng):
-    """test whether random uniform fields behave correctly"""
+    """Test whether random uniform fields behave correctly."""
     grid = UnitGrid([256, 256])
     a = rng.random()
     b = 2 + rng.random()
@@ -391,7 +391,7 @@ def test_random_uniform(field_cls, rng):
 
 
 def test_random_uniform_types(rng):
-    """test whether random uniform fields behave correctly for different types"""
+    """Test whether random uniform fields behave correctly for different types."""
     grid = UnitGrid([8])
     for dtype in [bool, int, float, complex]:
         field = VectorField.random_uniform(grid, dtype=dtype, rng=rng)
@@ -412,7 +412,7 @@ def test_random_uniform_types(rng):
 
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
 def test_random_normal(field_cls, rng):
-    """test whether random normal fields behave correctly"""
+    """Test whether random normal fields behave correctly."""
     grid = UnitGrid([256, 256])
     m = rng.random()
     s = 1 + rng.random()
@@ -423,7 +423,7 @@ def test_random_normal(field_cls, rng):
 
 
 def test_random_normal_types(rng):
-    """test whether random normal fields behave correctly for different types"""
+    """Test whether random normal fields behave correctly for different types."""
     grid = UnitGrid([8])
     for dtype in [bool, int, float, complex]:
         field = VectorField.random_normal(grid, dtype=dtype, rng=rng)
@@ -452,7 +452,7 @@ def test_random_normal_types(rng):
 
 @pytest.mark.parametrize("field_cls", [ScalarField, VectorField, Tensor2Field])
 def test_random_colored(field_cls, rng):
-    """test whether random colored fields behave correctly"""
+    """Test whether random colored fields behave correctly."""
     grid = UnitGrid([128, 128])
     exponent = rng.uniform(-4, 4)
     scale = 1 + rng.random()
@@ -462,7 +462,7 @@ def test_random_colored(field_cls, rng):
 
 
 def test_random_rng():
-    """test whether the random number generator arguments are accepted"""
+    """Test whether the random number generator arguments are accepted."""
     grid = UnitGrid([2, 2])
     for create_random_field in [
         ScalarField.random_colored,
@@ -478,7 +478,7 @@ def test_random_rng():
 @pytest.mark.parametrize("dim", [1, 2])
 @pytest.mark.parametrize("size", [256, 512])
 def test_fluctuations(dim, size, rng):
-    """test the scaling of fluctuations"""
+    """Test the scaling of fluctuations."""
     if dim == 1:
         size **= 2
     grid = CartesianGrid([[0, 1]] * dim, [size] * dim)
@@ -492,7 +492,7 @@ def test_fluctuations(dim, size, rng):
 
 
 def test_smoothing(rng):
-    """test smoothing on different grids"""
+    """Test smoothing on different grids."""
     for grid in [
         CartesianGrid([[-2, 3]], 4),
         UnitGrid(7, periodic=False),
@@ -526,7 +526,7 @@ def test_smoothing(rng):
 
 
 def test_vector_from_scalars():
-    """test how to compile vector fields from scalar fields"""
+    """Test how to compile vector fields from scalar fields."""
     g = UnitGrid([1, 2])
     s1 = ScalarField(g, [[0, 1]])
     s2 = ScalarField(g, [[2, 3]])
@@ -542,7 +542,7 @@ def test_vector_from_scalars():
     "grid", [UnitGrid([3, 2]), UnitGrid([3]), CylindricalSymGrid(1, (0, 2), 3)]
 )
 def test_dot_product(grid, rng):
-    """test dot products between vectors and tensors"""
+    """Test dot products between vectors and tensors."""
     vf = VectorField.random_normal(grid, rng=rng)
     tf = Tensor2Field.random_normal(grid, rng=rng)
     dot = vf.make_dot_operator()
@@ -582,7 +582,7 @@ def test_dot_product(grid, rng):
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_complex_operator(grid, rng):
-    """test using a complex operator on grid"""
+    """Test using a complex operator on grid."""
     r = ScalarField.random_normal(grid, rng=rng)
     i = ScalarField.random_normal(grid, rng=rng)
     c = r + 1j * i
@@ -595,7 +595,7 @@ def test_complex_operator(grid, rng):
 
 
 def test_get_field_class_by_rank():
-    """test _get_field_class_by_rank function"""
+    """Test _get_field_class_by_rank function."""
     assert DataFieldBase.get_class_by_rank(0) is ScalarField
     assert DataFieldBase.get_class_by_rank(1) is VectorField
     assert DataFieldBase.get_class_by_rank(2) is Tensor2Field
@@ -608,7 +608,7 @@ def test_get_field_class_by_rank():
 )
 @pytest.mark.parametrize("field", iter_fields())
 def test_field_modelrunner_storage(field, tmp_path):
-    """test storing fields in modelrunner storages"""
+    """Test storing fields in modelrunner storages."""
     from modelrunner import open_storage
 
     path = tmp_path / "field.json"

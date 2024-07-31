@@ -13,7 +13,7 @@ from pde.tools.misc import module_available
     not module_available("modelrunner"), reason="requires `py-modelrunner` package"
 )
 def test_storage_write_trajectory(tmp_path):
-    """test simple storage writing"""
+    """Test simple storage writing."""
     import modelrunner as mr
 
     path = tmp_path / "storage.json"

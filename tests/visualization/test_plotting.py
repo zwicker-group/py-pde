@@ -12,7 +12,7 @@ from pde.visualization import plotting
 
 
 def test_scalar_field_plot(tmp_path, rng):
-    """test ScalarFieldPlot class"""
+    """Test ScalarFieldPlot class."""
     path = tmp_path / "test_scalar_field_plot.png"
 
     # create some data
@@ -28,7 +28,7 @@ def test_scalar_field_plot(tmp_path, rng):
 
 
 def test_scalar_plot(tmp_path, rng):
-    """test Simple simulation"""
+    """Test Simple simulation."""
     path = tmp_path / "test_scalar_plot.png"
 
     # create some data
@@ -47,7 +47,7 @@ def test_scalar_plot(tmp_path, rng):
 
 
 def test_collection_plot(tmp_path):
-    """test Simple simulation"""
+    """Test Simple simulation."""
     # create some data
     field = FieldCollection(
         [ScalarField(UnitGrid([8, 8]), label="first"), ScalarField(UnitGrid([8, 8]))]
@@ -61,7 +61,7 @@ def test_collection_plot(tmp_path):
 
 
 def test_kymograph_single(tmp_path):
-    """test making kymographs for single fields"""
+    """Test making kymographs for single fields."""
     # create some storage
     field = ScalarField(UnitGrid(8))
     with get_memory_storage(field) as storage:
@@ -81,7 +81,7 @@ def test_kymograph_single(tmp_path):
 
 
 def test_kymograph_collection(tmp_path):
-    """test making kymographs for field collections"""
+    """Test making kymographs for field collections."""
     # create some storage
     field = FieldCollection(
         [ScalarField(UnitGrid(8), label="a"), ScalarField(UnitGrid(8), label="b")]
@@ -107,7 +107,7 @@ def test_kymograph_collection(tmp_path):
 @pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.interactive
 def test_interactive_plotting(rng):
-    """test plot_interactive"""
+    """Test plot_interactive."""
     # create some data
     field = ScalarField.random_uniform(UnitGrid([8]), rng=rng)
     with get_memory_storage(field) as storage:

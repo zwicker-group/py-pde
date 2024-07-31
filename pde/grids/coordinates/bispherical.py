@@ -11,7 +11,7 @@ from .base import CoordinatesBase
 
 
 class BisphericalCoordinates(CoordinatesBase):
-    """3-dimensional bispherical coordinates"""
+    """3-dimensional bispherical coordinates."""
 
     dim = 3
     axes = ["σ", "τ", "φ"]
@@ -25,7 +25,7 @@ class BisphericalCoordinates(CoordinatesBase):
         self.scale_parameter = scale_parameter
 
     def __repr__(self) -> str:
-        """return instance as string"""
+        """Return instance as string."""
         return f"{self.__class__.__name__}(scale_parameter={self.scale_parameter})"
 
     def __eq__(self, other):

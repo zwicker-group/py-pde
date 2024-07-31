@@ -28,7 +28,7 @@ field = ScalarField(grid)
 
 # define the boundary conditions, which here are calculated from a function
 def bc_value(adjacent_value, dx, x, y, t):
-    """return boundary value"""
+    """Return boundary value."""
     return np.sign(x)
 
 

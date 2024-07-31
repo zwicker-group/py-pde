@@ -10,7 +10,7 @@ from pde.tools.mpi import mpi_allreduce, mpi_recv, mpi_send, rank, size
 
 @pytest.mark.multiprocessing
 def test_send_recv():
-    """test basic send and receive"""
+    """Test basic send and receive."""
     if size == 1:
         pytest.skip("Run without multiprocessing")
 
@@ -25,7 +25,7 @@ def test_send_recv():
 
 @pytest.mark.multiprocessing
 def test_allreduce():
-    """test basic send and receive"""
+    """Test basic send and receive."""
     from numba_mpi import Operator
 
     data = np.arange(size)

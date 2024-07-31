@@ -10,7 +10,7 @@ from pde.grids.boundaries.local import NeumannBC
 
 
 def test_polar_grid(rng):
-    """test simple polar grid"""
+    """Test simple polar grid."""
     grid = PolarSymGrid(4, 8)
     assert grid.dim == 2
     assert grid.num_cells == 8
@@ -36,7 +36,7 @@ def test_polar_grid(rng):
 
 
 def test_polar_annulus(rng):
-    """test simple polar grid with a hole"""
+    """Test simple polar grid with a hole."""
     grid = PolarSymGrid((2, 4), 8)
     assert grid.dim == 2
     assert grid.num_cells == 8
@@ -66,7 +66,7 @@ def test_polar_annulus(rng):
 
 
 def test_polar_to_cartesian():
-    """test conversion of polar grid to Cartesian"""
+    """Test conversion of polar grid to Cartesian."""
     expr_pol = "(1 + r**2) ** -2"
     expr_cart = expr_pol.replace("r**2", "(x**2 + y**2)")
 
@@ -80,7 +80,7 @@ def test_polar_to_cartesian():
 
 
 def test_spherical_grid(rng):
-    """test simple spherical grid"""
+    """Test simple spherical grid."""
     grid = SphericalSymGrid(4, 8)
     assert grid.dim == 3
     assert grid.num_cells == 8
@@ -106,7 +106,7 @@ def test_spherical_grid(rng):
 
 
 def test_spherical_annulus(rng):
-    """test simple spherical grid with a hole"""
+    """Test simple spherical grid with a hole."""
     grid = SphericalSymGrid((2, 4), 8)
     assert grid.dim == 3
     assert grid.num_cells == 8
@@ -136,7 +136,7 @@ def test_spherical_annulus(rng):
 
 
 def test_spherical_to_cartesian():
-    """test conversion of spherical grid to cartesian"""
+    """Test conversion of spherical grid to cartesian."""
     expr_sph = "1. / (1 + r**2)"
     expr_cart = expr_sph.replace("r**2", "(x**2 + y**2 + z**2)")
 
@@ -151,7 +151,7 @@ def test_spherical_to_cartesian():
 
 @pytest.mark.parametrize("grid_class", [PolarSymGrid, SphericalSymGrid])
 def test_setting_boundary_conditions(grid_class):
-    """test setting some boundary conditions"""
+    """Test setting some boundary conditions."""
     grid = grid_class([0, 1], 3)
     b_inner = NeumannBC(grid, 0, upper=False)
 

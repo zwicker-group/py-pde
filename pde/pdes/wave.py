@@ -1,7 +1,6 @@
-"""
-A simple wave equation
+"""A simple wave equation.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from .base import PDEBase, expr_prod
 
 
 class WavePDE(PDEBase):
-    r"""A simple wave equation
+    r"""A simple wave equation.
 
     The mathematical definition, :math:`\partial_t^2 u = c^2 \nabla^2 u`, is implemented
     as two first-order equations,
@@ -52,7 +51,7 @@ class WavePDE(PDEBase):
         self.bc = bc
 
     def get_initial_condition(self, u: ScalarField, v: ScalarField | None = None):
-        """create a suitable initial condition
+        """Create a suitable initial condition.
 
         Args:
             u (:class:`~pde.fields.ScalarField`):
@@ -79,7 +78,7 @@ class WavePDE(PDEBase):
         state: FieldCollection,
         t: float = 0,
     ) -> FieldCollection:
-        """evaluate the right hand side of the PDE
+        """Evaluate the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldCollection`):
@@ -103,7 +102,7 @@ class WavePDE(PDEBase):
     def _make_pde_rhs_numba(  # type: ignore
         self, state: FieldCollection
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create a compiled function evaluating the right hand side of the PDE
+        """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldCollection`):
@@ -122,7 +121,7 @@ class WavePDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """compiled helper function evaluating right hand side"""
+            """Compiled helper function evaluating right hand side."""
             rate = np.empty_like(state_data)
             rate[0] = state_data[1]
             rate[1][:] = laplace(state_data[0], args={"t": t})

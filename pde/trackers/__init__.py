@@ -1,5 +1,4 @@
-"""
-Classes for tracking simulation results in controlled interrupts
+"""Classes for tracking simulation results in controlled interrupts.
 
 Trackers are classes that periodically receive the state of the simulation to analyze,
 store, or output it. The trackers defined in this module are:

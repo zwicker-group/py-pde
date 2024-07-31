@@ -14,15 +14,13 @@ from pde.tools import cache
 
 
 def deep_getsizeof(obj, ids=None):
-    """Find the memory footprint of a Python object
+    """Find the memory footprint of a Python object.
 
-    This is a recursive function that drills down a Python object graph
-    like a dictionary holding nested dictionaries with lists of lists
-    and tuples and sets.
+    This is a recursive function that drills down a Python object graph like a
+    dictionary holding nested dictionaries with lists of lists and tuples and sets.
 
-    The sys.getsizeof function does a shallow size of only. It counts each
-    object inside a container as pointer only regardless of how big it
-    really is.
+    The sys.getsizeof function does a shallow size of only. It counts each object inside
+    a container as pointer only regardless of how big it really is.
 
     Function modified from
     https://code.tutsplus.com/tutorials/understand-how-much-memory-your-python-objects-use--cms-25609
@@ -59,7 +57,7 @@ def deep_getsizeof(obj, ids=None):
 
 
 def test_objects_equal():
-    """test the objects_equal function"""
+    """Test the objects_equal function."""
     # basic python objects
     eq = cache.objects_equal
     assert eq(1, 1)
@@ -87,7 +85,7 @@ def test_objects_equal():
 
 
 def get_serialization_methods(with_none=True):
-    """returns possible methods for serialization that are supported"""
+    """Returns possible methods for serialization that are supported."""
     methods = ["json", "pickle"]
 
     if with_none:
@@ -105,7 +103,7 @@ def get_serialization_methods(with_none=True):
 
 
 def test_hashes():
-    """test whether the hash key makes sense"""
+    """Test whether the hash key makes sense."""
 
     class Dummy:
         def __init__(self, value):
@@ -138,7 +136,7 @@ def test_hashes():
 
 
 def test_serializer_nonsense():
-    """test whether errors are thrown for wrong input"""
+    """Test whether errors are thrown for wrong input."""
     with pytest.raises(ValueError):
         cache.make_serializer("non-sense")
     with pytest.raises(ValueError):
@@ -147,7 +145,7 @@ def test_serializer_nonsense():
 
 @pytest.mark.parametrize("method", get_serialization_methods())
 def test_serializer(method):
-    """tests whether the make_serializer returns a canonical hash"""
+    """Tests whether the make_serializer returns a canonical hash."""
     encode = cache.make_serializer(method)
 
     assert encode(1) == encode(1)
@@ -159,7 +157,7 @@ def test_serializer(method):
 
 
 def test_serializer_hash_mutable():
-    """tests whether the make_serializer returns a canonical hash"""
+    """Tests whether the make_serializer returns a canonical hash."""
     # test special serializer
     encode = cache.make_serializer("hash_mutable")
     assert encode({"a": 1, "b": 2}) == encode({"b": 2, "a": 1})
@@ -170,7 +168,7 @@ def test_serializer_hash_mutable():
     assert cache.hash_mutable(dict(c1)) == cache.hash_mutable(dict(c2))
 
     class Test:
-        """test class that neither implements __eq__ nor __hash__"""
+        """Test class that neither implements __eq__ nor __hash__"""
 
         def __init__(self, a):
             self.a = a
@@ -178,7 +176,7 @@ def test_serializer_hash_mutable():
     assert cache.hash_mutable(Test(1)) != cache.hash_mutable(Test(1))
 
     class TestEq:
-        """test class that only implements __eq__ and not __hash__"""
+        """Test class that only implements __eq__ and not __hash__"""
 
         def __init__(self, a):
             self.a = a
@@ -191,8 +189,8 @@ def test_serializer_hash_mutable():
 
 
 def test_unserializer():
-    """tests whether the make_serializer and make_unserializer return the
-    original objects"""
+    """Tests whether the make_serializer and make_unserializer return the original
+    objects."""
     data_list = [None, 1, [1, 2], {"b": 1, "a": 2}]
     for method in get_serialization_methods():
         encode = cache.make_serializer(method)
@@ -204,7 +202,7 @@ def test_unserializer():
 def _test_SerializedDict(
     storage, reinitialize=None, key_serialization="pickle", value_serialization="pickle"
 ):
-    """tests the SerializedDict class with a particular parameter set"""
+    """Tests the SerializedDict class with a particular parameter set."""
     data = cache.SerializedDict(
         key_serialization, value_serialization, storage_dict=storage
     )
@@ -251,11 +249,11 @@ def _test_SerializedDict(
 
 @pytest.mark.parametrize("cache_storage", [None, "get_finite_dict"])
 def test_property_cache(cache_storage):
-    """test cached_property decorator"""
+    """Test cached_property decorator."""
 
     # create test class
     class CacheTest:
-        """class for testing caching"""
+        """Class for testing caching."""
 
         def __init__(self):
             self.counter = 0
@@ -298,11 +296,11 @@ def test_property_cache(cache_storage):
 @pytest.mark.parametrize("serializer", get_serialization_methods(with_none=False))
 @pytest.mark.parametrize("cache_factory", [None, "get_finite_dict"])
 def test_method_cache(serializer, cache_factory):
-    """test one particular parameter set of the cached_method decorator"""
+    """Test one particular parameter set of the cached_method decorator."""
 
     # create test class
     class CacheTest:
-        """class for testing caching"""
+        """Class for testing caching."""
 
         def __init__(self):
             self.counter = 0
@@ -391,11 +389,11 @@ def test_method_cache(serializer, cache_factory):
 @pytest.mark.parametrize("serializer", get_serialization_methods(with_none=False))
 @pytest.mark.parametrize("cache_factory", [None, "get_finite_dict"])
 def test_method_cache_extra_args(serializer, cache_factory):
-    """test extra arguments in the cached_method decorator"""
+    """Test extra arguments in the cached_method decorator."""
 
     # create test class
     class CacheTest:
-        """class for testing caching"""
+        """Class for testing caching."""
 
         def __init__(self, value=0):
             self.counter = 0
@@ -439,11 +437,11 @@ def test_method_cache_extra_args(serializer, cache_factory):
 @pytest.mark.parametrize("cache_factory", [None, "get_finite_dict"])
 @pytest.mark.parametrize("ignore_args", ["display", ["display"]])
 def test_method_cache_ignore(serializer, cache_factory, ignore_args):
-    """test ignored parameters of the cached_method decorator"""
+    """Test ignored parameters of the cached_method decorator."""
 
     # create test class
     class CacheTest:
-        """class for testing caching"""
+        """Class for testing caching."""
 
         def __init__(self):
             self.counter = 0
@@ -476,10 +474,10 @@ def test_method_cache_ignore(serializer, cache_factory, ignore_args):
 
 
 def test_cache_clearing():
-    """make sure that memory is freed when cache is cleared"""
+    """Make sure that memory is freed when cache is cleared."""
 
     class Test:
-        """simple test object with a cache"""
+        """Simple test object with a cache."""
 
         @cache.cached_method()
         def calc(self, n):
@@ -517,7 +515,7 @@ def test_cache_clearing():
 
 
 def test_serialized_dict():
-    """test SerializedDict"""
+    """Test SerializedDict."""
     d = cache.SerializedDict()
     assert len(d) == 0
     d["a"] = 1
@@ -530,7 +528,7 @@ def test_serialized_dict():
 
 
 def test_finite_dict():
-    """test DictFiniteCapacity"""
+    """Test DictFiniteCapacity."""
     d = cache.DictFiniteCapacity(capacity=1)
     d["a"] = 1
     assert d["a"] == 1

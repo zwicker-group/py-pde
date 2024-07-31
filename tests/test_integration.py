@@ -1,5 +1,4 @@
-"""
-Integration tests that use multiple modules together
+"""Integration tests that use multiple modules together.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -17,7 +16,7 @@ from pde.tools.misc import module_available
 
 @pytest.mark.skipif(not misc.module_available("h5py"), reason="requires `h5py` module")
 def test_writing_to_storage(tmp_path, rng):
-    """test whether data is written to storage"""
+    """Test whether data is written to storage."""
     state = ScalarField.random_uniform(UnitGrid([3]), rng=rng)
     pde = DiffusionPDE()
     path = tmp_path / "test_writing_to_storage.hdf5"
@@ -29,7 +28,7 @@ def test_writing_to_storage(tmp_path, rng):
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_inhomogeneous_bcs_1(backend):
-    """test simulation with inhomogeneous boundary conditions"""
+    """Test simulation with inhomogeneous boundary conditions."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], [32, 2], periodic=[True, False])
     state = ScalarField(grid)
     eq = DiffusionPDE(bc=["auto_periodic_neumann", {"value": "sin(x)"}])
@@ -41,7 +40,7 @@ def test_inhomogeneous_bcs_1(backend):
 
 
 def test_inhomogeneous_bcs_2():
-    """test simulation with inhomogeneous boundary conditions"""
+    """Test simulation with inhomogeneous boundary conditions."""
     grid = CartesianGrid([[0, 1], [0, 1]], [8, 8], periodic=False)
     state = ScalarField(grid)
     eq = DiffusionPDE(bc={"value": "x + y"})
@@ -52,7 +51,7 @@ def test_inhomogeneous_bcs_2():
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_inhomogeneous_bcs_func(backend):
-    """test simulation with inhomogeneous boundary conditions"""
+    """Test simulation with inhomogeneous boundary conditions."""
     grid = CartesianGrid([[-5, 5], [-5, 5]], 32)
     field = ScalarField(grid)
 
@@ -70,7 +69,7 @@ def test_inhomogeneous_bcs_func(backend):
 
 @pytest.mark.multiprocessing
 def test_custom_pde_mpi(caplog, rng):
-    """test a custom PDE using the parallelized solver"""
+    """Test a custom PDE using the parallelized solver."""
 
     class TestPDE(PDEBase):
         def make_modify_after_step(self, state):
@@ -134,7 +133,7 @@ def test_custom_pde_mpi(caplog, rng):
     not module_available("modelrunner"), reason="requires `py-modelrunner`"
 )
 def test_modelrunner_storage_one(tmp_path, capsys):
-    """test how modelrunner storage can be used"""
+    """Test how modelrunner storage can be used."""
     import modelrunner as mr
 
     SCRIPT_PATH = Path(__file__).parent / "resources"
@@ -180,7 +179,7 @@ def test_modelrunner_storage_one(tmp_path, capsys):
     not module_available("modelrunner"), reason="requires `py-modelrunner`"
 )
 def test_modelrunner_storage_many(tmp_path):
-    """test how modelrunner storage can be used"""
+    """Test how modelrunner storage can be used."""
     import modelrunner as mr
 
     SCRIPT_PATH = Path(__file__).parent / "resources"

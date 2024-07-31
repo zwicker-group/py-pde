@@ -25,13 +25,13 @@ BoundariesData = Union[BoundaryPairData, Sequence[BoundaryPairData]]
 
 
 class Boundaries(list):
-    """class that bundles all boundary conditions for all axes"""
+    """Class that bundles all boundary conditions for all axes."""
 
     grid: GridBase
-    """:class:`~pde.grids.base.GridBase`: grid for which boundaries are defined """
+    """:class:`~pde.grids.base.GridBase`: grid for which boundaries are defined."""
 
     def __init__(self, boundaries):
-        """initialize with a list of boundaries"""
+        """Initialize with a list of boundaries."""
         if len(boundaries) == 0:
             raise BCDataError("List of boundaries must not be empty")
 
@@ -66,8 +66,7 @@ class Boundaries(list):
 
     @classmethod
     def from_data(cls, grid: GridBase, boundaries, rank: int = 0) -> Boundaries:
-        """
-        Creates all boundaries from given data
+        """Creates all boundaries from given data.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -174,13 +173,13 @@ class Boundaries(list):
 
     @property
     def boundaries(self) -> Iterator[BCBase]:
-        """iterator over all non-periodic boundaries"""
+        """Iterator over all non-periodic boundaries."""
         for boundary_axis in self:  # iterate all axes
             if not boundary_axis.periodic:  # skip periodic axes
                 yield from boundary_axis
 
     def check_value_rank(self, rank: int) -> None:
-        """check whether the values at the boundaries have the correct rank
+        """Check whether the values at the boundaries have the correct rank.
 
         Args:
             rank (int):
@@ -194,7 +193,7 @@ class Boundaries(list):
 
     @classmethod
     def get_help(cls) -> str:
-        """Return information on how boundary conditions can be set"""
+        """Return information on how boundary conditions can be set."""
         return (
             "Boundary conditions for each axis are set using a list: [bc_x, bc_y, "
             "bc_z]. If the associated axis is periodic, the boundary condition needs "
@@ -202,17 +201,17 @@ class Boundaries(list):
         )
 
     def copy(self) -> Boundaries:
-        """create a copy of the current boundaries"""
+        """Create a copy of the current boundaries."""
         return self.__class__([bc.copy() for bc in self])
 
     @property
     def periodic(self) -> list[bool]:
-        """:class:`~numpy.ndarray`: a boolean array indicating which dimensions
-        are periodic according to the boundary conditions"""
+        """:class:`~numpy.ndarray`: a boolean array indicating which dimensions are
+        periodic according to the boundary conditions."""
         return self.grid.periodic
 
     def __getitem__(self, index):
-        """extract specific boundary conditions
+        """Extract specific boundary conditions.
 
         Args:
             index (int or str):
@@ -234,7 +233,7 @@ class Boundaries(list):
             return super().__getitem__(index)
 
     def __setitem__(self, index, data) -> None:
-        """set specific boundary conditions
+        """Set specific boundary conditions.
 
         Args:
             index (int or str):
@@ -268,7 +267,7 @@ class Boundaries(list):
             return super().__setitem__(index, data)
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
-        """return mathematical representation of the boundary condition"""
+        """Return mathematical representation of the boundary condition."""
         result = []
         for b in self:
             try:
@@ -282,7 +281,7 @@ class Boundaries(list):
     def set_ghost_cells(
         self, data_full: np.ndarray, *, set_corners: bool = False, args=None
     ) -> None:
-        """set the ghost cells for all boundaries
+        """Set the ghost cells for all boundaries.
 
         Args:
             data_full (:class:`~numpy.ndarray`):
@@ -323,7 +322,7 @@ class Boundaries(list):
                 )
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """return function that sets the ghost cells on a full array"""
+        """Return function that sets the ghost cells on a full array."""
         ghost_cell_setters = tuple(b.make_ghost_cell_setter() for b in self)
 
         # TODO: use numba.literal_unroll
@@ -341,7 +340,7 @@ class Boundaries(list):
         def chain(
             fs: Sequence[GhostCellSetter], inner: GhostCellSetter | None = None
         ) -> GhostCellSetter:
-            """helper function composing setters of all axes recursively"""
+            """Helper function composing setters of all axes recursively."""
 
             first, rest = fs[0], fs[1:]
 

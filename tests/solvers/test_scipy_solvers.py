@@ -9,7 +9,7 @@ from pde.solvers import Controller, ScipySolver
 
 
 def test_scipy_no_dt(rng):
-    """test scipy solver without timestep"""
+    """Test scipy solver without timestep."""
     grid = UnitGrid([16])
     field = ScalarField.random_uniform(grid, -1, 1, rng=rng)
     eq = DiffusionPDE()
@@ -24,7 +24,7 @@ def test_scipy_no_dt(rng):
 
 
 def test_scipy_field_collection():
-    """test scipy solver with field collection"""
+    """Test scipy solver with field collection."""
     grid = UnitGrid([2])
     field = FieldCollection.from_scalar_expressions(grid, ["x", "0"])
     eq = PDE({"a": "1", "b": "a"})
