@@ -11,7 +11,7 @@ from .base import CoordinatesBase
 
 
 class SphericalCoordinates(CoordinatesBase):
-    """3-dimensional spherical coordinates"""
+    """3-dimensional spherical coordinates."""
 
     dim = 3
     axes = ["r", "θ", "φ"]
@@ -28,7 +28,7 @@ class SphericalCoordinates(CoordinatesBase):
         return cls._singleton
 
     def __repr__(self) -> str:
-        """return instance as string"""
+        """Return instance as string."""
         return f"{self.__class__.__name__}()"
 
     def __eq__(self, other):

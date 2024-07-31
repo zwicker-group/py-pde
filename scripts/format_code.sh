@@ -9,5 +9,8 @@ popd > /dev/null
 echo "Formating import statements..."
 isort ..
 
+echo "Formating docstrings..."
+docformatter --in-place --black --recursive ..
+
 echo "Formating source code..."
 black ..

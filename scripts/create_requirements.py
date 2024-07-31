@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-This script creates the requirements files in the project
-"""
+"""This script creates the requirements files in the project."""
 
 from __future__ import annotations
 
@@ -18,7 +16,7 @@ MAX_PYTHON_VERSION = "3.12"
 
 @dataclass
 class Requirement:
-    """simple class collecting data for a single required python package"""
+    """Simple class collecting data for a single required python package."""
 
     name: str  # name of the python package
     version_min: str  # minimal version
@@ -42,7 +40,7 @@ class Requirement:
         return version
 
     def line(self, relation: str = ">=") -> str:
-        """create a line for a requirements file
+        """Create a line for a requirements file.
 
         Args:
             relation (str):
@@ -166,6 +164,7 @@ REQUIREMENTS = [
         name="jupyter_contrib_nbextensions", version_min="0.5", tests_only=True
     ),
     Requirement(name="black", version_min="24", tests_only=True),
+    Requirement(name="docformatter", version_min="1.7", tests_only=True),
     Requirement(name="importlib-metadata", version_min="5", tests_only=True),
     Requirement(name="isort", version_min="5.1", tests_only=True),
     Requirement(name="mypy", version_min="1.8", tests_only=True),
@@ -191,7 +190,7 @@ def write_requirements_txt(
     ref_base: bool = False,
     comment: str = None,
 ):
-    """write requirements to a requirements.txt file
+    """Write requirements to a requirements.txt file.
 
     Args:
         path (:class:`Path`): The path where the requirements are written
@@ -216,7 +215,7 @@ def write_requirements_txt(
 def write_requirements_csv(
     path: Path, requirements: list[Requirement], *, incl_version: bool = True
 ):
-    """write requirements to a CSV file
+    """Write requirements to a CSV file.
 
     Args:
         path (:class:`Path`): The path where the requirements are written
@@ -237,7 +236,7 @@ def write_requirements_csv(
 
 
 def write_requirements_py(path: Path, requirements: list[Requirement]):
-    """write requirements check into a python module
+    """Write requirements check into a python module.
 
     Args:
         path (:class:`Path`): The path where the requirements are written
@@ -274,7 +273,7 @@ def write_from_template(
     fix_format: bool = False,
     add_warning: bool = True,
 ):
-    """write file based on a template
+    """Write file based on a template.
 
     Args:
         path (:class:`Path`): The path where the requirements are written
@@ -322,7 +321,7 @@ def write_from_template(
 
 
 def main():
-    """main function creating all the requirements"""
+    """Main function creating all the requirements."""
     root = Path(PACKAGE_PATH)
 
     # write basic requirements

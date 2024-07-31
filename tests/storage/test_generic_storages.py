@@ -43,7 +43,7 @@ if mr is not None:
 
 @pytest.fixture
 def storage_factory(tmp_path, storage_class):
-    """helper fixture that provides a storage factory that initializes files"""
+    """Helper fixture that provides a storage factory that initializes files."""
     if storage_class is None:
         return None
 
@@ -76,7 +76,7 @@ def storage_factory(tmp_path, storage_class):
 
 @pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
 def test_storage_write(atol, can_clear, storage_factory):
-    """test simple memory storage"""
+    """Test simple memory storage."""
     dim = 5
     grid = UnitGrid([dim])
     field = ScalarField(grid)
@@ -112,7 +112,7 @@ def test_storage_write(atol, can_clear, storage_factory):
 
 
 def test_storage_truncation(tmp_path, rng):
-    """test whether simple trackers can be used"""
+    """Test whether simple trackers can be used."""
     file = tmp_path / "test_storage_truncation.hdf5"
     for truncate in [True, False]:
         storages = [MemoryStorage()]
@@ -147,7 +147,7 @@ def test_storage_truncation(tmp_path, rng):
 
 @pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
 def test_storing_extract_range(atol, can_clear, storage_factory):
-    """test methods specific to FieldCollections in memory storage"""
+    """Test methods specific to FieldCollections in memory storage."""
     sf = ScalarField(UnitGrid([1]))
 
     # store some data
@@ -183,7 +183,7 @@ def test_storing_extract_range(atol, can_clear, storage_factory):
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
 def test_storing_collection(storage_factory, rng):
-    """test methods specific to FieldCollections in memory storage"""
+    """Test methods specific to FieldCollections in memory storage."""
     grid = UnitGrid([2, 2])
     f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="a", rng=rng)
     f2 = VectorField.random_uniform(grid, 0.1, 0.4, label="b", rng=rng)
@@ -224,7 +224,7 @@ def test_storing_collection(storage_factory, rng):
     "atol,can_clear,storage_class", STORAGE_CLASSES_ALL + [(0, False, None)]
 )
 def test_storage_apply(atol, can_clear, storage_factory):
-    """test the apply function of StorageBase"""
+    """Test the apply function of StorageBase."""
     grid = UnitGrid([2])
     field = ScalarField(grid)
 
@@ -254,7 +254,7 @@ def test_storage_apply(atol, can_clear, storage_factory):
     "atol,can_clear,storage_class", STORAGE_CLASSES_ALL + [(0, False, None)]
 )
 def test_storage_copy(atol, can_clear, storage_factory):
-    """test the copy function of StorageBase"""
+    """Test the copy function of StorageBase."""
     grid = UnitGrid([2])
     field = ScalarField(grid)
 
@@ -283,7 +283,7 @@ def test_storage_copy(atol, can_clear, storage_factory):
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)
 @pytest.mark.parametrize("dtype", [bool, complex])
 def test_storage_types(storage_factory, dtype, rng):
-    """test storing different types"""
+    """Test storing different types."""
     grid = UnitGrid([32])
     field = ScalarField.random_uniform(grid, rng=rng).copy(dtype=dtype)
     if dtype == complex:
@@ -304,7 +304,7 @@ def test_storage_types(storage_factory, dtype, rng):
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
 def test_storage_mpi(atol, can_clear, storage_factory, rng):
-    """test writing data using MPI"""
+    """Test writing data using MPI."""
     eq = DiffusionPDE()
     grid = UnitGrid([8])
     field = ScalarField.random_normal(grid, rng=rng).smooth(1)
@@ -321,7 +321,7 @@ def test_storage_mpi(atol, can_clear, storage_factory, rng):
 
 @pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
 def test_storing_transformation_collection(atol, can_clear, storage_factory, rng):
-    """test transformation yielding field collections in storage classes"""
+    """Test transformation yielding field collections in storage classes."""
     grid = UnitGrid([8])
     field = ScalarField.random_normal(grid, rng=rng).smooth(1)
 
@@ -347,7 +347,7 @@ def test_storing_transformation_collection(atol, can_clear, storage_factory, rng
 
 @pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
 def test_storing_transformation_scalar(atol, can_clear, storage_factory, rng):
-    """test transformations yielding scalar fields in storage classes"""
+    """Test transformations yielding scalar fields in storage classes."""
     grid = UnitGrid([8])
     field = ScalarField.random_uniform(grid, rng=rng).smooth(1)
 
@@ -366,7 +366,7 @@ def test_storing_transformation_scalar(atol, can_clear, storage_factory, rng):
 
 @pytest.mark.parametrize("atol,can_clear,storage_class", STORAGE_CLASSES_ALL)
 def test_storage_view(atol, can_clear, storage_factory, rng):
-    """test StorageView"""
+    """Test StorageView."""
     grid = UnitGrid([2, 2])
     f1 = ScalarField.random_uniform(grid, 0.1, 0.4, label="a", rng=rng)
     f2 = VectorField.random_uniform(grid, 0.1, 0.4, label="b", rng=rng)

@@ -1,5 +1,4 @@
-"""
-Cartesian grids of arbitrary dimension.
+"""Cartesian grids of arbitrary dimension.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -28,7 +27,7 @@ if TYPE_CHECKING:
 
 
 class CartesianGrid(GridBase):
-    r""" d-dimensional Cartesian grid with uniform discretization for each axis
+    r"""D-dimensional Cartesian grid with uniform discretization for each axis.
 
     The grids can be thought of as a collection of n-dimensional boxes, called cells, of
     equal length in each dimension. The bounds then defined the total volume covered by
@@ -48,7 +47,7 @@ class CartesianGrid(GridBase):
             \Delta x^{(k)} &= \frac{x^{(k)}_\mathrm{max} -
                                     x^{(k)}_\mathrm{min}}{N^{(k)}}
 
-    where :math:`N^{(k)}` is the number of cells along this dimension. Consequently, 
+    where :math:`N^{(k)}` is the number of cells along this dimension. Consequently,
     cells have dimension :math:`\Delta x^{(k)}` and cover the interval
     :math:`[x^{(k)}_\mathrm{min}, x^{(k)}_\mathrm{max}]`.
     """
@@ -150,7 +149,7 @@ class CartesianGrid(GridBase):
 
     @classmethod
     def from_state(cls, state: dict[str, Any]) -> CartesianGrid:  # type: ignore
-        """create a field from a stored `state`.
+        """Create a field from a stored `state`.
 
         Args:
             state (dict):
@@ -202,13 +201,13 @@ class CartesianGrid(GridBase):
 
     @property
     def cell_volume_data(self):
-        """size associated with each cell"""
+        """Size associated with each cell."""
         return tuple(self.discretization)
 
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
-        """generates all mirror points corresponding to `point`
+        """Generates all mirror points corresponding to `point`
 
         Args:
             point (:class:`~numpy.ndarray`):
@@ -244,7 +243,7 @@ class CartesianGrid(GridBase):
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
     ) -> np.ndarray:
-        """return a random point within the grid
+        """Return a random point within the grid.
 
         Args:
             boundary_distance (float):
@@ -287,7 +286,7 @@ class CartesianGrid(GridBase):
         )
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
-        """return a line cut through the given data
+        """Return a line cut through the given data.
 
         Args:
             data (:class:`~numpy.ndarray`):
@@ -314,7 +313,7 @@ class CartesianGrid(GridBase):
             )
 
         def _get_axis(axis):
-            """determine the axis from a given specifier"""
+            """Determine the axis from a given specifier."""
             try:
                 axis = int(axis)
             except ValueError:
@@ -410,7 +409,7 @@ class CartesianGrid(GridBase):
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
-        r"""visualize the grid
+        r"""Visualize the grid.
 
         Args:
             {PLOT_ARGS}
@@ -439,7 +438,7 @@ class CartesianGrid(GridBase):
             ax.set_aspect(1)
 
     def slice(self, indices: Sequence[int]) -> CartesianGrid:
-        """return a subgrid of only the specified axes
+        """Return a subgrid of only the specified axes.
 
         Args:
             indices (list):
@@ -458,7 +457,7 @@ class CartesianGrid(GridBase):
 
 
 class UnitGrid(CartesianGrid):
-    r"""d-dimensional Cartesian grid with unit discretization in all directions
+    r"""D-dimensional Cartesian grid with unit discretization in all directions.
 
     The grids can be thought of as a collection of d-dimensional cells of unit length.
     The `shape` parameter determines how many boxes there are in each direction. The
@@ -499,7 +498,7 @@ class UnitGrid(CartesianGrid):
 
     @classmethod
     def from_state(cls, state: dict[str, Any]) -> UnitGrid:  # type: ignore
-        """create a field from a stored `state`.
+        """Create a field from a stored `state`.
 
         Args:
             state (dict):
@@ -512,7 +511,7 @@ class UnitGrid(CartesianGrid):
         return obj
 
     def to_cartesian(self) -> CartesianGrid:
-        """convert unit grid to :class:`CartesianGrid`
+        """Convert unit grid to :class:`CartesianGrid`
 
         Returns:
             :class:`CartesianGrid`: The equivalent cartesian grid
@@ -522,7 +521,7 @@ class UnitGrid(CartesianGrid):
         )
 
     def slice(self, indices: Sequence[int]) -> UnitGrid:
-        """return a subgrid of only the specified axes
+        """Return a subgrid of only the specified axes.
 
         Args:
             indices (list):

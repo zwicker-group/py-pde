@@ -21,7 +21,7 @@ from pde import FieldCollection, PDEBase, PlotTracker, ScalarField, UnitGrid
 
 
 class SIRPDE(PDEBase):
-    """SIR-model with diffusive mobility"""
+    """SIR-model with diffusive mobility."""
 
     def __init__(
         self, beta=0.3, gamma=0.9, diffusivity=0.1, bc="auto_periodic_neumann"
@@ -33,7 +33,7 @@ class SIRPDE(PDEBase):
         self.bc = bc  # boundary condition
 
     def get_state(self, s, i):
-        """generate a suitable initial state"""
+        """Generate a suitable initial state."""
         norm = (s + i).data.max()  # maximal density
         if norm > 1:
             s /= norm

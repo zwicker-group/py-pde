@@ -1,9 +1,8 @@
-"""
-Spherically-symmetric grids in 2 and 3 dimensions. These are grids that only discretize
-the radial direction, assuming symmetry with respect to all angles. This choice implies
-that differential operators might not be applicable to all fields. For instance, the
-divergence of a vector field on a spherical grid can only be represented as a scalar
-field on the same grid if the θ-component of the vector field vanishes.
+"""Spherically-symmetric grids in 2 and 3 dimensions. These are grids that only
+discretize the radial direction, assuming symmetry with respect to all angles. This
+choice implies that differential operators might not be applicable to all fields. For
+instance, the divergence of a vector field on a spherical grid can only be represented
+as a scalar field on the same grid if the θ-component of the vector field vanishes.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -29,7 +28,7 @@ TNumArr = TypeVar("TNumArr", float, np.ndarray)
 
 
 def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
-    """Return the volume of a sphere with a given radius
+    """Return the volume of a sphere with a given radius.
 
     Args:
         radius (float or :class:`~numpy.ndarray`):
@@ -51,7 +50,7 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
 
 
 class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
-    r"""Base class for d-dimensional spherical grids with angular symmetry
+    r"""Base class for d-dimensional spherical grids with angular symmetry.
 
     The angular symmetry implies that states only depend on the radial
     coordinate :math:`r`, which is discretized uniformly as
@@ -111,7 +110,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
     @classmethod
     def from_state(cls, state: dict[str, Any]) -> SphericalSymGridBase:  # type: ignore
-        """create a field from a stored `state`.
+        """Create a field from a stored `state`.
 
         Args:
             state (dict):
@@ -148,7 +147,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
     @property
     def has_hole(self) -> bool:
-        """returns whether the inner radius is larger than zero"""
+        """Returns whether the inner radius is larger than zero."""
         return self.axes_bounds[0][0] > 0
 
     @property
@@ -171,7 +170,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
     @cached_property()
     def cell_volume_data(self) -> tuple[np.ndarray]:
-        """tuple of :class:`~numpy.ndarray`: the volumes of all cells"""
+        """Tuple of :class:`~numpy.ndarray`: the volumes of all cells."""
         dr = self.discretization[0]
         rs = self.axes_coords[0]
         volumes_h = volume_from_radius(rs + 0.5 * dr, dim=self.dim)
@@ -186,7 +185,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
     ) -> np.ndarray:
-        """return a random point within the grid
+        """Return a random point within the grid.
 
         Note that these points will be uniformly distributed in the volume, implying
         they are not uniformly distributed on the radial axis.
@@ -243,7 +242,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
-        """return a line cut along the radial axis
+        """Return a line cut along the radial axis.
 
         Args:
             data (:class:`~numpy.ndarray`):
@@ -274,7 +273,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         fill_value: float = 0,
         masked: bool = True,
     ) -> dict[str, Any]:
-        """return a 2d-image of the data
+        """Return a 2d-image of the data.
 
         Args:
             data (:class:`~numpy.ndarray`):
@@ -348,7 +347,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         mode: Literal["valid", "inscribed", "full", "circumscribed"] = "valid",
         num: int | None = None,
     ) -> CartesianGrid:
-        """return a Cartesian grid for this spherical one
+        """Return a Cartesian grid for this spherical one.
 
         Args:
             mode (str):
@@ -383,7 +382,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
     @plot_on_axes()
     def plot(self, ax, **kwargs):
-        r"""visualize the spherically symmetric grid in two dimensions
+        r"""Visualize the spherically symmetric grid in two dimensions.
 
         Args:
             {PLOT_ARGS}
@@ -416,7 +415,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
 
 class PolarSymGrid(SphericalSymGridBase):
-    r"""2-dimensional polar grid assuming angular symmetry
+    r"""2-dimensional polar grid assuming angular symmetry.
 
     The angular symmetry implies that states only depend on the radial coordinate
     :math:`r`, which is discretized uniformly as
@@ -438,7 +437,7 @@ class PolarSymGrid(SphericalSymGridBase):
 
 
 class SphericalSymGrid(SphericalSymGridBase):
-    r"""3-dimensional spherical grid assuming spherical symmetry
+    r"""3-dimensional spherical grid assuming spherical symmetry.
 
     The symmetry implies that states only depend on the radial coordinate
     :math:`r`, which is discretized as follows:

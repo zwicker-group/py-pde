@@ -11,7 +11,7 @@ from pde.tools.spectral import make_colored_noise
 
 
 def spectral_density(data, dx=1.0):
-    """calculate the power spectral density of a field
+    """Calculate the power spectral density of a field.
 
     Args:
         data (:class:`~numpy.ndarray`):
@@ -38,7 +38,7 @@ def spectral_density(data, dx=1.0):
 
 
 def test_colored_noise(rng):
-    """test the implementation of the colored noise"""
+    """Test the implementation of the colored noise."""
     grid = UnitGrid([64, 64], periodic=True)
     for exponent in [0, -1, 2]:
         scale = rng.uniform(1, 10)
@@ -50,8 +50,8 @@ def test_colored_noise(rng):
 
 
 def test_noise_scaling(rng):
-    """compare the noise strength (in terms of the spectral density of
-    two different noise sources that should be equivalent)"""
+    """Compare the noise strength (in terms of the spectral density of two different
+    noise sources that should be equivalent)"""
     # create a grid
     x, w = 2 + 10 * rng.random(2)
     size = rng.integers(128, 256)

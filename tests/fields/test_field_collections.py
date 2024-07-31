@@ -13,7 +13,7 @@ from pde.tools.misc import module_available
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_shapes_nfields(grid, rng):
-    """test single component field"""
+    """Test single component field."""
     for num in [1, 3]:
         fields = [ScalarField.random_uniform(grid, rng=rng) for _ in range(num)]
         field = FieldCollection(fields)
@@ -28,7 +28,7 @@ def test_shapes_nfields(grid, rng):
 
 
 def test_collections(rng):
-    """test field collections"""
+    """Test field collections."""
     grid = UnitGrid([3, 4])
     sf = ScalarField.random_uniform(grid, label="sf", rng=rng)
     vf = VectorField.random_uniform(grid, label="vf", rng=rng)
@@ -98,7 +98,7 @@ def test_collections(rng):
 
 
 def test_collections_copy():
-    """test copying data of collections"""
+    """Test copying data of collections."""
     grid = UnitGrid([2, 2])
     sf = ScalarField(grid, 0)
     vf = VectorField(grid, 1)
@@ -124,7 +124,7 @@ def test_collections_copy():
 
 
 def test_collections_append():
-    """test append data to collections"""
+    """Test append data to collections."""
     grid = UnitGrid([2, 2])
     sf = ScalarField(grid, 0)
     vf = VectorField(grid, 1, label="vector")
@@ -156,7 +156,7 @@ def test_collections_append():
 
 
 def test_collections_operators():
-    """test field collections"""
+    """Test field collections."""
     grid = UnitGrid([3, 4])
     sf = ScalarField(grid, 1)
     vf = VectorField(grid, 1)
@@ -178,7 +178,7 @@ def test_collections_operators():
 
 
 def test_smoothing_collection(rng):
-    """test smoothing of a FieldCollection"""
+    """Test smoothing of a FieldCollection."""
     grid = UnitGrid([3, 4], periodic=[True, False])
     sf = ScalarField.random_uniform(grid, rng=rng)
     vf = VectorField.random_uniform(grid, rng=rng)
@@ -197,7 +197,7 @@ def test_smoothing_collection(rng):
 
 
 def test_scalar_random_uniform():
-    """test creating collections using scalar_random_uniform"""
+    """Test creating collections using scalar_random_uniform."""
     grid = UnitGrid([3, 4], periodic=[True, False])
     fc = FieldCollection.scalar_random_uniform(2, grid, label="c", labels=["a", "b"])
     assert fc.label == "c"
@@ -209,7 +209,7 @@ def test_scalar_random_uniform():
 
 
 def test_from_scalar_expressions():
-    """test creating field collections from scalar expressions"""
+    """Test creating field collections from scalar expressions."""
     grid = UnitGrid([3])
     expressions = ["x**2", "1"]
     fc = FieldCollection.from_scalar_expressions(
@@ -227,7 +227,7 @@ def test_from_scalar_expressions():
 @pytest.mark.skipif(not module_available("napari"), reason="requires `napari` module")
 @pytest.mark.interactive
 def test_interactive_collection_plotting(rng):
-    """test the interactive plotting"""
+    """Test the interactive plotting."""
     grid = UnitGrid([3, 3])
     sf = ScalarField.random_uniform(grid, 0.1, 0.9, rng=rng)
     vf = VectorField.random_uniform(grid, 0.1, 0.9, rng=rng)
@@ -236,7 +236,7 @@ def test_interactive_collection_plotting(rng):
 
 
 def test_field_labels():
-    """test the FieldCollection.labels property"""
+    """Test the FieldCollection.labels property."""
     grid = UnitGrid([5])
     s1 = ScalarField(grid, label="s1")
     s2 = ScalarField(grid)
@@ -281,7 +281,7 @@ def test_field_labels():
 
 
 def test_collection_1_field():
-    """test field collections with only one field"""
+    """Test field collections with only one field."""
     grid = UnitGrid([3])
     s1 = ScalarField(grid, label="a")
     fc = FieldCollection([s1])
@@ -291,7 +291,7 @@ def test_collection_1_field():
 
 
 def test_collection_plotting():
-    """test simple plotting of various fields on various grids"""
+    """Test simple plotting of various fields on various grids."""
     grid = UnitGrid([5])
     s1 = ScalarField(grid, label="s1")
     s2 = ScalarField(grid)
@@ -308,7 +308,7 @@ def test_collection_plotting():
 
 
 def test_from_data(rng):
-    """test the `from_data` method"""
+    """Test the `from_data` method."""
     grid = UnitGrid([3, 5])
     s = ScalarField.random_uniform(grid, label="s1", rng=rng)
     v = VectorField.random_uniform(grid, label="v2", rng=rng)
@@ -336,7 +336,7 @@ def test_from_data(rng):
 
 
 def test_collection_apply(rng):
-    """test the `apply` method"""
+    """Test the `apply` method."""
     grid = UnitGrid([3, 5])
     s = ScalarField(grid, 2, label="s1")
     v = VectorField.random_uniform(grid, label="v2", rng=rng)
@@ -347,7 +347,7 @@ def test_collection_apply(rng):
 
 @pytest.mark.parametrize("num", [1, 2, 3])
 def test_rgb_image_plotting(num):
-    """test plotting of collections as rgb fields"""
+    """Test plotting of collections as rgb fields."""
     grid = UnitGrid([16, 8])
     fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
 
@@ -357,7 +357,7 @@ def test_rgb_image_plotting(num):
 
 @pytest.mark.parametrize("num", [1, 2, 3, 4])
 def test_merged_image_plotting(num):
-    """test plotting of collections as merged images"""
+    """Test plotting of collections as merged images."""
     grid = UnitGrid([16, 8])
     fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
 

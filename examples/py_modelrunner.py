@@ -21,7 +21,7 @@ from pde import DiffusionPDE, ModelrunnerStorage, ScalarField, UnitGrid
 
 
 def run(storage, diffusivity=0.1):
-    """function that runs the model
+    """Function that runs the model.
 
     Args:
         storage (:mod:`~modelrunner.storage.group.StorageGroup`):

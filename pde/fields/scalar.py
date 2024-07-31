@@ -1,5 +1,4 @@
-"""
-Defines a scalar field over a grid
+"""Defines a scalar field over a grid.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -27,7 +26,7 @@ if TYPE_CHECKING:
 
 
 class ScalarField(DataFieldBase):
-    """Scalar field discretized on a grid"""
+    """Scalar field discretized on a grid."""
 
     rank = 0
 
@@ -43,7 +42,7 @@ class ScalarField(DataFieldBase):
         label: str | None = None,
         dtype: DTypeLike | None = None,
     ) -> ScalarField:
-        """create a scalar field on a grid from a given expression
+        """Create a scalar field on a grid from a given expression.
 
         Warning:
             {WARNING_EXEC}
@@ -103,7 +102,7 @@ class ScalarField(DataFieldBase):
         *,
         label: str | None = None,
     ) -> ScalarField:
-        """create a scalar field from an image
+        """Create a scalar field from an image.
 
         Args:
             path (:class:`Path` or str):
@@ -144,11 +143,11 @@ class ScalarField(DataFieldBase):
 
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
-        """set the data from a value from a collection"""
+        """Set the data from a value from a collection."""
         self._data_full = value[0]
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        """support unary numpy ufuncs, like np.sin, but also np.multiply"""
+        """Support unary numpy ufuncs, like np.sin, but also np.multiply."""
         if method == "__call__":
             # only support unary functions in simple calls
 
@@ -190,7 +189,7 @@ class ScalarField(DataFieldBase):
         out: ScalarField | None = None,
         **kwargs,
     ) -> ScalarField:
-        """apply Laplace operator and return result as a field
+        """Apply Laplace operator and return result as a field.
 
         Args:
             bc:
@@ -215,7 +214,7 @@ class ScalarField(DataFieldBase):
         out: ScalarField | None = None,
         **kwargs,
     ) -> ScalarField:
-        r"""apply squared gradient operator and return result as a field
+        r"""Apply squared gradient operator and return result as a field.
 
         This evaluates :math:`|\nabla \phi|^2` for the scalar field :math:`\phi`
 
@@ -242,7 +241,7 @@ class ScalarField(DataFieldBase):
         out: VectorField | None = None,
         **kwargs,
     ) -> VectorField:
-        """apply gradient operator and return result as a field
+        """Apply gradient operator and return result as a field.
 
         Args:
             bc:
@@ -269,7 +268,7 @@ class ScalarField(DataFieldBase):
         method: Literal["integral", "average", "mean"] = "integral",
         label: str | None = None,
     ) -> ScalarField:
-        """project scalar field along given axes
+        """Project scalar field along given axes.
 
         Args:
             axes (list of str):
@@ -325,7 +324,7 @@ class ScalarField(DataFieldBase):
         method: Literal["nearest"] = "nearest",
         label: str | None = None,
     ) -> ScalarField:
-        """slice data at a given position
+        """Slice data at a given position.
 
         Note:
             This method should not be used to evaluate fields right at the boundary
@@ -410,7 +409,7 @@ class ScalarField(DataFieldBase):
     def to_scalar(
         self, scalar: str | Callable = "auto", *, label: str | None = None
     ) -> ScalarField:
-        """return a modified scalar field by applying method `scalar`
+        """Return a modified scalar field by applying method `scalar`
 
         Args:
             scalar (str or callable):
@@ -453,7 +452,7 @@ class ScalarField(DataFieldBase):
         fill: Number | None = None,
         label: str | None = None,
     ) -> ScalarField:
-        """interpolate the data of this scalar field to another grid.
+        """Interpolate the data of this scalar field to another grid.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -508,7 +507,7 @@ class ScalarField(DataFieldBase):
         *,
         label: str | None = None,
     ) -> ScalarField:
-        """get the field on the specified boundary
+        """Get the field on the specified boundary.
 
         Args:
             index (str or tuple):

@@ -1,5 +1,4 @@
-"""
-Functions for creating movies of simulation results
+"""Functions for creating movies of simulation results.
 
 .. autosummary::
    :nosignatures:
@@ -24,7 +23,7 @@ from .plotting import ScalarFieldPlot, ScaleData
 
 
 class Movie:
-    """Class for creating movies from matplotlib figures using ffmpeg
+    """Class for creating movies from matplotlib figures using ffmpeg.
 
     Note:
         Internally, this class uses :class:`matplotlib.animation.FFMpegWriter`.
@@ -86,7 +85,7 @@ class Movie:
 
     @classmethod
     def is_available(cls) -> bool:
-        """check whether the movie infrastructure is available
+        """Check whether the movie infrastructure is available.
 
         Returns:
             bool: True if movies can be created
@@ -103,13 +102,13 @@ class Movie:
         return False
 
     def _end(self):
-        """clear up temporary things if necessary"""
+        """Clear up temporary things if necessary."""
         if self._writer is not None:
             self._writer.finish()
         self._writer = None
 
     def add_figure(self, fig=None):
-        """adds the figure `fig` as a frame to the current movie
+        """Adds the figure `fig` as a frame to the current movie.
 
         Args:
             fig (:class:`~matplotlib.figures.Figure`):
@@ -137,7 +136,7 @@ class Movie:
         self._writer.grab_frame(facecolor="white")
 
     def save(self):
-        """convert the recorded images to a movie using ffmpeg"""
+        """Convert the recorded images to a movie using ffmpeg."""
         self._end()
 
 
@@ -151,7 +150,7 @@ def movie_scalar(
     tight: bool = False,
     show: bool = True,
 ) -> None:
-    """produce a movie for a simulation of a scalar field
+    """Produce a movie for a simulation of a scalar field.
 
     Args:
         storage (:class:`~pde.storage.base.StorageBase`):
@@ -193,7 +192,7 @@ def movie_multiple(
     scale: ScaleData = "automatic",
     progress: bool = True,
 ) -> None:
-    """produce a movie for a simulation with n components
+    """Produce a movie for a simulation with n components.
 
     Args:
         storage (:class:`~pde.storage.base.StorageBase`):
@@ -221,7 +220,7 @@ def movie(
     plot_args: dict[str, Any] | None = None,
     movie_args: dict[str, Any] | None = None,
 ) -> None:
-    """produce a movie by simply plotting each frame
+    """Produce a movie by simply plotting each frame.
 
     Args:
         storage (:class:`~pde.storage.base.StorageBase`):

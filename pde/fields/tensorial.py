@@ -1,5 +1,4 @@
-"""
-Defines a tensorial field of rank 2 over a grid
+"""Defines a tensorial field of rank 2 over a grid.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -26,7 +25,7 @@ if TYPE_CHECKING:
 
 
 class Tensor2Field(DataFieldBase):
-    """Tensor field of rank 2 discretized on a grid
+    """Tensor field of rank 2 discretized on a grid.
 
     Warning:
         Components of the tensor field are given in the local basis. While the local
@@ -49,7 +48,7 @@ class Tensor2Field(DataFieldBase):
         label: str | None = None,
         dtype: DTypeLike | None = None,
     ) -> Tensor2Field:
-        """create a tensor field on a grid from given expressions
+        """Create a tensor field on a grid from given expressions.
 
         Warning:
             {WARNING_EXEC}
@@ -111,7 +110,7 @@ class Tensor2Field(DataFieldBase):
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
     def _get_axes_index(self, key: tuple[int | str, int | str]) -> tuple[int, int]:
-        """turns a general index of two axis into a tuple of two numeric indices"""
+        """Turns a general index of two axis into a tuple of two numeric indices."""
         try:
             if len(key) != 2:
                 raise IndexError("Index must be given as two integers")
@@ -120,7 +119,7 @@ class Tensor2Field(DataFieldBase):
         return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
 
     def __getitem__(self, key: tuple[int | str, int | str]) -> ScalarField:
-        """extract a single component of the tensor field as a scalar field"""
+        """Extract a single component of the tensor field as a scalar field."""
         return ScalarField(
             self.grid,
             data=self._data_full[self._get_axes_index(key)],
@@ -132,7 +131,7 @@ class Tensor2Field(DataFieldBase):
         key: tuple[int | str, int | str],
         value: NumberOrArray | ScalarField,
     ):
-        """set a single component of the tensor field"""
+        """Set a single component of the tensor field."""
         idx = self._get_axes_index(key)
         if isinstance(value, ScalarField):
             self.grid.assert_grid_compatible(value.grid)
@@ -142,7 +141,7 @@ class Tensor2Field(DataFieldBase):
 
     @DataFieldBase._data_flat.setter  # type: ignore
     def _data_flat(self, value):
-        """set the data from a value from a collection"""
+        """Set the data from a value from a collection."""
         # create a view and reshape it to disallow copying
         data_full = value.view()
         dim = self.grid.dim
@@ -164,7 +163,7 @@ class Tensor2Field(DataFieldBase):
         conjugate: bool = True,
         label: str = "dot product",
     ) -> VectorField | Tensor2Field:
-        """calculate the dot product involving a tensor field
+        """Calculate the dot product involving a tensor field.
 
         This supports the dot product between two tensor fields as well as the
         product between a tensor and a vector. The resulting fields will be a
@@ -211,7 +210,7 @@ class Tensor2Field(DataFieldBase):
     def divergence(
         self, bc: BoundariesData | None, out: VectorField | None = None, **kwargs
     ) -> VectorField:
-        r"""apply tensor divergence and return result as a field
+        r"""Apply tensor divergence and return result as a field.
 
         The tensor divergence is a vector field :math:`v_\alpha` resulting from a
         contracting of the derivative of the tensor field :math:`t_{\alpha\beta}`:
@@ -237,11 +236,11 @@ class Tensor2Field(DataFieldBase):
 
     @property
     def integral(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: integral of each component over space"""
+        """:class:`~numpy.ndarray`: integral of each component over space."""
         return self.grid.integrate(self.data)  # type: ignore
 
     def transpose(self, label: str = "transpose") -> Tensor2Field:
-        """return the transpose of the tensor field
+        """Return the transpose of the tensor field.
 
         Args:
             label (str, optional): Name of the returned field
@@ -255,7 +254,7 @@ class Tensor2Field(DataFieldBase):
     def symmetrize(
         self, make_traceless: bool = False, inplace: bool = False
     ) -> Tensor2Field:
-        """symmetrize the tensor field in place
+        """Symmetrize the tensor field in place.
 
         Args:
             make_traceless (bool):
@@ -285,7 +284,7 @@ class Tensor2Field(DataFieldBase):
     def to_scalar(
         self, scalar: str = "auto", *, label: str | None = "scalar `{scalar}`"
     ) -> ScalarField:
-        r"""return scalar variant of the field
+        r"""Return scalar variant of the field.
 
         The invariants of the tensor field :math:`\boldsymbol{A}` are
 
@@ -376,7 +375,7 @@ class Tensor2Field(DataFieldBase):
         return ScalarField(self.grid, data, label=label)
 
     def trace(self, label: str | None = "trace") -> ScalarField:
-        """return the trace of the tensor field as a scalar field
+        """Return the trace of the tensor field as a scalar field.
 
         Args:
             label (str, optional): Name of the returned field
@@ -387,7 +386,7 @@ class Tensor2Field(DataFieldBase):
         return self.to_scalar(scalar="trace", label=label)
 
     def _update_plot_components(self, reference: list[list[PlotReference]]) -> None:
-        """update a plot collection with the current field values
+        """Update a plot collection with the current field values.
 
         Args:
             reference (list of :class:`PlotReference`):
@@ -404,7 +403,7 @@ class Tensor2Field(DataFieldBase):
         fig=None,
         **kwargs,
     ) -> list[list[PlotReference]]:
-        r"""visualize all the components of this tensor field
+        r"""Visualize all the components of this tensor field.
 
         Args:
             kind (str or list of str):

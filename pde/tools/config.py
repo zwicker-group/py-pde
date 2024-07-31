@@ -1,5 +1,4 @@
-"""
-Handles configuration variables of the package
+"""Handles configuration variables of the package.
 
 .. autosummary::
    :nosignatures:
@@ -64,7 +63,7 @@ DEFAULT_CONFIG: list[Parameter] = [
 
 
 class Config(collections.UserDict):
-    """class handling the package configuration"""
+    """Class handling the package configuration."""
 
     def __init__(self, items: dict[str, Any] | None = None, mode: str = "update"):
         """
@@ -89,7 +88,7 @@ class Config(collections.UserDict):
         self.mode = mode
 
     def __getitem__(self, key: str):
-        """retrieve item `key`"""
+        """Retrieve item `key`"""
         parameter = self.data[key]
         if isinstance(parameter, Parameter):
             return parameter.convert()
@@ -97,7 +96,7 @@ class Config(collections.UserDict):
             return parameter
 
     def __setitem__(self, key: str, value):
-        """update item `key` with `value`"""
+        """Update item `key` with `value`"""
         if self.mode == "insert":
             self.data[key] = value
 
@@ -117,14 +116,14 @@ class Config(collections.UserDict):
             raise ValueError(f"Unsupported configuration mode `{self.mode}`")
 
     def __delitem__(self, key: str):
-        """removes item `key`"""
+        """Removes item `key`"""
         if self.mode == "insert":
             del self.data[key]
         else:
             raise RuntimeError("Configuration is not in `insert` mode")
 
     def to_dict(self) -> dict[str, Any]:
-        """convert the configuration to a simple dictionary
+        """Convert the configuration to a simple dictionary.
 
         Returns:
             dict: A representation of the configuration in a normal :class:`dict`.
@@ -132,12 +131,12 @@ class Config(collections.UserDict):
         return {k: v for k, v in self.items()}
 
     def __repr__(self) -> str:
-        """represent the configuration as a string"""
+        """Represent the configuration as a string."""
         return f"{self.__class__.__name__}({repr(self.to_dict())})"
 
     @contextlib.contextmanager
     def __call__(self, values: dict[str, Any] | None = None, **kwargs):
-        """context manager temporarily changing the configuration
+        """Context manager temporarily changing the configuration.
 
         Args:
             values (dict): New configuration parameters
@@ -156,7 +155,7 @@ class Config(collections.UserDict):
 def get_package_versions(
     packages: list[str], *, na_str="not available"
 ) -> dict[str, str]:
-    """tries to load certain python packages and returns their version
+    """Tries to load certain python packages and returns their version.
 
     Args:
         packages (list): The names of all packages
@@ -177,7 +176,7 @@ def get_package_versions(
 
 
 def parse_version_str(ver_str: str) -> list[int]:
-    """helper function converting a version string into a list of integers"""
+    """Helper function converting a version string into a list of integers."""
     result = []
     for token in ver_str.split(".")[:3]:
         try:
@@ -188,7 +187,7 @@ def parse_version_str(ver_str: str) -> list[int]:
 
 
 def check_package_version(package_name: str, min_version: str):
-    """checks whether a package has a sufficient version"""
+    """Checks whether a package has a sufficient version."""
 
     msg = f"`{package_name}` version {min_version} required for py-pde"
     try:
@@ -205,7 +204,7 @@ def check_package_version(package_name: str, min_version: str):
 
 
 def packages_from_requirements(requirements_file: Path | str) -> list[str]:
-    """read package names from a requirements file
+    """Read package names from a requirements file.
 
     Args:
         requirements_file (str or :class:`~pathlib.Path`):
@@ -231,7 +230,7 @@ def packages_from_requirements(requirements_file: Path | str) -> list[str]:
 
 
 def environment() -> dict[str, Any]:
-    """obtain information about the compute environment
+    """Obtain information about the compute environment.
 
     Returns:
         dict: information about the python installation and packages

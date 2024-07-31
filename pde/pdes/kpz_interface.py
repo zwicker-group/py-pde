@@ -1,7 +1,6 @@
-"""
-The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interface
+"""The Kardar–Parisi–Zhang (KPZ) equation describing the evolution of an interface.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from .base import PDEBase, expr_prod
 
 
 class KPZInterfacePDE(PDEBase):
-    r"""The Kardar–Parisi–Zhang (KPZ) equation
+    r"""The Kardar–Parisi–Zhang (KPZ) equation.
 
     The mathematical definition is
 
@@ -80,7 +79,7 @@ class KPZInterfacePDE(PDEBase):
         state: ScalarField,
         t: float = 0,
     ) -> ScalarField:
-        """evaluate the right hand side of the PDE
+        """Evaluate the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
@@ -102,7 +101,7 @@ class KPZInterfacePDE(PDEBase):
     def _make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create a compiled function evaluating the right hand side of the PDE
+        """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
@@ -123,7 +122,7 @@ class KPZInterfacePDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """compiled helper function evaluating right hand side"""
+            """Compiled helper function evaluating right hand side."""
             result = nu_value * laplace(state_data, args={"t": t})
             result += lambda_value * gradient_squared(state_data, args={"t": t})
             return result

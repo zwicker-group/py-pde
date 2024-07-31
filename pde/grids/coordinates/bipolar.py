@@ -11,7 +11,7 @@ from .base import CoordinatesBase
 
 
 class BipolarCoordinates(CoordinatesBase):
-    """2-dimensional bipolar coordinates"""
+    """2-dimensional bipolar coordinates."""
 
     dim = 2
     axes = ["σ", "τ"]
@@ -25,7 +25,7 @@ class BipolarCoordinates(CoordinatesBase):
         self.scale_parameter = scale_parameter
 
     def __repr__(self) -> str:
-        """return instance as string"""
+        """Return instance as string."""
         return f"{self.__class__.__name__}(scale_parameter={self.scale_parameter})"
 
     def __eq__(self, other):

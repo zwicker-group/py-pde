@@ -1,5 +1,4 @@
-"""
-Cylindrical grids with azimuthal symmetry
+"""Cylindrical grids with azimuthal symmetry.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -28,7 +27,7 @@ if TYPE_CHECKING:
 
 
 class CylindricalSymGrid(GridBase):
-    r"""3-dimensional cylindrical grid assuming polar symmetry 
+    r"""3-dimensional cylindrical grid assuming polar symmetry.
 
     The polar symmetry implies that states only depend on the radial and axial
     coordinates :math:`r` and :math:`z`, respectively. These are discretized uniformly as
@@ -143,7 +142,7 @@ class CylindricalSymGrid(GridBase):
 
     @classmethod
     def from_state(cls, state: dict[str, Any]) -> CylindricalSymGrid:  # type: ignore
-        """create a field from a stored `state`.
+        """Create a field from a stored `state`.
 
         Args:
             state (dict):
@@ -221,7 +220,7 @@ class CylindricalSymGrid(GridBase):
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
     ) -> np.ndarray:
-        """return a random point within the grid
+        """Return a random point within the grid.
 
         Args:
             boundary_distance (float):
@@ -275,7 +274,7 @@ class CylindricalSymGrid(GridBase):
         )
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
-        """return a line cut for the cylindrical grid
+        """Return a line cut for the cylindrical grid.
 
         Args:
             data (:class:`~numpy.ndarray`):
@@ -328,7 +327,7 @@ class CylindricalSymGrid(GridBase):
         }
 
     def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
-        """return a 2d-image of the data
+        """Return a 2d-image of the data.
 
         Args:
             data (:class:`~numpy.ndarray`):
@@ -359,7 +358,7 @@ class CylindricalSymGrid(GridBase):
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
-        """generates all mirror points corresponding to `point`
+        """Generates all mirror points corresponding to `point`
 
         Args:
             point (:class:`~numpy.ndarray`):
@@ -383,7 +382,7 @@ class CylindricalSymGrid(GridBase):
 
     @cached_property()
     def cell_volume_data(self) -> tuple[np.ndarray, float]:
-        """:class:`~numpy.ndarray`: the volumes of all cells"""
+        """:class:`~numpy.ndarray`: the volumes of all cells."""
         dr, dz = self.discretization
         rs = self.axes_coords[0]
         r_vols = 2 * np.pi * dr * rs
@@ -393,7 +392,7 @@ class CylindricalSymGrid(GridBase):
     def get_cartesian_grid(
         self, mode: Literal["valid", "full"] = "valid"
     ) -> CartesianGrid:
-        """return a Cartesian grid for this Cylindrical one
+        """Return a Cartesian grid for this Cylindrical one.
 
         Args:
             mode (str):
@@ -421,7 +420,7 @@ class CylindricalSymGrid(GridBase):
         return CartesianGrid(grid_bounds, grid_shape)
 
     def slice(self, indices: Sequence[int]) -> CartesianGrid | PolarSymGrid:
-        """return a subgrid of only the specified axes
+        """Return a subgrid of only the specified axes.
 
         Args:
             indices (list):

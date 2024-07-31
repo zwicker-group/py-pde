@@ -1,7 +1,5 @@
-"""
-The py-pde package provides classes and methods for solving partial differential
-equations.
-"""
+"""The py-pde package provides classes and methods for solving partial differential
+equations."""
 
 # determine the package version
 try:

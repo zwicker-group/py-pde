@@ -1,5 +1,4 @@
-"""
-Functions and classes for plotting simulation data
+"""Functions and classes for plotting simulation data.
 
 .. autosummary::
    :nosignatures:
@@ -43,7 +42,7 @@ ScaleData = Union[str, float, tuple[float, float]]
 
 
 def _add_horizontal_colorbar(im, ax, num_loc: int = 5) -> None:
-    """adds a horizontal colorbar for image `im` to the axis `ax`
+    """Adds a horizontal colorbar for image `im` to the axis `ax`
 
     Args:
         im: The result of calling :func:`matplotlib.pyplot.imshow`
@@ -113,7 +112,7 @@ def extract_field(
 
 
 class ScalarFieldPlot:
-    """class managing compound plots of scalar fields"""
+    """Class managing compound plots of scalar fields."""
 
     @fill_in_docstring
     def __init__(
@@ -186,7 +185,7 @@ class ScalarFieldPlot:
         tight: bool = False,
         show: bool = True,
     ) -> ScalarFieldPlot:
-        """create ScalarFieldPlot from storage
+        """Create ScalarFieldPlot from storage.
 
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
@@ -232,7 +231,7 @@ class ScalarFieldPlot:
     def _prepare_quantities(
         fields: FieldBase, quantities, scale: ScaleData = "automatic"
     ) -> list[list[dict[str, Any]]]:
-        """internal method to prepare quantities
+        """Internal method to prepare quantities.
 
         Args:
             fields (:class:`~pde.fields.base.FieldBase`):
@@ -288,7 +287,7 @@ class ScalarFieldPlot:
         title: str | None = None,
         tight: bool = False,
     ):
-        """initialize the plot creating the figure and the axes
+        """Initialize the plot creating the figure and the axes.
 
         Args:
             fields (:class:`~pde.fields.base.FieldBase`):
@@ -385,7 +384,7 @@ class ScalarFieldPlot:
             self.fig.tight_layout(rect=(0, 0.03, 1, 0.95))
 
     def _update_data(self, fields: FieldBase, title: str | None = None) -> None:
-        """update the fields in the current plot
+        """Update the fields in the current plot.
 
         Args:
             fields (:class:`~pde.fields.base.FieldBase`):
@@ -419,7 +418,7 @@ class ScalarFieldPlot:
                 img.set_clim(vmin, vmax)
 
     def _show(self):
-        """show the updated plot"""
+        """Show the updated plot."""
         if self._ipython_out:
             # seems to be in an ipython instance => update widget
             from IPython.display import clear_output, display
@@ -441,7 +440,7 @@ class ScalarFieldPlot:
                 plt.pause(0.01)
 
     def update(self, fields: FieldBase, title: str | None = None) -> None:
-        """update the plot with the given fields
+        """Update the plot with the given fields.
 
         Args:
             fields:
@@ -456,7 +455,7 @@ class ScalarFieldPlot:
             self._show()
 
     def savefig(self, path: str, **kwargs):
-        """save plot to file
+        """Save plot to file.
 
         Args:
             path (str):
@@ -471,7 +470,7 @@ class ScalarFieldPlot:
     def make_movie(
         self, storage: StorageBase, filename: str, progress: bool = True
     ) -> None:
-        """make a movie from the data stored in storage
+        """Make a movie from the data stored in storage.
 
         Args:
             storage (:class:`~pde.storage.base.StorageBase`):
@@ -503,7 +502,7 @@ class ScalarFieldPlot:
 def plot_magnitudes(
     storage: StorageBase, quantities=None, ax=None, **kwargs
 ) -> PlotReference:
-    r"""plot spatially averaged quantities as a function of time
+    r"""Plot spatially averaged quantities as a function of time.
 
     For scalar fields, the default is to plot the average value while the averaged norm
     is plotted for vector fields.
@@ -594,7 +593,7 @@ def _plot_kymograph(
     transpose: bool = False,
     **kwargs,
 ) -> PlotReference:
-    r"""plots a simple kymograph from given data
+    r"""Plots a simple kymograph from given data.
 
     Args:
         img_data (dict):
@@ -660,7 +659,7 @@ def plot_kymograph(
     ax=None,
     **kwargs,
 ) -> PlotReference:
-    r"""plots a single kymograph from stored data
+    r"""Plots a single kymograph from stored data.
 
     The kymograph shows line data stacked along time. Consequently, the
     resulting image shows space along the horizontal axis and time along the
@@ -735,7 +734,7 @@ def plot_kymographs(
     fig=None,
     **kwargs,
 ) -> list[PlotReference]:
-    r"""plots kymographs for all fields stored in `storage`
+    r"""Plots kymographs for all fields stored in `storage`
 
     The kymograph shows line data stacked along time. Consequently, the
     resulting image shows space along the horizontal axis and time along the

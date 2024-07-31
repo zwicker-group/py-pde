@@ -1,5 +1,4 @@
-"""
-This module implements differential operators on Cartesian grids 
+"""This module implements differential operators on Cartesian grids.
 
 .. autosummary::
    :nosignatures:
@@ -12,7 +11,7 @@ This module implements differential operators on Cartesian grids
    make_tensor_divergence
    make_poisson_solver
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>   
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -38,7 +37,7 @@ from .common import make_general_poisson_solver, uniform_discretization
 
 
 def _get_laplace_matrix_1d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for Laplace operator on a 1d Cartesian grid
+    """Get sparse matrix for Laplace operator on a 1d Cartesian grid.
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -80,7 +79,7 @@ def _get_laplace_matrix_1d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for Laplace operator on a 2d Cartesian grid
+    """Get sparse matrix for Laplace operator on a 2d Cartesian grid.
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -100,7 +99,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     scale_x, scale_y = bcs.grid.discretization**-2
 
     def i(x, y):
-        """helper function for flattening the index
+        """Helper function for flattening the index.
 
         This is equivalent to np.ravel_multi_index((x, y), (dim_x, dim_y))
         """
@@ -149,7 +148,7 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for Laplace operator on a 3d Cartesian grid
+    """Get sparse matrix for Laplace operator on a 3d Cartesian grid.
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -169,7 +168,7 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     scale_x, scale_y, scale_z = bcs.grid.discretization**-2
 
     def i(x, y, z):
-        """helper function for flattening the index
+        """Helper function for flattening the index.
 
         This is equivalent to np.ravel_multi_index((x, y, z), (dim_x, dim_y, dim_z))
         """
@@ -236,7 +235,7 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
-    """get sparse matrix for Laplace operator on a Cartesian grid
+    """Get sparse matrix for Laplace operator on a Cartesian grid.
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -261,7 +260,7 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 
 
 def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:
-    """make a Laplace operator using the scipy module
+    """Make a Laplace operator using the scipy module.
 
     This only supports uniform discretizations.
 
@@ -277,7 +276,7 @@ def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:
     scaling = uniform_discretization(grid) ** -2
 
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply Laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         assert arr.shape == grid._shape_full
         valid = (...,) + (slice(1, -1),) * grid.dim
         with np.errstate(all="ignore"):
@@ -288,7 +287,7 @@ def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:
 
 
 def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
-    """make a 1d Laplace operator using numba compilation
+    """Make a 1d Laplace operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -302,7 +301,7 @@ def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
 
     @jit
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply Laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         for i in range(1, dim_x + 1):
             out[i - 1] = (arr[i - 1] - 2 * arr[i] + arr[i + 1]) * scale
 
@@ -310,7 +309,7 @@ def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
 
 
 def _make_laplace_numba_2d(grid: CartesianGrid) -> OperatorType:
-    """make a 2d Laplace operator using numba compilation
+    """Make a 2d Laplace operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -327,7 +326,7 @@ def _make_laplace_numba_2d(grid: CartesianGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply Laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 lap_x = (arr[i - 1, j] - 2 * arr[i, j] + arr[i + 1, j]) * scale_x
@@ -338,7 +337,7 @@ def _make_laplace_numba_2d(grid: CartesianGrid) -> OperatorType:
 
 
 def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorType:
-    """make a 3d Laplace operator using numba compilation
+    """Make a 3d Laplace operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -355,7 +354,7 @@ def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorType:
 
     @jit(parallel=parallel)
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply Laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 for k in range(1, dim_z + 1):
@@ -369,7 +368,7 @@ def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorType:
 
 
 def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
-    """make a 1d spectral Laplace operator using numba compilation
+    """Make a 1d spectral Laplace operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -387,17 +386,17 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
 
     @register_jitable
     def laplace_impl(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply Laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         out[:] = fft.ifft(factor * fft.fft(arr[1:-1]))
 
     @overload(laplace_impl)
     def ol_laplace(arr: np.ndarray, out: np.ndarray):
-        """integrates data over a grid using numba"""
+        """Integrates data over a grid using numba."""
         if np.isrealobj(arr):
             # special case of a real array
 
             def laplace_real(arr: np.ndarray, out: np.ndarray) -> None:
-                """apply Laplace operator to array `arr`"""
+                """Apply Laplace operator to array `arr`"""
                 out[:] = fft.ifft(factor * fft.fft(arr[1:-1])).real
 
             return laplace_real
@@ -407,14 +406,14 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
 
     @jit
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply Laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         laplace_impl(arr, out)
 
     return laplace  # type: ignore
 
 
 def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
-    """make a 2d spectral Laplace operator using numba compilation
+    """Make a 2d spectral Laplace operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -432,17 +431,17 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
 
     @register_jitable
     def laplace_impl(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply Laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         out[:] = fft.ifft2(factor * fft.fft2(arr[1:-1, 1:-1]))
 
     @overload(laplace_impl)
     def ol_laplace(arr: np.ndarray, out: np.ndarray):
-        """integrates data over a grid using numba"""
+        """Integrates data over a grid using numba."""
         if np.isrealobj(arr):
             # special case of a real array
 
             def laplace_real(arr: np.ndarray, out: np.ndarray) -> None:
-                """apply Laplace operator to array `arr`"""
+                """Apply Laplace operator to array `arr`"""
                 out[:] = fft.ifft2(factor * fft.fft2(arr[1:-1, 1:-1])).real
 
             return laplace_real
@@ -452,7 +451,7 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
 
     @jit
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply Laplace operator to array `arr`"""
+        """Apply Laplace operator to array `arr`"""
         laplace_impl(arr, out)
 
     return laplace  # type: ignore
@@ -464,7 +463,7 @@ def make_laplace(
     *,
     backend: Literal["auto", "numba", "numba-spectral", "scipy"] = "auto",
 ) -> OperatorType:
-    """make a Laplace operator on a Cartesian grid
+    """Make a Laplace operator on a Cartesian grid.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -519,7 +518,7 @@ def make_laplace(
 def _make_gradient_scipy_nd(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
-    """make a gradient operator using the scipy module
+    """Make a gradient operator using the scipy module.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -547,7 +546,7 @@ def _make_gradient_scipy_nd(
         raise ValueError(f"Unknown derivative type `{method}`")
 
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         assert arr.shape == grid._shape_full
         if out is None:
             out = np.empty(shape_out)
@@ -566,7 +565,7 @@ def _make_gradient_scipy_nd(
 def _make_gradient_numba_1d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
-    """make a 1d gradient operator using numba compilation
+    """Make a 1d gradient operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -586,7 +585,7 @@ def _make_gradient_numba_1d(
 
     @jit
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
             if method == "central":
                 out[0, i - 1] = (arr[i + 1] - arr[i - 1]) / (2 * dx)
@@ -601,7 +600,7 @@ def _make_gradient_numba_1d(
 def _make_gradient_numba_2d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
-    """make a 2d gradient operator using numba compilation
+    """Make a 2d gradient operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -626,7 +625,7 @@ def _make_gradient_numba_2d(
 
     @jit(parallel=parallel)
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 if method == "central":
@@ -645,7 +644,7 @@ def _make_gradient_numba_2d(
 def _make_gradient_numba_3d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
-    """make a 3d gradient operator using numba compilation
+    """Make a 3d gradient operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -670,7 +669,7 @@ def _make_gradient_numba_3d(
 
     @jit(parallel=parallel)
     def gradient(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 for k in range(1, dim_z + 1):
@@ -715,7 +714,7 @@ def make_gradient(
     backend: Literal["auto", "numba", "scipy"] = "auto",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
-    """make a gradient operator on a Cartesian grid
+    """Make a gradient operator on a Cartesian grid.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -763,7 +762,7 @@ def make_gradient(
 def _make_gradient_squared_numba_1d(
     grid: CartesianGrid, central: bool = True
 ) -> OperatorType:
-    """make a 1d squared gradient operator using numba compilation
+    """Make a 1d squared gradient operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -785,7 +784,7 @@ def _make_gradient_squared_numba_1d(
 
         @jit
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply squared gradient operator to array `arr`"""
+            """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_x + 1):
                 out[i - 1] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
 
@@ -795,7 +794,7 @@ def _make_gradient_squared_numba_1d(
 
         @jit
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply squared gradient operator to array `arr`"""
+            """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_x + 1):
                 diff_l = (arr[i + 1] - arr[i]) ** 2
                 diff_r = (arr[i] - arr[i - 1]) ** 2
@@ -807,7 +806,7 @@ def _make_gradient_squared_numba_1d(
 def _make_gradient_squared_numba_2d(
     grid: CartesianGrid, central: bool = True
 ) -> OperatorType:
-    """make a 2d squared gradient operator using numba compilation
+    """Make a 2d squared gradient operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -832,7 +831,7 @@ def _make_gradient_squared_numba_2d(
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply squared gradient operator to array `arr`"""
+            """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
                     term_x = (arr[i + 1, j] - arr[i - 1, j]) ** 2 * scale_x
@@ -845,7 +844,7 @@ def _make_gradient_squared_numba_2d(
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply squared gradient operator to array `arr`"""
+            """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
                     term_x = (
@@ -864,7 +863,7 @@ def _make_gradient_squared_numba_2d(
 def _make_gradient_squared_numba_3d(
     grid: CartesianGrid, central: bool = True
 ) -> OperatorType:
-    """make a 3d squared gradient operator using numba compilation
+    """Make a 3d squared gradient operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -889,7 +888,7 @@ def _make_gradient_squared_numba_3d(
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply squared gradient operator to array `arr`"""
+            """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
                     for k in range(1, dim_z + 1):
@@ -904,7 +903,7 @@ def _make_gradient_squared_numba_3d(
 
         @jit(parallel=parallel)
         def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
-            """apply squared gradient operator to array `arr`"""
+            """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
                     for k in range(1, dim_z + 1):
@@ -927,7 +926,7 @@ def _make_gradient_squared_numba_3d(
 
 @CartesianGrid.register_operator("gradient_squared", rank_in=0, rank_out=0)
 def make_gradient_squared(grid: CartesianGrid, *, central: bool = True) -> OperatorType:
-    """make a gradient operator on a Cartesian grid
+    """Make a gradient operator on a Cartesian grid.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -960,7 +959,7 @@ def make_gradient_squared(grid: CartesianGrid, *, central: bool = True) -> Opera
 def _make_divergence_scipy_nd(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
-    """make a divergence operator using the scipy module
+    """Make a divergence operator using the scipy module.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -986,7 +985,7 @@ def _make_divergence_scipy_nd(
         raise ValueError(f"Unknown derivative type `{method}`")
 
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply divergence operator to array `arr`"""
+        """Apply divergence operator to array `arr`"""
         assert arr.shape[0] == len(data_shape) and arr.shape[1:] == data_shape
 
         # need to initialize with zeros since data is added later
@@ -1007,7 +1006,7 @@ def _make_divergence_scipy_nd(
 def _make_divergence_numba_1d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
-    """make a 1d divergence operator using numba compilation
+    """Make a 1d divergence operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -1026,7 +1025,7 @@ def _make_divergence_numba_1d(
 
     @jit
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
             if method == "central":
                 out[i - 1] = (arr[0, i + 1] - arr[0, i - 1]) / (2 * dx)
@@ -1041,7 +1040,7 @@ def _make_divergence_numba_1d(
 def _make_divergence_numba_2d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
-    """make a 2d divergence operator using numba compilation
+    """Make a 2d divergence operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -1066,7 +1065,7 @@ def _make_divergence_numba_2d(
 
     @jit(parallel=parallel)
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 if method == "central":
@@ -1086,7 +1085,7 @@ def _make_divergence_numba_2d(
 def _make_divergence_numba_3d(
     grid: CartesianGrid, method: Literal["central", "forward", "backward"] = "central"
 ) -> OperatorType:
-    """make a 3d divergence operator using numba compilation
+    """Make a 3d divergence operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -1111,7 +1110,7 @@ def _make_divergence_numba_3d(
 
     @jit(parallel=parallel)
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply gradient operator to array `arr`"""
+        """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
                 for k in range(1, dim_z + 1):
@@ -1139,7 +1138,7 @@ def make_divergence(
     backend: Literal["auto", "numba", "scipy"] = "auto",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
-    """make a divergence operator on a Cartesian grid
+    """Make a divergence operator on a Cartesian grid.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -1191,7 +1190,7 @@ def _vectorize_operator(
     backend: Literal["auto", "numba", "scipy"] = "numba",
     **kwargs,
 ) -> OperatorType:
-    """apply an operator to on all dimensions of a vector
+    """Apply an operator to on all dimensions of a vector.
 
     Args:
         make_operator (callable):
@@ -1208,7 +1207,7 @@ def _vectorize_operator(
     operator = make_operator(grid, backend=backend, **kwargs)
 
     def vectorized_operator(arr: np.ndarray, out: np.ndarray) -> None:
-        """apply vector gradient operator to array `arr`"""
+        """Apply vector gradient operator to array `arr`"""
         for i in range(dim):
             operator(arr[i], out[i])
 
@@ -1225,7 +1224,7 @@ def make_vector_gradient(
     backend: Literal["auto", "numba", "scipy"] = "numba",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
-    """make a vector gradient operator on a Cartesian grid
+    """Make a vector gradient operator on a Cartesian grid.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -1246,7 +1245,7 @@ def make_vector_gradient(
 def make_vector_laplace(
     grid: CartesianGrid, *, backend: Literal["auto", "numba", "scipy"] = "numba"
 ) -> OperatorType:
-    """make a vector Laplacian on a Cartesian grid
+    """Make a vector Laplacian on a Cartesian grid.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -1267,7 +1266,7 @@ def make_tensor_divergence(
     backend: Literal["auto", "numba", "scipy"] = "numba",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
-    """make a tensor divergence operator on a Cartesian grid
+    """Make a tensor divergence operator on a Cartesian grid.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
@@ -1288,7 +1287,7 @@ def make_tensor_divergence(
 def make_poisson_solver(
     bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
-    """make a operator that solves Poisson's equation
+    """Make a operator that solves Poisson's equation.
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):

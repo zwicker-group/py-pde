@@ -1,5 +1,4 @@
-"""
-Package containing several tools required in py-pde
+"""Package containing several tools required in py-pde.
 
 .. autosummary::
    :nosignatures:
@@ -21,5 +20,5 @@ Package containing several tools required in py-pde
    spectral
    typing
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

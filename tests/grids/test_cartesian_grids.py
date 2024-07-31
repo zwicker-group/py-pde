@@ -14,7 +14,7 @@ from pde.grids.operators.common import make_derivative
 
 
 def _get_cartesian_grid(dim=2, periodic=True):
-    """return a random Cartesian grid of given dimension"""
+    """Return a random Cartesian grid of given dimension."""
     rng = np.random.default_rng(0)
     bounds = [[0, 1 + rng.random()] for _ in range(dim)]
     shape = rng.integers(32, 64, size=dim)
@@ -22,7 +22,7 @@ def _get_cartesian_grid(dim=2, periodic=True):
 
 
 def test_degenerated_grid():
-    """test degenerated grids"""
+    """Test degenerated grids."""
     with pytest.raises(ValueError):
         UnitGrid([])
     with pytest.raises(ValueError):
@@ -31,7 +31,7 @@ def test_degenerated_grid():
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_generic_cartesian_grid(dim, rng):
-    """test generic cartesian grid functions"""
+    """Test generic cartesian grid functions."""
     periodic = random.choices([True, False], k=dim)
     shape = rng.integers(2, 8, size=dim)
     a = rng.random(dim)
@@ -59,7 +59,7 @@ def test_generic_cartesian_grid(dim, rng):
 
 @pytest.mark.parametrize("periodic", [True, False])
 def test_unit_grid_1d(periodic, rng):
-    """test 1D grids"""
+    """Test 1D grids."""
     grid = UnitGrid(4, periodic=periodic)
     assert grid.dim == 1
     assert grid.numba_type == "f8[:]"
@@ -95,7 +95,7 @@ def test_unit_grid_1d(periodic, rng):
 
 
 def test_unit_grid_2d(rng):
-    """test 2D grids"""
+    """Test 2D grids."""
     # test special case
     grid = UnitGrid([4, 4], periodic=True)
     assert grid.dim == 2
@@ -133,7 +133,7 @@ def test_unit_grid_2d(rng):
 
 
 def test_unit_grid_3d(rng):
-    """test 3D grids"""
+    """Test 3D grids."""
     grid = UnitGrid([4, 4, 4])
     assert grid.dim == 3
     assert grid.numba_type == "f8[:, :, :]"
@@ -156,7 +156,7 @@ def test_unit_grid_3d(rng):
 
 
 def test_rect_grid_1d(rng):
-    """test 1D grids"""
+    """Test 1D grids."""
     grid = CartesianGrid([32], 16, periodic=False)
     assert grid.dim == 1
     assert grid.volume == 32
@@ -177,7 +177,7 @@ def test_rect_grid_1d(rng):
 
 
 def test_rect_grid_2d(rng):
-    """test 2D grids"""
+    """Test 2D grids."""
     grid = CartesianGrid([[2], [2]], 4, periodic=True)
     assert grid.get_image_data(np.zeros(grid.shape))["extent"] == [0, 2, 0, 2]
 
@@ -195,7 +195,7 @@ def test_rect_grid_2d(rng):
 
 
 def test_rect_grid_3d(rng):
-    """test 3D grids"""
+    """Test 3D grids."""
     grid = CartesianGrid([4, 4, 4], 4)
     assert grid.dim == 3
     assert grid.volume == 64
@@ -212,7 +212,7 @@ def test_rect_grid_3d(rng):
 
 @pytest.mark.parametrize("periodic", [True, False])
 def test_unit_rect_grid(periodic, rng):
-    """test whether the rectangular grid behaves like a unit grid in special cases"""
+    """Test whether the rectangular grid behaves like a unit grid in special cases."""
     dim = random.randrange(1, 4)
     shape = rng.integers(2, 10, size=dim)
     g1 = UnitGrid(shape, periodic=periodic)
@@ -233,7 +233,7 @@ def test_unit_rect_grid(periodic, rng):
 
 
 def test_conversion_unit_rect_grid(rng):
-    """test the conversion from unit to rectangular grid"""
+    """Test the conversion from unit to rectangular grid."""
     dim = random.randrange(1, 4)
     shape = rng.integers(2, 10, size=dim)
     periodic = random.choices([True, False], k=dim)
@@ -246,7 +246,7 @@ def test_conversion_unit_rect_grid(rng):
 
 
 def test_setting_boundary_conditions():
-    """test setting some boundary conditions"""
+    """Test setting some boundary conditions."""
     grid = UnitGrid([3, 3], periodic=[True, False])
     for bc in [
         grid.get_boundary_conditions("auto_periodic_neumann"),
@@ -268,7 +268,7 @@ def test_setting_boundary_conditions():
 
 
 def test_setting_domain_rect():
-    """test various versions of settings bcs for Cartesian grids"""
+    """Test various versions of settings bcs for Cartesian grids."""
     grid = UnitGrid([2, 2])
     grid.get_boundary_conditions(["derivative", "derivative"])
 
@@ -293,7 +293,7 @@ def test_setting_domain_rect():
 
 @pytest.mark.parametrize("reflect", [True, False])
 def test_normalize_point(reflect):
-    """test normalize_point method for Cartesian Grids"""
+    """Test normalize_point method for Cartesian Grids."""
     grid = CartesianGrid([[1, 3]], [1], periodic=False)
 
     norm_numba = grid.make_normalize_point_compiled(reflect=reflect)
@@ -315,7 +315,7 @@ def test_normalize_point(reflect):
 
 @pytest.mark.parametrize("method", ["central", "forward", "backward"])
 def test_generic_operators(method, rng):
-    """test the `d_dx` version of the operator"""
+    """Test the `d_dx` version of the operator."""
     grid = CartesianGrid([[1, 3]], 5, periodic=True)
     bcs = grid.get_boundary_conditions("periodic")
     data = rng.uniform(0, 1, size=5)
@@ -335,7 +335,7 @@ def test_generic_operators(method, rng):
 
 
 def test_boundary_coordinates():
-    """test _boundary_coordinates method"""
+    """Test _boundary_coordinates method."""
     grid = UnitGrid([2, 2])
 
     c = grid._boundary_coordinates(axis=0, upper=False)

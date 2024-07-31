@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-"""
-This script tests the performance of the implementation of different boundary conditions
-"""
+"""This script tests the performance of the implementation of different boundary
+conditions."""
 
 import sys
 from pathlib import Path
@@ -17,7 +16,7 @@ from pde.tools.numba import numba_dict
 
 
 def main():
-    """main routine testing the performance"""
+    """Main routine testing the performance."""
     print("Reports calls-per-second (larger is better)\n")
 
     # Cartesian grid with different shapes and boundary conditions

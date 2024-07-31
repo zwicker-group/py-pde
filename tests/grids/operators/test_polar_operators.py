@@ -18,7 +18,7 @@ from pde.grids.operators.polar_sym import _get_laplace_matrix
 
 
 def test_findiff_polar():
-    """test operator for a simple polar grid"""
+    """Test operator for a simple polar grid."""
     grid = PolarSymGrid(1.5, 3)
     _, _, r2 = grid.axes_coords[0]
     assert grid.discretization == (0.5,)
@@ -43,7 +43,7 @@ def test_findiff_polar():
 
 
 def test_conservative_laplace_polar(rng):
-    """test and compare the two implementation of the laplace operator"""
+    """Test and compare the two implementation of the laplace operator."""
     grid = PolarSymGrid(1.5, 8)
     f = ScalarField.random_uniform(grid, rng=rng)
 
@@ -61,7 +61,7 @@ def test_conservative_laplace_polar(rng):
     ],
 )
 def test_small_annulus_polar(op_name, field, rng):
-    """test whether a small annulus gives the same result as a sphere"""
+    """Test whether a small annulus gives the same result as a sphere."""
     grids = [
         PolarSymGrid((0, 1), 8),
         PolarSymGrid((1e-8, 1), 8),
@@ -80,7 +80,7 @@ def test_small_annulus_polar(op_name, field, rng):
 
 
 def test_grid_laplace_polar():
-    """test the polar implementation of the laplace operator"""
+    """Test the polar implementation of the laplace operator."""
     grid_sph = PolarSymGrid(7, 8)
     grid_cart = CartesianGrid([[-5, 5], [-5, 5]], [12, 11])
 
@@ -97,7 +97,7 @@ def test_grid_laplace_polar():
 
 @pytest.mark.parametrize("r_inner", (0, 2 * np.pi))
 def test_gradient_squared_polar(r_inner):
-    """compare gradient squared operator"""
+    """Compare gradient squared operator."""
     grid = PolarSymGrid((r_inner, 4 * np.pi), 32)
     field = ScalarField.from_expression(grid, "cos(r)")
     s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
@@ -109,7 +109,7 @@ def test_gradient_squared_polar(r_inner):
 
 
 def test_grid_div_grad_polar():
-    """compare div grad to laplacian for polar grids"""
+    """Compare div grad to laplacian for polar grids."""
     grid = PolarSymGrid(2 * np.pi, 16)
     field = ScalarField.from_expression(grid, "cos(r)")
 
@@ -125,7 +125,7 @@ def test_grid_div_grad_polar():
 @pytest.mark.parametrize("grid", [PolarSymGrid(4, 8), PolarSymGrid([2, 4], 8)])
 @pytest.mark.parametrize("bc_val", ["auto_periodic_neumann", {"value": 1}])
 def test_poisson_solver_polar(grid, bc_val, rng):
-    """test the poisson solver on Polar grids"""
+    """Test the poisson solver on Polar grids."""
     bcs = grid.get_boundary_conditions(bc_val)
     d = ScalarField.random_uniform(grid, rng=rng)
     d -= d.average  # balance the right hand side
@@ -136,7 +136,7 @@ def test_poisson_solver_polar(grid, bc_val, rng):
 
 
 def test_examples_scalar_polar():
-    """compare derivatives of scalar fields for polar grids"""
+    """Compare derivatives of scalar fields for polar grids."""
     grid = PolarSymGrid(1, 32)
     sf = ScalarField.from_expression(grid, "r**3")
 
@@ -158,7 +158,7 @@ def test_examples_scalar_polar():
 
 
 def test_examples_vector_polar():
-    """compare derivatives of vector fields for polar grids"""
+    """Compare derivatives of vector fields for polar grids."""
     grid = PolarSymGrid(1, 32)
     vf = VectorField.from_expression(grid, ["r**3", "r**2"])
 
@@ -180,7 +180,7 @@ def test_examples_vector_polar():
 
 
 def test_examples_tensor_polar():
-    """compare derivatives of tensorial fields for polar grids"""
+    """Compare derivatives of tensorial fields for polar grids."""
     grid = PolarSymGrid(1, 32)
     tf = Tensor2Field.from_expression(grid, [["r**3"] * 2] * 2)
 
@@ -196,7 +196,7 @@ def test_examples_tensor_polar():
 
 @pytest.mark.parametrize("r_inner", (0, 1))
 def test_laplace_matrix(r_inner, rng):
-    """test laplace operator implemented using matrix multiplication"""
+    """Test laplace operator implemented using matrix multiplication."""
     grid = PolarSymGrid((r_inner, 2), 16)
     if r_inner == 0:
         bcs = grid.get_boundary_conditions({"neumann"})

@@ -12,7 +12,7 @@ from pde.grids.boundaries.local import NeumannBC
 @pytest.mark.parametrize("periodic", [True, False])
 @pytest.mark.parametrize("r_inner", [0, 2])
 def test_cylindrical_grid(periodic, r_inner, rng):
-    """test simple cylindrical grid"""
+    """Test simple cylindrical grid."""
     grid = CylindricalSymGrid((r_inner, 4), (-1, 2), (8, 9), periodic_z=periodic)
     if r_inner == 0:
         assert grid == CylindricalSymGrid(4, (-1, 2), (8, 9), periodic_z=periodic)
@@ -46,7 +46,7 @@ def test_cylindrical_grid(periodic, r_inner, rng):
 
 
 def test_cylindrical_to_cartesian():
-    """test conversion of cylindrical grid to Cartesian"""
+    """Test conversion of cylindrical grid to Cartesian."""
     expr_cyl = "cos(z / 2) / (1 + r**2)"
     expr_cart = expr_cyl.replace("r**2", "(x**2 + y**2)")
 
@@ -61,7 +61,7 @@ def test_cylindrical_to_cartesian():
 
 
 def test_setting_boundary_conditions():
-    """test various versions of settings bcs for cylindrical grids"""
+    """Test various versions of settings bcs for cylindrical grids."""
     grid = CylindricalSymGrid(1, [0, 1], [2, 2], periodic_z=False)
     grid.get_boundary_conditions("auto_periodic_neumann")
     grid.get_boundary_conditions(["derivative", "derivative"])

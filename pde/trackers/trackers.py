@@ -1,5 +1,4 @@
-"""
-Module defining classes for tracking results from simulations.
+"""Module defining classes for tracking results from simulations.
 
 The trackers defined in this module are:
 
@@ -49,7 +48,7 @@ if TYPE_CHECKING:
 
 
 class CallbackTracker(TrackerBase):
-    """Tracker calling a function periodically
+    """Tracker calling a function periodically.
 
     Example:
         The callback tracker can be used to check for conditions during the simulation:
@@ -99,7 +98,7 @@ class CallbackTracker(TrackerBase):
             )
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -114,7 +113,7 @@ class CallbackTracker(TrackerBase):
 
 
 class ProgressTracker(TrackerBase):
-    """Tracker showing the progress of the simulation"""
+    """Tracker showing the progress of the simulation."""
 
     name = "progress"
 
@@ -152,7 +151,7 @@ class ProgressTracker(TrackerBase):
         self.leave = leave
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
-        """initialize the tracker with information about the simulation
+        """Initialize the tracker with information about the simulation.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -180,7 +179,7 @@ class ProgressTracker(TrackerBase):
         return result
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -197,7 +196,7 @@ class ProgressTracker(TrackerBase):
         self.progress_bar.set_description("")
 
     def finalize(self, info: InfoDict | None = None) -> None:
-        """finalize the tracker, supplying additional information
+        """Finalize the tracker, supplying additional information.
 
         Args:
             info (dict):
@@ -262,7 +261,7 @@ class PrintTracker(TrackerBase):
         self.stream = stream
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -277,7 +276,7 @@ class PrintTracker(TrackerBase):
 
 
 class PlotTracker(TrackerBase):
-    """Tracker plotting data on screen, to files, or writes a movie
+    """Tracker plotting data on screen, to files, or writes a movie.
 
     This tracker can be used to create movies from simulations or to simply update a
     single image file on the fly (i.e. to monitor simulations running on a cluster). The
@@ -401,7 +400,7 @@ class PlotTracker(TrackerBase):
             self.show = show
 
     def initialize(self, state: FieldBase, info: InfoDict | None = None) -> float:
-        """initialize the tracker with information about the simulation
+        """Initialize the tracker with information about the simulation.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -455,7 +454,7 @@ class PlotTracker(TrackerBase):
         return super().initialize(state, info=info)
 
     def handle(self, state: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -512,7 +511,7 @@ class PlotTracker(TrackerBase):
         self._last_update = time.monotonic()
 
     def finalize(self, info: InfoDict | None = None) -> None:
-        """finalize the tracker, supplying additional information
+        """Finalize the tracker, supplying additional information.
 
         Args:
             info (dict):
@@ -530,7 +529,7 @@ class PlotTracker(TrackerBase):
 
 
 class LivePlotTracker(PlotTracker):
-    """PlotTracker with defaults for live plotting
+    """PlotTracker with defaults for live plotting.
 
     The only difference to :class:`PlotTracker` are the changed default values, where
     output is by default shown on screen and the `interval` is set something more
@@ -591,7 +590,7 @@ class LivePlotTracker(PlotTracker):
 
 
 class DataTracker(CallbackTracker):
-    """Tracker storing custom data obtained by calling a function
+    """Tracker storing custom data obtained by calling a function.
 
     Example:
         The data tracker can be used to gather statistics during the run
@@ -653,7 +652,7 @@ class DataTracker(CallbackTracker):
         self.data: list[Any] = []
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -668,7 +667,7 @@ class DataTracker(CallbackTracker):
             self.data.append(self._callback(field, t))
 
     def finalize(self, info: InfoDict | None = None) -> None:
-        """finalize the tracker, supplying additional information
+        """Finalize the tracker, supplying additional information.
 
         Args:
             info (dict):
@@ -680,7 +679,7 @@ class DataTracker(CallbackTracker):
 
     @property
     def dataframe(self) -> pandas.DataFrame:
-        """:class:`pandas.DataFrame`: the data in a dataframe
+        """:class:`pandas.DataFrame`: the data in a dataframe.
 
         If `func` returns a dictionary, the keys are used as column names.
         Otherwise, the returned data is enumerated starting with '0'. In any
@@ -695,7 +694,7 @@ class DataTracker(CallbackTracker):
         return df
 
     def to_file(self, filename: str, **kwargs):
-        r"""store data in a file
+        r"""Store data in a file.
 
         The extension of the filename determines what format is being used. For
         instance, '.pickle' indicates a python pickle file storing a tuple
@@ -726,7 +725,7 @@ class DataTracker(CallbackTracker):
 
 
 class SteadyStateTracker(TrackerBase):
-    """Tracker aborting the simulation once steady state is reached
+    """Tracker aborting the simulation once steady state is reached.
 
     Steady state is obtained when the state does not change anymore, i.e., when the
     evolution rate is close to zero. If the argument `evolution_rate` is specified, it
@@ -742,7 +741,7 @@ class SteadyStateTracker(TrackerBase):
     progress_bar_format = (
         "Convergence: {percentage:3.0f}%|{bar}| [{elapsed}<{remaining}]"
     )
-    """ determines the format of the progress bar shown when `progress = True` """
+    """Determines the format of the progress bar shown when `progress = True`"""
 
     @fill_in_docstring
     def __init__(
@@ -789,7 +788,7 @@ class SteadyStateTracker(TrackerBase):
         self._best_rate_max: np.ndarray | None = None
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -855,7 +854,7 @@ class SteadyStateTracker(TrackerBase):
 
 
 class RuntimeTracker(TrackerBase):
-    """Tracker interrupting the simulation once a duration has passed"""
+    """Tracker interrupting the simulation once a duration has passed."""
 
     @fill_in_docstring
     def __init__(
@@ -894,7 +893,7 @@ class RuntimeTracker(TrackerBase):
         return super().initialize(field, info)
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -908,7 +907,7 @@ class RuntimeTracker(TrackerBase):
 
 
 class ConsistencyTracker(TrackerBase):
-    """Tracker interrupting the simulation when the state is not finite"""
+    """Tracker interrupting the simulation when the state is not finite."""
 
     name = "consistency"
 
@@ -926,7 +925,7 @@ class ConsistencyTracker(TrackerBase):
         super().__init__(interrupts=interrupts, interval=interval)
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -939,7 +938,7 @@ class ConsistencyTracker(TrackerBase):
 
 
 class MaterialConservationTracker(TrackerBase):
-    """Tracking interrupting the simulation when material conservation is broken"""
+    """Tracking interrupting the simulation when material conservation is broken."""
 
     name = "material_conservation"
 
@@ -984,7 +983,7 @@ class MaterialConservationTracker(TrackerBase):
         return super().initialize(field, info)
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):

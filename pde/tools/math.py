@@ -1,5 +1,4 @@
-"""
-Auxiliary mathematical functions
+"""Auxiliary mathematical functions.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -17,7 +16,7 @@ from .typing import ArrayLike
 
 
 class SmoothData1D:
-    """allows smoothing data in 1d using a Gaussian kernel of defined width
+    """Allows smoothing data in 1d using a Gaussian kernel of defined width.
 
     The data is given a pairs of `x` and `y`, the assumption being that there is
     an underlying relation `y = f(x)`.
@@ -27,7 +26,7 @@ class SmoothData1D:
     """float: scale for setting automatic values for sigma"""
 
     def __init__(self, x, y, sigma: float | None = None):
-        """initialize with data
+        """Initialize with data.
 
         Args:
             x:
@@ -56,15 +55,15 @@ class SmoothData1D:
 
     @property
     def bounds(self) -> tuple[float, float]:
-        """return minimal and maximal `x` values"""
+        """Return minimal and maximal `x` values."""
         return float(self.x.min()), float(self.x.max())
 
     def __contains__(self, x: float) -> bool:
-        """checks whether the value `x` is contain in the range of x-values"""
+        """Checks whether the value `x` is contain in the range of x-values."""
         return self.x.min() <= x <= self.x.max()  # type: ignore
 
     def __call__(self, xs: ArrayLike) -> np.ndarray:
-        """return smoothed y values for the positions given in `xs`
+        """Return smoothed y values for the positions given in `xs`
 
         Args:
             xs (list of :class:`~numpy.ndarray`): the x-values
@@ -88,7 +87,7 @@ class SmoothData1D:
         return result.reshape(shape)  # type: ignore
 
     def derivative(self, xs: ArrayLike) -> np.ndarray:
-        """return the derivative of the smoothed values for the positions `xs`
+        """Return the derivative of the smoothed values for the positions `xs`
 
         Note that this value
 
@@ -127,7 +126,7 @@ class SmoothData1D:
     ]
 )
 class OnlineStatistics:
-    """class for using an online algorithm for calculating statistics"""
+    """Class for using an online algorithm for calculating statistics."""
 
     mean: float
     """float: recorded mean"""
@@ -156,7 +155,7 @@ class OnlineStatistics:
         return np.sqrt(self.var)  # type: ignore
 
     def add(self, value: float) -> None:
-        """add a value to the accumulator
+        """Add a value to the accumulator.
 
         Args:
             value (float): The value to add
@@ -169,7 +168,7 @@ class OnlineStatistics:
         self._mean2 += delta * (value - self.mean)
 
     def to_dict(self) -> dict[str, Any]:
-        """return the information as a dictionary"""
+        """Return the information as a dictionary."""
         return {
             "min": self.min,
             "max": self.max,

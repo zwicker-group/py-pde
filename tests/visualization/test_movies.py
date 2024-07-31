@@ -13,7 +13,7 @@ from pde.visualization import movies
 
 @pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
 def test_movie_class(tmp_path):
-    """test Movie class"""
+    """Test Movie class."""
     import matplotlib.pyplot as plt
 
     path = tmp_path / "test_movie.mov"
@@ -36,7 +36,7 @@ def test_movie_class(tmp_path):
 @pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
 @pytest.mark.parametrize("movie_func", [movies.movie_scalar, movies.movie])
 def test_movie_scalar(movie_func, tmp_path, rng):
-    """test Movie class"""
+    """Test Movie class."""
     # create some data
     state = ScalarField.random_uniform(UnitGrid([4, 4]), rng=rng)
     eq = DiffusionPDE()
@@ -57,6 +57,6 @@ def test_movie_scalar(movie_func, tmp_path, rng):
 
 @pytest.mark.skipif(not movies.Movie.is_available(), reason="no ffmpeg")
 def test_movie_wrong_path(tmp_path):
-    """test whether there is a useful error message when path doesn't exist"""
+    """Test whether there is a useful error message when path doesn't exist."""
     with pytest.raises(OSError):
         movies.Movie(tmp_path / "unavailable" / "test.mov")

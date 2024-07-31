@@ -11,7 +11,7 @@ OUTPUT = ROOT / "docs" / "source" / "examples"
 
 
 def main():
-    """parse all examples and write them in a special example module"""
+    """Parse all examples and write them in a special example module."""
     # create the output directory
     OUTPUT.mkdir(parents=True, exist_ok=True)
 

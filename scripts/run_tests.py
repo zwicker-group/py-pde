@@ -14,7 +14,7 @@ PACKAGE_PATH = Path(__file__).resolve().parents[1]  # base path of the package
 
 
 def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
-    """returns the most severe exit code of a given list
+    """Returns the most severe exit code of a given list.
 
     Args:
         retcodes (list): A list of return codes
@@ -29,7 +29,7 @@ def _most_severe_exit_code(retcodes: Sequence[int]) -> int:
 
 
 def show_config():
-    """show package configuration"""
+    """Show package configuration."""
     from importlib.machinery import SourceFileLoader
 
     # imports the package from the package path
@@ -50,7 +50,7 @@ def show_config():
 
 
 def test_codestyle(*, verbose: bool = True) -> int:
-    """run the codestyle tests
+    """Run the codestyle tests.
 
     Args:
         verbose (bool): Whether to do extra output
@@ -76,7 +76,7 @@ def test_codestyle(*, verbose: bool = True) -> int:
 
 
 def test_types(*, report: bool = False, verbose: bool = True) -> int:
-    """run mypy to check the types of the python code
+    """Run mypy to check the types of the python code.
 
     Args:
         report (bool): Whether to write a report
@@ -123,7 +123,7 @@ def run_unit_tests(
     pattern: str = None,
     pytest_args: list[str] = [],
 ) -> int:
-    """run the unit tests
+    """Run the unit tests.
 
     Args:
         runslow (bool): Whether to run the slow tests
@@ -225,7 +225,7 @@ def run_unit_tests(
 
 
 def main() -> int:
-    """the main program controlling the tests
+    """The main program controlling the tests.
 
     Returns:
         int: The return code indicating success or failure

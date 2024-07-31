@@ -1,5 +1,4 @@
-"""
-Infrastructure for managing classes with parameters
+"""Infrastructure for managing classes with parameters.
 
 One aim is to allow easy management of inheritance of parameters.
 
@@ -29,7 +28,7 @@ from .misc import hybridmethod, import_class
 
 
 class Parameter:
-    """class representing a single parameter"""
+    """Class representing a single parameter."""
 
     def __init__(
         self,
@@ -40,7 +39,7 @@ class Parameter:
         hidden: bool = False,
         extra: dict[str, Any] | None = None,
     ):
-        """initialize a parameter
+        """Initialize a parameter.
 
         Args:
             name (str):
@@ -115,8 +114,8 @@ class Parameter:
         self.__dict__.update(state)
 
     def convert(self, value=None):
-        """converts a `value` into the correct type for this parameter. If
-        `value` is not given, the default value is converted.
+        """Converts a `value` into the correct type for this parameter. If `value` is
+        not given, the default value is converted.
 
         Note that this does not make a copy of the values, which could lead to
         unexpected effects where the default value is changed by an instance.
@@ -143,11 +142,11 @@ class Parameter:
 
 
 class DeprecatedParameter(Parameter):
-    """a parameter that can still be used normally but is deprecated"""
+    """A parameter that can still be used normally but is deprecated."""
 
 
 class HideParameter:
-    """a helper class that allows hiding parameters of the parent classes"""
+    """A helper class that allows hiding parameters of the parent classes."""
 
     def __init__(self, name: str):
         """
@@ -162,13 +161,13 @@ ParameterListType = Sequence[Union[Parameter, HideParameter]]
 
 
 class Parameterized:
-    """a mixin that manages the parameters of a class"""
+    """A mixin that manages the parameters of a class."""
 
     parameters_default: ParameterListType = []
     _subclasses: dict[str, type[Parameterized]] = {}
 
     def __init__(self, parameters: dict[str, Any] | None = None):
-        """initialize the parameters of the object
+        """Initialize the parameters of the object.
 
         Args:
             parameters (dict):
@@ -188,7 +187,7 @@ class Parameterized:
             )
 
     def __init_subclass__(cls, **kwargs):  # @NoSelf
-        """register all subclasses to reconstruct them later"""
+        """Register all subclasses to reconstruct them later."""
         # normalize the parameters_default attribute
         if hasattr(cls, "parameters_default") and isinstance(
             cls.parameters_default, dict
@@ -212,7 +211,7 @@ class Parameterized:
         include_deprecated: bool = False,
         sort: bool = True,
     ) -> dict[str, Parameter]:
-        """return a dictionary of parameters that the class supports
+        """Return a dictionary of parameters that the class supports.
 
         Args:
             include_hidden (bool): Include hidden parameters
@@ -239,7 +238,7 @@ class Parameterized:
 
         # filter parameters based on hidden and deprecated flags
         def show(p):
-            """helper function to decide whether parameter will be shown"""
+            """Helper function to decide whether parameter will be shown."""
             # show based on hidden flag?
             show1 = include_hidden or not p.hidden
             # show based on deprecated flag?
@@ -263,7 +262,7 @@ class Parameterized:
         allow_hidden: bool = True,
         include_deprecated: bool = False,
     ) -> dict[str, Any]:
-        """parse parameters
+        """Parse parameters.
 
         Args:
             parameters (dict):
@@ -307,7 +306,7 @@ class Parameterized:
         return result
 
     def get_parameter_default(self, name):
-        """return the default value for the parameter with `name`
+        """Return the default value for the parameter with `name`
 
         Args:
             name (str): The parameter name
@@ -329,7 +328,7 @@ class Parameterized:
         show_deprecated: bool = False,
         parameter_values: dict[str, Any] | None = None,
     ):
-        """private method showing all parameters in human readable format
+        """Private method showing all parameters in human readable format.
 
         Args:
             description (bool):
@@ -409,7 +408,7 @@ class Parameterized:
         show_hidden: bool = False,
         show_deprecated: bool = False,
     ):
-        """show all parameters in human readable format
+        """Show all parameters in human readable format.
 
         Args:
             description (bool):
@@ -436,7 +435,7 @@ class Parameterized:
         show_deprecated: bool = False,
         default_value: bool = False,
     ):
-        """show all parameters in human readable format
+        """Show all parameters in human readable format.
 
         Args:
             description (bool):
@@ -465,7 +464,7 @@ class Parameterized:
 
 
 def get_all_parameters(data: str = "name") -> dict[str, Any]:
-    """get a dictionary with all parameters of all registered classes
+    """Get a dictionary with all parameters of all registered classes.
 
     Args:
         data (str):
@@ -493,7 +492,7 @@ def get_all_parameters(data: str = "name") -> dict[str, Any]:
 
 
 def sphinx_display_parameters(app, what, name, obj, options, lines):
-    """helper function to display parameters in sphinx documentation
+    """Helper function to display parameters in sphinx documentation.
 
     Example:
         This function should be connected to the 'autodoc-process-docstring'

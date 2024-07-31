@@ -9,7 +9,7 @@ from pde.tools.cuboid import Cuboid, asanyarray_flags
 
 
 def test_cuboid_2d():
-    """test Cuboid class in 2d"""
+    """Test Cuboid class in 2d."""
     c = Cuboid([-1, -1], [2, 2])
     assert c.dim == 2
     assert c.volume == 4
@@ -72,7 +72,7 @@ def test_cuboid_2d():
 
 
 def test_cuboid_add():
-    """test adding two cuboids"""
+    """Test adding two cuboids."""
     assert Cuboid([1], [2]) + Cuboid([1], [2]) == Cuboid([1], [2])
     assert Cuboid([1], [2]) + Cuboid([0], [1]) == Cuboid([0], [3])
     assert Cuboid([1], [2]) + Cuboid([2], [2]) == Cuboid([1], [3])
@@ -81,7 +81,7 @@ def test_cuboid_add():
 
 
 def test_cuboid_nd(rng):
-    """test Cuboid class in n dimensions"""
+    """Test Cuboid class in n dimensions."""
     dim = rng.integers(5, 10)
     size = rng.normal(size=dim)
     c = Cuboid(rng.normal(size=dim), size)
@@ -102,7 +102,7 @@ def test_cuboid_nd(rng):
 
 
 def test_asanyarray_flags(rng):
-    """test the asanyarray_flags function"""
+    """Test the asanyarray_flags function."""
     assert np.arange(3) is not asanyarray_flags(range(3))
 
     a = rng.random(3).astype(np.double)

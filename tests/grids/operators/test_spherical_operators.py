@@ -18,7 +18,7 @@ from pde.grids.operators.spherical_sym import _get_laplace_matrix
 
 
 def test_findiff_sph():
-    """test operator for a simple spherical grid"""
+    """Test operator for a simple spherical grid."""
     grid = SphericalSymGrid(1.5, 3)
     _, r1, r2 = grid.axes_coords[0]
     assert grid.discretization == (0.5,)
@@ -45,7 +45,7 @@ def test_findiff_sph():
 
 
 def test_conservative_sph():
-    """test whether the integral over a divergence vanishes"""
+    """Test whether the integral over a divergence vanishes."""
     grid = SphericalSymGrid((0, 2), 50)
     expr = "1 / cosh((r - 1) * 10)"
 
@@ -77,7 +77,7 @@ def test_conservative_sph():
     ],
 )
 def test_small_annulus_sph(op_name, field, rng):
-    """test whether a small annulus gives the same result as a sphere"""
+    """Test whether a small annulus gives the same result as a sphere."""
     grids = [
         SphericalSymGrid((0, 1), 8),
         SphericalSymGrid((1e-8, 1), 8),
@@ -98,7 +98,7 @@ def test_small_annulus_sph(op_name, field, rng):
 
 
 def test_grid_laplace():
-    """test the polar implementation of the laplace operator"""
+    """Test the polar implementation of the laplace operator."""
     grid_sph = SphericalSymGrid(9, 11)
     grid_cart = CartesianGrid([[-5, 5], [-5, 5], [-5, 5]], [12, 10, 11])
 
@@ -117,7 +117,7 @@ def test_grid_laplace():
 
 @pytest.mark.parametrize("r_inner", (0, 1))
 def test_gradient_squared(r_inner, rng):
-    """compare gradient squared operator"""
+    """Compare gradient squared operator."""
     grid = SphericalSymGrid((r_inner, 5), 64)
     field = ScalarField.random_harmonic(grid, modes=1, rng=rng)
     s1 = field.gradient("auto_periodic_neumann").to_scalar("squared_sum")
@@ -129,7 +129,7 @@ def test_gradient_squared(r_inner, rng):
 
 
 def test_grid_div_grad_sph():
-    """compare div grad to laplacian"""
+    """Compare div grad to laplacian."""
     grid = SphericalSymGrid(2 * np.pi, 16)
     field = ScalarField.from_expression(grid, "cos(r)")
 
@@ -145,7 +145,7 @@ def test_grid_div_grad_sph():
 @pytest.mark.parametrize("grid", [SphericalSymGrid(4, 8), SphericalSymGrid([2, 4], 8)])
 @pytest.mark.parametrize("bc_val", ["auto_periodic_neumann", {"value": 1}])
 def test_poisson_solver_spherical(grid, bc_val, rng):
-    """test the poisson solver on Spherical grids"""
+    """Test the poisson solver on Spherical grids."""
     bcs = grid.get_boundary_conditions(bc_val)
     d = ScalarField.random_uniform(grid, rng=rng)
     d -= d.average  # balance the right hand side
@@ -157,7 +157,7 @@ def test_poisson_solver_spherical(grid, bc_val, rng):
 
 
 def test_examples_scalar_sph():
-    """compare derivatives of scalar fields for spherical grids"""
+    """Compare derivatives of scalar fields for spherical grids."""
     grid = SphericalSymGrid(1, 32)
     sf = ScalarField.from_expression(grid, "r**3")
 
@@ -179,7 +179,7 @@ def test_examples_scalar_sph():
 
 
 def test_examples_vector_sph_div():
-    """compare derivatives of vector fields for spherical grids"""
+    """Compare derivatives of vector fields for spherical grids."""
     grid = SphericalSymGrid(1, 32)
     vf = VectorField.from_expression(grid, ["r**3", 0, "r**2"])
     res = vf.divergence([{"derivative": 0}, {"value": 1}])
@@ -189,7 +189,7 @@ def test_examples_vector_sph_div():
 
 @pytest.mark.parametrize("method", ["central", "forward", "backward"])
 def test_examples_vector_sph_grad(method):
-    """compare derivatives of vector fields for spherical grids"""
+    """Compare derivatives of vector fields for spherical grids."""
     grid = SphericalSymGrid(1, 32)
     vf = VectorField.from_expression(grid, ["r**3", 0, 0])
     res = vf.gradient([{"derivative": 0}, {"value": [1, 1, 1]}], method=method)
@@ -200,7 +200,7 @@ def test_examples_vector_sph_grad(method):
 
 @pytest.mark.parametrize("conservative", [True, False])
 def test_examples_tensor_sph(conservative):
-    """compare derivatives of tensorial fields for spherical grids"""
+    """Compare derivatives of tensorial fields for spherical grids."""
     # test explicit expression for which we know the results
     grid = SphericalSymGrid(1, 32)
     expressions = [["r**4", 0, 0], [0, "r**3", 0], [0, 0, "r**3"]]
@@ -236,7 +236,7 @@ def test_examples_tensor_sph(conservative):
 
 
 def test_tensor_sph_symmetry():
-    """test treatment of symmetric tensor field"""
+    """Test treatment of symmetric tensor field."""
     grid = SphericalSymGrid(1, 16)
     vf = VectorField.from_expression(grid, ["r**2", 0, 0])
     vf_grad = vf.gradient(["derivative", {"derivative": 2}])
@@ -254,7 +254,7 @@ def test_tensor_sph_symmetry():
 
 
 def test_tensor_div_div_analytical():
-    """test double divergence of a tensor field against analytical expression"""
+    """Test double divergence of a tensor field against analytical expression."""
     grid = SphericalSymGrid([0.5, 1], 12)
     tf = Tensor2Field.from_expression(
         grid, [["r**4", 0, 0], [0, "r**3", 0], [0, 0, "r**3"]]
@@ -266,7 +266,7 @@ def test_tensor_div_div_analytical():
 
 @pytest.mark.parametrize("conservative", [True, False])
 def test_tensor_div_div(conservative):
-    """test double divergence of a tensor field by comparison with two divergences"""
+    """Test double divergence of a tensor field by comparison with two divergences."""
     grid = SphericalSymGrid([0, 1], 64)
     expr = "r * tanh((0.5 - r) * 10)"
     bc = "auto_periodic_neumann"
@@ -290,7 +290,7 @@ def test_tensor_div_div(conservative):
 
 @pytest.mark.parametrize("r_inner", (0, 1))
 def test_laplace_matrix(r_inner, rng):
-    """test laplace operator implemented using matrix multiplication"""
+    """Test laplace operator implemented using matrix multiplication."""
     grid = SphericalSymGrid((r_inner, 2), 16)
     if r_inner == 0:
         bcs = grid.get_boundary_conditions({"neumann"})

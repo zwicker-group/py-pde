@@ -19,7 +19,7 @@ from pde.tools.misc import module_available
 
 
 def iter_grids():
-    """generator providing some test grids"""
+    """Generator providing some test grids."""
     for periodic in [True, False]:
         yield grids.UnitGrid([3], periodic=periodic)
         yield grids.UnitGrid([3, 3, 3], periodic=periodic)
@@ -31,7 +31,7 @@ def iter_grids():
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_basic_grid_properties(grid):
-    """test basic grid properties"""
+    """Test basic grid properties."""
     with pytest.raises(AttributeError):
         grid.periodic = True
     with pytest.raises(AttributeError):
@@ -39,7 +39,7 @@ def test_basic_grid_properties(grid):
 
 
 def test_discretize(rng):
-    """test the discretize function"""
+    """Test the discretize function."""
     x_min = rng.uniform(0, 1)
     x_max = rng.uniform(2, 3)
     num = rng.integers(5, 8)
@@ -51,7 +51,7 @@ def test_discretize(rng):
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_serialization(grid):
-    """test whether grid can be serialized and copied"""
+    """Test whether grid can be serialized and copied."""
     g = GridBase.from_state(grid.state_serialized)
     assert grid == g
     assert grid._cache_hash() == g._cache_hash()
@@ -62,7 +62,7 @@ def test_serialization(grid):
 
 
 def test_iter_mirror_points():
-    """test iterating mirror points in grids"""
+    """Test iterating mirror points in grids."""
     grid_cart = grids.UnitGrid([2, 2], periodic=[True, False])
     grid_cyl = grids.CylindricalSymGrid(2, (0, 2), (2, 2), periodic_z=False)
     grid_sph = grids.SphericalSymGrid(2, 2)
@@ -86,7 +86,7 @@ def test_iter_mirror_points():
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_coordinate_conversion(grid, rng):
-    """test the conversion between cells and points"""
+    """Test the conversion between cells and points."""
     p_empty = np.zeros((0, grid.dim))
     c_empty = np.zeros((0, grid.num_axes))
 
@@ -107,7 +107,7 @@ def test_coordinate_conversion(grid, rng):
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_coordinate_conversion_full(grid, rng):
-    """test the conversion between cells and points"""
+    """Test the conversion between cells and points."""
     p_empty = np.zeros((0, grid.dim))
     g_empty = np.zeros((0, grid.dim))
 
@@ -127,7 +127,7 @@ def test_coordinate_conversion_full(grid, rng):
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_integration_serial(grid, rng):
-    """test integration of fields"""
+    """Test integration of fields."""
     arr = rng.normal(size=grid.shape)
     res = grid.make_integrator()(arr)
     assert np.isscalar(res)
@@ -139,7 +139,7 @@ def test_integration_serial(grid, rng):
 
 
 def test_grid_plotting():
-    """test plotting of grids"""
+    """Test plotting of grids."""
     grids.UnitGrid([4]).plot()
     grids.UnitGrid([4, 4]).plot()
 
@@ -152,7 +152,7 @@ def test_grid_plotting():
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_operators(grid):
-    """test operator mechanism"""
+    """Test operator mechanism."""
 
     def make_op(state):
         return lambda state: state
@@ -170,14 +170,14 @@ def test_operators(grid):
 
 
 def test_cartesian_operator_infos():
-    """test special case of cartesian operators"""
+    """Test special case of cartesian operators."""
     assert "d_dx" not in grids.UnitGrid.operators
     assert "d_dx" in grids.UnitGrid([2]).operators
     assert "d_dy" not in grids.UnitGrid([2]).operators
 
 
 def test_registered_operators():
-    """test the registered_operators function"""
+    """Test the registered_operators function."""
     for grid_name, ops in registered_operators().items():
         grid_class_ops = getattr(grids, grid_name).operators
         assert all(op in grid_class_ops for op in ops)
@@ -185,7 +185,7 @@ def test_registered_operators():
 
 @pytest.mark.parametrize("grid", iter_grids())
 def test_cell_volumes(grid):
-    """test calculation of cell volumes"""
+    """Test calculation of cell volumes."""
     d2 = grid.discretization / 2
     x_low = grid._coords_full(grid.cell_coords - d2, value="min")
     x_high = grid._coords_full(grid.cell_coords + d2, value="max")
@@ -198,7 +198,7 @@ def test_cell_volumes(grid):
 )
 @pytest.mark.parametrize("grid", iter_grids())
 def test_grid_modelrunner_storage(grid, tmp_path):
-    """test storing grids in modelrunner storages"""
+    """Test storing grids in modelrunner storages."""
     from modelrunner import open_storage
 
     path = tmp_path / "grid.json"

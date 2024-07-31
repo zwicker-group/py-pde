@@ -32,12 +32,12 @@ BoundaryPairData = Union[
 
 
 class BoundaryAxisBase:
-    """base class for defining boundaries of a single axis in a grid"""
+    """Base class for defining boundaries of a single axis in a grid."""
 
     low: BCBase
-    """:class:`~pde.grids.boundaries.local.BCBase`: Boundary condition at lower end """
+    """:class:`~pde.grids.boundaries.local.BCBase`: Boundary condition at lower end."""
     high: BCBase
-    """:class:`~pde.grids.boundaries.local.BCBase`: Boundary condition at upper end """
+    """:class:`~pde.grids.boundaries.local.BCBase`: Boundary condition at upper end."""
 
     def __init__(self, low: BCBase, high: BCBase):
         """
@@ -79,14 +79,14 @@ class BoundaryAxisBase:
 
     @classmethod
     def get_help(cls) -> str:
-        """Return information on how boundary conditions can be set"""
+        """Return information on how boundary conditions can be set."""
         return (
             "Boundary conditions for each side can be set using a tuple: "
             f"(lower_bc, upper_bc). {BCBase.get_help()}"
         )
 
     def copy(self) -> BoundaryAxisBase:
-        """return a copy of itself, but with a reference to the same grid"""
+        """Return a copy of itself, but with a reference to the same grid."""
         return self.__class__(self.low.copy(), self.high.copy())
 
     def __eq__(self, other):
@@ -112,7 +112,7 @@ class BoundaryAxisBase:
         yield self.high
 
     def __getitem__(self, index) -> BCBase:
-        """returns one of the sides"""
+        """Returns one of the sides."""
         if index == 0 or index is False:
             return self.low
         elif index == 1 or index is True:
@@ -121,7 +121,7 @@ class BoundaryAxisBase:
             raise IndexError("Index must be 0/False or 1/True")
 
     def __setitem__(self, index, data) -> None:
-        """set one of the sides"""
+        """Set one of the sides."""
         # determine which side was selected
         upper = {0: False, False: False, 1: True, True: True}[index]
 
@@ -142,7 +142,7 @@ class BoundaryAxisBase:
 
     @property
     def grid(self) -> GridBase:
-        """:class:`~pde.grids.base.GridBase`: Underlying grid"""
+        """:class:`~pde.grids.base.GridBase`: Underlying grid."""
         return self.low.grid
 
     @property
@@ -162,7 +162,7 @@ class BoundaryAxisBase:
         return self.low.rank
 
     def get_mathematical_representation(self, field_name: str = "C") -> tuple[str, str]:
-        """return mathematical representation of the boundary condition"""
+        """Return mathematical representation of the boundary condition."""
         return (
             self.low.get_mathematical_representation(field_name),
             self.high.get_mathematical_representation(field_name),
@@ -171,7 +171,7 @@ class BoundaryAxisBase:
     def get_sparse_matrix_data(
         self, idx: tuple[int, ...]
     ) -> tuple[float, dict[int, float]]:
-        """sets the elements of the sparse representation of this condition
+        """Sets the elements of the sparse representation of this condition.
 
         Args:
             idx (tuple):
@@ -193,7 +193,7 @@ class BoundaryAxisBase:
             return 0, {axis_coord: 1}
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
-        """set the ghost cell values for all boundaries
+        """Set the ghost cell values for all boundaries.
 
         Args:
             data_full (:class:`~numpy.ndarray`):
@@ -212,7 +212,7 @@ class BoundaryAxisBase:
         self.low.set_ghost_cells(data_full, args=args)
 
     def make_ghost_cell_setter(self) -> GhostCellSetter:
-        """return function that sets the ghost cells for this axis on a full array"""
+        """Return function that sets the ghost cells for this axis on a full array."""
         # get the functions that handle the data
         ghost_cell_sender_low = self.low.make_ghost_cell_sender()
         ghost_cell_sender_high = self.high.make_ghost_cell_sender()
@@ -221,7 +221,7 @@ class BoundaryAxisBase:
 
         @register_jitable
         def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-            """helper function setting the conditions on all axes"""
+            """Helper function setting the conditions on all axes."""
             # send boundary information to other nodes if using MPI
             ghost_cell_sender_low(data_full, args=args)
             ghost_cell_sender_high(data_full, args=args)
@@ -233,11 +233,11 @@ class BoundaryAxisBase:
 
 
 class BoundaryPair(BoundaryAxisBase):
-    """represents the two boundaries of an axis along a single dimension"""
+    """Represents the two boundaries of an axis along a single dimension."""
 
     @classmethod
     def from_data(cls, grid: GridBase, axis: int, data, rank: int = 0) -> BoundaryPair:
-        """create boundary pair from some data
+        """Create boundary pair from some data.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -307,7 +307,7 @@ class BoundaryPair(BoundaryAxisBase):
         return cls(low, high)
 
     def check_value_rank(self, rank: int) -> None:
-        """check whether the values at the boundaries have the correct rank
+        """Check whether the values at the boundaries have the correct rank.
 
         Args:
             rank (int):
@@ -321,7 +321,7 @@ class BoundaryPair(BoundaryAxisBase):
 
 
 class BoundaryPeriodic(BoundaryPair):
-    """represent a periodic axis"""
+    """Represent a periodic axis."""
 
     def __init__(self, grid: GridBase, axis: int, flip_sign: bool = False):
         """
@@ -356,11 +356,11 @@ class BoundaryPeriodic(BoundaryPair):
             return '"periodic"'
 
     def copy(self) -> BoundaryPeriodic:
-        """return a copy of itself, but with a reference to the same grid"""
+        """Return a copy of itself, but with a reference to the same grid."""
         return self.__class__(grid=self.grid, axis=self.axis, flip_sign=self.flip_sign)
 
     def check_value_rank(self, rank: int) -> None:
-        """check whether the values at the boundaries have the correct rank
+        """Check whether the values at the boundaries have the correct rank.
 
         Args:
             rank (int):
@@ -371,7 +371,7 @@ class BoundaryPeriodic(BoundaryPair):
 def get_boundary_axis(
     grid: GridBase, axis: int, data, rank: int = 0
 ) -> BoundaryAxisBase:
-    """return object representing the boundary condition for a single axis
+    """Return object representing the boundary condition for a single axis.
 
     Args:
         grid (:class:`~pde.grids.base.GridBase`):

@@ -1,7 +1,7 @@
-"""
-Defines a class storing data on the file system using the hierarchical data format (hdf)
+"""Defines a class storing data on the file system using the hierarchical data format
+(hdf)
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from .base import InfoDict, StorageBase, WriteModeType
 
 
 class FileStorage(StorageBase):
-    """store discretized fields in a hdf5 file"""
+    """Store discretized fields in a hdf5 file."""
 
     def __init__(
         self,
@@ -100,7 +100,7 @@ class FileStorage(StorageBase):
             raise NotImplementedError(f"Do not understand mode `{self._file.mode}")
 
     def close(self) -> None:
-        """close the currently opened file"""
+        """Close the currently opened file."""
         if self._file is not None:
             self._logger.info(f"Close file `{self.filename}`")
             self._file.close()
@@ -119,7 +119,7 @@ class FileStorage(StorageBase):
         shape: tuple[int, ...] = tuple(),
         dtype: DTypeLike = np.double,
     ):
-        """create a hdf5 dataset with the given name and data_shape
+        """Create a hdf5 dataset with the given name and data_shape.
 
         Args:
             name (str): Identifier of the hdf5 dataset
@@ -148,7 +148,7 @@ class FileStorage(StorageBase):
         mode: Literal["reading", "appending", "writing", "closed"] = "reading",
         info: InfoDict | None = None,
     ) -> None:
-        """open the hdf file in a particular mode
+        """Open the hdf file in a particular mode.
 
         Args:
             mode (str):
@@ -248,7 +248,7 @@ class FileStorage(StorageBase):
             raise RuntimeError(f"Mode `{mode}` not implemented")
 
     def __len__(self):
-        """return the number of stored items, i.e., time steps"""
+        """Return the number of stored items, i.e., time steps."""
         # determine size of data in HDF5 file
         try:
             length = len(self.times)
@@ -263,18 +263,18 @@ class FileStorage(StorageBase):
 
     @property
     def times(self):
-        """:class:`~numpy.ndarray`: The times at which data is available"""
+        """:class:`~numpy.ndarray`: The times at which data is available."""
         self._open("reading")
         return self._times
 
     @property
     def data(self):
-        """:class:`~numpy.ndarray`: The actual data for all time"""
+        """:class:`~numpy.ndarray`: The actual data for all time."""
         self._open("reading")
         return self._data
 
     def clear(self, clear_data_shape: bool = False):
-        """truncate the storage by removing all stored data.
+        """Truncate the storage by removing all stored data.
 
         Args:
             clear_data_shape (bool):
@@ -311,7 +311,7 @@ class FileStorage(StorageBase):
         super().clear(clear_data_shape=clear_data_shape)
 
     def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
-        """initialize the storage for writing data
+        """Initialize the storage for writing data.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -359,7 +359,7 @@ class FileStorage(StorageBase):
         self._is_writing = True
 
     def _append_data(self, data: np.ndarray, time: float) -> None:
-        """append a new data set
+        """Append a new data set.
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
@@ -398,10 +398,10 @@ class FileStorage(StorageBase):
             self.close()
 
     def end_writing(self) -> None:
-        """finalize the storage after writing.
+        """Finalize the storage after writing.
 
-        This makes sure the data is actually written to a file when
-        self.keep_opened == False
+        This makes sure the data is actually written to a file when self.keep_opened ==
+        False
         """
         if not self._is_writing:
             return  # writing mode was already ended

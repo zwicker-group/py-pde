@@ -1,5 +1,4 @@
-"""
-Package collecting classes representing orthonormal coordinate systems
+"""Package collecting classes representing orthonormal coordinate systems.
 
 .. autosummary::
    :nosignatures:

@@ -1,5 +1,4 @@
-"""
-Solvers for Poisson's and Laplace's equation
+"""Solvers for Poisson's and Laplace's equation.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -19,7 +18,7 @@ def solve_poisson_equation(
     label: str = "Solution to Poisson's equation",
     **kwargs,
 ) -> ScalarField:
-    r"""Solve Laplace's equation on a given grid
+    r"""Solve Laplace's equation on a given grid.
 
     Denoting the current field by :math:`u`, we thus solve for :math:`f`, defined by the
     equation

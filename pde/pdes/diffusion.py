@@ -1,7 +1,6 @@
-"""
-A simple diffusion equation
+"""A simple diffusion equation.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from .base import PDEBase, expr_prod
 
 
 class DiffusionPDE(PDEBase):
-    r"""A simple diffusion equation
+    r"""A simple diffusion equation.
 
     The mathematical definition is
 
@@ -72,7 +71,7 @@ class DiffusionPDE(PDEBase):
         state: ScalarField,
         t: float = 0,
     ) -> ScalarField:
-        """evaluate the right hand side of the PDE
+        """Evaluate the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
@@ -92,7 +91,7 @@ class DiffusionPDE(PDEBase):
     def _make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create a compiled function evaluating the right hand side of the PDE
+        """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.ScalarField`):
@@ -112,7 +111,7 @@ class DiffusionPDE(PDEBase):
 
         @jit(signature)
         def pde_rhs(state_data: np.ndarray, t: float):
-            """compiled helper function evaluating right hand side"""
+            """Compiled helper function evaluating right hand side."""
             return diffusivity_value * laplace(state_data, args={"t": t})
 
         return pde_rhs  # type: ignore

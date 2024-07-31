@@ -1,10 +1,9 @@
-"""
-Defines a class storing data on the file system as a compressed movie
+"""Defines a class storing data on the file system as a compressed movie.
 
 This package requires the optional :mod:`ffmpeg-python` package to use FFmpeg for
 reading and writing movies.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -34,7 +33,7 @@ from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 
 
 def _get_limits(value: float | ArrayLike, dim: int) -> np.ndarray:
-    """helper function creating sequence of length `dim` from input"""
+    """Helper function creating sequence of length `dim` from input."""
     if np.isscalar(value):
         return np.full(dim, value, dtype=float)
     else:
@@ -42,7 +41,7 @@ def _get_limits(value: float | ArrayLike, dim: int) -> np.ndarray:
 
 
 class MovieStorage(StorageBase):
-    """store discretized fields in a movie file
+    """Store discretized fields in a movie file.
 
     This storage only works when the `ffmpeg` program and :mod:`ffmpeg` is installed.
     The default codec is `FFV1 <https://en.m.wikipedia.org/wiki/FFV1>`_, which supports
@@ -143,7 +142,7 @@ class MovieStorage(StorageBase):
         self.close()  # ensure open files are closed when the FileStorage is deleted
 
     def close(self) -> None:
-        """close the currently opened file"""
+        """Close the currently opened file."""
         if self._ffmpeg is not None:
             self._logger.info(f"Close movie file `{self.filename}`")
             if self._state == "writing":
@@ -167,12 +166,12 @@ class MovieStorage(StorageBase):
         self.close()
 
     def clear(self):
-        """truncate the storage by removing all stored data."""
+        """Truncate the storage by removing all stored data."""
         if self.filename.exists():
             self.filename.unlink()
 
     def _get_metadata(self) -> str:
-        """obtain metadata stored in the video"""
+        """Obtain metadata stored in the video."""
         info = self.info.copy()
         info["version"] = 1
         info["vmin"] = self.vmin
@@ -181,7 +180,7 @@ class MovieStorage(StorageBase):
         return json.dumps(info)
 
     def _read_metadata(self) -> None:
-        """read metadata from video and store it in :attr:`info`"""
+        """Read metadata from video and store it in :attr:`info`"""
         import ffmpeg  # lazy loading so it's not a hard dependence
 
         path = Path(self.filename)
@@ -244,7 +243,7 @@ class MovieStorage(StorageBase):
                 )
 
     def _init_normalization(self, field: FieldBase) -> None:
-        """initialize the normalizations of the color information
+        """Initialize the normalizations of the color information.
 
         Args:
             field (:class:`~pde.fields.base.FieldBase):
@@ -272,7 +271,7 @@ class MovieStorage(StorageBase):
         return self.filename.with_suffix(self.filename.suffix + ".times")
 
     def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
-        """initialize the storage for writing data
+        """Initialize the storage for writing data.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -366,7 +365,7 @@ class MovieStorage(StorageBase):
         self._state = "writing"
 
     def _append_data(self, data: np.ndarray, time: float) -> None:
-        """append a new data set
+        """Append a new data set.
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
@@ -434,7 +433,7 @@ class MovieStorage(StorageBase):
         self.info["num_frames"] += 1
 
     def end_writing(self) -> None:
-        """finalize the storage after writing"""
+        """Finalize the storage after writing."""
         if not self._state == "writing":
             self._logger.warning("Writing was already terminated")
             return  # writing mode was already ended
@@ -442,14 +441,14 @@ class MovieStorage(StorageBase):
         self.close()
 
     def __len__(self):
-        """return the number of stored items, i.e., time steps"""
+        """Return the number of stored items, i.e., time steps."""
         if "num_frames" not in self.info:
             self._read_metadata()
         return self.info["num_frames"]
 
     @cached_property()
     def times(self):
-        """:class:`~numpy.ndarray`: The times at which data is available"""
+        """:class:`~numpy.ndarray`: The times at which data is available."""
         times = None
         if "video_format" not in self.info:
             self._read_metadata()
@@ -475,7 +474,7 @@ class MovieStorage(StorageBase):
         return times
 
     def _iter_data(self) -> Iterator[np.ndarray]:
-        """iterate over all stored fields"""
+        """Iterate over all stored fields."""
         import ffmpeg  # lazy loading so it's not a hard dependence
 
         if "width" not in self.info:
@@ -510,7 +509,7 @@ class MovieStorage(StorageBase):
 
     @property
     def data(self):
-        """:class:`~numpy.ndarray`: The actual data for all times"""
+        """:class:`~numpy.ndarray`: The actual data for all times."""
         it = self._iter_data()  # get the iterater of all data
         first_frame = next(it)  # get the first frame to obtain necessary information
         # allocate memory for all data
@@ -521,7 +520,7 @@ class MovieStorage(StorageBase):
         return data
 
     def _get_field(self, t_index: int) -> FieldBase:
-        """return the field corresponding to the given time index
+        """Return the field corresponding to the given time index.
 
         Load the data given an index, i.e., the data at time `self.times[t_index]`.
 
@@ -574,7 +573,7 @@ class MovieStorage(StorageBase):
         return field
 
     def __iter__(self) -> Iterator[FieldBase]:
-        """iterate over all stored fields"""
+        """Iterate over all stored fields."""
         for data in self._iter_data():
             # create the field with the data of the given index
             assert self._field is not None
@@ -583,7 +582,7 @@ class MovieStorage(StorageBase):
             yield field
 
     def items(self) -> Iterator[tuple[float, FieldBase]]:
-        """iterate over all times and stored fields, returning pairs"""
+        """Iterate over all times and stored fields, returning pairs."""
         yield from zip(self.times, self)
 
     @fill_in_docstring
@@ -593,7 +592,7 @@ class MovieStorage(StorageBase):
         *,
         transformation: Callable[[FieldBase, float], FieldBase] | None = None,
     ) -> StorageTracker:
-        """create object that can be used as a tracker to fill this storage
+        """Create object that can be used as a tracker to fill this storage.
 
         Args:
             interrupts:

@@ -1,5 +1,4 @@
-"""
-This file is used to configure the test environment when running py.test
+"""This file is used to configure the test environment when running py.test.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -14,7 +13,7 @@ from pde.tools.numba import random_seed
 
 @pytest.fixture(scope="function", autouse=True)
 def setup_and_teardown():
-    """helper function adjusting environment before and after tests"""
+    """Helper function adjusting environment before and after tests."""
     # raise all underflow errors
     np.seterr(all="raise", under="ignore")
 
@@ -27,7 +26,7 @@ def setup_and_teardown():
 
 @pytest.fixture(scope="function", autouse=False, name="rng")
 def init_random_number_generators():
-    """get a random number generator and set the seed of the random number generator
+    """Get a random number generator and set the seed of the random number generator.
 
     The function returns an instance of :func:`~numpy.random.default_rng()` and
     initializes the default generators of both :mod:`numpy` and :mod:`numba`.
@@ -37,14 +36,14 @@ def init_random_number_generators():
 
 
 def pytest_configure(config):
-    """add markers to the configuration"""
+    """Add markers to the configuration."""
     config.addinivalue_line("markers", "interactive: test is interactive")
     config.addinivalue_line("markers", "multiprocessing: test requires multiprocessing")
     config.addinivalue_line("markers", "slow: test runs slowly")
 
 
 def pytest_addoption(parser):
-    """pytest hook to add command line options parsed by pytest"""
+    """Pytest hook to add command line options parsed by pytest."""
     parser.addoption(
         "--runslow",
         action="store_true",
@@ -66,7 +65,7 @@ def pytest_addoption(parser):
 
 
 def pytest_collection_modifyitems(config, items):
-    """pytest hook to filter a collection of tests"""
+    """Pytest hook to filter a collection of tests."""
     # parse options provided to py.test
     running_cov = config.getvalue("--cov")
     runslow = config.getoption("--runslow", default=False)

@@ -1,5 +1,4 @@
-"""
-Python functions for handling output
+"""Python functions for handling output.
 
 .. autosummary::
    :nosignatures:
@@ -22,7 +21,7 @@ import tqdm
 
 
 def get_progress_bar_class(fancy: bool = True):
-    """returns a class that behaves as progress bar.
+    """Returns a class that behaves as progress bar.
 
     This either uses classes from the optional `tqdm` package or a simple version that
     writes dots to stderr, if the class it not available.
@@ -51,8 +50,7 @@ def get_progress_bar_class(fancy: bool = True):
 
 
 def display_progress(iterator, total=None, enabled=True, **kwargs):
-    r"""
-    displays a progress bar when iterating
+    r"""Displays a progress bar when iterating.
 
     Args:
         iterator (iter): The iterator
@@ -71,11 +69,11 @@ def display_progress(iterator, total=None, enabled=True, **kwargs):
 
 
 class OutputBase(metaclass=ABCMeta):
-    """base class for output management"""
+    """Base class for output management."""
 
     @abstractmethod
     def __call__(self, line: str):
-        """add a line of text
+        """Add a line of text.
 
         Args:
             line (str): The text line
@@ -83,11 +81,11 @@ class OutputBase(metaclass=ABCMeta):
 
     @abstractmethod
     def show(self):
-        """shows the actual text"""
+        """Shows the actual text."""
 
 
 class BasicOutput(OutputBase):
-    """class that writes text line to stdout"""
+    """Class that writes text line to stdout."""
 
     def __init__(self, stream=sys.stdout):
         """
@@ -104,7 +102,7 @@ class BasicOutput(OutputBase):
 
 
 class JupyterOutput(OutputBase):
-    """class that writes text lines as html in a jupyter cell"""
+    """Class that writes text lines as html in a jupyter cell."""
 
     def __init__(self, header: str = "", footer: str = ""):
         """
@@ -130,7 +128,7 @@ class JupyterOutput(OutputBase):
 
 
 def in_jupyter_notebook() -> bool:
-    """checks whether we are in a jupyter notebook"""
+    """Checks whether we are in a jupyter notebook."""
     try:
         from IPython import display, get_ipython  # @UnusedImport
     except ImportError:

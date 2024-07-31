@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Code for creating performance plots
+"""Code for creating performance plots.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -32,7 +31,7 @@ else:
 
 
 def time_function(func, arg, repeat=3, use_out=False):
-    """estimates the computation speed of a function
+    """Estimates the computation speed of a function.
 
     Args:
         func (callable): The function to test
@@ -54,7 +53,7 @@ def time_function(func, arg, repeat=3, use_out=False):
 
 
 def get_performance_data(periodic=False):
-    """obtain the data used in the performance plot
+    """Obtain the data used in the performance plot.
 
     Args:
         periodic (bool): The boundary conditions of the underlying grid
@@ -90,7 +89,7 @@ def get_performance_data(periodic=False):
 
 
 def plot_performance(performance_data, title=None):
-    """plot the performance data
+    """Plot the performance data.
 
     Args:
         performance_data: The data obtained from calling
@@ -129,7 +128,7 @@ def plot_performance(performance_data, title=None):
 
 
 def main():
-    """run main scripts"""
+    """Run main scripts."""
     data = get_performance_data(periodic=False)
     plot_performance(data, title="2D Laplacian (reflecting BCs)")
     plt.savefig("performance_noflux.pdf", transparent=True)

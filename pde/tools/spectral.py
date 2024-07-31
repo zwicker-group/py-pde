@@ -1,5 +1,4 @@
-"""
-Functions making use of spectral decompositions
+"""Functions making use of spectral decompositions.
 
 .. autosummary::
    :nosignatures:
@@ -30,7 +29,7 @@ def make_colored_noise(
     scale: float = 1,
     rng: np.random.Generator | None = None,
 ) -> Callable[[], np.ndarray]:
-    r"""Return a function creating an array of random values that obey
+    r"""Return a function creating an array of random values that obey.
 
     .. math::
         \langle c(\boldsymbol k) c(\boldsymbol k’) \rangle =
@@ -67,7 +66,7 @@ def make_colored_noise(
     if exponent == 0:
         # fast case of white noise
         def noise_normal():
-            """return array of colored noise"""
+            """Return array of colored noise."""
             return scale * rng.normal(size=shape)
 
         return noise_normal
@@ -89,7 +88,7 @@ def make_colored_noise(
     scaling.flat[0] = 0
 
     def noise_colored() -> np.ndarray:
-        """return array of colored noise"""
+        """Return array of colored noise."""
         # random field
         arr: np.ndarray = rng.normal(size=shape)
 

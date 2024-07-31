@@ -10,7 +10,7 @@ from pde import CartesianGrid, DiffusionPDE, MemoryStorage, ScalarField, UnitGri
 
 
 def test_diffusion_single(rng):
-    """test some methods of the simple diffusion model"""
+    """Test some methods of the simple diffusion model."""
     eq = DiffusionPDE()
     assert isinstance(str(eq), str)
     assert isinstance(repr(eq), str)
@@ -25,7 +25,7 @@ def test_diffusion_single(rng):
 
 
 def test_simple_diffusion_value(rng):
-    """test a simple diffusion equation with constant boundaries"""
+    """Test a simple diffusion equation with constant boundaries."""
     grid = CartesianGrid([[0, 1]], [16])
     c = ScalarField.random_uniform(grid, 0, 1, rng=rng)
     b_l = {"type": "value", "value": 0}
@@ -37,7 +37,7 @@ def test_simple_diffusion_value(rng):
 
 
 def test_simple_diffusion_flux_right(rng):
-    """test a simple diffusion equation with flux boundary on the right"""
+    """Test a simple diffusion equation with flux boundary on the right."""
     grid = CartesianGrid([[0, 1]], [16])
     c = ScalarField.random_uniform(grid, 0, 1, rng=rng)
     b_l = {"type": "value", "value": 0}
@@ -48,7 +48,7 @@ def test_simple_diffusion_flux_right(rng):
 
 
 def test_simple_diffusion_flux_left(rng):
-    """test a simple diffusion equation with flux boundary on the left"""
+    """Test a simple diffusion equation with flux boundary on the left."""
     grid = CartesianGrid([[0, 1]], [16])
     c = ScalarField.random_uniform(grid, 0, 1, rng=rng)
     b_l = {"type": "derivative", "value": 2}
@@ -59,7 +59,7 @@ def test_simple_diffusion_flux_left(rng):
 
 
 def test_diffusion_cached(rng):
-    """test some caching of rhs of the simple diffusion model"""
+    """Test some caching of rhs of the simple diffusion model."""
     grid = UnitGrid([8])
     c0 = ScalarField.random_uniform(grid, rng=rng)
 
@@ -89,7 +89,7 @@ def test_diffusion_cached(rng):
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_diffusion_time_dependent_bcs(backend):
-    """test PDE with time-dependent BCs"""
+    """Test PDE with time-dependent BCs."""
     field = ScalarField(UnitGrid([3]))
 
     eq = DiffusionPDE(bc={"value_expression": "Heaviside(t - 1.5)"})
@@ -110,7 +110,7 @@ def test_diffusion_time_dependent_bcs(backend):
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
 def test_diffusion_sde(backend, rng):
-    """test scaling of noise using a stochastic diffusion equation"""
+    """Test scaling of noise using a stochastic diffusion equation."""
     # we disable diffusivity to have a simple analytical solution
     var_local, t_range = 0.35, 0.1
     eq = DiffusionPDE(diffusivity=0, noise=var_local, rng=rng)

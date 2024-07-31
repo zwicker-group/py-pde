@@ -8,12 +8,12 @@ from pde.tools.config import Config, environment, packages_from_requirements
 
 
 def test_environment():
-    """test the environment function"""
+    """Test the environment function."""
     assert isinstance(environment(), dict)
 
 
 def test_config():
-    """test configuration system"""
+    """Test configuration system."""
     c = Config()
 
     assert c["numba.multithreading_threshold"] > 0
@@ -26,7 +26,7 @@ def test_config():
 
 
 def test_config_modes():
-    """test configuration system running in different modes"""
+    """Test configuration system running in different modes."""
     c = Config(mode="insert")
     assert c["numba.multithreading_threshold"] > 0
     c["numba.multithreading_threshold"] = 0
@@ -73,7 +73,7 @@ def test_config_modes():
 
 
 def test_config_contexts():
-    """test context manager temporarily changing configuration"""
+    """Test context manager temporarily changing configuration."""
     c = Config()
 
     assert c["numba.multithreading_threshold"] > 0
@@ -87,7 +87,7 @@ def test_config_contexts():
 
 
 def test_packages_from_requirements():
-    """test the packages_from_requirements function"""
+    """Test the packages_from_requirements function."""
     results = packages_from_requirements("file_not_existing")
     assert len(results) == 1
     assert "Could not open" in results[0] and "file_not_existing" in results[0]

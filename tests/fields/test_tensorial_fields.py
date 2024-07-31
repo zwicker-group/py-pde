@@ -11,7 +11,7 @@ from pde.fields.base import FieldBase
 
 
 def test_tensors_basic(rng):
-    """test some tensor calculations"""
+    """Test some tensor calculations."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
 
     t1 = Tensor2Field(grid, np.full((2, 2) + grid.shape, 1))
@@ -70,7 +70,7 @@ def test_tensors_basic(rng):
 
 @pytest.mark.parametrize("grid", [UnitGrid([1, 1]), PolarSymGrid(2, 1)])
 def test_tensors_transpose(grid):
-    """test transposing tensors"""
+    """Test transposing tensors."""
 
     def broadcast(arr):
         return np.asarray(arr)[(...,) + (np.newaxis,) * grid.num_axes]
@@ -82,7 +82,7 @@ def test_tensors_transpose(grid):
 
 
 def test_tensor_symmetrize():
-    """test advanced tensor calculations"""
+    """Test advanced tensor calculations."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [2, 2])
     t1 = Tensor2Field(grid)
     t1.data[0, 0, :] = 1
@@ -117,7 +117,7 @@ def test_tensor_symmetrize():
 @pytest.mark.parametrize("grid", iter_grids())
 @pytest.mark.parametrize("compiled", [True, False])
 def test_insert_tensor(grid, compiled, rng):
-    """test the `insert` method"""
+    """Test the `insert` method."""
     f = Tensor2Field(grid)
     a = rng.random(f.data_shape)
 
@@ -136,7 +136,7 @@ def test_insert_tensor(grid, compiled, rng):
 
 
 def test_tensor_invariants(rng):
-    """test the invariants"""
+    """Test the invariants."""
     # dim == 1
     f = Tensor2Field.random_uniform(UnitGrid([3]), rng=rng)
     np.testing.assert_allclose(
@@ -182,7 +182,7 @@ def test_tensor_invariants(rng):
 
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
 def test_complex_tensors(backend, rng):
-    """test some complex tensor fields"""
+    """Test some complex tensor fields."""
     grid = CartesianGrid([[0.1, 0.3], [-2, 3]], [3, 4])
     shape = (2, 2, 2) + grid.shape
     numbers = rng.random(shape) + rng.random(shape) * 1j
@@ -206,7 +206,7 @@ def test_complex_tensors(backend, rng):
 
 
 def test_from_expressions():
-    """test initializing tensor fields with expressions"""
+    """Test initializing tensor fields with expressions."""
     grid = UnitGrid([4, 4])
     tf = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * y"]])
     xs = grid.cell_coords[..., 0]

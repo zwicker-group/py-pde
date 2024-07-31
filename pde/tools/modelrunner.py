@@ -1,5 +1,4 @@
-"""
-Establishes hooks for the interplay between :mod:`pde` and :mod:`modelrunner`
+"""Establishes hooks for the interplay between :mod:`pde` and :mod:`modelrunner`
 
 This package is usually loaded automatically during import if :mod:`modelrunner` is
 available. In this case, grids and fields of :mod:`pde` can be directly written to
@@ -19,7 +18,7 @@ from ..grids.base import GridBase
 
 # these actions are inherited by all subclasses by default
 def load_grid(storage: StorageBase, loc: Sequence[str]) -> GridBase:
-    """function loading a grid from a modelrunner storage
+    """Function loading a grid from a modelrunner storage.
 
     Args:
         storage (:class:`~modelrunner.storage.group.StorageGroup`):
@@ -40,7 +39,7 @@ storage_actions.register("read_item", GridBase, load_grid)
 
 
 def save_grid(storage: StorageBase, loc: Sequence[str], grid: GridBase) -> None:
-    """function saving a grid to a modelrunner storage
+    """Function saving a grid to a modelrunner storage.
 
     Args:
         storage (:class:`~modelrunner.storage.group.StorageGroup`):
@@ -58,7 +57,7 @@ storage_actions.register("write_item", GridBase, save_grid)
 
 # these actions are inherited by all subclasses by default
 def load_field(storage: StorageBase, loc: Sequence[str]) -> FieldBase:
-    """function loading a field from a modelrunner storage
+    """Function loading a field from a modelrunner storage.
 
     Args:
         storage (:class:`~modelrunner.storage.group.StorageGroup`):
@@ -79,7 +78,7 @@ storage_actions.register("read_item", FieldBase, load_field)
 
 
 def save_field(storage: StorageBase, loc: Sequence[str], field: FieldBase) -> None:
-    """function saving a field to a modelrunner storage
+    """Function saving a field to a modelrunner storage.
 
     Args:
         storage (:class:`~modelrunner.storage.group.StorageGroup`):

@@ -1,7 +1,6 @@
-"""
-Defines an implicit Euler solver
+"""Defines an implicit Euler solver.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -18,7 +17,7 @@ from .base import ConvergenceError, SolverBase
 
 
 class ImplicitSolver(SolverBase):
-    """implicit (backward) Euler PDE solver"""
+    """Implicit (backward) Euler PDE solver."""
 
     name = "implicit"
 
@@ -49,7 +48,7 @@ class ImplicitSolver(SolverBase):
     def _make_single_step_fixed_dt_deterministic(
         self, state: FieldBase, dt: float
     ) -> Callable[[np.ndarray, float], None]:
-        """return a function doing a deterministic step with an implicit Euler scheme
+        """Return a function doing a deterministic step with an implicit Euler scheme.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -72,7 +71,7 @@ class ImplicitSolver(SolverBase):
 
         # handle deterministic version of the pde
         def implicit_step(state_data: np.ndarray, t: float) -> None:
-            """compiled inner loop for speed"""
+            """Compiled inner loop for speed."""
             nfev = 0  # count function evaluations
 
             # save state at current time point t for stepping
@@ -116,7 +115,7 @@ class ImplicitSolver(SolverBase):
     def _make_single_step_fixed_dt_stochastic(
         self, state: FieldBase, dt: float
     ) -> Callable[[np.ndarray, float], None]:
-        """return a function doing a step for a SDE with an implicit Euler scheme
+        """Return a function doing a step for a SDE with an implicit Euler scheme.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):
@@ -137,7 +136,7 @@ class ImplicitSolver(SolverBase):
 
         # handle deterministic version of the pde
         def implicit_step(state_data: np.ndarray, t: float) -> None:
-            """compiled inner loop for speed"""
+            """Compiled inner loop for speed."""
             nfev = 0  # count function evaluations
 
             # save state at current time point t for stepping
@@ -188,7 +187,7 @@ class ImplicitSolver(SolverBase):
     def _make_single_step_fixed_dt(
         self, state: FieldBase, dt: float
     ) -> Callable[[np.ndarray, float], None]:
-        """return a function doing a single step with an implicit Euler scheme
+        """Return a function doing a single step with an implicit Euler scheme.
 
         Args:
             state (:class:`~pde.fields.base.FieldBase`):

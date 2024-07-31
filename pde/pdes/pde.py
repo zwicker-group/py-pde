@@ -1,7 +1,6 @@
-"""
-Defines a PDE class whose right hand side is given as a string
+"""Defines a PDE class whose right hand side is given as a string.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -52,7 +51,7 @@ _OPERATOR_FOURIER_MAPPING = {
 
 
 class PDE(PDEBase):
-    """PDE defined by mathematical expressions
+    """PDE defined by mathematical expressions.
 
     Attributes:
         variables (tuple):
@@ -240,7 +239,7 @@ class PDE(PDEBase):
 
     @property
     def expressions(self) -> dict[str, str]:
-        """show the expressions of the PDE"""
+        """Show the expressions of the PDE."""
         return {k: v.expression for k, v in self._rhs_expr.items()}
 
     def _compile_rhs_single(
@@ -250,7 +249,7 @@ class PDE(PDEBase):
         state: FieldBase,
         backend: Literal["numpy", "numba"] = "numpy",
     ):
-        """compile a function determining the right hand side for one variable
+        """Compile a function determining the right hand side for one variable.
 
         Args:
             var (str):
@@ -359,7 +358,7 @@ class PDE(PDEBase):
             raise ValueError(f"Unsupported backend {backend}")
 
         def rhs_func(*args) -> np.ndarray:
-            """wrapper that inserts the extra arguments and initialized bc_args"""
+            """Wrapper that inserts the extra arguments and initialized bc_args."""
             bc_args = NumbaDict()  # args for differential operators
             bc_args["t"] = args[-1]  # pass time to differential operators
             return func_inner(*args, None, bc_args, *extra_args)  # type: ignore
@@ -369,7 +368,7 @@ class PDE(PDEBase):
     def _prepare_cache(
         self, state: TState, backend: Literal["numpy", "numba"] = "numpy"
     ) -> dict[str, Any]:
-        """prepare the expression by setting internal variables in the cache
+        """Prepare the expression by setting internal variables in the cache.
 
         Note that the expensive calculations in this method are only carried out if the
         state attributes change.
@@ -473,7 +472,7 @@ class PDE(PDEBase):
             stops: tuple[int, ...] = tuple(slc.stop for slc in state._slices)
 
             def get_data_tuple(state_data: np.ndarray) -> tuple[np.ndarray, ...]:
-                """helper for turning state_data into a tuple of field data"""
+                """Helper for turning state_data into a tuple of field data."""
                 return tuple(
                     (
                         state_data[starts[i]]
@@ -493,7 +492,7 @@ class PDE(PDEBase):
         return cache
 
     def evolution_rate(self, state: TState, t: float = 0.0) -> TState:
-        """evaluate the right hand side of the PDE
+        """Evaluate the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -529,7 +528,7 @@ class PDE(PDEBase):
     def _make_pde_rhs_numba_coll(
         self, state: FieldCollection, cache: dict[str, Any]
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create the compiled rhs if `state` is a field collection
+        """Create the compiled rhs if `state` is a field collection.
 
         Args:
             state (:class:`~pde.fields.FieldCollection`):
@@ -556,7 +555,7 @@ class PDE(PDEBase):
             i: int = 0,
             inner: Callable[[np.ndarray, float, np.ndarray], None] | None = None,
         ) -> Callable[[np.ndarray, float], np.ndarray]:
-            """recursive helper function for applying all rhs"""
+            """Recursive helper function for applying all rhs."""
             # run through all functions
             rhs = rhs_list[i]
 
@@ -594,7 +593,7 @@ class PDE(PDEBase):
     def _make_pde_rhs_numba(  # type: ignore
         self, state: TState, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
-        """create a compiled function evaluating the right hand side of the PDE
+        """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -626,7 +625,7 @@ class PDE(PDEBase):
         wave_vector: str | sympy.Symbol = "q",
         check_steady_state: bool = True,
     ) -> sympy.Matrix:
-        """calculate the Jacobian in spectral representation
+        """Calculate the Jacobian in spectral representation.
 
         Note:
             This method currently only supports scalar fields, so that inner and outer
@@ -723,7 +722,7 @@ class PDE(PDEBase):
         *,
         t: float = 0,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """evaluate the dispersion relation
+        """Evaluate the dispersion relation.
 
         Args:
             state_hom (list or dict):

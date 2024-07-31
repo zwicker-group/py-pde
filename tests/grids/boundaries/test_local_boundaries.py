@@ -19,7 +19,7 @@ from pde.grids.boundaries.local import (
 
 
 def test_get_arr_1d():
-    """test the _get_arr_1d function"""
+    """Test the _get_arr_1d function."""
     # 1d
     a = np.arange(3)
     arr_1d, i, bc_idx = _get_arr_1d(a, [1], 0)
@@ -58,7 +58,7 @@ def test_get_arr_1d():
 
 
 def test_individual_boundaries():
-    """test setting individual boundaries"""
+    """Test setting individual boundaries."""
     g = UnitGrid([2])
     for data in [
         "value",
@@ -87,7 +87,7 @@ def test_individual_boundaries():
 
 
 def test_individual_boundaries_multidimensional():
-    """test setting individual boundaries in 2d"""
+    """Test setting individual boundaries in 2d."""
     g2 = UnitGrid([2, 3])
     bc = BCBase.from_data(g2, 0, True, {"type": "value", "value": [1, 2]}, rank=1)
 
@@ -106,7 +106,7 @@ def test_individual_boundaries_multidimensional():
 
 
 def test_virtual_points():
-    """test the calculation of virtual points"""
+    """Test the calculation of virtual points."""
     g = UnitGrid([2])
     data = np.array([1, 2])
 
@@ -146,7 +146,7 @@ def test_virtual_points():
 
 @pytest.mark.parametrize("upper", [False, True])
 def test_virtual_points_linked_data(upper):
-    """test the calculation of virtual points with linked_data"""
+    """Test the calculation of virtual points with linked_data."""
     g = UnitGrid([2, 2])
     point = (1, 1) if upper else (0, 0)
     data = np.zeros(g.shape)
@@ -187,7 +187,7 @@ def test_virtual_points_linked_data(upper):
 
 
 def test_mixed_condition():
-    """test the calculation of virtual points"""
+    """Test the calculation of virtual points."""
     g = UnitGrid([2])
     data = np.array([1, 2])
 
@@ -211,7 +211,7 @@ def test_mixed_condition():
 
 
 def test_inhomogeneous_bcs_1d():
-    """test inhomogeneous boundary conditions in 1d grids"""
+    """Test inhomogeneous boundary conditions in 1d grids."""
     g = UnitGrid([2])
     data = np.ones((2,))  # field is 1 everywhere
 
@@ -234,7 +234,7 @@ def test_inhomogeneous_bcs_1d():
 
 
 def test_inhomogeneous_bcs_2d():
-    """test inhomogeneous boundary conditions in 2d grids"""
+    """Test inhomogeneous boundary conditions in 2d grids."""
     g = UnitGrid([2, 2])
     data = np.ones((2, 2))
 
@@ -276,7 +276,7 @@ def test_inhomogeneous_bcs_2d():
 
 @pytest.mark.parametrize("expr", ["1", "x + y**2"])
 def test_expression_bc_setting_value(expr, rng):
-    """test boundary conditions that use an expression"""
+    """Test boundary conditions that use an expression."""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
 
     if expr == "1":
@@ -311,7 +311,7 @@ def test_expression_bc_setting_value(expr, rng):
 
 @pytest.mark.parametrize("expr", ["1", "x + y**2"])
 def test_expression_bc_setting_derivative(expr, rng):
-    """test boundary conditions that use an expression"""
+    """Test boundary conditions that use an expression."""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
 
     if expr == "1":
@@ -345,7 +345,7 @@ def test_expression_bc_setting_derivative(expr, rng):
 
 @pytest.mark.parametrize("value_expr, const_expr", [["1", "1"], ["x", "y**2"]])
 def test_expression_bc_setting_mixed(value_expr, const_expr, rng):
-    """test boundary conditions that use an expression"""
+    """Test boundary conditions that use an expression."""
     grid = CartesianGrid([[0, 1], [0, 1]], 4)
 
     if value_expr == "1":
@@ -395,7 +395,7 @@ def test_expression_bc_setting_mixed(value_expr, const_expr, rng):
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_operator(dim):
-    """test boundary conditions that use an expression in an operator"""
+    """Test boundary conditions that use an expression in an operator."""
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"value": 1})
     bc2 = grid.get_boundary_conditions({"virtual_point": f"2 - value"})
@@ -411,7 +411,7 @@ def test_expression_bc_operator(dim):
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_value(dim):
-    """test boundary conditions that use an expression to calculate the value"""
+    """Test boundary conditions that use an expression to calculate the value."""
 
     def unity(*args):
         return 1
@@ -434,7 +434,7 @@ def test_expression_bc_value(dim):
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_derivative(dim):
-    """test boundary conditions that use an expression to calculate the derivative"""
+    """Test boundary conditions that use an expression to calculate the derivative."""
 
     def zeros(*args):
         return 0
@@ -457,7 +457,7 @@ def test_expression_bc_derivative(dim):
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_mixed(dim):
-    """test boundary conditions that use an expression to calculate the derivative"""
+    """Test boundary conditions that use an expression to calculate the derivative."""
 
     def zeros(*args):
         return 0
@@ -479,14 +479,14 @@ def test_expression_bc_mixed(dim):
 
 
 def test_expression_invalid_args():
-    """test boundary conditions use an expression with invalid data"""
+    """Test boundary conditions use an expression with invalid data."""
     grid = CartesianGrid([[0, 1]], 4)
     with pytest.raises(BCDataError):
         grid.get_boundary_conditions({"derivative_expression": "unknown(x)"})
 
 
 def test_expression_bc_polar_grid():
-    """test whether expression BCs work on polar grids"""
+    """Test whether expression BCs work on polar grids."""
     grid = PolarSymGrid(radius=1, shape=8)
     bcs = grid.get_boundary_conditions([{"value": 1}, {"value_expression": "1"}])
 
@@ -505,7 +505,7 @@ def test_expression_bc_polar_grid():
 @pytest.mark.parametrize("dim", [1, 2])
 @pytest.mark.parametrize("compiled", [True, False])
 def test_expression_bc_specific_value(dim, compiled):
-    """test boundary conditions that use a value at a different position"""
+    """Test boundary conditions that use a value at a different position."""
     n = 2
     grid = CartesianGrid([[0, 1]] * dim, n)
 
@@ -549,7 +549,7 @@ def test_expression_bc_specific_value(dim, compiled):
 
 
 def test_expression_bc_user_func():
-    """test user functions in boundary expressions"""
+    """Test user functions in boundary expressions."""
     grid = UnitGrid([2])
     bc1 = grid.get_boundary_conditions({"virtual_point": "sin(value)"})
     bc2 = grid.get_boundary_conditions(
@@ -568,7 +568,7 @@ def test_expression_bc_user_func():
 
 @pytest.mark.parametrize("dim", [1, 2])
 def test_expression_bc_user_func_nojit(dim):
-    """test user functions in boundary expressions that cannot be compiled"""
+    """Test user functions in boundary expressions that cannot be compiled."""
     grid = UnitGrid([3] * dim)
 
     class C:
@@ -606,7 +606,7 @@ def test_expression_bc_user_func_nojit(dim):
 
 @pytest.mark.parametrize("dim", [1, 2, 3])
 def test_expression_bc_user_expr_nojit(dim):
-    """test user expressions in boundary expressions that cannot be compiled"""
+    """Test user expressions in boundary expressions that cannot be compiled."""
     grid = UnitGrid([3] * dim)
 
     class C:
@@ -646,7 +646,7 @@ def test_expression_bc_user_expr_nojit(dim):
 
 
 def test_getting_registered_bcs():
-    """test the functions that return the registered BCs"""
+    """Test the functions that return the registered BCs."""
     assert isinstance(registered_boundary_condition_classes(), dict)
     assert isinstance(registered_boundary_condition_names(), dict)
 
@@ -654,7 +654,7 @@ def test_getting_registered_bcs():
 @pytest.mark.parametrize("dim", [1, 2])
 @pytest.mark.parametrize("target", ["value", "derivative"])
 def test_user_bcs_numpy(dim, target):
-    """test setting user BCs"""
+    """Test setting user BCs."""
     value = np.arange(3) if dim == 2 else 1
     grid = UnitGrid([3] * dim)
     bcs = grid.get_boundary_conditions({"type": "user"})
@@ -683,7 +683,7 @@ def test_user_bcs_numpy(dim, target):
 @pytest.mark.parametrize("dim", [1, 2, 3])
 @pytest.mark.parametrize("target", ["value", "derivative"])
 def test_user_bcs_numba(dim, target):
-    """test setting user BCs"""
+    """Test setting user BCs."""
     if dim == 1:
         value = 1
     elif dim == 2:
@@ -715,7 +715,7 @@ def test_user_bcs_numba(dim, target):
 
 
 def test_mpi_bc():
-    """test some basic methods of _MPIBC"""
+    """Test some basic methods of _MPIBC."""
     grid = UnitGrid([4], periodic=True)
     mesh = GridMesh.from_grid(grid, decomposition=[2])
     assert len(mesh) == 2

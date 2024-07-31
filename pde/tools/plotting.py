@@ -1,5 +1,4 @@
-"""
-Tools for plotting and controlling plot output using context managers
+"""Tools for plotting and controlling plot output using context managers.
 
 .. autosummary::
    :nosignatures:
@@ -45,7 +44,7 @@ def add_scaled_colorbar(
     label: str = "",
     **kwargs,
 ):
-    """add a vertical color bar to an image plot
+    """Add a vertical color bar to an image plot.
 
     The height of the colorbar is now adjusted to the plot, so that the width
     determined by `aspect` is now given relative to the height. Moreover, the
@@ -76,10 +75,8 @@ def add_scaled_colorbar(
     from mpl_toolkits import axes_grid1
 
     class _AxesXY(axes_grid1.axes_size._Base):
-        """
-        Scaled size whose relative part corresponds to the maximum of the data width and
-        data height of the *axes* multiplied by the *aspect*.
-        """
+        """Scaled size whose relative part corresponds to the maximum of the data width
+        and data height of the *axes* multiplied by the *aspect*."""
 
         def __init__(self, axes, aspect=1.0):
             self._axes = axes
@@ -127,7 +124,7 @@ def add_scaled_colorbar(
 
 
 class nested_plotting_check:
-    """context manager that checks whether it is the root plotting call
+    """Context manager that checks whether it is the root plotting call.
 
     Example:
         The context manager can be used in plotting calls to check for nested
@@ -137,7 +134,6 @@ class nested_plotting_check:
                 make_plot(...)  # could potentially call other plotting methods
                 if is_outermost_plot_call:
                     plt.show()
-
     """
 
     _is_plotting = False  # class variable keeping track of nesting
@@ -157,7 +153,7 @@ class nested_plotting_check:
 
 @contextlib.contextmanager
 def disable_interactive():
-    """context manager disabling the interactive mode of matplotlib
+    """Context manager disabling the interactive mode of matplotlib.
 
     This context manager restores the previous state after it is done. Details
     of the interactive mode are described in :func:`matplotlib.interactive`.
@@ -176,7 +172,7 @@ def disable_interactive():
 
 
 class PlotReference:
-    """contains all information to update a plot element"""
+    """Contains all information to update a plot element."""
 
     __slots__ = ["ax", "element", "parameters"]
 
@@ -196,7 +192,7 @@ PlotActionType = Literal["auto", "close", "none", "sca", "show"]
 
 
 def plot_on_axes(wrapped=None, update_method=None):
-    """decorator for a plot method or function that uses a single axes
+    """Decorator for a plot method or function that uses a single axes.
 
     This decorator adds typical options for creating plots that fill a single axes.
     These options are available via keyword arguments. To avoid redundancy in describing
@@ -251,9 +247,9 @@ def plot_on_axes(wrapped=None, update_method=None):
         ax=None,
         **kwargs,
     ):
-        """
-        title (str):
-            Title of the plot. If omitted, the title might be chosen automatically.
+        """Title (str):
+
+        Title of the plot. If omitted, the title might be chosen automatically.
         filename (str, optional):
             If given, the plot is written to the specified file.
         action (str):
@@ -392,7 +388,7 @@ def plot_on_axes(wrapped=None, update_method=None):
 
 
 def plot_on_figure(wrapped=None, update_method=None):
-    """decorator for a plot method or function that fills an entire figure
+    """Decorator for a plot method or function that fills an entire figure.
 
     This decorator adds typical options for creating plots that fill an entire figure.
     This decorator adds typical options for creating plots that fill a single axes.
@@ -455,9 +451,9 @@ def plot_on_figure(wrapped=None, update_method=None):
         fig=None,
         **kwargs,
     ):
-        """
-        title (str):
-            Title of the plot. If omitted, the title might be chosen automatically.
+        """Title (str):
+
+        Title of the plot. If omitted, the title might be chosen automatically.
             This is shown above all panels.
         constrained_layout (bool):
             Whether to use `constrained_layout` in :func:`matplotlib.pyplot.figure` call
@@ -563,7 +559,7 @@ def plot_on_figure(wrapped=None, update_method=None):
 
 
 class PlottingContextBase:
-    """base class of the plotting contexts
+    """Base class of the plotting contexts.
 
     Example:
         The context wraps calls to the :mod:`matplotlib.pyplot` interface::
@@ -575,8 +571,8 @@ class PlottingContextBase:
     """
 
     supports_update: bool = True
-    """ flag indicating whether the context supports that plots can be updated
-    with out redrawing the entire plot """
+    """Flag indicating whether the context supports that plots can be updated with out
+    redrawing the entire plot."""
 
     fig: mpl_figure.Figure | None
 
@@ -629,7 +625,7 @@ class PlottingContextBase:
             self._title.set_text(self.title)
 
     def close(self):
-        """close the plot"""
+        """Close the plot."""
         # close matplotlib figure
         if self.fig is not None:
             import matplotlib.pyplot as plt
@@ -638,7 +634,7 @@ class PlottingContextBase:
 
 
 class BasicPlottingContext(PlottingContextBase):
-    """basic plotting using just matplotlib"""
+    """Basic plotting using just matplotlib."""
 
     def __init__(self, fig_or_ax=None, title: str | None = None, show: bool = True):
         """
@@ -676,12 +672,15 @@ class BasicPlottingContext(PlottingContextBase):
 
 
 class JupyterPlottingContext(PlottingContextBase):
-    """plotting in a jupyter widget using the `inline` backend"""
+    """Plotting in a jupyter widget using the `inline` backend."""
 
     supports_update = False
-    """ flag indicating whether the context supports that plots can be updated
-    with out redrawing the entire plot. The jupyter backend (`inline`) requires
-    replotting of the entire figure, so an update is not supported."""
+    """Flag indicating whether the context supports that plots can be updated with out
+    redrawing the entire plot.
+
+    The jupyter backend (`inline`) requires
+    replotting of the entire figure, so an update is not supported.
+    """
 
     def __enter__(self):
         from IPython.display import display
@@ -722,7 +721,7 @@ class JupyterPlottingContext(PlottingContextBase):
         plt.close(self.fig)
 
     def close(self):
-        """close the plot"""
+        """Close the plot."""
         super().close()
         # close ipython output
         try:
@@ -734,7 +733,7 @@ class JupyterPlottingContext(PlottingContextBase):
 def get_plotting_context(
     context=None, title: str | None = None, show: bool = True
 ) -> PlottingContextBase:
-    """returns a suitable plotting context
+    """Returns a suitable plotting context.
 
     Args:
         context:
@@ -789,7 +788,7 @@ def get_plotting_context(
 
 
 def in_ipython() -> bool:
-    """try to detect whether we are in an ipython shell, e.g., a jupyter notebook"""
+    """Try to detect whether we are in an ipython shell, e.g., a jupyter notebook."""
     ipy_module = sys.modules.get("IPython")
     if ipy_module:
         return bool(ipy_module.get_ipython())
@@ -801,7 +800,7 @@ def in_ipython() -> bool:
 def napari_viewer(
     grid: GridBase, run: bool | None = None, close: bool = False, **kwargs
 ) -> Generator[napari.viewer.Viewer, None, None]:
-    """creates an napari viewer for interactive plotting
+    """Creates an napari viewer for interactive plotting.
 
     Args:
         grid (:class:`pde.grids.base.GridBase`):

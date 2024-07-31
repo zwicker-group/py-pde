@@ -15,7 +15,7 @@ from pde.grids.boundaries.local import NeumannBC
 
 
 def test_boundaries():
-    """test setting boundaries for multiple systems"""
+    """Test setting boundaries for multiple systems."""
     b = ["periodic", "value", {"type": "derivative", "value": 1}]
     for bx, by in itertools.product(b, b):
         periodic = [b == "periodic" for b in (bx, by)]
@@ -47,7 +47,7 @@ def test_boundaries():
 
 
 def test_boundaries_edge_cases():
-    """test treatment of invalid data"""
+    """Test treatment of invalid data."""
     grid = UnitGrid([3, 3])
     bcs = grid.get_boundary_conditions("auto_periodic_neumann")
     with pytest.raises(BCDataError):
@@ -69,7 +69,7 @@ def test_boundaries_edge_cases():
 
 
 def test_boundary_specifications():
-    """test different ways of specifying boundary conditions"""
+    """Test different ways of specifying boundary conditions."""
     g = UnitGrid([2])
     bc1 = Boundaries.from_data(
         g, [{"type": "derivative", "value": 0}, {"type": "value", "value": 0}]
@@ -80,7 +80,7 @@ def test_boundary_specifications():
 
 
 def test_mixed_boundary_condition(rng):
-    """test limiting cases of the mixed boundary condition"""
+    """Test limiting cases of the mixed boundary condition."""
     g = UnitGrid([2])
     d = rng.random(2)
     g1 = g.make_operator("gradient", bc=[{"mixed": 0}, {"mixed": np.inf}])
@@ -96,7 +96,7 @@ def test_mixed_boundary_condition(rng):
     ],
 )
 def test_natural_boundary_conditions(cond, is_value):
-    """test special automatic boundary conditions"""
+    """Test special automatic boundary conditions."""
     g = UnitGrid([2, 2], periodic=[True, False])
     for bc in [
         Boundaries.from_data(g, cond),
@@ -110,7 +110,7 @@ def test_natural_boundary_conditions(cond, is_value):
 
 
 def test_special_cases():
-    """test some special boundary conditions"""
+    """Test some special boundary conditions."""
     g = UnitGrid([5])
     s = ScalarField(g, np.arange(5))
     for bc in ["extrapolate", {"curvature": 0}]:
@@ -118,7 +118,7 @@ def test_special_cases():
 
 
 def test_bc_values():
-    """test setting the values of boundary conditions"""
+    """Test setting the values of boundary conditions."""
     g = UnitGrid([5])
     bc = g.get_boundary_conditions([{"value": 2}, {"derivative": 3}])
     assert bc[0].low.value == 2 and bc[0].high.value == 3
@@ -127,7 +127,7 @@ def test_bc_values():
 @pytest.mark.parametrize("dim", [1, 2, 3])
 @pytest.mark.parametrize("periodic", [True, False])
 def test_set_ghost_cells(dim, periodic, rng):
-    """test setting values for ghost cells"""
+    """Test setting values for ghost cells."""
     grid = UnitGrid([1] * dim, periodic=periodic)
     field = ScalarField.random_uniform(grid, rng=rng)
     bcs = grid.get_boundary_conditions("auto_periodic_neumann")
@@ -147,7 +147,7 @@ def test_set_ghost_cells(dim, periodic, rng):
 
 
 def test_setting_specific_bcs():
-    """test the interface of setting specific conditions"""
+    """Test the interface of setting specific conditions."""
     grid = UnitGrid([4, 4], periodic=[False, True])
     bcs = grid.get_boundary_conditions("auto_periodic_neumann")
 
@@ -184,7 +184,7 @@ def test_setting_specific_bcs():
 
 
 def test_boundaries_property():
-    """test boundaries property"""
+    """Test boundaries property."""
     g = UnitGrid([2, 2])
     bc = Boundaries.from_data(g, ["neumann", "dirichlet"])
     assert len(list(bc.boundaries)) == 4

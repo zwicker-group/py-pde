@@ -1,5 +1,4 @@
-"""
-Package that defines PDEs describing physical systems.
+"""Package that defines PDEs describing physical systems.
 
 The examples in this package are often simple version of classical PDEs to
 demonstrate various aspects of the `py-pde` package. Clearly, not all extensions
@@ -33,7 +32,7 @@ Additionally, we offer two solvers for typical elliptical PDEs:
    ~laplace.solve_poisson_equation
 
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from .allen_cahn import AllenCahnPDE

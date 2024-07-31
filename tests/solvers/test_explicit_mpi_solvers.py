@@ -16,7 +16,7 @@ from pde.tools import mpi
     [("euler", "auto"), ("euler", [1, -1]), ("runge-kutta", [-1, 1])],
 )
 def test_simple_pde_mpi(scheme, decomposition, rng):
-    """test setting boundary conditions using numba"""
+    """Test setting boundary conditions using numba."""
     grid = UnitGrid([8, 8], periodic=[True, False])
 
     field = ScalarField.random_uniform(grid, rng=rng)
@@ -57,7 +57,7 @@ def test_simple_pde_mpi(scheme, decomposition, rng):
 @pytest.mark.multiprocessing
 @pytest.mark.parametrize("backend", ["numba", "numpy"])
 def test_stochastic_mpi_solvers(backend, rng):
-    """test simple version of the stochastic solver"""
+    """Test simple version of the stochastic solver."""
     field = ScalarField.random_uniform(UnitGrid([16]), -1, 1, rng=rng)
     eq = DiffusionPDE()
     seq = DiffusionPDE(noise=1e-10)

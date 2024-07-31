@@ -1,5 +1,4 @@
-"""
-Grids define the domains on which PDEs will be solved. In particular, symmetries,
+"""Grids define the domains on which PDEs will be solved. In particular, symmetries,
 periodicities, and the discretizations are defined by the underlying grid.
 
 We only consider regular, orthogonal grids, which are constructed from orthogonal

@@ -1,6 +1,4 @@
-r"""
-
-This package contains classes for handling the boundary conditions of fields.
+r"""This package contains classes for handling the boundary conditions of fields.
 
 .. _documentation-boundaries:
 
@@ -53,7 +51,7 @@ Warning:
 
 Inhomogeneous values can also be specified by directly supplying an array, whose shape
 needs to be compatible with the boundary, i.e., it needs to have the same shape as the
-grid but with the dimension of the axis along which the boundary is specified removed. 
+grid but with the dimension of the axis along which the boundary is specified removed.
 
 The package also supports mixed boundary conditions (depending on both the value
 and the derivative of the field) and imposing a second derivative. An example is
@@ -81,7 +79,7 @@ be specified (instead of the list). For instance, the following example
 
 imposes a value of `2` on all sides of the grid. Finally, the special values
 'auto_periodic_neumann' and 'auto_periodic_dirichlet' impose periodic boundary
-conditions for periodic axis and a vanishing derivative or value otherwise. For example, 
+conditions for periodic axis and a vanishing derivative or value otherwise. For example,
 
 .. code-block:: python
 
@@ -93,7 +91,7 @@ has standard Neumann conditions.
 
 Note:
     Derivatives are given relative to the outward normal vector, such that positive
-    derivatives correspond to a function that increases across the boundary. 
+    derivatives correspond to a function that increases across the boundary.
 
 
 Boundaries overview
@@ -116,7 +114,7 @@ The :mod:`~pde.grids.boundaries` package defines the following classes:
   boundary given by an expression or a python function
 * :class:`~pde.grids.boundaries.local.MixedBC`:
   Imposing the derivative of the field in the outward normal direction proportional to
-  its value at the boundary  
+  its value at the boundary
 * :class:`~pde.grids.boundaries.local.ExpressionMixedBC`:
   Imposing the derivative of the field in the outward normal direction proportional to
   its value at the boundary with coefficients given by expressions or python functions

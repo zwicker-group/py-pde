@@ -1,5 +1,4 @@
-"""
-Defines the base class for all grids
+"""Defines the base class for all grids.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -48,7 +47,7 @@ CoordsType = Literal["cartesian", "grid", "cell"]
 
 
 class OperatorInfo(NamedTuple):
-    """stores information about an operator"""
+    """Stores information about an operator."""
 
     factory: OperatorFactory
     rank_in: int
@@ -57,7 +56,7 @@ class OperatorInfo(NamedTuple):
 
 
 def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
-    """checks the consistency of shape tuples"""
+    """Checks the consistency of shape tuples."""
     if hasattr(shape, "__iter__"):
         shape_list: Sequence[int] = shape  # type: ignore
     else:
@@ -79,7 +78,7 @@ def _check_shape(shape: int | Sequence[int]) -> tuple[int, ...]:
 def discretize_interval(
     x_min: float, x_max: float, num: int
 ) -> tuple[np.ndarray, float]:
-    r"""construct a list of equidistantly placed intervals 
+    r"""Construct a list of equidistantly placed intervals.
 
     The discretization is defined as
 
@@ -105,15 +104,15 @@ def discretize_interval(
 
 
 class DomainError(ValueError):
-    """exception indicating that point lies outside domain"""
+    """Exception indicating that point lies outside domain."""
 
 
 class PeriodicityError(RuntimeError):
-    """exception indicating that the grid periodicity is inconsistent"""
+    """Exception indicating that the grid periodicity is inconsistent."""
 
 
 class GridBase(metaclass=ABCMeta):
-    """Base class for all grids defining common methods and interfaces"""
+    """Base class for all grids defining common methods and interfaces."""
 
     # class properties
     _subclasses: dict[str, type[GridBase]] = {}  # all classes inheriting from this
@@ -121,7 +120,7 @@ class GridBase(metaclass=ABCMeta):
 
     # properties that are defined in subclasses
     c: CoordinatesBase
-    """:class:`~pde.grids.coordinates.CoordinatesBase`: Coordinates of the grid"""
+    """:class:`~pde.grids.coordinates.CoordinatesBase`: Coordinates of the grid."""
     axes: list[str]
     """list: Names of all axes that are described by the grid"""
     axes_symmetric: list[str] = []
@@ -151,7 +150,7 @@ class GridBase(metaclass=ABCMeta):
     """ set: names of all operators defined for this grid """
 
     def __init__(self) -> None:
-        """initialize the grid"""
+        """Initialize the grid."""
         self._logger = logging.getLogger(self.__class__.__name__)
         self._mesh: GridMesh | None = None
 
@@ -163,7 +162,7 @@ class GridBase(metaclass=ABCMeta):
         self.axes_symmetric = [self.c.axes[i] for i in self.axes_symmetric]  # type: ignore
 
     def __init_subclass__(cls, **kwargs) -> None:  # @NoSelf
-        """register all subclassess to reconstruct them later"""
+        """Register all subclassess to reconstruct them later."""
         super().__init_subclass__(**kwargs)
         if cls is not GridBase:
             if cls.__name__ in cls._subclasses:
@@ -183,7 +182,7 @@ class GridBase(metaclass=ABCMeta):
 
     @classmethod
     def from_state(cls, state: str | dict[str, Any]) -> GridBase:
-        """create a field from a stored `state`.
+        """Create a field from a stored `state`.
 
         Args:
             state (`str` or `dict`):
@@ -234,7 +233,7 @@ class GridBase(metaclass=ABCMeta):
         return self._axes_coords
 
     def get_axis_index(self, key: int | str, allow_symmetric: bool = True) -> int:
-        """return the index belonging to an axis
+        """Return the index belonging to an axis.
 
         Args:
             key (int or str):
@@ -261,7 +260,7 @@ class GridBase(metaclass=ABCMeta):
         raise IndexError("Index must be an integer or the name of an axes")
 
     def _get_boundary_index(self, index: str | tuple[int, bool]) -> tuple[int, bool]:
-        """return the index of a boundary belonging to an axis
+        """Return the index of a boundary belonging to an axis.
 
         Args:
             index (str or tuple):
@@ -284,7 +283,7 @@ class GridBase(metaclass=ABCMeta):
 
     @property
     def discretization(self) -> np.ndarray:
-        """:class:`numpy.array`: the linear size of a cell along each axis"""
+        """:class:`numpy.array`: the linear size of a cell along each axis."""
         return self._discretization
 
     @property
@@ -308,7 +307,7 @@ class GridBase(metaclass=ABCMeta):
         return tuple(slice(1, s + 1) for s in self.shape)
 
     def _make_get_valid(self) -> Callable[[np.ndarray], np.ndarray]:
-        """create a function to extract the valid part of a full data array
+        """Create a function to extract the valid part of a full data array.
 
         Returns:
             callable: Mapping a numpy array containing the full data of the grid to a
@@ -318,7 +317,7 @@ class GridBase(metaclass=ABCMeta):
 
         @jit
         def get_valid(data_full: np.ndarray) -> np.ndarray:
-            """return valid part of the data (without ghost cells)
+            """Return valid part of the data (without ghost cells)
 
             Args:
                 data_full (:class:`~numpy.ndarray`):
@@ -344,7 +343,7 @@ class GridBase(metaclass=ABCMeta):
     ) -> Callable[[np.ndarray, np.ndarray, dict], None]: ...
 
     def _make_set_valid(self, bcs: Boundaries | None = None) -> Callable:
-        """create a function to set the valid part of a full data array
+        """Create a function to set the valid part of a full data array.
 
         Args:
             bcs (:class:`~pde.grids.boundaries.axes.Boundaries`, optional):
@@ -362,7 +361,7 @@ class GridBase(metaclass=ABCMeta):
 
         @jit
         def set_valid(data_full: np.ndarray, data_valid: np.ndarray) -> None:
-            """set valid part of the data (without ghost cells)
+            """Set valid part of the data (without ghost cells)
 
             Args:
                 data_full (:class:`~numpy.ndarray`):
@@ -390,7 +389,7 @@ class GridBase(metaclass=ABCMeta):
             def set_valid_bcs(
                 data_full: np.ndarray, data_valid: np.ndarray, args=None
             ) -> None:
-                """set valid part of the data and the ghost cells using BCs
+                """Set valid part of the data and the ghost cells using BCs.
 
                 Args:
                     data_full (:class:`~numpy.ndarray`):
@@ -418,13 +417,15 @@ class GridBase(metaclass=ABCMeta):
         return json.dumps(state)
 
     def copy(self) -> GridBase:
-        """return a copy of the grid"""
+        """Return a copy of the grid."""
         return self.__class__.from_state(self.state)
 
     __copy__ = copy
 
     def __deepcopy__(self, memo: dict[int, Any]) -> GridBase:
-        """create a deep copy of the grid. This function is for instance called when
+        """Create a deep copy of the grid.
+
+        This function is for instance called when
         a grid instance appears in another object that is copied using `copy.deepcopy`
         """
         # this implementation assumes that a simple call to copy is sufficient
@@ -433,7 +434,7 @@ class GridBase(metaclass=ABCMeta):
         return result
 
     def __repr__(self) -> str:
-        """return instance as string"""
+        """Return instance as string."""
         args = ", ".join(str(k) + "=" + str(v) for k, v in self.state.items())
         return f"{self.__class__.__name__}({args})"
 
@@ -447,7 +448,7 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def _cache_hash(self) -> int:
-        """returns a value to determine when a cache needs to be updated"""
+        """Returns a value to determine when a cache needs to be updated."""
         return hash(
             (
                 self.__class__.__name__,
@@ -458,7 +459,7 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def compatible_with(self, other: GridBase) -> bool:
-        """tests whether this grid is compatible with other grids.
+        """Tests whether this grid is compatible with other grids.
 
         Grids are compatible when they cover the same area with the same
         discretization. The difference to equality is that compatible grids do
@@ -478,7 +479,7 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def assert_grid_compatible(self, other: GridBase) -> None:
-        """checks whether `other` is compatible with the current grid
+        """Checks whether `other` is compatible with the current grid.
 
         Args:
             other (:class:`~pde.grids.base.GridBase`):
@@ -502,12 +503,12 @@ class GridBase(metaclass=ABCMeta):
 
     @cached_property()
     def cell_coords(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: coordinate values for all axes of each cell"""
+        """:class:`~numpy.ndarray`: coordinate values for all axes of each cell."""
         return np.moveaxis(self.coordinate_arrays, 0, -1)
 
     @cached_property()
     def cell_volumes(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: volume of each cell"""
+        """:class:`~numpy.ndarray`: volume of each cell."""
         if self.cell_volume_data is None:
             # use the self.c to calculate cell volumes
             d2 = self.discretization / 2
@@ -537,7 +538,7 @@ class GridBase(metaclass=ABCMeta):
         periodic: Sequence[bool],
         axes_bounds: tuple[tuple[float, float], ...] | None,
     ) -> np.ndarray:
-        """return Cartesian vector(s) pointing from p1 to p2
+        """Return Cartesian vector(s) pointing from p1 to p2.
 
         In case of periodic boundary conditions, the shortest vector is returned.
 
@@ -574,7 +575,7 @@ class GridBase(metaclass=ABCMeta):
     def difference_vector(
         self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
     ) -> np.ndarray:
-        """return Cartesian vector(s) pointing from p1 to p2
+        """Return Cartesian vector(s) pointing from p1 to p2.
 
         In case of periodic boundary conditions, the shortest vector is returned.
 
@@ -606,7 +607,7 @@ class GridBase(metaclass=ABCMeta):
     def distance(
         self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
     ) -> float:
-        """Calculate the distance between two points given in real coordinates
+        """Calculate the distance between two points given in real coordinates.
 
         This takes periodic boundary conditions into account if necessary.
 
@@ -634,7 +635,7 @@ class GridBase(metaclass=ABCMeta):
         return self.distance(p1, p2)
 
     def _iter_boundaries(self) -> Iterator[tuple[int, bool]]:
-        """iterate over all boundaries of the grid
+        """Iterate over all boundaries of the grid.
 
         Yields:
             tuple: for each boundary, the generator returns a tuple indicating
@@ -646,7 +647,7 @@ class GridBase(metaclass=ABCMeta):
     def _boundary_coordinates(
         self, axis: int, upper: bool, *, offset: float = 0
     ) -> np.ndarray:
-        """get coordinates of points on the boundary
+        """Get coordinates of points on the boundary.
 
         Args:
             axis (int):
@@ -687,7 +688,7 @@ class GridBase(metaclass=ABCMeta):
     def point_to_cartesian(
         self, points: np.ndarray, *, full: bool = False
     ) -> np.ndarray:
-        """convert coordinates of a point in grid coordinates to Cartesian coordinates
+        """Convert coordinates of a point in grid coordinates to Cartesian coordinates.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -711,7 +712,7 @@ class GridBase(metaclass=ABCMeta):
     def point_from_cartesian(
         self, points: np.ndarray, *, full: bool = False
     ) -> np.ndarray:
-        """convert points given in Cartesian coordinates to grid coordinates
+        """Convert points given in Cartesian coordinates to grid coordinates.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -736,7 +737,7 @@ class GridBase(metaclass=ABCMeta):
     def _vector_to_cartesian(
         self, points: ArrayLike, components: ArrayLike
     ) -> np.ndarray:
-        """convert the vectors at given points into a Cartesian basis
+        """Convert the vectors at given points into a Cartesian basis.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -767,7 +768,7 @@ class GridBase(metaclass=ABCMeta):
     def normalize_point(
         self, point: np.ndarray, *, reflect: bool = False
     ) -> np.ndarray:
-        """normalize grid coordinates by applying periodic boundary conditions
+        """Normalize grid coordinates by applying periodic boundary conditions.
 
         Here, points are assumed to be specified by the physical values along the
         non-symmetric axes of the grid, e.g., by grid coordinates. Normalizing points is
@@ -829,7 +830,7 @@ class GridBase(metaclass=ABCMeta):
         return point
 
     def _coords_symmetric(self, points: np.ndarray) -> np.ndarray:
-        """return only non-symmetric point coordinates
+        """Return only non-symmetric point coordinates.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -846,7 +847,7 @@ class GridBase(metaclass=ABCMeta):
     def _coords_full(
         self, points: np.ndarray, *, value: Literal["min", "max"] | float = 0.0
     ) -> np.ndarray:
-        """specify point coordinates along symmetric axes on grids
+        """Specify point coordinates along symmetric axes on grids.
 
         Args:
             points (:class:`~numpy.ndarray`):
@@ -859,7 +860,6 @@ class GridBase(metaclass=ABCMeta):
 
         Returns:
             :class:`~numpy.ndarray`: The points with all `dim` coordinates
-
         """
         if self.num_axes == self.dim:
             return points
@@ -889,7 +889,7 @@ class GridBase(metaclass=ABCMeta):
         *,
         full: bool = False,
     ) -> np.ndarray:
-        """converts coordinates from one coordinate system to another
+        """Converts coordinates from one coordinate system to another.
 
         Supported coordinate systems include the following:
 
@@ -1007,7 +1007,7 @@ class GridBase(metaclass=ABCMeta):
         coords: Literal["cartesian", "cell", "grid"] = "cartesian",
         full: bool = False,
     ) -> np.ndarray:
-        """check whether the point is contained in the grid
+        """Check whether the point is contained in the grid.
 
         Args:
             point (:class:`~numpy.ndarray`):
@@ -1027,7 +1027,7 @@ class GridBase(metaclass=ABCMeta):
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
-        """generates all mirror points corresponding to `point`
+        """Generates all mirror points corresponding to `point`
 
         Args:
             point (:class:`~numpy.ndarray`):
@@ -1048,7 +1048,7 @@ class GridBase(metaclass=ABCMeta):
     def get_boundary_conditions(
         self, bc: BoundariesData = "auto_periodic_neumann", rank: int = 0
     ) -> Boundaries:
-        """constructs boundary conditions from a flexible data format
+        """Constructs boundary conditions from a flexible data format.
 
         Args:
             bc (str or list or tuple or dict):
@@ -1083,7 +1083,7 @@ class GridBase(metaclass=ABCMeta):
         return bcs
 
     def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
-        """return a line cut through the grid
+        """Return a line cut through the grid.
 
         Args:
             data (:class:`~numpy.ndarray`):
@@ -1099,7 +1099,7 @@ class GridBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
-        """return a 2d-image of the data
+        """Return a 2d-image of the data.
 
         Args:
             data (:class:`~numpy.ndarray`):
@@ -1111,7 +1111,7 @@ class GridBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     def get_vector_data(self, data: np.ndarray, **kwargs) -> dict[str, Any]:
-        r"""return data to visualize vector field
+        r"""Return data to visualize vector field.
 
         Args:
             data (:class:`~numpy.ndarray`):
@@ -1153,7 +1153,7 @@ class GridBase(metaclass=ABCMeta):
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
     ) -> np.ndarray:
-        """return a random point within the grid
+        """Return a random point within the grid.
 
         Args:
             boundary_distance (float):
@@ -1178,7 +1178,7 @@ class GridBase(metaclass=ABCMeta):
         rank_in: int = 0,
         rank_out: int = 0,
     ):
-        """register an operator for this grid
+        """Register an operator for this grid.
 
         Example:
             The method can either be used directly:
@@ -1212,7 +1212,7 @@ class GridBase(metaclass=ABCMeta):
         """
 
         def register_operator(factor_func_arg: OperatorFactory):
-            """helper function to register the operator"""
+            """Helper function to register the operator."""
             cls._operators[name] = OperatorInfo(
                 factory=factor_func_arg, rank_in=rank_in, rank_out=rank_out, name=name
             )
@@ -1258,7 +1258,7 @@ class GridBase(metaclass=ABCMeta):
         return result
 
     def _get_operator_info(self, operator: str | OperatorInfo) -> OperatorInfo:
-        """return the operator defined on this grid
+        """Return the operator defined on this grid.
 
         Args:
             operator (str):
@@ -1319,7 +1319,7 @@ class GridBase(metaclass=ABCMeta):
         operator: str | OperatorInfo,
         **kwargs,
     ) -> OperatorType:
-        """return a compiled function applying an operator without boundary conditions
+        """Return a compiled function applying an operator without boundary conditions.
 
         A function that takes the discretized full data as an input and an array of
         valid data points to which the result of applying the operator is written.
@@ -1351,7 +1351,7 @@ class GridBase(metaclass=ABCMeta):
     def make_operator(
         self, operator: str | OperatorInfo, bc: BoundariesData, **kwargs
     ) -> Callable[..., np.ndarray]:
-        """return a compiled function applying an operator with boundary conditions
+        """Return a compiled function applying an operator with boundary conditions.
 
         The returned function takes the discretized data on the grid as an input and
         returns the data to which the operator `operator` has been applied. The function
@@ -1395,7 +1395,7 @@ class GridBase(metaclass=ABCMeta):
         def apply_op(
             arr: np.ndarray, out: np.ndarray | None = None, args=None
         ) -> np.ndarray:
-            """set boundary conditions and apply operator"""
+            """Set boundary conditions and apply operator."""
             assert arr.shape == shape_in_valid
             # ensure `out` array is allocated
             if out is None:
@@ -1430,14 +1430,14 @@ class GridBase(metaclass=ABCMeta):
             def apply_op_ol(
                 arr: np.ndarray, out: np.ndarray | None = None, args=None
             ) -> np.ndarray:
-                """make numba implementation of the operator"""
+                """Make numba implementation of the operator."""
                 if isinstance(out, (nb.types.NoneType, nb.types.Omitted)):
                     # need to allocate memory for `out`
 
                     def apply_op_impl(
                         arr: np.ndarray, out: np.ndarray | None = None, args=None
                     ) -> np.ndarray:
-                        """allocates `out` and applies operator to the data"""
+                        """Allocates `out` and applies operator to the data."""
                         assert arr.shape == shape_in_valid
 
                         out = np.empty(shape_out, dtype=arr.dtype)
@@ -1457,7 +1457,7 @@ class GridBase(metaclass=ABCMeta):
                     def apply_op_impl(
                         arr: np.ndarray, out: np.ndarray | None = None, args=None
                     ) -> np.ndarray:
-                        """applies operator to the data wihtout allocating out"""
+                        """Applies operator to the data wihtout allocating out."""
                         assert arr.shape == shape_in_valid
                         assert out.shape == shape_out  # type: ignore
 
@@ -1477,7 +1477,7 @@ class GridBase(metaclass=ABCMeta):
             def apply_op_compiled(
                 arr: np.ndarray, out: np.ndarray | None = None, args=None
             ) -> np.ndarray:
-                """set boundary conditions and apply operator"""
+                """Set boundary conditions and apply operator."""
                 return apply_op(arr, out, args)
 
             # return the compiled versions of the operator
@@ -1488,7 +1488,7 @@ class GridBase(metaclass=ABCMeta):
             raise NotImplementedError(f"Undefined backend '{backend}'")
 
     def slice(self, indices: Sequence[int]) -> GridBase:
-        """return a subgrid of only the specified axes
+        """Return a subgrid of only the specified axes.
 
         Args:
             indices (list):
@@ -1502,7 +1502,7 @@ class GridBase(metaclass=ABCMeta):
         )
 
     def plot(self) -> None:
-        """visualize the grid"""
+        """Visualize the grid."""
         raise NotImplementedError(
             f"Plotting is not implemented for class {self.__class__.__name__}"
         )
@@ -1515,7 +1515,7 @@ class GridBase(metaclass=ABCMeta):
     def integrate(
         self, data: NumberOrArray, axes: int | Sequence[int] | None = None
     ) -> NumberOrArray:
-        """Integrates the discretized data over the grid
+        """Integrates the discretized data over the grid.
 
         Args:
             data (:class:`~numpy.ndarray`):
@@ -1585,7 +1585,7 @@ class GridBase(metaclass=ABCMeta):
     def make_normalize_point_compiled(
         self, reflect: bool = True
     ) -> Callable[[np.ndarray], None]:
-        """return a compiled function that normalizes a point
+        """Return a compiled function that normalizes a point.
 
         Here, the point is assumed to be specified by the physical values along
         the non-symmetric axes of the grid. Normalizing points is useful to make sure
@@ -1612,7 +1612,7 @@ class GridBase(metaclass=ABCMeta):
 
         @jit
         def normalize_point(point: np.ndarray) -> None:
-            """helper function normalizing a single point"""
+            """Helper function normalizing a single point."""
             assert point.ndim == 1  # only support single points
             for i in range(num_axes):
                 if periodic[i]:
@@ -1626,7 +1626,7 @@ class GridBase(metaclass=ABCMeta):
 
     @cached_method()
     def make_cell_volume_compiled(self, flat_index: bool = False) -> CellVolume:
-        """return a compiled function returning the volume of a grid cell
+        """Return a compiled function returning the volume of a grid cell.
 
         Args:
             flat_index (bool):
@@ -1671,7 +1671,7 @@ class GridBase(metaclass=ABCMeta):
         with_ghost_cells: bool = False,
         cell_coords: bool = False,
     ) -> Callable[[float], tuple[int, int, float, float]]:
-        """factory for obtaining interpolation information
+        """Factory for obtaining interpolation information.
 
         Args:
             axis (int):
@@ -1697,7 +1697,7 @@ class GridBase(metaclass=ABCMeta):
 
         @register_jitable
         def get_axis_data(coord: float) -> tuple[int, int, float, float]:
-            """determines data for interpolating along one axis"""
+            """Determines data for interpolating along one axis."""
             # determine the index of the left cell and the fraction toward the right
             if cell_coords:
                 c_l, d_l = divmod(coord, 1.0)
@@ -1760,7 +1760,7 @@ class GridBase(metaclass=ABCMeta):
         with_ghost_cells: bool = False,
         cell_coords: bool = False,
     ) -> Callable[[np.ndarray, np.ndarray], np.ndarray]:
-        """return a compiled function for linear interpolation on the grid
+        """Return a compiled function for linear interpolation on the grid.
 
         Args:
             fill (Number, optional):
@@ -1791,7 +1791,7 @@ class GridBase(metaclass=ABCMeta):
             def interpolate_single(
                 data: np.ndarray, point: np.ndarray
             ) -> NumberOrArray:
-                """obtain interpolated value of data at a point
+                """Obtain interpolated value of data at a point.
 
                 Args:
                     data (:class:`~numpy.ndarray`):
@@ -1823,7 +1823,7 @@ class GridBase(metaclass=ABCMeta):
             def interpolate_single(
                 data: np.ndarray, point: np.ndarray
             ) -> NumberOrArray:
-                """obtain interpolated value of data at a point
+                """Obtain interpolated value of data at a point.
 
                 Args:
                     data (:class:`~numpy.ndarray`):
@@ -1863,7 +1863,7 @@ class GridBase(metaclass=ABCMeta):
             def interpolate_single(
                 data: np.ndarray, point: np.ndarray
             ) -> NumberOrArray:
-                """obtain interpolated value of data at a point
+                """Obtain interpolated value of data at a point.
 
                 Args:
                     data (:class:`~numpy.ndarray`):
@@ -1908,7 +1908,7 @@ class GridBase(metaclass=ABCMeta):
     def make_inserter_compiled(
         self, *, with_ghost_cells: bool = False
     ) -> Callable[[np.ndarray, np.ndarray, NumberOrArray], None]:
-        """return a compiled function to insert values at interpolated positions
+        """Return a compiled function to insert values at interpolated positions.
 
         Args:
             with_ghost_cells (bool):
@@ -1934,7 +1934,7 @@ class GridBase(metaclass=ABCMeta):
             def insert(
                 data: np.ndarray, point: np.ndarray, amount: NumberOrArray
             ) -> None:
-                """add an amount to a field at an interpolated position
+                """Add an amount to a field at an interpolated position.
 
                 Args:
                     data (:class:`~numpy.ndarray`):
@@ -1969,7 +1969,7 @@ class GridBase(metaclass=ABCMeta):
             def insert(
                 data: np.ndarray, point: np.ndarray, amount: NumberOrArray
             ) -> None:
-                """add an amount to a field at an interpolated position
+                """Add an amount to a field at an interpolated position.
 
                 Args:
                     data (:class:`~numpy.ndarray`):
@@ -2016,7 +2016,7 @@ class GridBase(metaclass=ABCMeta):
             def insert(
                 data: np.ndarray, point: np.ndarray, amount: NumberOrArray
             ) -> None:
-                """add an amount to a field at an interpolated position
+                """Add an amount to a field at an interpolated position.
 
                 Args:
                     data (:class:`~numpy.ndarray`):
@@ -2066,7 +2066,8 @@ class GridBase(metaclass=ABCMeta):
         return insert  # type: ignore
 
     def make_integrator(self) -> Callable[[np.ndarray], NumberOrArray]:
-        """return function that can be used to integrates discretized data over the grid
+        """Return function that can be used to integrates discretized data over the
+        grid.
 
         If this function is used in a multiprocessing run (using MPI), the integrals are
         performed on all subgrids and then accumulated. Each process then receives the
@@ -2081,7 +2082,7 @@ class GridBase(metaclass=ABCMeta):
         get_cell_volume = self.make_cell_volume_compiled(flat_index=True)
 
         def integrate_local(arr: np.ndarray) -> NumberOrArray:
-            """integrates data over a grid using numpy"""
+            """Integrates data over a grid using numpy."""
             amounts = arr * self.cell_volumes
             return amounts.sum(axis=tuple(range(-num_axes, 0, 1)))  # type: ignore
 
@@ -2089,13 +2090,13 @@ class GridBase(metaclass=ABCMeta):
         def ol_integrate_local(
             arr: np.ndarray,
         ) -> Callable[[np.ndarray], NumberOrArray]:
-            """integrates data over a grid using numba"""
+            """Integrates data over a grid using numba."""
             if arr.ndim == num_axes:
                 # `arr` is a scalar field
                 grid_shape = self.shape
 
                 def impl(arr: np.ndarray) -> Number:
-                    """integrate a scalar field"""
+                    """Integrate a scalar field."""
                     assert arr.shape == grid_shape
                     total = 0
                     for i in range(arr.size):
@@ -2108,7 +2109,7 @@ class GridBase(metaclass=ABCMeta):
                 data_shape = tensor_shape + self.shape
 
                 def impl(arr: np.ndarray) -> np.ndarray:  # type: ignore
-                    """integrate a tensorial field"""
+                    """Integrate a tensorial field."""
                     assert arr.shape == data_shape
                     total = np.zeros(tensor_shape)
                     for idx in np.ndindex(*tensor_shape):
@@ -2124,7 +2125,7 @@ class GridBase(metaclass=ABCMeta):
             # standard case of a single integral
             @jit
             def integrate_global(arr: np.ndarray) -> NumberOrArray:
-                """integrate data
+                """Integrate data.
 
                 Args:
                     arr (:class:`~numpy.ndarray`): discretized data on grid
@@ -2138,7 +2139,7 @@ class GridBase(metaclass=ABCMeta):
 
             @jit
             def integrate_global(arr: np.ndarray) -> NumberOrArray:
-                """integrate data over MPI parallelized grid
+                """Integrate data over MPI parallelized grid.
 
                 Args:
                     arr (:class:`~numpy.ndarray`): discretized data on grid
@@ -2150,7 +2151,7 @@ class GridBase(metaclass=ABCMeta):
 
 
 def registered_operators() -> dict[str, list[str]]:
-    """returns all operators that are currently defined
+    """Returns all operators that are currently defined.
 
     Returns:
         dict: a dictionary with the names of the operators defined for each grid class

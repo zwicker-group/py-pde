@@ -1,5 +1,4 @@
-"""
-Functions for interacting with FFmpeg
+"""Functions for interacting with FFmpeg.
 
 .. autosummary::
    :nosignatures:
@@ -20,7 +19,7 @@ from numpy.typing import DTypeLike
 
 @dataclass
 class FFmpegFormat:
-    """defines a FFmpeg format used for storing field data in a video
+    """Defines a FFmpeg format used for storing field data in a video.
 
     Note:
         All pixel formats supported by FFmpeg can be obtained by running
@@ -39,29 +38,29 @@ class FFmpegFormat:
     bits_per_channel: int
     """int: number of bits per color channel in this pixel format"""
     dtype: DTypeLike
-    """numpy dtype corresponding to the data of a single channel"""
+    """Numpy dtype corresponding to the data of a single channel."""
     codec: str = "ffv1"
     """str: name of the codec that supports this pixel format"""
 
     @property
     def bytes_per_channel(self) -> int:
-        """int:number of bytes per color channel"""
+        """Int:number of bytes per color channel."""
         return self.bits_per_channel // 8
 
     @property
     def max_value(self) -> Union[float, int]:
-        """maximal value stored in a color channel"""
+        """Maximal value stored in a color channel."""
         if np.issubdtype(self.dtype, np.integer):
             return 2**self.bits_per_channel - 1  # type: ignore
         else:
             return 1.0
 
     def data_to_frame(self, normalized_data: np.ndarray) -> np.ndarray:
-        """converts normalized data to data being stored in a color channel"""
+        """Converts normalized data to data being stored in a color channel."""
         return np.ascontiguousarray(normalized_data * self.max_value, dtype=self.dtype)
 
     def data_from_frame(self, frame_data: np.ndarray):
-        """converts data stored in a color channel to normalized data"""
+        """Converts data stored in a color channel to normalized data."""
         return frame_data.astype(float) / self.max_value
 
 
@@ -135,11 +134,11 @@ formats = {
     #     dtype=np.dtype("<f4"),
     # ),
 }
-"""dict of pre-defined :class:`FFmpegFormat` formats"""
+"""Dict of pre-defined :class:`FFmpegFormat` formats."""
 
 
 def find_format(channels: int, bits_per_channel: int = 8) -> Optional[str]:
-    """find a defined FFmpegFormat that satisifies the requirements
+    """Find a defined FFmpegFormat that satisifies the requirements.
 
     Args:
         channels (int):

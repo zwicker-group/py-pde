@@ -1,5 +1,4 @@
-"""
-Defines a class used for subdividing a grid for parallel execution using MPI
+"""Defines a class used for subdividing a grid for parallel execution using MPI.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -26,7 +25,7 @@ from .boundaries.local import _MPIBC
 
 
 class MPIFlags(IntEnum):
-    """enum that contains flags for MPI communication"""
+    """Enum that contains flags for MPI communication."""
 
     field_split = 1  # split full field onto nodes
     field_combine = 2  # combine full field from subfields on nodes
@@ -35,7 +34,7 @@ class MPIFlags(IntEnum):
 
     @classmethod
     def boundary_lower(cls, my_id: int, other_id: int) -> int:
-        """flag for connection between my lower boundary and `other_id`"""
+        """Flag for connection between my lower boundary and `other_id`"""
         if my_id <= other_id:
             return 2 * my_id + cls._boundary_lower
         else:
@@ -43,7 +42,7 @@ class MPIFlags(IntEnum):
 
     @classmethod
     def boundary_upper(cls, my_id: int, other_id: int) -> int:
-        """flag for connection between my upper boundary and `other_id`"""
+        """Flag for connection between my upper boundary and `other_id`"""
         if my_id <= other_id:
             return 2 * my_id + cls._boundary_upper
         else:
@@ -51,7 +50,7 @@ class MPIFlags(IntEnum):
 
 
 def _get_optimal_decomposition(shape: Sequence[int], mpi_size: int) -> list[int]:
-    """determine optimal decomposition of a grid into several chunks
+    """Determine optimal decomposition of a grid into several chunks.
 
     Args:
         shape (list of int):
@@ -88,7 +87,7 @@ def _get_optimal_decomposition(shape: Sequence[int], mpi_size: int) -> list[int]
 
 
 def _subdivide(num: int, chunks: int) -> np.ndarray:
-    r"""subdivide `num` intervals in `chunk` chunks
+    r"""Subdivide `num` intervals in `chunk` chunks.
 
     Args:
         num (int):
@@ -105,7 +104,7 @@ def _subdivide(num: int, chunks: int) -> np.ndarray:
 
 
 def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> list[GridBase]:
-    """subdivide the grid along a given axis
+    """Subdivide the grid along a given axis.
 
     Args:
         axis (int):
@@ -157,7 +156,7 @@ TData = TypeVar("TData")
 
 
 class GridMesh:
-    """handles a collection of subgrids arranged in a regular mesh
+    """Handles a collection of subgrids arranged in a regular mesh.
 
     This class provides methods for managing MPI simulations of multiple connected
     subgrids. Each subgrid is also called a cell and identified with a unique number.
@@ -184,7 +183,7 @@ class GridMesh:
     def from_grid(
         cls, grid: GridBase, decomposition: Literal["auto"] | int | list[int] = "auto"
     ) -> GridMesh:
-        """subdivide the grid into subgrids
+        """Subdivide the grid into subgrids.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -266,7 +265,7 @@ class GridMesh:
         return self.subgrids.shape
 
     def __len__(self) -> int:
-        """total number of subgrids"""
+        """Total number of subgrids."""
         return self.subgrids.size
 
     @property
@@ -275,7 +274,7 @@ class GridMesh:
         return mpi.rank
 
     def __getitem__(self, node_id: int | None) -> GridBase:
-        """extract one subgrid from the mesh
+        """Extract one subgrid from the mesh.
 
         Args:
             node_id (int):
@@ -290,11 +289,11 @@ class GridMesh:
 
     @property
     def current_grid(self) -> GridBase:
-        """:class:`~pde.grids.base.GridBase`:subgrid of current MPI node"""
+        """:class:`~pde.grids.base.GridBase`:subgrid of current MPI node."""
         return self[self.current_node]
 
     def _id2idx(self, node_id: int) -> tuple[int, ...]:
-        """convert linear id into node index
+        """Convert linear id into node index.
 
         Args:
             node_id (int):
@@ -306,7 +305,7 @@ class GridMesh:
         return np.unravel_index(node_id, self.shape)  # type: ignore
 
     def _idx2id(self, node_idx: Sequence[int]) -> int:
-        """convert node index to linear index
+        """Convert node index to linear index.
 
         Args:
             node_idx (tuple):
@@ -319,7 +318,7 @@ class GridMesh:
 
     @cached_method()
     def _get_data_indices_1d(self, with_ghost_cells: bool = False) -> list[list[slice]]:
-        """indices to extract valid field data for each subgrid
+        """Indices to extract valid field data for each subgrid.
 
         Args:
             with_ghost_cells (bool):
@@ -344,7 +343,7 @@ class GridMesh:
 
     @cached_method()
     def _get_data_indices(self, with_ghost_cells: bool = False) -> np.ndarray:
-        """indices to extract valid field data for each subgrid
+        """Indices to extract valid field data for each subgrid.
 
         Args:
             with_ghost_cells (bool):
@@ -363,7 +362,7 @@ class GridMesh:
         return indices
 
     def get_boundary_flag(self, neighbor: int, upper: bool) -> int:
-        """get MPI flag indicating the boundary between this node and its neighbor
+        """Get MPI flag indicating the boundary between this node and its neighbor.
 
         Args:
             node_id (int):
@@ -384,7 +383,7 @@ class GridMesh:
     def get_neighbor(
         self, axis: int, upper: bool, *, node_id: int | None = None
     ) -> int | None:
-        """get node id of the neighbor along the given axis and direction
+        """Get node id of the neighbor along the given axis and direction.
 
         Args:
             axis (int):
@@ -433,7 +432,7 @@ class GridMesh:
         *,
         with_ghost_cells: bool = False,
     ) -> np.ndarray:
-        """extract one subfield from a global one
+        """Extract one subfield from a global one.
 
         Args:
             field_data (:class:`~numpy.ndarray`):
@@ -468,7 +467,7 @@ class GridMesh:
         *,
         with_ghost_cells: bool = False,
     ) -> TField:
-        """extract one subfield from a global field
+        """Extract one subfield from a global field.
 
         Args:
             field (:class:`~pde.fields.base.DataFieldBase`):
@@ -516,7 +515,7 @@ class GridMesh:
             raise TypeError(f"Field type {field.__class__.__name__} unsupported")
 
     def extract_boundary_conditions(self, bcs_base: Boundaries) -> Boundaries:
-        """extract boundary conditions for current subgrid from global conditions
+        """Extract boundary conditions for current subgrid from global conditions.
 
         Args:
             bcs_base (:class:`~pde.grids.boundaries.axes.Boundaries`):
@@ -545,7 +544,7 @@ class GridMesh:
     def split_field_data_mpi(
         self, field_data: np.ndarray, *, with_ghost_cells: bool = False
     ) -> np.ndarray:
-        """extract one subfield from a global field
+        """Extract one subfield from a global field.
 
         Args:
             field (:class:`~pde.fields.base.DataFieldBase`):
@@ -591,7 +590,7 @@ class GridMesh:
             return subfield_data
 
     def split_field_mpi(self: GridMesh, field: TField) -> TField:
-        """split a field onto the subgrids by communicating data via MPI
+        """Split a field onto the subgrids by communicating data via MPI.
 
         The ghost cells of the returned fields will be set according to the values of
         the original field.
@@ -637,7 +636,7 @@ class GridMesh:
         *,
         with_ghost_cells: bool = False,
     ) -> np.ndarray:
-        """combine data of multiple fields defined on subgrids
+        """Combine data of multiple fields defined on subgrids.
 
         Args:
             subfields (:class:`~numpy.ndarray`):
@@ -678,7 +677,7 @@ class GridMesh:
         *,
         with_ghost_cells: bool = False,
     ) -> np.ndarray | None:
-        """combine data of all subfields using MPI
+        """Combine data of all subfields using MPI.
 
         Args:
             subfield (:class:`~numpy.ndarray`):
@@ -724,7 +723,7 @@ class GridMesh:
             return None
 
     def broadcast(self, data: TData) -> TData:
-        """distribute a value from the main node to all nodes
+        """Distribute a value from the main node to all nodes.
 
         Args:
             data:
@@ -738,7 +737,7 @@ class GridMesh:
         return COMM_WORLD.bcast(data, root=0)  # type: ignore
 
     def gather(self, data: TData) -> list[TData] | None:
-        """gather a value from all nodes
+        """Gather a value from all nodes.
 
         Args:
             data:
@@ -753,7 +752,7 @@ class GridMesh:
         return COMM_WORLD.gather(data, root=0)
 
     def allgather(self, data: TData) -> list[TData]:
-        """gather a value from reach node and sends them to all nodes
+        """Gather a value from reach node and sends them to all nodes.
 
         Args:
             data:
@@ -768,7 +767,7 @@ class GridMesh:
 
     @plot_on_axes()
     def plot(self, ax, **kwargs) -> None:
-        r"""visualize the grid mesh
+        r"""Visualize the grid mesh.
 
         Args:
             {PLOT_ARGS}

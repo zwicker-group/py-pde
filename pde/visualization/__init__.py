@@ -1,6 +1,4 @@
-"""
-Functions and classes for visualizing simulations.
-
+"""Functions and classes for visualizing simulations.
 
 .. autosummary::
    :nosignatures:

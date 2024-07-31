@@ -1,7 +1,6 @@
-"""
-Defines a class storing data using :mod:`modelrunner`.
+"""Defines a class storing data using :mod:`modelrunner`.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ from .base import InfoDict, StorageBase, WriteModeType
 
 
 class ModelrunnerStorage(StorageBase):
-    """store discretized fields in a :mod:`modelrunner` storage
+    """Store discretized fields in a :mod:`modelrunner` storage.
 
     This storage class acts as a wrapper for the :mod:`~modelrunner.storage.trajectory`
     module, which allows handling time-dependent data in :mod:`modelrunner` storages.
@@ -29,7 +28,6 @@ class ModelrunnerStorage(StorageBase):
         r = Result.from_file("data.hdf5")
         r.result.plot()  # plots the final state
         r.storage["trajectory"]  # allows accessing the stored trajectory
-
     """
 
     def __init__(
@@ -62,7 +60,7 @@ class ModelrunnerStorage(StorageBase):
         self._reader: mr.storage.Trajectory | None = None
 
     def close(self) -> None:
-        """close the currently opened trajectory writer"""
+        """Close the currently opened trajectory writer."""
         if self._writer is not None:
             self._writer.close()
             self._writer = None
@@ -74,12 +72,12 @@ class ModelrunnerStorage(StorageBase):
         self.close()
 
     def __len__(self):
-        """return the number of stored items, i.e., time steps"""
+        """Return the number of stored items, i.e., time steps."""
         return len(self.times)
 
     @property
     def _io(self) -> mr.storage.TrajectoryWriter | mr.storage.Trajectory:
-        """:class:`~modelrunner.storage.group.StorageGroup`: Group with all data"""
+        """:class:`~modelrunner.storage.group.StorageGroup`: Group with all data."""
         if self._writer is not None:
             return self._writer
         if self._reader is None:
@@ -88,16 +86,16 @@ class ModelrunnerStorage(StorageBase):
 
     @property
     def times(self):
-        """:class:`~numpy.ndarray`: The times at which data is available"""
+        """:class:`~numpy.ndarray`: The times at which data is available."""
         return self._io.times
 
     @property
     def data(self):
-        """:class:`~numpy.ndarray`: The actual data for all time"""
+        """:class:`~numpy.ndarray`: The actual data for all time."""
         return self._io._storage.read_array(self._io._loc + ["data"])
 
     def clear(self, clear_data_shape: bool = False):
-        """truncate the storage by removing all stored data.
+        """Truncate the storage by removing all stored data.
 
         Args:
             clear_data_shape (bool):
@@ -108,7 +106,7 @@ class ModelrunnerStorage(StorageBase):
         super().clear(clear_data_shape=clear_data_shape)
 
     def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
-        """initialize the storage for writing data
+        """Initialize the storage for writing data.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -149,7 +147,7 @@ class ModelrunnerStorage(StorageBase):
         )
 
     def _append_data(self, data: np.ndarray, time: float) -> None:
-        """append a new data set
+        """Append a new data set.
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
@@ -159,9 +157,9 @@ class ModelrunnerStorage(StorageBase):
         self._writer.append(data, float(time))
 
     def end_writing(self) -> None:
-        """finalize the storage after writing.
+        """Finalize the storage after writing.
 
-        This makes sure the data is actually written to a file when
-        self.keep_opened == False
+        This makes sure the data is actually written to a file when self.keep_opened ==
+        False
         """
         self.close()

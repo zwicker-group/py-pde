@@ -1,7 +1,6 @@
-"""
-Base classes for storing data
+"""Base classes for storing data.
 
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de> 
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
@@ -37,7 +36,7 @@ WriteModeType = Literal[
 
 
 class StorageBase(metaclass=ABCMeta):
-    """base class for storing time series of discretized fields
+    """Base class for storing time series of discretized fields.
 
     These classes store time series of :class:`~pde.fields.base.FieldBase`, i.e., they
     store the values of the fields at particular time points. Iterating of the storage
@@ -75,7 +74,7 @@ class StorageBase(metaclass=ABCMeta):
 
     @property
     def data_shape(self) -> tuple[int, ...]:
-        """the current data shape.
+        """The current data shape.
 
         Raises:
             RuntimeError: if data_shape was not set
@@ -87,7 +86,7 @@ class StorageBase(metaclass=ABCMeta):
 
     @property
     def dtype(self) -> DTypeLike:
-        """the current data type.
+        """The current data type.
 
         Raises:
             RuntimeError: if data_type was not set
@@ -99,7 +98,7 @@ class StorageBase(metaclass=ABCMeta):
 
     @abstractmethod
     def _append_data(self, data: np.ndarray, time: float) -> None:
-        """append a new data set
+        """Append a new data set.
 
         Args:
             data (:class:`~numpy.ndarray`): The actual data
@@ -107,7 +106,7 @@ class StorageBase(metaclass=ABCMeta):
         """
 
     def append(self, field: FieldBase, time: float | None = None) -> None:
-        """add field to the storage
+        """Add field to the storage.
 
         Args:
             field (:class:`~pde.fields.base.FieldBase`):
@@ -125,7 +124,7 @@ class StorageBase(metaclass=ABCMeta):
         return self._append_data(field.data, time)
 
     def clear(self, clear_data_shape: bool = False) -> None:
-        """truncate the storage by removing all stored data.
+        """Truncate the storage by removing all stored data.
 
         Args:
             clear_data_shape (bool):
@@ -136,12 +135,12 @@ class StorageBase(metaclass=ABCMeta):
             self._dtype = None
 
     def __len__(self):
-        """return the number of stored items, i.e., time steps"""
+        """Return the number of stored items, i.e., time steps."""
         return len(self.times)
 
     @property
     def shape(self) -> tuple[int, ...] | None:
-        """the shape of the stored data"""
+        """The shape of the stored data."""
         if self._data_shape:
             return (len(self),) + self._data_shape
         else:
@@ -186,7 +185,7 @@ class StorageBase(metaclass=ABCMeta):
         return self._grid
 
     def _init_field(self) -> None:
-        """initialize internal field variable"""
+        """Initialize internal field variable."""
         if self.grid is None:
             raise RuntimeError(
                 "Could not load grid from data. Please set the `_grid` attribute "
@@ -225,7 +224,7 @@ class StorageBase(metaclass=ABCMeta):
             )
 
     def _get_field(self, t_index: int) -> FieldBase:
-        """return the field corresponding to the given time index
+        """Return the field corresponding to the given time index.
 
         Load the data given an index, i.e., the data at time `self.times[t_index]`.
 
@@ -253,7 +252,7 @@ class StorageBase(metaclass=ABCMeta):
         return field
 
     def __getitem__(self, key: int | slice) -> FieldBase | list[FieldBase]:
-        """return field at given index or a list of fields for a slice"""
+        """Return field at given index or a list of fields for a slice."""
         if isinstance(key, int):
             return self._get_field(key)
         elif isinstance(key, slice):
@@ -262,12 +261,12 @@ class StorageBase(metaclass=ABCMeta):
             raise TypeError("Unknown key type")
 
     def __iter__(self) -> Iterator[FieldBase]:
-        """iterate over all stored fields"""
+        """Iterate over all stored fields."""
         for i in range(len(self)):
             yield self[i]  # type: ignore
 
     def items(self) -> Iterator[tuple[float, FieldBase]]:
-        """iterate over all times and stored fields, returning pairs"""
+        """Iterate over all times and stored fields, returning pairs."""
         for i in range(len(self)):
             yield self.times[i], self[i]  # type: ignore
 
@@ -279,7 +278,7 @@ class StorageBase(metaclass=ABCMeta):
         transformation: Callable[[FieldBase, float], FieldBase] | None = None,
         interval=None,
     ) -> StorageTracker:
-        """create object that can be used as a tracker to fill this storage
+        """Create object that can be used as a tracker to fill this storage.
 
         Args:
             interrupts:
@@ -320,7 +319,7 @@ class StorageBase(metaclass=ABCMeta):
         )
 
     def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
-        """initialize the storage for writing data
+        """Initialize the storage for writing data.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -345,10 +344,10 @@ class StorageBase(metaclass=ABCMeta):
         self.info["field_attributes"] = field.attributes_serialized
 
     def end_writing(self) -> None:
-        """finalize the storage after writing"""
+        """Finalize the storage after writing."""
 
     def view_field(self, field_id: int | str) -> StorageView:
-        """returns a view into this storage focusing on a particular field
+        """Returns a view into this storage focusing on a particular field.
 
         Note:
             Modifying data returned by the view will modify the underlying storage
@@ -368,7 +367,7 @@ class StorageBase(metaclass=ABCMeta):
     def extract_field(
         self, field_id: int | str, label: str | None = None
     ) -> MemoryStorage:
-        """extract the time course of a single field from a collection
+        """Extract the time course of a single field from a collection.
 
         This method makes a copy of the underlying data.
 
@@ -421,7 +420,7 @@ class StorageBase(metaclass=ABCMeta):
     def extract_time_range(
         self, t_range: float | tuple[float, float] | None = None
     ) -> MemoryStorage:
-        """extract a particular time interval
+        """Extract a particular time interval.
 
         Note:
             This might return a view into the original data, so modifying the returned
@@ -466,7 +465,7 @@ class StorageBase(metaclass=ABCMeta):
         *,
         progress: bool = False,
     ) -> StorageBase:
-        """applies function to each field in a storage
+        """Applies function to each field in a storage.
 
         Args:
             func (callable):
@@ -526,7 +525,7 @@ class StorageBase(metaclass=ABCMeta):
     def copy(
         self, out: StorageBase | None = None, *, progress: bool = False
     ) -> StorageBase:
-        """copies all fields in a storage to a new one
+        """Copies all fields in a storage to a new one.
 
         Args:
             out (:class:`~pde.storage.base.StorageBase`):
@@ -544,7 +543,7 @@ class StorageBase(metaclass=ABCMeta):
 
 
 class StorageTracker(TrackerBase):
-    """Tracker that stores data in special storage classes
+    """Tracker that stores data in special storage classes.
 
     Attributes:
         storage (:class:`~pde.storage.base.StorageBase`):
@@ -581,7 +580,7 @@ class StorageTracker(TrackerBase):
         self.transformation = transformation
 
     def _transform(self, field: FieldBase, t: float) -> FieldBase:
-        """transforms the field according to the defined transformation"""
+        """Transforms the field according to the defined transformation."""
         if self.transformation is None:
             return field
         elif self.transformation.__code__.co_argcount == 1:
@@ -605,7 +604,7 @@ class StorageTracker(TrackerBase):
         return t_first
 
     def handle(self, field: FieldBase, t: float) -> None:
-        """handle data supplied to this tracker
+        """Handle data supplied to this tracker.
 
         Args:
             field (:class:`~pde.fields.FieldBase`):
@@ -615,7 +614,7 @@ class StorageTracker(TrackerBase):
         self.storage.append(self._transform(field, t), time=t)
 
     def finalize(self, info: InfoDict | None = None) -> None:
-        """finalize the tracker, supplying additional information
+        """Finalize the tracker, supplying additional information.
 
         Args:
             info (dict):
@@ -626,7 +625,7 @@ class StorageTracker(TrackerBase):
 
 
 class StorageView:
-    """represents a view into a storage that extracts a particular field"""
+    """Represents a view into a storage that extracts a particular field."""
 
     has_collection: bool = False
 
@@ -662,15 +661,15 @@ class StorageView:
         return len(self.storage)
 
     def __getitem__(self, key: int) -> DataFieldBase:
-        """return field at given index or a list of fields for a slice"""
+        """Return field at given index or a list of fields for a slice."""
         return self.storage[key][self.field_index]  # type: ignore
 
     def __iter__(self) -> Iterator[DataFieldBase]:
-        """iterate over all stored fields"""
+        """Iterate over all stored fields."""
         for fields in self.storage:
             yield fields[self.field_index]  # type: ignore
 
     def items(self) -> Iterator[tuple[float, DataFieldBase]]:
-        """iterate over all times and stored fields, returning pairs"""
+        """Iterate over all times and stored fields, returning pairs."""
         for k, v in self.storage.items():
             yield k, v[self.field_index]  # type: ignore

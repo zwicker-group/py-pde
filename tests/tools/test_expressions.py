@@ -20,7 +20,7 @@ from pde.tools.expressions import (
 
 
 def test_parse_number():
-    """test parse_number function"""
+    """Test parse_number function."""
     assert parse_number(0) == pytest.approx(0)
     assert parse_number(1.235) == pytest.approx(1.235)
     assert parse_number("0") == pytest.approx(0)
@@ -36,7 +36,7 @@ def test_parse_number():
 
 
 def test_parse_expr_guarded():
-    """test parse_expr_guarded function"""
+    """Test parse_expr_guarded function."""
     peg = parse_expr_guarded
     assert peg("1") == 1
     assert peg("1 + 1") == 2
@@ -51,7 +51,7 @@ def test_parse_expr_guarded():
 
 @pytest.mark.parametrize("expr", [None, 1, "1", "a - a"])
 def test_const(expr):
-    """test simple expressions with constants"""
+    """Test simple expressions with constants."""
     e = ScalarExpression() if expr is None else ScalarExpression(expr)
     val = 0 if expr is None or expr == "a - a" else float(expr)
     assert e.constant
@@ -81,7 +81,7 @@ def test_const(expr):
 
 
 def test_wrong_const(caplog):
-    """test simple expressions with wrong_constants"""
+    """Test simple expressions with wrong_constants."""
     # test whether wrong constants are check for
     field = ScalarField(UnitGrid([3]))
     e = ScalarExpression("scalar_field", consts={"scalar_field": field})
@@ -94,7 +94,7 @@ def test_wrong_const(caplog):
 
 
 def test_single_arg(rng):
-    """test simple expressions"""
+    """Test simple expressions."""
     e = ScalarExpression("2 * a")
     assert not e.constant
     assert e.depends_on("a")
@@ -126,7 +126,7 @@ def test_single_arg(rng):
 
 
 def test_two_args(rng):
-    """test simple expressions"""
+    """Test simple expressions."""
     e = ScalarExpression("2 * a ** b")
     assert e.depends_on("b")
     assert not e.constant
@@ -158,7 +158,7 @@ def test_two_args(rng):
 
 
 def test_derivatives():
-    """test vector expressions"""
+    """Test vector expressions."""
     e = ScalarExpression("a * b**2")
     assert e.depends_on("a") and e.depends_on("b")
     assert not e.constant
@@ -184,7 +184,7 @@ def test_derivatives():
 
 
 def test_indexed():
-    """test simple expressions"""
+    """Test simple expressions."""
     e = ScalarExpression("2 * a[0] ** a[1]", allow_indexed=True)
     assert not e.constant
     assert e.depends_on("a")
@@ -203,14 +203,14 @@ def test_indexed():
 
 
 def test_synonyms(caplog):
-    """test using synonyms in expression"""
+    """Test using synonyms in expression."""
     e = ScalarExpression("2 * arbitrary", [["a", "arbitrary"]])
     assert e.depends_on("a")
     assert not e.depends_on("arbitrary")
 
 
 def test_tensor_expression():
-    """test TensorExpression"""
+    """Test TensorExpression."""
     e = TensorExpression("[[0, 1], [2, 3]]")
     assert isinstance(str(e), str)
     assert e.shape == (2, 2)
@@ -243,7 +243,7 @@ def test_tensor_expression():
 
 
 def test_expression_from_expression():
-    """test creating expressions from expressions"""
+    """Test creating expressions from expressions."""
     expr = ScalarExpression("sin(a)")
     assert expr == ScalarExpression(expr)
     assert expr != ScalarExpression(expr, ["a", "b"])
@@ -258,7 +258,7 @@ def test_expression_from_expression():
 
 
 def test_expression_user_funcs():
-    """test the usage of user_funcs"""
+    """Test the usage of user_funcs."""
     expr = ScalarExpression("func()", user_funcs={"func": lambda: 1})
     assert expr() == 1
     assert expr.get_compiled()() == 1
@@ -278,7 +278,7 @@ def test_expression_user_funcs():
 
 
 def test_complex_expression():
-    """test expressions with complex numbers"""
+    """Test expressions with complex numbers."""
     for s in ["sqrt(-1)", "I"]:
         expr = ScalarExpression(s)
         assert expr.complex
@@ -305,7 +305,7 @@ def test_complex_expression():
     [("Heaviside(x)", 0.5), ("Heaviside(x, 0.75)", 0.75), ("heaviside(x, 0.75)", 0.75)],
 )
 def test_expression_heaviside(expression, value):
-    """test special cases of expressions"""
+    """Test special cases of expressions."""
     expr = ScalarExpression(expression)
     assert not expr.constant
     assert expr(-1) == 0
@@ -321,7 +321,7 @@ def test_expression_heaviside(expression, value):
 
 
 def test_expression_consts():
-    """test the usage of consts"""
+    """Test the usage of consts."""
     expr = ScalarExpression("a", consts={"a": 1})
     assert expr.constant
     assert not expr.depends_on("a")
@@ -342,7 +342,7 @@ def test_expression_consts():
 
 
 def test_evaluate_func_scalar():
-    """test the evaluate function with scalar fields"""
+    """Test the evaluate function with scalar fields."""
     grid = UnitGrid([2, 4])
     field = ScalarField.from_expression(grid, "x")
 
@@ -369,7 +369,7 @@ def test_evaluate_func_scalar():
 
 
 def test_evaluate_func_vector():
-    """test the evaluate function with vector fields"""
+    """Test the evaluate function with vector fields."""
     grid = UnitGrid([3])
     field = ScalarField.from_expression(grid, "x")
     vec = VectorField.from_expression(grid, ["x"])
@@ -386,7 +386,7 @@ def test_evaluate_func_vector():
 
 
 def test_evaluate_func_invalid():
-    """test the evaluate function with invalid data"""
+    """Test the evaluate function with invalid data."""
     field = ScalarField.from_expression(UnitGrid([3]), "x")
 
     with pytest.raises(ValueError):
@@ -407,7 +407,7 @@ def test_evaluate_func_invalid():
 
 
 def test_evaluate_func_bcs_warning(caplog):
-    """test whether a warning is thrown correctly"""
+    """Test whether a warning is thrown correctly."""
     field = ScalarField.from_expression(UnitGrid([3]), "x")
 
     with caplog.at_level(logging.WARNING):
@@ -420,7 +420,7 @@ def test_evaluate_func_bcs_warning(caplog):
 
 
 def test_evaluate_func_collection():
-    """test the evaluate function with a field collection"""
+    """Test the evaluate function with a field collection."""
     grid = UnitGrid([3])
     field = ScalarField.from_expression(grid, "x")
     vec = VectorField.from_expression(grid, ["x"])
@@ -439,7 +439,7 @@ def test_evaluate_func_collection():
 
 
 def test_expression_repl(rng):
-    """test expressions replacement"""
+    """Test expressions replacement."""
     e = ScalarExpression("2 * a", repl={"a": "b"})
     assert not e.constant
     assert e.depends_on("b")

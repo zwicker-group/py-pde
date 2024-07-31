@@ -1,5 +1,4 @@
-"""
-Defines a vectorial field over a grid
+"""Defines a vectorial field over a grid.
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -29,7 +28,7 @@ if TYPE_CHECKING:
 
 
 class VectorField(DataFieldBase):
-    """Vector field discretized on a grid
+    """Vector field discretized on a grid.
 
     Warning:
         Components of the vector field are given in the local basis. While the local
@@ -48,7 +47,7 @@ class VectorField(DataFieldBase):
         label: str | None = None,
         dtype: DTypeLike | None = None,
     ) -> VectorField:
-        """create a vector field from a list of ScalarFields
+        """Create a vector field from a list of ScalarFields.
 
         Note that the data of the scalar fields is copied in the process
 
@@ -92,7 +91,7 @@ class VectorField(DataFieldBase):
         label: str | None = None,
         dtype: DTypeLike | None = None,
     ) -> VectorField:
-        """create a vector field on a grid from given expressions
+        """Create a vector field on a grid from given expressions.
 
         Warning:
             {WARNING_EXEC}
@@ -148,7 +147,7 @@ class VectorField(DataFieldBase):
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
     def __getitem__(self, key: int | str) -> ScalarField:
-        """extract a component of the VectorField"""
+        """Extract a component of the VectorField."""
         axis = self.grid.get_axis_index(key)
         comp_name = self.grid.c.axes[axis]
         if self.label:
@@ -160,7 +159,7 @@ class VectorField(DataFieldBase):
         )
 
     def __setitem__(self, key: int | str, value: NumberOrArray | ScalarField):
-        """set a component of the VectorField"""
+        """Set a component of the VectorField."""
         idx = self.grid.get_axis_index(key)
         if isinstance(value, ScalarField):
             self.grid.assert_grid_compatible(value.grid)
@@ -176,7 +175,7 @@ class VectorField(DataFieldBase):
         conjugate: bool = True,
         label: str = "dot product",
     ) -> ScalarField | VectorField:
-        """calculate the dot product involving a vector field
+        """Calculate the dot product involving a vector field.
 
         This supports the dot product between two vectors fields as well as the
         product between a vector and a tensor. The resulting fields will be a
@@ -231,7 +230,7 @@ class VectorField(DataFieldBase):
         *,
         label: str | None = None,
     ) -> Tensor2Field:
-        """calculate the outer product of this vector field with another
+        """Calculate the outer product of this vector field with another.
 
         Args:
             other (:class:`~pde.fields.vectorial.VectorField`):
@@ -263,7 +262,7 @@ class VectorField(DataFieldBase):
     def make_outer_prod_operator(
         self, backend: Literal["numpy", "numba"] = "numba"
     ) -> Callable[[np.ndarray, np.ndarray, np.ndarray | None], np.ndarray]:
-        """return operator calculating the outer product of two vector fields
+        """Return operator calculating the outer product of two vector fields.
 
         Warning:
             This function does not check types or dimensions.
@@ -282,7 +281,7 @@ class VectorField(DataFieldBase):
         def outer(
             a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
         ) -> np.ndarray:
-            """calculate the outer product using numpy"""
+            """Calculate the outer product using numpy."""
             return np.einsum("i...,j...->ij...", a, b, out=out)
 
         if backend == "numpy":
@@ -296,7 +295,7 @@ class VectorField(DataFieldBase):
             num_axes = self.grid.num_axes
 
             def check_rank(arr: nb.types.Type | nb.types.Optional) -> None:
-                """determine rank of field with type `arr`"""
+                """Determine rank of field with type `arr`"""
                 arr_typ = arr.type if isinstance(arr, nb.types.Optional) else arr
                 if not isinstance(arr_typ, (np.ndarray, nb.types.Array)):
                     raise nb.errors.TypingError(
@@ -307,7 +306,7 @@ class VectorField(DataFieldBase):
             # create the inner function calculating the outer product
             @register_jitable
             def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
-                """calculate outer product between fields `a` and `b`"""
+                """Calculate outer product between fields `a` and `b`"""
                 for i in range(0, dim):
                     for j in range(0, dim):
                         out[i, j, :] = a[i] * b[j]
@@ -317,7 +316,8 @@ class VectorField(DataFieldBase):
             def outer_ol(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
-                """numba implementation to calculate outer product between two fields"""
+                """Numba implementation to calculate outer product between two
+                fields."""
                 # get (and check) rank of the input arrays
                 check_rank(a)
                 check_rank(b)
@@ -331,7 +331,7 @@ class VectorField(DataFieldBase):
                     def outer_impl(
                         a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
-                        """helper function allocating output array"""
+                        """Helper function allocating output array."""
                         assert a.shape == b.shape == in_shape
                         out = np.empty(out_shape, dtype=dtype)
                         calc(a, b, out)
@@ -343,7 +343,7 @@ class VectorField(DataFieldBase):
                     def outer_impl(
                         a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
                     ) -> np.ndarray:
-                        """helper function without allocating output array"""
+                        """Helper function without allocating output array."""
                         # check input
                         assert a.shape == b.shape == in_shape
                         assert out.shape == out_shape  # type: ignore
@@ -356,7 +356,8 @@ class VectorField(DataFieldBase):
             def outer_compiled(
                 a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
             ) -> np.ndarray:
-                """numba implementation to calculate outer product between two fields"""
+                """Numba implementation to calculate outer product between two
+                fields."""
                 return outer(a, b, out)
 
             return outer_compiled  # type: ignore
@@ -368,7 +369,7 @@ class VectorField(DataFieldBase):
     def divergence(
         self, bc: BoundariesData | None, out: ScalarField | None = None, **kwargs
     ) -> ScalarField:
-        """apply divergence operator and return result as a field
+        """Apply divergence operator and return result as a field.
 
         Args:
             bc:
@@ -393,7 +394,7 @@ class VectorField(DataFieldBase):
         out: Tensor2Field | None = None,
         **kwargs,
     ) -> Tensor2Field:
-        r"""apply vector gradient operator and return result as a field
+        r"""Apply vector gradient operator and return result as a field.
 
         The vector gradient field is a tensor field :math:`t_{\alpha\beta}` that
         specifies the derivatives of the vector field :math:`v_\alpha` with respect to
@@ -420,7 +421,7 @@ class VectorField(DataFieldBase):
     def laplace(
         self, bc: BoundariesData | None, out: VectorField | None = None, **kwargs
     ) -> VectorField:
-        r"""apply vector Laplace operator and return result as a field
+        r"""Apply vector Laplace operator and return result as a field.
 
         The vector Laplacian is a vector field :math:`L_\alpha` containing the second
         derivatives of the vector field :math:`v_\alpha` with respect to the coordinates
@@ -448,7 +449,7 @@ class VectorField(DataFieldBase):
 
     @property
     def integral(self) -> np.ndarray:
-        """:class:`~numpy.ndarray`: integral of each component over space"""
+        """:class:`~numpy.ndarray`: integral of each component over space."""
         return self.grid.integrate(self.data)  # type: ignore
 
     def to_scalar(
@@ -457,7 +458,7 @@ class VectorField(DataFieldBase):
         *,
         label: str | None = "scalar `{scalar}`",
     ) -> ScalarField:
-        """return scalar variant of the field
+        """Return scalar variant of the field.
 
         Args:
             scalar (str):
@@ -509,7 +510,7 @@ class VectorField(DataFieldBase):
     def get_vector_data(
         self, transpose: bool = False, max_points: int | None = None, **kwargs
     ) -> dict[str, Any]:
-        r"""return data for a vector plot of the field
+        r"""Return data for a vector plot of the field.
 
         Args:
             transpose (bool):
@@ -569,7 +570,7 @@ class VectorField(DataFieldBase):
         fill: Number | None = None,
         label: str | None = None,
     ) -> VectorField:
-        """interpolate the data of this vector field to another grid.
+        """Interpolate the data of this vector field to another grid.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -624,7 +625,7 @@ class VectorField(DataFieldBase):
     def _get_napari_layer_data(  # type: ignore
         self, max_points: int | None = None, args: dict[str, Any] | None = None
     ) -> dict[str, Any]:
-        """returns data for plotting on a single napari layer
+        """Returns data for plotting on a single napari layer.
 
         Args:
             max_points (int):
