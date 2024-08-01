@@ -380,7 +380,6 @@ def plot_on_axes(wrapped=None, update_method=None):
     if wrapped.__doc__:
         plot_args_text = wrapper.__doc__.split("\n")
         plot_args_text = "\n".join(plot_args_text[2:])
-        print(plot_args_text)
         replace_in_docstring(
             wrapper, "{PLOT_ARGS}", plot_args_text, docstring=wrapped.__doc__
         )
