@@ -247,9 +247,10 @@ def plot_on_axes(wrapped=None, update_method=None):
         ax=None,
         **kwargs,
     ):
-        """Title (str):
+        """This docstring will replace {PLOT_ARGS} in the wrapped function.
 
-        Title of the plot. If omitted, the title might be chosen automatically.
+        Title (str):
+            Title of the plot. If omitted, the title might be chosen automatically.
         filename (str, optional):
             If given, the plot is written to the specified file.
         action (str):
@@ -377,8 +378,11 @@ def plot_on_axes(wrapped=None, update_method=None):
     wrapper.__dict__.update(wrapped.__dict__)
 
     if wrapped.__doc__:
+        plot_args_text = wrapper.__doc__.split("\n")
+        plot_args_text = "\n".join(plot_args_text[2:])
+        print(plot_args_text)
         replace_in_docstring(
-            wrapper, "{PLOT_ARGS}", wrapper.__doc__, docstring=wrapped.__doc__
+            wrapper, "{PLOT_ARGS}", plot_args_text, docstring=wrapped.__doc__
         )
 
     wrapper.mpl_class = "axes"
@@ -451,9 +455,10 @@ def plot_on_figure(wrapped=None, update_method=None):
         fig=None,
         **kwargs,
     ):
-        """Title (str):
+        """This docstring will replace {PLOT_ARGS} in the wrapped function.
 
-        Title of the plot. If omitted, the title might be chosen automatically.
+        Title (str):
+            Title of the plot. If omitted, the title might be chosen automatically.
             This is shown above all panels.
         constrained_layout (bool):
             Whether to use `constrained_layout` in :func:`matplotlib.pyplot.figure` call
@@ -548,8 +553,10 @@ def plot_on_figure(wrapped=None, update_method=None):
     wrapper.__dict__.update(wrapped.__dict__)
 
     if wrapped.__doc__:
+        plot_args_text = wrapper.__doc__.split("\n")
+        plot_args_text = "\n".join(plot_args_text[2:])
         replace_in_docstring(
-            wrapper, "{PLOT_ARGS}", wrapper.__doc__, docstring=wrapped.__doc__
+            wrapper, "{PLOT_ARGS}", plot_args_text, docstring=wrapped.__doc__
         )
 
     wrapper.mpl_class = "figure"
