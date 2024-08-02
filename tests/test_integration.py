@@ -134,7 +134,7 @@ def test_stop_iteration_hook(backend):
 
     class TestPDE(PDEBase):
         def make_post_step_hook(self, state):
-            def post_step_hook(state_data):
+            def post_step_hook(state_data, t):
                 if state_data.sum() > 1:
                     raise StopIteration
                 return 1  # count the number of times the hook was called

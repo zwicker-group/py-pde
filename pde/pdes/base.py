@@ -16,7 +16,7 @@ from ..fields import FieldCollection
 from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike
+from ..tools.typing import ArrayLike, StepperHook
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
@@ -110,14 +110,14 @@ class PDEBase(metaclass=ABCMeta):
         # check for self.noise, in case __init__ is not called in a subclass
         return hasattr(self, "noise") and np.any(self.noise != 0)  # type: ignore
 
-    def make_post_step_hook(self, state: FieldBase) -> Callable[[np.ndarray], float]:
+    def make_post_step_hook(self, state: FieldBase) -> StepperHook:
         """Returns a function that is called after each step.
 
-        This function receives the current state as a numpy array and can modify the
-        data in place. The function must return a float value, which normally indicates
-        how much the state was modified. This value does not affect the simulation, but
-        is accumulated over time and provided in the diagnostic information for
-        debugging.
+        This function receives the current state as a numpy array together with the
+        current time point. The function can modify the state data in place. The
+        function must return a float value, which normally indicates how much the state
+        was modified. This value does not affect the simulation, but is accumulated over
+        time and provided in the diagnostic information for debugging.
 
         The hook can also be used to abort the simulation when a user-defined condition
         is met by raising `StopIteration`. Note that this interrupts the inner-most loop
@@ -135,7 +135,7 @@ class PDEBase(metaclass=ABCMeta):
             measure for the corrections applied to the state
         """
 
-        def post_step_hook(state_data: np.ndarray) -> float:
+        def post_step_hook(state_data: np.ndarray, t: float) -> float:
             """No-op function."""
             return 0
 
