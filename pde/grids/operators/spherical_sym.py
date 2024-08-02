@@ -36,7 +36,7 @@ def make_laplace(grid: SphericalSymGrid, *, conservative: bool = True) -> Operat
 
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
-            The polar grid for which this operator will be defined
+            The spherical grid for which this operator will be defined
         conservative (bool):
             Flag indicating whether the laplace operator should be conservative (which
             results in slightly slower computations). Conservative operators ensure mass
@@ -97,7 +97,7 @@ def make_gradient(
 
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
-            The polar grid for which this operator will be defined
+            The spherical grid for which this operator will be defined
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -142,7 +142,7 @@ def make_gradient_squared(
 
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
-            The polar grid for which this operator will be defined
+            The spherical grid for which this operator will be defined
         central (bool):
             Whether a central difference approximation is used for the gradient
             operator. If this is False, the squared gradient is calculated as
@@ -300,7 +300,7 @@ def make_vector_gradient(
 
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
-            The polar grid for which this operator will be defined
+            The spherical grid for which this operator will be defined
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -370,7 +370,7 @@ def make_tensor_divergence(
 
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
-            The polar grid for which this operator will be defined
+            The spherical grid for which this operator will be defined
         safe (bool):
             Add extra checks for the validity of the input
         conservative (bool):
@@ -473,7 +473,7 @@ def make_tensor_double_divergence(
 
     Args:
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
-            The polar grid for which this operator will be defined
+            The spherical grid for which this operator will be defined
         safe (bool):
             Add extra checks for the validity of the input
         conservative (bool):
@@ -577,7 +577,7 @@ def make_tensor_double_divergence(
 
 @fill_in_docstring
 def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
-    """Get sparse matrix for laplace operator on a polar grid.
+    """Get sparse matrix for laplace operator on a spherical grid.
 
     Args:
         bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):

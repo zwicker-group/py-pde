@@ -25,7 +25,7 @@
 
 \begin{abstract}
 We here document the differential operators and the associated boundary conditions that are used in the finite difference approximation.
-We also derive special versions of the Laplace operator that conserves the total mass.
+We also derive special versions of operators that conserves the total mass.
 \end{abstract}
 
 
@@ -426,6 +426,7 @@ Taken together we find
 	\partial_\alpha^2 f
 %		&\sim \dr^2 \frac{(n + 1)^2 f'\left(r_n + \frac{\dr}{2}\right) - n^2 f'\left(r_n - \frac{\dr}{2}\right)}{V_n}
 		&\sim \frac{r_{n+\frac12}^2 f'\left(r_{n+\frac12}\right) - r_{n-\frac12}^2 f'\left(r_{n-\frac12}\right)}{V_n}
+	\label{eqn:conservative_laplace_spherical_sym}
 \end{align}
 where the derivatives $f'(r)$ are evaluated at the midpoints and can thus be represented as
 \begin{subequations}
@@ -444,11 +445,11 @@ In the special case where the spherical grid does not have a hole ($r_0=0$), we 
 \end{align}
 which is a conservative discretization of the spherical Laplacian by construction.
 
-Similarly, we can consider a spherical grid where fields depend on the polar angle~$\theta$ while still keeping azimuthal symmetry, i.e., assuming no dependence on $\phi$.
+Similarly, we can consider a spherical grid where fields depend on the polar angle~$\theta\in[0,\pi]$, while still keeping azimuthal symmetry, i.e., assuming no dependence on $\phi$.
 The condition for a conservative Laplace operator then reads
 \begin{widetext}
 \begin{multline}
-	\iint_{\text{cell}(n, m)} r^2 \sin\theta \, \partial_\alpha^2 f  \diff r \diff \theta
+	\iint_{\text{cell}(n, m)} r^2 \sin\theta \, (\partial_\alpha^2 f ) \diff r \diff \theta
 =
 	\iint_{\text{cell}(n, m)} \biggl(
 		\sin\theta  \partial_r\bigl[r^2 \partial_r f(r, \theta)\bigr]
@@ -492,6 +493,7 @@ we can write this as
 	+  \Delta r
 		\bigl[ \sin\theta \partial_\theta  f(r, \theta)\bigr]_{\theta_{m - \frac12}}^{\theta_{m + \frac12}}
 \end{multline}
+Note that the first term is identical to the term given by \Eqref{eqn:conservative_laplace_spherical_sym} since the angular dependence cancels with the one in $V_{n,m}$.
 
 
 \subsection{Conservative divergence operator}
@@ -509,6 +511,7 @@ Consequently, we find
 \begin{align}
 	\partial_\alpha v_{\alpha} \sim
 	 \frac{r_{n + \frac12}^2 v_r(r_{n + \frac12}) - r_{n - \frac12}^2 v_r(r_{n - \frac12})}{V_n}
+	 \label{eqn:conservative_div_spherically_sym}
 \end{align}
 where $V_n$ is given by \Eqref{eqn:spherical_shell_volume}.
 We obtain different estimates for different finite difference schemes:
@@ -527,7 +530,13 @@ Use $v_r(r_{n + \frac12}) \approx v_r(r_{n+1})$.
 \paragraph{Backward difference:}
 Use $v_r(r_{n + \frac12}) \approx v_r(r_{n})$.
 
-
+Similar to the Laplace operator above, we can also derive a conservative divergence operator for spherical grids with a dependence on the polar angle $\theta$,
+\begin{align}
+	\partial_\alpha v_\alpha &= v_r'(r)+\frac{2 v_r(r)}{r} + \frac{v_\theta}{r \tan\theta} + \frac{\partial_\theta v_\theta}{r}
+	\;.
+\end{align}
+The radial part is thus identical to the spherical operator given by \Eqref{eqn:conservative_div_spherically_sym}.
+We have so far not analyzed the angular part in detail.
 
 \subsection{Conservative tensor divergence operator}
 The radial component of the divergence of a spherically-symmetric tensor field (with $t_{\theta\theta} = t_{\phi\phi}$) reads
