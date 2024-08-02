@@ -181,6 +181,9 @@ field is defined on a two-dimensional Cartesian grid, the variables :code:`x` an
 :code:`y` denote the local coordinates. To initialize a step profile in the
 :math:`x`-direction, one can use either :code:`(x > 5)` or :code:`heaviside(x - 5, 0.5)`,
 where the second argument denotes the returned value in case the first argument is `0`.
+For convenience, Cartesian coordinates are also available when using curvilinear grids.
+The respective coordinate values at a point can be acccessed using :code:`cartesian[i]`,
+where :code:`i` is an index, e.g., `i=0` for the first axis (normally the x-axis).
 Finally, expressions for equations in :class:`~pde.pdes.pde.PDE` can explicitely depend
 on time, which is denoted by the variable :code:`t`.
 

@@ -44,39 +44,49 @@ class CoordinatesBase:
         # actual calculation needs to be implemented by sub-class
         raise NotImplementedError
 
-    def pos_to_cart(self, points: np.ndarray) -> np.ndarray:
+    def pos_to_cart(self, points: np.ndarray, *, axis: int = -1) -> np.ndarray:
         """Convert coordinates to Cartesian coordinates.
 
         Args:
             points (:class:`~numpy.ndarray`):
                 The coordinates of points in the current coordinate system
+            axis (int):
+                Determines the axis along which the coordinates of the points are given
 
         Returns:
             :class:`~numpy.ndarray`: Cartesian coordinates of the points
         """
         points = np.atleast_1d(points)
-        if points.shape[-1] != self.dim:
+        if points.shape[axis] != self.dim:
             raise DimensionError(f"Shape {points.shape} cannot denote points")
-        return self._pos_to_cart(points)
+        if axis == -1 or axis == self.dim - 1:
+            return self._pos_to_cart(points)
+        else:
+            return np.apply_along_axis(self._pos_to_cart, axis, points)
 
     def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
         # actual calculation needs to be implemented by sub-class
         raise NotImplementedError
 
-    def pos_from_cart(self, points: np.ndarray) -> np.ndarray:
+    def pos_from_cart(self, points: np.ndarray, *, axis: int = -1) -> np.ndarray:
         """Convert Cartesian coordinates to coordinates in this system.
 
         Args:
             points (:class:`~numpy.ndarray`):
                 Points given in Cartesian coordinates.
+            axis (int):
+                Determines the axis along which the coordinates of the points are given
 
         Returns:
             :class:`~numpy.ndarray`: Points given in the coordinates of this system
         """
         points = np.atleast_1d(points)
-        if points.shape[-1] != self.dim:
+        if points.shape[axis] != self.dim:
             raise DimensionError(f"Shape {points.shape} cannot denote points")
-        return self._pos_from_cart(points)
+        if axis == -1 or axis == self.dim - 1:
+            return self._pos_from_cart(points)
+        else:
+            return np.apply_along_axis(self._pos_from_cart, axis, points)
 
     def pos_diff(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
         """Return Cartesian vector(s) pointing from p1 to p2.
@@ -97,7 +107,7 @@ class CoordinatesBase:
         )
         return self.pos_to_cart(p2) - self.pos_to_cart(p1)  # type: ignore
 
-    def distance(self, p1: np.ndarray, p2: np.ndarray) -> float:
+    def distance(self, p1: np.ndarray, p2: np.ndarray, *, axis: int = -1) -> float:
         """Calculate the distance between two points.
 
         Args:
@@ -105,14 +115,16 @@ class CoordinatesBase:
                 First position
             p2 (:class:`~numpy.ndarray`):
                 Second position
+            axis (int):
+                Determines the axis along which the coordinates of the points are given
 
         Returns:
             float: Distance between the two positions
         """
         # this can be overwritten if a more efficient calculation is possible
-        x1 = self.pos_to_cart(p1)
-        x2 = self.pos_to_cart(p2)
-        return np.linalg.norm(x2 - x1, axis=-1)  # type: ignore
+        x1 = self.pos_to_cart(p1, axis=axis)
+        x2 = self.pos_to_cart(p2, axis=axis)
+        return np.linalg.norm(x2 - x1, axis=axis)  # type: ignore
 
     def _scale_factors(self, points: np.ndarray) -> np.ndarray:
         return np.diag(self.metric(points)) ** 2

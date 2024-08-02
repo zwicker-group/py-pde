@@ -216,6 +216,11 @@ def test_from_expressions():
     np.testing.assert_allclose(tf.data[1, 0], xs**2)
     np.testing.assert_allclose(tf.data[1, 1], xs * ys)
 
+    tf2 = Tensor2Field.from_expression(grid, [[1, 1], ["cartesian[0]**2", "x * y"]])
+    np.testing.assert_array_equal(tf.data, tf2.data)
+    tf2 = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * cartesian[1]"]])
+    np.testing.assert_array_equal(tf.data, tf2.data)
+
     # corner case
     with pytest.raises(ValueError):
         Tensor2Field.from_expression(grid, "xy")
