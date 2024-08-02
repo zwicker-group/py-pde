@@ -54,3 +54,8 @@ class AdjacentEvaluator(Protocol):
 class GhostCellSetter(Protocol):
     def __call__(self, data_full: np.ndarray, args=None) -> None:
         """Set the ghost cells."""
+
+
+class StepperHook(Protocol):
+    def __call__(self, state_data: np.ndarray, t: float) -> float:
+        """Function analyzing and potentially modifying the current state."""

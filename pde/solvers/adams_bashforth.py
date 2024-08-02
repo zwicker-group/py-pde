@@ -71,7 +71,7 @@ class AdamsBashforthSolver(SolverBase):
                 # calculate the right hand side
                 t = t_start + i * dt
                 single_step(state_data, t, state_prev)
-                modifications += post_step_hook(state_data)
+                modifications += post_step_hook(state_data, t)
 
             return t + dt, modifications
 

@@ -23,7 +23,7 @@ from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
 from ..tools.numba import is_jitted, jit
-from ..tools.typing import BackendType
+from ..tools.typing import BackendType, StepperHook
 
 
 class ConvergenceError(RuntimeError):
@@ -119,7 +119,7 @@ class SolverBase(metaclass=ABCMeta):
             self.backend == "numba" and not nb.config.DISABLE_JIT
         )  # @UndefinedVariable
 
-    def _make_post_step_hook(self, state: FieldBase) -> Callable[[np.ndarray], float]:
+    def _make_post_step_hook(self, state: FieldBase) -> StepperHook:
         """Create a function that modifies a state after each step.
 
         A noop function will be returned if `_post_step_hook` is `False`,
@@ -133,23 +133,31 @@ class SolverBase(metaclass=ABCMeta):
             if hasattr(self.pde, "make_modify_after_step"):
                 # Deprecated on 2024-08-02
                 warnings.warn(
-                    "`make_modify_after_step` has been renamed to `make_post_step_hook`",
+                    "`make_modify_after_step` has been replaced by `make_post_step_hook`",
                     DeprecationWarning,
                 )
-                post_step_hook = jit(self.pde.make_modify_after_step(state))
+                modify_after_step = self.pde.make_modify_after_step(state)
+                if self._compiled:
+                    sig_modify = (nb.typeof(state.data),)
+                    modify_after_step = jit(sig_modify)(modify_after_step)
+
+                def post_step_hook(state_data: np.ndarray, t: float) -> float:
+                    """Wrap function to adjust signature."""
+                    return modify_after_step(state_data)  # type: ignore
+
             else:
-                post_step_hook = jit(self.pde.make_post_step_hook(state))
+                post_step_hook = self.pde.make_post_step_hook(state)
 
         else:
 
-            def post_step_hook(state_data: np.ndarray) -> float:
-                return 0
+            def post_step_hook(state_data: np.ndarray, t: float) -> float:
+                return 0.0
 
         if self._compiled:
-            sig_modify = (nb.typeof(state.data),)
-            post_step_hook = jit(sig_modify)(post_step_hook)
+            sig_hook = (nb.typeof(state.data), nb.float64)
+            post_step_hook = jit(sig_hook)(post_step_hook)
 
-        return post_step_hook  # type: ignore
+        return post_step_hook
 
     def _make_pde_rhs(
         self, state: FieldBase, backend: BackendType = "auto"
@@ -266,7 +274,7 @@ class SolverBase(metaclass=ABCMeta):
                 # calculate the right hand side
                 t = t_start + i * dt
                 single_step(state_data, t)
-                modifications += post_step_hook(state_data)
+                modifications += post_step_hook(state_data, t)
 
             return t + dt, modifications
 
@@ -538,7 +546,7 @@ class AdaptiveSolverBase(SolverBase):
                     steps += 1
                     t += dt_step
                     state_data[...] = new_state
-                    modifications += post_step_hook(state_data)
+                    modifications += post_step_hook(state_data, t)
                     if dt_stats is not None:
                         dt_stats.add(dt_step)
 

@@ -240,7 +240,7 @@ class ExplicitSolver(AdaptiveSolverBase):
                         steps += 1
                         t += dt_step
                         state_data[...] = step_small
-                        modifications += post_step_hook(state_data)
+                        modifications += post_step_hook(state_data, t)
                         if dt_stats is not None:
                             dt_stats.add(dt_step)
 
