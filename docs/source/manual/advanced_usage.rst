@@ -207,7 +207,7 @@ A simple implementation for the Kuramoto–Sivashinsky equation could read
     class KuramotoSivashinskyPDE(PDEBase):
 
         def evolution_rate(self, state, t=0):
-            """ numpy implementation of the evolution equation """
+            """Evaluate the right hand side of the evolution equation."""
             state_lapacian = state.laplace(bc="auto_periodic_neumann")
             state_gradient = state.gradient(bc="auto_periodic_neumann")
             return (- state_lapacian.laplace(bc="auto_periodic_neumann")
@@ -222,14 +222,13 @@ instance define the boundary conditions and the diffusivity:
     class KuramotoSivashinskyPDE(PDEBase):
 
         def __init__(self, diffusivity=1, bc="auto_periodic_neumann", bc_laplace="auto_periodic_neumann"):
-            """ initialize the class with a diffusivity and boundary conditions
-            for the actual field and its second derivative """
+            """Initialize the class with a diffusivity and boundary conditions."""
             self.diffusivity = diffusivity
             self.bc = bc
             self.bc_laplace = bc_laplace
 
         def evolution_rate(self, state, t=0):
-            """ numpy implementation of the evolution equation """
+            """Evaluate the right hand side of the evolution equation."""
             state_lapacian = state.laplace(bc=self.bc)
             state_gradient = state.gradient(bc=self.bc)
             return (- state_lapacian.laplace(bc=self.bc_laplace)
@@ -243,6 +242,37 @@ slow since it runs mostly in pure python and constructs a lot of intermediate
 field classes.
 While such an implementation is helpful for testing initial ideas, actual
 computations should be performed with compiled PDEs as described below.
+
+
+Another feature of custom PDE classes are a special function that is called after every
+time step. This function allows direct manipulation of the state data and also abortion
+of the simulation by raising :class:`StopIteration`.
+
+.. code-block:: python
+
+    class AbortEarlyPDE(PDEBase):
+
+        def make_post_step_hook(self, state):
+            """Create a hook function that is called after every time step."""
+
+            def post_step_hook(state_data, t):
+                """Limit state to [-1, 1] & abort when standard deviation exceeds 1."""
+                np.clip(state_data, -1, 1, out=state_data)  # limit state
+                if state_data.std() > 1:
+                    raise StopIteration  # abort simulation
+                return 1  # count the number of times the hook was called
+
+            return post_step_hook
+
+        def evolution_rate(self, state, t=0):
+            """Evaluate the right hand side of the evolution equation."""
+            return state
+
+We here use a simple constant evolution equation. The hook defined by the first method
+does two things: First, it limits the state to the interval `[-1, 1]` using
+:func:`numpy.clip`. Second, it evaluates the standard deviation across the entire data,
+aborting the simulation when the value exceeds one. Note that the hook always receives
+the data always as a :class:`~numpy.ndarray` and not as a full field class.
 
 
 Low-level operators
