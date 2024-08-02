@@ -179,7 +179,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
         # obtain functions determining how the PDE is evolved
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
-        modify_after_step = jit(self.pde.make_modify_after_step(state))
+        post_step_hook = self._make_post_step_hook(state)
 
         # obtain auxiliary functions
         sync_errors = self._make_error_synchronizer()
@@ -240,7 +240,7 @@ class ExplicitSolver(AdaptiveSolverBase):
                         steps += 1
                         t += dt_step
                         state_data[...] = step_small
-                        modifications += modify_after_step(state_data)
+                        modifications += post_step_hook(state_data)
                         if dt_stats is not None:
                             dt_stats.add(dt_step)
 
