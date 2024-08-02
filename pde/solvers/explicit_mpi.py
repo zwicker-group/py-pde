@@ -42,7 +42,7 @@ class ExplicitMPISolver(ExplicitSolver):
         The function providing the right hand side of the PDE needs to support MPI. This
         is automatically the case for local evaluations (which only use the field value
         at the current position), for the differential operators provided by :mod:`pde`,
-        and integration of fields. Similarly, `modify_after_step` can only be used to do
+        and integration of fields. Similarly, `post_step_hook` can only be used to do
         local modifications since the field data supplied to the function is local to
         each MPI node.
 

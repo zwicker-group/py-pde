@@ -110,11 +110,20 @@ class PDEBase(metaclass=ABCMeta):
         # check for self.noise, in case __init__ is not called in a subclass
         return hasattr(self, "noise") and np.any(self.noise != 0)  # type: ignore
 
-    def make_modify_after_step(self, state: FieldBase) -> Callable[[np.ndarray], float]:
-        """Returns a function that can be called to modify a state.
+    def make_post_step_hook(self, state: FieldBase) -> Callable[[np.ndarray], float]:
+        """Returns a function that is called after each step.
 
-        This function is applied to the state after each integration step when an
-        explicit stepper is used. The default behavior is to not change the state.
+        This function receives the current state as a numpy array and can modify the
+        data in place. The function must return a float value, which normally indicates
+        how much the state was modified. This value does not affect the simulation, but
+        is accumulated over time and provided in the diagnostic information for
+        debugging.
+
+        The hook can also be used to abort the simulation when a user-defined condition
+        is met by raising `StopIteration`. Note that this interrupts the inner-most loop
+        and some of the final information (including the stop time and the total
+        modifications made by the hook) might be incorrect. These fields will usually
+        still reflect the values they assumed at the last tracker interrupt.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -126,11 +135,11 @@ class PDEBase(metaclass=ABCMeta):
             measure for the corrections applied to the state
         """
 
-        def modify_after_step(state_data: np.ndarray) -> float:
+        def post_step_hook(state_data: np.ndarray) -> float:
             """No-op function."""
             return 0
 
-        return modify_after_step
+        return post_step_hook
 
     @abstractmethod
     def evolution_rate(self, state: TState, t: float = 0) -> TState:

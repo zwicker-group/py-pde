@@ -36,8 +36,7 @@ class AdamsBashforthSolver(SolverBase):
             raise NotImplementedError
 
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
-        modify_state_after_step = self._modify_state_after_step
-        modify_after_step = self._make_modify_after_step(state)
+        post_step_hook = self._make_post_step_hook(state)
 
         def single_step(
             state_data: np.ndarray, t: float, state_prev: np.ndarray
@@ -72,8 +71,7 @@ class AdamsBashforthSolver(SolverBase):
                 # calculate the right hand side
                 t = t_start + i * dt
                 single_step(state_data, t, state_prev)
-                if modify_state_after_step:
-                    modifications += modify_after_step(state_data)
+                modifications += post_step_hook(state_data)
 
             return t + dt, modifications
 

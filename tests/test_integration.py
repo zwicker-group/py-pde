@@ -128,6 +128,40 @@ def test_custom_pde_mpi(caplog, rng):
             assert info["state_modifications"] == info3["solver"]["state_modifications"]
 
 
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_stop_iteration_hook(backend):
+    """Test a custom PDE raising StopIteration in a hook."""
+
+    class TestPDE(PDEBase):
+        def make_post_step_hook(self, state):
+            def post_step_hook(state_data):
+                if state_data.sum() > 1:
+                    raise StopIteration
+                return 1  # count the number of times the hook was called
+
+            return post_step_hook
+
+        def evolution_rate(self, state, t=0):
+            return ScalarField(state.grid, 1)
+
+        def _make_pde_rhs_numba(self, state):
+            @numba.jit
+            def pde_rhs(state_data, t):
+                return np.ones_like(state_data)
+
+            return pde_rhs
+
+    grid = UnitGrid([16])
+    field = ScalarField(grid)
+    eq = TestPDE()
+
+    args = {"state": field, "t_range": 1, "dt": 0.01, "tracker": None, "ret_info": True}
+    res, info = eq.solve(backend=backend, solver="explicit", **args)
+
+    np.testing.assert_allclose(res.data, 0.07)
+    assert info["controller"]["stop_reason"] == "Tracker raised StopIteration"
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="submit_job has issues on windows")
 @pytest.mark.skipif(
     not module_available("modelrunner"), reason="requires `py-modelrunner`"

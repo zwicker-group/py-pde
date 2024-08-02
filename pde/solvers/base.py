@@ -36,8 +36,8 @@ class SolverBase(metaclass=ABCMeta):
     dt_default: float = 1e-3
     """float: default time step used if no time step was specified"""
 
-    _modify_state_after_step: bool = True
-    """bool: flag choosing whether the `modify_after_step` hook of the PDE is called"""
+    _use_post_step_hook: bool = True
+    """bool: flag choosing whether the post-step hook of the PDE is called"""
 
     _subclasses: dict[str, type[SolverBase]] = {}
     """dict: dictionary of all inheriting classes"""
@@ -119,31 +119,37 @@ class SolverBase(metaclass=ABCMeta):
             self.backend == "numba" and not nb.config.DISABLE_JIT
         )  # @UndefinedVariable
 
-    def _make_modify_after_step(
-        self, state: FieldBase
-    ) -> Callable[[np.ndarray], float]:
+    def _make_post_step_hook(self, state: FieldBase) -> Callable[[np.ndarray], float]:
         """Create a function that modifies a state after each step.
 
-        A noop function will be returned if `_modify_state_after_step` is `False`,
+        A noop function will be returned if `_post_step_hook` is `False`,
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
         """
-        if self._modify_state_after_step:
-            modify_after_step = jit(self.pde.make_modify_after_step(state))
+        if self._use_post_step_hook:
+            if hasattr(self.pde, "make_modify_after_step"):
+                # Deprecated on 2024-08-02
+                warnings.warn(
+                    "`make_modify_after_step` has been renamed to `make_post_step_hook`",
+                    DeprecationWarning,
+                )
+                post_step_hook = jit(self.pde.make_modify_after_step(state))
+            else:
+                post_step_hook = jit(self.pde.make_post_step_hook(state))
 
         else:
 
-            def modify_after_step(state_data: np.ndarray) -> float:
+            def post_step_hook(state_data: np.ndarray) -> float:
                 return 0
 
         if self._compiled:
             sig_modify = (nb.typeof(state.data),)
-            modify_after_step = jit(sig_modify)(modify_after_step)
+            post_step_hook = jit(sig_modify)(post_step_hook)
 
-        return modify_after_step  # type: ignore
+        return post_step_hook  # type: ignore
 
     def _make_pde_rhs(
         self, state: FieldBase, backend: BackendType = "auto"
@@ -245,8 +251,7 @@ class SolverBase(metaclass=ABCMeta):
                 Time step of the explicit stepping.
         """
         single_step = self._make_single_step_fixed_dt(state, dt)
-        modify_state_after_step = self._modify_state_after_step
-        modify_after_step = self._make_modify_after_step(state)
+        post_step_hook = self._make_post_step_hook(state)
 
         if self._compiled:
             sig_single_step = (nb.typeof(state.data), nb.double)
@@ -261,8 +266,7 @@ class SolverBase(metaclass=ABCMeta):
                 # calculate the right hand side
                 t = t_start + i * dt
                 single_step(state_data, t)
-                if modify_state_after_step:
-                    modifications += modify_after_step(state_data)
+                modifications += post_step_hook(state_data)
 
             return t + dt, modifications
 
@@ -493,8 +497,7 @@ class AdaptiveSolverBase(SolverBase):
         """
         # obtain functions determining how the PDE is evolved
         single_step_error = self._make_single_step_error_estimate(state)
-        modify_after_step = self._make_modify_after_step(state)
-        modify_state_after_step = self._modify_state_after_step
+        post_step_hook = self._make_post_step_hook(state)
         sync_errors = self._make_error_synchronizer()
 
         # obtain auxiliary functions
@@ -535,8 +538,7 @@ class AdaptiveSolverBase(SolverBase):
                     steps += 1
                     t += dt_step
                     state_data[...] = new_state
-                    if modify_state_after_step:
-                        modifications += modify_after_step(state_data)
+                    modifications += post_step_hook(state_data)
                     if dt_stats is not None:
                         dt_stats.add(dt_step)
 
