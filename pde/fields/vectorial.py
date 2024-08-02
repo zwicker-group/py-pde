@@ -127,6 +127,15 @@ class VectorField(DataFieldBase):
                 f"Expected {grid.dim} expressions for the coordinates {axes_names}."
             )
 
+        if any("cartesian" in str(expression) for expression in expressions):
+            # support Cartesian coordinates via a special constant
+            if consts is None:
+                consts = {}
+            if "cartesian" not in consts:
+                coords_cart = grid.point_to_cartesian(grid.cell_coords)
+                consts["cartesian"] = np.moveaxis(coords_cart, -1, 0)
+            assert "cartesian" in consts
+
         # obtain the coordinates of the grid points
         points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
@@ -139,6 +148,7 @@ class VectorField(DataFieldBase):
                 user_funcs=user_funcs,
                 consts=consts,
                 repl=grid.c._axes_alt_repl,
+                allow_indexed=True,
             )
             values = np.broadcast_to(expr(*points), grid.shape)
             data.append(values)

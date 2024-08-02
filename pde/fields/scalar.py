@@ -71,6 +71,15 @@ class ScalarField(DataFieldBase):
         """
         from ..tools.expressions import ScalarExpression
 
+        if "cartesian" in str(expression):
+            # support Cartesian coordinates via a special constant
+            if consts is None:
+                consts = {}
+            if "cartesian" not in consts:
+                coords_cart = grid.point_to_cartesian(grid.cell_coords)
+                consts["cartesian"] = np.moveaxis(coords_cart, -1, 0)
+            assert "cartesian" in consts
+
         # parse the expression
         expr = ScalarExpression(
             expression=expression,
@@ -78,6 +87,7 @@ class ScalarField(DataFieldBase):
             user_funcs=user_funcs,
             consts=consts,
             repl=grid.c._axes_alt_repl,
+            allow_indexed=True,
         )
         # obtain the coordinates of the grid points
         points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]

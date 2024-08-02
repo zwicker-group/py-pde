@@ -176,6 +176,11 @@ def test_from_expressions():
     np.testing.assert_allclose(vf.data[0], xs**2)
     np.testing.assert_allclose(vf.data[1], xs * ys)
 
+    vf2 = VectorField.from_expression(grid, ["cartesian[0]**2", "x * y"])
+    np.testing.assert_array_equal(vf.data, vf2.data)
+    vf3 = VectorField.from_expression(grid, ["x**2", "x * cartesian[1]"])
+    np.testing.assert_array_equal(vf.data, vf3.data)
+
     # corner case
     vf = VectorField.from_expression(grid, ["1", "x * y"])
     np.testing.assert_allclose(vf.data[0], 1)

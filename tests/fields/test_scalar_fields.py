@@ -241,6 +241,9 @@ def test_from_expression():
     sf = ScalarField.from_expression(grid, "c", consts={"c": [0.25, 0.75]})
     np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
 
+    sf = ScalarField.from_expression(grid, "cartesian[0] * cartesian[1]")
+    np.testing.assert_allclose(sf.data, [[0.25, 0.75]])
+
 
 def test_from_image(tmp_path, rng):
     from matplotlib.pyplot import imsave

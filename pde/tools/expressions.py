@@ -346,7 +346,7 @@ class ExpressionBase(metaclass=ABCMeta):
                     found.add(arg)
                     break
 
-        args = set(args) - found
+        args = set(args) - found - set(self.consts)
         if len(args) > 0:
             raise RuntimeError(
                 f"Arguments {args} were not defined in expression signature {signature}"

@@ -37,6 +37,21 @@ def test_basic_coordinates(c, rng):
 
 
 @pytest.mark.parametrize("c", iter_coordinates())
+def test_basic_coordinate_arrays(c, rng):
+    """Test conversion of coordinates given in arrays."""
+    x = rng.uniform(size=(7, c.dim))
+    p = c.pos_from_cart(x)
+    assert p.shape == (7, c.dim)
+    np.testing.assert_allclose(c.pos_to_cart(p), x)
+
+    xT = x.T
+    assert xT.shape == (c.dim, 7)
+    pT = c.pos_from_cart(xT, axis=0)
+    np.testing.assert_allclose(pT, p.T)
+    np.testing.assert_allclose(c.pos_to_cart(pT, axis=0), xT)
+
+
+@pytest.mark.parametrize("c", iter_coordinates())
 def test_coordinate_volume_factors(c, rng):
     """Test basic coordinate properties."""
     p1 = c.pos_from_cart(rng.uniform(-1, 1, size=c.dim))
