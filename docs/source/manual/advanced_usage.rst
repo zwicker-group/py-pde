@@ -243,10 +243,10 @@ field classes.
 While such an implementation is helpful for testing initial ideas, actual
 computations should be performed with compiled PDEs as described below.
 
-
-Another feature of custom PDE classes are a special function that is called after every
-time step. This function allows direct manipulation of the state data and also abortion
-of the simulation by raising :class:`StopIteration`.
+Another feature of custom PDE classes is a special function that is called after every
+time step. This function is defined by :meth:`~pde.pdes.PDEBase.make_post_step_hook` and
+allows direct manipulation of the state data and also abortion of the simulation by
+raising :class:`StopIteration`.
 
 .. code-block:: python
 
@@ -255,14 +255,14 @@ of the simulation by raising :class:`StopIteration`.
         def make_post_step_hook(self, state):
             """Create a hook function that is called after every time step."""
 
-            def post_step_hook(state_data, t):
+            def post_step_hook(state_data, t, post_step_data):
                 """Limit state to [-1, 1] & abort when standard deviation exceeds 1."""
                 np.clip(state_data, -1, 1, out=state_data)  # limit state
                 if state_data.std() > 1:
                     raise StopIteration  # abort simulation
-                return 1  # count the number of times the hook was called
+                post_step_data += 1  # increment number of times hook was called
 
-            return post_step_hook
+            return post_step_hook, 0  # hook function and initial value for data
 
         def evolution_rate(self, state, t=0):
             """Evaluate the right hand side of the evolution equation."""
@@ -272,7 +272,9 @@ We here use a simple constant evolution equation. The hook defined by the first 
 does two things: First, it limits the state to the interval `[-1, 1]` using
 :func:`numpy.clip`. Second, it evaluates the standard deviation across the entire data,
 aborting the simulation when the value exceeds one. Note that the hook always receives
-the data always as a :class:`~numpy.ndarray` and not as a full field class.
+the data always as a :class:`~numpy.ndarray` and not as a full field class. The hook can
+also keep track of additional data via :code:`post_step_data`, which is a
+:class:`~numpy.ndarray` that can be updated in place.
 
 
 Low-level operators

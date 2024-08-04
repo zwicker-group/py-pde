@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from typing import Any, Callable, Literal
 
 import numba as nb
 import numpy as np
@@ -155,8 +155,8 @@ class ExplicitSolver(AdaptiveSolverBase):
             raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
 
     def _make_adaptive_euler_stepper(self, state: FieldBase) -> Callable[
-        [np.ndarray, float, float, float, OnlineStatistics | None],
-        tuple[float, float, int, float],
+        [np.ndarray, float, float, float, OnlineStatistics | None, Any],
+        tuple[float, float, int],
     ]:
         """Make an adaptive Euler stepper.
 
@@ -193,9 +193,9 @@ class ExplicitSolver(AdaptiveSolverBase):
             t_end: float,
             dt_init: float,
             dt_stats: OnlineStatistics | None = None,
-        ) -> tuple[float, float, int, float]:
+            post_step_data=None,
+        ) -> tuple[float, float, int]:
             """Adaptive stepper that advances the state in time."""
-            modifications = 0.0
             dt_opt = dt_init
             rate = rhs_pde(state_data, t_start)  # calculate initial rate
 
@@ -240,7 +240,7 @@ class ExplicitSolver(AdaptiveSolverBase):
                         steps += 1
                         t += dt_step
                         state_data[...] = step_small
-                        modifications += post_step_hook(state_data, t)
+                        post_step_hook(state_data, t, post_step_data)
                         if dt_stats is not None:
                             dt_stats.add(dt_step)
 
@@ -250,7 +250,7 @@ class ExplicitSolver(AdaptiveSolverBase):
                 else:
                     break  # return to the controller
 
-            return t, dt_opt, steps, modifications
+            return t, dt_opt, steps
 
         if self._compiled:
             # compile inner stepper
@@ -260,6 +260,7 @@ class ExplicitSolver(AdaptiveSolverBase):
                 nb.double,
                 nb.double,
                 nb.typeof(self.info["dt_statistics"]),
+                self._post_step_data_type,
             )
             adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
 
@@ -371,8 +372,8 @@ class ExplicitSolver(AdaptiveSolverBase):
             raise ValueError(f"Adaptive scheme `{self.scheme}` is not supported")
 
     def _make_adaptive_stepper(self, state: FieldBase) -> Callable[
-        [np.ndarray, float, float, float, OnlineStatistics | None],
-        tuple[float, float, int, float],
+        [np.ndarray, float, float, float, OnlineStatistics | None, Any],
+        tuple[float, float, int],
     ]:
         """Return a stepper function using an explicit scheme with fixed time steps.
 

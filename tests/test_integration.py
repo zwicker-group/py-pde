@@ -68,7 +68,7 @@ def test_inhomogeneous_bcs_func(backend):
 
 
 @pytest.mark.multiprocessing
-def test_custom_pde_mpi(caplog, rng):
+def test_custom_pde_mpi(rng):
     """Test a custom PDE using the parallelized solver."""
 
     class TestPDE(PDEBase):
@@ -107,12 +107,11 @@ def test_custom_pde_mpi(caplog, rng):
 
     res1, info1 = eq.solve(backend="numpy", solver="explicit_mpi", **args)
     if mpi.is_main:
-        assert "significant state modifications" in caplog.text
-        caplog.clear()
+        assert all(v > 0 for v in info1["solver"]["post_step_data_list"])
 
     res2, info2 = eq.solve(backend="numba", solver="explicit_mpi", **args)
     if mpi.is_main:
-        assert "significant state modifications" in caplog.text
+        assert all(v > 0 for v in info2["solver"]["post_step_data_list"])
 
     if mpi.is_main:
         # check results in the main process
@@ -120,12 +119,12 @@ def test_custom_pde_mpi(caplog, rng):
 
         np.testing.assert_allclose(res1.data, expect.data)
         np.testing.assert_allclose(res2.data, expect.data)
-        assert info3["solver"]["state_modifications"] > 0
+        assert info3["solver"]["post_step_data"] > 0
 
         for info in [info1["solver"], info2["solver"]]:
             assert info["steps"] == 11
             assert info["use_mpi"]
-            assert info["state_modifications"] == info3["solver"]["state_modifications"]
+            assert sum(info["post_step_data_list"]) == info3["solver"]["post_step_data"]
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
@@ -134,12 +133,12 @@ def test_stop_iteration_hook(backend):
 
     class TestPDE(PDEBase):
         def make_post_step_hook(self, state):
-            def post_step_hook(state_data, t):
+            def post_step_hook(state_data, t, post_step_data):
                 if state_data.sum() > 1:
                     raise StopIteration
-                return 1  # count the number of times the hook was called
+                post_step_data += 1
 
-            return post_step_hook
+            return post_step_hook, 0
 
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
@@ -160,6 +159,72 @@ def test_stop_iteration_hook(backend):
 
     np.testing.assert_allclose(res.data, 0.07)
     assert info["controller"]["stop_reason"] == "Tracker raised StopIteration"
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_custom_data_hook(backend):
+    """Test a custom PDE keeping track of data."""
+
+    class TestPDE(PDEBase):
+        def make_post_step_hook(self, state):
+            def post_step_hook(state_data, t, post_step_data):
+                post_step_data += state_data.mean()
+
+            return post_step_hook, 0.0
+
+        def evolution_rate(self, state, t=0):
+            return ScalarField(state.grid, 1)
+
+        def _make_pde_rhs_numba(self, state):
+            @numba.jit
+            def pde_rhs(state_data, t):
+                return np.ones_like(state_data)
+
+            return pde_rhs
+
+    grid = UnitGrid([16])
+    field = ScalarField(grid)
+    eq = TestPDE()
+
+    args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
+    res, info = eq.solve(backend=backend, solver="explicit", **args)
+
+    np.testing.assert_allclose(res.data, 1.0)
+    value = np.linspace(0, 1, 11).sum()
+    assert info["solver"]["post_step_data"] == pytest.approx(value)
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_array_data_hook(backend):
+    """Test a custom PDE keeping track of array data."""
+
+    class TestPDE(PDEBase):
+        def make_post_step_hook(self, state):
+            def post_step_hook(state_data, t, post_step_data):
+                post_step_data += state_data
+
+            return post_step_hook, np.zeros_like(state.data)
+
+        def evolution_rate(self, state, t=0):
+            return ScalarField(state.grid, 1)
+
+        def _make_pde_rhs_numba(self, state):
+            @numba.jit
+            def pde_rhs(state_data, t):
+                return np.ones_like(state_data)
+
+            return pde_rhs
+
+    grid = UnitGrid([16])
+    field = ScalarField(grid)
+    eq = TestPDE()
+
+    args = {"state": field, "t_range": 1, "dt": 0.1, "tracker": None, "ret_info": True}
+    res, info = eq.solve(backend=backend, solver="explicit", **args)
+
+    np.testing.assert_allclose(res.data, 1.0)
+    value = np.linspace(0, 1, 11).sum()
+    np.testing.assert_allclose(info["solver"]["post_step_data"], value)
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="submit_job has issues on windows")

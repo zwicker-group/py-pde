@@ -173,7 +173,6 @@ class ExplicitMPISolver(ExplicitSolver):
         self.info["dt_adaptive"] = self.adaptive
         self.info["steps"] = 0
         self.info["stochastic"] = self.pde.is_sde
-        self.info["state_modifications"] = 0.0
         self.info["use_mpi"] = True
         self.info["scheme"] = self.scheme
 
@@ -186,6 +185,7 @@ class ExplicitMPISolver(ExplicitSolver):
             # create stepper with adaptive steps
             self.info["dt_statistics"] = OnlineStatistics()
             adaptive_stepper = self._make_adaptive_stepper(sub_state)
+            self.info["post_step_data"] = self._post_step_data_init
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
@@ -193,13 +193,21 @@ class ExplicitMPISolver(ExplicitSolver):
                 """Advance `state` from `t_start` to `t_end` using adaptive steps."""
                 nonlocal dt  # `dt` stores value for the next call
 
+                # retrieve last post_step_data for this node and continue with this
+                post_step_data = self.info["post_step_data"]
+
                 # distribute the end time and the field to all nodes
                 t_end = self.mesh.broadcast(t_end)
                 substate_data = self.mesh.split_field_data_mpi(state.data)
 
                 # evolve the sub state
-                t_last, dt, steps, modifications = adaptive_stepper(
-                    substate_data, t_start, t_end, dt, self.info["dt_statistics"]
+                t_last, dt, steps = adaptive_stepper(
+                    substate_data,
+                    t_start,
+                    t_end,
+                    dt,
+                    self.info["dt_statistics"],
+                    post_step_data,
                 )
 
                 # check whether dt is the same for all processes
@@ -209,22 +217,26 @@ class ExplicitMPISolver(ExplicitSolver):
                     raise RuntimeError(f"Processes went out of sync: dt={dt_list}")
 
                 # collect the data from all nodes
-                modification_list = self.mesh.gather(modifications)
+                post_step_data_list = self.mesh.gather(post_step_data)
                 self.mesh.combine_field_data_mpi(substate_data, out=state.data)
 
                 if mpi.is_main:
                     self.info["steps"] += steps
-                    self.info["state_modifications"] += sum(modification_list)  # type: ignore
+                    self.info["post_step_data_list"] = post_step_data_list
                 return t_last
 
         else:
             # create stepper with fixed steps
             fixed_stepper = self._make_fixed_stepper(sub_state, dt)
+            self.info["post_step_data"] = self._post_step_data_init
 
             def wrapped_stepper(
                 state: FieldBase, t_start: float, t_end: float
             ) -> float:
                 """Advance `state` from `t_start` to `t_end` using fixed steps."""
+                # retrieve last post_step_data and continue with this
+                post_step_data = self.info["post_step_data"]
+
                 # calculate number of steps (which is at least 1)
                 steps = max(1, int(np.ceil((t_end - t_start) / dt)))
 
@@ -233,7 +245,7 @@ class ExplicitMPISolver(ExplicitSolver):
                 substate_data = self.mesh.split_field_data_mpi(state.data)
 
                 # evolve the sub state
-                t_last, modifications = fixed_stepper(substate_data, t_start, steps)
+                t_last = fixed_stepper(substate_data, t_start, steps, post_step_data)
 
                 # check whether t_last is the same for all processes
                 t_list = self.mesh.gather(t_last)
@@ -241,13 +253,13 @@ class ExplicitMPISolver(ExplicitSolver):
                     raise RuntimeError(f"Processes went out of sync: t_last={t_list}")
 
                 # collect the data from all nodes
-                modification_list = self.mesh.gather(modifications)
+                post_step_data_list = self.mesh.gather(post_step_data)
                 self.mesh.combine_field_data_mpi(substate_data, out=state.data)
 
                 # store information in the main node
                 if mpi.is_main:
                     self.info["steps"] += steps
-                    self.info["state_modifications"] += sum(modification_list)  # type: ignore
+                    self.info["post_step_data_list"] = post_step_data_list
                 return t_last
 
         return wrapped_stepper

@@ -115,49 +115,82 @@ class SolverBase(metaclass=ABCMeta):
     @property
     def _compiled(self) -> bool:
         """bool: indicates whether functions need to be compiled"""
-        return (
-            self.backend == "numba" and not nb.config.DISABLE_JIT
-        )  # @UndefinedVariable
+        return self.backend == "numba" and not nb.config.DISABLE_JIT
 
     def _make_post_step_hook(self, state: FieldBase) -> StepperHook:
-        """Create a function that modifies a state after each step.
+        """Create a function that calls the post-step hook of the PDE.
 
-        A noop function will be returned if `_post_step_hook` is `False`,
+        A no-op function is returned if :attr:`SolverBase._use_post_step_hook` is
+        `False` or the PDE does not provide :meth:`PDEBase.make_post_step_hook`.
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
                 An example for the state from which the grid and other information can
                 be extracted.
+
+        Returns:
+            callable: The jit-able function that calls the post-step hook
         """
+        post_step_hook: StepperHook | None = None
+
         if self._use_post_step_hook:
-            if hasattr(self.pde, "make_modify_after_step"):
-                # Deprecated on 2024-08-02
-                warnings.warn(
-                    "`make_modify_after_step` has been replaced by `make_post_step_hook`",
-                    DeprecationWarning,
-                )
-                modify_after_step = self.pde.make_modify_after_step(state)
-                if self._compiled:
-                    sig_modify = (nb.typeof(state.data),)
-                    modify_after_step = jit(sig_modify)(modify_after_step)
+            try:
+                # look for the definition of a hook function
+                if hasattr(self.pde, "make_modify_after_step"):
 
-                def post_step_hook(state_data: np.ndarray, t: float) -> float:
-                    """Wrap function to adjust signature."""
-                    return modify_after_step(state_data)  # type: ignore
+                    # Deprecated on 2024-08-02
+                    warnings.warn(
+                        "`make_modify_after_step` has been replaced by `make_post_step_hook`",
+                        DeprecationWarning,
+                    )
+                    modify_after_step = self.pde.make_modify_after_step(state)
+                    if self._compiled:
+                        sig_modify = (nb.typeof(state.data),)
+                        modify_after_step = jit(sig_modify)(modify_after_step)
 
-            else:
-                post_step_hook = self.pde.make_post_step_hook(state)
+                    def post_step_hook(
+                        state_data: np.ndarray, t: float, post_step_data: np.ndarray
+                    ):
+                        """Wrap function to adjust signature."""
+                        post_step_data += modify_after_step(state_data)
+
+                    # create zero of correct type
+                    self._post_step_data_init = np.dtype(state.dtype).type(0)
+
+                else:
+                    # get hook function and initial data from PDE
+                    post_step_hook, self._post_step_data_init = (
+                        self.pde.make_post_step_hook(state)
+                    )
+
+            except NotImplementedError:
+                pass  # no hook function defined on the PDE
+
+        if post_step_hook is None:
+            # hook function is not necessary or was not supplied -> provide no-op
+
+            def post_step_hook(
+                state_data: np.ndarray, t: float, post_step_data: np.ndarray
+            ):
+                """Default hook function does nothing."""
+
+            self._post_step_data_init = None
 
         else:
+            if np.isscalar(self._post_step_data_init):
+                self._post_step_data_init = np.array(self._post_step_data_init)
+            if not isinstance(self._post_step_data_init, np.ndarray):
+                raise TypeError(
+                    "The intial data provided for the post-step hook must be a number "
+                    "or a numpy array."
+                )
 
-            def post_step_hook(state_data: np.ndarray, t: float) -> float:
-                return 0.0
-
+        self._post_step_data_type = nb.typeof(self._post_step_data_init)
         if self._compiled:
-            sig_hook = (nb.typeof(state.data), nb.float64)
+            sig_hook = (nb.typeof(state.data), nb.float64, self._post_step_data_type)
             post_step_hook = jit(sig_hook)(post_step_hook)
 
-        return post_step_hook
+        return post_step_hook  # type: ignore
 
     def _make_pde_rhs(
         self, state: FieldBase, backend: BackendType = "auto"
@@ -248,7 +281,7 @@ class SolverBase(metaclass=ABCMeta):
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, int], tuple[float, float]]:
+    ) -> Callable[[np.ndarray, float, int, Any], float]:
         """Return a stepper function using an explicit scheme with fixed time steps.
 
         Args:
@@ -266,20 +299,24 @@ class SolverBase(metaclass=ABCMeta):
             single_step = jit(sig_single_step)(single_step)
 
         def fixed_stepper(
-            state_data: np.ndarray, t_start: float, steps: int
-        ) -> tuple[float, float]:
+            state_data: np.ndarray, t_start: float, steps: int, post_step_data
+        ) -> float:
             """Perform `steps` steps with fixed time steps."""
-            modifications = 0.0
             for i in range(steps):
                 # calculate the right hand side
                 t = t_start + i * dt
                 single_step(state_data, t)
-                modifications += post_step_hook(state_data, t)
+                post_step_hook(state_data, t, post_step_data)
 
-            return t + dt, modifications
+            return t + dt
 
         if self._compiled:
-            sig_fixed = (nb.typeof(state.data), nb.double, nb.int_)
+            sig_fixed = (
+                nb.typeof(state.data),
+                nb.double,
+                nb.int_,
+                self._post_step_data_type,
+            )
             fixed_stepper = jit(sig_fixed)(fixed_stepper)
 
         return fixed_stepper
@@ -312,23 +349,26 @@ class SolverBase(metaclass=ABCMeta):
             )
         dt_float = float(dt)  # explicit casting to help type checking
 
-        self.info["dt"] = dt_float
-        self.info["steps"] = 0
-        self.info["state_modifications"] = 0.0
-        self.info["stochastic"] = getattr(self.pde, "is_sde", False)
-        # we don't access self.pde directly since we might want to reuse the solver
-        # infrastructure for more general cases where a PDE is not defined
-
         # create stepper with fixed steps
         fixed_stepper = self._make_fixed_stepper(state, dt_float)
 
+        self.info["dt"] = dt_float
+        self.info["steps"] = 0
+        self.info["post_step_data"] = self._post_step_data_init
+        self.info["stochastic"] = getattr(self.pde, "is_sde", False)
+        # We don't access self.pde directly since we might want to reuse the solver
+        # infrastructure for more general cases where a PDE is not defined.
+
         def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
             """Advance `state` from `t_start` to `t_end` using fixed steps."""
+            # retrieve last post_step_data and continue with this
+            post_step_data = self.info["post_step_data"]
             # calculate number of steps (which is at least 1)
             steps = max(1, int(np.ceil((t_end - t_start) / dt_float)))
-            t_last, modifications = fixed_stepper(state.data, t_start, steps)
+            # call the stepper with fixed time steps
+            t_last = fixed_stepper(state.data, t_start, steps, post_step_data)
+            # keep some stats and data
             self.info["steps"] += steps
-            self.info["state_modifications"] += modifications
             return t_last
 
         return wrapped_stepper
@@ -488,8 +528,8 @@ class AdaptiveSolverBase(SolverBase):
         return single_step_error_estimate
 
     def _make_adaptive_stepper(self, state: FieldBase) -> Callable[
-        [np.ndarray, float, float, float, OnlineStatistics | None],
-        tuple[float, float, int, float],
+        [np.ndarray, float, float, float, OnlineStatistics | None, Any],
+        tuple[float, float, int],
     ]:
         """Make an adaptive Euler stepper.
 
@@ -524,9 +564,9 @@ class AdaptiveSolverBase(SolverBase):
             t_end: float,
             dt_init: float,
             dt_stats: OnlineStatistics | None = None,
-        ) -> tuple[float, float, int, float]:
+            post_step_data=None,
+        ) -> tuple[float, float, int]:
             """Adaptive stepper that advances the state in time."""
-            modifications = 0.0
             dt_opt = dt_init
             t = t_start
             steps = 0
@@ -546,7 +586,8 @@ class AdaptiveSolverBase(SolverBase):
                     steps += 1
                     t += dt_step
                     state_data[...] = new_state
-                    modifications += post_step_hook(state_data, t)
+                    post_step_hook(state_data, t, post_step_data)
+
                     if dt_stats is not None:
                         dt_stats.add(dt_step)
 
@@ -556,7 +597,7 @@ class AdaptiveSolverBase(SolverBase):
                 else:
                     break  # return to the controller
 
-            return t, dt_opt, steps, modifications
+            return t, dt_opt, steps
 
         if self._compiled:
             # compile inner stepper
@@ -566,6 +607,7 @@ class AdaptiveSolverBase(SolverBase):
                 nb.double,
                 nb.double,
                 nb.typeof(self.info["dt_statistics"]),
+                self._post_step_data_type,
             )
             adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
 
@@ -594,32 +636,39 @@ class AdaptiveSolverBase(SolverBase):
             # create stepper with fixed steps
             return super().make_stepper(state, dt)
 
-        # support `None` as a default value, so the controller can signal that
-        # the solver should use a default time step
+        # Support `None` as a default value, so the controller can signal that
+        # the solver should use a default time step.
         if dt is None:
             dt_float = self.dt_default
         else:
             dt_float = float(dt)  # explicit casting to help type checking
 
-        self.info["dt"] = dt_float
-        self.info["dt_adaptive"] = True
-        self.info["steps"] = 0
-        self.info["stochastic"] = getattr(self.pde, "is_sde", False)
-        self.info["state_modifications"] = 0.0
-
         # create stepper with adaptive steps
         self.info["dt_statistics"] = OnlineStatistics()
         adaptive_stepper = self._make_adaptive_stepper(state)
 
+        self.info["dt"] = dt_float
+        self.info["dt_adaptive"] = True
+        self.info["steps"] = 0
+        self.info["stochastic"] = getattr(self.pde, "is_sde", False)
+        self.info["post_step_data"] = self._post_step_data_init
+
         def wrapped_stepper(state: FieldBase, t_start: float, t_end: float) -> float:
             """Advance `state` from `t_start` to `t_end` using adaptive steps."""
             nonlocal dt_float  # `dt_float` stores value for the next call
-
-            t_last, dt_float, steps, modifications = adaptive_stepper(
-                state.data, t_start, t_end, dt_float, self.info["dt_statistics"]
+            # retrieve last post_step_data and continue with this
+            post_step_data = self.info["post_step_data"]
+            # call the adaptive stepper
+            t_last, dt_float, steps = adaptive_stepper(
+                state.data,
+                t_start,
+                t_end,
+                dt_float,
+                self.info["dt_statistics"],
+                post_step_data,
             )
+            # keep some stats and data
             self.info["steps"] += steps
-            self.info["state_modifications"] += modifications
             return t_last
 
         return wrapped_stepper

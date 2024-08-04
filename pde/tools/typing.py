@@ -57,5 +57,7 @@ class GhostCellSetter(Protocol):
 
 
 class StepperHook(Protocol):
-    def __call__(self, state_data: np.ndarray, t: float) -> float:
+    def __call__(
+        self, state_data: np.ndarray, t: float, post_step_data: np.ndarray
+    ) -> None:
         """Function analyzing and potentially modifying the current state."""

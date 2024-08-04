@@ -269,14 +269,6 @@ class Controller:
                 f"than on the actual simulation ({profiler['solver']:.3g})"
             )
 
-        # check potential state modifications and throw a warning if they are detected
-        state_modifications = self.solver.info.get("state_modifications", 0)
-        if state_modifications > 1:
-            self._logger.warning(
-                f"Detected significant state modifications ({state_modifications}). "
-                "Consider reducing time step."
-            )
-
     def _run_mpi_client(self, state: TState, dt: float | None = None) -> None:
         """Loop for run the simulation on client nodes during an MPI run.
 

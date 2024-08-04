@@ -110,20 +110,38 @@ class PDEBase(metaclass=ABCMeta):
         # check for self.noise, in case __init__ is not called in a subclass
         return hasattr(self, "noise") and np.any(self.noise != 0)  # type: ignore
 
-    def make_post_step_hook(self, state: FieldBase) -> StepperHook:
+    def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 
-        This function receives the current state as a numpy array together with the
-        current time point. The function can modify the state data in place. The
-        function must return a float value, which normally indicates how much the state
-        was modified. This value does not affect the simulation, but is accumulated over
-        time and provided in the diagnostic information for debugging.
+        This function receives three arugments: the current state as a numpy array, the
+        current time point, and a numpy array that can store data for the hook function.
+        The function can modify the state data in place. If the function makes use of
+        the data feature, it must replace the data in place.
 
         The hook can also be used to abort the simulation when a user-defined condition
-        is met by raising `StopIteration`. Note that this interrupts the inner-most loop
-        and some of the final information (including the stop time and the total
-        modifications made by the hook) might be incorrect. These fields will usually
-        still reflect the values they assumed at the last tracker interrupt.
+        is met by raising `StopIteration`. Note that this interrupts the inner-most
+        loop, so that some final information might be still reflect the values they
+        assumed at the last tracker interrupt. Additional information (beside the
+        current state) should be returned by the 1post_step_data1.
+
+        Example:
+            The following code provides an example that creates a hook function that
+            limits the state to a maximal value of 1 and keeps track of the total
+            correction that is applied. This is achieved using `post_step_data`, which
+            is initialized with the second value (0) returned by the method and
+            incremented each time the hook is called.
+
+            .. code-block:: python
+
+                def make_post_step_hook(self, state):
+
+                    def post_step_hook(state_data, t, post_step_data):
+                        i = state_data > 1  # get violating entries
+                        overshoot = (state_data[i] - 1).sum()  # get total correction
+                        state_data[i] = 1  # limit data entries
+                        post_step_data += overshoot  # accumulate total correction
+
+                    return post_step_hook, 0.  # hook function and initial value
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
@@ -131,15 +149,11 @@ class PDEBase(metaclass=ABCMeta):
                 be extracted
 
         Returns:
-            Function that can be applied to a state to modify it and which returns a
-            measure for the corrections applied to the state
+            tuple: The first entry is the function that implements the hook. The second
+                entry gives the initial data that is used as auxiallary data in the hook.
+                This can be `None` if no data is used.
         """
-
-        def post_step_hook(state_data: np.ndarray, t: float) -> float:
-            """No-op function."""
-            return 0
-
-        return post_step_hook
+        raise NotImplementedError
 
     @abstractmethod
     def evolution_rate(self, state: TState, t: float = 0) -> TState:
