@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
 import numba as nb
 import numpy as np
@@ -22,7 +22,7 @@ class AdamsBashforthSolver(SolverBase):
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, int], tuple[float, float]]:
+    ) -> Callable[[np.ndarray, float, int, Any], float]:
         """Return a stepper function using an explicit scheme with fixed time steps.
 
         Args:
@@ -56,8 +56,8 @@ class AdamsBashforthSolver(SolverBase):
             single_step = jit(sig_single_step)(single_step)
 
         def fixed_stepper(
-            state_data: np.ndarray, t_start: float, steps: int
-        ) -> tuple[float, float]:
+            state_data: np.ndarray, t_start: float, steps: int, post_step_data
+        ) -> float:
             """Perform `steps` steps with fixed time steps."""
             nonlocal state_prev, init_state_prev
 
@@ -66,14 +66,13 @@ class AdamsBashforthSolver(SolverBase):
                 state_prev[:] = state_data - dt * rhs_pde(state_data, t_start)
                 init_state_prev = False
 
-            modifications = 0.0
             for i in range(steps):
                 # calculate the right hand side
                 t = t_start + i * dt
                 single_step(state_data, t, state_prev)
-                modifications += post_step_hook(state_data, t)
+                post_step_hook(state_data, t, post_step_data=post_step_data)
 
-            return t + dt, modifications
+            return t + dt
 
         self._logger.info("Init explicit Adams-Bashforth stepper with dt=%g", dt)
 
