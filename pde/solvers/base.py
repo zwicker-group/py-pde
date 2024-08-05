@@ -137,7 +137,6 @@ class SolverBase(metaclass=ABCMeta):
             try:
                 # look for the definition of a hook function
                 if hasattr(self.pde, "make_modify_after_step"):
-
                     # Deprecated on 2024-08-02
                     warnings.warn(
                         "`make_modify_after_step` has been replaced by `make_post_step_hook`",
@@ -156,12 +155,16 @@ class SolverBase(metaclass=ABCMeta):
 
                     # create zero of correct type
                     self._post_step_data_init = np.dtype(state.dtype).type(0)
+                    self._logger.info(
+                        "Created post-step hook from `make_modify_after_step`"
+                    )
 
                 else:
                     # get hook function and initial data from PDE
                     post_step_hook, self._post_step_data_init = (
                         self.pde.make_post_step_hook(state)
                     )
+                    self._logger.info("Created post-step hook from PDE")
 
             except NotImplementedError:
                 pass  # no hook function defined on the PDE
@@ -175,6 +178,7 @@ class SolverBase(metaclass=ABCMeta):
                 """Default hook function does nothing."""
 
             self._post_step_data_init = None
+            self._logger.debug("No post-step hook defined")
 
         else:
             # ensure that the initial values is a mutable array
@@ -184,6 +188,7 @@ class SolverBase(metaclass=ABCMeta):
         if self._compiled:
             sig_hook = (nb.typeof(state.data), nb.float64, self._post_step_data_type)
             post_step_hook = jit(sig_hook)(post_step_hook)
+            self._logger.debug("Compiled post-step hook")
 
         return post_step_hook  # type: ignore
 
