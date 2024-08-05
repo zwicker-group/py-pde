@@ -177,13 +177,8 @@ class SolverBase(metaclass=ABCMeta):
             self._post_step_data_init = None
 
         else:
-            if np.isscalar(self._post_step_data_init):
-                self._post_step_data_init = np.array(self._post_step_data_init)
-            if not isinstance(self._post_step_data_init, np.ndarray):
-                raise TypeError(
-                    "The intial data provided for the post-step hook must be a number "
-                    "or a numpy array."
-                )
+            # ensure that the initial values is a mutable array
+            self._post_step_data_init = np.array(self._post_step_data_init, copy=True)
 
         self._post_step_data_type = nb.typeof(self._post_step_data_init)
         if self._compiled:
