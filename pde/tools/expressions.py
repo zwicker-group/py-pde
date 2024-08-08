@@ -131,7 +131,7 @@ def np_heaviside(x1, x2):
 
 # special functions that we want to support in expressions but that are not defined by
 # sympy version 1.6 or have a different signature than expected by numba/numpy
-SPECIAL_FUNCTIONS = {"Heaviside": _heaviside_implemention}
+SPECIAL_FUNCTIONS = {"Heaviside": _heaviside_implemention, "hypot": np.hypot}
 
 
 class ListArrayPrinter(PythonCodePrinter):

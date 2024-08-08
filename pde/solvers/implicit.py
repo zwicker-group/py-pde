@@ -24,6 +24,7 @@ class ImplicitSolver(SolverBase):
     def __init__(
         self,
         pde: PDEBase,
+        *,
         maxiter: int = 100,
         maxerror: float = 1e-4,
         backend: BackendType = "auto",
@@ -31,7 +32,7 @@ class ImplicitSolver(SolverBase):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
-                The instance describing the pde that needs to be solved
+                The partial differential equation that should be solved
             maxiter (int):
                 The maximal number of iterations per step
             maxerror (float):

@@ -33,7 +33,7 @@ class CrankNicolsonSolver(SolverBase):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
-                The instance describing the pde that needs to be solved
+                The partial differential equation that should be solved
             maxiter (int):
                 The maximal number of iterations per step
             maxerror (float):
