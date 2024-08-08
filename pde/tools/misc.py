@@ -126,37 +126,6 @@ def decorator_arguments(decorator: Callable) -> Callable:
     return new_decorator
 
 
-def skipUnlessModule(module_names: str | Sequence[str]) -> Callable[[TFunc], TFunc]:
-    """Decorator that skips a test when a module is not available.
-
-    Args:
-        module_names (str): The name of the required module(s)
-
-    Returns:
-        A function, so this can be used as a decorator
-    """
-    # deprecated since 2024-01-03
-    warnings.warn(
-        "`skipUnlessModule` is deprecated. Use "
-        '`@pytest.mark.skipif(not module_available("module"))` instead.',
-        DeprecationWarning,
-    )
-
-    if isinstance(module_names, str):
-        module_names = [module_names]
-
-    for module_name in module_names:
-        if not module_available(module_name):
-            # return decorator skipping test
-            return unittest.skip(f"requires {module_name}")
-
-    # return no-op decorator if all modules are available
-    def wrapper(f: TFunc) -> TFunc:
-        return f
-
-    return wrapper
-
-
 def import_class(identifier: str):
     """Import a class or module given an identifier.
 

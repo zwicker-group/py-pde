@@ -5,17 +5,22 @@
 import numpy as np
 import pytest
 
-from pde import DiffusionPDE, ScalarField, UnitGrid
+from pde import DiffusionPDE, ScalarField, UnitGrid, PDE, FieldCollection
 from pde.solvers import Controller, ExplicitMPISolver
 from pde.tools import mpi
 
 
 @pytest.mark.multiprocessing
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
 @pytest.mark.parametrize(
-    "scheme, decomposition",
-    [("euler", "auto"), ("euler", [1, -1]), ("runge-kutta", [-1, 1])],
+    "scheme, adaptive, decomposition",
+    [
+        ("euler", False, "auto"),
+        ("euler", True, [1, -1]),
+        ("runge-kutta", False, [-1, 1]),
+    ],
 )
-def test_simple_pde_mpi(scheme, decomposition, rng):
+def test_simple_pde_mpi(backend, scheme, adaptive, decomposition, rng):
     """Test setting boundary conditions using numba."""
     grid = UnitGrid([8, 8], periodic=[True, False])
 
@@ -26,32 +31,28 @@ def test_simple_pde_mpi(scheme, decomposition, rng):
         "state": field,
         "t_range": 1.01,
         "dt": 0.1,
+        "adaptive": adaptive,
         "scheme": scheme,
         "tracker": None,
         "ret_info": True,
     }
-    res1, info1 = eq.solve(
-        backend="numpy", solver="explicit_mpi", decomposition=decomposition, **args
-    )
-    res2, info2 = eq.solve(
-        backend="numba", solver="explicit_mpi", decomposition=decomposition, **args
+    res_mpi, info_mpi = eq.solve(
+        backend=backend, solver="explicit_mpi", decomposition=decomposition, **args
     )
 
     if mpi.is_main:
         # check results in the main process
-        expect, _ = eq.solve(backend="numpy", solver="explicit", **args)
-        np.testing.assert_allclose(res1.data, expect.data)
-        np.testing.assert_allclose(res2.data, expect.data)
+        expect, info2 = eq.solve(backend="numpy", solver="explicit", **args)
+        np.testing.assert_allclose(res_mpi.data, expect.data)
 
-        for info in [info1, info2]:
-            assert info["solver"]["steps"] == 11
-            assert info["solver"]["use_mpi"]
-            if decomposition != "auto":
-                for i in range(2):
-                    if decomposition[i] == 1:
-                        assert info["solver"]["grid_decomposition"][i] == 1
-                    else:
-                        assert info["solver"]["grid_decomposition"][i] == mpi.size
+        assert info_mpi["solver"]["steps"] == info2["solver"]["steps"]
+        assert info_mpi["solver"]["use_mpi"]
+        if decomposition != "auto":
+            for i in range(2):
+                if decomposition[i] == 1:
+                    assert info_mpi["solver"]["grid_decomposition"][i] == 1
+                else:
+                    assert info_mpi["solver"]["grid_decomposition"][i] == mpi.size
 
 
 @pytest.mark.multiprocessing
@@ -77,3 +78,36 @@ def test_stochastic_mpi_solvers(backend, rng):
 
         assert not solver1.info["dt_adaptive"]
         assert not solver2.info["dt_adaptive"]
+
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_multiple_pdes_mpi(backend, rng):
+    """Test setting boundary conditions using numba."""
+    grid = UnitGrid([8, 8], periodic=[True, False])
+
+    fields = FieldCollection.scalar_random_uniform(2, grid, rng=rng)
+    eq = PDE({"a": "laplace(a) - b", "b": "laplace(b) + a"})
+
+    args = {
+        "state": fields,
+        "t_range": 1.01,
+        "dt": 0.1,
+        "adaptive": True,
+        "scheme": "euler",
+        "tracker": None,
+        "ret_info": True,
+    }
+    res_mpi, info_mpi = eq.solve(backend=backend, solver="explicit_mpi", **args)
+
+    if mpi.is_main:
+        # check results in the main process
+        expect, info2 = eq.solve(backend="numpy", solver="explicit", **args)
+        np.testing.assert_allclose(res_mpi.data, expect.data)
+
+        assert info_mpi["solver"]["steps"] == info2["solver"]["steps"]
+        assert info_mpi["solver"]["use_mpi"]
+        from pprint import pprint
+
+        pprint(info_mpi)
+        print(info_mpi)

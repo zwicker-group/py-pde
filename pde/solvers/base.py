@@ -393,7 +393,7 @@ class AdaptiveSolverBase(SolverBase):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
-                The instance describing the pde that needs to be solved
+                The partial differential equation that should be solved
             backend (str):
                 Determines how the function is created. Accepted  values are 'numpy` and
                 'numba'. Alternatively, 'auto' lets the code decide for the most optimal
@@ -411,8 +411,7 @@ class AdaptiveSolverBase(SolverBase):
         self.tolerance = tolerance
 
     def _make_error_synchronizer(self) -> Callable[[float], float]:
-        """Return helper function that synchronizes errors between multiple
-        processes."""
+        """Return function that synchronizes errors between multiple processes."""
 
         @register_jitable
         def synchronize_errors(error: float) -> float:
@@ -578,7 +577,7 @@ class AdaptiveSolverBase(SolverBase):
                 new_state, error = single_step_error(state_data, t, dt_step)
 
                 error_rel = error / tolerance  # normalize error to given tolerance
-                # synchronize the error between all processes (if necessary)
+                # synchronize the error between all processes (necessary for MPI)
                 error_rel = sync_errors(error_rel)
 
                 # do the step if the error is sufficiently small
@@ -592,7 +591,7 @@ class AdaptiveSolverBase(SolverBase):
                         dt_stats.add(dt_step)
 
                 if t < t_end:
-                    # adjust the time step and continue
+                    # adjust the time step and continue (happens in every MPI process)
                     dt_opt = adjust_dt(dt_step, error_rel)
                 else:
                     break  # return to the controller

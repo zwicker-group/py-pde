@@ -89,7 +89,7 @@ class ExplicitMPISolver(ExplicitSolver):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
-                The instance describing the pde that needs to be solved
+                The partial differential equation that should be solved
             scheme (str):
                 Defines the explicit scheme to use. Supported values are 'euler' and
                 'runge-kutta' (or 'rk' for short).
@@ -117,22 +117,21 @@ class ExplicitMPISolver(ExplicitSolver):
         self.decomposition = decomposition
 
     def _make_error_synchronizer(self) -> Callable[[float], float]:
-        """Return helper function that synchronizes errors between multiple
-        processes."""
-        if mpi.parallel_run:
-            # in a parallel run, we need to return the maximal error
-            from ..tools.mpi import Operator, mpi_allreduce
+        """Return function that synchronizes errors between multiple processes."""
+        # if mpi.parallel_run:
+        # in a parallel run, we need to return the maximal error
+        from ..tools.mpi import Operator, mpi_allreduce
 
-            operator_max_id = Operator.MAX
+        operator_max_id = Operator.MAX
 
-            @register_jitable
-            def synchronize_errors(error: float) -> float:
-                """Return maximal error accross all cores."""
-                return mpi_allreduce(error, operator_max_id)  # type: ignore
+        @register_jitable
+        def synchronize_errors(error: float) -> float:
+            """Return maximal error accross all cores."""
+            return mpi_allreduce(error, operator_max_id)  # type: ignore
 
-            return synchronize_errors  # type: ignore
-        else:
-            return super()._make_error_synchronizer()
+        return synchronize_errors  # type: ignore
+        # else:
+        #     return super()._make_error_synchronizer()
 
     def make_stepper(
         self, state: FieldBase, dt=None
@@ -200,7 +199,10 @@ class ExplicitMPISolver(ExplicitSolver):
                 t_end = self.mesh.broadcast(t_end)
                 substate_data = self.mesh.split_field_data_mpi(state.data)
 
-                # evolve the sub state
+                # Evolve the sub-state on each individual node. The nodes synchronize
+                # field data via special boundary conditions and they synchronize the
+                # maximal error via the error synchronizer. Apart from that, all nodes
+                # work independently.
                 t_last, dt, steps = adaptive_stepper(
                     substate_data,
                     t_start,
@@ -244,7 +246,9 @@ class ExplicitMPISolver(ExplicitSolver):
                 steps = self.mesh.broadcast(steps)
                 substate_data = self.mesh.split_field_data_mpi(state.data)
 
-                # evolve the sub state
+                # Evolve the sub-state on each individual node. The nodes synchronize
+                # field data via special boundary conditions. Apart from that, all nodes
+                # work independently.
                 t_last = fixed_stepper(substate_data, t_start, steps, post_step_data)
 
                 # check whether t_last is the same for all processes

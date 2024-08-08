@@ -25,11 +25,11 @@ class ScipySolver(SolverBase):
 
     name = "scipy"
 
-    def __init__(self, pde: PDEBase, backend: BackendType = "auto", **kwargs):
+    def __init__(self, pde: PDEBase, *, backend: BackendType = "auto", **kwargs):
         r"""
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
-                The instance describing the pde that needs to be solved
+                The partial differential equation that should be solved
             backend (str):
                 Determines how the function is created. Accepted  values are
                 'numpy` and 'numba'. Alternatively, 'auto' lets the code decide

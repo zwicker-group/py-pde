@@ -35,7 +35,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         """
         Args:
             pde (:class:`~pde.pdes.base.PDEBase`):
-                The instance describing the pde that needs to be solved
+                The partial differential equation that should be solved
             scheme (str):
                 Defines the explicit scheme to use. Supported values are 'euler' and
                 'runge-kutta' (or 'rk' for short).
@@ -225,7 +225,7 @@ class ExplicitSolver(AdaptiveSolverBase):
                     error = np.abs(step_large - step_small).max()
                     error_rel = error / tolerance  # normalize error to given tolerance
 
-                # synchronize the error between all processes (if necessary)
+                # synchronize the error between all processes (necessary for MPI)
                 error_rel = sync_errors(error_rel)
 
                 if error_rel <= 1:  # error is sufficiently small
