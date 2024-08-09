@@ -160,16 +160,13 @@ class ExplicitMPISolver(ExplicitSolver):
         # decompose the state into multiple cells
         self.mesh = GridMesh.from_grid(state.grid, self.decomposition)
         sub_state = self.mesh.extract_subfield(state)
-        print("GOT sub_state for node", mpi.rank)
         self.info["grid_decomposition"] = self.mesh.shape
 
         if self.adaptive:
             # create stepper with adaptive steps
             self.info["dt_statistics"] = OnlineStatistics()
 
-            print("MAKE adaptive stepper for rank", mpi.rank)
             adaptive_stepper = self._make_adaptive_stepper(sub_state)
-            print("GOT adaptive stepper for rank", mpi.rank)
             self.info["post_step_data"] = self._post_step_data_init
 
             def wrapped_stepper(
@@ -182,7 +179,6 @@ class ExplicitMPISolver(ExplicitSolver):
                 post_step_data = self.info["post_step_data"]
 
                 # distribute the end time and the field to all nodes
-                print("BROADCAST DATA")
                 t_end = self.mesh.broadcast(t_end)
                 substate_data = self.mesh.split_field_data_mpi(state.data)
 
@@ -190,7 +186,6 @@ class ExplicitMPISolver(ExplicitSolver):
                 # field data via special boundary conditions and they synchronize the
                 # maximal error via the error synchronizer. Apart from that, all nodes
                 # work independently.
-                print("START ADAPTIVE STEPPER")
                 t_last, dt, steps = adaptive_stepper(
                     substate_data,
                     t_start,
@@ -199,20 +194,16 @@ class ExplicitMPISolver(ExplicitSolver):
                     self.info["dt_statistics"],
                     post_step_data,
                 )
-                print("t_last", t_last)
 
                 # check whether dt is the same for all processes
                 dt_list = self.mesh.allgather(dt)
                 if not np.isclose(min(dt_list), max(dt_list)):
                     # abort simulations in all nodes when they went out of sync
                     raise RuntimeError(f"Processes went out of sync: dt={dt_list}")
-                print("dt_list", dt_list)
 
                 # collect the data from all nodes
                 post_step_data_list = self.mesh.gather(post_step_data)
-                print("post_step_data_list", post_step_data_list)
                 self.mesh.combine_field_data_mpi(substate_data, out=state.data)
-                print("substate_data", state.data)
 
                 if mpi.is_main:
                     self.info["steps"] += steps

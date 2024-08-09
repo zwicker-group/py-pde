@@ -192,10 +192,8 @@ def mpi_allreduce(data, operator):
 @overload(mpi_allreduce)
 def ol_mpi_allreduce(data, operator):
     """Overload the `mpi_allreduce` function."""
-    import numba_mpi
-
-    if not parallel_run:
-        # in a serial run, we can always return the value as is
+    if size == 1:
+        # We can simply return the value in a serial run
 
         def impl(data, operator):
             return data
@@ -217,6 +215,8 @@ def ol_mpi_allreduce(data, operator):
         op_id = None  # use given value of operator
     else:
         raise RuntimeError(f"`operator` must be a literal type, not {operator}")
+
+    import numba_mpi
 
     @register_jitable
     def _allreduce(sendobj, recvobj, operator) -> int:
