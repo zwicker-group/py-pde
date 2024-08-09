@@ -39,6 +39,11 @@ class SolverBase(metaclass=ABCMeta):
     _use_post_step_hook: bool = True
     """bool: flag choosing whether the post-step hook of the PDE is called"""
 
+    _mpi_synchronization: bool = False
+    """bool: Flag indicating whether MPI synchronization is required. This is never the
+    case for serial solvers and even parallelized solvers might set this flag to False
+    if no synchronization between nodes is required"""
+
     _subclasses: dict[str, type[SolverBase]] = {}
     """dict: dictionary of all inheriting classes"""
 
@@ -116,6 +121,36 @@ class SolverBase(metaclass=ABCMeta):
     def _compiled(self) -> bool:
         """bool: indicates whether functions need to be compiled"""
         return self.backend == "numba" and not nb.config.DISABLE_JIT
+
+    def _make_error_synchronizer(
+        self, operator: int | str = "MAX"
+    ) -> Callable[[float], float]:
+        """Return function that synchronizes errors between multiple processes.
+
+        Args:
+            operator (str or int):
+                Flag determining how the value from multiple nodes is combined.
+                Possible values include "MAX", "MIN", and "SUM".
+
+        Returns:
+            Function that can be used to synchronize errors across nodes
+        """
+        if self._mpi_synchronization:  # mpi.parallel_run:
+            # in a parallel run, we need to synchronize values
+            from ..tools.mpi import mpi_allreduce
+
+            @register_jitable
+            def synchronize_errors(error: float) -> float:
+                """Return error synchronized accross all cores."""
+                return mpi_allreduce(error, operator=operator)  # type: ignore
+
+        else:
+
+            @register_jitable
+            def synchronize_errors(value: float) -> float:
+                return value
+
+        return synchronize_errors  # type: ignore
 
     def _make_post_step_hook(self, state: FieldBase) -> StepperHook:
         """Create a function that calls the post-step hook of the PDE.
@@ -409,15 +444,6 @@ class AdaptiveSolverBase(SolverBase):
         super().__init__(pde, backend=backend)
         self.adaptive = adaptive
         self.tolerance = tolerance
-
-    def _make_error_synchronizer(self) -> Callable[[float], float]:
-        """Return function that synchronizes errors between multiple processes."""
-
-        @register_jitable
-        def synchronize_errors(error: float) -> float:
-            return error
-
-        return synchronize_errors  # type: ignore
 
     def _make_dt_adjuster(self) -> Callable[[float, float], float]:
         """Return a function that can be used to adjust time steps."""

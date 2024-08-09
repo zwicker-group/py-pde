@@ -2145,7 +2145,7 @@ class GridBase(metaclass=ABCMeta):
                     arr (:class:`~numpy.ndarray`): discretized data on grid
                 """
                 integral = integrate_local(arr)
-                return mpi_allreduce(integral)  # type: ignore
+                return mpi_allreduce(integral, operator="SUM")  # type: ignore
 
         return integrate_global  # type: ignore
 

@@ -143,11 +143,12 @@ class Controller:
 
         return _handle_stop_iteration
 
-    def _run_single(self, state: TState, dt: float | None = None) -> None:
-        """Run the simulation.
+    def _run_main_process(self, state: TState, dt: float | None = None) -> None:
+        """Run the main part of the simulation.
 
-        Diagnostic information about the solver procedure are available in the
-        `diagnostics` property of the instance after this function has been called.
+        This is either a serial run or the main node of an MPI run. Diagnostic
+        information about the solver procedure are available in the `diagnostics`
+        property of the instance after this function has been called.
 
         Args:
             state:
@@ -269,8 +270,8 @@ class Controller:
                 f"than on the actual simulation ({profiler['solver']:.3g})"
             )
 
-    def _run_mpi_client(self, state: TState, dt: float | None = None) -> None:
-        """Loop for run the simulation on client nodes during an MPI run.
+    def _run_client_process(self, state: TState, dt: float | None = None) -> None:
+        """Run the simulation on client nodes during an MPI run.
 
         This function just loops the stepper advancing the sub field of the current node
         in time. All other logic, including trackers, are done in the main node.
@@ -300,6 +301,72 @@ class Controller:
         while t < t_end:
             t = stepper(state, t, t_end)
 
+    def _run_serial(self, state: TState, dt: float | None = None) -> TState:
+        """Run the simulation in serial mode.
+
+        Diagnostic information about the solver are available in the
+        :attr:`~Controller.diagnostics` property after this function has been called.
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                The initial state of the simulation.
+            dt (float):
+                Time step of the chosen stepping scheme. If `None`, a default value
+                based on the stepper will be chosen.
+
+        Returns:
+            The state at the final time point. If multiprocessing is used, only the main
+            node will return the state. All other nodes return None.
+        """
+        self.info["mpi_run"] = False
+        self._run_main_process(state, dt)
+        return state
+
+    def _run_parallel(self, state: TState, dt: float | None = None) -> TState | None:
+        """Run the simulation in MPI mode.
+
+        Diagnostic information about the solver are available in the
+        :attr:`~Controller.diagnostics` property after this function has been called.
+
+        Args:
+            state (:class:`~pde.fields.base.FieldBase`):
+                The initial state of the simulation.
+            dt (float):
+                Time step of the chosen stepping scheme. If `None`, a default value
+                based on the stepper will be chosen.
+
+        Returns:
+            The state at the final time point. If multiprocessing is used, only the main
+            node will return the state. All other nodes return None.
+        """
+        from mpi4py import MPI
+
+        self.info["mpi_run"] = True
+        self.info["mpi_count"] = mpi.size
+        self.info["mpi_rank"] = mpi.rank
+
+        if mpi.is_main:
+            # this node is the primary one and must thus run the main process
+            try:
+                self._run_main_process(state, dt)
+            except Exception as err:
+                print(err)  # simply print the exception to show some info
+                MPI.COMM_WORLD.Abort()  # abort all other nodes
+                raise
+            else:
+                return state
+
+        else:
+            # this node is a secondary node and must thus run the client process
+            try:
+                self._run_client_process(state, dt)
+            except Exception as err:
+                print(err)  # simply print the exception to show some info
+                MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
+                raise
+            else:
+                return None  # do not return anything in client processes
+
     def run(self, initial_state: TState, dt: float | None = None) -> TState | None:
         """Run the simulation.
 
@@ -326,15 +393,7 @@ class Controller:
         else:
             state = initial_state.copy()
 
-        # decide whether to call the main routine or whether this is an MPI client
-        if mpi.is_main:
-            # this node is the primary one
-            self._run_single(state, dt)
-            self.info["process_count"] = mpi.size
+        if mpi.size > 1:  # run the simulation on multiple nodes
+            return self._run_parallel(state, dt)
         else:
-            # multiple processes are used and this is one of the secondaries
-            self._run_mpi_client(state, dt)
-            self.info["process_rank"] = mpi.rank
-            return None  # do not return anything in client processes
-
-        return state
+            return self._run_serial(state, dt)
