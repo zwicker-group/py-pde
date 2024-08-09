@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import Callable, Literal
 
 import numpy as np
-from numba.extending import register_jitable
 
 from ..fields.base import FieldBase
 from ..grids._mesh import GridMesh
@@ -76,6 +75,8 @@ class ExplicitMPISolver(ExplicitSolver):
 
     name = "explicit_mpi"
 
+    _mpi_synchronization = mpi.parallel_run
+
     def __init__(
         self,
         pde: PDEBase,
@@ -111,25 +112,11 @@ class ExplicitMPISolver(ExplicitSolver):
                 adaptive time stepping to choose a time step which is small enough so
                 the truncation error of a single step is below `tolerance`.
         """
+        pde._mpi_synchronization = self._mpi_synchronization
         super().__init__(
             pde, scheme=scheme, backend=backend, adaptive=adaptive, tolerance=tolerance
         )
         self.decomposition = decomposition
-
-    def _make_error_synchronizer(self) -> Callable[[float], float]:
-        """Return function that synchronizes errors between multiple processes."""
-        # if mpi.parallel_run:
-        # in a parallel run, we need to return the maximal error
-        from ..tools.mpi import mpi_allreduce
-
-        @register_jitable
-        def synchronize_errors(error: float) -> float:
-            """Return maximal error accross all cores."""
-            return mpi_allreduce(error, operator="MAX")  # type: ignore
-
-        return synchronize_errors  # type: ignore
-        # else:
-        #     return super()._make_error_synchronizer()
 
     def make_stepper(
         self, state: FieldBase, dt=None

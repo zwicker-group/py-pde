@@ -17,7 +17,7 @@ from pde.tools import mpi
     [
         ("euler", False, "auto"),
         ("euler", True, [1, -1]),
-        ("runge-kutta", False, [-1, 1]),
+        ("runge-kutta", True, [-1, 1]),
     ],
 )
 def test_simple_pde_mpi(backend, scheme, adaptive, decomposition, rng):
@@ -107,7 +107,3 @@ def test_multiple_pdes_mpi(backend, rng):
 
         assert info_mpi["solver"]["steps"] == info2["solver"]["steps"]
         assert info_mpi["solver"]["use_mpi"]
-        from pprint import pprint
-
-        pprint(info_mpi)
-        print(info_mpi)

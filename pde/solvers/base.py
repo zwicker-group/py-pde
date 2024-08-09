@@ -39,6 +39,11 @@ class SolverBase(metaclass=ABCMeta):
     _use_post_step_hook: bool = True
     """bool: flag choosing whether the post-step hook of the PDE is called"""
 
+    _mpi_synchronization: bool = False
+    """bool: Flag indicating whether MPI synchronization is required. This is never the
+    case for serial solvers and even parallelized solvers might set this flag to False
+    if no synchronization between nodes is required"""
+
     _subclasses: dict[str, type[SolverBase]] = {}
     """dict: dictionary of all inheriting classes"""
 
@@ -412,10 +417,20 @@ class AdaptiveSolverBase(SolverBase):
 
     def _make_error_synchronizer(self) -> Callable[[float], float]:
         """Return function that synchronizes errors between multiple processes."""
+        if self._mpi_synchronization:  # mpi.parallel_run:
+            # in a parallel run, we need to return the maximal error
+            from ..tools.mpi import mpi_allreduce
 
-        @register_jitable
-        def synchronize_errors(error: float) -> float:
-            return error
+            @register_jitable
+            def synchronize_errors(error: float) -> float:
+                """Return maximal error accross all cores."""
+                return mpi_allreduce(error, operator="MAX")  # type: ignore
+
+        else:
+
+            @register_jitable
+            def synchronize_errors(value: float) -> float:
+                return value
 
         return synchronize_errors  # type: ignore
 

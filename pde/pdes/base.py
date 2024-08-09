@@ -60,6 +60,12 @@ class PDEBase(metaclass=ABCMeta):
     """bool: Flag indicating whether the right hand side is a complex-valued PDE, which
     requires all involved variables to have complex data type."""
 
+    _mpi_synchronization: bool = False
+    """bool: Flag indicating whether the PDE will be solved on multiple nodes using MPI.
+    This flag will be set by the solver. If it is true and the PDE requires global
+    values in its evaluation, the synchronization between nodes needs to be handled. In
+    many cases, PDEs are defined locally and no such synchronization is necessary."""
+
     def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
         """
         Args:
