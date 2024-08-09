@@ -19,12 +19,12 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import numba as nb
 import numpy as np
 from numba import types
-from numba.extending import overload, register_jitable
+from numba.extending import SentryLiteralArgs, overload, register_jitable
 
 try:
     from numba.types import Literal
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 # Initialize assuming that we run serial code if `numba_mpi` is not available
 initialized: bool = False
-"""bool: Flag determining whether mpi was initialized (and is available)"""
+"""bool: Flag determining whether MPI was initialized (and is available)"""
 
 size: int = 1
 """int: Total process count"""
@@ -158,10 +158,11 @@ def ol_mpi_recv(data, source: int, tag: int):
     return impl
 
 
-def mpi_allreduce(data, operator: int | str | None = None):
+def mpi_allreduce(data, operator):
     """Combines data from all MPI nodes.
 
-    Note that complex datatypes and user-defined functions are not properly supported.
+    Note that complex datatypes and user-defined reduction operators are not properly
+    supported in numba-compiled cases.
 
     Args:
         data:
@@ -173,21 +174,39 @@ def mpi_allreduce(data, operator: int | str | None = None):
     Returns:
         The accumulated data
     """
-    if operator:
-        return MPI.COMM_WORLD.allreduce(data, op=Operator.operator(operator))
+    if not parallel_run:
+        # in a serial run, we can always return the value as is
+        return data
+
+    if isinstance(data, np.ndarray):
+        # synchronize an array
+        out = np.empty_like(data)
+        MPI.COMM_WORLD.Allreduce(data, out, op=Operator.operator(operator))
+        return out
+
     else:
-        return MPI.COMM_WORLD.allreduce(data)
+        # synchronize a single value
+        return MPI.COMM_WORLD.allreduce(data, op=Operator.operator(operator))
 
 
 @overload(mpi_allreduce)
-def ol_mpi_allreduce(data, operator: int | str | None = None):
+def ol_mpi_allreduce(data, operator):
     """Overload the `mpi_allreduce` function."""
     import numba_mpi
 
-    if operator is None or isinstance(operator, nb.types.NoneType):
-        op_id = -1  # value will not be used
-    elif isinstance(operator, Literal):
-        # an operator is specified (using a literal value
+    if not parallel_run:
+        # in a serial run, we can always return the value as is
+
+        def impl(data, operator):
+            return data
+
+        return impl
+
+    # Conversely, in a parallel run, we need to use the correct reduction. Let's first
+    # determine the operator, which must be given as a literal type
+    SentryLiteralArgs(["operator"]).for_function(ol_mpi_allreduce).bind(data, operator)
+    if isinstance(operator, Literal):
+        # an operator is specified (using a literal value)
         if isinstance(operator.literal_value, str):
             # an operator is specified by it's name
             op_id = Operator.id(operator.literal_value)
@@ -200,35 +219,67 @@ def ol_mpi_allreduce(data, operator: int | str | None = None):
         raise RuntimeError(f"`operator` must be a literal type, not {operator}")
 
     @register_jitable
-    def _allreduce(sendobj, recvobj, operator: int | str | None = None) -> int:
+    def _allreduce(sendobj, recvobj, operator) -> int:
         """Helper function that calls `numba_mpi.allreduce`"""
-        if operator is None:
-            return numba_mpi.allreduce(sendobj, recvobj)  # type: ignore
-        elif op_id is None:
+        if op_id is None:
             return numba_mpi.allreduce(sendobj, recvobj, operator)  # type: ignore
         else:
             return numba_mpi.allreduce(sendobj, recvobj, op_id)  # type: ignore
 
     if isinstance(data, types.Number):
+        # implementation of the reduction for a single number
 
-        def impl(data, operator: int | str | None = None):
+        def impl(data, operator):
             """Reduce a single number across all cores."""
             sendobj = np.array([data])
             recvobj = np.empty((1,), sendobj.dtype)
             status = _allreduce(sendobj, recvobj, operator)
-            assert status == 0
+            if status != 0:
+                raise RuntimeError
             return recvobj[0]
 
     elif isinstance(data, types.Array):
+        # implementation of the reduction for a numpy array
 
-        def impl(data, operator: int | str | None = None):
+        def impl(data, operator):
             """Reduce an array across all cores."""
             recvobj = np.empty(data.shape, data.dtype)
             status = _allreduce(data, recvobj, operator)
-            assert status == 0
+            if status != 0:
+                raise RuntimeError
             return recvobj
 
     else:
         raise TypeError(f"Unsupported type {data.__class__.__name__}")
 
     return impl
+
+
+def make_float_synchronizer(operator: int | str = "MAX") -> Callable[[float], float]:
+    """Return function that synchronizes number between multiple processes.
+
+    Args:
+        operator (int or str):
+            MPI operator to synchronize the numbers. Typical values are "MAX", "MIN",
+            or "SUM"
+
+    Returns:
+        Function that can be used to synchronize float values across cores
+    """
+    if parallel_run:
+        # in a parallel run, we need to synchronize the float values
+        operator_id = Operator.id(operator)
+
+        @register_jitable
+        def synchronize_floats(value: float) -> float:
+            """Synchronize values accross all cores."""
+            return mpi_allreduce(value, operator_id)  # type: ignore
+
+    else:
+        # we don't need to do anything in a serial run
+
+        @register_jitable
+        def synchronize_floats(value: float) -> float:
+            return value
+
+    return synchronize_floats  # type: ignore

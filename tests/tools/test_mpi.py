@@ -5,7 +5,14 @@
 import numpy as np
 import pytest
 
-from pde.tools.mpi import mpi_allreduce, mpi_recv, mpi_send, rank, size
+from pde.tools.mpi import (
+    make_float_synchronizer,
+    mpi_allreduce,
+    mpi_recv,
+    mpi_send,
+    rank,
+    size,
+)
 
 
 @pytest.mark.multiprocessing
@@ -24,13 +31,51 @@ def test_send_recv():
 
 
 @pytest.mark.multiprocessing
-def test_allreduce():
-    """Test basic send and receive."""
-    from numba_mpi import Operator
+@pytest.mark.parametrize("operator", ["MAX", "MIN", "SUM"])
+def test_allreduce(operator, rng):
+    """Test MPI allreduce function."""
+    data = rng.uniform(size=size)
+    result = mpi_allreduce(data[rank], operator=operator)
 
-    data = np.arange(size)
-    total = mpi_allreduce(data[rank])
-    assert total == data.sum()
+    if operator == "MAX":
+        assert result == data.max()
+    elif operator == "MIN":
+        assert result == data.min()
+    elif operator == "SUM":
+        assert result == data.sum()
+    else:
+        raise NotImplementedError
 
-    total = mpi_allreduce(data[rank], int(Operator.MAX))
-    assert total == data.max()
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("operator", ["MAX", "MIN", "SUM"])
+def test_allreduce_array(operator, rng):
+    """Test MPI allreduce function."""
+    data = rng.uniform(size=(size, 3))
+    result = mpi_allreduce(data[rank], operator=operator)
+
+    if operator == "MAX":
+        np.testing.assert_allclose(result, data.max(axis=0))
+    elif operator == "MIN":
+        np.testing.assert_allclose(result, data.min(axis=0))
+    elif operator == "SUM":
+        np.testing.assert_allclose(result, data.sum(axis=0))
+    else:
+        raise NotImplementedError
+
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("operator", ["MAX", "MIN", "SUM"])
+def test_float_synchronizers(operator):
+    """Test make_float_synchronizer function."""
+    sync = make_float_synchronizer(operator=operator)
+    result = sync(rank)
+
+    if operator == "MAX":
+        assert result == size - 1
+    elif operator == "MIN":
+        assert result == 0
+    elif operator == "SUM":
+        assert result == sum(range(size))
+    else:
+        raise NotImplementedError

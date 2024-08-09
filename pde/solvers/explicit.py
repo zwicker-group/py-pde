@@ -13,6 +13,7 @@ import numpy as np
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
+from ..tools.mpi import mpi_allreduce
 from ..tools.numba import jit
 from ..tools.typing import BackendType
 from .base import AdaptiveSolverBase
@@ -182,7 +183,6 @@ class ExplicitSolver(AdaptiveSolverBase):
         post_step_hook = self._make_post_step_hook(state)
 
         # obtain auxiliary functions
-        sync_errors = self._make_error_synchronizer()
         adjust_dt = self._make_dt_adjuster()
         tolerance = self.tolerance
         dt_min = self.dt_min
@@ -226,7 +226,7 @@ class ExplicitSolver(AdaptiveSolverBase):
                     error_rel = error / tolerance  # normalize error to given tolerance
 
                 # synchronize the error between all processes (necessary for MPI)
-                error_rel = sync_errors(error_rel)
+                error_rel = mpi_allreduce(error_rel, operator="MAX")
 
                 if error_rel <= 1:  # error is sufficiently small
                     try:

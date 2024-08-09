@@ -22,6 +22,7 @@ from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
+from ..tools.mpi import mpi_allreduce
 from ..tools.numba import is_jitted, jit
 from ..tools.typing import BackendType, StepperHook
 
@@ -410,14 +411,19 @@ class AdaptiveSolverBase(SolverBase):
         self.adaptive = adaptive
         self.tolerance = tolerance
 
-    def _make_error_synchronizer(self) -> Callable[[float], float]:
-        """Return function that synchronizes errors between multiple processes."""
+    def _make_error_synchronizer(self):
+        # Deprecated on 2024-08-09
+        warnings.warn(
+            "`_make_error_synchronizer` has been replaced by "
+            "`pde.tools.mpi.mpi_allreduce`",
+            DeprecationWarning,
+        )
 
         @register_jitable
-        def synchronize_errors(error: float) -> float:
-            return error
+        def error_synchronizer(value):
+            return mpi_allreduce(value, operator="MAX")
 
-        return synchronize_errors  # type: ignore
+        return error_synchronizer
 
     def _make_dt_adjuster(self) -> Callable[[float, float], float]:
         """Return a function that can be used to adjust time steps."""
@@ -545,7 +551,6 @@ class AdaptiveSolverBase(SolverBase):
         # obtain functions determining how the PDE is evolved
         single_step_error = self._make_single_step_error_estimate(state)
         post_step_hook = self._make_post_step_hook(state)
-        sync_errors = self._make_error_synchronizer()
 
         # obtain auxiliary functions
         adjust_dt = self._make_dt_adjuster()
@@ -578,7 +583,7 @@ class AdaptiveSolverBase(SolverBase):
 
                 error_rel = error / tolerance  # normalize error to given tolerance
                 # synchronize the error between all processes (necessary for MPI)
-                error_rel = sync_errors(error_rel)
+                error_rel = mpi_allreduce(error_rel, operator="MAX")
 
                 # do the step if the error is sufficiently small
                 if error_rel <= 1:

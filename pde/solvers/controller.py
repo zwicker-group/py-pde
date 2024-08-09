@@ -327,14 +327,32 @@ class Controller:
             state = initial_state.copy()
 
         # decide whether to call the main routine or whether this is an MPI client
-        if mpi.is_main:
-            # this node is the primary one
-            self._run_single(state, dt)
+        if mpi.size > 1:
+            self.info["parallel_run"] = True
             self.info["process_count"] = mpi.size
-        else:
-            # multiple processes are used and this is one of the secondaries
-            self._run_mpi_client(state, dt)
             self.info["process_rank"] = mpi.rank
-            return None  # do not return anything in client processes
+            from mpi4py import MPI
+
+            if mpi.is_main:  # this node is the primary one
+                try:
+                    self._run_single(state, dt)
+                except Exception:
+                    # found exception on the main node
+                    MPI.COMM_WORLD.Abort()  # abort all other nodes
+                    raise
+            else:  # this node is a secondary (client) node
+                try:
+                    self._run_mpi_client(state, dt)
+                except Exception as exception:
+                    print(exception)  # simply print the exception to show some info
+                    MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
+                    raise
+                else:
+                    return None  # do not return anything in client processes
+
+        else:
+            # serial run without MPI
+            self.info["parallel_run"] = False
+            self._run_single(state, dt)
 
         return state

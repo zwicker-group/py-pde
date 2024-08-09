@@ -254,7 +254,9 @@ def test_integration_parallel(grid, decomposition, rank):
     subfield = mesh.extract_subfield(field)
 
     # numpy version
+    # integrate full field on each node
     np.testing.assert_allclose(field.integral, expected)
+    # integrate subfields per node and accumulate result
     np.testing.assert_allclose(subfield.integral, expected)
 
     # numba version

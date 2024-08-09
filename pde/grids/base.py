@@ -26,6 +26,7 @@ from numpy.typing import ArrayLike
 from ..tools.cache import cached_method, cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, hybridmethod
+from ..tools.mpi import mpi_allreduce
 from ..tools.numba import jit
 from ..tools.typing import (
     CellVolume,
@@ -1572,14 +1573,9 @@ class GridBase(metaclass=ABCMeta):
         if self._mesh is None or len(self._mesh) == 1:
             # standard case of a single integral
             return integral  # type: ignore
-
         else:
-            # we are in a parallel run, so we need to gather the sub-integrals from all
-            from mpi4py.MPI import COMM_WORLD  # @UnresolvedImport
-
-            integral_full = np.empty_like(integral)
-            COMM_WORLD.Allreduce(integral, integral_full)
-            return integral_full  # type: ignore
+            # accumulate integrals from all subprocesse (necessary if MPI is used)
+            return mpi_allreduce(integral, operator="SUM")  # type: ignore
 
     @cached_method()
     def make_normalize_point_compiled(
@@ -2135,8 +2131,6 @@ class GridBase(metaclass=ABCMeta):
         else:
             # we are in a parallel run, so we need to gather the sub-integrals from all
             # subgrids in the grid mesh
-            from ..tools.mpi import mpi_allreduce
-
             @jit
             def integrate_global(arr: np.ndarray) -> NumberOrArray:
                 """Integrate data over MPI parallelized grid.
@@ -2145,7 +2139,7 @@ class GridBase(metaclass=ABCMeta):
                     arr (:class:`~numpy.ndarray`): discretized data on grid
                 """
                 integral = integrate_local(arr)
-                return mpi_allreduce(integral)  # type: ignore
+                return mpi_allreduce(integral, operator="SUM")  # type: ignore
 
         return integrate_global  # type: ignore
 
