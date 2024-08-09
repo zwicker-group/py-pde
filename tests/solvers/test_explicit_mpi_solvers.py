@@ -5,7 +5,7 @@
 import numpy as np
 import pytest
 
-from pde import DiffusionPDE, ScalarField, UnitGrid, PDE, FieldCollection
+from pde import PDE, DiffusionPDE, FieldCollection, ScalarField, UnitGrid
 from pde.solvers import Controller, ExplicitMPISolver
 from pde.tools import mpi
 
