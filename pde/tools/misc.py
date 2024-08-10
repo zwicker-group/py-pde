@@ -26,9 +26,6 @@ import functools
 import importlib
 import json
 import os
-import unittest
-import warnings
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -356,15 +353,15 @@ def number_array(
         # dtype needs to be determined automatically
         try:
             # convert the result to a numpy array with the given dtype
-            result = np.array(data, dtype=get_common_dtype(data), copy=copy)  # type: ignore
+            result = np.array(data, dtype=get_common_dtype(data), copy=copy)
         except TypeError:
             # Conversion can fail when `data` contains a complex sympy number, i.e.,
             # sympy.I. In this case, we simply try to convert the expression using a
             # complex dtype
-            result = np.array(data, dtype=np.cdouble, copy=copy)  # type: ignore
+            result = np.array(data, dtype=np.cdouble, copy=copy)
 
     else:
         # a specific dtype is requested
-        result = np.array(data, dtype=np.dtype(dtype), copy=copy)  # type: ignore
+        result = np.array(data, dtype=np.dtype(dtype), copy=copy)
 
     return result
