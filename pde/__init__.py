@@ -4,7 +4,7 @@ equations."""
 # determine the package version
 try:
     # try reading version of the automatically generated module
-    from ._version import __version__
+    from ._version import __version__  # type: ignore
 except ImportError:
     # determine version automatically from CVS information
     from importlib.metadata import PackageNotFoundError, version

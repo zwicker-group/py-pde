@@ -1295,7 +1295,7 @@ class GridBase(metaclass=ABCMeta):
                 method = "central"
 
             axis_id = self.axes.index(axis_name)
-            factory = functools.partial(make_derivative, axis=axis_id, method=method)
+            factory = functools.partial(make_derivative, axis=axis_id, method=method)  # type: ignore
             return OperatorInfo(factory, rank_in=0, rank_out=0, name=operator)
 
         elif operator.startswith("d2_d") and operator.endswith("2"):

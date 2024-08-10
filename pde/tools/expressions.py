@@ -198,7 +198,7 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
         else:
             return expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
 
-    return substitude(expr)  # type: ignore
+    return substitude(expr)
 
 
 ExpressionType = Union[float, str, np.ndarray, basic.Basic, "ExpressionBase"]

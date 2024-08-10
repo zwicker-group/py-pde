@@ -133,7 +133,7 @@ REQUIREMENTS = [
         name="ipywidgets",
         version_min="8",
         usage="Jupyter notebook support",
-        collections={"interactive"},
+        collections={"full", "interactive"},
     ),
     Requirement(
         name="mpi4py",
