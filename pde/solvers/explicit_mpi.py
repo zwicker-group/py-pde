@@ -10,9 +10,7 @@ from typing import Callable, Literal
 import numpy as np
 
 from ..fields.base import FieldBase
-from ..grids._mesh import GridMesh
 from ..pdes.base import PDEBase
-from ..tools import mpi
 from ..tools.math import OnlineStatistics
 from ..tools.typing import BackendType
 from .explicit import ExplicitSolver
@@ -75,8 +73,6 @@ class ExplicitMPISolver(ExplicitSolver):
 
     name = "explicit_mpi"
 
-    _mpi_synchronization = mpi.parallel_run
-
     def __init__(
         self,
         pde: PDEBase,
@@ -118,6 +114,13 @@ class ExplicitMPISolver(ExplicitSolver):
         )
         self.decomposition = decomposition
 
+    @property
+    def _mpi_synchronization(self) -> bool:  # type: ignore
+        """Flag indicating whether MPI synchronization is required."""
+        from ..tools import mpi
+
+        return mpi.parallel_run
+
     def make_stepper(
         self, state: FieldBase, dt=None
     ) -> Callable[[FieldBase, float, float], float]:
@@ -136,6 +139,9 @@ class ExplicitMPISolver(ExplicitSolver):
             time `t_end`. The function call signature is `(state: numpy.ndarray,
             t_start: float, t_end: float)`
         """
+        from ..grids._mesh import GridMesh
+        from ..tools import mpi
+
         if not mpi.parallel_run:
             self._logger.warning(
                 "Using `ExplicitMPISolver` without a proper multiprocessing run. "

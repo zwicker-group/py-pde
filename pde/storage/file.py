@@ -14,7 +14,6 @@ import numpy as np
 from numpy.typing import DTypeLike
 
 from ..fields.base import FieldBase
-from ..tools import mpi
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
 from .base import InfoDict, StorageBase, WriteModeType
 
@@ -62,6 +61,8 @@ class FileStorage(StorageBase):
                 If True, files will only be opened in the main node for an parallel
                 simulation using MPI. This flag has no effect in serial code.
         """
+        from ..tools import mpi
+
         super().__init__(info=info, write_mode=write_mode)
         self.filename = Path(filename)
         self.compression = compression
@@ -158,6 +159,8 @@ class FileStorage(StorageBase):
                 Supplies extra information that is stored in the storage
         """
         import h5py  # lazy loading so it's not a hard dependence
+
+        from ..tools import mpi
 
         if self.check_mpi and not mpi.is_main:
             self._logger.warning("Do not open file on MPI child nodes")
@@ -280,6 +283,8 @@ class FileStorage(StorageBase):
             clear_data_shape (bool):
                 Flag determining whether the data shape is also deleted.
         """
+        from ..tools import mpi
+
         if self.check_mpi and not mpi.is_main:
             self._logger.warning("Do not clear file on MPI child nodes")
             return
