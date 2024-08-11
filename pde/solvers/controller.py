@@ -11,7 +11,6 @@ import time
 from typing import TYPE_CHECKING, Any, Callable, TypeVar, Union
 
 from .. import __version__
-from ..tools import mpi
 from ..tools.numba import JIT_COUNT
 from ..trackers.base import (
     FinishedSimulation,
@@ -341,6 +340,8 @@ class Controller:
         """
         from mpi4py import MPI
 
+        from ..tools import mpi
+
         self.info["mpi_run"] = True
         self.info["mpi_count"] = mpi.size
         self.info["mpi_rank"] = mpi.rank
@@ -390,6 +391,8 @@ class Controller:
             The state at the final time point. If multiprocessing is used, only the main
             node will return the state. All other nodes return None.
         """
+        from ..tools import mpi
+
         # copy the initial state to not modify the supplied one
         if getattr(self.solver, "pde") and self.solver.pde.complex_valued:
             self._logger.info("Convert state to complex numbers")
