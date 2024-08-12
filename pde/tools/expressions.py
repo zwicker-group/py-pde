@@ -282,11 +282,11 @@ class ExpressionBase(metaclass=ABCMeta):
             return False
 
         # compare the expressions themselves by checking their difference
-        diff = sympy.simplify(self._sympy_expr - other._sympy_expr)
+        difference = sympy.simplify(self._sympy_expr - other._sympy_expr)
         if isinstance(self._sympy_expr, sympy.NDimArray):
-            return diff == sympy.Array(np.zeros(self._sympy_expr.shape))
+            return difference == sympy.Array(np.zeros(self._sympy_expr.shape, int))
         else:
-            return diff == 0
+            return difference == 0
 
     @property
     def _free_symbols(self) -> set:

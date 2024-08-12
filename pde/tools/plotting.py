@@ -805,7 +805,7 @@ def in_ipython() -> bool:
 @contextlib.contextmanager
 def napari_viewer(
     grid: GridBase, run: bool | None = None, close: bool = False, **kwargs
-) -> Generator[napari.viewer.Viewer, None, None]:
+) -> Generator[napari.viewer.Viewer]:
     """Creates an napari viewer for interactive plotting.
 
     Args:
