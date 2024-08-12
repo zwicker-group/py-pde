@@ -218,7 +218,7 @@ def test_tensor_expression():
     assert e.constant
     np.testing.assert_allclose(e.get_compiled_array()(), [[0, 1], [2, 3]])
     np.testing.assert_allclose(e.get_compiled_array()(tuple()), [[0, 1], [2, 3]])
-    assert e.differentiate("a") == TensorExpression("[[0., 0.], [0., 0.]]")
+    assert e.differentiate("a") == TensorExpression("[[0, 0], [0, 0]]")
     np.testing.assert_allclose(e.value, np.arange(4).reshape(2, 2))
 
     e = TensorExpression("[a, 2*a]")
