@@ -130,4 +130,4 @@ venv.bak/
 # IDE settings
 .settings
 .vscode
-.code-workspace
+*.code-workspace
