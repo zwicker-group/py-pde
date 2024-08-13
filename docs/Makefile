@@ -1,5 +1,4 @@
-# Minimal makefile for Sphinx documentation
-#
+# Makefile for Sphinx documentation
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
@@ -13,19 +12,19 @@ help:
 
 .PHONY: help Makefile
 
+# Define default target, which can be used in VS code
+.PHONY: default
+default: html
 
 # special make target for latex document to exclude the gallery
 latexpdf: Makefile
 	@$(SPHINXBUILD) -M latexpdf "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O) -E -t exclude_gallery
-	
-	
+
 # special make target for linkcheck to be nit-picky
 linkcheck: Makefile
 	@$(SPHINXBUILD) -M linkcheck "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O) -E -n
-	
-	
+
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O) -E
-	
