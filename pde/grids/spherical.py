@@ -206,8 +206,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         Returns:
             :class:`~numpy.ndarray`: The coordinates of the point
         """
-        if rng is None:
-            rng = np.random.default_rng()
+        rng = np.random.default_rng(rng)
 
         # handle the boundary distance
         r_inner, r_outer = self.axes_bounds[0]

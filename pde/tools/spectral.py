@@ -56,8 +56,7 @@ def make_colored_noise(
     Returns:
         callable: a function returning a random realization
     """
-    if rng is None:
-        rng = np.random.default_rng()
+    rng = np.random.default_rng(rng)
 
     # extract some information about the grid
     dim = len(shape)

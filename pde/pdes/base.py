@@ -64,7 +64,8 @@ class PDEBase(metaclass=ABCMeta):
     """bool: Flag indicating whether the PDE will be solved on multiple nodes using MPI.
     This flag will be set by the solver. If it is true and the PDE requires global
     values in its evaluation, the synchronization between nodes needs to be handled. In
-    many cases, PDEs are defined locally and no such synchronization is necessary."""
+    many cases, PDEs are defined locally and no such synchronization is necessary. Note
+    that the virtual points at the boundaries are synchronized automatically."""
 
     def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
         """
@@ -92,7 +93,7 @@ class PDEBase(metaclass=ABCMeta):
         self._cache: dict[str, Any] = {}
         self.diagnostics = {}
         self.noise = np.asanyarray(noise)
-        self.rng = rng if rng is not None else np.random.default_rng()
+        self.rng = np.random.default_rng(rng)
 
     def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()

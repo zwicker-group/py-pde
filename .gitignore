@@ -127,6 +127,7 @@ venv.bak/
 /.project
 .DS_Store
 
-# Eclipse settings
+# IDE settings
 .settings
 .vscode
+.code-workspace

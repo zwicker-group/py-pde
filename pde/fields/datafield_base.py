@@ -164,8 +164,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
-        if rng is None:
-            rng = np.random.default_rng()
+        rng = np.random.default_rng(rng)
 
         # determine the shape of the data array
         shape = (grid.dim,) * cls.rank + grid.shape
@@ -223,8 +222,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
-        if rng is None:
-            rng = np.random.default_rng()
+        rng = np.random.default_rng(rng)
 
         if scaling == "none":
             scale = 1
@@ -301,8 +299,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
-        if rng is None:
-            rng = np.random.default_rng()
+        rng = np.random.default_rng(rng)
 
         tensor_shape = (grid.dim,) * cls.rank
 
