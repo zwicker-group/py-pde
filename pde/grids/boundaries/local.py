@@ -845,37 +845,49 @@ class _MPIBC(BCBase):
         axis = self.axis
         idx = -2 if self.upper else 1  # index for reading data
 
-        if num_axes == 1:
+        from mpi4py import MPI
 
-            def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                mpi_send(data_full[..., idx], cell, flag)
+        comm = MPI.COMM_WORLD
 
-        elif num_axes == 2:
+        # if num_axes == 1:
+
+        #     def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+        #         # mpi_send(data_full[..., idx], cell, flag)
+        #         with nb.objmode:
+        #             comm.Send(data_full[..., idx], cell, flag)
+
+        if num_axes == 2:
             if axis == 0:
 
                 def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., idx, 1:-1], cell, flag)
+                    # mpi_send(data_full[..., idx, 1:-1], cell, flag)
+                    with nb.objmode:
+                        buf = np.ascontiguousarray(data_full[..., idx, 1:-1])
+                        comm.Send(buf, cell, flag)
 
             else:
 
                 def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, idx], cell, flag)
+                    # mpi_send(data_full[..., 1:-1, idx], cell, flag)
+                    with nb.objmode:
+                        buf = np.ascontiguousarray(data_full[..., 1:-1, idx])
+                        comm.Send(buf, cell, flag)
 
-        elif num_axes == 3:
-            if axis == 0:
+        # elif num_axes == 3:
+        #     if axis == 0:
 
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
+        #         def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+        #             mpi_send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
 
-            elif axis == 1:
+        #     elif axis == 1:
 
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
+        #         def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+        #             mpi_send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
 
-            else:
+        #     else:
 
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
-                    mpi_send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
+        #         def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+        #             mpi_send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
 
         else:
             raise NotImplementedError
@@ -892,44 +904,56 @@ class _MPIBC(BCBase):
         axis = self.axis
         idx = -1 if self.upper else 0  # index for writing data
 
-        if num_axes == 1:
+        from mpi4py import MPI
 
-            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                if data_full.ndim == 1:
-                    # in this case, `data_full[..., idx]` is a scalar, which numba
-                    # treats differently, so `numba_mpi.mpi_recv` fails
-                    buffer = np.empty((), dtype=data_full.dtype)
-                    mpi_recv(buffer, cell, flag)
-                    data_full[..., idx] = buffer
-                else:
-                    mpi_recv(data_full[..., idx], cell, flag)
+        comm = MPI.COMM_WORLD
 
-        elif num_axes == 2:
+        # if num_axes == 1:
+
+        #     def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+        #         if data_full.ndim == 1:
+        #             # in this case, `data_full[..., idx]` is a scalar, which numba
+        #             # treats differently, so `numba_mpi.mpi_recv` fails
+        #             buffer = np.empty((), dtype=data_full.dtype)
+        #             mpi_recv(buffer, cell, flag)
+        #             data_full[..., idx] = buffer
+        #         else:
+        #             mpi_recv(data_full[..., idx], cell, flag)
+
+        if num_axes == 2:
             if axis == 0:
 
                 def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., idx, 1:-1], cell, flag)
+                    # mpi_recv(data_full[..., idx, 1:-1], cell, flag)
+                    with nb.objmode:
+                        buf = np.empty_like(data_full[..., idx, 1:-1])
+                        comm.Recv(buf, cell, flag)
+                        data_full[..., idx, 1:-1] = buf
 
             else:
 
                 def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, idx], cell, flag)
+                    # mpi_recv(data_full[..., 1:-1, idx], cell, flag)
+                    with nb.objmode:
+                        buf = np.empty_like(data_full[..., 1:-1, idx])
+                        comm.Recv(buf, cell, flag)
+                        data_full[..., 1:-1, idx] = buf
 
-        elif num_axes == 3:
-            if axis == 0:
+        # elif num_axes == 3:
+        #     if axis == 0:
 
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
+        #         def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+        #             mpi_recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
 
-            elif axis == 1:
+        #     elif axis == 1:
 
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
+        #         def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+        #             mpi_recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
 
-            else:
+        #     else:
 
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
-                    mpi_recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
+        #         def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+        #             mpi_recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
 
         else:
             raise NotImplementedError
