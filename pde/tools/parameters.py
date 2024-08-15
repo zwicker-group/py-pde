@@ -176,6 +176,10 @@ class Parameterized:
                 :meth:`~Parameterized.get_parameters` or displayed by calling
                 :meth:`~Parameterized.show_parameters`.
         """
+        # deprecated on 2024-08-15
+        warnings.warn(
+            "`Parameterized` has been moved to `py-modelrunner`", DeprecationWarning
+        )
         # set logger if this has not happened, yet
         if not hasattr(self, "_logger"):
             self._logger = logging.getLogger(self.__class__.__name__)
