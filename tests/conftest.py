@@ -14,6 +14,8 @@ from pde.tools.numba import random_seed
 @pytest.fixture(scope="function", autouse=True)
 def setup_and_teardown():
     """Helper function adjusting environment before and after tests."""
+    # ensure we use the Agg backend, so figures are not displayed
+    plt.switch_backend("agg")
     # raise all underflow errors
     np.seterr(all="raise", under="ignore")
 
