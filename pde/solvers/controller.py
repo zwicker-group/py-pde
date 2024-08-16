@@ -103,13 +103,13 @@ class Controller:
         # determine time range
         try:
             self._t_range: tuple[float, float] = (0, float(value))  # type: ignore
-        except TypeError:  # assume a single number was given
+        except TypeError as err:  # assume a single number was given
             if len(value) == 2:  # type: ignore
                 self._t_range = tuple(value)  # type: ignore
             else:
                 raise ValueError(
                     "t_range must be set to a single number or a tuple of two numbers"
-                )
+                ) from err
 
     def _get_stop_handler(self) -> Callable[[Exception, float], tuple[int, str]]:
         """Return function that handles messaging."""
@@ -196,7 +196,7 @@ class Controller:
 
         # evolve the system from t_start to t_end
         t = t_start
-        self._logger.debug(f"Start simulation at t={t}")
+        self._logger.debug("Start simulation at t=%g", t)
         try:
             while t < t_end:
                 # determine next time point with an action
@@ -265,8 +265,10 @@ class Controller:
         self._logger.log(msg_level, msg)
         if profiler["tracker"] > max(profiler["solver"], 1):
             self._logger.warning(
-                f"Spent more time on handling trackers ({profiler['tracker']:.3g}) "
-                f"than on the actual simulation ({profiler['solver']:.3g})"
+                "Spent more time on handling trackers (%.3g) than on the actual "
+                "simulation (%.3g)",
+                profiler["tracker"],
+                profiler["solver"],
             )
 
     def _run_client_process(self, state: TState, dt: float | None = None) -> None:
@@ -352,7 +354,7 @@ class Controller:
                 self._run_main_process(state, dt)
             except Exception as err:
                 print(err)  # simply print the exception to show some info
-                self._logger.error(f"Error in main node", exc_info=err)
+                self._logger.error("Error in main node", exc_info=err)
                 time.sleep(0.5)  # give some time for info to propagate
                 MPI.COMM_WORLD.Abort()  # abort all other nodes
                 raise
@@ -365,7 +367,7 @@ class Controller:
                 self._run_client_process(state, dt)
             except Exception as err:
                 print(err)  # simply print the exception to show some info
-                self._logger.error(f"Error in node {mpi.rank}", exc_info=err)
+                self._logger.error("Error in node %d", mpi.rank, exc_info=err)
                 time.sleep(0.5)  # give some time for info to propagate
                 MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
                 raise
@@ -394,7 +396,7 @@ class Controller:
         from ..tools import mpi
 
         # copy the initial state to not modify the supplied one
-        if getattr(self.solver, "pde") and self.solver.pde.complex_valued:
+        if hasattr(self.solver, "pde") and self.solver.pde.complex_valued:
             self._logger.info("Convert state to complex numbers")
             state: TState = initial_state.copy(dtype=complex)
         else:

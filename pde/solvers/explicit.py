@@ -266,7 +266,7 @@ class ExplicitSolver(AdaptiveSolverBase):
             )
             adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
 
-        self._logger.info(f"Init adaptive Euler stepper")
+        self._logger.info("Init adaptive Euler stepper")
         return adaptive_stepper
 
     def _make_single_step_error_estimate_rkf(

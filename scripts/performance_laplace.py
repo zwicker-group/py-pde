@@ -121,7 +121,7 @@ def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
         if out is None:
             out = np.empty((dim_r, dim_z))
 
-        for j in range(0, dim_z):  # iterate axial points
+        for j in range(dim_z):  # iterate axial points
             jm = 0 if j == 0 else j - 1
             jp = dim_z - 1 if j == dim_z - 1 else j + 1
 

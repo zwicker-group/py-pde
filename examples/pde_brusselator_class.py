@@ -27,11 +27,11 @@ from pde import FieldCollection, PDEBase, PlotTracker, ScalarField, UnitGrid
 class BrusselatorPDE(PDEBase):
     """Brusselator with diffusive mobility."""
 
-    def __init__(self, a=1, b=3, diffusivity=[1, 0.1], bc="auto_periodic_neumann"):
+    def __init__(self, a=1, b=3, diffusivity=None, bc="auto_periodic_neumann"):
         super().__init__()
         self.a = a
         self.b = b
-        self.diffusivity = diffusivity  # spatial mobility
+        self.diffusivity = [1, 0.1] if diffusivity is None else diffusivity
         self.bc = bc  # boundary condition
 
     def get_initial_state(self, grid):

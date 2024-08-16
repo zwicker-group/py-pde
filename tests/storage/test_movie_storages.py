@@ -177,13 +177,15 @@ def test_complex_data(tmp_path, rng):
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 def test_wrong_format():
     """Test how wrong files are dealt with."""
+    from ffmpeg._run import Error as FFmpegError
+
     reader = MovieStorage(RESOURCES_PATH / "does_not_exist.avi")
     with pytest.raises(OSError):
-        reader.times
+        print(reader.times)
 
     reader = MovieStorage(RESOURCES_PATH / "empty.avi")
-    with pytest.raises(Exception):
-        reader.times
+    with pytest.raises(FFmpegError):
+        print(reader.times)
 
     reader = MovieStorage(RESOURCES_PATH / "no_metadata.avi")
     np.testing.assert_allclose(reader.times, [0, 1])

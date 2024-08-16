@@ -65,14 +65,14 @@ def solve_poisson_equation(
     result = ScalarField(rhs.grid, label=label)
     try:
         solver(rhs.data, result.data)
-    except RuntimeError:
+    except RuntimeError as err:
         magnitude = rhs.magnitude
         if magnitude > 1e-10:
             raise RuntimeError(
                 "Could not solve the Poisson problem. One possible reason for this is "
                 "that only periodic or Neumann conditions are applied although the "
                 f"magnitude of the field is {magnitude} and thus non-zero."
-            )
+            ) from err
         else:
             raise  # another error occurred
 

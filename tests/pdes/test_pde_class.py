@@ -3,7 +3,8 @@
 """
 
 import logging
-
+import os
+import numba as nb
 import numpy as np
 import pytest
 import sympy
@@ -188,7 +189,6 @@ def test_pde_noise(backend, rng):
 
     with pytest.raises(ValueError):
         eq = PDE({"a": 0}, noise=[0.01, 2.0])
-        eq.solve(ScalarField(grid), t_range=1, backend=backend, dt=1, tracker=None)
 
 
 @pytest.mark.parametrize("backend", ["numpy", "numba"])
@@ -207,9 +207,12 @@ def test_pde_spatial_args(backend):
 
     # test invalid spatial dependence
     eq = PDE({"a": "x + y"})
-    with pytest.raises(RuntimeError):
-        rhs = eq.make_pde_rhs(field, backend=backend)
-        rhs(field.data, 0.0)
+    if backend == "numpy":
+        with pytest.raises(RuntimeError):
+            eq.evolution_rate(field)
+    elif backend == "numba":
+        with pytest.raises(RuntimeError):
+            rhs = eq.make_pde_rhs(field, backend=backend)
 
 
 def test_pde_user_funcs(rng):
@@ -284,11 +287,15 @@ def test_pde_consts():
     np.testing.assert_allclose(eq.evolution_rate(field).data, 0)
 
     eq = PDE({"a": "laplace(b)"}, consts={"b": 3})
-    with pytest.raises(Exception):
+    with pytest.raises(
+        AttributeError
+        if os.environ.get("NUMBA_DISABLE_JIT", "0") == "1"
+        else nb.TypingError
+    ):
         eq.evolution_rate(field)
 
     eq = PDE({"a": "laplace(b)"}, consts={"b": field.data})
-    with pytest.raises(Exception):
+    with pytest.raises(TypeError):
         eq.evolution_rate(field)
 
 

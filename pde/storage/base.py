@@ -176,8 +176,8 @@ class StorageBase(metaclass=ABCMeta):
                     self._grid = attrs["fields"][0]["grid"]
                 else:
                     self._logger.warning(
-                        "`grid` attribute was not stored. Available attributes: "
-                        + ", ".join(sorted(attrs.keys()))
+                        "`grid` attribute was not stored. Available attributes: %s",
+                        ", ".join(sorted(attrs.keys())),
                     )
 
             else:
@@ -219,8 +219,8 @@ class StorageBase(metaclass=ABCMeta):
                     f"{local_shape} could not be interpreted automatically"
                 )
             self._logger.warning(
-                "`field` attribute was not stored. We guessed that the data is of "
-                f"type {self._field.__class__.__name__}."
+                "`field` attribute was not stored. Assume data is of type %s.",
+                self._field.__class__.__name__,
             )
 
     def _get_field(self, t_index: int) -> FieldBase:

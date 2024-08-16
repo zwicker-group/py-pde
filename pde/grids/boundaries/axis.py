@@ -287,7 +287,7 @@ class BoundaryPair(BoundaryAxisBase):
                 # if len is not supported, the format must be wrong
                 raise BCDataError(
                     f"Unsupported boundary format: `{data}`. " + cls.get_help()
-                )
+                ) from None
             else:
                 if data_len == 2:
                     # assume that data is given for each boundary

@@ -99,7 +99,7 @@ class ScipySolver(SolverBase):
             return sol.t[0]  # type: ignore
 
         if dt:
-            self._logger.info(f"Init {self.__class__.__name__} stepper with dt=%g", dt)
+            self._logger.info("Init %s stepper with dt=%g", self.__class__.__name__, dt)
         else:
-            self._logger.info(f"Init {self.__class__.__name__} stepper")
+            self._logger.info("Init %s stepper", self.__class__.__name__)
         return stepper

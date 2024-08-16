@@ -19,8 +19,8 @@ def test_config():
     assert c["numba.multithreading_threshold"] > 0
 
     assert "numba.multithreading_threshold" in c
-    assert any("numba.multithreading_threshold" == k for k in c)
-    assert any("numba.multithreading_threshold" == k and v > 0 for k, v in c.items())
+    assert any(k == "numba.multithreading_threshold" for k in c)
+    assert any(k == "numba.multithreading_threshold" and v > 0 for k, v in c.items())
     assert "numba.multithreading_threshold" in c.to_dict()
     assert isinstance(repr(c), str)
 
@@ -90,4 +90,5 @@ def test_packages_from_requirements():
     """Test the packages_from_requirements function."""
     results = packages_from_requirements("file_not_existing")
     assert len(results) == 1
-    assert "Could not open" in results[0] and "file_not_existing" in results[0]
+    assert "Could not open" in results[0]
+    assert "file_not_existing" in results[0]

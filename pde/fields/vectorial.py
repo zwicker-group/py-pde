@@ -317,8 +317,8 @@ class VectorField(DataFieldBase):
             @register_jitable
             def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
                 """Calculate outer product between fields `a` and `b`"""
-                for i in range(0, dim):
-                    for j in range(0, dim):
+                for i in range(dim):
+                    for j in range(dim):
                         out[i, j, :] = a[i] * b[j]
                 return out
 

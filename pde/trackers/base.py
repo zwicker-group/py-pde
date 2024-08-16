@@ -71,9 +71,9 @@ class TrackerBase(metaclass=ABCMeta):
         elif isinstance(data, str):
             try:
                 tracker_cls = cls._subclasses[data]
-            except KeyError:
+            except KeyError as err:
                 trackers = sorted(cls._subclasses.keys())
-                raise ValueError(f"Tracker `{data}` is not in {trackers}")
+                raise ValueError(f"Tracker `{data}` is not in {trackers}") from err
             return tracker_cls(**kwargs)
         else:
             raise ValueError(f"Unsupported tracker format: `{data}`.")

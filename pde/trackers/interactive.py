@@ -6,6 +6,7 @@ fields.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import multiprocessing as mp
 import platform
@@ -27,7 +28,7 @@ def napari_process(
     t_initial: float | None = None,
     viewer_args: dict[str, Any] | None = None,
 ):
-    """:mod:`multiprocessing.Process` running `napari <https://napari.org>`__
+    """:mod:`multiprocessing.Process` running `napari120 <https://napari.org>`__
 
     Args:
         data_channel (:class:`multiprocessing.Queue`):
@@ -109,16 +110,16 @@ def napari_process(
                     update_data = data
                     # continue running until the queue is empty
                 else:
-                    logger.warning(f"Unexpected action: {action}")
+                    logger.warning("Unexpected action: %s", action)
 
             # update napari view when there is data
             if update_data is not None:
-                logger.debug(f"Update napari layer...")
+                logger.debug("Update napari layer...")
                 layer_data, t = update_data
                 if label is not None:
                     label.setText(f"Time: {t}")
-                for name, layer_data in layer_data.items():
-                    viewer.layers[name].data = layer_data["data"]
+                for name, data in layer_data.items():
+                    viewer.layers[name].data = data["data"]
 
             yield
 
@@ -193,10 +194,8 @@ class NapariViewer:
             except queue.Full:
                 pass  # could not write data
         else:
-            try:
+            with contextlib.suppress(queue.Empty):
                 self.data_channel.get(block=False)
-            except queue.Empty:
-                pass
 
     def close(self, force: bool = True):
         """Closes the napari process.
@@ -208,10 +207,8 @@ class NapariViewer:
         """
         if self.proc.is_alive() and force:
             # signal to napari process that it should be closed
-            try:
+            with contextlib.suppress(RuntimeError):
                 self.data_channel.put(("close", None))
-            except RuntimeError:
-                pass
 
         self.data_channel.close()
         self.data_channel.join_thread()

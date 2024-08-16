@@ -4,6 +4,7 @@
 
 import json
 import os
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -23,7 +24,7 @@ def test_ensure_directory_exists(tmp_path):
     misc.ensure_directory_exists(path)
     assert path.is_dir()
     # remove the folder again
-    os.rmdir(path)
+    Path.rmdir(path)
     assert not path.exists()
 
 
@@ -105,8 +106,7 @@ def test_hdf_write_attributes(tmp_path):
     assert data2 == {"a": 1}
 
     # test raising problematic items
-    with h5py.File(path, "w") as hdf_file:
-        with pytest.raises(TypeError):
-            misc.hdf_write_attributes(
-                hdf_file, {"a": object()}, raise_serialization_error=True
-            )
+    with h5py.File(path, "w") as hdf_file, pytest.raises(TypeError):
+        misc.hdf_write_attributes(
+            hdf_file, {"a": object()}, raise_serialization_error=True
+        )

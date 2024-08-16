@@ -155,8 +155,9 @@ class ExplicitMPISolver(ExplicitSolver):
             if not self.adaptive:
                 self._logger.warning(
                     "Explicit stepper with a fixed time step did not receive any "
-                    f"initial value for `dt`. Using dt={dt}, but specifying a value or "
-                    "enabling adaptive stepping is advisable."
+                    "initial value for `dt`. Using dt=%g, but specifying a value or "
+                    "enabling adaptive stepping is advisable.",
+                    dt,
                 )
 
         self.info["dt"] = dt

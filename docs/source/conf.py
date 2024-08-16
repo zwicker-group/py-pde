@@ -15,9 +15,9 @@ import os.path
 import sys
 
 sys.path.insert(0, ".")
-sys.path.insert(0, os.path.abspath("../.."))
-sys.path.insert(0, os.path.abspath("../../scripts"))
-sys.path.insert(0, os.path.abspath("../sphinx_ext/"))
+sys.path.insert(0, os.path.abspath("../.."))  # noqa: PTH100
+sys.path.insert(0, os.path.abspath("../../scripts"))  # noqa: PTH100
+sys.path.insert(0, os.path.abspath("../sphinx_ext/"))  # noqa: PTH100
 
 from datetime import date
 
@@ -26,7 +26,7 @@ from datetime import date
 project = "py-pde"
 module_name = "pde"
 author = "Zwicker Group"
-copyright = f"{date.today().year}, {author}"  # @ReservedAssignment
+copyright = f"{date.today().year}, {author}"  # @ReservedAssignment  # noqa: A001
 html_logo = "_images/logo_small.png"
 
 # Determine the version from the actual package

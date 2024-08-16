@@ -124,8 +124,8 @@ class Tensor2Field(DataFieldBase):
         try:
             if len(key) != 2:
                 raise IndexError("Index must be given as two integers")
-        except TypeError:
-            raise IndexError("Index must be given as two values")
+        except TypeError as err:
+            raise IndexError("Index must be given as two values") from err
         return tuple(self.grid.get_axis_index(k) for k in key)  # type: ignore
 
     def __getitem__(self, key: tuple[int | str, int | str]) -> ScalarField:

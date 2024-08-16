@@ -74,7 +74,7 @@ class FileStorage(StorageBase):
         self._data_length: int = None  # type: ignore
         self._max_length: int | None = max_length
 
-        if not self.check_mpi or mpi.is_main:
+        if not self.check_mpi or mpi.is_main:  # noqa: SIM102
             # we are on the main process and can thus open the file directly
             if self.filename.is_file() and self.filename.stat().st_size > 0:
                 try:
@@ -82,7 +82,7 @@ class FileStorage(StorageBase):
                 except (OSError, KeyError):
                     self.close()
                     self._logger.warning(
-                        f"File `{filename}` could not be opened for reading"
+                        "File `%s` could not be opened for reading", filename
                     )
 
     def __del__(self):
@@ -103,7 +103,7 @@ class FileStorage(StorageBase):
     def close(self) -> None:
         """Close the currently opened file."""
         if self._file is not None:
-            self._logger.info(f"Close file `{self.filename}`")
+            self._logger.info("Close file `%s`", self.filename)
             self._file.close()
             self._file = None
             self._data_length = None  # type: ignore
@@ -117,7 +117,7 @@ class FileStorage(StorageBase):
     def _create_hdf_dataset(
         self,
         name: str,
-        shape: tuple[int, ...] = tuple(),
+        shape: tuple[int, ...] = (),
         dtype: DTypeLike = np.double,
     ):
         """Create a hdf5 dataset with the given name and data_shape.
@@ -176,7 +176,7 @@ class FileStorage(StorageBase):
             # close file to open it again for reading or appending
             if self._file:
                 self._file.close()
-            self._logger.info(f"Open file `{self.filename}` for reading")
+            self._logger.info("Open file `%s` for reading", self.filename)
             self._file = h5py.File(self.filename, mode="r")
             self._times = self._file["times"]
             self._data = self._file["data"]
@@ -200,7 +200,7 @@ class FileStorage(StorageBase):
             self.close()
 
             # open file for reading or appending
-            self._logger.info(f"Open file `{self.filename}` for appending")
+            self._logger.info("Open file `%s` for appending", self.filename)
             self._file = h5py.File(self.filename, mode="a")
 
             if "times" in self._file and "data" in self._file:
@@ -234,7 +234,7 @@ class FileStorage(StorageBase):
                 self.close()
             else:
                 ensure_directory_exists(self.filename.parent)
-            self._logger.info(f"Open file `{self.filename}` for writing")
+            self._logger.info("Open file `%s` for writing", self.filename)
             self._file = h5py.File(self.filename, "w")
             self._times = self._create_hdf_dataset("times")
             self._data = self._create_hdf_dataset(
@@ -337,7 +337,7 @@ class FileStorage(StorageBase):
         super().start_writing(field, info=info)
 
         # initialize the file for writing with the correct mode
-        self._logger.debug(f"Start writing with mode `{self.write_mode}`")
+        self._logger.debug("Start writing with mode '%s'", self.write_mode)
         if self.write_mode == "truncate_once":
             self._open("writing", info)
             self.write_mode = "append"  # do not truncate for next writing

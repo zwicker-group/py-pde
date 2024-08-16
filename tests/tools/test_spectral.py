@@ -67,18 +67,17 @@ def test_noise_scaling(rng):
     def noise_div():
         return div(rng.normal(size=shape))
 
+    def get_noise(noise_func):
+        k, density = spectral_density(data=noise_func(), dx=grid.discretization[0])
+        assert k[0] == 0
+        assert density[0] == pytest.approx(0)
+        return np.log(density[1])  # log of spectral density
+
     # calculate spectral densities of the two noises
     result = []
     for noise_func in [noise_colored, noise_div]:
-
-        def get_noise():
-            k, density = spectral_density(data=noise_func(), dx=grid.discretization[0])
-            assert k[0] == 0
-            assert density[0] == pytest.approx(0)
-            return np.log(density[1])  # log of spectral density
-
         # average spectral density of longest length scale
-        mean = np.mean([get_noise() for _ in range(64)])
+        mean = np.mean([get_noise(noise_func=noise_func) for _ in range(64)])
         result.append(mean)
 
     np.testing.assert_allclose(*result, rtol=0.5)

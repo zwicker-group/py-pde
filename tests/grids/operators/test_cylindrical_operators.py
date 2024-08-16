@@ -235,7 +235,7 @@ def test_examples_tensor_cyl():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("r_inner", (0, 1))
+@pytest.mark.parametrize("r_inner", [0, 1])
 def test_laplace_matrix(r_inner, rng):
     """Test laplace operator implemented using matrix multiplication."""
     grid = CylindricalSymGrid((r_inner, 2), (2.5, 4.3), 16)
@@ -253,7 +253,7 @@ def test_laplace_matrix(r_inner, rng):
     np.testing.assert_allclose(res1.data, res2)
 
 
-@pytest.mark.parametrize("r_inner", (0, 1))
+@pytest.mark.parametrize("r_inner", [0, 1])
 def test_poisson_solver_cylindrical(r_inner, rng):
     """Test the poisson solver on Cylindrical grids."""
     grid = CylindricalSymGrid((r_inner, 2), (2.5, 4.3), 16)

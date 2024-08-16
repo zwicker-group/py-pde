@@ -447,7 +447,6 @@ class PDEBase(metaclass=ABCMeta):
             @jit
             def noise_realization(state_data: np.ndarray, t: float) -> None:
                 """Helper function returning a noise realization."""
-                return None
 
         return noise_realization  # type: ignore
 

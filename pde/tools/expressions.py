@@ -260,14 +260,13 @@ class ExpressionBase(metaclass=ABCMeta):
         for name, value in self.consts.items():
             if isinstance(value, FieldBase):
                 self._logger.warning(
-                    f"Constant `{name}` is a field, but expressions usually require "
-                    f"numerical arrays. Did you mean to use `{name}.data`?"
+                    "Constant `%(name)s` is a field, but expressions usually require "
+                    "numerical arrays. Did you mean to use `%(name)s.data`?",
+                    {"name": name},
                 )
 
     def __repr__(self):
-        return (
-            f'{self.__class__.__name__}("{self.expression}", ' f"signature={self.vars})"
-        )
+        return f'{self.__class__.__name__}("{self.expression}", signature={self.vars})'
 
     def __eq__(self, other):
         """Compare this expression to another one."""
@@ -324,9 +323,9 @@ class ExpressionBase(metaclass=ABCMeta):
             args = {str(s).split("[")[0] for s in self._free_symbols}
             if signature is None:
                 # create signature from arguments
-                signature = list(sorted(args))
+                signature = sorted(args)
 
-        self._logger.debug(f"Expression arguments: {args}")
+        self._logger.debug("Expression arguments: %s", args)
 
         # check whether variables are in signature
         self.vars: Any = []
@@ -345,7 +344,7 @@ class ExpressionBase(metaclass=ABCMeta):
                         old = sympy.symbols(arg)
                         new = sympy.symbols(arg_name)
                         self._sympy_expr = self._sympy_expr.subs(old, new)
-                        self._logger.info(f'Renamed variable "{old}"->"{new}"')
+                        self._logger.info('Renamed variable "%s"->"%s"', old, new)
                     found.add(arg)
                     break
 
@@ -514,7 +513,7 @@ class ExpressionBase(metaclass=ABCMeta):
 class ScalarExpression(ExpressionBase):
     """Describes a mathematical expression of a scalar quantity."""
 
-    shape: tuple[int, ...] = tuple()
+    shape: tuple[int, ...] = ()
 
     @fill_in_docstring
     def __init__(
@@ -678,9 +677,8 @@ class ScalarExpression(ExpressionBase):
             return ScalarExpression(
                 expression=0, signature=self.vars, allow_indexed=self.allow_indexed
             )
-        if self.allow_indexed:
-            if self._var_indexed(var):
-                raise NotImplementedError("Cannot differentiate with respect to vector")
+        if self.allow_indexed and self._var_indexed(var):
+            raise NotImplementedError("Cannot differentiate with respect to vector")
 
         # turn variable into sympy object and treat an indexed variable separately
         var_expr = self._prepare_expression(var)
@@ -707,11 +705,10 @@ class ScalarExpression(ExpressionBase):
             expression = sympy.Array(np.zeros(dim), shape=(dim,))
             return TensorExpression(expression=expression, signature=self.vars)
 
-        if self.allow_indexed:
-            if any(self._var_indexed(var) for var in self.vars):
-                raise RuntimeError(
-                    "Cannot calculate gradient for expressions with indexed variables"
-                )
+        if self.allow_indexed and any(self._var_indexed(var) for var in self.vars):
+            raise RuntimeError(
+                "Cannot calculate gradient for expressions with indexed variables"
+            )
 
         grad = sympy.Array([self._sympy_expr.diff(sympy.Symbol(v)) for v in self.vars])
         return TensorExpression(
@@ -1090,7 +1087,7 @@ def evaluate(
     # check whether there are boundary conditions that have not been used
     bcs_left = set(bcs.keys()) - bcs_used - {"*:*", "*"}
     if bcs_left:
-        logger.warning("Unused BCs: %s", list(sorted(bcs_left)))
+        logger.warning("Unused BCs: %s", sorted(bcs_left))
 
     # obtain the function to calculate the right hand side
     signature = tuple(fields_keys) + ("none", "bc_args")
@@ -1108,7 +1105,7 @@ def evaluate(
 
     else:
         # expression only depends on the actual variables
-        extra_args = tuple()  # @UnusedVariable
+        extra_args = ()  # @UnusedVariable
 
     # check whether all variables are accounted for
     extra_vars = set(expr.vars) - set(signature)

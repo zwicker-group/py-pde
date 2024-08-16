@@ -4,7 +4,7 @@ equations."""
 # determine the package version
 try:
     # try reading version of the automatically generated module
-    from ._version import __version__  # type: ignore
+    from ._version import __version__
 except ImportError:
     # determine version automatically from CVS information
     from importlib.metadata import PackageNotFoundError, version
@@ -20,7 +20,8 @@ except ImportError:
 from .tools.config import Config, environment
 
 config = Config()  # initialize the default configuration
-del Config  # clean name space
+
+import contextlib
 
 # import all other modules that should occupy the main name space
 from .fields import *  # @UnusedWildImport
@@ -32,7 +33,7 @@ from .tools.parameters import Parameter
 from .trackers import *  # @UnusedWildImport
 from .visualization import *  # @UnusedWildImport
 
-try:
+with contextlib.suppress(ImportError):
     from .tools.modelrunner import *
-except ImportError:
-    pass  # modelrunner extensions are simply not loaded
+
+del contextlib, Config  # clean name space

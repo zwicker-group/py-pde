@@ -1131,7 +1131,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         Returns:
             dict: Information useful for plotting an vector field
         """
-        raise NotImplementedError()
+        raise NotImplementedError
 
     def _plot_line(
         self,

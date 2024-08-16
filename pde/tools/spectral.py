@@ -98,7 +98,6 @@ def make_colored_noise(
         arr *= scaling
 
         # backwards transform
-        arr = np_irfftn(arr, shape)
-        return arr
+        return np_irfftn(arr, shape)  # type: ignore
 
     return noise_colored

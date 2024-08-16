@@ -260,7 +260,8 @@ def test_complex_vectors(rng):
     numbers = rng.random(shape) + rng.random(shape) * 1j
     v1 = VectorField(grid, numbers[0])
     v2 = VectorField(grid, numbers[1])
-    assert v1.is_complex and v2.is_complex
+    assert v1.is_complex
+    assert v2.is_complex
 
     for backend in ["numpy", "numba"]:
         dot_op = v1.make_dot_operator(backend)

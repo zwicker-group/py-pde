@@ -60,11 +60,8 @@ def ensure_directory_exists(folder: str | Path):
     Args:
         folder (str): path of the new folder
     """
-    folder = str(folder)
-    if folder == "":
-        return
     try:
-        os.makedirs(folder)
+        Path(folder).mkdir(parents=True)
     except OSError as err:
         if err.errno != errno.EEXIST:
             raise

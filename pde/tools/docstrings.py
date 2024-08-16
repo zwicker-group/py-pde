@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 import textwrap
+from functools import partial
 from typing import TypeVar
 
 DOCSTRING_REPLACEMENTS = {
@@ -164,17 +165,16 @@ def fill_in_docstring(f: TFunc) -> TFunc:
         width=80, expand_tabs=True, replace_whitespace=True, drop_whitespace=True
     )
 
+    def repl(matchobj, value: str) -> str:
+        """Helper function replacing token in docstring."""
+        tw.initial_indent = tw.subsequent_indent = matchobj.group(1)
+        return tw.fill(textwrap.dedent(value))
+
     for name, value in DOCSTRING_REPLACEMENTS.items():
-
-        def repl(matchobj) -> str:
-            """Helper function replacing token in docstring."""
-            tw.initial_indent = tw.subsequent_indent = matchobj.group(1)
-            return tw.fill(textwrap.dedent(value))
-
         token = "{" + name + "}"
         f.__doc__ = re.sub(
             f"^([ \t]*){token}",
-            repl,
+            partial(repl, value=value),
             f.__doc__,  # type: ignore
             flags=re.MULTILINE,
         )

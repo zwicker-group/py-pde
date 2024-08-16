@@ -319,7 +319,7 @@ class CartesianGrid(GridBase):
                 try:
                     axis = self.axes.index(axis)
                 except ValueError:
-                    raise ValueError(f"Axis `{axis}` not defined")
+                    raise ValueError(f"Axis `{axis}` not defined") from None
             return axis
 
         if extract == "auto":

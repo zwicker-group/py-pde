@@ -372,7 +372,7 @@ class ScalarField(DataFieldBase):
                 raise ValueError(
                     f"The axes {ax} is not contained in "
                     f"{self.grid} with axes {self.grid.axes}"
-                )
+                ) from None
             ax_remove.append(i)
 
             # check the position
