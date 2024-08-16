@@ -2,7 +2,7 @@
 Use multiprocessing via MPI
 ===========================
 
-Use multiple cores to solve a PDE. The implementation here uses the `Message Passing 
+Use multiple cores to solve a PDE. The implementation here uses the `Message Passing
 Interface (MPI) <https://en.wikipedia.org/wiki/Message_Passing_Interface>`_, and the
 script thus needs to be run using :code:`mpiexec -n 2 python mpi_parallel_run.py`, where
 `2` denotes the number of cores used. Note that macOS might require an additional hint

@@ -16,7 +16,7 @@ domain.
 Note that the naive implementation,
 :code:`PDE({"c": "divergence((1.01 + tanh(x)) * gradient(c))"})`, has numerical
 instabilities. This is because two finite difference approximations are nested. To
-arrive at a more stable numerical scheme, it is advisable to expand the divergence, 
+arrive at a more stable numerical scheme, it is advisable to expand the divergence,
 
 .. math::
     \partial_t c = D \nabla^2 c + \nabla D . \nabla c

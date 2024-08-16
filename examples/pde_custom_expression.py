@@ -4,7 +4,7 @@ Kuramoto-Sivashinsky - Using `PDE` class
 
 This example implements a scalar PDE using the :class:`~pde.pdes.pde.PDE`. We here
 consider the `Kuramoto–Sivashinsky equation
-<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, which for instance 
+<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, which for instance
 describes the dynamics of flame fronts:
 
 .. math::
