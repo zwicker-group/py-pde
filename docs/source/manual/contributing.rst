@@ -55,8 +55,9 @@ where ``vector_component`` is either 0 or 1.
 
 Coding style
 """"""""""""
-The coding style is enforced using `isort <https://timothycrosley.github.io/isort/>`_
-and `black <https://black.readthedocs.io/>`_. Moreover, we use `Google Style docstrings
+The coding style is enforced using `ruff <https://docs.astral.sh/ruff/>`_, based on the
+styles suggest by `isort <https://timothycrosley.github.io/isort/>`_ and
+`black <https://black.readthedocs.io/>`_. Moreover, we use `Google Style docstrings
 <https://github.com/google/styleguide/blob/gh-pages/pyguide.md#38-comments-and-docstrings>`_,
 which might be best `learned by example
 <https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html>`_.
