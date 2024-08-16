@@ -3,7 +3,7 @@
 """
 
 import logging
-
+import os
 import numba as nb
 import numpy as np
 import pytest
@@ -287,7 +287,9 @@ def test_pde_consts():
     np.testing.assert_allclose(eq.evolution_rate(field).data, 0)
 
     eq = PDE({"a": "laplace(b)"}, consts={"b": 3})
-    with pytest.raises(nb.TypingError):
+    with pytest.raises(
+        AttributeError if os.environ["NUMBA_DISABLE_JIT"] == "1" else nb.TypingError
+    ):
         eq.evolution_rate(field)
 
     eq = PDE({"a": "laplace(b)"}, consts={"b": field.data})
