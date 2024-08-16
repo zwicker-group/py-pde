@@ -121,7 +121,8 @@ def test_bc_values():
     """Test setting the values of boundary conditions."""
     g = UnitGrid([5])
     bc = g.get_boundary_conditions([{"value": 2}, {"derivative": 3}])
-    assert bc[0].low.value == 2 and bc[0].high.value == 3
+    assert bc[0].low.value == 2
+    assert bc[0].high.value == 3
 
 
 @pytest.mark.parametrize("dim", [1, 2, 3])

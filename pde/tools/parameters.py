@@ -134,11 +134,11 @@ class Parameter:
         else:
             try:
                 return self.cls(value)
-            except ValueError:
+            except ValueError as err:
                 raise ValueError(
                     f"Could not convert {value!r} to {self.cls.__name__} for parameter "
                     f"'{self.name}'"
-                )
+                ) from err
 
 
 class DeprecatedParameter(Parameter):
@@ -228,9 +228,9 @@ class Parameterized:
         """
         # collect the parameters from the class hierarchy
         parameters: dict[str, Parameter] = {}
-        for cls in reversed(cls.__mro__):
-            if hasattr(cls, "parameters_default"):
-                for p in cls.parameters_default:
+        for parent_cls in reversed(cls.__mro__):
+            if hasattr(parent_cls, "parameters_default"):
+                for p in parent_cls.parameters_default:
                     if isinstance(p, HideParameter):
                         if include_hidden:
                             parameters[p.name].hidden = True
@@ -504,19 +504,22 @@ def sphinx_display_parameters(app, what, name, obj, options, lines):
 
             app.connect('autodoc-process-docstring', sphinx_display_parameters)
     """
-    if what == "class" and issubclass(obj, Parameterized):
-        if any(":param parameters:" in line for line in lines):
-            # parse parameters
-            parameters = obj.get_parameters(sort=False)
-            if parameters:
-                lines.append(".. admonition::")
-                lines.append(f"   Parameters of {obj.__name__}:")
-                lines.append("   ")
-                for p in parameters.values():
-                    lines.append(f"   {p.name}")
-                    text = p.description.splitlines()
-                    text.append(f"(Default value: :code:`{p.default_value!r}`)")
-                    text = ["     " + t for t in text]
-                    lines.extend(text)
-                    lines.append("")
+    if (
+        what == "class"
+        and issubclass(obj, Parameterized)
+        and any(":param parameters:" in line for line in lines)
+    ):
+        # parse parameters
+        parameters = obj.get_parameters(sort=False)
+        if parameters:
+            lines.append(".. admonition::")
+            lines.append(f"   Parameters of {obj.__name__}:")
+            lines.append("   ")
+            for p in parameters.values():
+                lines.append(f"   {p.name}")
+                text = p.description.splitlines()
+                text.append(f"(Default value: :code:`{p.default_value!r}`)")
+                text = ["     " + t for t in text]
+                lines.extend(text)
                 lines.append("")
+            lines.append("")

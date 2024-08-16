@@ -30,7 +30,7 @@ class ConvergenceError(RuntimeError):
     """Indicates that an implicit step did not converge."""
 
 
-class SolverBase(metaclass=ABCMeta):
+class SolverBase:
     """Base class for PDE solvers."""
 
     dt_default: float = 1e-3
@@ -73,7 +73,7 @@ class SolverBase(metaclass=ABCMeta):
             cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
             if cls.name in cls._subclasses:
-                logging.warning(f"Solver with name {cls.name} is already registered")
+                logging.warning("Solver with name %s is already registered", cls.name)
             cls._subclasses[cls.name] = cls
 
     @classmethod
@@ -108,14 +108,14 @@ class SolverBase(metaclass=ABCMeta):
             raise ValueError(
                 f"Unknown solver method '{name}'. Registered solvers are "
                 + ", ".join(solvers)
-            )
+            ) from None
 
         return solver_class(pde, **kwargs)
 
     @classproperty
     def registered_solvers(cls) -> list[str]:  # @NoSelf
         """list of str: the names of the registered solvers"""
-        return list(sorted(cls._subclasses.keys()))
+        return sorted(cls._subclasses.keys())
 
     @property
     def _compiled(self) -> bool:
@@ -250,7 +250,7 @@ class SolverBase(metaclass=ABCMeta):
             time. The function returns the deterministic evolution rate and (if
             applicable) a realization of the associated noise.
         """
-        if getattr(self.pde, "is_sde"):
+        if getattr(self.pde, "is_sde", False):
             raise RuntimeError(
                 f"Cannot create a deterministic stepper for a stochastic equation"
             )
@@ -379,8 +379,9 @@ class SolverBase(metaclass=ABCMeta):
             dt = self.dt_default
             self._logger.warning(
                 "Explicit stepper with a fixed time step did not receive any "
-                f"initial value for `dt`. Using dt={dt}, but specifying a value or "
-                "enabling adaptive stepping is advisable."
+                "initial value for `dt`. Using dt=%g, but specifying a value or "
+                "enabling adaptive stepping is advisable.",
+                dt,
             )
         dt_float = float(dt)  # explicit casting to help type checking
 
@@ -526,7 +527,7 @@ class AdaptiveSolverBase(SolverBase):
                 An example for the state from which the grid and other information can
                 be extracted
         """
-        if getattr(self.pde, "is_sde"):
+        if getattr(self.pde, "is_sde", False):
             raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
 
         single_step = self._make_single_step_variable_dt(state)
@@ -638,7 +639,7 @@ class AdaptiveSolverBase(SolverBase):
             )
             adaptive_stepper = jit(sig_adaptive)(adaptive_stepper)
 
-        self._logger.info(f"Initialized adaptive stepper")
+        self._logger.info("Initialized adaptive stepper")
         return adaptive_stepper
 
     def make_stepper(

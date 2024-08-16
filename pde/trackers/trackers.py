@@ -44,7 +44,7 @@ from .base import FinishedSimulation, InfoDict, TrackerBase
 from .interrupts import InterruptData, RealtimeInterrupts
 
 if TYPE_CHECKING:
-    import pandas
+    import pandas  # noqa: ICN001
 
 
 class CallbackTracker(TrackerBase):
@@ -450,7 +450,7 @@ class PlotTracker(TrackerBase):
         else:
             self._update_method = "replot"
 
-        self._logger.info(f'Update method: "{self._update_method}"')
+        self._logger.info('Update method: "%s"', self._update_method)
         self._last_update = time.monotonic()
         return super().initialize(state, info=info)
 
@@ -709,11 +709,13 @@ class DataTracker(CallbackTracker):
             \**kwargs:
                 Additional parameters may be supported for some formats
         """
-        extension = os.path.splitext(filename)[1].lower()
+        from pathlib import Path
+
+        extension = Path(filename).suffix.lower()
         if extension == ".pickle":
             import pickle
 
-            with open(filename, "wb") as fp:
+            with Path(filename).open("wb") as fp:
                 pickle.dump((self.times, self.data), fp, **kwargs)
 
         elif extension == ".csv":

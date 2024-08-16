@@ -12,11 +12,11 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import contextlib
+
 from .file import FileStorage
 from .memory import MemoryStorage, get_memory_storage
 from .movie import MovieStorage
 
-try:
+with contextlib.suppress(ImportError):
     from .modelrunner import ModelrunnerStorage
-except ImportError:
-    ...  # ModelrunnerStorage is only available when py-modelrunner is available

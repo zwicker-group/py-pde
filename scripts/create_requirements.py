@@ -200,7 +200,7 @@ def write_requirements_txt(
     """
     print(f"Write `{path}`")
     path.parent.mkdir(exist_ok=True, parents=True)  # ensure path exists
-    with open(path, "w") as fp:
+    with path.open("w") as fp:
         if comment:
             fp.write(f"# {comment}\n")
         if ref_base:
@@ -221,7 +221,7 @@ def write_requirements_csv(
         requirements (list): The requirements to be written
     """
     print(f"Write `{path}`")
-    with open(path, "w") as fp:
+    with path.open("w") as fp:
         writer = csv.writer(fp)
         if incl_version:
             writer.writerow(["Package", "Minimal version", "Usage"])
@@ -245,7 +245,7 @@ def write_requirements_py(path: Path, requirements: list[Requirement]):
 
     # read user-created content of file
     content = []
-    with open(path) as fp:
+    with path.open() as fp:
         for line in fp:
             if "GENERATED CODE" in line:
                 content.append(line)
@@ -260,7 +260,7 @@ def write_requirements_py(path: Path, requirements: list[Requirement]):
     content.append("del check_package_version\n")
 
     # write content back to file
-    with open(path, "w") as fp:
+    with path.open("w") as fp:
         fp.writelines(content)
 
 
@@ -309,7 +309,7 @@ def write_from_template(
     content = template.substitute(substitutes)
 
     # write content to file
-    with open(path, "w") as fp:
+    with path.open("w") as fp:
         if add_warning:
             fp.writelines(SETUP_WARNING.format(template_name))
         fp.writelines(content)

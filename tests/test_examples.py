@@ -53,14 +53,14 @@ def test_example_scripts(path):
 
     # delete files that might be created by the test
     try:
-        os.remove(PACKAGE_PATH / "diffusion.mov")
-        os.remove(PACKAGE_PATH / "allen_cahn.avi")
-        os.remove(PACKAGE_PATH / "allen_cahn.hdf")
+        (PACKAGE_PATH / "diffusion.mov").unlink()
+        (PACKAGE_PATH / "allen_cahn.avi").unlink()
+        (PACKAGE_PATH / "allen_cahn.hdf").unlink()
     except OSError:
         pass
 
     # prepare output
-    msg = "Script `%s` failed with following output:" % path
+    msg = f"Script `{path}` failed with following output:"
     if outs:
         msg = f"{msg}\nSTDOUT:\n{outs}"
     if errs:
@@ -86,7 +86,7 @@ def test_jupyter_notebooks(path, tmp_path):
     my_env = os.environ.copy()
     my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env.get("PYTHONPATH", "")
 
-    outfile = tmp_path / os.path.basename(path)
+    outfile = tmp_path / path.name
     if jupyter_notebook.__version__.startswith("6"):
         # older version of running jypyter notebook
         # deprecated on 2023-07-31

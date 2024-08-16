@@ -120,9 +120,7 @@ class Cuboid:
         return self.__class__(self.pos, self.size)
 
     def __repr__(self):
-        return "{cls}(pos={pos}, size={size})".format(
-            cls=self.__class__.__name__, pos=self.pos, size=self.size
-        )
+        return f"{self.__class__.__name__}(pos={self.pos}, size={self.size})"
 
     def __add__(self, other: Cuboid) -> Cuboid:
         """The sum of two cuboids is the minimal cuboid enclosing both."""

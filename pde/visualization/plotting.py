@@ -844,7 +844,7 @@ def plot_interactive(
         raise RuntimeError("Storage did not contain information about the grid")
 
     # collect data from all time points
-    timecourse: dict[str, list[np.ndarray]] = dict()
+    timecourse: dict[str, list[np.ndarray]] = {}
     for field in storage:
         layer_data = field._get_napari_data(**kwargs)
 

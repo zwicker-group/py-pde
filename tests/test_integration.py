@@ -254,7 +254,8 @@ def test_modelrunner_storage_one(tmp_path, capsys):
     assert output.is_file()
 
     print("=" * 40)
-    print(open(output).read())
+    with Path(output).open() as fp:
+        print(fp.read())
     print("=" * 40)
 
     # read storage manually
@@ -298,9 +299,9 @@ def test_modelrunner_storage_many(tmp_path):
     for path in tmp_path.iterdir():
         if path.is_file() and not path.name.endswith("txt"):
             with mr.open_storage(path) as storage:
-                assert "initial_state" in storage["storage"].keys()
-                assert "trajectory" in storage["storage"].keys()
-                assert "result" in storage.keys()
+                assert "initial_state" in storage["storage"]
+                assert "trajectory" in storage["storage"]
+                assert "result" in storage
 
     # read result using ResultCollection
     results = mr.ResultCollection.from_folder(tmp_path)

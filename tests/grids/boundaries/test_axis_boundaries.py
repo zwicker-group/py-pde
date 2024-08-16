@@ -36,9 +36,11 @@ def test_boundary_pair():
     data = {"low": {"value": 1}, "high": {"derivative": 2}}
     bc1 = BoundaryPair.from_data(g, 0, data)
     bc2 = BoundaryPair.from_data(g, 0, data)
-    assert bc1 == bc2 and bc1 is not bc2
+    assert bc1 == bc2
+    assert bc1 is not bc2
     bc2 = BoundaryPair.from_data(g, 1, data)
-    assert bc1 != bc2 and bc1 is not bc2
+    assert bc1 != bc2
+    assert bc1 is not bc2
 
     # miscellaneous methods
     data = {"low": {"value": 0}, "high": {"derivative": 0}}
@@ -59,7 +61,8 @@ def test_get_axis_boundaries():
         b = get_boundary_axis(g, 0, data)
         assert str(b) == '"' + data + '"'
         b1, b2 = b.get_mathematical_representation("field")
-        assert "field" in b1 and "field" in b2
+        assert "field" in b1
+        assert "field" in b2
 
         if "periodic" in data:
             assert b.periodic

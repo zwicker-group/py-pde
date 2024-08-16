@@ -144,7 +144,7 @@ class MovieStorage(StorageBase):
     def close(self) -> None:
         """Close the currently opened file."""
         if self._ffmpeg is not None:
-            self._logger.info(f"Close movie file `{self.filename}`")
+            self._logger.info("Close movie file '%s'", self.filename)
             if self._state == "writing":
                 self._ffmpeg.stdin.close()
                 self._ffmpeg.wait()
@@ -191,7 +191,7 @@ class MovieStorage(StorageBase):
         # sanity checks on the video
         nb_streams = info["format"]["nb_streams"]
         if nb_streams != 1:
-            self._logger.warning(f"Only using first of {nb_streams} streams")
+            self._logger.warning("Only using first of %d streams", nb_streams)
 
         tags = info["format"].get("tags", {})
         # read comment field, which can be either lower case or upper case
@@ -202,7 +202,7 @@ class MovieStorage(StorageBase):
 
         version = metadata.pop("version", 1)
         if version != 1:
-            self._logger.warning(f"Unknown metadata version `{version}`")
+            self._logger.warning("Unknown metadata version `%d`", version)
         self.vmin = metadata.pop("vmin", 0)
         self.vmax = metadata.pop("vmax", 1)
         self.info.update(metadata)
@@ -217,8 +217,8 @@ class MovieStorage(StorageBase):
             try:
                 fps = Fraction(stream.get("avg_frame_rate", None))
                 duration = parse_duration(stream.get("tags", {}).get("DURATION"))
-            except TypeError:
-                raise RuntimeError("Frame count could not be read from video")
+            except TypeError as err:
+                raise RuntimeError("Frame count could not be read from video") from err
             else:
                 self.info["num_frames"] = int(duration.total_seconds() * float(fps))
         self.info["width"] = stream["width"]
@@ -234,12 +234,13 @@ class MovieStorage(StorageBase):
         try:
             self._format = FFmpeg.formats[video_format]
         except KeyError:
-            self._logger.warning(f"Unknown pixel format `{video_format}`")
+            self._logger.warning("Unknown pixel format `%s`", video_format)
         else:
             if self._format.pix_fmt_file != stream.get("pix_fmt"):
                 self._logger.info(
-                    "Pixel format differs from requested one: "
-                    f"{self._format.pix_fmt_file} != {stream.get('pix_fmt')}"
+                    "Pixel format differs from requested one: %s != %s",
+                    self._format.pix_fmt_file,
+                    stream.get("pix_fmt"),
                 )
 
     def _init_normalization(self, field: FieldBase) -> None:
@@ -332,7 +333,7 @@ class MovieStorage(StorageBase):
         self._init_normalization(field)
 
         # set input
-        self._logger.debug(f"Start ffmpeg process for `{self.filename}`")
+        self._logger.debug("Start ffmpeg process for `%s`", self.filename)
         input_args = {
             "format": "rawvideo",
             "s": f"{width}x{height}",
@@ -358,7 +359,7 @@ class MovieStorage(StorageBase):
         self._ffmpeg = f_output.run_async(pipe_stdin=True)  # start process
 
         if self.write_times:
-            self._times_file = open(self._filename_times, "w")
+            self._times_file = self._filename_times.open("w")  # noqa: SIM115
 
         self.info["num_frames"] = 0
         self._warned_normalization = False
@@ -390,9 +391,9 @@ class MovieStorage(StorageBase):
                 t_start = 0
             dt = self.info.get("dt", 1)
             time_expect = t_start + dt * self.info["num_frames"]
-            if not np.isclose(time, time_expect):
-                if not self.info.get("time_mismatch", False):
-                    self._logger.warning(f"Time mismatch: {time} != {time_expect}")
+            if not np.isclose(time, time_expect):  # discrepancy in time  # noqa: SIM102
+                if not self.info.get("time_mismatch", False):  # not yet warned
+                    self._logger.warning("Time mismatch: %g != %g", time, time_expect)
                     self.info["time_mismatch"] = True
 
         # make sure there are two spatial dimensions
@@ -421,8 +422,9 @@ class MovieStorage(StorageBase):
             if not self._warned_normalization:
                 if np.any(data[i, ...] < norm.vmin) or np.any(data[i, ...] > norm.vmax):
                     self._logger.warning(
-                        f"Data outside range specified by `vmin={norm.vmin}` and "
-                        f"`vmax={norm.vmax}`"
+                        "Data outside range specified by `vmin=%g` and `vmax=%g`",
+                        norm.vmin,
+                        norm.vmax,
                     )
                 self._warned_normalization = True  # only warn once
             data_norm = norm(data[i, ...])
@@ -434,7 +436,7 @@ class MovieStorage(StorageBase):
 
     def end_writing(self) -> None:
         """Finalize the storage after writing."""
-        if not self._state == "writing":
+        if self._state != "writing":
             self._logger.warning("Writing was already terminated")
             return  # writing mode was already ended
         self._logger.debug("End writing")
@@ -459,8 +461,9 @@ class MovieStorage(StorageBase):
                 times = np.loadtxt(self._filename_times)
             except OSError:
                 self._logger.warning(
-                    f"Could not read time stamps from file `{self._filename_times}`. "
-                    "Return equidistant times instead."
+                    "Could not read time stamps from file `%s`. "
+                    "Return equidistant times instead.",
+                    self._filename_times,
                 )
 
         if times is None:
@@ -630,7 +633,7 @@ class MovieStorage(StorageBase):
 
         if not (self.write_times or isinstance(interrupts, ConstantInterrupts)):
             self._logger.warning(
-                f"Use `write_times=True` to write times for complex interrupts"
+                "Use `write_times=True` to write times for complex interrupts"
             )
         # store data for common case of constant intervals
         self.info["dt"] = getattr(interrupts, "dt", 1)

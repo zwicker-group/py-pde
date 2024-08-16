@@ -986,7 +986,8 @@ def _make_divergence_scipy_nd(
 
     def divergence(arr: np.ndarray, out: np.ndarray) -> None:
         """Apply divergence operator to array `arr`"""
-        assert arr.shape[0] == len(data_shape) and arr.shape[1:] == data_shape
+        assert arr.shape[0] == len(data_shape)
+        assert arr.shape[1:] == data_shape
 
         # need to initialize with zeros since data is added later
         if out is None:

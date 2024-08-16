@@ -188,7 +188,8 @@ def test_complex_tensors(backend, rng):
     numbers = rng.random(shape) + rng.random(shape) * 1j
     t1 = Tensor2Field(grid, numbers[0])
     t2 = Tensor2Field(grid, numbers[1])
-    assert t1.is_complex and t2.is_complex
+    assert t1.is_complex
+    assert t2.is_complex
 
     dot_op = t1.make_dot_operator(backend)
 

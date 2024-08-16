@@ -4,6 +4,7 @@ import glob
 import logging
 import os
 import subprocess as sp
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,21 +32,21 @@ def replace_in_file(infile, replacements, outfile=None):
     if outfile is None:
         outfile = infile
 
-    with open(infile) as fp:
+    with Path(infile).open() as fp:
         content = fp.read()
 
     for key, value in replacements.items():
         content = content.replace(key, value)
 
-    with open(outfile, "w") as fp:
+    with Path(outfile).open("w") as fp:
         fp.write(content)
 
 
 def main():
     # remove old files
-    for path in glob.glob(f"{OUTPUT_PATH}/*.rst"):
+    for path in Path(OUTPUT_PATH).glob("*.rst"):
         logging.info("Remove file `%s`", path)
-        os.remove(path)
+        path.unlink()
 
     # run sphinx-apidoc
     sp.check_call(
@@ -65,7 +66,7 @@ def main():
     )
 
     # replace unwanted information
-    for path in glob.glob(f"{OUTPUT_PATH}/*.rst"):
+    for path in Path(OUTPUT_PATH).glob("*.rst"):
         logging.info("Patch file `%s`", path)
         replace_in_file(path, REPLACEMENTS)
 

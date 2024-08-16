@@ -10,6 +10,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Optional, Union
 
@@ -48,7 +50,7 @@ class FFmpegFormat:
         return self.bits_per_channel // 8
 
     @property
-    def max_value(self) -> Union[float, int]:
+    def max_value(self) -> float | int:
         """Maximal value stored in a color channel."""
         if np.issubdtype(self.dtype, np.integer):
             return 2**self.bits_per_channel - 1  # type: ignore
@@ -109,35 +111,11 @@ formats = {
         bits_per_channel=16,
         dtype=np.dtype("<u2"),
     ),
-    # 32 bit formats
-    # "grayf32le": FFmpegFormat(
-    #     pix_fmt_file="grayf32le",
-    #     pix_fmt_data="grayf32le",
-    #     codec="pfm",  # pfm or dpx
-    #     channels=1,
-    #     bits_per_channel=32,
-    #     dtype=np.dtype("<f4"),
-    # ),
-    # "gbrpf32le": FFmpegFormat(
-    #     pix_fmt_file="gbrpf32le",
-    #     pix_fmt_data="gbrpf32le",
-    #     codec="pfm",  # or dpx?
-    #     channels=3,
-    #     bits_per_channel=32,
-    #     dtype=np.dtype("<f4"),
-    # ),
-    # "gbrapf32le": FFmpegFormat(
-    #     pix_fmt_file="gbrapf32le",
-    #     pix_fmt_data="gbrapf32le",
-    #     channels=4,
-    #     bits_per_channel=32,
-    #     dtype=np.dtype("<f4"),
-    # ),
 }
 """Dict of pre-defined :class:`FFmpegFormat` formats."""
 
 
-def find_format(channels: int, bits_per_channel: int = 8) -> Optional[str]:
+def find_format(channels: int, bits_per_channel: int = 8) -> str | None:
     """Find a defined FFmpegFormat that satisifies the requirements.
 
     Args:
@@ -153,13 +131,14 @@ def find_format(channels: int, bits_per_channel: int = 8) -> Optional[str]:
     """
     n_best, f_best = None, None
     for n, f in formats.items():  # iterate through all defined formats
-        if f.channels >= channels and f.bits_per_channel >= bits_per_channel:
-            # this format satisfies the requirements
-            if (
+        if (
+            f.channels >= channels
+            and f.bits_per_channel >= bits_per_channel  # satisfies the requirements
+            and (
                 f_best is None
                 or f.bits_per_channel < f_best.bits_per_channel
                 or f.channels < f_best.channels
-            ):
-                # the current format is better than the previous one
-                n_best, f_best = n, f
+            )  # the current format is better than the previous one
+        ):
+            n_best, f_best = n, f
     return n_best

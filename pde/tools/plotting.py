@@ -106,14 +106,10 @@ def add_scaled_colorbar(
     cbar = ax.figure.colorbar(axes_image, cax=cax, **kwargs)
 
     # disable the offset that matplotlib sometimes shows
-    try:
+    with contextlib.suppress(AttributeError):
         cax.get_xaxis().get_major_formatter().set_useOffset(False)
-    except AttributeError:
-        pass  # can happen for logarithmically formatted axes
-    try:
+    with contextlib.suppress(AttributeError):
         cax.get_yaxis().get_major_formatter().set_useOffset(False)
-    except AttributeError:
-        pass  # can happen for logarithmically formatted axes
 
     if label:
         cbar.set_label(label)
@@ -297,7 +293,7 @@ def plot_on_axes(wrapped=None, update_method=None):
                 if ax is None:
                     # create new figure
                     backend = mpl.get_backend()
-                    if "backend_inline" in backend or "nbAgg" == backend:
+                    if "backend_inline" in backend or backend == "nbAgg":
                         plt.close("all")  # close left over figures
                         auto_show_figure = True  # show this figure if action == 'auto'
                     fig, ax = plt.subplots()
@@ -492,7 +488,7 @@ def plot_on_figure(wrapped=None, update_method=None):
                 if fig is None:
                     # create new figure
                     backend = mpl.get_backend()
-                    if "backend_inline" in backend or "nbAgg" == backend:
+                    if "backend_inline" in backend or backend == "nbAgg":
                         plt.close("all")  # close left over figures
                     fig = plt.figure(constrained_layout=constrained_layout)
 
@@ -593,7 +589,7 @@ class PlottingContextBase:
         self.initial_plot = True
         self.fig = None
         self._logger = logging.getLogger(__name__)
-        self._logger.info(f"Initialize {self.__class__.__name__}")
+        self._logger.info("Initialize %s", self.__class__.__name__)
 
     def __enter__(self):
         # start the plotting process
@@ -729,10 +725,8 @@ class JupyterPlottingContext(PlottingContextBase):
         """Close the plot."""
         super().close()
         # close ipython output
-        try:
+        with contextlib.suppress(Exception):
             self._ipython_out.close()
-        except Exception:
-            pass
 
 
 def get_plotting_context(
@@ -845,7 +839,7 @@ def napari_add_layers(
     """adds layers to a `napari <http://napari.org/>`__ viewer
 
     Args:
-        viewer (:class:`napar    i.viewer.Viewer`):
+        viewer (:class:`napari.viewer.Viewer`):
             The napari application
         layers_data (dict):
             Data for all layers that will be added.
@@ -855,7 +849,7 @@ def napari_add_layers(
         layer_type = layer_data.pop("type")
         try:
             add_layer = getattr(viewer, f"add_{layer_type}")
-        except AttributeError:
-            raise RuntimeError(f"Unknown layer type: {layer_type}")
+        except AttributeError as err:
+            raise RuntimeError(f"Unknown layer type: {layer_type}") from err
         else:
             add_layer(**layer_data)

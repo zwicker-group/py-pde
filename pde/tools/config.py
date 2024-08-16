@@ -103,10 +103,10 @@ class Config(collections.UserDict):
         elif self.mode == "update":
             try:
                 self[key]  # test whether the key already exist (including magic keys)
-            except KeyError:
+            except KeyError as err:
                 raise KeyError(
                     f"{key} is not present and config is not in `insert` mode"
-                )
+                ) from err
             self.data[key] = value
 
         elif self.mode == "locked":
@@ -128,7 +128,7 @@ class Config(collections.UserDict):
         Returns:
             dict: A representation of the configuration in a normal :class:`dict`.
         """
-        return {k: v for k, v in self.items()}
+        return dict(self.items())
 
     def __repr__(self) -> str:
         """Represent the configuration as a string."""
@@ -179,10 +179,8 @@ def parse_version_str(ver_str: str) -> list[int]:
     """Helper function converting a version string into a list of integers."""
     result = []
     for token in ver_str.split(".")[:3]:
-        try:
+        with contextlib.suppress(ValueError):
             result.append(int(token))
-        except ValueError:
-            pass
     return result
 
 
@@ -215,7 +213,7 @@ def packages_from_requirements(requirements_file: Path | str) -> list[str]:
     """
     result = []
     try:
-        with open(requirements_file) as fp:
+        with Path(requirements_file).open() as fp:
             for line in fp:
                 line_s = line.strip()
                 if line_s.startswith("#"):

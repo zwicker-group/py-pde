@@ -90,7 +90,7 @@ else:
             try:
                 return self._name_ids[name]
             except KeyError:
-                raise AttributeError
+                raise AttributeError(f"MPI operator `{name}` not registered") from None
 
     Operator = _OperatorRegistry()
     Operator.register("MAX", MPI.MAX)

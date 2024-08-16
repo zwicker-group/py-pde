@@ -426,7 +426,7 @@ class BCBase(metaclass=ABCMeta):
         except KeyError:
             raise BCDataError(
                 f"Boundary condition `{condition}` not defined. " + cls.get_help()
-            )
+            ) from None
 
         # create the actual class
         return boundary_class(grid=grid, axis=axis, upper=upper, rank=rank, **kwargs)
@@ -459,7 +459,7 @@ class BCBase(metaclass=ABCMeta):
         data = data.copy()  # need to make a copy since we modify it below
 
         # parse all possible variants that could be given
-        if "type" in data.keys():
+        if "type" in data:
             # type is given (optionally with a value)
             b_type = data.pop("type")
             return cls.from_str(grid, axis, upper, condition=b_type, rank=rank, **data)
@@ -1224,14 +1224,13 @@ class ExpressionBC(BCBase):
         except Exception as err:
             if self._is_func:
                 raise BCDataError(
-                    f"Could not evaluate BC function. Expected signature "
-                    f"{signature}.\nEncountered error: {err}"
-                )
+                    f"Could not evaluate BC function. Expected signature {signature}."
+                ) from err
             else:
                 raise BCDataError(
                     f"Could not evaluate BC expression `{expression}` with signature "
-                    f"{signature}.\nEncountered error: {err}"
-                )
+                    f"{signature}."
+                ) from err
 
     @property
     def _test_values(self) -> tuple[float, ...]:
@@ -1275,7 +1274,7 @@ class ExpressionBC(BCBase):
 
             except nb.NumbaError:
                 # if compilation fails, we simply fall back to pure-python mode
-                self._logger.warning(f"Cannot compile BC {self}")
+                self._logger.warning("Cannot compile BC %s", self)
 
                 @register_jitable
                 def value_func(*args):
@@ -1360,7 +1359,7 @@ class ExpressionBC(BCBase):
 
         except nb.NumbaError:
             # if compilation fails, we simply fall back to pure-python mode
-            self._logger.warning(f"Cannot compile BC {self._func_expression}")
+            self._logger.warning("Cannot compile BC %s", self._func_expression)
             # calculate the expected value to test this later (and fail early)
             expected = func(*self._test_values)
 
@@ -1391,12 +1390,14 @@ class ExpressionBC(BCBase):
 
             else:
                 # cheap way to signal a problem
-                raise ValueError
+                raise ValueError from None
 
             # compile the actual functio and check the result
             result_compiled = value_func(*self._test_values)
             if not np.allclose(result_compiled, expected):
-                raise RuntimeError("Compiled function does not give same value")
+                raise RuntimeError(
+                    "Compiled function does not give same value"
+                ) from None
 
         return value_func  # type: ignore
 
@@ -2974,4 +2975,4 @@ def registered_boundary_condition_names() -> dict[str, type[BCBase]]:
     Returns:
         dict: a dictionary with the names of the boundary conditions that can be used
     """
-    return {cls_name: cls for cls_name, cls in BCBase._conditions.items()}
+    return dict(BCBase._conditions.items())

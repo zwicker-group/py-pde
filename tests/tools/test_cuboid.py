@@ -58,8 +58,8 @@ def test_cuboid_2d():
     np.testing.assert_array_equal(c.contains_point([[1, 3], [3, 1]]), [False, False])
     np.testing.assert_array_equal(c.contains_point([[1, -1], [-1, 1]]), [False, False])
 
+    c.mutable = False
     with pytest.raises(ValueError):
-        c.mutable = False
         c.centroid = [0, 0]
 
     # test surface area

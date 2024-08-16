@@ -108,7 +108,10 @@ def test_parameter_help(monkeypatch, capsys):
 
     t = TestHelp2()
     for in_jupyter in [False, True]:
-        monkeypatch.setattr("pde.tools.output.in_jupyter_notebook", lambda: in_jupyter)
+        monkeypatch.setattr(
+            "pde.tools.output.in_jupyter_notebook",
+            lambda: in_jupyter,  # noqa: B023
+        )
 
         for flags in itertools.combinations_with_replacement([True, False], 3):
             TestHelp2.show_parameters(*flags)

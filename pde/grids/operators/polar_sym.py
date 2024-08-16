@@ -300,12 +300,11 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
             if r_min == 0:
                 matrix[i, i + 1] = 2 * scale
                 continue  # the special case of the inner boundary is handled
-            else:
-                const, entries = bcs[0].get_sparse_matrix_data((-1,))
-                factor = scale - scale_i
-                vector[i] += const * factor
-                for k, v in entries.items():
-                    matrix[i, k] += v * factor
+            const, entries = bcs[0].get_sparse_matrix_data((-1,))
+            factor = scale - scale_i
+            vector[i] += const * factor
+            for k, v in entries.items():
+                matrix[i, k] += v * factor
 
         else:
             matrix[i, i - 1] = scale - scale_i

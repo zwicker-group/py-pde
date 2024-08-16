@@ -224,16 +224,16 @@ class PDE(PDEBase):
             else:
                 raise ValueError(f'Cannot parse boundary condition "{key_str}"')
             if key in self.bcs:
-                self._logger.warning(f"Two boundary conditions for key {key}")
+                self._logger.warning("Two boundary conditions for key %s", key)
             self.bcs[key] = value
 
         # save information for easy inspection
         self.diagnostics["pde"] = {
             "variables": list(self.variables),
-            "constants": list(sorted(self.consts)),
+            "constants": sorted(self.consts),
             "explicit_time_dependence": explicit_time_dependence,
             "complex_valued_rhs": complex_valued,
-            "operators": list(sorted(set().union(*self._operators.values()))),
+            "operators": sorted(set().union(*self._operators.values())),
         }
         self._cache: dict[str, dict[str, Any]] = {}
 
@@ -309,7 +309,7 @@ class PDE(PDEBase):
             expr._sympy_expr = expr._sympy_expr.replace(
                 # only modify the relevant operator
                 lambda expr: isinstance(expr.func, UndefinedFunction)
-                and expr.name == func
+                and expr.name == func  # noqa: B023
                 # and do not modify it when the bc_args have already been set
                 and not (
                     isinstance(expr.args[-1], Symbol)
@@ -335,7 +335,7 @@ class PDE(PDEBase):
 
         else:
             # expression only depends on the actual variables
-            extra_args = tuple()  # @UnusedVariable
+            extra_args = ()  # @UnusedVariable
 
         # check whether all variables are accounted for
         extra_vars = set(expr.vars) - set(signature)
@@ -462,7 +462,7 @@ class PDE(PDEBase):
         # check whether there are boundary conditions that have not been used
         bcs_left = set(self.bcs.keys()) - self.diagnostics["pde"]["bcs_used"] - {"*:*"}
         if bcs_left:
-            self._logger.warning("Unused BCs: %s", list(sorted(bcs_left)))
+            self._logger.warning("Unused BCs: %s", sorted(bcs_left))
 
         # add extra information for field collection
         if isinstance(state, FieldCollection):

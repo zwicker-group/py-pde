@@ -1021,7 +1021,7 @@ class GridBase(metaclass=ABCMeta):
             the grid
         """
         cell_coords = self.transform(points, source=coords, target="cell", full=full)
-        return np.all((0 <= cell_coords) & (cell_coords <= self.shape), axis=-1)  # type: ignore
+        return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)  # type: ignore
 
     def iter_mirror_points(
         self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
@@ -1222,6 +1222,7 @@ class GridBase(metaclass=ABCMeta):
         else:
             # method is used directly
             register_operator(factory_func)
+            return None
 
     @hybridmethod  # type: ignore
     @property

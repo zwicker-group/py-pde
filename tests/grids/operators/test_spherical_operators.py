@@ -115,7 +115,7 @@ def test_grid_laplace():
     )
 
 
-@pytest.mark.parametrize("r_inner", (0, 1))
+@pytest.mark.parametrize("r_inner", [0, 1])
 def test_gradient_squared(r_inner, rng):
     """Compare gradient squared operator."""
     grid = SphericalSymGrid((r_inner, 5), 64)
@@ -288,7 +288,7 @@ def test_tensor_div_div(conservative):
     np.testing.assert_allclose(res.data[2:-2], est.data[2:-2], rtol=0.02, atol=1)
 
 
-@pytest.mark.parametrize("r_inner", (0, 1))
+@pytest.mark.parametrize("r_inner", [0, 1])
 def test_laplace_matrix(r_inner, rng):
     """Test laplace operator implemented using matrix multiplication."""
     grid = SphericalSymGrid((r_inner, 2), 16)

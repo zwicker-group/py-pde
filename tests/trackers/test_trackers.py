@@ -76,23 +76,21 @@ def test_trackers(rng):
     def get_sparse_matrix_data(state):
         return {"integral": state.integral}
 
-    devnull = open(os.devnull, "w")
-    data = trackers.DataTracker(get_sparse_matrix_data, interrupts=0.1)
-    tracker_list = [
-        trackers.PrintTracker(interrupts=0.1, stream=devnull),
-        trackers.CallbackTracker(store_time, interrupts=0.1),
-        None,  # should be ignored
-        data,
-    ]
-    if module_available("matplotlib"):
-        tracker_list.append(trackers.PlotTracker(interrupts=0.1, show=False))
+    with open(os.devnull, "w") as devnull:  # noqa: PTH123
+        data = trackers.DataTracker(get_sparse_matrix_data, interrupts=0.1)
+        tracker_list = [
+            trackers.PrintTracker(interrupts=0.1, stream=devnull),
+            trackers.CallbackTracker(store_time, interrupts=0.1),
+            None,  # should be ignored
+            data,
+        ]
+        if module_available("matplotlib"):
+            tracker_list.append(trackers.PlotTracker(interrupts=0.1, show=False))
 
-    grid = UnitGrid([16, 16])
-    state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
-    eq = DiffusionPDE()
-    eq.solve(state, t_range=1, dt=0.005, tracker=tracker_list)
-
-    devnull.close()
+        grid = UnitGrid([16, 16])
+        state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
+        eq = DiffusionPDE()
+        eq.solve(state, t_range=1, dt=0.005, tracker=tracker_list)
 
     assert times == data.times
     if module_available("pandas"):

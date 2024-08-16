@@ -121,7 +121,7 @@ def run_unit_tests(
     coverage: bool = False,
     nojit: bool = False,
     pattern: str = None,
-    pytest_args: list[str] = [],
+    pytest_args: list[str] | None = None,
 ) -> int:
     """Run the unit tests.
 
@@ -140,6 +140,8 @@ def run_unit_tests(
     Returns:
         int: The return code indicating success or failure
     """
+    if pytest_args is None:
+        pytest_args = []
     # modify current environment
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
@@ -177,8 +179,10 @@ def run_unit_tests(
     if use_mpi:
         try:
             import numba_mpi  # @UnusedImport
-        except ImportError:
-            raise RuntimeError("Moduled `numba_mpi` is required to test with MPI")
+        except ImportError as err:
+            raise RuntimeError(
+                "Moduled `numba_mpi` is required to test with MPI"
+            ) from err
         args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
 
     # run tests using multiple cores?

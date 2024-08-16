@@ -261,13 +261,13 @@ def movie(
                 except AttributeError:
                     fig = ref[0].ax.figure
                 if show_time:
-                    title = fig.suptitle("Time %g" % t)
+                    title = fig.suptitle(f"Time {t:g}")
 
             else:
                 # update the data in the figure
                 field._update_plot(ref)
                 if show_time:
-                    title.set_text("Time %g" % t)
+                    title.set_text(f"Time {t:g}")
 
             # add the current matplotlib figure to the movie
             movie.add_figure(fig)

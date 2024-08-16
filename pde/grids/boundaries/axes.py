@@ -264,7 +264,7 @@ class Boundaries(list):
 
         else:
             # handle all other cases, in particular integer indices
-            return super().__setitem__(index, data)
+            super().__setitem__(index, data)
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition."""
@@ -303,7 +303,7 @@ class Boundaries(list):
                 for i, j in itertools.product([0, -1], [0, -1]):
                     d[..., i, j] = (d[..., nxt[i], j] + d[..., i, nxt[j]]) / 2
 
-            elif self.grid.num_axes >= 3:
+            elif self.grid.num_axes == 3:
                 # iterate all edges
                 for i, j in itertools.product([0, -1], [0, -1]):
                     d[..., :, i, j] = (+d[..., :, nxt[i], j] + d[..., :, i, nxt[j]]) / 2
@@ -316,8 +316,9 @@ class Boundaries(list):
                         + d[..., i, nxt[j], k]
                         + d[..., i, j, nxt[k]]
                     ) / 3
-            else:
-                logging.getLogger(self.__class__.__name__).warning(
+
+            elif self.grid.num_axes > 3:
+                raise NotImplementedError(
                     f"Can't interpolate corners for grid with {self.grid.num_axes} axes"
                 )
 

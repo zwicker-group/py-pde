@@ -95,7 +95,7 @@ def test_grid_laplace_polar():
     np.testing.assert_allclose(b_1d_2.data[i, i], b_2d.data[i, i], rtol=0.2, atol=0.2)
 
 
-@pytest.mark.parametrize("r_inner", (0, 2 * np.pi))
+@pytest.mark.parametrize("r_inner", [0, 2 * np.pi])
 def test_gradient_squared_polar(r_inner):
     """Compare gradient squared operator."""
     grid = PolarSymGrid((r_inner, 4 * np.pi), 32)
@@ -194,7 +194,7 @@ def test_examples_tensor_polar():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
 
-@pytest.mark.parametrize("r_inner", (0, 1))
+@pytest.mark.parametrize("r_inner", [0, 1])
 def test_laplace_matrix(r_inner, rng):
     """Test laplace operator implemented using matrix multiplication."""
     grid = PolarSymGrid((r_inner, 2), 16)

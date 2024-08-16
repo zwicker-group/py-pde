@@ -244,7 +244,7 @@ def make_serializer(method: SerializerMethod) -> Callable:
 
         return lambda s: yaml.dump(s).encode("utf-8")
 
-    raise ValueError("Unknown serialization method `%s`" % method)
+    raise ValueError(f"Unknown serialization method `{method}`")
 
 
 def make_unserializer(method: SerializerMethod) -> Callable:
@@ -285,7 +285,7 @@ def make_unserializer(method: SerializerMethod) -> Callable:
 
         return yaml.unsafe_load
 
-    raise ValueError("Unknown serialization method `%s`" % method)
+    raise ValueError(f"Unknown serialization method `{method}`")
 
 
 class DictFiniteCapacity(collections.OrderedDict):

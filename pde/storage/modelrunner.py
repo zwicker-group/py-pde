@@ -130,7 +130,7 @@ class ModelrunnerStorage(StorageBase):
         super().start_writing(field, info=info)
 
         # initialize the file for writing with the correct mode
-        self._logger.debug(f"Start writing with mode `{self.write_mode}`")
+        self._logger.debug("Start writing with mode '%s'", self.write_mode)
         if self.write_mode == "truncate_once":
             self.write_mode = "append"  # do not truncate for next writing
         elif self.write_mode == "readonly":

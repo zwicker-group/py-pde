@@ -57,7 +57,8 @@ def make_laplace(grid: SphericalSymGrid, *, conservative: bool = True) -> Operat
         # create a conservative spherical laplace operator
         rl = rs - dr / 2  # inner radii of spherical shells
         rh = rs + dr / 2  # outer radii
-        assert np.isclose(rl[0], r_min) and np.isclose(rh[-1], r_max)
+        assert np.isclose(rl[0], r_min)
+        assert np.isclose(rh[-1], r_max)
         volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
         factor_l = rl**2 / (dr * volumes)
         factor_h = rh**2 / (dr * volumes)
@@ -496,7 +497,8 @@ def make_tensor_double_divergence(
         rl = rs - dr / 2  # inner radii of spherical shells
         rh = rs + dr / 2  # outer radii
         r_min, r_max = grid.axes_bounds[0]
-        assert np.isclose(rl[0], r_min) and np.isclose(rh[-1], r_max)
+        assert np.isclose(rl[0], r_min)
+        assert np.isclose(rh[-1], r_max)
         volumes = (rh**3 - rl**3) / 3  # volume of the spherical shells
         factor_l = rl / volumes
         factor_h = rh / volumes

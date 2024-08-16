@@ -60,7 +60,7 @@ def test_const(expr):
     assert e.get_compiled()() == val
     assert not e.depends_on("a")
     assert e.differentiate("a").value == 0
-    assert e.shape == tuple()
+    assert e.shape == ()
     assert e.rank == 0
     assert bool(e) == (val != 0)
     assert e.is_zero == (val == 0)
@@ -89,7 +89,7 @@ def test_wrong_const(caplog):
         assert e() == field
     assert "field" in caplog.text
     if not nb.config.DISABLE_JIT:  # @UndefinedVariable
-        with pytest.raises(Exception):
+        with pytest.raises(nb.TypingError):
             e.get_compiled()()
 
 
@@ -102,14 +102,14 @@ def test_single_arg(rng):
     assert e.get_compiled()(4) == 8
     assert e.differentiate("a").value == 2
     assert e.differentiate("b").value == 0
-    assert e.shape == tuple()
+    assert e.shape == ()
     assert e.rank == 0
     assert bool(e)
     assert not e.is_zero
 
     assert e == ScalarExpression(e.expression)
     with pytest.raises(TypeError):
-        e.value
+        print(e.value)
 
     arr = rng.random(5)
     np.testing.assert_allclose(e(arr), 2 * arr)
@@ -135,7 +135,7 @@ def test_two_args(rng):
     assert e.differentiate("a")(4, 2) == 16
     assert e.differentiate("b")(4, 2) == pytest.approx(32 * np.log(4))
     assert e.differentiate("c").value == 0
-    assert e.shape == tuple()
+    assert e.shape == ()
     assert e.rank == 0
     assert e == ScalarExpression(e.expression)
 
@@ -160,7 +160,8 @@ def test_two_args(rng):
 def test_derivatives():
     """Test vector expressions."""
     e = ScalarExpression("a * b**2")
-    assert e.depends_on("a") and e.depends_on("b")
+    assert e.depends_on("a")
+    assert e.depends_on("b")
     assert not e.constant
     assert e.rank == 0
 
@@ -199,7 +200,7 @@ def test_indexed():
     with pytest.raises(RuntimeError):
         e.differentiate("a")
     with pytest.raises(RuntimeError):
-        e.derivatives
+        print(e.derivatives)
 
 
 def test_synonyms(caplog):
@@ -217,7 +218,7 @@ def test_tensor_expression():
     assert e.rank == 2
     assert e.constant
     np.testing.assert_allclose(e.get_compiled_array()(), [[0, 1], [2, 3]])
-    np.testing.assert_allclose(e.get_compiled_array()(tuple()), [[0, 1], [2, 3]])
+    np.testing.assert_allclose(e.get_compiled_array()(()), [[0, 1], [2, 3]])
     assert e.differentiate("a") == TensorExpression("[[0, 0], [0, 0]]")
     np.testing.assert_allclose(e.value, np.arange(4).reshape(2, 2))
 
@@ -229,7 +230,7 @@ def test_tensor_expression():
     assert not e.constant
     np.testing.assert_allclose(e.differentiate("a").value, np.array([1, 2]))
     with pytest.raises(TypeError):
-        e.value
+        print(e.value)
     assert e[0] == ScalarExpression("a")
     assert e[1] == ScalarExpression("2*a")
     assert e[0:1] == TensorExpression("[a]")
@@ -331,7 +332,8 @@ def test_expression_consts():
 
     expr = ScalarExpression("a + b", consts={"a": 1})
     assert not expr.constant
-    assert not expr.depends_on("a") and expr.depends_on("b")
+    assert not expr.depends_on("a")
+    assert expr.depends_on("b")
     assert expr(2) == 3
     assert expr.get_compiled()(2) == 3
 
@@ -433,8 +435,8 @@ def test_evaluate_func_collection():
     assert isinstance(evaluate("gradient(a)", col), VectorField)
     assert isinstance(evaluate("a * v", col), VectorField)
 
+    col.labels = ["a", "a"]
     with pytest.raises(RuntimeError):
-        col.labels = ["a", "a"]
         evaluate("1", col)
 
 
