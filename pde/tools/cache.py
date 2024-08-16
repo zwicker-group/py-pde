@@ -408,8 +408,7 @@ class _class_cache:
         Example:
             An example for using the class is::
 
-                class Foo():
-
+                class Foo:
                     @cached_property()
                     def property(self):
                         return "Cached property"
@@ -438,13 +437,12 @@ class _class_cache:
         Example:
             An advanced example is::
 
-                class Foo():
-
+                class Foo:
                     def get_cache(self, name):
                         # `name` is the name of the method to cache
                         return DictFiniteCapacity()
 
-                    @cached_method(factory='get_cache')
+                    @cached_method(factory="get_cache")
                     def foo(self):
                         return "Cached"
 
@@ -592,8 +590,7 @@ class cached_property(_class_cache):
     Example:
         Here is an example for how to use the decorator::
 
-            class Foo():
-
+            class Foo:
                 @cached_property
                 def bar(self):
                     return "Cached"
@@ -638,7 +635,6 @@ class cached_method(_class_cache):
         The decorator can be used like so::
 
             class Foo:
-
                 @cached_method
                 def bar(self):
                     return "Cached"

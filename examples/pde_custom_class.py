@@ -4,7 +4,7 @@ Kuramoto-Sivashinsky - Using custom class
 
 This example implements a scalar PDE using a custom class. We here consider the
 `Kuramoto–Sivashinsky equation
-<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, which for instance 
+<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, which for instance
 describes the dynamics of flame fronts:
 
 .. math::

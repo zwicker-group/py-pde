@@ -163,16 +163,15 @@ REQUIREMENTS = [
     Requirement(
         name="jupyter_contrib_nbextensions", version_min="0.5", tests_only=True
     ),
-    Requirement(name="black", version_min="24", tests_only=True),
     Requirement(name="docformatter", version_min="1.7", tests_only=True),
     Requirement(name="importlib-metadata", version_min="5", tests_only=True),
-    Requirement(name="isort", version_min="5.1", tests_only=True),
     Requirement(name="mypy", version_min="1.8", tests_only=True),
     Requirement(name="notebook", version_min="7", tests_only=True),
     Requirement(name="pyupgrade", version_min="3", tests_only=True),
     Requirement(name="pytest", version_min="5.4", tests_only=True),
     Requirement(name="pytest-cov", version_min="2.8", tests_only=True),
     Requirement(name="pytest-xdist", version_min="1.30", tests_only=True),
+    Requirement(name="ruff", version_min="0.6", tests_only=True),
 ]
 
 
@@ -279,7 +278,7 @@ def write_from_template(
         path (:class:`Path`): The path where the requirements are written
         template_name (str): The name of the template
         requirements (list): The requirements to be written
-        fix_format (bool): If True, script will be formated using `black`
+        fix_format (bool): If True, script will be formatted using `ruff`
         add_warning (bool): If True, adds a warning that file is generated
     """
     print(f"Write `{path}`")
@@ -315,9 +314,9 @@ def write_from_template(
             fp.writelines(SETUP_WARNING.format(template_name))
         fp.writelines(content)
 
-    # call black formatter on it
+    # call ruff formatter on it
     if fix_format:
-        sp.check_call(["black", "-q", "-t", "py38", str(path)])
+        sp.check_call(["ruff", "--config", "../pyproject.toml", str(path)])
 
 
 def main():

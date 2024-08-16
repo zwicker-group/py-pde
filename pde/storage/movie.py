@@ -617,6 +617,7 @@ class MovieStorage(StorageBase):
                     transformed_field = state.smooth(1)
                     return field.append(transformed_field)
 
+
                 storage = pde.MemoryStorage()
                 tracker = storage.tracker(1, transformation=add_to_state)
                 eq.solve(..., tracker=tracker)

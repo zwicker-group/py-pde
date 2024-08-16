@@ -25,6 +25,7 @@ class ModelrunnerStorage(StorageBase):
     .. code-block:: python
 
         from modelrunner import Result
+
         r = Result.from_file("data.hdf5")
         r.result.plot()  # plots the final state
         r.storage["trajectory"]  # allows accessing the stored trajectory

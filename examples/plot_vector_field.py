@@ -2,7 +2,7 @@ r"""
 Plotting a vector field
 =======================
 
-This example shows how to initialize and visualize the vector field 
+This example shows how to initialize and visualize the vector field
 :math:`\boldsymbol u = \bigl(\sin(x), \cos(x)\bigr)`.
 """
 

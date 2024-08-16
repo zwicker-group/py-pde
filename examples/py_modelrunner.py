@@ -5,13 +5,14 @@ Using :mod:`modelrunner`
 
 This example shows how `py-pde` can be combined with :mod:`modelrunner`. The magic first
 line allows running this example as a script using :code:`./py_modelrunner.py`, which
-runs the function defined below and stores all results in the file `data.hdf5`. 
+runs the function defined below and stores all results in the file `data.hdf5`.
 
 The results can be read by the following code
 
 .. code-block:: python
 
     from modelrunner import Result
+
     r = Result.from_file("data.hdf5")
     r.result.plot()  # plots the final state
     r.storage["trajectory"]  # allows accessing the stored trajectory

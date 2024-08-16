@@ -3,7 +3,7 @@ Writing and reading trajectory data
 ===================================
 
 This example illustrates how to store intermediate data to a file for later
-post-processing. The storage frequency is an argument to the tracker. 
+post-processing. The storage frequency is an argument to the tracker.
 """
 
 from tempfile import NamedTemporaryFile

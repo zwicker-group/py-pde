@@ -3,7 +3,7 @@ Schrödinger's Equation
 ======================
 
 This example implements a complex PDE using the :class:`~pde.pdes.pde.PDE`. We here
-chose the `Schrödinger equation <https://en.wikipedia.org/wiki/Schrödinger_equation>`_ 
+chose the `Schrödinger equation <https://en.wikipedia.org/wiki/Schrödinger_equation>`_
 without a spatial potential in non-dimensional form:
 
 .. math::

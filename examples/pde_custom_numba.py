@@ -4,7 +4,7 @@ Kuramoto-Sivashinsky - Compiled methods
 
 This example implements a scalar PDE using a custom class with a numba-compiled method
 for accelerated calculations. We here consider the `Kuramoto–Sivashinsky equation
-<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, which for instance 
+<https://en.wikipedia.org/wiki/Kuramoto–Sivashinsky_equation>`_, which for instance
 describes the dynamics of flame fronts:
 
 .. math::

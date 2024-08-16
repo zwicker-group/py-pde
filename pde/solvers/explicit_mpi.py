@@ -57,7 +57,7 @@ class ExplicitMPISolver(ExplicitSolver):
            result = eq.solve(state, t_range=10, dt=0.1, solver="explicit_mpi")
 
            if result is not None:  # restrict the output to the main node
-              result.plot()
+               result.plot()
 
         Saving this script as `multiprocessing.py`, a parallel simulation is started by
 

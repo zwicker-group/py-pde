@@ -13,7 +13,7 @@ The module currently supports the following standard boundary conditions:
   Imposing the derivative of a field in the outward normal direction at the boundary
 * :class:`~pde.grids.boundaries.local.MixedBC`:
   Imposing the derivative of a field in the outward normal direction proportional to its
-  value at the boundary  
+  value at the boundary
 * :class:`~pde.grids.boundaries.local.CurvatureBC`:
   Imposing the second derivative (curvature) of a field at the boundary
 
@@ -2461,8 +2461,8 @@ class MixedBC(ConstBC1stOrderBase):
 
     .. code-block:: python
 
-        bc = {'mixed': VALUE}
-        bc = {'type': 'mixed', 'value': VALUE, 'const': CONST}
+        bc = {"mixed": VALUE}
+        bc = {"type": "mixed", "value": VALUE, "const": CONST}
 
     where `VALUE` corresponds to :math:`\gamma` and `CONST` to :math:`\beta`.
     """
@@ -2937,8 +2937,8 @@ class NormalMixedBC(MixedBC):
 
     .. code-block:: python
 
-        bc = {'mixed': VALUE}
-        bc = {'type': 'mixed', 'value': VALUE, 'const': CONST}
+        bc = {"mixed": VALUE}
+        bc = {"type": "mixed", "value": VALUE, "const": CONST}
 
     where `VALUE` corresponds to :math:`\gamma` and `CONST` to :math:`\beta`.
     """

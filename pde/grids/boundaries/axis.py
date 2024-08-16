@@ -3,7 +3,7 @@ r"""
 
 This module handles the boundaries of a single axis of a grid. There are
 generally only two options, depending on whether the axis of the underlying
-grid is defined as periodic or not. If it is periodic, the class 
+grid is defined as periodic or not. If it is periodic, the class
 :class:`~pde.grids.boundaries.axis.BoundaryPeriodic` should be used, while
 non-periodic axes have more option, which are represented by
 :class:`~pde.grids.boundaries.axis.BoundaryPair`.

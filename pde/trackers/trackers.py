@@ -59,6 +59,7 @@ class CallbackTracker(TrackerBase):
                 if state.integral < 0:
                     raise StopIteration
 
+
             tracker = CallbackTracker(check_simulation, interval="0:10")
 
         Adding :code:`tracker` to the simulation will perform a check every 10 real time
@@ -599,6 +600,7 @@ class DataTracker(CallbackTracker):
 
             def get_statistics(state, time):
                 return {"mean": state.data.mean(), "variance": state.data.var()}
+
 
             data_tracker = DataTracker(get_statistics, interval=10)
 
