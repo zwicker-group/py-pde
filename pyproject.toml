@@ -66,6 +66,12 @@ exclude = ["scripts/templates"]
 [tool.ruff.format]
 docstring-code-format = true
 
+[tool.ruff.lint.isort]
+section-order = ["future", "standard-library", "third-party", "first-party", "self", "local-folder"]
+
+[tool.ruff.lint.isort.sections]
+self = ["pde", "fixtures"]
+
 [tool.black]
 target_version = ["py39"]
 exclude = "scripts/templates"
