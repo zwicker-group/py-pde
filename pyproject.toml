@@ -4,8 +4,10 @@
 [project]
 name = "py-pde"
 description = "Python package for solving partial differential equations"
-authors = [{ name = "David Zwicker", email = "david.zwicker@ds.mpg.de" }]
-license = { text = "MIT" }
+authors = [
+    {name = "David Zwicker", email="david.zwicker@ds.mpg.de"}
+]
+license = {text = "MIT"}
 readme = "README.md"
 requires-python = ">=3.9,<3.13"
 dynamic = ["version"]
@@ -25,14 +27,7 @@ classifiers = [
 ]
 
 # Requirements for setuptools
-dependencies = [
-    "matplotlib>=3.1",
-    "numba>=0.59",
-    "numpy>=1.22",
-    "scipy>=1.10",
-    "sympy>=1.9",
-    "tqdm>=4.66",
-]
+dependencies = ["matplotlib>=3.1", "numba>=0.59", "numpy>=1.22", "scipy>=1.10", "sympy>=1.9", "tqdm>=4.66"]
 
 [project.optional-dependencies]
 io = ["h5py>=2.10", "pandas>=2", "ffmpeg-python>=0.2"]
@@ -45,12 +40,15 @@ documentation = "http://py-pde.readthedocs.io"
 repository = "https://github.com/zwicker-group/py-pde"
 
 [build-system]
-requires = ["setuptools>=61", "setuptools_scm[toml]>=6.2"]
+requires = [
+    "setuptools>=61",
+    "setuptools_scm[toml]>=6.2",
+]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-zip-safe = false            # required for mypy to find the py.typed file
+zip-safe = false  # required for mypy to find the py.typed file
 
 [tool.setuptools.packages.find]
 include = ["pde*"]
@@ -80,14 +78,7 @@ exclude = "scripts/templates"
 profile = "black"
 src_paths = ["pde", "examples", "scripts", "tests"]
 known_self = ["pde", "fixtures"]
-sections = [
-    "FUTURE",
-    "STDLIB",
-    "THIRDPARTY",
-    "FIRSTPARTY",
-    "SELF",
-    "LOCALFOLDER",
-]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "SELF", "LOCALFOLDER"]
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers"
