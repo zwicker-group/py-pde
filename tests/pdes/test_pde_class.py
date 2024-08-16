@@ -288,7 +288,9 @@ def test_pde_consts():
 
     eq = PDE({"a": "laplace(b)"}, consts={"b": 3})
     with pytest.raises(
-        AttributeError if os.environ["NUMBA_DISABLE_JIT"] == "1" else nb.TypingError
+        AttributeError
+        if os.environ.get("NUMBA_DISABLE_JIT", "0") == "1"
+        else nb.TypingError
     ):
         eq.evolution_rate(field)
 
