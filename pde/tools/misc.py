@@ -151,13 +151,13 @@ class classproperty(property):
     Example:
         The decorator can be used much like the `property` decorator::
 
-            class Test():
-
-                item: str = 'World'
+            class Test:
+                item: str = "World"
 
                 @classproperty
                 def message(cls):
-                    return 'Hello ' + cls.item
+                    return "Hello " + cls.item
+
 
             print(Test.message)
     """

@@ -552,7 +552,9 @@ class AdaptiveSolverBase(SolverBase):
 
         return single_step_error_estimate
 
-    def _make_adaptive_stepper(self, state: FieldBase) -> Callable[
+    def _make_adaptive_stepper(
+        self, state: FieldBase
+    ) -> Callable[
         [np.ndarray, float, float, float, OnlineStatistics | None, Any],
         tuple[float, float, int],
     ]:

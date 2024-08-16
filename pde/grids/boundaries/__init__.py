@@ -58,8 +58,7 @@ and the derivative of the field) and imposing a second derivative. An example is
 
 .. code-block:: python
 
-    bc_y = ({"type": "mixed", "value": 2, "const": 7},
-            {"curvature": 2})
+    bc_y = ({"type": "mixed", "value": 2, "const": 7}, {"curvature": 2})
 
 which enforces the condition :math:`\partial_n c + 2 c = 7` and
 :math:`\partial^2_n c = 2` onto the field :math:`c` on the lower and upper side

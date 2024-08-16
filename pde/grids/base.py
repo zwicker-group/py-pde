@@ -18,9 +18,8 @@ from typing import TYPE_CHECKING, Any, Callable, Literal, NamedTuple, overload
 
 import numba as nb
 import numpy as np
-from numba.extending import is_jitted
+from numba.extending import is_jitted, register_jitable
 from numba.extending import overload as nb_overload
-from numba.extending import register_jitable
 from numpy.typing import ArrayLike
 
 from ..tools.cache import cached_method, cached_property
@@ -1192,8 +1191,7 @@ class GridBase(metaclass=ABCMeta):
             .. code-block:: python
 
                 @GridClass.register_operator("operator")
-                def make_operator(grid: GridBase):
-                    ...
+                def make_operator(grid: GridBase): ...
 
         Args:
             name (str):

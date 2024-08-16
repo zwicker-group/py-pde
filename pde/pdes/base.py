@@ -141,14 +141,13 @@ class PDEBase(metaclass=ABCMeta):
             .. code-block:: python
 
                 def make_post_step_hook(self, state):
-
                     def post_step_hook(state_data, t, post_step_data):
                         i = state_data > 1  # get violating entries
                         overshoot = (state_data[i] - 1).sum()  # get total correction
                         state_data[i] = 1  # limit data entries
                         post_step_data += overshoot  # accumulate total correction
 
-                    return post_step_hook, 0.  # hook function and initial value
+                    return post_step_hook, 0.0  # hook function and initial value
 
         Args:
             state (:class:`~pde.fields.FieldBase`):

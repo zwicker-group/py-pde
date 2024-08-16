@@ -154,7 +154,9 @@ class ExplicitSolver(AdaptiveSolverBase):
         else:
             raise ValueError(f"Explicit scheme `{self.scheme}` is not supported")
 
-    def _make_adaptive_euler_stepper(self, state: FieldBase) -> Callable[
+    def _make_adaptive_euler_stepper(
+        self, state: FieldBase
+    ) -> Callable[
         [np.ndarray, float, float, float, OnlineStatistics | None, Any],
         tuple[float, float, int],
     ]:
@@ -371,7 +373,9 @@ class ExplicitSolver(AdaptiveSolverBase):
             # optimizations; see method `_make_adaptive_euler_stepper`
             raise ValueError(f"Adaptive scheme `{self.scheme}` is not supported")
 
-    def _make_adaptive_stepper(self, state: FieldBase) -> Callable[
+    def _make_adaptive_stepper(
+        self, state: FieldBase
+    ) -> Callable[
         [np.ndarray, float, float, float, OnlineStatistics | None, Any],
         tuple[float, float, int],
     ]:

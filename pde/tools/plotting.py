@@ -212,9 +212,9 @@ def plot_on_axes(wrapped=None, update_method=None):
                 def _update_plot(self, reference):
                     reference.element.set_ydata(self.data)
 
-                @plot_on_axes(update_method='_update_plot')
+                @plot_on_axes(update_method="_update_plot")
                 def plot(self, ax):
-                    line, = ax.plot(np.arange(8), self.data)
+                    (line,) = ax.plot(np.arange(8), self.data)
                     return PlotReference(ax, line)
 
 
@@ -414,17 +414,16 @@ def plot_on_figure(wrapped=None, update_method=None):
                     ref1.element.set_ydata(self.data[0])
                     ref2.element.set_ydata(self.data[1])
 
-                @plot_on_figure(update_method='_update_plot')
+                @plot_on_figure(update_method="_update_plot")
                 def plot(self, fig):
                     ax1, ax2 = fig.subplots(1, 2)
-                    l1, = ax1.plot(np.arange(8), self.data[0])
-                    l2, = ax2.plot(np.arange(8), self.data[1])
+                    (l1,) = ax1.plot(np.arange(8), self.data[0])
+                    (l2,) = ax2.plot(np.arange(8), self.data[1])
                     return [PlotReference(ax1, l1), PlotReference(ax2, l2)]
 
 
             @plot_on_figure
-            def make_plot(fig):
-                ...
+            def make_plot(fig): ...
 
 
         When `update_method` is not supplied, the method can still be used for
