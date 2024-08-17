@@ -163,7 +163,7 @@ class Controller:
         # initialize solver information
         self.info["t_start"] = t_start
         self.info["t_end"] = t_end
-        self.diagnostics["solver"] = self.solver.info
+        self.diagnostics["solver"] = getattr(self.solver, "info", {})
 
         # initialize profilers
         jit_count_base = int(JIT_COUNT)
@@ -187,7 +187,8 @@ class Controller:
         self.info["solver_start"] = str(solver_start)
 
         if dt is None:
-            dt = self.solver.info.get("dt")
+            # use self.solver.info['dt'] if it is present
+            dt = self.diagnostics["solver"].get("dt")
         # add some tolerance to account for inaccurate float point math
         if dt is None:  # self.solver.info['dt'] might be None
             atol = 1e-12
@@ -256,7 +257,7 @@ class Controller:
         self.info["t_final"] = t
         self.info["jit_count"]["simulation"] = int(JIT_COUNT) - jit_count_after_init
         self.trackers.finalize(info=self.diagnostics)
-        if "dt_statistics" in self.solver.info:
+        if "dt_statistics" in getattr(self.solver, "info", {}):
             dt_statistics = dict(self.solver.info["dt_statistics"].to_dict())
             self.solver.info["dt_statistics"] = dt_statistics
 
@@ -396,7 +397,7 @@ class Controller:
         from ..tools import mpi
 
         # copy the initial state to not modify the supplied one
-        if hasattr(self.solver, "pde") and self.solver.pde.complex_valued:
+        if getattr(self.solver, "pde", None) and self.solver.pde.complex_valued:
             self._logger.info("Convert state to complex numbers")
             state: TState = initial_state.copy(dtype=complex)
         else:
