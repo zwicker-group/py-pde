@@ -65,11 +65,8 @@ def test_codestyle(*, verbose: bool = True) -> int:
             print(f"Checking codestyle in folder {folder}...")
         path = PACKAGE_PATH / folder
 
-        # format imports
-        result = sp.run(["isort", "--diff", path])
-        retcodes.append(result.returncode)
-        # format rest
-        result = sp.run(["black", "--check", path])
+        # check format
+        result = sp.run(["ruff", "check", path])
         retcodes.append(result.returncode)
 
     return _most_severe_exit_code(retcodes)
