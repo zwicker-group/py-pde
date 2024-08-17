@@ -160,7 +160,7 @@ class GridBase(metaclass=ABCMeta):
         self.axes = [self.c.axes[i] for i in self._axes_described]
         self.axes_symmetric = [self.c.axes[i] for i in self.axes_symmetric]  # type: ignore
 
-    def __init_subclass__(cls, **kwargs) -> None:  # @NoSelf
+    def __init_subclass__(cls, **kwargs) -> None:
         """Register all subclassess to reconstruct them later."""
         super().__init_subclass__(**kwargs)
         if cls is not GridBase:
@@ -1066,7 +1066,7 @@ class GridBase(metaclass=ABCMeta):
             PeriodicityError:
                 If the boundaries are not compatible with the periodic axes of the grid.
         """
-        from .boundaries import Boundaries  # @Reimport
+        from .boundaries import Boundaries
 
         if self._mesh is None:
             # get boundary conditions for a simple grid that is not part of a mesh
@@ -1226,7 +1226,7 @@ class GridBase(metaclass=ABCMeta):
 
     @hybridmethod  # type: ignore
     @property
-    def operators(cls) -> set[str]:  # @NoSelf
+    def operators(cls) -> set[str]:
         """set: all operators defined for this class"""
         result = set()
         # add all customly defined operators
@@ -1574,7 +1574,7 @@ class GridBase(metaclass=ABCMeta):
 
         else:
             # we are in a parallel run, so we need to gather the sub-integrals from all
-            from mpi4py.MPI import COMM_WORLD  # @UnresolvedImport
+            from mpi4py.MPI import COMM_WORLD
 
             integral_full = np.empty_like(integral)
             COMM_WORLD.Allreduce(integral, integral_full)

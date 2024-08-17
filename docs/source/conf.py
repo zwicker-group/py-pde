@@ -26,7 +26,7 @@ from datetime import date
 project = "py-pde"
 module_name = "pde"
 author = "Zwicker Group"
-copyright = f"{date.today().year}, {author}"  # @ReservedAssignment  # noqa: A001
+copyright = f"{date.today().year}, {author}"  # noqa: A001
 html_logo = "_images/logo_small.png"
 
 # Determine the version from the actual package

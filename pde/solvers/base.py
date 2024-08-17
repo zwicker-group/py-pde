@@ -64,7 +64,7 @@ class SolverBase:
             self.info["pde_class"] = self.pde.__class__.__name__
         self._logger = logging.getLogger(self.__class__.__name__)
 
-    def __init_subclass__(cls, **kwargs):  # @NoSelf
+    def __init_subclass__(cls, **kwargs):
         """Register all subclassess to reconstruct them later."""
         super().__init_subclass__(**kwargs)
         if not isabstract(cls):
@@ -113,7 +113,7 @@ class SolverBase:
         return solver_class(pde, **kwargs)
 
     @classproperty
-    def registered_solvers(cls) -> list[str]:  # @NoSelf
+    def registered_solvers(cls) -> list[str]:
         """list of str: the names of the registered solvers"""
         return sorted(cls._subclasses.keys())
 

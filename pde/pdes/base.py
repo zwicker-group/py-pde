@@ -627,7 +627,7 @@ class PDEBase(metaclass=ABCMeta):
             the current node is not the main MPI node.
         """
         from ..solvers import Controller
-        from ..solvers.base import SolverBase  # @Reimport
+        from ..solvers.base import SolverBase
 
         # create solver instance
         if callable(solver):

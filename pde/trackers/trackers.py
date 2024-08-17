@@ -363,7 +363,7 @@ class PlotTracker(TrackerBase):
                 eq.solve(..., tracker=PlotTracker(1, movie=movie))
                 movie.save()
         """
-        from ..visualization.movies import Movie  # @Reimport
+        from ..visualization.movies import Movie
 
         # initialize the tracker
         super().__init__(interrupts=interrupts, interval=interval)

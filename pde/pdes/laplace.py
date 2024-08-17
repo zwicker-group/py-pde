@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from ..fields import ScalarField
 from ..grids.base import GridBase
-from ..grids.boundaries.axes import BoundariesData  # @UnusedImport
+from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 
 

@@ -759,8 +759,8 @@ def get_plotting_context(
         if "backend_inline" in mpl.get_backend():
             # special context to support the `inline` backend
             try:
-                from IPython.display import display  # @UnusedImport
-                from ipywidgets import Output  # @UnusedImport
+                from IPython.display import display
+                from ipywidgets import Output
             except ImportError:
                 context_class: type[PlottingContextBase] = BasicPlottingContext
             else:
@@ -811,7 +811,7 @@ def napari_viewer(
         **kwargs:
             Extra arguments are passed to :class:`napari.Viewer`
     """
-    import napari  # @Reimport
+    import napari
 
     # initialize the viewer
     kwargs.setdefault("axis_labels", grid.axes)

@@ -24,14 +24,14 @@ config = Config()  # initialize the default configuration
 import contextlib
 
 # import all other modules that should occupy the main name space
-from .fields import *  # @UnusedWildImport
-from .grids import *  # @UnusedWildImport
-from .pdes import *  # @UnusedWildImport
-from .solvers import *  # @UnusedWildImport
-from .storage import *  # @UnusedWildImport
+from .fields import *
+from .grids import *
+from .pdes import *
+from .solvers import *
+from .storage import *
 from .tools.parameters import Parameter
-from .trackers import *  # @UnusedWildImport
-from .visualization import *  # @UnusedWildImport
+from .trackers import *
+from .visualization import *
 
 with contextlib.suppress(ImportError):
     from .tools.modelrunner import *

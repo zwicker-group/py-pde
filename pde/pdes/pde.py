@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numba as nb
 import numpy as np
-from numba.typed import Dict as NumbaDict  # @UnresolvedImport
+from numba.typed import Dict as NumbaDict
 from sympy import Symbol
 from sympy.core.function import UndefinedFunction
 
@@ -329,13 +329,13 @@ class PDE(PDEBase):
             # extend the signature
             signature += tuple(state.grid.axes)
             # inject the spatial coordinates into the expression for the rhs
-            extra_args = tuple(  # @UnusedVariable
+            extra_args = tuple(
                 state.grid.cell_coords[..., i] for i in range(state.grid.num_axes)
             )
 
         else:
             # expression only depends on the actual variables
-            extra_args = ()  # @UnusedVariable
+            extra_args = ()
 
         # check whether all variables are accounted for
         extra_vars = set(expr.vars) - set(signature)

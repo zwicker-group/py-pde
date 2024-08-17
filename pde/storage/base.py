@@ -385,7 +385,7 @@ class StorageBase(metaclass=ABCMeta):
             :class:`MemoryStorage`: a storage instance that contains the data for the
             single field
         """
-        from .memory import MemoryStorage  # @Reimport
+        from .memory import MemoryStorage
 
         if self._field is None:
             self._init_field()
@@ -435,7 +435,7 @@ class StorageBase(metaclass=ABCMeta):
         Returns:
             :class:`MemoryStorage`: a storage instance that contains the extracted data.
         """
-        from .memory import MemoryStorage  # @Reimport
+        from .memory import MemoryStorage
 
         # get the time bracket
         try:
@@ -502,7 +502,7 @@ class StorageBase(metaclass=ABCMeta):
                 raise TypeError("The user function must return a field")
 
             if out is None:
-                from .memory import MemoryStorage  # @Reimport
+                from .memory import MemoryStorage
 
                 out = MemoryStorage(field_obj=transformed)
 
@@ -517,7 +517,7 @@ class StorageBase(metaclass=ABCMeta):
 
         # make sure that a storage is returned, even when no fields are present
         if out is None:
-            from .memory import MemoryStorage  # @Reimport
+            from .memory import MemoryStorage
 
             out = MemoryStorage()
 

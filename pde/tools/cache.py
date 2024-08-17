@@ -281,7 +281,7 @@ def make_unserializer(method: SerializerMethod) -> Callable:
         return yaml.full_load
 
     if method == "yaml_unsafe":
-        import yaml  # @Reimport
+        import yaml
 
         return yaml.unsafe_load
 

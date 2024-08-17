@@ -454,7 +454,7 @@ class ExpressionBase(metaclass=ABCMeta):
         # partial function instead of replacing the constants in the sympy expression
         # directly since sympy does not work well with numpy arrays.
         if constants:
-            const_values = tuple(self.consts[c] for c in constants)  # @UnusedVariable
+            const_values = tuple(self.consts[c] for c in constants)
 
             if prepare_compilation:
                 func = jit(func)
@@ -1099,13 +1099,11 @@ def evaluate(
         # extend the signature
         signature += tuple(grid.axes)
         # inject the spatial coordinates into the expression for the rhs
-        extra_args = tuple(  # @UnusedVariable
-            grid.cell_coords[..., i] for i in range(grid.num_axes)
-        )
+        extra_args = tuple(grid.cell_coords[..., i] for i in range(grid.num_axes))
 
     else:
         # expression only depends on the actual variables
-        extra_args = ()  # @UnusedVariable
+        extra_args = ()
 
     # check whether all variables are accounted for
     extra_vars = set(expr.vars) - set(signature)

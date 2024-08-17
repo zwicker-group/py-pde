@@ -167,6 +167,7 @@ REQUIREMENTS = [
     Requirement(name="importlib-metadata", version_min="5", tests_only=True),
     Requirement(name="mypy", version_min="1.8", tests_only=True),
     Requirement(name="notebook", version_min="7", tests_only=True),
+    Requirement(name="pre-commit", version_min="3", tests_only=True),
     Requirement(name="pyupgrade", version_min="3", tests_only=True),
     Requirement(name="pytest", version_min="5.4", tests_only=True),
     Requirement(name="pytest-cov", version_min="2.8", tests_only=True),
@@ -397,12 +398,12 @@ def main():
     # write pyproject.toml
     write_from_template(
         root / "pyproject.toml",
-        "pyproject.toml",
+        "_pyproject.toml",
         requirements=[r for r in REQUIREMENTS if r.essential],
     )
 
     # write pyproject.toml
-    write_from_template(root / "runtime.txt", "runtime.txt", add_warning=False)
+    write_from_template(root / "runtime.txt", "_runtime.txt", add_warning=False)
 
 
 if __name__ == "__main__":

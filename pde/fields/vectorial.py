@@ -205,7 +205,7 @@ class VectorField(DataFieldBase):
             :class:`~pde.fields.scalar.ScalarField` or
             :class:`~pde.fields.vectorial.VectorField`: result of applying the operator
         """
-        from .tensorial import Tensor2Field  # @Reimport
+        from .tensorial import Tensor2Field
 
         # check input
         self.grid.assert_grid_compatible(other.grid)
@@ -253,7 +253,7 @@ class VectorField(DataFieldBase):
         Returns:
             :class:`~pde.fields.tensorial.Tensor2Field`: result of the operation
         """
-        from .tensorial import Tensor2Field  # @Reimport
+        from .tensorial import Tensor2Field
 
         self.assert_field_compatible(other)
 

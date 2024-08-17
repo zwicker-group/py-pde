@@ -178,7 +178,7 @@ def run_unit_tests(
         args.append("--runinteractive")  # also run interactive tests
     if use_mpi:
         try:
-            import numba_mpi  # @UnusedImport
+            import numba_mpi
         except ImportError as err:
             raise RuntimeError(
                 "Moduled `numba_mpi` is required to test with MPI"
