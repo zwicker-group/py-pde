@@ -73,6 +73,7 @@ This folder also contain a script :file:`tests_types.sh`, which uses :mod:`mypy`
 to check the consistency of the python type annotations.
 We use these type annotations for additional documentation and they have also
 already been useful for finding some bugs.
+Finally, we have pre-commit hooks, which you should install using `pre-commit install`.
 
 We also have some conventions that should make the package more consistent and
 thus easier to use. For instance, we try to use ``properties`` instead of getter
