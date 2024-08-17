@@ -88,7 +88,7 @@ def test_wrong_const(caplog):
     with caplog.at_level(logging.WARNING):
         assert e() == field
     assert "field" in caplog.text
-    if not nb.config.DISABLE_JIT:  # @UndefinedVariable
+    if not nb.config.DISABLE_JIT:
         with pytest.raises(nb.TypingError):
             e.get_compiled()()
 

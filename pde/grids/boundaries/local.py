@@ -289,7 +289,7 @@ class BCBase(metaclass=ABCMeta):
 
         self._logger = logging.getLogger(self.__class__.__name__)
 
-    def __init_subclass__(cls, **kwargs):  # @NoSelf
+    def __init_subclass__(cls, **kwargs):
         """Register all subclasses to reconstruct them later."""
         super().__init_subclass__(**kwargs)
 

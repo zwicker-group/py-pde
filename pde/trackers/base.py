@@ -49,7 +49,7 @@ class TrackerBase(metaclass=ABCMeta):
         self.interrupt = parse_interrupt(interrupts)
         self._logger = logging.getLogger(self.__class__.__name__)
 
-    def __init_subclass__(cls, **kwargs):  # @NoSelf
+    def __init_subclass__(cls, **kwargs):
         """Register all subclassess to reconstruct them later."""
         super().__init_subclass__(**kwargs)
         if hasattr(cls, "name"):

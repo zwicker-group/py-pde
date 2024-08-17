@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal, Protocol, Union
 
 import numpy as np
-from numpy.typing import ArrayLike  # @UnusedImport
+from numpy.typing import ArrayLike
 
 if TYPE_CHECKING:
     from ..grids.base import GridBase

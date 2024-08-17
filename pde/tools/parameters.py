@@ -190,7 +190,7 @@ class Parameterized:
                 parameters, include_deprecated=True
             )
 
-    def __init_subclass__(cls, **kwargs):  # @NoSelf
+    def __init_subclass__(cls, **kwargs):
         """Register all subclasses to reconstruct them later."""
         # normalize the parameters_default attribute
         if hasattr(cls, "parameters_default") and isinstance(
@@ -405,9 +405,9 @@ class Parameterized:
         writer.show()
 
     @hybridmethod
-    def show_parameters(  # @NoSelf
+    def show_parameters(
         cls,
-        description: bool | None = None,  # @NoSelf
+        description: bool | None = None,
         sort: bool = False,
         show_hidden: bool = False,
         show_deprecated: bool = False,
@@ -433,7 +433,7 @@ class Parameterized:
     @show_parameters.instancemethod  # type: ignore
     def show_parameters(
         self,
-        description: bool | None = None,  # @NoSelf
+        description: bool | None = None,
         sort: bool = False,
         show_hidden: bool = False,
         show_deprecated: bool = False,

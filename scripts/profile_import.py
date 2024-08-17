@@ -13,7 +13,7 @@ from pyinstrument import Profiler
 profiler = Profiler()
 profiler.start()
 
-import pde  # @UnusedImport
+import pde
 
 profiler.stop()
 

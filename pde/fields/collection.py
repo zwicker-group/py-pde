@@ -1041,9 +1041,7 @@ class FieldCollection(FieldBase):
                 kind = [kind] * num_panels
             reference = [
                 field.plot(kind=knd, ax=ax, action="none", **kwargs, **sp_args)
-                for field, knd, ax, sp_args in zip(  # @UnusedVariable
-                    self.fields, kind, axs, subplot_args
-                )
+                for field, knd, ax, sp_args in zip(self.fields, kind, axs, subplot_args)
             ]
 
         # return the references for all subplots

@@ -434,7 +434,7 @@ class CylindricalSymGrid(GridBase):
 
         if indices[0] == 0:
             # return a radial grid
-            from .spherical import PolarSymGrid  # @Reimport
+            from .spherical import PolarSymGrid
 
             return PolarSymGrid(self.radius, self.shape[0])
 

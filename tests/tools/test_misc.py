@@ -47,7 +47,7 @@ def test_hybridmethod():
 
     class Test:
         @misc.hybridmethod
-        def method(cls):  # @NoSelf
+        def method(cls):
             return "class"
 
         @method.instancemethod
@@ -77,7 +77,7 @@ def test_classproperty():
         _value = 2
 
         @misc.classproperty
-        def value(cls):  # @NoSelf
+        def value(cls):
             return cls._value
 
     assert Test.value == 2

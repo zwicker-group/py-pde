@@ -1,5 +1,5 @@
 # THIS FILE IS CREATED AUTOMATICALLY AND ALL MANUAL CHANGES WILL BE OVERWRITTEN
-# If you want to adjust settings in this file, change scripts/_templates/pyproject.toml
+# If you want to adjust settings in this file, change scripts/_templates/_pyproject.toml
 
 [project]
 name = "py-pde"

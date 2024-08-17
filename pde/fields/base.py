@@ -61,7 +61,7 @@ class FieldBase(metaclass=ABCMeta):
         self.label = label
         self._logger = logging.getLogger(self.__class__.__name__)
 
-    def __init_subclass__(cls, **kwargs):  # @NoSelf
+    def __init_subclass__(cls, **kwargs):
         """Register all subclassess to reconstruct them later."""
         super().__init_subclass__(**kwargs)
 
@@ -359,7 +359,7 @@ class FieldBase(metaclass=ABCMeta):
                 Determines whether it is acceptable that `other` is an instance of
                 :class:`~pde.fields.ScalarField`.
         """
-        from .scalar import ScalarField  # @Reimport
+        from .scalar import ScalarField
 
         # check whether they are the same class
         is_scalar = accept_scalar and isinstance(other, ScalarField)
@@ -489,7 +489,7 @@ class FieldBase(metaclass=ABCMeta):
 
         if isinstance(other, FieldBase):
             # right operator is a field
-            from .scalar import ScalarField  # @Reimport
+            from .scalar import ScalarField
 
             # determine the dtype of the result of the operation
             dtype = np.result_type(self.data, other.data)
@@ -539,7 +539,7 @@ class FieldBase(metaclass=ABCMeta):
         """
         if isinstance(other, FieldBase):
             # right operator is a field
-            from .scalar import ScalarField  # @Reimport
+            from .scalar import ScalarField
 
             if scalar_second:
                 # right operator must be a scalar

@@ -93,7 +93,7 @@ def get_serialization_methods(with_none=True):
 
     # check whether yaml is actually available
     try:
-        import yaml  # @UnusedImport
+        import yaml
     except ImportError:
         pass
     else:

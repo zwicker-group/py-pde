@@ -28,8 +28,8 @@ from ...tools.numba import jit
 from ...tools.typing import OperatorType
 from ..boundaries import Boundaries
 from ..cartesian import CartesianGrid
-from .common import make_derivative as _make_derivative  # @UnusedImport
-from .common import make_derivative2 as _make_derivative2  # @UnusedImport
+from .common import make_derivative as _make_derivative
+from .common import make_derivative2 as _make_derivative2
 from .common import make_general_poisson_solver, uniform_discretization
 
 # The `make_derivative?` methods are imported for backward compatibility. Their usage is
