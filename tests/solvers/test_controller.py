@@ -3,8 +3,10 @@
 """
 
 import pytest
+import numpy as np
 
 from pde import PDEBase, ScalarField, UnitGrid
+from pde.solvers import Controller
 
 
 def test_controller_abort():
@@ -27,3 +29,18 @@ def test_controller_abort():
 
     assert eq.diagnostics["last_tracker_time"] >= 0
     assert eq.diagnostics["last_state"] == field
+
+
+def test_controller_foreign_solver():
+    """Test whether the Controller can deal with a minimal foreign solver"""
+
+    class MySolver:
+        def make_stepper(self, state, dt):
+            def stepper(state, t, t_break):
+                return t_break
+
+            return stepper
+
+    c = Controller(MySolver(), t_range=1)
+    res = c.run(np.arange(3))
+    np.testing.assert_allclose(res, np.arange(3))
