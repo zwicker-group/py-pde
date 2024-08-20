@@ -7,7 +7,9 @@ import pytest
 
 from pde import PDE, DiffusionPDE, grids
 from pde.fields import ScalarField, VectorField
+from pde.pdes.base import PDEBase
 from pde.tools import mpi
+from pde.tools.numba import jit
 
 
 @pytest.mark.multiprocessing
@@ -31,6 +33,8 @@ def test_pde_complex_bcs_mpi(dim, backend, rng):
         res_exp = eq.solve(backend="numpy", solver="explicit", **args)
         res_exp.assert_field_compatible(res)
         np.testing.assert_allclose(res_exp.data, res.data)
+    else:
+        assert res is None
 
 
 @pytest.mark.multiprocessing
@@ -87,6 +91,9 @@ def test_pde_complex_mpi(rng):
         assert res2.is_complex
         np.testing.assert_allclose(res2.data, expect.data)
         assert info2["solver"]["steps"] == 11
+    else:
+        assert res1 is None
+        assert res2 is None
 
 
 @pytest.mark.multiprocessing
@@ -96,15 +103,44 @@ def test_pde_const_mpi(backend):
     grid = grids.UnitGrid([8])
     eq = PDE({"u": "k"}, consts={"k": ScalarField.from_expression(grid, "x")})
 
-    args = {
-        "state": ScalarField(grid),
-        "t_range": 1,
-        "dt": 0.01,
-        "tracker": None,
-    }
+    args = {"state": ScalarField(grid), "t_range": 1, "dt": 0.01, "tracker": None}
     res_a = eq.solve(backend="numpy", solver="explicit", **args)
     res_b = eq.solve(backend=backend, solver="explicit_mpi", **args)
 
     if mpi.is_main:
         res_a.assert_field_compatible(res_b)
         np.testing.assert_allclose(res_a.data, res_b.data)
+    else:
+        assert res_b is None
+
+
+@pytest.mark.multiprocessing
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_pde_const_mpi_class(backend):
+    """Test PDE with a field constant using multiprocessing."""
+    grid = grids.UnitGrid([8])
+
+    class ExplicitFieldPDE(PDEBase):
+        def evolution_rate(self, state, t):
+            return ScalarField(state.grid, state.grid.axes_coords[0])
+
+        def _make_pde_rhs_numba(self, state):
+            x = state.grid.axes_coords[0]
+
+            @jit
+            def pde_rhs(state_data, t):
+                return x
+
+            return pde_rhs
+
+    eq = ExplicitFieldPDE()
+
+    args = {"state": ScalarField(grid), "t_range": 1, "dt": 0.01, "tracker": None}
+    res_a = eq.solve(backend="numpy", solver="explicit", **args)
+    res_b = eq.solve(backend=backend, solver="explicit_mpi", **args)
+
+    if mpi.is_main:
+        res_a.assert_field_compatible(res_b)
+        np.testing.assert_allclose(res_a.data, res_b.data)
+    else:
+        assert res_b is None
