@@ -180,7 +180,7 @@ class PDEBase(metaclass=ABCMeta):
         self, state: FieldBase, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """Create a compiled function for evaluating the right hand side."""
-        raise NotImplementedError("No backend `numba`")
+        raise NotImplementedError("`numba` backend not implemented for right-hand side")
 
     def check_rhs_consistency(
         self,

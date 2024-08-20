@@ -79,34 +79,15 @@ def test_jupyter_notebooks(path, tmp_path):
     """Run the jupyter notebooks."""
     import notebook as jupyter_notebook
 
+    if int(jupyter_notebook.__version__.split(".")[0]) < 7:
+        raise RuntimeError("Jupyter notebooks must be at least version 7")
+
     if path.name.startswith("_"):
-        pytest.skip("skip examples starting with an underscore")
+        pytest.skip("Skip examples starting with an underscore")
 
     # adjust python environment
     my_env = os.environ.copy()
     my_env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + my_env.get("PYTHONPATH", "")
 
-    outfile = tmp_path / path.name
-    if jupyter_notebook.__version__.startswith("6"):
-        # older version of running jypyter notebook
-        # deprecated on 2023-07-31
-        # in the future, the `notebook` package should be at least version 7
-        sp.check_call(
-            [
-                sys.executable,
-                "-m",
-                "jupyter",
-                "nbconvert",
-                "--ExecutePreprocessor.timeout=600",
-                "--to",
-                "notebook",
-                "--output",
-                outfile,
-                "--execute",
-                path,
-            ],
-            env=my_env,
-        )
-    else:
-        # run the notebook
-        sp.check_call([sys.executable, "-m", "jupyter", "execute", path], env=my_env)
+    # run the notebook
+    sp.check_call([sys.executable, "-m", "jupyter", "execute", path], env=my_env)

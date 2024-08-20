@@ -2,8 +2,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import pytest
 import numpy as np
+import pytest
 
 from pde import PDEBase, ScalarField, UnitGrid
 from pde.solvers import Controller
@@ -32,7 +32,7 @@ def test_controller_abort():
 
 
 def test_controller_foreign_solver():
-    """Test whether the Controller can deal with a minimal foreign solver"""
+    """Test whether the Controller can deal with a minimal foreign solver."""
 
     class MySolver:
         def make_stepper(self, state, dt):

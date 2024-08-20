@@ -4,6 +4,7 @@
 
 import logging
 import os
+
 import numba as nb
 import numpy as np
 import pytest
