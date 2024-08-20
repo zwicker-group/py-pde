@@ -180,7 +180,12 @@ class PDEBase(metaclass=ABCMeta):
         self, state: FieldBase, **kwargs
     ) -> Callable[[np.ndarray, float], np.ndarray]:
         """Create a compiled function for evaluating the right hand side."""
-        raise NotImplementedError("`numba` backend not implemented for right-hand side")
+        raise NotImplementedError(
+            "The right-hand side of the PDE is not implemented using the `numba` "
+            "backend. To add the implementation, provide the method "
+            "`_make_pde_rhs_numba`, which should return a numba-compiled function "
+            "calculating the right-hand side using numpy arrays as input and output."
+        )
 
     def check_rhs_consistency(
         self,
