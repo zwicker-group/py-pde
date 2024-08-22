@@ -346,7 +346,7 @@ def test_laplace_matrix(ndim, rng):
 
 
 @pytest.mark.parametrize(
-    "grid", [UnitGrid([12]), CartesianGrid([[0, 1], [4, 5.5]], 8), UnitGrid([3, 3, 3])]
+    "grid", [UnitGrid([12]), CartesianGrid([(0, 1), (4, 5.5)], 8), UnitGrid([3, 3, 3])]
 )
 @pytest.mark.parametrize("bc_val", ["auto_periodic_neumann", {"value": "sin(x)"}])
 def test_poisson_solver_cartesian(grid, bc_val, rng):
