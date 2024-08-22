@@ -26,6 +26,7 @@ import functools
 import importlib
 import json
 import os
+import warnings
 from pathlib import Path
 from typing import Any, Callable, TypeVar
 
@@ -80,6 +81,8 @@ def preserve_scalars(method: TFunc) -> TFunc:
     Returns:
         The decorated method
     """
+    # deprecated on 2024-08-21
+    warnings.warn("Method deprecated", DeprecationWarning)
 
     @functools.wraps(method)
     def wrapper(self, *args):
