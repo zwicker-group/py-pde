@@ -58,13 +58,6 @@ To enable those, it's best to specify an initial time step, like so
 
     eq.solve(t_range=10, dt=1e-3, adaptive=True)
 
-An additional advantage of this choice is that it selects
-:class:`~pde.solvers.explicit.ExplicitSolver`, which is also compiled with :mod:`numba`
-for speed.
-Alternatively, if only `t_range` is specified, the generic scipy-solver 
-:class:`~pde.solvers.scipy.ScipySolver`, which can be significantly slower.
-
-
 Additional factors influencing the performance of the package include the compiler used
 for :mod:`numpy`, :mod:`scipy`, and of course :mod:`numba`.
 Moreover, the BLAS and LAPACK libraries might make a difference.
@@ -79,9 +72,9 @@ of typical packages
 
 .. code-block:: bash
 
-    port install py37-numpy +gcc8+openblas
-    port install py37-scipy +gcc8+openblas
-    port install py37-numba +tbb
+    port install py312-numpy +gcc14+openblas
+    port install py312-scipy +gcc14+openblas
+    port install py312-numba +tbb
 
 Note that you can disable the automatic multithreading via :ref:`configuration`.
 
@@ -139,7 +132,7 @@ To avoid confusion, trackers will only be used on one process and also the resul
 only returned in one process to avoid problems where multiple process write data
 simultaneously.
 Consequently, the example above checked whether `result is None` (in which case the
-corresponnding process is a child process) and only resumes analysis when the result is
+corresponding process is a child process) and only resumes analysis when the result is
 actually present.
 
 The automatic treatment tries to use sensible default values, so typical simulations

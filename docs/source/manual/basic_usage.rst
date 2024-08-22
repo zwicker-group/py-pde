@@ -90,8 +90,8 @@ and the operators defined by the package.
 
 Running the simulation
 """"""""""""""""""""""
-To solve the PDE, we first need to generate an initial condition, i.e., the initial
-values of the fields that are evolved forward in time by the PDE.
+To solve the PDE, we use the generated initial condition, i.e., the initial
+field :code:`field`, which are evolved forward in time by the PDE.
 This field also defined the geometry on which the PDE is solved.
 In the simplest case, the solution is then obtain by running
 
@@ -135,6 +135,6 @@ subsequently:
     for time, field in storage.items():
         print(f"t={time}, field={field.magnitude}")
 
-Moreover, a movie of the simulation can be created using
+Moreover, a movie of the simulation can be created using :func:`~pde.visualization.movies.movie`, i.e., by calling
 :code:`pde.movie(storage, filename=FILE)`, where `FILE` determines where the movie is
 written.
