@@ -11,7 +11,7 @@ from .base import CoordinatesBase
 
 
 class CylindricalCoordinates(CoordinatesBase):
-    """N-dimensional Cartesian coordinates."""
+    """3-dimensional cylindrical coordinates."""
 
     _singleton: CylindricalCoordinates | None = None
     dim = 3

@@ -14,12 +14,13 @@ methods as described below.
 
 Curvilinear coordinates
 """""""""""""""""""""""
-The package supports multiple curvilinear coordinate systems. They allow to exploit
+The package supports multiple curvilinear coordinate systems through :mod:`pde.grids.coordinates`.
+They allow to exploit
 symmetries present in physical systems. Consequently, many grids implemented in
 `py-pde` inherently assume symmetry of the described fields. However, a drawback of
 curvilinear coordinates are the fact that the basis vectors now depend on position,
 which makes tensor fields less intuitive and complicates the expression of differential
-operators. To avoid confusion, we here specify the used coordinate systems explictely:
+operators. To avoid confusion, we here specify the used coordinate systems explicitly:
 
 Polar coordinates
 -----------------
@@ -131,7 +132,7 @@ which is also indicated in the inset.
 
 Differential operators are implemented using the usual second-order central
 differences.
-This requires the introducing of virtual support points at :math:`x_{-1}` and
+This requires introducing virtual support points at :math:`x_{-1}` and
 :math:`x_N`, which can be determined from the boundary conditions at
 :math:`x=x_\mathrm{min}` and :math:`x=x_\mathrm{max}`, respectively.
 The field classes automate this transparently.

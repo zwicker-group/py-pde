@@ -7,7 +7,7 @@ A crucial aspect of partial differential equations are boundary conditions, whic
 to be specified at the domain boundaries. For the simple domains contained in `py-pde`,
 all boundaries are orthogonal to one of the axes in the domain, so boundary conditions
 need to be applied to both sides of each axis. Here, the lower side of an axis can have
-a differnt condition than the upper side. For instance, one can enforce the value of a
+a different condition than the upper side. For instance, one can enforce the value of a
 field to be `4` at the lower side and its derivative (in the outward direction) to be
 `2` on the upper side using the following code:
 
@@ -171,7 +171,7 @@ defined in this package. Note that operators need to be specified with their ful
 i.e., `laplace` for a scalar Laplacian and `vector_laplace` for a Laplacian operating on
 a vector field. Moreover, the dot product between two vector fields can be denoted by
 using :code:`dot(field1, field2)` in the expression, and :code:`outer(field1, field2)`
-calculates an outer product. In this case, boundary conditons for the operators can be
+calculates an outer product. In this case, boundary conditions for the operators can be
 specified using the `bc` argument, in which case the same boundary conditions are
 applied to all operators. The additional argument `bc_ops` provides a more fine-grained
 control, where conditions for each individual operator can be specified.
@@ -182,9 +182,9 @@ field is defined on a two-dimensional Cartesian grid, the variables :code:`x` an
 :math:`x`-direction, one can use either :code:`(x > 5)` or :code:`heaviside(x - 5, 0.5)`,
 where the second argument denotes the returned value in case the first argument is `0`.
 For convenience, Cartesian coordinates are also available when using curvilinear grids.
-The respective coordinate values at a point can be acccessed using :code:`cartesian[i]`,
+The respective coordinate values at a point can be accessed using :code:`cartesian[i]`,
 where :code:`i` is an index, e.g., `i=0` for the first axis (normally the x-axis).
-Finally, expressions for equations in :class:`~pde.pdes.pde.PDE` can explicitely depend
+Finally, expressions for equations in :class:`~pde.pdes.pde.PDE` can explicitly depend
 on time, which is denoted by the variable :code:`t`.
 
 Expressions also support user-defined functions via the `user_funcs` argument, which is
