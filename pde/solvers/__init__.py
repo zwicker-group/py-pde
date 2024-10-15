@@ -12,6 +12,18 @@
    ~scipy.ScipySolver
    ~registered_solvers
 
+
+Inheritance structure of the classes:
+
+
+.. inheritance-diagram:: adams_bashforth.AdamsBashforthSolver
+        crank_nicolson.CrankNicolsonSolver
+        explicit.ExplicitSolver
+        implicit.ImplicitSolver
+        scipy.ScipySolver
+        explicit_mpi.ExplicitMPISolver
+   :parts: 1
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
