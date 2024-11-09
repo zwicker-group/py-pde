@@ -1,0 +1,123 @@
+\documentclass[
+	superscriptaddress,
+	aps, pre
+]{revtex4-1}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{graphicx}
+
+\input{../common.tex}
+\renewcommand{\vr}{\vect r}
+\newcommand{\vq}{\vect q}
+\newcommand{\dc}{\delta c}
+\newcommand{\dtc}{\delta \tilde c}
+
+\begin{document}
+
+\title{Linear stability analysis in `py-pde`}
+\author{David Zwicker}
+\date{\today}
+
+\begin{abstract}
+\tableofcontents
+\end{abstract}
+
+
+\maketitle
+
+
+\section{General derivation}
+We consider dynamical equations of the form
+\begin{align}
+	\partial_t c = f(c, \nabla c, \nabla^2 c, \ldots)
+	\;,
+\end{align}
+which we want to analyze around a homogeneous stationary state, $c(\vr, t) = c_0 + \eps\dc(\vr, t)$.
+Here, $c_0$ is chosen such that it is a stationary state, $f(c_0, 0, \ldots)=0$.
+To do this analysis, we need to linearize and move to Fourier space.
+Below, we check whether the order of operations matters.
+
+\subsection{Linearization first}
+Developing the equation up to first order in $\eps$, we thus find
+\begin{align}
+	\partial_t \dc = \sum_{n=0}^\infty \takenat{\pfrac{f}{(\nabla^n c)}}{c_0} \cdot \nabla^n \dc
+	\;.
+\end{align}
+Note that the term containing derivatives of $f$ is a scalar, vector, or tensor independent of position $\vr$, which is contracted with (derivatives of) the field $\dc$.
+Because $\dc$ enters linearly, we impose $\dc(\vr, t) = \exp(\omega t + i \vq.\vr)$, effectively moving to Fourier space,
+\begin{align}
+	\label{eqn:growth_rate_goal}
+	\omega(\vq) = \sum_{n=0}^\infty \takenat{\pfrac{f}{(\nabla^n c)}}{c_0}\cdot (i\vect q)^n
+	\;,
+\end{align}
+which should be the equation we want.
+
+\subsection{Fourier transform first}
+Since the form discussed above requires derivatives of the right hand side with respect to the derivatives of fields, which is difficult to implement in \texttt{sympy}, we here check whether we can first replace the derivatives by going to Fourier space and then linearize.
+We thus first consider the Fourier transformed function using $c(\vr, t) = \tilde c(\vq, t) e^{i\vr\vq}$,
+\begin{align}
+	\partial_t \tilde c = \tilde f(\tilde c, i\vq \tilde c, -\vq^2 \tilde c, \ldots) = \tilde g(\tilde c, \vect q)
+	\;.
+\end{align}
+We then expand the field up to first order in $\eps$ using $\tilde c(\vq, t) = c_0 + \eps \dtc(\vq)e^{\omega t}$,
+\begin{align}
+	\label{eqn:growth_rate_hypothesis}
+	\omega(\vq) &= \takenat{\pfrac{\tilde g}{\tilde c}}{c_0} 
+\notag\\
+	&= \sum_{n=0}^\infty \takenat{\pfrac{\tilde f}{((i\vq)^n\tilde c)}}{c_0} \cdot (i\vq)^n
+	\;,
+\end{align}
+which is identical to \Eqref{eqn:growth_rate_goal}.
+
+\subsection{Rule-of-thumb}
+What about simply replacing every $\nabla$ by $i\vq$?
+Does this work for functions where the differential operators are not directly applied to $c$?
+
+
+\section{Concrete examples}
+
+\subsubsection{Compound functions}
+To see whether \Eqref{eqn:growth_rate_goal} and \Eqref{eqn:growth_rate_hypothesis} agree, we test a simple example,
+\begin{align}
+	f &= \nabla\bigl[A(c) \nabla B(c)\bigr]
+\notag\\
+	 &=(\nabla A(c)). (\nabla B(c))  + A(c) \nabla^2 B(c)
+\notag\\
+	 &= A'(c)B'(c) (\nabla c)^2  + A(c)B''(c) (\nabla c)^2 + A(c)B'(c) \nabla^2 c
+	\;.
+\end{align}
+First, \Eqref{eqn:growth_rate_goal} can be to the form where the terms are derivatives are directly applied to $c$.
+\begin{align}
+	\omega(\vq) &= \sum_{n=0}^\infty \takenat{\pfrac{f}{(\nabla^n c)}}{c_0}\cdot (i\vect q)^n
+%\notag\\
+%	&= \bigl[A''(c_0)B'(c_0) + A'(c_0)B''(c_0)\bigr](\nabla c_0)^2  + \bigl[A'(c_0)B''(c_0) + A(c_0)B'''(c_0)\bigr] \nabla^2 c_0+
+%	2 i A'(c_0)B'(c_0)\vq \nabla c_0 - A(c_0)B''(c_0) \vq^2  % plus extra terms
+\notag\\
+	&= - A(c_0)B'(c_0) \vq^2
+	\;.
+\end{align}
+Using the rule-of-thumb, we obtain $\omega(\vq) = i\vq \bigl[A(c) i\vq B(c)\bigr]$, which gives the right scaling with $\vq$, but does not lead to any derivatives in the functions $A$ and $B$.
+\todo{Apparently, we need to linearize in the field first and then perform the Fourier transform. We thus need to tell \texttt{sympy} how to linearize the differential operators}
+This would imply
+\begin{align}
+	f &= \nabla\bigl[A(c_0 + \dc) \nabla B(c_0 + \dc)\bigr]
+\notag\\ & \approx
+	\nabla\bigl[\bigl(A(c_0) + A'(c_0)\dc\bigr) \nabla\bigl(B(c_0) + B'(c_0) \dc\bigr)\bigr]
+\notag\\ & \overset{\text{nabla const}}{\approx}
+	\nabla\bigl[\bigl(A(c_0) + A'(c_0)\dc\bigr) B'(c_0)  \nabla \dc\bigr]
+\notag\\ & \overset{\text{linearize}}{\approx}
+	\nabla\bigl[A(c_0) \nabla B'(c_0) \dc\bigr]
+\notag\\ & \overset{\text{collect}}{\approx}
+	A(c_0) B'(c_0) \nabla^2 \dc
+\notag\\ & \overset{\text{Fourier}}{\approx}
+	A(c_0) B'(c_0) (-\vq^2 \dc)
+\end{align}
+This works well in this simple case, but we somehow need to tell sympy how to simplify the expressions.
+
+
+%\bibliographystyle{apsrev4-1}
+%\bibliography{bibdesk.bib}
+
+\end{document}  

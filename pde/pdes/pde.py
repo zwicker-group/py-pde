@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import numbers
 import re
+import warnings
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Callable, Literal
 
@@ -50,6 +51,34 @@ _OPERATOR_FOURIER_MAPPING = {
     "divergence": "I * wave_vector * argument",
     # "gradient_squared": "wave_vector**2 * argument**2", # or "0"? <- CHECK
 }
+
+
+def _map_operators(expr, operators, variable="c", steady_state="c0", perturbation="dc"):
+    """Linearize each individual operator.
+
+    Ideally, this should be done from the inside out, starting with the deepest nested
+    symbol.
+    """
+    if not operators:
+        return expr  # nothing to do
+
+    c = sympy.symbols(variable)
+    c0 = sympy.symbols(steady_state)
+    dc = sympy.symbols(perturbation)
+    eps = sympy.symbols("eps")
+
+    # linearize the respective operators
+    for op in operators:
+        sympy_op = sympy.Function(op)
+        if op == "laplace":
+            expr = expr.replace(
+                sympy_op,
+                lambda arg: eps * arg.diff(c).subs(c, c0) * sympy_op(dc),  # noqa: B023
+            )
+        else:
+            raise RuntimeError
+
+    return expr
 
 
 class PDE(PDEBase):
@@ -680,7 +709,7 @@ class PDE(PDEBase):
                 fields. If omitted, general expressions containing the fields are
                 returned.
             t (float):
-                Time point necessary for explicit time dependences
+                Time point (only necessary if equations are time-dependent explicitly)
             wave_vector (str or :class:`~sympy.Symbol`):
                 Symbol denoting the wave vector.
             check_steady_state (bool):
@@ -688,10 +717,12 @@ class PDE(PDEBase):
                 an `RuntimeError` otherwise.
 
         Returns:
-            :class:`~sympy.Matrix`: The Jacobian matrix (evaluated at the homogeneous
-            state `state_hom` if provided).
+            :class:`~sympy.Matrix`: The Jacobian matrix (evaluated at the provided
+            homogeneous state `state_hom`).
         """
         import sympy
+
+        warnings.warn("This method is rather new and not well tested.")
 
         # basic checks
         if wave_vector == "t":
