@@ -15,7 +15,7 @@ from __future__ import annotations
 import re
 import textwrap
 from functools import partial
-from typing import TypeVar
+from typing import Callable, TypeVar
 
 DOCSTRING_REPLACEMENTS = {
     # description of function arguments
@@ -121,7 +121,7 @@ def get_text_block(identifier: str) -> str:
     return "".join(textwrap.dedent(raw_text))
 
 
-TFunc = TypeVar("TFunc")
+TFunc = TypeVar("TFunc", bound=Callable)
 
 
 def replace_in_docstring(
