@@ -153,9 +153,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             grid (:class:`~pde.grids.base.GridBase`):
                 Grid defining the space on which this field is defined
             vmin (float):
-                Smallest possible random value
+                Lower bound for the random values
             vmax (float):
-                Largest random value
+                Upper bound for the random values
             label (str, optional):
                 Name of the returned field
             dtype (numpy dtype):
