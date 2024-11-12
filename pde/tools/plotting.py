@@ -451,7 +451,7 @@ def plot_on_figure(wrapped=None, update_method=None):
     ):
         """This docstring will replace {PLOT_ARGS} in the wrapped function.
 
-        Title (str):
+        title (str):
             Title of the plot. If omitted, the title might be chosen automatically.
             This is shown above all panels.
         constrained_layout (bool):
