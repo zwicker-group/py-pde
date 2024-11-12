@@ -606,7 +606,19 @@ class VectorField(DataFieldBase):
             )
 
         # determine the points at which data needs to be calculated
-        if isinstance(grid, CartesianGrid):
+        if (
+            self.grid.num_axes == grid.num_axes
+            and self.grid.__class__ is grid.__class__
+            or (  # UnitGrid and CartesianGrid should be treated the same here
+                isinstance(self.grid, CartesianGrid) and isinstance(grid, CartesianGrid)
+            )
+        ):
+            # convert within the same grid class
+            points = grid.cell_coords
+            # vectors are already given in the correct basis
+            data = self.interpolate(points, bc=bc, fill=fill)
+
+        elif isinstance(grid, CartesianGrid):
             # convert Cartesian coordinates to coordinates in current grid
             points = self.grid.c.pos_from_cart(grid.cell_coords)
             points_grid_sym = self.grid._coords_symmetric(points)
@@ -614,15 +626,6 @@ class VectorField(DataFieldBase):
             data_grid = self.interpolate(points_grid_sym, bc=bc, fill=fill)
             # convert the vector to the cartesian basis
             data = self.grid._vector_to_cartesian(points, data_grid)
-
-        elif (
-            self.grid.__class__ is grid.__class__
-            and self.grid.num_axes == grid.num_axes
-        ):
-            # convert within the same grid class
-            points = grid.cell_coords
-            # vectors are already given in the correct basis
-            data = self.interpolate(points, bc=bc, fill=fill)
 
         else:
             # this type of interpolation is not supported

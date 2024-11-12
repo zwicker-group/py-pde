@@ -300,6 +300,25 @@ def test_vector_bcs():
     np.testing.assert_allclose(s1, s2)
 
 
+def test_interpolation_vector_fields_cartesian():
+    """Test interpolation of a vector field on Cartesian coordinates."""
+    # upscale
+    grid = UnitGrid([10, 10])
+    vf = VectorField.from_expression(grid, ["x", "y**2"])
+    grid2 = CartesianGrid([[0, 10], [0, 10]], 20)
+    vf2 = vf.interpolate_to_grid(grid2)
+    vf_expect = VectorField.from_expression(grid2, ["x", "y**2"])
+    np.testing.assert_allclose(vf2.data[1:-1, 1:-1], vf_expect.data[1:-1, 1:-1])
+
+    # downscale
+    grid = CartesianGrid([[0, 10], [0, 10]], 20)
+    vf = VectorField.from_expression(grid, ["x", "y**2"])
+    grid2 = UnitGrid([10, 10])
+    vf2 = vf.interpolate_to_grid(grid2)
+    vf_expect = VectorField.from_expression(grid2, ["x", "y**2"])
+    np.testing.assert_allclose(vf2.data[1:-1, 1:-1], vf_expect.data[1:-1, 1:-1])
+
+
 def test_interpolation_vector_fields_cylindrical():
     """Test interpolation of a vector field on cylindrical coordinates."""
     grid = CylindricalSymGrid(5, [-2, 3], 10)

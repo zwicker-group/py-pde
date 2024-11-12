@@ -761,7 +761,10 @@ class GridBase(metaclass=ABCMeta):
 
         # convert the basis of the vectors to Cartesian
         rot_mat = self.c.basis_rotation(points)
-        assert rot_mat.shape == (self.dim, self.dim) + shape
+        assert (
+            rot_mat.shape == (self.dim, self.dim)
+            or rot_mat.shape == (self.dim, self.dim) + shape
+        )
         return np.einsum("j...,ji...->i...", components, rot_mat)  # type: ignore
 
     def normalize_point(
