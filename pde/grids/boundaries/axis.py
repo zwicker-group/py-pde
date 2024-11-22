@@ -89,6 +89,15 @@ class BoundaryAxisBase:
         """Return a copy of itself, but with a reference to the same grid."""
         return self.__class__(self.low.copy(), self.high.copy())
 
+    def check_value_rank(self, rank: int) -> None:
+        """Check whether the values at the boundaries have the correct rank.
+
+        Args:
+            rank (int):
+                The tensorial rank of the field for this boundary condition
+        """
+        raise NotImplementedError
+
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
             return NotImplemented

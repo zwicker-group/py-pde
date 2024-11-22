@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, UnitGrid
-from pde.grids.boundaries import Boundaries, PeriodicityError
+from pde.grids.boundaries import BoundariesBase, PeriodicityError
 from pde.grids.operators.common import make_derivative
 
 
@@ -252,7 +252,7 @@ def test_setting_boundary_conditions():
         grid.get_boundary_conditions("auto_periodic_neumann"),
         grid.get_boundary_conditions(["auto_periodic_neumann", "derivative"]),
     ]:
-        assert isinstance(bc, Boundaries)
+        assert isinstance(bc, BoundariesBase)
 
     for bc in ["periodic", "value"]:
         with pytest.raises(PeriodicityError):

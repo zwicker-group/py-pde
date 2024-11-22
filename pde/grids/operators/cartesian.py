@@ -26,7 +26,8 @@ from ... import config
 from ...tools.misc import module_available
 from ...tools.numba import jit
 from ...tools.typing import OperatorType
-from ..boundaries import Boundaries
+from ..boundaries.axes import AxesBoundaries, BoundariesBase
+from ..boundaries.axis import BoundaryAxisBase
 from ..cartesian import CartesianGrid
 from .common import make_derivative as _make_derivative
 from .common import make_derivative2 as _make_derivative2
@@ -36,11 +37,11 @@ from .common import make_general_poisson_solver, uniform_discretization
 # deprecated since 2023-12-06
 
 
-def _get_laplace_matrix_1d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_1d(bcs: AxesBoundaries) -> tuple[np.ndarray, np.ndarray]:
     """Get sparse matrix for Laplace operator on a 1d Cartesian grid.
 
     Args:
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.AxesBoundaries`):
             {ARG_BOUNDARIES_INSTANCE}
 
     Returns:
@@ -78,11 +79,11 @@ def _get_laplace_matrix_1d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     return matrix, vector
 
 
-def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_2d(bcs: AxesBoundaries) -> tuple[np.ndarray, np.ndarray]:
     """Get sparse matrix for Laplace operator on a 2d Cartesian grid.
 
     Args:
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.AxesBoundaries`):
             {ARG_BOUNDARIES_INSTANCE}
 
     Returns:
@@ -147,11 +148,11 @@ def _get_laplace_matrix_2d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     return matrix, vector
 
 
-def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_3d(bcs: AxesBoundaries) -> tuple[np.ndarray, np.ndarray]:
     """Get sparse matrix for Laplace operator on a 3d Cartesian grid.
 
     Args:
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.AxesBoundaries`):
             {ARG_BOUNDARIES_INSTANCE}
 
     Returns:
@@ -234,11 +235,11 @@ def _get_laplace_matrix_3d(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
     return matrix, vector
 
 
-def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: AxesBoundaries) -> tuple[np.ndarray, np.ndarray]:
     """Get sparse matrix for Laplace operator on a Cartesian grid.
 
     Args:
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.AxesBoundaries`):
             {ARG_BOUNDARIES_INSTANCE}
 
     Returns:
@@ -1286,12 +1287,12 @@ def make_tensor_divergence(
 
 @CartesianGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 def make_poisson_solver(
-    bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
+    bcs: AxesBoundaries, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
     """Make a operator that solves Poisson's equation.
 
     Args:
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.AxesBoundaries`):
             {ARG_BOUNDARIES_INSTANCE}
         method (str):
             Method used for calculating the tensor divergence operator.

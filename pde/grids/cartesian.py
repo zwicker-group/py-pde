@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Generator, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 
@@ -21,9 +21,6 @@ from .base import (
     discretize_interval,
 )
 from .coordinates import CartesianCoordinates
-
-if TYPE_CHECKING:
-    from .boundaries.axes import Boundaries, BoundariesData
 
 
 class CartesianGrid(GridBase):

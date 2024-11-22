@@ -136,9 +136,9 @@ can be useful when dealing with vector and tensor fields:
 * :class:`~pde.grids.boundaries.axis.BoundaryPeriodic`:
   Indicates that an axis has periodic boundary conditions
 
-**Boundaries for all axes of a grid:**
+**AxesBoundaries for all axes of a grid:**
 
-* :class:`~pde.grids.boundaries.axes.Boundaries`:
+* :class:`~pde.grids.boundaries.axes.AxesBoundaries`:
   Collection of boundaries to describe conditions for all axes
 
 
@@ -154,7 +154,7 @@ The details of the classes are explained below:
 """
 
 from ..base import DomainError, PeriodicityError
-from .axes import Boundaries
+from .axes import AxesBoundaries, BoundariesBase
 from .local import (
     registered_boundary_condition_classes,
     registered_boundary_condition_names,

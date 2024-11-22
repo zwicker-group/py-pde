@@ -21,9 +21,9 @@ DOCSTRING_REPLACEMENTS = {
     # description of function arguments
     "ARG_BOUNDARIES_INSTANCE": """
         Specifies the boundary conditions applied to the field. This must be an
-        instance of :class:`~pde.grids.boundaries.axes.Boundaries`, which can be
+        instance of :class:`~pde.grids.boundaries.axes.AxesBoundaries`, which can be
         created from various data formats using the class method
-       :func:`~pde.grids.boundaries.axes.Boundaries.from_data`.
+       :func:`~pde.grids.boundaries.axes.BoundariesBase.from_data`.
        """,
     "ARG_BOUNDARIES": """
         Boundary conditions are generally given as a list with one condition for each

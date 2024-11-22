@@ -10,7 +10,7 @@ as a scalar field on the same grid if the θ-component of the vector field vanis
 from __future__ import annotations
 
 from abc import ABCMeta
-from typing import TYPE_CHECKING, Any, Literal, TypeVar
+from typing import Any, Literal, TypeVar
 
 import numpy as np
 
@@ -19,10 +19,6 @@ from ..tools.plotting import plot_on_axes
 from .base import CoordsType, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
 from .coordinates import PolarCoordinates, SphericalCoordinates
-
-if TYPE_CHECKING:
-    from .boundaries.axes import Boundaries
-
 
 TNumArr = TypeVar("TNumArr", float, np.ndarray)
 

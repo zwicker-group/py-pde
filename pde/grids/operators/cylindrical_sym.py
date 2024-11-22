@@ -25,16 +25,16 @@ from ... import config
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit
 from ...tools.typing import OperatorType
-from ..boundaries import Boundaries
+from ..boundaries.axes import AxesBoundaries, BoundariesBase
 from ..cylindrical import CylindricalSymGrid
 from .common import make_general_poisson_solver
 
 
-def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: AxesBoundaries) -> tuple[np.ndarray, np.ndarray]:
     """Get sparse matrix for Laplace operator on a cylindrical grid.
 
     Args:
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.AxesBoundaries`):
             {ARG_BOUNDARIES_INSTANCE}
 
     Returns:
@@ -432,14 +432,14 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
 @CylindricalSymGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(
-    bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
+    bcs: AxesBoundaries, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
     """Make a operator that solves Poisson's equation.
 
     {DESCR_CYLINDRICAL_GRID}
 
     Args:
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.AxesBoundaries`):
             {ARG_BOUNDARIES_INSTANCE}
         method (str):
             The chosen method for implementing the operator

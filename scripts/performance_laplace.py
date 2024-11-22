@@ -12,7 +12,7 @@ import numba as nb
 import numpy as np
 
 from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
-from pde.grids.boundaries import Boundaries
+from pde.grids.boundaries import BoundariesBase
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit
 
@@ -193,7 +193,7 @@ def main():
         grid = CylindricalSymGrid(shape[0], [0, shape[1]], shape)
         print(f"Cylindrical grid, shape={shape}")
         field = ScalarField.random_normal(grid)
-        bcs = Boundaries.from_data(grid, "derivative")
+        bcs = BoundariesBase.from_data(grid, "derivative")
         expected = field.laplace(bcs)
 
         for method in ["CUSTOM", "numba"]:
@@ -214,7 +214,7 @@ def main():
         grid = SphericalSymGrid(shape, shape)
         print(grid)
         field = ScalarField.random_normal(grid)
-        bcs = Boundaries.from_data(grid, "derivative")
+        bcs = BoundariesBase.from_data(grid, "derivative")
 
         for conservative in [True, False]:
             laplace = grid.make_operator("laplace", bcs, conservative=conservative)

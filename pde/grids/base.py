@@ -37,7 +37,7 @@ from .coordinates import CoordinatesBase, DimensionError
 
 if TYPE_CHECKING:
     from ._mesh import GridMesh
-    from .boundaries.axes import Boundaries, BoundariesData
+    from .boundaries.axes import BoundariesBase, BoundariesData
 
 
 PI_4 = 4 * np.pi
@@ -338,14 +338,14 @@ class GridBase(metaclass=ABCMeta):
 
     @overload
     def _make_set_valid(
-        self, bcs: Boundaries
+        self, bcs: BoundariesBase
     ) -> Callable[[np.ndarray, np.ndarray, dict], None]: ...
 
-    def _make_set_valid(self, bcs: Boundaries | None = None) -> Callable:
+    def _make_set_valid(self, bcs: BoundariesBase | None = None) -> Callable:
         """Create a function to set the valid part of a full data array.
 
         Args:
-            bcs (:class:`~pde.grids.boundaries.axes.Boundaries`, optional):
+            bcs (:class:`~pde.grids.boundaries.axes.BoundariesBase`, optional):
                 If supplied, the returned function also enforces boundary conditions by
                 setting the ghost cells to the correct values
 
@@ -1049,7 +1049,7 @@ class GridBase(metaclass=ABCMeta):
     @fill_in_docstring
     def get_boundary_conditions(
         self, bc: BoundariesData = "auto_periodic_neumann", rank: int = 0
-    ) -> Boundaries:
+    ) -> BoundariesBase:
         """Constructs boundary conditions from a flexible data format.
 
         Args:
@@ -1060,8 +1060,8 @@ class GridBase(metaclass=ABCMeta):
                 The tensorial rank of the value associated with the boundary conditions.
 
         Returns:
-            :class:`~pde.grids.boundaries.axes.Boundaries`: The boundary conditions for
-            all axes.
+            :class:`~pde.grids.boundaries.axes.BoundariesBase`: The boundary conditions
+            for all axes.
 
         Raises:
             ValueError:
@@ -1069,17 +1069,17 @@ class GridBase(metaclass=ABCMeta):
             PeriodicityError:
                 If the boundaries are not compatible with the periodic axes of the grid.
         """
-        from .boundaries import Boundaries
+        from .boundaries import BoundariesBase
 
         if self._mesh is None:
             # get boundary conditions for a simple grid that is not part of a mesh
-            bcs = Boundaries.from_data(self, bc, rank=rank)
+            bcs = BoundariesBase.from_data(self, bc, rank=rank)
 
         else:
             # this grid is part of a mesh and we thus need to set special conditions to
             # support parallelism via MPI. We here assume that bc is given for the full
             # system and not
-            bcs_base = Boundaries.from_data(self._mesh.basegrid, bc, rank=rank)
+            bcs_base = BoundariesBase.from_data(self._mesh.basegrid, bc, rank=rank)
             bcs = self._mesh.extract_boundary_conditions(bcs_base)
 
         return bcs
