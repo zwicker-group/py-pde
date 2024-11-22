@@ -402,7 +402,7 @@ def test_evaluate_func_invalid():
         evaluate("a + b", {"a": field, "b": field2})
 
     with pytest.raises(BCDataError):
-        evaluate("laplace(a)", {"a": field}, bc=RuntimeError)
+        evaluate("laplace(a)", {"a": field}, bc=Ellipsis)
 
     with pytest.raises(RuntimeError):
         evaluate("a + b", {"a": field})

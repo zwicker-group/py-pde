@@ -1,7 +1,4 @@
-r"""
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-
-This module contains classes for handling a single boundary of a non-periodic axis.
+r"""This module contains classes for handling a single boundary of a non-periodic axis.
 Since an axis has two boundary, we simply distinguish them by a boolean flag `upper`,
 which is `True` for the side of the axis with the larger coordinate.
 
@@ -55,6 +52,8 @@ boundary.
 
 .. inheritance-diagram:: pde.grids.boundaries.local
    :parts: 1
+
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations

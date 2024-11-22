@@ -120,7 +120,7 @@ class PDEBase(metaclass=ABCMeta):
     def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 
-        This function receives three arugments: the current state as a numpy array, the
+        This function receives three arguments: the current state as a numpy array, the
         current time point, and a numpy array that can store data for the hook function.
         The function can modify the state data in place. If the function makes use of
         the data feature, it must replace the data in place.

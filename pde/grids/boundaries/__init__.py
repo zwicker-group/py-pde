@@ -92,6 +92,24 @@ Note:
     Derivatives are given relative to the outward normal vector, such that positive
     derivatives correspond to a function that increases across the boundary.
 
+If more complex boundary conditions are required, a custom function that directly sets
+the boundary conditions can also be supplied. This special approach comes with few
+checks, so only use it in exceptional circumstances. The following example shows a
+setter function, which sets specific boundary conditions in the x-direction and periodic
+conditions in the y-direction of a grid with two axes.
+
+.. code-block:: python
+
+    def setter(data, args=None):
+        data[0, :] = data[1, :]  # Vanishing derivative at left side
+        data[-1, :] = 2 - data[-2, :]  # Fixed value `1` at right side
+        data[:, 0] = data[:, -2]  # Periodic BC at top
+        data[:, -1] = data[:, 1]  # Periodic BC at bottom
+
+
+    field = ScalarField(UnitGrid([16, 16], periodic=[False, True]))
+    field.laplace(bc=setter)
+
 
 Boundaries overview
 ^^^^^^^^^^^^^^^^^^^
@@ -136,15 +154,19 @@ can be useful when dealing with vector and tensor fields:
 * :class:`~pde.grids.boundaries.axis.BoundaryPeriodic`:
   Indicates that an axis has periodic boundary conditions
 
-**AxesBoundaries for all axes of a grid:**
+**BoundariesList for all axes of a grid:**
 
-* :class:`~pde.grids.boundaries.axes.AxesBoundaries`:
+* :class:`~pde.grids.boundaries.axes.BoundariesList`:
   Collection of boundaries to describe conditions for all axes
+* :class:`~pde.grids.boundaries.axes.BoundariesSetter`:
+  Describes custom function setting virtual points to impose boundary conditions
 
 
 **Inheritance structure of the classes:**
 
-.. inheritance-diagram:: pde.grids.boundaries.axes pde.grids.boundaries.axis
+.. inheritance-diagram::
+        pde.grids.boundaries.axes
+        pde.grids.boundaries.axis
         pde.grids.boundaries.local
    :parts: 2
 
@@ -154,7 +176,7 @@ The details of the classes are explained below:
 """
 
 from ..base import DomainError, PeriodicityError
-from .axes import AxesBoundaries, BoundariesBase
+from .axes import BoundariesBase, BoundariesList
 from .local import (
     registered_boundary_condition_classes,
     registered_boundary_condition_names,

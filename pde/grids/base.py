@@ -1073,13 +1073,13 @@ class GridBase(metaclass=ABCMeta):
 
         if self._mesh is None:
             # get boundary conditions for a simple grid that is not part of a mesh
-            bcs = BoundariesBase.from_data(self, bc, rank=rank)
+            bcs = BoundariesBase.from_data(bc, grid=self, rank=rank)
 
         else:
             # this grid is part of a mesh and we thus need to set special conditions to
             # support parallelism via MPI. We here assume that bc is given for the full
             # system and not
-            bcs_base = BoundariesBase.from_data(self._mesh.basegrid, bc, rank=rank)
+            bcs_base = BoundariesBase.from_data(bc, grid=self._mesh.basegrid, rank=rank)
             bcs = self._mesh.extract_boundary_conditions(bcs_base)
 
         return bcs

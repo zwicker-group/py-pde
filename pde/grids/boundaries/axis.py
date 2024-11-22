@@ -1,12 +1,19 @@
-r"""
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
-
-This module handles the boundaries of a single axis of a grid. There are
-generally only two options, depending on whether the axis of the underlying
-grid is defined as periodic or not. If it is periodic, the class
-:class:`~pde.grids.boundaries.axis.BoundaryPeriodic` should be used, while
-non-periodic axes have more option, which are represented by
+r"""This module handles the boundaries of a single axis of a grid. There are generally
+only two options, depending on whether the axis of the underlying grid is defined as
+periodic or not. If it is periodic, the class
+:class:`~pde.grids.boundaries.axis.BoundaryPeriodic` should be used, while non-periodic
+axes have more option, which are represented by
 :class:`~pde.grids.boundaries.axis.BoundaryPair`.
+
+.. autosummary::
+    :nosignatures:
+
+    ~BoundaryAxisBase
+    ~BoundaryPair
+    ~BoundaryPeriodic
+
+
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations

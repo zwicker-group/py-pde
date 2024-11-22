@@ -9,7 +9,12 @@ import pytest
 
 from pde import ScalarField, UnitGrid
 from pde.grids.base import PeriodicityError
-from pde.grids.boundaries.axes import AxesBoundaries, BCDataError, BoundariesBase
+from pde.grids.boundaries.axes import (
+    BCDataError,
+    BoundariesBase,
+    BoundariesList,
+    BoundariesSetter,
+)
 from pde.grids.boundaries.axis import BoundaryPair, BoundaryPeriodic, get_boundary_axis
 from pde.grids.boundaries.local import NeumannBC
 
@@ -21,7 +26,7 @@ def test_boundaries():
         periodic = [b == "periodic" for b in (bx, by)]
         g = UnitGrid([2, 2], periodic=periodic)
 
-        bcs = BoundariesBase.from_data(g, [bx, by])
+        bcs = BoundariesBase.from_data([bx, by], grid=g)
         bc_x = get_boundary_axis(g, 0, bx)
         bc_y = get_boundary_axis(g, 1, by)
 
@@ -33,18 +38,18 @@ def test_boundaries():
         assert isinstance(str(bcs), str)
         assert isinstance(repr(bcs), str)
 
-        assert bcs == BoundariesBase.from_data(g, [bc_x, bc_y])
+        assert bcs == BoundariesBase.from_data([bc_x, bc_y], grid=g)
         if bx == by:
-            assert bcs == BoundariesBase.from_data(g, bx)
+            assert bcs == BoundariesBase.from_data(bx, grid=g)
 
         bc2 = bcs.copy()
         assert bcs == bc2
         assert bcs is not bc2
 
-    b1 = BoundariesBase.from_data(UnitGrid([2, 2]), "auto_periodic_neumann")
-    b2 = BoundariesBase.from_data(UnitGrid([3, 3]), "auto_periodic_neumann")
-    assert isinstance(b1, AxesBoundaries)
-    assert isinstance(b2, AxesBoundaries)
+    b1 = BoundariesBase.from_data("auto_periodic_neumann", grid=UnitGrid([2, 2]))
+    b2 = BoundariesBase.from_data("auto_periodic_neumann", grid=UnitGrid([3, 3]))
+    assert isinstance(b1, BoundariesList)
+    assert isinstance(b2, BoundariesList)
     assert b1 != b2
 
 
@@ -53,34 +58,34 @@ def test_boundaries_edge_cases():
     grid = UnitGrid([3, 3])
     bcs = grid.get_boundary_conditions("auto_periodic_neumann")
     with pytest.raises(BCDataError):
-        AxesBoundaries([])
+        BoundariesList([])
     with pytest.raises(BCDataError):
-        AxesBoundaries([bcs[0]])
+        BoundariesList([bcs[0]])
     with pytest.raises(BCDataError):
-        AxesBoundaries([bcs[0], bcs[0]])
+        BoundariesList([bcs[0], bcs[0]])
 
-    assert bcs == AxesBoundaries([bcs[0], bcs[1]])
+    assert bcs == BoundariesList([bcs[0], bcs[1]])
     bc0 = get_boundary_axis(grid.copy(), 0, "auto_periodic_neumann")
-    assert bcs == AxesBoundaries([bc0, bcs[1]])
+    assert bcs == BoundariesList([bc0, bcs[1]])
     bc0 = get_boundary_axis(UnitGrid([4, 3]), 0, "auto_periodic_neumann")
     with pytest.raises(BCDataError):
-        AxesBoundaries([bc0, bcs[1]])
+        BoundariesList([bc0, bcs[1]])
     bc0 = get_boundary_axis(UnitGrid([3, 3], periodic=True), 0, "auto_periodic_neumann")
     with pytest.raises(BCDataError):
-        AxesBoundaries([bc0, bcs[1]])
+        BoundariesList([bc0, bcs[1]])
 
 
 def test_boundary_specifications():
     """Test different ways of specifying boundary conditions."""
     g = UnitGrid([2])
     bc1 = BoundariesBase.from_data(
-        g, [{"type": "derivative", "value": 0}, {"type": "value", "value": 0}]
+        [{"type": "derivative", "value": 0}, {"type": "value", "value": 0}], grid=g
     )
     assert bc1 == BoundariesBase.from_data(
-        g, [{"type": "derivative"}, {"type": "value"}]
+        [{"type": "derivative"}, {"type": "value"}], grid=g
     )
-    assert bc1 == BoundariesBase.from_data(g, [{"derivative": 0}, {"value": 0}])
-    assert bc1 == BoundariesBase.from_data(g, ["neumann", "dirichlet"])
+    assert bc1 == BoundariesBase.from_data([{"derivative": 0}, {"value": 0}], grid=g)
+    assert bc1 == BoundariesBase.from_data(["neumann", "dirichlet"], grid=g)
 
 
 def test_mixed_boundary_condition(rng):
@@ -103,8 +108,8 @@ def test_natural_boundary_conditions(cond, is_value):
     """Test special automatic boundary conditions."""
     g = UnitGrid([2, 2], periodic=[True, False])
     for bc in [
-        BoundariesBase.from_data(g, cond),
-        BoundariesBase.from_data(g, ["periodic", cond]),
+        BoundariesBase.from_data(cond, grid=g),
+        BoundariesBase.from_data(["periodic", cond], grid=g),
     ]:
         assert isinstance(bc[0], BoundaryPeriodic)
         if is_value:
@@ -191,13 +196,56 @@ def test_setting_specific_bcs():
 def test_boundaries_property():
     """Test boundaries property."""
     g = UnitGrid([2, 2])
-    bc = BoundariesBase.from_data(g, ["neumann", "dirichlet"])
+    bc = BoundariesBase.from_data(["neumann", "dirichlet"], grid=g)
     assert len(list(bc.boundaries)) == 4
 
-    bc = BoundariesBase.from_data(g, "neumann")
+    bc = BoundariesBase.from_data("neumann", grid=g)
     for b in bc.boundaries:
         assert isinstance(b, NeumannBC)
 
     g = UnitGrid([2, 2], periodic=[True, False])
-    bc = BoundariesBase.from_data(g, "auto_periodic_neumann")
+    bc = BoundariesBase.from_data("auto_periodic_neumann", grid=g)
     assert len(list(bc.boundaries)) == 2
+
+
+@pytest.mark.parametrize("periodic", [True, False])
+def test_boundaries_setter_1d(periodic, rng):
+    """Test BoundariesSetter class for 1d grids."""
+
+    def setter(data, args=None):
+        if periodic:
+            data[0] = data[-2]
+            data[-1] = data[1]
+        else:
+            data[0] = data[1]  # Neumann
+            data[-1] = -data[-2]  # Dirichlet
+
+    f1 = ScalarField.random_normal(UnitGrid([4], periodic=periodic))
+    f2 = f1.copy()
+
+    f1.set_ghost_cells(bc=BoundariesSetter(setter))
+    if periodic:
+        f2.set_ghost_cells(bc="periodic")
+    else:
+        f2.set_ghost_cells(bc=["neumann", "dirichlet"])
+    np.testing.assert_allclose(f1._data_full, f2._data_full)
+
+
+def test_boundaries_setter_2d(rng):
+    """Test BoundariesSetter class for 2d grids."""
+
+    def setter(data, args=None):
+        data[0, :] = data[1, :]  # Neumann
+        data[-1, :] = -data[-2, :]  # Dirichlet
+        data[:, 0] = data[:, -2]  # periodic
+        data[:, -1] = data[:, 1]  # periodic
+
+    f1 = ScalarField.random_normal(UnitGrid([4, 4], periodic=[False, True]))
+    f2 = f1.copy()
+
+    f1.set_ghost_cells(bc=BoundariesSetter(setter))
+    f2.set_ghost_cells(bc=[["neumann", "dirichlet"], "periodic"])
+    # compare full fields without corner points
+    mask = np.ones((6, 6), dtype=bool)
+    mask[0, 0] = mask[-1, 0] = mask[0, -1] = mask[-1, -1] = False
+    np.testing.assert_allclose(f1._data_full[mask], f2._data_full[mask])

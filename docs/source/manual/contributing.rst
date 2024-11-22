@@ -32,10 +32,10 @@ New operators can be associated with grids by registering them using
 :meth:`~pde.grids.base.GridBase.register_operator`.
 For instance, to create a new operator for the cylindrical grid one needs to 
 define a factory function that creates the operator. This factory function takes
-an instance of :class:`~pde.grids.boundaries.axes.AxesBoundaries` as an argument and
+an instance of :class:`~pde.grids.boundaries.axes.BoundariesList` as an argument and
 returns a function that takes as an argument the actual data array for the grid.
 Note that the grid itself is an attribute of
-:class:`~pde.grids.boundaries.axes.AxesBoundaries`.
+:class:`~pde.grids.boundaries.axes.BoundariesList`.
 This operator would be registered with the grid by calling
 :code:`CylindricalSymGrid.register_operator("operator", make_operator)`, where the
 first argument is the name of the operator and the second argument is the

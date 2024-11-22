@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, DiffusionPDE, FileStorage, PDEBase, ScalarField, UnitGrid
+from pde.grids.boundaries.axes import BoundariesSetter
 from pde.tools import misc, mpi, numba
 from pde.tools.misc import module_available
 
@@ -317,3 +318,24 @@ def test_modelrunner_storage_many(tmp_path):
     # delete temporary files
     for path in tmp_path.iterdir():
         path.unlink()
+
+
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_pde_with_bc_setter(backend):
+    """Test a PDE with boundary conditions controlled by an explicit setter."""
+
+    def setter(data, args=None):
+        data[0, :] = data[1, :]  # Neumann
+        data[-1, :] = 2 * args["t"] - data[-2, :]  # Dirichlet ~ t
+        data[:, 0] = data[:, -2]  # periodic
+        data[:, -1] = data[:, 1]  # periodic
+
+    field = ScalarField.random_normal(UnitGrid([4, 4], periodic=[False, True]))
+
+    eq1 = DiffusionPDE(bc=setter)
+    res1 = eq1.solve(field, t_range=1.01, dt=0.1, backend=backend)
+
+    eq2 = DiffusionPDE(bc=[["neumann", {"value_expression": "t"}], "periodic"])
+    res2 = eq2.solve(field, t_range=1.01, dt=0.1, backend=backend)
+
+    np.testing.assert_allclose(res1.data, res2.data)

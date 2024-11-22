@@ -21,7 +21,7 @@ DOCSTRING_REPLACEMENTS = {
     # description of function arguments
     "ARG_BOUNDARIES_INSTANCE": """
         Specifies the boundary conditions applied to the field. This must be an
-        instance of :class:`~pde.grids.boundaries.axes.AxesBoundaries`, which can be
+        instance of :class:`~pde.grids.boundaries.axes.BoundariesList`, which can be
         created from various data formats using the class method
        :func:`~pde.grids.boundaries.axes.BoundariesBase.from_data`.
        """,
@@ -43,7 +43,7 @@ DOCSTRING_REPLACEMENTS = {
         determines an interval (measured in the simulation time unit) of regular
         interruption. A string is interpreted as a duration in real time assuming the
         format 'hh:mm:ss'. A list of numbers is taken as explicit simulation time points.
-        More fine-grained contol is possible by passing an instance of classes defined
+        More fine-grained control is possible by passing an instance of classes defined
         in :mod:`~pde.trackers.interrupts`.
         """,
     "ARG_PLOT_QUANTITIES": """
