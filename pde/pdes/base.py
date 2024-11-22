@@ -120,7 +120,7 @@ class PDEBase(metaclass=ABCMeta):
     def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
 
-        This function receives three arugments: the current state as a numpy array, the
+        This function receives three arguments: the current state as a numpy array, the
         current time point, and a numpy array that can store data for the hook function.
         The function can modify the state data in place. If the function makes use of
         the data feature, it must replace the data in place.
@@ -129,7 +129,7 @@ class PDEBase(metaclass=ABCMeta):
         is met by raising `StopIteration`. Note that this interrupts the inner-most
         loop, so that some final information might be still reflect the values they
         assumed at the last tracker interrupt. Additional information (beside the
-        current state) should be returned by the 1post_step_data1.
+        current state) should be returned by the `post_step_data`.
 
         Example:
             The following code provides an example that creates a hook function that
@@ -156,7 +156,7 @@ class PDEBase(metaclass=ABCMeta):
 
         Returns:
             tuple: The first entry is the function that implements the hook. The second
-                entry gives the initial data that is used as auxiallary data in the hook.
+                entry gives the initial data that is used as auxiliary data in the hook.
                 This can be `None` if no data is used.
         """
         raise NotImplementedError
@@ -310,7 +310,7 @@ class PDEBase(metaclass=ABCMeta):
                 rhs._backend = "numba"  # type: ignore
 
         if backend == "numpy":
-            # this will be called if backend was chosen explicitely or if it was set to
+            # this will be called if backend was chosen explicitly or if it was set to
             # "auto" and the numba compilation is not available
             state = state.copy()  # save this exact state for the closure
 
