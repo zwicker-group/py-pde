@@ -146,8 +146,8 @@ Here, :math:`\partial_n` denotes a derivative in outward normal direction, :math
 denotes an arbitrary function given by an expression (see next section), :math:`x`
 denotes coordinates along the boundary, :math:`t` denotes time.
 
-Finally, we support setting the advanced technique of setting the virtual points beyond
-the boundary manually. This can be achieved by passing a python function that takes as 
+Finally, we support the advanced technique of setting the virtual points at the boundary
+manually. This can be achieved by passing a python function that takes as 
 its first argument a :class:`~numpy.ndarray`, which contains the full field data
 including the virtual points, and a second, optional argument, which is a dictionary
 containing additional parameters, like the current time point `t` in case of a
