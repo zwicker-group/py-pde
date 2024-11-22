@@ -93,12 +93,11 @@ class PDE(PDEBase):
                 More information can be found in the
                 :ref:`expression documentation <documentation-expressions>`.
             bc:
-                Boundary conditions for the operators used in the expression. The
-                conditions here are applied to all operators that do not have a
+                General boundary conditions for all operators that do not have a
                 specialized condition given in `bc_ops`.
                 {ARG_BOUNDARIES}
             bc_ops (dict):
-                Special boundary conditions for some operators. The keys in this
+                Special boundary conditions for specific operators. The keys in this
                 dictionary specify where the boundary condition will be applied.
                 The keys follow the format "VARIABLE:OPERATOR", where VARIABLE specifies
                 the expression in `rhs` where the boundary condition is applied to the
