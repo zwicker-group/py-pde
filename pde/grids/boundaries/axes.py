@@ -15,7 +15,7 @@ from __future__ import annotations
 import itertools
 import logging
 from collections.abc import Iterator, Sequence
-from typing import Union
+from typing import Callable, Union
 
 import numpy as np
 from numba.extending import register_jitable
@@ -26,7 +26,9 @@ from ..base import GridBase, PeriodicityError
 from .axis import BoundaryAxisBase, BoundaryPair, BoundaryPairData, get_boundary_axis
 from .local import BCBase, BCDataError
 
-BoundariesData = Union[BoundaryPairData, Sequence[BoundaryPairData]]
+BoundariesData = Union[
+    BoundaryPairData, Sequence[BoundaryPairData], Callable, "BoundariesBase"
+]
 
 
 class BoundariesBase:
