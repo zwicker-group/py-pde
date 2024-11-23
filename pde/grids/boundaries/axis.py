@@ -302,11 +302,16 @@ class BoundaryPair(BoundaryAxisBase):
             except TypeError:
                 # if len is not supported, the format must be wrong
                 raise BCDataError(
-                    f"Unsupported boundary format: `{data}`. " + cls.get_help()
+                    f"Unsupported boundary format: `{data}`." + cls.get_help()
                 ) from None
             else:
                 if data_len == 2:
                     # assume that data is given for each boundary
+                    if data[0] == "periodic" or data[1] == "periodic":
+                        raise BCDataError(
+                            f"Only one side of {grid.axes[axis]} axis was set to have "
+                            "periodic boundary conditions."
+                        )
                     low = BCBase.from_data(
                         grid, axis, upper=False, data=data[0], rank=rank
                     )
@@ -403,24 +408,9 @@ def get_boundary_axis(
         :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`:
             Appropriate boundary condition for the axis
     """
-    # handle special constructs that describe boundary conditions
-    if (
-        data == "natural"
-        or data == "auto_periodic_neumann"
-        or data == "auto_periodic_derivative"
-    ):
-        # automatic choice between periodic and Neumann condition
-        if grid.periodic[axis]:
-            data = "periodic"
-        else:
-            data = "derivative"
-
-    elif data == "auto_periodic_dirichlet" or data == "auto_periodic_value":
-        # automatic choice between periodic and Dirichlet condition
-        if grid.periodic[axis]:
-            data = "periodic"
-        else:
-            data = "value"
+    # handle special case describing potentially periodic boundary conditions
+    if isinstance(data, str) and data.startswith("auto_periodic_"):
+        data = "periodic" if grid.periodic[axis] else data[len("auto_periodic_") :]
 
     # handle different types of data that specify boundary conditions
     if isinstance(data, BoundaryAxisBase):

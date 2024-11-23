@@ -349,7 +349,7 @@ def test_evaluate_func_scalar():
     field = ScalarField.from_expression(grid, "x")
 
     res1 = evaluate("laplace(a)", {"a": field})
-    res2 = field.laplace("natural")
+    res2 = field.laplace("auto_periodic_neumann")
     np.testing.assert_almost_equal(res1.data, res2.data)
 
     res = evaluate("a - x", {"a": field})

@@ -26,7 +26,7 @@ def test_boundaries():
         periodic = [b == "periodic" for b in (bx, by)]
         g = UnitGrid([2, 2], periodic=periodic)
 
-        bcs = BoundariesBase.from_data([bx, by], grid=g)
+        bcs = BoundariesBase.from_data({"x": bx, "y": by}, grid=g)
         bc_x = get_boundary_axis(g, 0, bx)
         bc_y = get_boundary_axis(g, 1, by)
 
@@ -78,14 +78,14 @@ def test_boundaries_edge_cases():
 def test_boundary_specifications():
     """Test different ways of specifying boundary conditions."""
     g = UnitGrid([2])
-    bc1 = BoundariesBase.from_data(
-        [{"type": "derivative", "value": 0}, {"type": "value", "value": 0}], grid=g
-    )
-    assert bc1 == BoundariesBase.from_data(
-        [{"type": "derivative"}, {"type": "value"}], grid=g
-    )
-    assert bc1 == BoundariesBase.from_data([{"derivative": 0}, {"value": 0}], grid=g)
-    assert bc1 == BoundariesBase.from_data(["neumann", "dirichlet"], grid=g)
+    ref = BoundariesBase.from_data({"x-": "neumann", "x+": "dirichlet"}, grid=g)
+    BC_DATA = [
+        {"x-": {"type": "derivative", "value": 0}, "x+": {"type": "value", "value": 0}},
+        {"left": {"type": "derivative"}, "right": {"type": "value"}},
+        {"x-": {"derivative": 0}, "x+": {"value": 0}},
+    ]
+    for data in BC_DATA:
+        assert ref == BoundariesBase.from_data(data, grid=g)
 
 
 def test_mixed_boundary_condition(rng):
@@ -129,7 +129,7 @@ def test_special_cases():
 def test_bc_values():
     """Test setting the values of boundary conditions."""
     g = UnitGrid([5])
-    bc = g.get_boundary_conditions([{"value": 2}, {"derivative": 3}])
+    bc = g.get_boundary_conditions({"x-": {"value": 2}, "x+": {"derivative": 3}})
     assert bc[0].low.value == 2
     assert bc[0].high.value == 3
 
@@ -168,9 +168,13 @@ def test_setting_specific_bcs():
     assert str(bcs["x"]) == '"value"'
     bcs["left"] = "derivative"
     assert str(bcs["left"]) == '"derivative"'
+    assert str(bcs["x-"]) == '"derivative"'
     assert str(bcs["right"]) == '"value"'
+    assert str(bcs["x+"]) == '"value"'
     bcs["right"] = "derivative"
     assert str(bcs["x"]) == '"derivative"'
+    bcs["x-"] = bcs["x+"] = "value"
+    assert str(bcs["x"]) == '"value"'
     with pytest.raises(PeriodicityError):
         bcs["x"] = "periodic"
 
@@ -183,6 +187,8 @@ def test_setting_specific_bcs():
         bcs["y"] = "value"
     with pytest.raises(PeriodicityError):
         bcs["top"] = "value"
+    with pytest.raises(PeriodicityError):
+        bcs["y+"] = "value"
 
     # test wrong input
     with pytest.raises(KeyError):
@@ -196,7 +202,7 @@ def test_setting_specific_bcs():
 def test_boundaries_property():
     """Test boundaries property."""
     g = UnitGrid([2, 2])
-    bc = BoundariesBase.from_data(["neumann", "dirichlet"], grid=g)
+    bc = BoundariesBase.from_data({"x": "neumann", "y": "dirichlet"}, grid=g)
     assert len(list(bc.boundaries)) == 4
 
     bc = BoundariesBase.from_data("neumann", grid=g)
@@ -227,7 +233,7 @@ def test_boundaries_setter_1d(periodic, rng):
     if periodic:
         f2.set_ghost_cells(bc="periodic")
     else:
-        f2.set_ghost_cells(bc=["neumann", "dirichlet"])
+        f2.set_ghost_cells(bc={"x-": "neumann", "x+": "dirichlet"})
     np.testing.assert_allclose(f1._data_full, f2._data_full)
 
 
@@ -244,7 +250,7 @@ def test_boundaries_setter_2d(rng):
     f2 = f1.copy()
 
     f1.set_ghost_cells(bc=BoundariesSetter(setter))
-    f2.set_ghost_cells(bc=[["neumann", "dirichlet"], "periodic"])
+    f2.set_ghost_cells(bc={"x-": "neumann", "x+": "dirichlet", "y": "periodic"})
     # compare full fields without corner points
     mask = np.ones((6, 6), dtype=bool)
     mask[0, 0] = mask[-1, 0] = mask[0, -1] = mask[-1, -1] = False

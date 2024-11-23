@@ -530,8 +530,13 @@ class BCBase(metaclass=ABCMeta):
             # create a specific condition given by a string
             bc = cls.from_str(grid, axis, upper=upper, condition=data, rank=rank)
 
+        elif data is None:
+            raise BCDataError(
+                f"Unspecified condition for boundary {grid.axes[axis]}{'-+'[int(upper)]}"
+            )
+
         else:
-            raise BCDataError(f"Unsupported format: `{data}`. " + cls.get_help())
+            raise BCDataError(f"Unsupported BC format: `{data}`. " + cls.get_help())
 
         # check consistency
         if bc.periodic != grid.periodic[axis]:

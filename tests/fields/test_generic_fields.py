@@ -42,7 +42,7 @@ def test_set_label(field_class):
 @pytest.mark.parametrize("grid", iter_grids())
 @pytest.mark.parametrize("field_class", [ScalarField, Tensor2Field])
 def test_interpolation_natural(grid, field_class, rng):
-    """Test some interpolation for natural boundary conditions."""
+    """Test some interpolation for auto_periodic_neumann boundary conditions."""
     msg = f"grid={grid}, field={field_class}"
     f = field_class.random_uniform(grid, rng=rng)
 

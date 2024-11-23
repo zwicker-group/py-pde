@@ -24,7 +24,7 @@ from pde.tools.misc import module_available
 
 
 def _get_random_grid_bcs(ndim: int, dx="random", periodic="random", rank=0):
-    """Create a random Cartesian grid with natural bcs."""
+    """Create a random Cartesian grid with auto_periodic_neumann bcs."""
     rng = np.random.default_rng(0)
     shape = tuple(rng.integers(2, 5, ndim))
 

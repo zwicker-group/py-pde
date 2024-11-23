@@ -11,6 +11,7 @@ import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
+from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
@@ -32,13 +33,15 @@ class KuramotoSivashinskyPDE(PDEBase):
     """
 
     explicit_time_dependence = False
+    default_bc = "auto_periodic_neumann"
+    """Default boundary condition used when no specific conditions are chosen."""
 
     @fill_in_docstring
     def __init__(
         self,
         nu: float = 1,
         *,
-        bc: BoundariesData = "auto_periodic_neumann",
+        bc: BoundariesData | None = None,
         bc_lap: BoundariesData | None = None,
         noise: float = 0,
         rng: np.random.Generator | None = None,
@@ -51,10 +54,9 @@ class KuramotoSivashinskyPDE(PDEBase):
                 The boundary conditions applied to the field.
                 {ARG_BOUNDARIES}
             bc_lap:
-                The boundary conditions applied to the second derivative of the
-                scalar field :math:`c`. If `None`, the same boundary condition
-                as `bc` is chosen. Otherwise, this supports the same options as
-                `bc`.
+                The boundary conditions applied to the second derivative of the scalar
+                field :math:`c`. If `None`, the same boundary condition as `bc` is
+                chosen. Otherwise, this supports the same options as `bc`.
             noise (float):
                 Variance of the (additive) noise term
             rng (:class:`~numpy.random.Generator`):
@@ -68,8 +70,8 @@ class KuramotoSivashinskyPDE(PDEBase):
         super().__init__(noise=noise, rng=rng)
 
         self.nu = nu
-        self.bc = bc
-        self.bc_lap = bc if bc_lap is None else bc_lap
+        self.bc = set_default_bc(bc, self.default_bc)
+        self.bc_lap = self.bc if bc_lap is None else bc_lap
 
     @property
     def expression(self) -> str:

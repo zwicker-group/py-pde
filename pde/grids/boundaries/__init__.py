@@ -8,30 +8,38 @@ Boundary conditions
 The mathematical details of boundary conditions for partial differential equations are
 treated in more detail in the
 :download:`documentation document </../methods/boundary_discretization/boundary_discretization.pdf>`.
-Since the :mod:`pde` package only supports orthogonal grids, boundary conditions need to
-be applied at the end of each axis.
-Consequently, methods expecting boundary conditions typically receive a list of
+Since the :mod:`pde` package only supports orthogonal grids, boundary conditions
+generally need to be applied at both ends of each axis.
+Consequently, methods expecting boundary conditions typically receive a dictionary of
 conditions for each axes:
 
 .. code-block:: python
 
     field = ScalarField(UnitGrid([16, 16], periodic=[True, False]))
-    field.laplace(bc=[bc_x, bc_y])
+    field.laplace(bc={"x": bc_x, "y-": bc_y_lower, "y+": bc_y_upper})
+
+If both sides of an axis have the same boundary condition, they can be specified
+together, e.g., if `bc_y_lower == bc_y_upper`, one could have used
+:code:`{"x": bc_x, "y": bc_y_lower}` instead of the example above. Moreover, it is
+possible to specify boundary conditions for all sides that have not a specific condition
+specified using :code:`{"*": default_bc}`. Similarly, boundary conditions for entire
+axes can be overwritten by conditions specified on one side. Finally, the boundary sides
+often have aliases defined by the grid, so one can use `left` instead of `x-` and so on.
 
 If an axis is periodic (like the first one in the example above), the only valid
 boundary conditions are 'periodic' and its cousin 'anti-periodic', which imposes
-opposite signs on both sides. For non-periodic axes (e.g., the second axis),
-different boundary conditions can be specified for the lower and upper end of the axis,
-which is done using a tuple of two conditions. Typical choices  for individual
-conditions are Dirichlet conditions that enforce a value NUM (specified by
-`{'value': NUM}`) and Neumann conditions that enforce  the value DERIV for the
-derivative in the normal direction (specified by `{'derivative': DERIV}`). The specific
-choices for the example above could be
+opposite signs on both sides. For non-periodic axes (e.g., the second axis), different
+boundary conditions can be specified for the lower and upper end of the axis, as in the
+example above. Typical choices  for individual conditions are Dirichlet conditions that
+enforce a value NUM (specified by `{'value': NUM}`) and Neumann conditions that enforce
+the value DERIV for the derivative in the normal direction (specified by
+`{'derivative': DERIV}`). The specific choices for the example above could be
 
 .. code-block:: python
 
     bc_x = "periodic"
-    bc_y = ({"value": 2}, {"derivative": -1})
+    bc_y_lower = {"value": 2}
+    bc_y_upper = {"derivative": -1}
 
 which enforces a value of `2` at the lower side of the y-axis and a derivative
 (in outward normal direction) of `-1` on the upper side. Instead of plain
@@ -42,12 +50,12 @@ the grid. An alternative boundary condition to the example above could thus read
 
 .. code-block:: python
 
-    bc_y = ({"value": "y**2"}, {"derivative": "-sin(x)"})
-
+    bc_y_lower = {"value": "y**2"}
+    bc_y_upper = {"derivative": "-sin(x)"}
 
 Warning:
-    To interpret arbitrary expressions, the package uses :func:`exec`. It
-    should therefore not be used in a context where malicious input could occur.
+    To interpret arbitrary expressions, the package uses :func:`exec`. It should
+    therefore not be used in a context where malicious input could occur.
 
 Inhomogeneous values can also be specified by directly supplying an array, whose shape
 needs to be compatible with the boundary, i.e., it needs to have the same shape as the
@@ -58,18 +66,19 @@ and the derivative of the field) and imposing a second derivative. An example is
 
 .. code-block:: python
 
-    bc_y = ({"type": "mixed", "value": 2, "const": 7}, {"curvature": 2})
+    bc_y_lower = {"type": "mixed", "value": 2, "const": 7}
+    bc_y_upper = {"curvature": 2}
 
 which enforces the condition :math:`\partial_n c + 2 c = 7` and
-:math:`\partial^2_n c = 2` onto the field :math:`c` on the lower and upper side
-of the axis, respectively.
+:math:`\partial^2_n c = 2` onto the field :math:`c` on the lower and upper side of the
+axis, respectively.
 
-Beside the full specification of the boundary conditions, various short-hand
-notations are supported. If both sides of an axis have the same boundary
-condition, only one needs to be specified (instead of the tuple). For instance,
-:code:`bc_y = {'value': 2}` imposes a value of `2` on both sides of the y-axis.
-Similarly, if all axes have the same boundary conditions, only one axis needs to
-be specified (instead of the list). For instance, the following example
+Beside the full specification of boundary conditions, various short-hand notations
+are supported. If both sides of an axis have the same boundary condition, only one needs
+to be specified. For instance, :code:`{"x": {"value": 2}}` is equivalent to
+:code:`{"x-": {"value": 2}, "x+": {"value": 2}}` and imposes a value of `2` on both
+sides of the x-axis. In the special case where all sides have the same boundary
+conditions, only this condition can be specified instead of the full dictionary, e.g.
 
 .. code-block:: python
 
@@ -77,8 +86,9 @@ be specified (instead of the list). For instance, the following example
     field.laplace(bc={"value": 2})
 
 imposes a value of `2` on all sides of the grid. Finally, the special values
-'auto_periodic_neumann' and 'auto_periodic_dirichlet' impose periodic boundary
-conditions for periodic axis and a vanishing derivative or value otherwise. For example,
+:code:`"auto_periodic_neumann"` and :code:`"auto_periodic_dirichlet"` impose periodic
+boundary conditions for periodic axis and a vanishing derivative or value otherwise.
+For example,
 
 .. code-block:: python
 
@@ -176,7 +186,7 @@ The details of the classes are explained below:
 """
 
 from ..base import DomainError, PeriodicityError
-from .axes import BoundariesBase, BoundariesList
+from .axes import BoundariesBase, BoundariesList, set_default_bc
 from .local import (
     registered_boundary_condition_classes,
     registered_boundary_condition_names,
