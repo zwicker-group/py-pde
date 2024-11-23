@@ -251,7 +251,7 @@ intersphinx_mapping = {
 # -- Options for sphinx-gallery extension ---------------------------------------
 
 # filter toctree, inspired by https://stackoverflow.com/a/46600038/932593
-if tags.has("exclude_gallery"):
+if tags.has("exclude_gallery"):  # noqa: F821
     # exclude gallery from toc when creating a latex document
     print("Example gallery will be excluded...")
     toc_filter_exclude = ["gallery"]

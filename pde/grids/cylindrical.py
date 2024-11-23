@@ -429,7 +429,7 @@ class CylindricalSymGrid(GridBase):
             :class:`~pde.grids.spherical.PolarSymGrid`: The subgrid
         """
         if len(indices) != 1:
-            raise ValueError(f"Can only get sub-grid for one axis.")
+            raise ValueError("Can only get sub-grid for one axis.")
 
         if indices[0] == 0:
             # return a radial grid

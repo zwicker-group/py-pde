@@ -483,7 +483,7 @@ def test_interpolation_after_free(rng):
     gc.collect()
 
     # hope that this overwrites the memory
-    f = ScalarField.random_uniform(UnitGrid([5]), rng=rng)
+    ScalarField.random_uniform(UnitGrid([5]), rng=rng)
 
     assert intp(np.array([2.3])) == pytest.approx(2.3)
 

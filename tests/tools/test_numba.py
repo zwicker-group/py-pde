@@ -39,12 +39,12 @@ def test_flat_idx():
 def test_counter():
     """Test Counter implementation."""
     c1 = Counter()
-    assert int(c1) is 0
+    assert int(c1) == 0
     assert c1 == 0
     assert str(c1) == "0"
 
     c1.increment()
-    assert int(c1) is 1
+    assert int(c1) == 1
 
     c1 += 2
     assert int(c1) == 3

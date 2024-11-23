@@ -139,7 +139,7 @@ class BoundaryAxisBase:
     def __setitem__(self, index, data) -> None:
         """Set one of the sides."""
         # determine which side was selected
-        upper = {0: False, False: False, 1: True, True: True}[index]
+        upper = {0: False, 1: True}[index]
 
         # create the appropriate boundary condition
         bc = BCBase.from_data(
