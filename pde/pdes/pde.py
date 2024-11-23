@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Callable, Literal
 
 import numba as nb
 import numpy as np
+from numba.extending import register_jitable
 from numba.typed import Dict as NumbaDict
 from sympy import Symbol
 from sympy.core.function import UndefinedFunction
@@ -25,7 +26,7 @@ from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase, TState
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, NumberOrArray
+from ..tools.typing import ArrayLike, NumberOrArray, StepperHook
 
 if TYPE_CHECKING:
     import sympy
@@ -70,6 +71,7 @@ class PDE(PDEBase):
         *,
         bc: BoundariesData | None = None,
         bc_ops: dict[str, BoundariesData] | None = None,
+        post_step_hook: Callable[[np.ndarray, float], None] | None = None,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
         noise: ArrayLike = 0,
@@ -109,6 +111,12 @@ class PDE(PDEBase):
                 symbol "\*" denotes that all fields and operators are affected,
                 respectively. For instance, the identifier "c:\*" allows specifying a
                 condition for all operators of the field named `c`.
+            post_step_hook (callable):
+                A function with signature `(state_data, t)` that will be called after
+                every time step. The function can modify the :class:`~numpy.ndarray` of
+                the state_data in place and it can abort the simulation immediately by
+                raising `StopIteration`. Since the callback defined here will be called
+                often, it is best to compile the function with :mod:`numba` for speed.
             user_funcs (dict, optional):
                 A dictionary with user defined functions that can be used in the
                 expressions in `rhs`.
@@ -240,6 +248,7 @@ class PDE(PDEBase):
             "operators": sorted(set().union(*self._operators.values())),
         }
         self._cache: dict[str, dict[str, Any]] = {}
+        self.post_step_hook = post_step_hook
 
     @property
     def expressions(self) -> dict[str, str]:
@@ -528,6 +537,33 @@ class PDE(PDEBase):
             raise TypeError(f"Unsupported field {state.__class__.__name__}")
 
         return result
+
+    def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
+        """Returns a function that is called after each step.
+
+        Args:
+            state (:class:`~pde.fields.FieldBase`):
+                An example for the state from which the grid and other information can
+                be extracted
+
+        Returns:
+            tuple: The first entry is the function that implements the hook. The second
+                entry gives the initial data that is used as auxiliary data in the hook.
+                This can be `None` if no data is used.
+
+        Raises:
+            NotImplementedError: When :attr:`post_step_hook` is `None`.
+        """
+        if self.post_step_hook is None:
+            raise NotImplementedError("`post_step_hook` not set")
+        else:
+            post_step_hook = register_jitable(self.post_step_hook)
+
+            @register_jitable
+            def post_step_hook_impl(state_data, t, post_step_data):
+                post_step_hook(state_data, t)
+
+            return post_step_hook_impl, 0  # hook function and initial value
 
     def _make_pde_rhs_numba_coll(
         self, state: FieldCollection, cache: dict[str, Any]
