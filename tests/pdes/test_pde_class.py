@@ -401,6 +401,27 @@ def test_pde_heaviside(backend):
     np.testing.assert_allclose(res.data, np.array([-1.0, 2]))
 
 
+@pytest.mark.parametrize("backend", ["numpy", "numba"])
+def test_post_step_hook(backend):
+    """Test simple post step hook function."""
+
+    def post_step_hook(state_data, t):
+        state_data[:5, :] = 1
+        if t > 1:
+            raise StopIteration
+
+    eq = PDE({"c": "laplace(c)"}, post_step_hook=post_step_hook)
+    state = ScalarField(grids.UnitGrid([10, 10]))
+    result = eq.solve(state, dt=0.1, t_range=10, backend=backend, tracker=None)
+
+    np.testing.assert_allclose(result.data[:5, :], 1)
+    assert np.all(result.data[5:, :] > 0)
+    assert np.all(result.data[5:, :] < 1)
+    # Since the hook raises an exception the internal timer will not update and t_final
+    # will be equal to the initial time
+    assert eq.diagnostics["controller"]["t_final"] == 0
+
+
 def test_jacobian_spectral():
     """Test jacobian_spectral method."""
     eq = PDE({"c": "laplace(c**3 - c - laplace(c))"})
@@ -445,7 +466,7 @@ def test_jacobian_spectral_bad_input():
         PDE({"a": "b"}, consts={"b": 1})._jacobian_spectral(state_hom=0)
 
 
-def test_dispersion_relationn():
+def test_dispersion_relation():
     """Test dispersion_relation method."""
     eq = PDE({"c": "laplace(c**3 - c - laplace(c))"})
     qs, evs = eq._dispersion_relation(state_hom=0, qs=[0, 0.5, 1])
