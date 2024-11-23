@@ -20,7 +20,7 @@ RESOURCES_PATH = Path(__file__).resolve().parent / "resources"
 @pytest.mark.parametrize("dim", [1, 2])
 def test_movie_storage_scalar(dim, tmp_path, rng):
     """Test storing scalar field as movie."""
-    path = tmp_path / f"test_movie_storage_scalar.avi"
+    path = tmp_path / "test_movie_storage_scalar.avi"
 
     grid = pde.UnitGrid([16] * dim)
     field = pde.ScalarField.random_uniform(grid, rng=rng)
@@ -69,7 +69,7 @@ def test_movie_storage_collection(dim, num_fields, tmp_path):
 @pytest.mark.parametrize("dim", [1, 2])
 def test_movie_storage_vector(dim, tmp_path, rng):
     """Test storing scalar field as movie."""
-    path = tmp_path / f"test_movie_storage_vector.avi"
+    path = tmp_path / "test_movie_storage_vector.avi"
 
     grid = pde.UnitGrid([16] * dim)
     field = pde.VectorField.random_uniform(grid, rng=rng)
@@ -152,7 +152,7 @@ def test_video_format(name, video_format, tmp_path, rng):
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 def test_too_many_channels(tmp_path, rng):
     """Test that data with too many channels throws an error."""
-    path = tmp_path / f"test_movie_complex.avi"
+    path = tmp_path / "test_movie_complex.avi"
 
     field = pde.FieldCollection.scalar_random_uniform(5, pde.UnitGrid([16]), rng=rng)
     writer = MovieStorage(path)
@@ -164,7 +164,7 @@ def test_too_many_channels(tmp_path, rng):
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 def test_complex_data(tmp_path, rng):
     """Test that complex data throws an error."""
-    path = tmp_path / f"test_movie_complex.avi"
+    path = tmp_path / "test_movie_complex.avi"
 
     field = pde.ScalarField.random_uniform(pde.UnitGrid([16]), dtype=complex, rng=rng)
     writer = MovieStorage(path)
@@ -220,7 +220,7 @@ def test_stored_files(path):
 )
 def test_stored_times(interrupt, expected, tmp_path):
     """Test how times are stored."""
-    path = tmp_path / f"test_movie_times.avi"
+    path = tmp_path / "test_movie_times.avi"
 
     field = pde.ScalarField(pde.UnitGrid([3]))
     writer = MovieStorage(path, write_times=True)
@@ -238,7 +238,7 @@ def test_stored_times(interrupt, expected, tmp_path):
 @pytest.mark.skipif(not module_available("ffmpeg"), reason="requires `ffmpeg-python`")
 def test_unequal_spaced_times(tmp_path, caplog):
     """Test whether a warning is generated for unequally spaced times."""
-    path = tmp_path / f"test_movie_unequal_times.avi"
+    path = tmp_path / "test_movie_unequal_times.avi"
 
     field = pde.ScalarField(pde.UnitGrid([3]))
     writer = MovieStorage(path, write_times=False)

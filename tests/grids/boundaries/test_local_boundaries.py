@@ -398,7 +398,7 @@ def test_expression_bc_operator(dim):
     """Test boundary conditions that use an expression in an operator."""
     grid = CartesianGrid([[0, 1]] * dim, 4)
     bc1 = grid.get_boundary_conditions({"value": 1})
-    bc2 = grid.get_boundary_conditions({"virtual_point": f"2 - value"})
+    bc2 = grid.get_boundary_conditions({"virtual_point": "2 - value"})
     assert "field" in bc2.get_mathematical_representation("field")
 
     field = ScalarField(grid, 1)

@@ -899,15 +899,15 @@ class TensorExpression(ExpressionBase):
                 # the function takes a single input array
                 first_dim = 0 if len(self.vars) == 1 else 1
                 code = "def _generated_function(arr, out=None):\n"
-                code += f"    arr = asarray(arr)\n"
+                code += "    arr = asarray(arr)\n"
                 code += f"    {variables} = arr\n"
-                code += f"    if out is None:\n"
+                code += "    if out is None:\n"
                 code += f"        out = empty({shape} + arr.shape[{first_dim}:])\n"
 
             else:
                 # the function takes each variables as an argument
                 code = f"def _generated_function({variables}, out=None):\n"
-                code += f"    if out is None:\n"
+                code += "    if out is None:\n"
                 code += f"        out = empty({shape} + shape({self.vars[0]}))\n"
 
         else:
@@ -916,7 +916,7 @@ class TensorExpression(ExpressionBase):
                 code = "def _generated_function(arr=None, out=None):\n"
             else:
                 code = "def _generated_function(out=None):\n"
-            code += f"    if out is None:\n"
+            code += "    if out is None:\n"
             code += f"        out = empty({shape})\n"
 
         code += "\n".join(lines) + "\n"

@@ -248,13 +248,12 @@ class BoundariesList(BoundariesBase):
                 # overwrite conditions for named boundaries
                 for name, (ax, upper) in grid.boundary_names.items():
                     if bc := data.pop(name, None):
-                        i = int(upper)
-                        if bc_seen[ax][i]:
+                        if bc_seen[ax][upper]:
                             cls._logger.warning(
-                                "Duplicate BC data for axis %s%s", ax, "-+"[i]
+                                "Duplicate BC data for axis %s%s", ax, "-+"[upper]
                             )
-                        bc_data[ax][i] = bc
-                        bc_seen[ax][i] = True
+                        bc_data[ax][upper] = bc
+                        bc_seen[ax][upper] = True
 
                 # warn if some keys were left over
                 if data:
@@ -264,7 +263,7 @@ class BoundariesList(BoundariesBase):
                 for ax, bc_ax in enumerate(bc_data):
                     for i, bc_side in enumerate(bc_ax):
                         if bc_side is None:
-                            bcs_unspecified.append(grid.axes[ax] + "-+"[int(i)])
+                            bcs_unspecified.append(grid.axes[ax] + "-+"[i])
                 if bcs_unspecified:
                     cls._logger.warning("Didn't specified BCs for %s", bcs_unspecified)
 

@@ -1005,7 +1005,7 @@ class MaterialConservationTracker(TrackerBase):
             if isinstance(field, FieldCollection):
                 msg = f"Material of field {np.flatnonzero(~c)} is not conserved"
             else:
-                msg = f"Material is not conserved"
+                msg = "Material is not conserved"
             raise StopIteration(msg)
 
 

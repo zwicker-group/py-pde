@@ -23,7 +23,7 @@ grid = CartesianGrid([[0, 20]], 128, periodic=False)  # generate grid
 initial_state = ScalarField.from_expression(grid, "exp(I * 5 * x) * exp(-(x - 10)**2)")
 initial_state /= sqrt(initial_state.to_scalar("norm_squared").integral.real)
 
-eq = PDE({"ψ": f"I * laplace(ψ)"})  # define the pde
+eq = PDE({"ψ": "I * laplace(ψ)"})  # define the pde
 
 # solve the pde and store intermediate data
 storage = MemoryStorage()

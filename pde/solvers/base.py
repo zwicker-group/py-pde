@@ -252,7 +252,7 @@ class SolverBase:
         """
         if getattr(self.pde, "is_sde", False):
             raise RuntimeError(
-                f"Cannot create a deterministic stepper for a stochastic equation"
+                "Cannot create a deterministic stepper for a stochastic equation"
             )
 
         rhs = self.pde.make_pde_rhs(state, backend=backend)  # type: ignore
