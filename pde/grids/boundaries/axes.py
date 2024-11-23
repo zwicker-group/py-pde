@@ -248,7 +248,8 @@ class BoundariesList(BoundariesBase):
                 # overwrite conditions for named boundaries
                 for name, (ax, upper) in grid.boundary_names.items():
                     if bc := data.pop(name, None):
-                        if bc_seen[ax][i := int(upper)]:
+                        i = int(upper)
+                        if bc_seen[ax][i]:
                             cls._logger.warning(
                                 "Duplicate BC data for axis %s%s", ax, "-+"[i]
                             )
