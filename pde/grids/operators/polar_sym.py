@@ -22,7 +22,7 @@ import numpy as np
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit
 from ...tools.typing import OperatorType
-from ..boundaries import Boundaries
+from ..boundaries.axes import BoundariesBase, BoundariesList
 from ..spherical import PolarSymGrid
 from .common import make_general_poisson_solver
 
@@ -266,11 +266,11 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
 
 
 @fill_in_docstring
-def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]:
     """Get sparse matrix for laplace operator on a polar grid.
 
     Args:
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.BoundariesList`):
             {ARG_BOUNDARIES_INSTANCE}
 
     Returns:
@@ -325,14 +325,14 @@ def _get_laplace_matrix(bcs: Boundaries) -> tuple[np.ndarray, np.ndarray]:
 @PolarSymGrid.register_operator("poisson_solver", rank_in=0, rank_out=0)
 @fill_in_docstring
 def make_poisson_solver(
-    bcs: Boundaries, *, method: Literal["auto", "scipy"] = "auto"
+    bcs: BoundariesList, *, method: Literal["auto", "scipy"] = "auto"
 ) -> OperatorType:
     """Make a operator that solves Poisson's equation.
 
     {DESCR_POLAR_GRID}
 
     Args:
-        bcs (:class:`~pde.grids.boundaries.axes.Boundaries`):
+        bcs (:class:`~pde.grids.boundaries.axes.BoundariesList`):
             {ARG_BOUNDARIES_INSTANCE}
         method (str):
             The chosen method for implementing the operator

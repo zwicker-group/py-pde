@@ -22,7 +22,6 @@ from .cartesian import CartesianGrid
 from .coordinates import CylindricalCoordinates
 
 if TYPE_CHECKING:
-    from .boundaries.axes import Boundaries, BoundariesData
     from .spherical import PolarSymGrid
 
 

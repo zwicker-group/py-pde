@@ -11,6 +11,7 @@ import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
+from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
@@ -29,13 +30,15 @@ class DiffusionPDE(PDEBase):
     """
 
     explicit_time_dependence = False
+    default_bc = "auto_periodic_neumann"
+    """Default boundary condition used when no specific conditions are chosen."""
 
     @fill_in_docstring
     def __init__(
         self,
         diffusivity: float = 1,
         *,
-        bc: BoundariesData = "auto_periodic_neumann",
+        bc: BoundariesData | None = None,
         noise: float = 0,
         rng: np.random.Generator | None = None,
     ):
@@ -59,7 +62,7 @@ class DiffusionPDE(PDEBase):
         super().__init__(noise=noise, rng=rng)
 
         self.diffusivity = diffusivity
-        self.bc = bc
+        self.bc = set_default_bc(bc, self.default_bc)
 
     @property
     def expression(self) -> str:

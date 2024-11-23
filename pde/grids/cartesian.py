@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import itertools
 from collections.abc import Generator, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
 
@@ -21,9 +21,6 @@ from .base import (
     discretize_interval,
 )
 from .coordinates import CartesianCoordinates
-
-if TYPE_CHECKING:
-    from .boundaries.axes import Boundaries, BoundariesData
 
 
 class CartesianGrid(GridBase):
@@ -53,15 +50,6 @@ class CartesianGrid(GridBase):
     """
 
     cuboid: Cuboid
-
-    boundary_names = {  # name all the boundaries
-        "left": (0, False),
-        "right": (0, True),
-        "bottom": (1, False),
-        "top": (1, True),
-        "back": (2, False),
-        "front": (2, True),
-    }
 
     def __init__(
         self,
@@ -137,6 +125,13 @@ class CartesianGrid(GridBase):
         self._discretization = np.array(discretization)
         self._axes_coords = tuple(axes_coords)
         self._axes_bounds = tuple(self.cuboid.bounds)
+
+        # name all the boundaries
+        self.boundary_names = {"left": (0, False), "right": (0, True)}
+        if self.num_axes > 1:
+            self.boundary_names.update({"bottom": (1, False), "top": (1, True)})
+        if self.num_axes > 2:
+            self.boundary_names.update({"back": (2, False), "front": (2, True)})
 
     @property
     def state(self) -> dict[str, Any]:

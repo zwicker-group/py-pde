@@ -13,20 +13,16 @@ field to be `4` at the lower side and its derivative (in the outward direction) 
 
 .. code-block:: python
 
-    bc_lower = {"value": 4}
-    bc_upper = {"derivative": 2}
-    bc = [bc_lower, bc_upper]
+    bc = {"x-": {"value": 4}, "x+": {"derivative": 2}}
 
     grid = pde.UnitGrid([16])
     field = pde.ScalarField(grid)
     field.laplace(bc)
 
 Here, the Laplace operator applied to the field in the last line will respect
-the boundary conditions.
-Note that it suffices to give one condition if both sides of the axis require the same
-condition.
-For instance, to enforce a value of `3` on both side, one could simply use
-:code:`bc = {'value': 3}`.
+the boundary conditions. Note that both sides of the axis can be specified together if
+their conditions are the same. For instance, to enforce a value of `3` on both side, one
+could simply use :code:`bc = {"x": {"value": 3}}`.
 Vectorial boundary conditions, e.g., to calculate the vector gradient or tensor
 divergence, can have vectorial values for the boundary condition.
 Generally, only the normal components at a boundary need to be specified if an operator
@@ -39,32 +35,41 @@ which may depend on the coordinates of all axes:
 .. code-block:: python
 
     # two different conditions for lower and upper end of x-axis
-    bc_x = [{"derivative": 0.1}, {"value": "sin(y / 2)"}] 
+    bc_left = {"derivative": 0.1}
+    bc_right = {"value": "sin(y / 2)"}
     # the same condition on the lower and upper end of the y-axis
     bc_y = {"value": "sqrt(1 + cos(x))"}
 
     grid = UnitGrid([32, 32])
     field = pde.ScalarField(grid)
-    field.laplace(bc=[bc_x, bc_y])
+    field.laplace(bc={"x-": bc_left, "x+": bc_right, "y": bc_y})
 
 .. warning::
     To interpret arbitrary expressions, the package uses :func:`exec`. It
     should therefore not be used in a context where malicious input could occur.
 
-Inhomogeneous values can also be specified by directly supplying an array, whose shape
+Heterogeneous values can also be specified by directly supplying an array, whose shape
 needs to be compatible with the boundary, i.e., it needs to have the same shape as the
 grid but with the dimension of the axis along which the boundary is specified removed.
 
-There exist also special boundary conditions that impose a more complex value of the
-field (:code:`bc='value_expression'`) or its derivative
-(:code:`bc='derivative_expression'`). Beyond the spatial coordinates that are already
+There also exist special boundary conditions that impose a more complex value of the
+field (:code:`bc="value_expression"`) or its derivative
+(:code:`bc="derivative_expression"`). Beyond the spatial coordinates that are already
 supported for the constant conditions above, the expressions of these boundary
 conditions can depend on the time variable :code:`t`. Moreover, these boundary
-conditions also except python functions (with signature `adjacent_value, dx, *coords, t`),
+conditions also except python functions with signature `(adjacent_value, dx, *coords, t)`,
 thus greatly enlarging the flexibility with which boundary conditions can be expressed.
 Note that PDEs need to supply the current time `t` when setting the boundary conditions,
 e.g., when applying the differential operators. The pre-defined PDEs and the general
 class :class:`~pde.pdes.pde.PDE` already support time-dependent boundary conditions.
+
+To specify the same boundary conditions for many sides, the wildcard specifier can be
+used: For example, :code:`bc = {"*": {"value": 1}, "y+": {"derivative": 0}}` specifies
+Dirichlet conditions for all axes, except the upper y-axis, where a Neumann condition is
+imposed instead. If all axes have the same condition, the outer dictionary can be
+skipped, so that :code:`bc = {"*": {"value": 1}}` imposes the same conditions as
+:code:`bc = {"value": 1}`. Moreover, many boundaries have convenient names, so that for
+instance `x-` can be replaced by `left`, and `y+` can be replaced by `top`.
 
 One important aspect about boundary conditions is that they need to respect the
 periodicity of the underlying grid. For instance, in a 2d grid with one periodic axis,
@@ -74,8 +79,7 @@ the following boundary condition can be used:
 
     grid = pde.UnitGrid([16, 16], periodic=[True, False])
     field = pde.ScalarField(grid)
-    bc = ["periodic", {"derivative": 0}]
-    field.laplace(bc)
+    field.laplace({"x": "periodic", "y": {"derivative": 0})
 
 For convenience, this typical situation can be described with the special boundary
 condition `auto_periodic_neumann`, e.g., calling the Laplace operator using 
@@ -145,6 +149,13 @@ In summary, we have the following options for boundary conditions on a field :ma
 Here, :math:`\partial_n` denotes a derivative in outward normal direction, :math:`f`
 denotes an arbitrary function given by an expression (see next section), :math:`x`
 denotes coordinates along the boundary, :math:`t` denotes time.
+
+Finally, we support the advanced technique of setting the virtual points at the boundary
+manually. This can be achieved by passing a python function that takes as 
+its first argument a :class:`~numpy.ndarray`, which contains the full field data
+including the virtual points, and a second, optional argument, which is a dictionary
+containing additional parameters, like the current time point `t` in case of a
+simulation; see :class:`~pde.grids.boundaries.axes.BoundariesSetter` for more details.
 
 
 .. _documentation-expressions:

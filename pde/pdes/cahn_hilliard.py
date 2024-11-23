@@ -11,6 +11,7 @@ import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
+from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
@@ -30,13 +31,18 @@ class CahnHilliardPDE(PDEBase):
     """
 
     explicit_time_dependence = False
+    default_bc_c = "auto_periodic_neumann"
+    """Default boundary condition for order parameter."""
+    default_bc_mu = "auto_periodic_neumann"
+    """Default boundary condition for chemical potential."""
 
     @fill_in_docstring
     def __init__(
         self,
         interface_width: float = 1,
-        bc_c: BoundariesData = "auto_periodic_neumann",
-        bc_mu: BoundariesData = "auto_periodic_neumann",
+        *,
+        bc_c: BoundariesData | None = None,
+        bc_mu: BoundariesData | None = None,
     ):
         """
         Args:
@@ -54,8 +60,8 @@ class CahnHilliardPDE(PDEBase):
         super().__init__()
 
         self.interface_width = interface_width
-        self.bc_c = bc_c
-        self.bc_mu = bc_mu
+        self.bc_c = set_default_bc(bc_c, self.default_bc_c)
+        self.bc_mu = set_default_bc(bc_mu, self.default_bc_mu)
 
     @property
     def expression(self) -> str:

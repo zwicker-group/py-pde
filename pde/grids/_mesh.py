@@ -19,8 +19,8 @@ from ..tools import mpi
 from ..tools.cache import cached_method
 from ..tools.plotting import plot_on_axes
 from .base import GridBase
-from .boundaries.axes import Boundaries
-from .boundaries.axis import BoundaryPair
+from .boundaries.axes import BoundariesBase, BoundariesList
+from .boundaries.axis import BoundaryAxisBase, BoundaryPair
 from .boundaries.local import _MPIBC
 
 
@@ -514,18 +514,26 @@ class GridMesh:
         else:
             raise TypeError(f"Field type {field.__class__.__name__} unsupported")
 
-    def extract_boundary_conditions(self, bcs_base: Boundaries) -> Boundaries:
+    def extract_boundary_conditions(self, bcs_base: BoundariesBase) -> BoundariesList:
         """Extract boundary conditions for current subgrid from global conditions.
 
         Args:
-            bcs_base (:class:`~pde.grids.boundaries.axes.Boundaries`):
+            bcs_base (:class:`~pde.grids.boundaries.axes.BoundariesBase`):
                 The boundary conditions that will be split
 
         Returns:
-            :class:`~pde.grids.boundaries.axes.Boundaries`: Boundary conditions of the
-            sub grid
+            :class:`~pde.grids.boundaries.axes.BoundariesList`: Boundary conditions of
+            the subgrid
         """
-        bcs = []
+        if not isinstance(bcs_base, BoundariesList):
+            raise TypeError(
+                "Simulations parallelized with MPI only work with boundary conditions "
+                "based on the `BoundariesList` class, i.e., conditions need to be "
+                "specified for each axes separately and cannot be set using a "
+                "function globally."
+            )
+
+        bcs: list[BoundaryAxisBase] = []
         for axis in range(self.num_axes):
             bcs_axis = []
             for upper in [False, True]:
@@ -539,7 +547,7 @@ class GridMesh:
                 bcs_axis.append(bc)
             bcs.append(BoundaryPair(*bcs_axis))
 
-        return Boundaries(bcs)
+        return BoundariesList(bcs)
 
     def split_field_data_mpi(
         self, field_data: np.ndarray, *, with_ghost_cells: bool = False

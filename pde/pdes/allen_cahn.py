@@ -11,6 +11,7 @@ import numba as nb
 import numpy as np
 
 from ..fields import ScalarField
+from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
@@ -30,6 +31,8 @@ class AllenCahnPDE(PDEBase):
     """
 
     explicit_time_dependence = False
+    default_bc = "auto_periodic_neumann"
+    """Default boundary condition used when no specific conditions are chosen."""
 
     interface_width: float
 
@@ -38,7 +41,8 @@ class AllenCahnPDE(PDEBase):
         self,
         interface_width: float = 1,
         mobility: float = 1,
-        bc: BoundariesData = "auto_periodic_neumann",
+        *,
+        bc: BoundariesData | None = None,
     ):
         """
         Args:
@@ -54,7 +58,7 @@ class AllenCahnPDE(PDEBase):
 
         self.interface_width = interface_width
         self.mobility = mobility
-        self.bc = bc
+        self.bc = set_default_bc(bc, self.default_bc)
 
     @property
     def expression(self) -> str:

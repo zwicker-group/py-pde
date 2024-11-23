@@ -32,10 +32,7 @@ def bc_value(adjacent_value, dx, x, y, t):
     return np.sign(x)
 
 
-bc_x = "derivative"
-bc_y = ["derivative", {"value_expression": bc_value}]
-
 # define and solve a simple diffusion equation
-eq = DiffusionPDE(bc=[bc_x, bc_y])
+eq = DiffusionPDE(bc={"*": {"derivative": 0}, "y+": {"value_expression": bc_value}})
 res = eq.solve(field, t_range=10, dt=0.01, backend="numpy")
 res.plot()

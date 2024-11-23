@@ -19,6 +19,7 @@ from sympy.core.function import UndefinedFunction
 from ..fields import FieldCollection, VectorField
 from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
+from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.axes import BoundariesData
 from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase, TState
@@ -59,12 +60,15 @@ class PDE(PDEBase):
             appear in the `state`.
     """
 
+    default_bc = "auto_periodic_neumann"
+    """Default boundary condition used when no specific conditions are chosen."""
+
     @fill_in_docstring
     def __init__(
         self,
         rhs: dict[str, str],
         *,
-        bc: BoundariesData = "auto_periodic_neumann",
+        bc: BoundariesData | None = None,
         bc_ops: dict[str, BoundariesData] | None = None,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
@@ -196,6 +200,7 @@ class PDE(PDEBase):
         self.complex_valued = complex_valued
 
         # setup boundary conditions
+        bc = set_default_bc(bc, self.default_bc)
         if bc_ops is None:
             bcs = {"*:*": bc}
         elif isinstance(bc_ops, dict):

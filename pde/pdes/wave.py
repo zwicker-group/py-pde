@@ -11,6 +11,7 @@ import numba as nb
 import numpy as np
 
 from ..fields import FieldCollection, ScalarField
+from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
@@ -34,9 +35,11 @@ class WavePDE(PDEBase):
     """
 
     explicit_time_dependence = False
+    default_bc = "auto_periodic_neumann"
+    """Default boundary condition used when no specific conditions are chosen."""
 
     @fill_in_docstring
-    def __init__(self, speed: float = 1, bc: BoundariesData = "auto_periodic_neumann"):
+    def __init__(self, speed: float = 1, *, bc: BoundariesData | None = None):
         """
         Args:
             speed (float):
@@ -48,7 +51,7 @@ class WavePDE(PDEBase):
         super().__init__()
 
         self.speed = speed
-        self.bc = bc
+        self.bc = set_default_bc(bc, self.default_bc)
 
     def get_initial_condition(self, u: ScalarField, v: ScalarField | None = None):
         """Create a suitable initial condition.

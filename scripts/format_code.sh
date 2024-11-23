@@ -6,11 +6,11 @@ pushd .. > /dev/null
 find . -name '*.py' -exec pyupgrade --py39-plus {} +
 popd > /dev/null
 
-echo "Formating import statements..."
+echo "Formatting import statements..."
 ruff check --fix --config=../pyproject.toml ..
 
-echo "Formating docstrings..."
+echo "Formatting docstrings..."
 docformatter --in-place --black --recursive ..
 
-echo "Formating source code..."
+echo "Formatting source code..."
 ruff format --config=../pyproject.toml ..

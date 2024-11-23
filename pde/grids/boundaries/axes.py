@@ -1,36 +1,117 @@
-r"""
-.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
+r"""This module handles the boundaries of all axes of a grid.
 
-This module handles the boundaries of all axes of a grid. It only defines
-:class:`Boundaries`, which acts as a list of
-:class:`~pde.grids.boundaries.axis.BoundaryAxisBase`.
+.. autosummary::
+   :nosignatures:
+
+   ~BoundariesBase
+   ~BoundariesList
+   ~BoundariesSetter
+   ~set_default_bc
+
+.. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
 from __future__ import annotations
 
 import itertools
 import logging
+import warnings
 from collections.abc import Iterator, Sequence
-from typing import Union
+from typing import Any, Callable, Union
 
 import numpy as np
 from numba.extending import register_jitable
 
+from ...tools.numba import jit
 from ...tools.typing import GhostCellSetter
 from ..base import GridBase, PeriodicityError
-from .axis import BoundaryPair, BoundaryPairData, get_boundary_axis
-from .local import BCBase, BCDataError
+from .axis import BoundaryAxisBase, BoundaryPair, BoundaryPairData, get_boundary_axis
+from .local import BCBase, BCDataError, BoundaryData
 
-BoundariesData = Union[BoundaryPairData, Sequence[BoundaryPairData]]
+BoundariesData = Union[
+    BoundaryPairData, Sequence[BoundaryPairData], Callable, "BoundariesBase"
+]
+
+BC_LOCAL_KEYS = ["type", "value"] + list(BCBase._conditions.keys())
 
 
-class Boundaries(list):
-    """Class that bundles all boundary conditions for all axes."""
+def _is_local_bc_data(data: dict[str, Any]) -> bool:
+    """Tries to identify whether data specifies a local boundary condition."""
+    return any(key in data for key in BC_LOCAL_KEYS)
 
-    grid: GridBase
-    """:class:`~pde.grids.base.GridBase`: grid for which boundaries are defined."""
 
-    def __init__(self, boundaries):
+class BoundariesBase:
+    """Base class keeping information about how to set conditions on all boundaries."""
+
+    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+        """Set the ghost cells for all boundaries.
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+            set_corners (bool):
+                Determines whether the corner cells are set using interpolation
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
+        """
+        raise NotImplementedError
+
+    def make_ghost_cell_setter(self) -> GhostCellSetter:
+        """Return function that sets the ghost cells on a full array.
+
+        Returns:
+            Callable with signature :code:`(data_full: np.ndarray, args=None)`, which
+            sets the ghost cells of the full data, potentially using additional
+            information in `args` (e.g., the time `t` during solving a PDE)
+        """
+        raise NotImplementedError
+
+    @classmethod
+    def from_data(cls, data, **kwargs) -> BoundariesBase:
+        r"""Creates all boundaries from given data.
+
+        Args:
+            data (str or dict or callable):
+                Data that describes the boundaries. If this is a callable, we create
+                :class:`~pde.grids.boundaries.axes.BoundariesSetter`. In all other,
+                cases :class:`~pde.grids.boundaries.axes.BoundariesList` is created and
+                `data` can either be string denoting a specific boundary condition
+                applied to all sides or a dictionary with detailed information.
+            **kwargs:
+                In some cases additional data can be specified or is even required. For
+                instance, :class:`~pde.grids.boundaries.axes.BoundariesList` expects
+                a `grid` (:class:`~pde.grids.base.GridBase`): to which the boundary
+                condition are associated, and it can use a `rank` (int), which sets
+                the tensorial rank of the field for this boundary condition.
+        """
+        # check whether this is already of the correct type
+        if isinstance(data, BoundariesBase):
+            return data.__class__.from_data(data, **kwargs)
+
+        # best guess based on the data:
+        if callable(data):
+            return BoundariesSetter.from_data(data)
+        else:
+            return BoundariesList.from_data(data, **kwargs)
+
+    @classmethod
+    def get_help(cls) -> str:
+        """Return information on how boundary conditions can be set."""
+        return (
+            'Boundary conditions for each axis are set using a dictionary: {"x": bc_x, '
+            '"y-": bc_y_lower, "y+": bc_y_upper}. If the associated axis is periodic, '
+            'the boundary condition needs to be set to "periodic". Otherwise, '
+            + BCBase.get_help()
+        )
+
+
+class BoundariesList(BoundariesBase):
+    """Defines boundary conditions for all axes individually."""
+
+    _logger = logging.getLogger(__qualname__)
+
+    def __init__(self, boundaries: list[BoundaryAxisBase]):
         """Initialize with a list of boundaries."""
         if len(boundaries) == 0:
             raise BCDataError("List of boundaries must not be empty")
@@ -45,10 +126,10 @@ class Boundaries(list):
         # check consistency
         for axis, boundary in enumerate(boundaries):
             if boundary.grid != self.grid:
-                raise BCDataError("Boundaries are not defined on the same grid")
+                raise BCDataError("BoundariesList are not defined on the same grid")
             if boundary.axis != axis:
                 raise BCDataError(
-                    "Boundaries need to be ordered like the respective axes"
+                    "BoundariesList need to be ordered like the respective axes"
                 )
             if boundary.periodic != self.grid.periodic[axis]:
                 raise PeriodicityError(
@@ -58,123 +139,195 @@ class Boundaries(list):
                 )
 
         # create the list of boundaries
-        super().__init__(boundaries)
-
-    def __str__(self):
-        items = ", ".join(str(item) for item in self)
-        return f"[{items}]"
+        self._axes: list[BoundaryAxisBase] = boundaries
 
     @classmethod
-    def from_data(cls, grid: GridBase, boundaries, rank: int = 0) -> Boundaries:
+    def from_data(  # type: ignore
+        cls, data, *, grid: GridBase, rank: int = 0, **kwargs
+    ) -> BoundariesList:
         """Creates all boundaries from given data.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
                 The grid with which the boundary condition is associated
-            boundaries (str or list or tuple or dict):
-                Data that describes the boundaries. This can either be a list of
-                specifications for each dimension or a single one, which is then
-                applied to all dimensions. The boundary for a dimensions can be
-                specified by one of the following formats:
-
-                * string specifying a single type for all boundaries
-                * dictionary specifying the type and values for all boundaries
-                * tuple pair specifying the low and high boundary individually
+            data (str or dict):
+                Data that describes the boundaries. This should either be a string
+                naming a boundary condition or a dictionary with detailed information.
             rank (int):
                 The tensorial rank of the field for this boundary condition
         """
-        # check whether this is already the correct class
-        if isinstance(boundaries, Boundaries):
+        # distinguish different possible data formats based on their type
+        if isinstance(data, BoundariesList):
             # boundaries are already in the correct format
-            if boundaries.grid._mesh is not None:
-                # we need to exclude this case since otherwise we get into a rabit hole
+            if data.grid._mesh is not None:
+                # we need to exclude this case since otherwise we get into a rabbit hole
                 # where it is not clear what grid boundary conditions belong to. The
                 # idea is that users only create boundary conditions for the full grid
                 # and that the splitting onto subgrids is only done once, automatically,
                 # and without involving calls to `from_data`
                 raise ValueError("Cannot create MPI subgrid BC from data")
 
-            if boundaries.grid != grid:
+            if data.grid != grid:
                 raise ValueError(
                     "The grid of the supplied boundary condition is incompatible with "
-                    f"the current grid ({boundaries.grid!r} != {grid!r})"
+                    f"the current grid ({data.grid!r} != {grid!r})"
                 )
-            boundaries.check_value_rank(rank)
-            return boundaries
+            data.check_value_rank(rank)
+            return data
 
-        # convert natural boundary conditions if present
-        if (
-            boundaries == "natural"
-            or boundaries == "auto_periodic_neumann"
-            or boundaries == "auto_periodic_derivative"
-        ):
-            # set the respective natural conditions for all axes
-            boundaries = []
-            for periodic in grid.periodic:
-                if periodic:
-                    boundaries.append("periodic")
-                else:
-                    boundaries.append("derivative")
+        elif isinstance(data, BoundariesBase):
+            # data seems to be given as another base class, which indicates problems
+            raise TypeError(
+                "Can only use type `BoundariesList`. Use `BoundariesBase.from_data` "
+                "for more general data."
+            )
 
-        elif (
-            boundaries == "auto_periodic_dirichlet"
-            or boundaries == "auto_periodic_value"
-        ):
-            # set the respective natural conditions (with vanishing values) for all axes
-            boundaries = []
-            for periodic in grid.periodic:
-                if periodic:
-                    boundaries.append("periodic")
-                else:
-                    boundaries.append("value")
+        elif isinstance(data, str):
+            # a string implies the same boundary condition for all axes
 
-        elif boundaries == "auto_periodic_curvature":
-            # set the respective natural conditions (with vanishing curvature) for all axes
-            boundaries = []
-            for periodic in grid.periodic:
-                if periodic:
-                    boundaries.append("periodic")
-                else:
-                    boundaries.append("curvature")
+            if data.startswith("auto_periodic_"):
+                # initialize boundary condition that could be periodic
+                bc = data[len("auto_periodic_") :]
+                bcs = [
+                    get_boundary_axis(grid, i, "periodic" if per else bc, rank=rank)
+                    for i, per in enumerate(grid.periodic)
+                ]
 
-        # create the list of BoundaryAxis objects
-        bcs = None
-        if isinstance(boundaries, (str, dict)):
-            # one specification for all axes
-            bcs = [
-                get_boundary_axis(grid, i, boundaries, rank=rank)
-                for i in range(grid.num_axes)
-            ]
+            else:
+                # assume the same boundary condition for all axes
+                bcs = [
+                    get_boundary_axis(grid, i, data, rank=rank)
+                    for i in range(grid.num_axes)
+                ]
 
-        elif hasattr(boundaries, "__len__"):
-            # handle cases that look like sequences
-            if len(boundaries) == grid.num_axes:
+        elif isinstance(data, dict):
+            # dictionaries can either specify boundary conditions for separate sides or
+            # they can specify a single boundary condition that is used on all sides
+
+            if "low" in data or "high" in data:
+                # specifying conditions using this have been deprecated on 2024-11-23
+                warnings.warn(
+                    "Deprecated format for boundary conditions." + cls.get_help(),
+                    DeprecationWarning,
+                )
+                bcs = [
+                    get_boundary_axis(grid, i, data, rank=rank)
+                    for i in range(grid.num_axes)
+                ]
+
+            if _is_local_bc_data(data):
+                # detected identifier signifying that a single condition was specified
+                bcs = [
+                    get_boundary_axis(grid, i, data, rank=rank)
+                    for i in range(grid.num_axes)
+                ]
+
+            else:
+                # assume that boundary conditions are given for separate axes
+
+                # initialize boundary data with wildcard default
+                data = data.copy()  #  we want to modify this dictionary
+                bc_all = data.pop("*", None)
+                bc_data = [[bc_all, bc_all] for _ in range(grid.num_axes)]
+                bc_seen = [[False, False] for _ in range(grid.num_axes)]
+
+                # check specific boundary conditions for all axes
+                for ax, ax_name in enumerate(grid.axes):
+                    # overwrite boundaries whose axes are given
+                    if bc_axes := data.pop(ax_name, None):
+                        bc_data[ax] = [bc_axes, bc_axes]
+
+                    # overwrite specific conditions for one side
+                    if bc_lower := data.pop(ax_name + "-", None):
+                        bc_data[ax][0] = bc_lower
+                        bc_seen[ax][0] = True
+                    if bc_upper := data.pop(ax_name + "+", None):
+                        bc_data[ax][1] = bc_upper
+                        bc_seen[ax][1] = True
+
+                # overwrite conditions for named boundaries
+                for name, (ax, upper) in grid.boundary_names.items():
+                    if bc := data.pop(name, None):
+                        i = int(upper)
+                        if bc_seen[ax][i]:
+                            cls._logger.warning(
+                                "Duplicate BC data for axis %s%s", ax, "-+"[i]
+                            )
+                        bc_data[ax][i] = bc
+                        bc_seen[ax][i] = True
+
+                # warn if some keys were left over
+                if data:
+                    cls._logger.warning("Didn't use BC data from %s", list(data.keys()))
+                # find boundary conditions that have not been specified
+                bcs_unspecified = []
+                for ax, bc_ax in enumerate(bc_data):
+                    for i, bc_side in enumerate(bc_ax):
+                        if bc_side is None:
+                            bcs_unspecified.append(grid.axes[ax] + "-+"[int(i)])
+                if bcs_unspecified:
+                    cls._logger.warning("Didn't specified BCs for %s", bcs_unspecified)
+
+                # create the actual boundary conditions
+                cls._logger.debug("Parsed BCs as %s", bc_data)
+                bcs = [
+                    get_boundary_axis(grid, i, tuple(boundary), rank=rank)
+                    for i, boundary in enumerate(bc_data)
+                ]
+
+        elif hasattr(data, "__len__"):
+            # sequences have been deprecated on 2024-11-23
+            warnings.warn(
+                "Deprecated format for boundary conditions." + cls.get_help(),
+                DeprecationWarning,
+            )
+            if len(data) == grid.num_axes:
                 # assume that data is given for each boundary
                 bcs = [
                     get_boundary_axis(grid, i, boundary, rank=rank)
-                    for i, boundary in enumerate(boundaries)
+                    for i, boundary in enumerate(data)
                 ]
-            elif grid.num_axes == 1 and len(boundaries) == 2:
+            elif grid.num_axes == 1 and len(data) == 2:
                 # special case where the two sides can be specified directly
-                bcs = [get_boundary_axis(grid, 0, boundaries, rank=rank)]
+                bcs = [get_boundary_axis(grid, 0, data, rank=rank)]
+            else:
+                raise BCDataError(
+                    f"Got {len(data)} boundary conditions, but grid has "
+                    f"{grid.num_axes} axes." + cls.get_help()
+                )
 
-        if bcs is None:
-            # none of the logic worked
+        else:
+            # unknown format
             raise BCDataError(
-                f"Unsupported boundary format: `{boundaries}`. " + cls.get_help()
+                f"Unsupported boundary format: `{data}`. " + cls.get_help()
             )
 
-        return cls(bcs)
+        return BoundariesList(bcs)
+
+    def __str__(self):
+        items = ", ".join(str(item) for item in self)
+        return f"[{items}]"
+
+    def __len__(self):
+        return len(self._axes)
+
+    def __iter__(self) -> Iterator[BoundaryAxisBase]:
+        yield from self._axes
 
     def __eq__(self, other):
-        if not isinstance(other, Boundaries):
+        if not isinstance(other, BoundariesList):
             return NotImplemented
-        return super().__eq__(other) and self.grid == other.grid
+        return self.grid == other.grid and self._axes == other._axes
+
+    def __ne__(self, other):
+        if not isinstance(other, BoundariesList):
+            return NotImplemented
+        return self.grid != other.grid or self._axes != other._axes
 
     @property
     def boundaries(self) -> Iterator[BCBase]:
         """Iterator over all non-periodic boundaries."""
-        for boundary_axis in self:  # iterate all axes
+        for boundary_axis in self._axes:  # iterate all axes
             if not boundary_axis.periodic:  # skip periodic axes
                 yield from boundary_axis
 
@@ -188,21 +341,12 @@ class Boundaries(list):
         Throws:
             RuntimeError: if any value does not have rank `rank`
         """
-        for b in self:
+        for b in self._axes:
             b.check_value_rank(rank)
 
-    @classmethod
-    def get_help(cls) -> str:
-        """Return information on how boundary conditions can be set."""
-        return (
-            "Boundary conditions for each axis are set using a list: [bc_x, bc_y, "
-            "bc_z]. If the associated axis is periodic, the boundary condition needs "
-            f"to be set to 'periodic'. Otherwise, {BoundaryPair.get_help()}"
-        )
-
-    def copy(self) -> Boundaries:
+    def copy(self) -> BoundariesList:
         """Create a copy of the current boundaries."""
-        return self.__class__([bc.copy() for bc in self])
+        return self.__class__([bc.copy() for bc in self._axes])
 
     @property
     def periodic(self) -> list[bool]:
@@ -222,15 +366,25 @@ class Boundaries(list):
         if isinstance(index, str):
             # assume that the index is a known identifier
             if index in self.grid.boundary_names:
+                # found a known boundary
                 axis, upper = self.grid.boundary_names[index]
-                return self[axis][upper]
-            elif index in self.grid.axes:
-                return self[self.grid.axes.index(index)]
-            else:
-                raise KeyError(index)
+                return self._axes[axis][upper]
+
+            # check all axes
+            for ax, ax_name in enumerate(self.grid.axes):
+                if index == ax_name:
+                    return self._axes[ax]
+                if index == ax_name + "-":
+                    return self._axes[ax][False]
+                if index == ax_name + "+":
+                    return self._axes[ax][True]
+
+            # found nothing
+            raise KeyError(index)
+
         else:
             # handle all other cases, in particular integer indices
-            return super().__getitem__(index)
+            return self._axes[index]
 
     def __setitem__(self, index, data) -> None:
         """Set specific boundary conditions.
@@ -245,31 +399,41 @@ class Boundaries(list):
         """
         if isinstance(index, str):
             # assume that the index is a known identifier
+
             if index in self.grid.boundary_names:
                 # set a specific boundary side
-                axis, upper = self.grid.boundary_names[index]
-                self[axis][upper] = data
+                ax, upper = self.grid.boundary_names[index]
+                self._axes[ax][upper] = data
 
-            elif index in self.grid.axes:
-                # set both sides of the boundary condition
-                axis = self.grid.axes.index(index)
-                self[axis] = get_boundary_axis(
-                    grid=self.grid,
-                    axis=axis,
-                    data=data,
-                    rank=self[axis].rank,
-                )
             else:
-                raise KeyError(index)
+                # check all axes
+                for ax, ax_name in enumerate(self.grid.axes):
+                    if index == ax_name:
+                        # found just the axis -> set both sides
+                        self._axes[ax] = get_boundary_axis(
+                            grid=self.grid, axis=ax, data=data, rank=self[ax].rank
+                        )
+                        break
+                    if index == ax_name + "-":
+                        # found lower part of the axis
+                        self._axes[ax][False] = data
+                        break
+                    if index == ax_name + "+":
+                        # found upper part of the axis
+                        self._axes[ax][True] = data
+                        break
+
+                else:
+                    raise KeyError(index)
 
         else:
             # handle all other cases, in particular integer indices
-            super().__setitem__(index, data)
+            self._axes[index] = data
 
     def get_mathematical_representation(self, field_name: str = "C") -> str:
         """Return mathematical representation of the boundary condition."""
-        result = []
-        for b in self:
+        result: list[str] = []
+        for b in self._axes:
             try:
                 result.extend(b.get_mathematical_representation(field_name))
             except NotImplementedError:
@@ -364,3 +528,97 @@ class Boundaries(list):
                 return wrap  # type: ignore
 
         return chain(ghost_cell_setters)
+
+
+class BoundariesSetter(BoundariesBase):
+    """Represents a function that sets ghost cells to determine boundary conditions.
+
+    The function must have accept a :class:`~numpy.ndarray`, which contains the full
+    field data including the ghost points, and a second, optional argument, which is a
+    dictionary containing additional parameters, like the current time point `t` in case
+    of a simulation.
+
+    Example:
+        Here is an example for a simple boundary setter, which sets specific boundary
+        conditions in the x-direction and periodic conditions in the y-direction of a
+        grid with two axes. Note that this boundary condition will not work for grids
+        with other number of axes and no additional checks are performed.
+
+        .. code-block:: python
+
+            def setter(data, args=None):
+                data[0, :] = data[1, :]  # Vanishing derivative at left side
+                data[-1, :] = 2 - data[-2, :]  # Fixed value `1` at right side
+                data[:, 0] = data[:, -2]  # Periodic BC at top
+                data[:, -1] = data[:, 1]  # Periodic BC at bottom
+    """
+
+    def __init__(self, setter: GhostCellSetter):
+        self._setter = setter
+
+    @classmethod
+    def from_data(cls, data, **kwargs) -> BoundariesSetter:
+        """Creates all boundaries from given data.
+
+        Args:
+            data (callable):
+                Function that sets the ghost cells
+        """
+        # check whether this is already the correct class
+        if isinstance(data, BoundariesSetter):
+            # boundaries are already in the correct format
+            return data
+
+        elif isinstance(data, BoundariesBase):
+            raise TypeError(
+                "Can only use type `BoundariesSetter`. Use `BoundariesBase.from_data` "
+                "for more general data."
+            )
+
+        return BoundariesSetter(data)
+
+    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+        """Set the ghost cells for all boundaries.
+
+        Args:
+            data_full (:class:`~numpy.ndarray`):
+                The full field data including ghost points
+            set_corners (bool):
+                Determines whether the corner cells are set using interpolation
+            args:
+                Additional arguments that might be supported by special boundary
+                conditions.
+        """
+        self._setter(data_full, args=args)
+
+    def make_ghost_cell_setter(self) -> GhostCellSetter:
+        """Return function that sets the ghost cells on a full array.
+
+        Returns:
+            Callable with signature :code:`(data_full: np.ndarray, args=None)`, which
+            sets the ghost cells of the full data, potentially using additional
+            information in `args` (e.g., the time `t` during solving a PDE)
+        """
+        return jit(self._setter)  # type: ignore
+
+
+def set_default_bc(
+    bc_data: BoundariesData | None, default: BoundaryData
+) -> BoundariesData:
+    """Set a default boundary condition.
+
+    Args:
+        bc_data (str or list or tuple or dict or callable):
+            User-supplied data specifying boundary conditions
+        default:
+            Default condition that should be imposed where user conditions are not given
+
+    Returns:
+        Modified `bc_data` with added defaults
+    """
+    if bc_data is None:
+        bc_data = default
+    elif isinstance(bc_data, dict) and not _is_local_bc_data(bc_data):
+        # set default when boundary conditions for axes are specified
+        bc_data.setdefault("*", default)
+    return bc_data

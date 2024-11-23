@@ -21,21 +21,21 @@ DOCSTRING_REPLACEMENTS = {
     # description of function arguments
     "ARG_BOUNDARIES_INSTANCE": """
         Specifies the boundary conditions applied to the field. This must be an
-        instance of :class:`~pde.grids.boundaries.axes.Boundaries`, which can be
+        instance of :class:`~pde.grids.boundaries.axes.BoundariesList`, which can be
         created from various data formats using the class method
-       :func:`~pde.grids.boundaries.axes.Boundaries.from_data`.
+       :meth:`~pde.grids.boundaries.axes.BoundariesBase.from_data`.
        """,
     "ARG_BOUNDARIES": """
-        Boundary conditions are generally given as a list with one condition for each
-        axis. For periodic axes, only periodic boundary conditions are allowed
+        Boundary conditions are generally given as a dictionary with one condition for
+        each axis side. For periodic axes, only periodic boundary conditions are allowed
         (indicated by 'periodic' and 'anti-periodic'). For non-periodic axes, different
-        boundary conditions can be specified for the lower and upper end (using a tuple
-        of two conditions). For instance, Dirichlet conditions enforcing a value NUM
-        (specified by `{'value': NUM}`) and Neumann conditions enforcing the value DERIV
-        for the derivative in the normal direction (specified by `{'derivative':
-        DERIV}`) are supported. Note that the special value 'natural' imposes periodic
-        boundary conditions for periodic axis and a vanishing derivative otherwise.
-        More information can be found in the
+        boundary conditions can be specified for the lower and upper end (using specific
+        identifiers, like `x-` and `y+`). For instance, Dirichlet conditions enforcing a
+        value NUM (specified by `{'value': NUM}`) and Neumann conditions enforcing the
+        value DERIV for the derivative in the normal direction (specified by
+        `{'derivative': DERIV}`) are supported. Note that the special value
+        'auto_periodic_neumann' imposes periodic boundary conditions for periodic axis
+        and a vanishing derivative otherwise. More information can be found in the
         :ref:`boundaries documentation <documentation-boundaries>`.
         """,
     "ARG_TRACKER_INTERRUPT": """
@@ -43,7 +43,7 @@ DOCSTRING_REPLACEMENTS = {
         determines an interval (measured in the simulation time unit) of regular
         interruption. A string is interpreted as a duration in real time assuming the
         format 'hh:mm:ss'. A list of numbers is taken as explicit simulation time points.
-        More fine-grained contol is possible by passing an instance of classes defined
+        More fine-grained control is possible by passing an instance of classes defined
         in :mod:`~pde.trackers.interrupts`.
         """,
     "ARG_PLOT_QUANTITIES": """
