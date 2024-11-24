@@ -10,6 +10,10 @@ BUILDDIR      = build
 help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
+# clean:
+# 	rm -rf $(BUILDDIR)/*
+# 	rm -rf examples_gallery/*
+
 .PHONY: help Makefile
 
 # Define default target, which can be used in VS code
