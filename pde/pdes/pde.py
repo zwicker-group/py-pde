@@ -565,6 +565,7 @@ class PDE(PDEBase):
 
             return post_step_hook_impl, 0  # hook function and initial value
 
+    # time will not be updated
     def _make_pde_rhs_numba_coll(
         self, state: FieldCollection, cache: dict[str, Any]
     ) -> Callable[[np.ndarray, float], np.ndarray]:

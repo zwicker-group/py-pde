@@ -264,9 +264,10 @@ sphinx_gallery_conf = {
     "examples_dirs": "../../examples",
     "gallery_dirs": "examples_gallery",
     "filename_pattern": "/",
-    "ignore_pattern": r".*movie.*|.*interactive.*|.*parallel.*|.*modelrunner.*",
+    "ignore_pattern": r".*movie.*|.*interactive.*|.*parallel.*|.*modelrunner.*|.*jupyter.*",
     "capture_repr": (),
     "show_signature": False,
+    "download_all_examples": False,
 }
 
 # run autodoc

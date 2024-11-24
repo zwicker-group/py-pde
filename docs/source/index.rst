@@ -36,7 +36,7 @@ translated to a function evaluating the evolution rate of the PDE.
     :numbered:
 
     getting_started
-    :gallery:examples_gallery/index
+    gallery
     manual/index
     packages/pde
  

@@ -131,3 +131,5 @@ venv.bak/
 .settings
 .vscode
 *.code-workspace
+examples/output/allen_cahn.avi
+examples/output/allen_cahn.hdf

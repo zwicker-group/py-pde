@@ -13,7 +13,7 @@ from pde.tools.misc import module_available
 from pde.visualization.movies import Movie
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
-EXAMPLES = (PACKAGE_PATH / "examples").glob("*.py")
+EXAMPLES = (PACKAGE_PATH / "examples").glob("*/*.py")
 NOTEBOOKS = (PACKAGE_PATH / "examples").glob("*/*.ipynb")
 
 SKIP_EXAMPLES: list[str] = []
