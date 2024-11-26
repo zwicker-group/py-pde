@@ -168,7 +168,6 @@ REQUIREMENTS = [
     Requirement(name="mypy", version_min="1.8", tests_only=True),
     Requirement(name="notebook", version_min="7", tests_only=True),
     Requirement(name="pre-commit", version_min="3", tests_only=True),
-    Requirement(name="pyupgrade", version_min="3", tests_only=True),
     Requirement(name="pytest", version_min="5.4", tests_only=True),
     Requirement(name="pytest-cov", version_min="2.8", tests_only=True),
     Requirement(name="pytest-xdist", version_min="1.30", tests_only=True),
