@@ -121,7 +121,7 @@ REQUIREMENTS = [
         name="pyfftw",
         version_min="0.12",
         usage="Faster Fourier transforms",
-        collections={},  # include in "full" collection when pyfftw supports python 3.12
+        collections=set(),  # include in "full" collection when pyfftw supports python 3.12
     ),
     Requirement(
         name="rocket-fft",
@@ -187,7 +187,7 @@ def write_requirements_txt(
     *,
     relation: str = ">=",
     ref_base: bool = False,
-    comment: str = None,
+    comment: str | None = None,
 ):
     """Write requirements to a requirements.txt file.
 
@@ -205,8 +205,8 @@ def write_requirements_txt(
             fp.write(f"# {comment}\n")
         if ref_base:
             levels = len(path.parent.relative_to(PACKAGE_PATH).parts)
-            reference = Path("/".join([".."] * levels)) / "requirements.txt"
-            fp.write(f"-r {reference}\n")
+            reference_path = Path("/".join([".."] * levels)) / "requirements.txt"
+            fp.write(f"-r {reference_path}\n")
         for reference in sorted(requirements, key=lambda r: r.name.lower()):
             fp.write(reference.line(relation) + "\n")
 
