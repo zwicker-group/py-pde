@@ -158,7 +158,7 @@ class GridBase(metaclass=ABCMeta):
         )
         self.num_axes = len(self._axes_described)
         self.axes = [self.c.axes[i] for i in self._axes_described]
-        self.axes_symmetric = [self.c.axes[i] for i in self.axes_symmetric]  # type: ignore
+        self.axes_symmetric = [self.c.axes[i] for i in self._axes_symmetric]  # type: ignore
 
     def __init_subclass__(cls, **kwargs) -> None:
         """Register all subclassess to reconstruct them later."""
