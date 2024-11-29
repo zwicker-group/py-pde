@@ -39,6 +39,8 @@ if TYPE_CHECKING:
     from ._mesh import GridMesh
     from .boundaries.axes import BoundariesBase, BoundariesData
 
+_base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
+""":class:`logging.Logger`: Base logger for grids."""
 
 PI_4 = 4 * np.pi
 PI_43 = 4 / 3 * np.pi
@@ -116,6 +118,7 @@ class GridBase(metaclass=ABCMeta):
     # class properties
     _subclasses: dict[str, type[GridBase]] = {}  # all classes inheriting from this
     _operators: dict[str, OperatorInfo] = {}  # all operators defined for the grid
+    _logger: logging.Logger  # logger instance to output information
 
     # properties that are defined in subclasses
     c: CoordinatesBase
@@ -150,7 +153,6 @@ class GridBase(metaclass=ABCMeta):
 
     def __init__(self) -> None:
         """Initialize the grid."""
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._mesh: GridMesh | None = None
 
         self._axes_described = tuple(
@@ -158,11 +160,16 @@ class GridBase(metaclass=ABCMeta):
         )
         self.num_axes = len(self._axes_described)
         self.axes = [self.c.axes[i] for i in self._axes_described]
-        self.axes_symmetric = [self.c.axes[i] for i in self._axes_symmetric]  # type: ignore
+        self.axes_symmetric = [self.c.axes[i] for i in self._axes_symmetric]
 
     def __init_subclass__(cls, **kwargs) -> None:
-        """Register all subclassess to reconstruct them later."""
+        """Initialize class-level attributes of subclasses."""
         super().__init_subclass__(**kwargs)
+
+        # create logger for this specific field class
+        cls._logger = _base_logger.getChild(cls.__qualname__)
+
+        # register all subclasses to reconstruct them later
         if cls is not GridBase:
             if cls.__name__ in cls._subclasses:
                 warnings.warn(f"Redefining class {cls.__name__}")
@@ -171,13 +178,8 @@ class GridBase(metaclass=ABCMeta):
 
     def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()
-        del state["_logger"]
         state.pop("_cache_methods", None)  # delete method cache if present
         return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     @classmethod
     def from_state(cls, state: str | dict[str, Any]) -> GridBase:

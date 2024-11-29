@@ -51,6 +51,9 @@ except ImportError:
     # assume older numba module structure
     from numba.extending import overload
 
+_base_logger = logging.getLogger(__name__)
+""":class:`logging.Logger`: Logger for expressions."""
+
 
 @fill_in_docstring
 def parse_number(
@@ -207,6 +210,8 @@ ExpressionType = Union[float, str, np.ndarray, basic.Basic, "ExpressionBase"]
 class ExpressionBase(metaclass=ABCMeta):
     """Abstract base class for handling expressions."""
 
+    _logger: logging.Logger
+
     @fill_in_docstring
     def __init__(
         self,
@@ -251,7 +256,6 @@ class ExpressionBase(metaclass=ABCMeta):
             self._sympy_expr = expression
         if repl is not None:
             self._sympy_expr = self._sympy_expr.subs(repl)
-        self._logger = logging.getLogger(self.__class__.__name__)
         self.user_funcs = {} if user_funcs is None else user_funcs
         self.consts = {} if consts is None else consts
 
@@ -264,6 +268,12 @@ class ExpressionBase(metaclass=ABCMeta):
                     "numerical arrays. Did you mean to use `%(name)s.data`?",
                     {"name": name},
                 )
+
+    def __init_subclass__(cls, **kwargs):
+        """Initialize class-level attributes of subclasses."""
+        super().__init_subclass__(**kwargs)
+        # create logger for this specific field class
+        cls._logger = _base_logger.getChild(cls.__qualname__)
 
     def __repr__(self):
         return f'{self.__class__.__name__}("{self.expression}", signature={self.vars})'
@@ -992,8 +1002,6 @@ def evaluate(
 
     from ..fields import VectorField
 
-    logger = logging.getLogger("evaluate")
-
     # validate input
     if consts is None:
         consts = {}
@@ -1026,7 +1034,7 @@ def evaluate(
     else:
         bcs = dict(bc_ops)
         if "*" in bcs and bc != "auto_periodic_neumann":
-            logger.warning("Found default BCs in `bcs` and `bc_ops`")
+            _base_logger.warning("Found default BCs in `bcs` and `bc_ops`")
         bcs["*"] = bc  # append default boundary conditions
 
     # check whether all fields have the same grid
@@ -1071,7 +1079,7 @@ def evaluate(
                 )
 
             # Tell the user what BC we chose for a given operator
-            logger.info("Using BC `%s` for operator `%s` in expression", bc, func)
+            _base_logger.info("Using BC `%s` for operator `%s` in expression", bc, func)
 
             # create the function evaluating the operator
             try:
@@ -1082,12 +1090,14 @@ def evaluate(
             except ValueError:
                 # any other exception should signal that the operator is not defined, so
                 # we (almost) silently assume that sympy defines the operator
-                logger.info("Assuming that sympy knows undefined operator `%s`", func)
+                _base_logger.info(
+                    "Assuming that sympy knows undefined operator `%s`", func
+                )
 
     # check whether there are boundary conditions that have not been used
     bcs_left = set(bcs.keys()) - bcs_used - {"*:*", "*"}
     if bcs_left:
-        logger.warning("Unused BCs: %s", sorted(bcs_left))
+        _base_logger.warning("Unused BCs: %s", sorted(bcs_left))
 
     # obtain the function to calculate the right hand side
     signature = tuple(fields_keys) + ("none", "bc_args")
@@ -1112,7 +1122,7 @@ def evaluate(
         raise RuntimeError(f"Undefined variable in expression: {extra_vars_str}")
     expr.vars = signature
 
-    logger.info("Expression has signature %s", signature)
+    _base_logger.info("Expression has signature %s", signature)
 
     # extract input field data and calculate result
     field_data = [field.data for field in fields_values]

@@ -15,8 +15,6 @@ from ...tools.numba import jit
 from ...tools.typing import OperatorType
 from ..base import GridBase
 
-logger = logging.getLogger(__name__)
-
 
 def make_derivative(
     grid: GridBase,
@@ -251,6 +249,8 @@ def make_general_poisson_solver(
         from scipy.sparse.linalg import MatrixRankWarning
     except ImportError:
         from scipy.sparse.linalg.dsolve.linsolve import MatrixRankWarning
+
+    logger = logging.getLogger(__name__)
 
     if method not in {"auto", "scipy"}:
         raise ValueError(f"Method {method} is not available")

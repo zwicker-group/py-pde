@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from .scalar import ScalarField
 
 
+_base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
+""":class:`logging.Logger`: Base logger for fields."""
+
 TField = TypeVar("TField", bound="FieldBase")
 
 
@@ -59,12 +62,15 @@ class FieldBase(metaclass=ABCMeta):
         self._grid = grid
         self._data_full = data
         self.label = label
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):
-        """Register all subclassess to reconstruct them later."""
+        """Initialize class-level attributes of subclasses."""
         super().__init_subclass__(**kwargs)
 
+        # create logger for this specific field class
+        cls._logger = _base_logger.getChild(cls.__qualname__)
+
+        # register all subclasses to reconstruct them later
         if cls is not FieldBase:
             if cls.__name__ in cls._subclasses:
                 warnings.warn(f"Redefining class {cls.__name__}")
@@ -72,13 +78,8 @@ class FieldBase(metaclass=ABCMeta):
 
     def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()
-        del state["_logger"]
         state.pop("_cache_methods", None)  # delete method cache if present
         return state
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def data(self) -> np.ndarray:

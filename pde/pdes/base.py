@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     from ..solvers.base import SolverBase
     from ..solvers.controller import TRangeType
 
+_base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
+""":class:`logging.Logger`: Base logger for PDEs."""
 
 TState = TypeVar("TState", FieldCollection, DataFieldBase)
 
@@ -67,6 +69,8 @@ class PDEBase(metaclass=ABCMeta):
     many cases, PDEs are defined locally and no such synchronization is necessary. Note
     that the virtual points at the boundaries are synchronized automatically."""
 
+    _logger: logging.Logger
+
     def __init__(self, *, noise: ArrayLike = 0, rng: np.random.Generator | None = None):
         """
         Args:
@@ -89,21 +93,24 @@ class PDEBase(metaclass=ABCMeta):
             :meth:`PDEBase._make_noise_realization_numba` need to be overwritten for the
             `numpy` and `numba` backend, respectively.
         """
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._cache: dict[str, Any] = {}
         self.diagnostics = {}
         self.noise = np.asanyarray(noise)
         self.rng = np.random.default_rng(rng)
 
+    def __init_subclass__(cls, **kwargs):
+        """Initialize class-level attributes of subclasses."""
+        super().__init_subclass__(**kwargs)
+        # create logger for this specific field class
+        cls._logger = _base_logger.getChild(cls.__qualname__)
+
     def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()
-        del state["_logger"]
         del state["_cache"]
         return state
 
     def __setstate__(self, state):
         self.__dict__.update(state)
-        self._logger = logging.getLogger(self.__class__.__name__)
         self._cache = {}
 
     @property

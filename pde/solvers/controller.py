@@ -22,6 +22,8 @@ from .base import SolverBase
 if TYPE_CHECKING:
     from ..fields.base import FieldBase
 
+_logger = logging.getLogger(__name__)
+""":class:`logging.Logger`: Logger for controller."""
 
 TRangeType = Union[float, tuple[float, float]]
 TState = TypeVar("TState", bound="FieldBase")
@@ -83,7 +85,6 @@ class Controller:
             "controller": self.info,
             "package_version": __version__,
         }
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     @property
     def t_range(self) -> tuple[float, float]:
@@ -197,7 +198,7 @@ class Controller:
 
         # evolve the system from t_start to t_end
         t = t_start
-        self._logger.debug("Start simulation at t=%g", t)
+        _logger.debug("Start simulation at t=%g", t)
         try:
             while t < t_end:
                 # determine next time point with an action
@@ -263,9 +264,9 @@ class Controller:
 
         # show information after a potential progress bar has been deleted to not mess
         # up the display
-        self._logger.log(msg_level, msg)
+        _logger.log(msg_level, msg)
         if profiler["tracker"] > max(profiler["solver"], 1):
-            self._logger.warning(
+            _logger.warning(
                 "Spent more time on handling trackers (%.3g) than on the actual "
                 "simulation (%.3g)",
                 profiler["tracker"],
@@ -292,7 +293,7 @@ class Controller:
         stepper = self.solver.make_stepper(state=state, dt=dt)
 
         if not self.solver.info.get("use_mpi", False):
-            self._logger.warning(
+            _logger.warning(
                 "Started multiprocessing run without a stepper that supports it. Use "
                 "`ExplicitMPISolver` to profit from multiple cores"
             )
@@ -355,7 +356,7 @@ class Controller:
                 self._run_main_process(state, dt)
             except Exception as err:
                 print(err)  # simply print the exception to show some info
-                self._logger.error("Error in main node", exc_info=err)
+                _logger.error("Error in main node", exc_info=err)
                 time.sleep(0.5)  # give some time for info to propagate
                 MPI.COMM_WORLD.Abort()  # abort all other nodes
                 raise
@@ -368,7 +369,7 @@ class Controller:
                 self._run_client_process(state, dt)
             except Exception as err:
                 print(err)  # simply print the exception to show some info
-                self._logger.error("Error in node %d", mpi.rank, exc_info=err)
+                _logger.error("Error in node %d", mpi.rank, exc_info=err)
                 time.sleep(0.5)  # give some time for info to propagate
                 MPI.COMM_WORLD.Abort()  # abort all other (and main) nodes
                 raise
@@ -398,7 +399,7 @@ class Controller:
 
         # copy the initial state to not modify the supplied one
         if getattr(self.solver, "pde", None) and self.solver.pde.complex_valued:
-            self._logger.info("Convert state to complex numbers")
+            _logger.info("Convert state to complex numbers")
             state: TState = initial_state.copy(dtype=complex)
         else:
             state = initial_state.copy()
