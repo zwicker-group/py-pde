@@ -25,6 +25,9 @@ from ..tools.misc import classproperty
 from ..tools.numba import is_jitted, jit
 from ..tools.typing import BackendType, StepperHook
 
+_base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
+""":class:`logging.Logger`: Base logger for solvers."""
+
 
 class ConvergenceError(RuntimeError):
     """Indicates that an implicit step did not converge."""
@@ -47,6 +50,8 @@ class SolverBase:
     _subclasses: dict[str, type[SolverBase]] = {}
     """dict: dictionary of all inheriting classes"""
 
+    _logger: logging.Logger
+
     def __init__(self, pde: PDEBase, *, backend: BackendType = "auto"):
         """
         Args:
@@ -62,18 +67,22 @@ class SolverBase:
         self.info: dict[str, Any] = {"class": self.__class__.__name__}
         if self.pde:
             self.info["pde_class"] = self.pde.__class__.__name__
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):
-        """Register all subclassess to reconstruct them later."""
+        """Initialize class-level attributes of subclasses."""
         super().__init_subclass__(**kwargs)
+
+        # create logger for this specific field class
+        cls._logger = _base_logger.getChild(cls.__qualname__)
+
+        # register all subclasses to reconstruct them later
         if not isabstract(cls):
             if cls.__name__ in cls._subclasses:
                 warnings.warn(f"Redefining class {cls.__name__}")
             cls._subclasses[cls.__name__] = cls
         if hasattr(cls, "name") and cls.name:
             if cls.name in cls._subclasses:
-                logging.warning("Solver with name %s is already registered", cls.name)
+                _base_logger.warning("Solver `%s` is already registered", cls.name)
             cls._subclasses[cls.name] = cls
 
     @classmethod

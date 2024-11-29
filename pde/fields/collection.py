@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-import logging
 import warnings
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Any, Callable, Literal, overload
@@ -78,7 +77,6 @@ class FieldCollection(FieldBase):
         elif isinstance(fields, Mapping):
             # support setting fields using a mapping
             if labels is not None:
-                self._logger = logging.getLogger(self.__class__.__name__)
                 self._logger.warning("`labels` argument is ignored")
             labels = list(fields.keys())
             fields = list(fields.values())
@@ -94,7 +92,6 @@ class FieldCollection(FieldBase):
 
         # check whether some fields are identical
         if not copy_fields and len(fields) != len({id(field) for field in fields}):
-            self._logger = logging.getLogger(self.__class__.__name__)
             self._logger.warning("Creating a copy of identical fields in collection")
             copy_fields = True
 

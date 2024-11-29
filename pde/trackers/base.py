@@ -19,6 +19,9 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from .interrupts import InterruptData, parse_interrupt
 
+_base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
+""":class:`logging.Logger`: Base logger for trackers."""
+
 InfoDict = Optional[dict[str, Any]]
 TrackerDataType = Union["TrackerBase", str]
 
@@ -30,6 +33,7 @@ class FinishedSimulation(StopIteration):
 class TrackerBase(metaclass=ABCMeta):
     """Base class for implementing trackers."""
 
+    _logger: logging.Logger
     _subclasses: dict[str, type[TrackerBase]] = {}  # all inheriting classes
 
     @fill_in_docstring
@@ -47,11 +51,15 @@ class TrackerBase(metaclass=ABCMeta):
             )
             interrupts = interval
         self.interrupt = parse_interrupt(interrupts)
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):
-        """Register all subclassess to reconstruct them later."""
+        """Initialize class-level attributes of subclasses."""
         super().__init_subclass__(**kwargs)
+
+        # create logger for this specific field class
+        cls._logger = _base_logger.getChild(cls.__qualname__)
+
+        # register all subclasses to reconstruct them later
         if hasattr(cls, "name"):
             assert cls.name != "auto"
             cls._subclasses[cls.name] = cls

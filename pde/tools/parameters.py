@@ -81,7 +81,11 @@ class Parameter:
                 )
 
             if not valid_default:
-                logging.warning(
+                if hasattr(self, "_logger"):
+                    logger: logging.Logger = self._logger
+                else:
+                    logger = logging.getLogger(self.__class__.__module__)
+                logger.warning(
                     "Default value `%s` does not seem to be of type `%s`",
                     name,
                     cls.__name__,
@@ -180,9 +184,6 @@ class Parameterized:
         warnings.warn(
             "`Parameterized` has been moved to `py-modelrunner`", DeprecationWarning
         )
-        # set logger if this has not happened, yet
-        if not hasattr(self, "_logger"):
-            self._logger = logging.getLogger(self.__class__.__name__)
 
         # set parameters if they have not been initialized, yet
         if not hasattr(self, "parameters"):

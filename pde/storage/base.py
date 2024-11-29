@@ -26,6 +26,8 @@ from ..trackers.interrupts import InterruptData
 if TYPE_CHECKING:
     from .memory import MemoryStorage
 
+_base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
+""":class:`logging.Logger`: Base logger for storage."""
 
 WriteModeType = Literal[
     "append",
@@ -46,6 +48,7 @@ class StorageBase(metaclass=ABCMeta):
     times: Sequence[float]  # stored time points
     data: Any  # actual data for all the stored times
     write_mode: WriteModeType  # mode determining how the storage behaves
+    _logger: logging.Logger
 
     def __init__(
         self,
@@ -70,7 +73,12 @@ class StorageBase(metaclass=ABCMeta):
         self._dtype: DTypeLike | None = None
         self._grid: GridBase | None = None
         self._field: FieldBase | None = None
-        self._logger = logging.getLogger(self.__class__.__name__)
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        """Initialize class-level attributes of subclasses."""
+        super().__init_subclass__(**kwargs)
+        # create logger for this specific field class
+        cls._logger = _base_logger.getChild(cls.__qualname__)
 
     @property
     def data_shape(self) -> tuple[int, ...]:

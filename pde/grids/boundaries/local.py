@@ -84,6 +84,8 @@ from ..base import GridBase, PeriodicityError
 if TYPE_CHECKING:
     from .._mesh import GridMesh
 
+_logger = logging.getLogger(__name__)
+""":class:`logging.Logger`: Logger instance."""
 
 BoundaryData = Union[dict, str, "BCBase"]
 
@@ -285,8 +287,6 @@ class BCBase(metaclass=ABCMeta):
         self._shape_boundary = (
             self.grid.shape[: self.axis] + self.grid.shape[self.axis + 1 :]
         )
-
-        self._logger = logging.getLogger(self.__class__.__name__)
 
     def __init_subclass__(cls, **kwargs):
         """Register all subclasses to reconstruct them later."""
@@ -1278,7 +1278,7 @@ class ExpressionBC(BCBase):
 
             except nb.NumbaError:
                 # if compilation fails, we simply fall back to pure-python mode
-                self._logger.warning("Cannot compile BC %s", self)
+                _logger.warning("Cannot compile BC %s", self)
 
                 @register_jitable
                 def value_func(*args):
@@ -1363,7 +1363,7 @@ class ExpressionBC(BCBase):
 
         except nb.NumbaError:
             # if compilation fails, we simply fall back to pure-python mode
-            self._logger.warning("Cannot compile BC %s", self._func_expression)
+            _logger.warning("Cannot compile BC %s", self._func_expression)
             # calculate the expected value to test this later (and fail early)
             expected = func(*self._test_values)
 
@@ -1949,13 +1949,7 @@ class ConstBCBase(BCBase):
 
         # check consistency
         if np.any(np.isnan(result)):
-            try:
-                logger = self._logger
-            except AttributeError:
-                # this can happen when _parse_value is called before the object
-                # is fully initialized
-                logger = logging.getLogger(self.__class__.__name__)
-            logger.warning("In valid values in %s", self)
+            _logger.warning("In valid values in %s", self)
 
         return result
 

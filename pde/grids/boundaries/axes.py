@@ -28,6 +28,9 @@ from ..base import GridBase, PeriodicityError
 from .axis import BoundaryAxisBase, BoundaryPair, BoundaryPairData, get_boundary_axis
 from .local import BCBase, BCDataError, BoundaryData
 
+_logger = logging.getLogger(__name__)
+""":class:`logging.Logger`: Logger instance."""
+
 BoundariesData = Union[
     BoundaryPairData, Sequence[BoundaryPairData], Callable, "BoundariesBase"
 ]
@@ -108,8 +111,6 @@ class BoundariesBase:
 
 class BoundariesList(BoundariesBase):
     """Defines boundary conditions for all axes individually."""
-
-    _logger = logging.getLogger(__qualname__)
 
     def __init__(self, boundaries: list[BoundaryAxisBase]):
         """Initialize with a list of boundaries."""
@@ -249,7 +250,7 @@ class BoundariesList(BoundariesBase):
                 for name, (ax, upper) in grid.boundary_names.items():
                     if bc := data.pop(name, None):
                         if bc_seen[ax][upper]:
-                            cls._logger.warning(
+                            _logger.warning(
                                 "Duplicate BC data for axis %s%s", ax, "-+"[upper]
                             )
                         bc_data[ax][upper] = bc
@@ -257,7 +258,7 @@ class BoundariesList(BoundariesBase):
 
                 # warn if some keys were left over
                 if data:
-                    cls._logger.warning("Didn't use BC data from %s", list(data.keys()))
+                    _logger.warning("Didn't use BC data from %s", list(data.keys()))
                 # find boundary conditions that have not been specified
                 bcs_unspecified = []
                 for ax, bc_ax in enumerate(bc_data):
@@ -265,10 +266,10 @@ class BoundariesList(BoundariesBase):
                         if bc_side is None:
                             bcs_unspecified.append(grid.axes[ax] + "-+"[i])
                 if bcs_unspecified:
-                    cls._logger.warning("Didn't specified BCs for %s", bcs_unspecified)
+                    _logger.warning("Didn't specified BCs for %s", bcs_unspecified)
 
                 # create the actual boundary conditions
-                cls._logger.debug("Parsed BCs as %s", bc_data)
+                _logger.debug("Parsed BCs as %s", bc_data)
                 bcs = [
                     get_boundary_axis(grid, i, tuple(boundary), rank=rank)
                     for i, boundary in enumerate(bc_data)

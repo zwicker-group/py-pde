@@ -36,6 +36,10 @@ if TYPE_CHECKING:
     from ..grids.base import GridBase
 
 
+_logger = logging.getLogger(__name__)
+""":class:`logging.Logger`: Logger for plotting module."""
+
+
 def add_scaled_colorbar(
     axes_image: matplotlib.cm.ScalarMappable,
     ax=None,
@@ -575,6 +579,8 @@ class PlottingContextBase:
     """Flag indicating whether the context supports that plots can be updated with out
     redrawing the entire plot."""
 
+    _logger = _logger
+
     fig: mpl_figure.Figure | None
 
     def __init__(self, title: str | None = None, show: bool = True):
@@ -588,7 +594,6 @@ class PlottingContextBase:
 
         self.initial_plot = True
         self.fig = None
-        self._logger = logging.getLogger(__name__)
         self._logger.info("Initialize %s", self.__class__.__name__)
 
     def __enter__(self):
