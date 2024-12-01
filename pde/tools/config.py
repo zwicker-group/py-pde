@@ -30,6 +30,23 @@ from .parameters import Parameter
 # define default parameter values
 DEFAULT_CONFIG: list[Parameter] = [
     Parameter(
+        "operators.conservative_stencil",
+        True,
+        bool,
+        "Indicates whether conservative stencils should be used for differential "
+        "operators on curvilinear grids. Conservative operators ensure mass "
+        "conservation at slightly slower computation speed.",
+    ),
+    Parameter(
+        "operators.tensor_symmetry_check",
+        True,
+        bool,
+        "Indicates whether tensor fields are checked for having a suitable form for "
+        "evaluating differential operators in curvilinear coordinates where some axes "
+        "are assumed to be symmetric. In such cases, some tensor components might need "
+        "to vanish, so the result of the operator can be expressed.",
+    ),
+    Parameter(
         "numba.debug",
         False,
         bool,
