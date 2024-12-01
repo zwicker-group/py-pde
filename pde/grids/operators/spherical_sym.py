@@ -19,6 +19,7 @@ from typing import Literal
 
 import numpy as np
 
+from ... import config
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit
 from ...tools.typing import OperatorType
@@ -29,7 +30,9 @@ from .common import make_general_poisson_solver
 
 @SphericalSymGrid.register_operator("laplace", rank_in=0, rank_out=0)
 @fill_in_docstring
-def make_laplace(grid: SphericalSymGrid, *, conservative: bool = True) -> OperatorType:
+def make_laplace(
+    grid: SphericalSymGrid, *, conservative: bool | None = None
+) -> OperatorType:
     """Make a discretized laplace operator for a spherical grid.
 
     {DESCR_SPHERICAL_GRID}
@@ -40,12 +43,15 @@ def make_laplace(grid: SphericalSymGrid, *, conservative: bool = True) -> Operat
         conservative (bool):
             Flag indicating whether the laplace operator should be conservative (which
             results in slightly slower computations). Conservative operators ensure mass
-            conservation.
+            conservation. If `None`, the value is read from the configuration option
+            `operators.conservative_stencil`.
 
     Returns:
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if conservative is None:
+        conservative = config["operators.conservative_stencil"]
 
     # calculate preliminary quantities
     dim_r = grid.shape[0]
@@ -188,8 +194,8 @@ def make_gradient_squared(
 def make_divergence(
     grid: SphericalSymGrid,
     *,
-    safe: bool = True,
-    conservative: bool = True,
+    safe: bool | None = None,
+    conservative: bool | None = None,
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """Make a discretized divergence operator for a spherical grid.
@@ -205,11 +211,13 @@ def make_divergence(
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The polar grid for which this operator will be defined
         safe (bool):
-            Add extra checks for the validity of the input
+            Add extra checks for the validity of the input. If `None`. the value is read
+            from the configuration option `operators.tensor_symmetry_check`.
         conservative (bool):
             Flag indicating whether the operator should be conservative (which results
             in slightly slower computations). Conservative operators ensure mass
-            conservation.
+            conservation. If `None`, the value is read from the configuration option
+            `operators.conservative_stencil`.
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -218,6 +226,10 @@ def make_divergence(
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if safe is None:
+        safe = config["operators.tensor_symmetry_check"]
+    if conservative is None:
+        conservative = config["operators.conservative_stencil"]
 
     # calculate preliminary quantities
     dim_r = grid.shape[0]
@@ -288,7 +300,7 @@ def make_vector_gradient(
     grid: SphericalSymGrid,
     *,
     method: Literal["central", "forward", "backward"] = "central",
-    safe: bool = True,
+    safe: bool | None = None,
 ) -> OperatorType:
     """Make a discretized vector gradient operator for a spherical grid.
 
@@ -306,12 +318,15 @@ def make_vector_gradient(
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
         safe (bool):
-            Add extra checks for the validity of the input
+            Add extra checks for the validity of the input. If `None`. the value is read
+            from the configuration option `operators.tensor_symmetry_check`.
 
     Returns:
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if safe is None:
+        safe = config["operators.tensor_symmetry_check"]
 
     # calculate preliminary quantities
     dim_r = grid.shape[0]
@@ -363,7 +378,10 @@ def make_vector_gradient(
 @SphericalSymGrid.register_operator("tensor_divergence", rank_in=2, rank_out=1)
 @fill_in_docstring
 def make_tensor_divergence(
-    grid: SphericalSymGrid, *, safe: bool = True, conservative: bool = False
+    grid: SphericalSymGrid,
+    *,
+    safe: bool | None = None,
+    conservative: bool | None = None,
 ) -> OperatorType:
     """Make a discretized tensor divergence operator for a spherical grid.
 
@@ -373,16 +391,22 @@ def make_tensor_divergence(
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The spherical grid for which this operator will be defined
         safe (bool):
-            Add extra checks for the validity of the input
+            Add extra checks for the validity of the input. If `None`. the value is read
+            from the configuration option `operators.tensor_symmetry_check`.
         conservative (bool):
             Flag indicating whether the operator should be conservative (which results
             in slightly slower computations). Conservative operators ensure mass
-            conservation.
+            conservation. If `None`, the value is read from the configuration option
+            `operators.conservative_stencil`.
 
     Returns:
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if safe is None:
+        safe = config["operators.tensor_symmetry_check"]
+    if conservative is None:
+        conservative = config["operators.conservative_stencil"]
 
     # calculate preliminary quantities
     dim_r = grid.shape[0]
@@ -466,7 +490,10 @@ def make_tensor_divergence(
 @SphericalSymGrid.register_operator("tensor_double_divergence", rank_in=2, rank_out=0)
 @fill_in_docstring
 def make_tensor_double_divergence(
-    grid: SphericalSymGrid, *, safe: bool = True, conservative: bool = True
+    grid: SphericalSymGrid,
+    *,
+    safe: bool | None = None,
+    conservative: bool | None = None,
 ) -> OperatorType:
     """Make a discretized tensor double divergence operator for a spherical grid.
 
@@ -476,16 +503,22 @@ def make_tensor_double_divergence(
         grid (:class:`~pde.grids.spherical.SphericalSymGrid`):
             The spherical grid for which this operator will be defined
         safe (bool):
-            Add extra checks for the validity of the input
+            Add extra checks for the validity of the input. If `None`. the value is read
+            from the configuration option `operators.tensor_symmetry_check`.
         conservative (bool):
             Flag indicating whether the operator should be conservative (which results
             in slightly slower computations). Conservative operators ensure mass
-            conservation.
+            conservation. If `None`, the value is read from the configuration option
+            `operators.conservative_stencil`.
 
     Returns:
         A function that can be applied to an array of values
     """
     assert isinstance(grid, SphericalSymGrid)
+    if safe is None:
+        safe = config["operators.tensor_symmetry_check"]
+    if conservative is None:
+        conservative = config["operators.conservative_stencil"]
 
     # calculate preliminary quantities
     dim_r = grid.shape[0]

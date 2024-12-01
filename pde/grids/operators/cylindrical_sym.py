@@ -54,9 +54,9 @@ def _get_laplace_matrix(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]:
     factor_r = 1 / (2 * grid.axes_coords[0] * grid.discretization[0])
 
     def i(r, z):
-        """Helper function for flattening the inder.
+        """Helper function for flattening the index.
 
-        This is equivalent to np.ravel_multi_inder((r, z), (dim_r, dim_z))
+        This is equivalent to np.ravel_multi_index((r, z), (dim_r, dim_z))
         """
         return r * dim_z + z
 
