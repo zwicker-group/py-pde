@@ -381,7 +381,7 @@ def make_tensor_divergence(
     grid: SphericalSymGrid,
     *,
     safe: bool | None = None,
-    conservative: bool | None = None,
+    conservative: bool | None = False,
 ) -> OperatorType:
     """Make a discretized tensor divergence operator for a spherical grid.
 
