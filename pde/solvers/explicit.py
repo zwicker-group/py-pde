@@ -386,9 +386,6 @@ class ExplicitSolver(AdaptiveSolverBase):
                 An example for the state from which the grid and other information can
                 be extracted
         """
-        if self.pde.is_sde:
-            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
-
         self.info["scheme"] = self.scheme
         if self.scheme == "euler":
             return self._make_adaptive_euler_stepper(state)

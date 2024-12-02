@@ -673,6 +673,10 @@ class AdaptiveSolverBase(SolverBase):
             # create stepper with fixed steps
             return super().make_stepper(state, dt)
 
+        if getattr(self.pde, "is_sde", False):
+            # adaptive steppers cannot deal with stochastic PDEs
+            raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
+
         # Support `None` as a default value, so the controller can signal that
         # the solver should use a default time step.
         if dt is None:
