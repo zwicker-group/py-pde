@@ -2,19 +2,8 @@ r"""
 Heterogeneous boundary conditions
 =================================
 
-This example implements a `spatially coupled SIR model 
-<https://en.wikipedia.org/wiki/Compartmental_models_in_epidemiology>`_ with 
-the following dynamics for the density of susceptible, infected, and recovered
-individuals:
-
-.. math::
-
-    \partial_t s &= D \nabla^2 s - \beta is \\
-    \partial_t i &= D \nabla^2 i + \beta is - \gamma i \\
-    \partial_t r &= D \nabla^2 r + \gamma i
-
-Here, :math:`D` is the diffusivity, :math:`\beta` the infection rate, and
-:math:`\gamma` the recovery rate.
+This example implements a diffusion equation with a boundary condition specified by a
+function, which can in principle depend on time.
 """
 
 import numpy as np
