@@ -10,7 +10,7 @@ jobs:
           - os: "ubuntu-latest"
             mpi: "openmpi"
           - os: "macos-13"
-            mpi: "openmpi"
+            mpi: "mpich"
           - os: "windows-latest"
             mpi: "intelmpi"
     runs-on: ${{ matrix.os }}
