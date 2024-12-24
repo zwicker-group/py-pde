@@ -661,7 +661,7 @@ class BasicPlottingContext(PlottingContextBase):
         # determine which figure to modify
         if isinstance(fig_or_ax, mpl_axes.Axes):
             # assume that axes are given
-            self.fig = fig_or_ax.get_figure()
+            self.fig = fig_or_ax.get_figure(root=True)
         elif isinstance(fig_or_ax, mpl_figure.Figure):
             self.fig = fig_or_ax
 
