@@ -229,7 +229,7 @@ class CoordinatesBase:
         Returns:
             :class:`~numpy.ndarray`: Metric tensor at the points
         """
-        # This general implementation assumes that the metric is diagnoal!
+        # This general implementation assumes that the metric is diagonal!
         points = np.atleast_1d(points)
         metric = np.zeros((self.dim, self.dim) + points.shape[:-1])
         metric[range(self.dim), range(self.dim)] = self.scale_factors(points) ** 2
@@ -246,7 +246,7 @@ class CoordinatesBase:
                 Coordinates of the point(s)
 
         Returns:
-            :class:`~numpy.ndarray`: Rotation matrices for all points. The returnd array
+            :class:`~numpy.ndarray`: Rotation matrices for all points. The returned array
             has the shape `(dim, dim) + points_shape`, assuming `points` has the shape
             `points_shape + (dim,)`.
         """
