@@ -175,7 +175,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         # General comment: We implement the full adaptive scheme here instead of just
         # defining `_make_single_step_error_estimate` to do some optimizations. In
         # particular, we reuse the calculated right hand side in cases where the step
-        # was not succesful.
+        # was not successful.
         if self.pde.is_sde:
             raise RuntimeError("Cannot use adaptive stepper with stochastic equation")
 

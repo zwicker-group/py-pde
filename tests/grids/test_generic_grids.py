@@ -208,3 +208,37 @@ def test_grid_modelrunner_storage(grid, tmp_path):
 
     with open_storage(path, mode="read") as storage:
         assert storage["grid"] == grid
+
+
+@pytest.mark.parametrize("grid", iter_grids())
+def test_vector_to_cartesian(grid, rng):
+    """Test vector_to_cartesian function of grids."""
+    point = grid.get_random_point(coords="grid", rng=rng)
+    point = grid._coords_full(point)
+
+    if grid.dim == 1:
+        return
+
+    elif grid.dim == 2:
+        vec1 = grid._vector_to_cartesian(point, [1, 0])
+        vec2 = grid._vector_to_cartesian(point, [0, 1])
+        u = [vec1, vec2]
+
+        for i in range(2):
+            for j in range(2):
+                ui_uj = np.einsum("i...,i...->...", u[i], u[j])
+                assert ui_uj == pytest.approx(float(i == j))
+
+    elif grid.dim == 3:
+        vec1 = grid._vector_to_cartesian(point, [1, 0, 0])
+        vec2 = grid._vector_to_cartesian(point, [0, 1, 0])
+        vec3 = grid._vector_to_cartesian(point, [0, 0, 1])
+        u = [vec1, vec2, vec3]
+
+        for i in range(3):
+            for j in range(3):
+                ui_uj = np.einsum("i...,i...->...", u[i], u[j])
+                assert ui_uj == pytest.approx(float(i == j))
+
+    else:
+        raise NotImplementedError
