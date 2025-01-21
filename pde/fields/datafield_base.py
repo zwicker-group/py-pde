@@ -125,8 +125,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def __str__(self) -> str:
         """Return instance as string."""
         result = (
-            f"{self.__class__.__name__}(grid={self.grid}, "
-            f"data=Array{self.data.shape}"
+            f"{self.__class__.__name__}(grid={self.grid}, data=Array{self.data.shape}"
         )
         if self.dtype != np.double:
             result = result[:-1] + f', dtype="{self.dtype}")'

@@ -1427,7 +1427,7 @@ class ExpressionBC(BCBase):
                 f'const="{self._input["const_expr"]}"'
             ]
         elif self._is_func:
-            res = [f'{self._input["target"]}=<function>']
+            res = [f"{self._input['target']}=<function>"]
         else:
             res = [f'{self._input["target"]}="{self._input["value_expr"]}"']
         if self.value_cell is not None:

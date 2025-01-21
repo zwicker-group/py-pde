@@ -44,9 +44,8 @@ def test_colored_noise(rng):
         scale = rng.uniform(1, 10)
         noise = make_colored_noise(grid.shape, grid.discretization[0], exponent, scale)
         x = noise()
-        assert (
-            stats.normaltest(x.flat).pvalue > 2e-5
-        ), f"Colored noise with exp={exponent} is not normal distributed"
+        msg = f"Colored noise with exp={exponent} is not normal distributed"
+        assert stats.normaltest(x.flat).pvalue > 2e-5, msg
 
 
 def test_noise_scaling(rng):

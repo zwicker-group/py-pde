@@ -41,5 +41,7 @@ print(controller3.diagnostics)
 print()
 
 # plot both fields and give the deviation as the title
-title = f"Deviation: {((sol1 - sol2)**2).average:.2g}, {((sol1 - sol3)**2).average:.2g}"
+deviation12 = ((sol1 - sol2) ** 2).average
+deviation13 = ((sol1 - sol3) ** 2).average
+title = f"Deviation: {deviation12:.2g}, {deviation13:.2g}"
 pde.FieldCollection([sol1, sol2, sol3]).plot(title=title)
