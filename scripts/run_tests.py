@@ -33,11 +33,12 @@ def show_config():
     from importlib.machinery import SourceFileLoader
 
     # imports the package from the package path
-    mod = SourceFileLoader(PACKAGE, f"{PACKAGE_PATH/PACKAGE}/__init__.py").load_module()
+    mod_path = f"{PACKAGE_PATH / PACKAGE}/__init__.py"
+    mod = SourceFileLoader(PACKAGE, mod_path).load_module()
     # obtain the package environment
     env = mod.environment()
 
-    print(f"{'='*33} CONFIGURATION {'='*32}")
+    print(f"{'=' * 33} CONFIGURATION {'=' * 32}")
     for category, data in env.items():
         if hasattr(data, "items"):
             print(f"\n{category}:")
