@@ -170,12 +170,12 @@ class BoundariesList(BoundariesBase):
 
         if _is_local_bc_data(data):
             # detected identifier signifying that a single condition was specified
+            # -> create the same boundary condition for all axes
             return [
                 get_boundary_axis(grid, i, data, rank=rank)
                 for i in range(grid.num_axes)
             ]
-
-        # assume that boundary conditions are given for separate axes
+        # else: assume that boundary conditions are given for separate axes
 
         # initialize boundary data with wildcard default
         data = data.copy()  #  we want to modify this dictionary
