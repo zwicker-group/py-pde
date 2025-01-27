@@ -22,6 +22,7 @@ from typing import Any, Callable, Union
 import numpy as np
 from numba.extending import register_jitable
 
+from ... import config
 from ...tools.numba import jit
 from ...tools.typing import GhostCellSetter
 from ..base import GridBase, PeriodicityError
@@ -143,17 +144,99 @@ class BoundariesList(BoundariesBase):
         self._axes: list[BoundaryAxisBase] = boundaries
 
     @classmethod
+    def _parse_from_dict(
+        cls, data: dict[str, Any], *, grid: GridBase, rank: int = 0, **kwargs
+    ) -> list[BoundaryAxisBase]:
+        """Creates all boundaries from given data in dictionary format.
+
+        Args:
+            data (dict):
+                Data that describes the boundaries using a dictionary.
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid with which the boundary condition is associated
+            rank (int):
+                The tensorial rank of the field for this boundary condition
+        """
+        if config["boundaries.accept_lists"] and ("low" in data or "high" in data):
+            # check for legacy format that has been deprecated on 2024-11-23
+            warnings.warn(
+                "Deprecated format for boundary conditions." + cls.get_help(),
+                DeprecationWarning,
+            )
+            return [
+                get_boundary_axis(grid, i, data, rank=rank)
+                for i in range(grid.num_axes)
+            ]
+
+        if _is_local_bc_data(data):
+            # detected identifier signifying that a single condition was specified
+            return [
+                get_boundary_axis(grid, i, data, rank=rank)
+                for i in range(grid.num_axes)
+            ]
+
+        # assume that boundary conditions are given for separate axes
+
+        # initialize boundary data with wildcard default
+        data = data.copy()  #  we want to modify this dictionary
+        bc_all = data.pop("*", None)
+        bc_data = [[bc_all, bc_all] for _ in range(grid.num_axes)]
+        bc_seen = [[False, False] for _ in range(grid.num_axes)]
+
+        # check specific boundary conditions for all axes
+        for ax, ax_name in enumerate(grid.axes):
+            # overwrite boundaries whose axes are given
+            if bc_axes := data.pop(ax_name, None):
+                bc_data[ax] = [bc_axes, bc_axes]
+
+            # overwrite specific conditions for one side
+            if bc_lower := data.pop(ax_name + "-", None):
+                bc_data[ax][0] = bc_lower
+                bc_seen[ax][0] = True
+            if bc_upper := data.pop(ax_name + "+", None):
+                bc_data[ax][1] = bc_upper
+                bc_seen[ax][1] = True
+
+        # overwrite conditions for named boundaries
+        for name, (ax, upper) in grid.boundary_names.items():
+            if bc := data.pop(name, None):
+                if bc_seen[ax][upper]:
+                    _logger.warning("Duplicate BC data for axis %s%s", ax, "-+"[upper])
+                bc_data[ax][upper] = bc
+                bc_seen[ax][upper] = True
+
+        # warn if some keys were left over
+        if data:
+            _logger.warning("Didn't use BC data from %s", list(data.keys()))
+        # find boundary conditions that have not been specified
+        bcs_unspecified = []
+        for ax, bc_ax in enumerate(bc_data):
+            for i, bc_side in enumerate(bc_ax):
+                if bc_side is None:
+                    bcs_unspecified.append(grid.axes[ax] + "-+"[i])
+        if bcs_unspecified:
+            _logger.warning("Didn't specified BCs for %s", bcs_unspecified)
+
+        # create the actual boundary conditions
+        _logger.debug("Parsed BCs as %s", bc_data)
+        bcs = [
+            get_boundary_axis(grid, i, tuple(boundary), rank=rank)
+            for i, boundary in enumerate(bc_data)
+        ]
+        return bcs
+
+    @classmethod
     def from_data(  # type: ignore
         cls, data, *, grid: GridBase, rank: int = 0, **kwargs
     ) -> BoundariesList:
         """Creates all boundaries from given data.
 
         Args:
-            grid (:class:`~pde.grids.base.GridBase`):
-                The grid with which the boundary condition is associated
             data (str or dict):
                 Data that describes the boundaries. This should either be a string
                 naming a boundary condition or a dictionary with detailed information.
+            grid (:class:`~pde.grids.base.GridBase`):
+                The grid with which the boundary condition is associated
             rank (int):
                 The tensorial rank of the field for this boundary condition
         """
@@ -205,77 +288,9 @@ class BoundariesList(BoundariesBase):
             # dictionaries can either specify boundary conditions for separate sides or
             # they can specify a single boundary condition that is used on all sides
 
-            if "low" in data or "high" in data:
-                # specifying conditions using this have been deprecated on 2024-11-23
-                warnings.warn(
-                    "Deprecated format for boundary conditions." + cls.get_help(),
-                    DeprecationWarning,
-                )
-                bcs = [
-                    get_boundary_axis(grid, i, data, rank=rank)
-                    for i in range(grid.num_axes)
-                ]
+            bcs = cls._parse_from_dict(data, grid=grid, rank=rank)
 
-            if _is_local_bc_data(data):
-                # detected identifier signifying that a single condition was specified
-                bcs = [
-                    get_boundary_axis(grid, i, data, rank=rank)
-                    for i in range(grid.num_axes)
-                ]
-
-            else:
-                # assume that boundary conditions are given for separate axes
-
-                # initialize boundary data with wildcard default
-                data = data.copy()  #  we want to modify this dictionary
-                bc_all = data.pop("*", None)
-                bc_data = [[bc_all, bc_all] for _ in range(grid.num_axes)]
-                bc_seen = [[False, False] for _ in range(grid.num_axes)]
-
-                # check specific boundary conditions for all axes
-                for ax, ax_name in enumerate(grid.axes):
-                    # overwrite boundaries whose axes are given
-                    if bc_axes := data.pop(ax_name, None):
-                        bc_data[ax] = [bc_axes, bc_axes]
-
-                    # overwrite specific conditions for one side
-                    if bc_lower := data.pop(ax_name + "-", None):
-                        bc_data[ax][0] = bc_lower
-                        bc_seen[ax][0] = True
-                    if bc_upper := data.pop(ax_name + "+", None):
-                        bc_data[ax][1] = bc_upper
-                        bc_seen[ax][1] = True
-
-                # overwrite conditions for named boundaries
-                for name, (ax, upper) in grid.boundary_names.items():
-                    if bc := data.pop(name, None):
-                        if bc_seen[ax][upper]:
-                            _logger.warning(
-                                "Duplicate BC data for axis %s%s", ax, "-+"[upper]
-                            )
-                        bc_data[ax][upper] = bc
-                        bc_seen[ax][upper] = True
-
-                # warn if some keys were left over
-                if data:
-                    _logger.warning("Didn't use BC data from %s", list(data.keys()))
-                # find boundary conditions that have not been specified
-                bcs_unspecified = []
-                for ax, bc_ax in enumerate(bc_data):
-                    for i, bc_side in enumerate(bc_ax):
-                        if bc_side is None:
-                            bcs_unspecified.append(grid.axes[ax] + "-+"[i])
-                if bcs_unspecified:
-                    _logger.warning("Didn't specified BCs for %s", bcs_unspecified)
-
-                # create the actual boundary conditions
-                _logger.debug("Parsed BCs as %s", bc_data)
-                bcs = [
-                    get_boundary_axis(grid, i, tuple(boundary), rank=rank)
-                    for i, boundary in enumerate(bc_data)
-                ]
-
-        elif hasattr(data, "__len__"):
+        elif config["boundaries.accept_lists"] and hasattr(data, "__len__"):
             # sequences have been deprecated on 2024-11-23
             warnings.warn(
                 "Deprecated format for boundary conditions." + cls.get_help(),
