@@ -18,6 +18,7 @@ axes have more option, which are represented by
 
 from __future__ import annotations
 
+import collections
 from typing import TYPE_CHECKING, Union
 
 import numpy as np
@@ -408,26 +409,34 @@ def get_boundary_axis(
         :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`:
             Appropriate boundary condition for the axis
     """
-    # handle special case where two identical conditions are given
-    if isinstance(data, (tuple, list)) and data[0] == data[1]:
+    # Handle special case where two identical conditions are given. In particular, this
+    # covers the special case where `data == ("periodic", "periodic")` and similar
+    # constructs. These are converted to `data == "periodic"`, so the next check can
+    # catch them properly.
+    if isinstance(data, collections.abc.Sequence) and data[0] == data[1]:
         data = data[0]
+
     # handle special case describing potentially periodic boundary conditions
     if isinstance(data, str) and data.startswith("auto_periodic_"):
         data = "periodic" if grid.periodic[axis] else data[len("auto_periodic_") :]
 
     # handle different types of data that specify boundary conditions
     if isinstance(data, BoundaryAxisBase):
-        # boundary is already an the correct format
+        # boundary is already a fully fledged instance
         bcs = data
-    elif data == "periodic" or data == ("periodic", "periodic"):
+
+    elif data == "periodic" or (
+        isinstance(data, dict) and data.get("type") == "periodic"
+    ):
         # initialize a periodic boundary condition
         bcs = BoundaryPeriodic(grid, axis)
-    elif data == "anti-periodic" or data == ("anti-periodic", "anti-periodic"):
-        # initialize a anti-periodic boundary condition
+
+    elif data == "anti-periodic" or (
+        isinstance(data, dict) and data.get("type") == "anti-periodic"
+    ):
+        # initialize an anti-periodic boundary condition
         bcs = BoundaryPeriodic(grid, axis, flip_sign=True)
-    elif isinstance(data, dict) and data.get("type") == "periodic":
-        # initialize a periodic boundary condition
-        bcs = BoundaryPeriodic(grid, axis)
+
     else:
         # initialize independent boundary conditions for the two sides
         bcs = BoundaryPair.from_data(grid, axis, data, rank=rank)
