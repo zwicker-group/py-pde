@@ -408,6 +408,9 @@ def get_boundary_axis(
         :class:`~pde.grids.boundaries.axis.BoundaryAxisBase`:
             Appropriate boundary condition for the axis
     """
+    # handle special case where two identical conditions are given
+    if isinstance(data, (tuple, list)) and data[0] == data[1]:
+        data = data[0]
     # handle special case describing potentially periodic boundary conditions
     if isinstance(data, str) and data.startswith("auto_periodic_"):
         data = "periodic" if grid.periodic[axis] else data[len("auto_periodic_") :]

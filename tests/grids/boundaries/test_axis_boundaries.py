@@ -71,3 +71,7 @@ def test_get_axis_boundaries():
         else:
             assert not b.periodic
             assert len(list(b)) == 2
+
+        # check double setting
+        c = get_boundary_axis(g, 0, (data, data))
+        assert b == c
