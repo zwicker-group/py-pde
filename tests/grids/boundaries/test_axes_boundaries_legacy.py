@@ -7,7 +7,7 @@ import itertools
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid
+from pde import ScalarField, UnitGrid, config
 from pde.grids.base import PeriodicityError
 from pde.grids.boundaries.axes import (
     BCDataError,
@@ -79,3 +79,23 @@ def test_boundaries_property_legacy():
     g = UnitGrid([2, 2], periodic=[True, False])
     bc = BoundariesBase.from_data("auto_periodic_neumann", grid=g)
     assert len(list(bc.boundaries)) == 2
+
+
+def test_boundary_specifications_legacy_disabled():
+    """Test disabling legacy boundary conditions."""
+    accept_lists = config["boundaries.accept_lists"]
+    config["boundaries.accept_lists"] = False
+
+    g = UnitGrid([2])
+    with pytest.raises(BCDataError):
+        bc1 = BoundariesBase.from_data(
+            [{"type": "derivative", "value": 0}, {"type": "value", "value": 0}], grid=g
+        )
+    with pytest.raises(BCDataError):
+        BoundariesBase.from_data([{"type": "derivative"}, {"type": "value"}], grid=g)
+    with pytest.raises(BCDataError):
+        BoundariesBase.from_data([{"derivative": 0}, {"value": 0}], grid=g)
+    with pytest.raises(BCDataError):
+        BoundariesBase.from_data(["neumann", "dirichlet"], grid=g)
+
+    config["boundaries.accept_lists"] = accept_lists

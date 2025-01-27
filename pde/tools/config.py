@@ -47,6 +47,14 @@ DEFAULT_CONFIG: list[Parameter] = [
         "to vanish, so the result of the operator can be expressed.",
     ),
     Parameter(
+        "boundaries.accept_lists",
+        True,
+        bool,
+        "Indicate whether boundary conditions can be set using the deprecated legacy "
+        "format, where conditions for individual axes and sides where set using lists. "
+        "If disabled, only the new format using dicts is supported.",
+    ),
+    Parameter(
         "numba.debug",
         False,
         bool,
