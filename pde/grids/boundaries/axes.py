@@ -183,6 +183,14 @@ class BoundariesList(BoundariesBase):
         bc_data = [[bc_all, bc_all] for _ in range(grid.num_axes)]
         bc_seen = [[False, False] for _ in range(grid.num_axes)]
 
+        # replace synonymous axes names
+        for pattern, repl in grid.c._axes_alt_repl.items():  # iterate replacements
+            for ext in ["", "-", "+"]:  # iterate all variants
+                if pattern + ext in data:
+                    if repl + ext in data:
+                        raise KeyError(f"Key `{repl + ext}` is specified twice")
+                    data[repl + ext] = data.pop(pattern + ext)
+
         # check specific boundary conditions for all axes
         for ax, ax_name in enumerate(grid.axes):
             # overwrite boundaries whose axes are given

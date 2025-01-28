@@ -7,7 +7,7 @@ import itertools
 import numpy as np
 import pytest
 
-from pde import ScalarField, UnitGrid
+from pde import PolarSymGrid, ScalarField, UnitGrid
 from pde.grids.base import PeriodicityError
 from pde.grids.boundaries.axes import (
     BCDataError,
@@ -255,3 +255,25 @@ def test_boundaries_setter_2d(rng):
     mask = np.ones((6, 6), dtype=bool)
     mask[0, 0] = mask[-1, 0] = mask[0, -1] = mask[-1, -1] = False
     np.testing.assert_allclose(f1._data_full[mask], f2._data_full[mask])
+
+
+def test_boundaries_axis_synonyms():
+    """Test whether we can use synonyms of the axis to set boundaries."""
+    grid = PolarSymGrid([1, 2], 3)
+    expect = grid.get_boundary_conditions({"r": "value"})
+
+    gbc = grid.get_boundary_conditions
+    assert expect == gbc({"radius": "value"})
+    assert expect == gbc({"r-": "value", "r+": "value"})
+    assert expect == gbc({"radius-": "value", "radius+": "value"})
+    assert expect == gbc({"r-": "value", "radius+": "value"})
+    assert expect == gbc({"radius-": "value", "r+": "value"})
+
+    with pytest.raises(KeyError):
+        gbc({"radius": "value", "r": "value"})
+    with pytest.raises(KeyError):
+        gbc({"r": "value", "radius": "value"})
+    with pytest.raises(KeyError):
+        gbc({"radius+": "value", "r+": "value"})
+    with pytest.raises(KeyError):
+        gbc({"r-": "value", "radius-": "value"})
