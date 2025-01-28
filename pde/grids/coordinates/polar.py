@@ -15,7 +15,7 @@ class PolarCoordinates(CoordinatesBase):
 
     dim = 2
     axes = ["r", "φ"]
-    _axes_alt = {"φ": ["phi"]}
+    _axes_alt = {"r": ["radius"], "φ": ["phi"]}
     coordinate_limits = [(0, np.inf), (0, 2 * np.pi)]
 
     _singleton: PolarCoordinates | None = None

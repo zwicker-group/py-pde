@@ -511,7 +511,7 @@ class BCBase(metaclass=ABCMeta):
         if isinstance(data, BCBase):
             # already in the correct format
             if data.grid._mesh is not None:
-                # we need to exclude this case since otherwise we get into a rabit hole
+                # we need to exclude this case since otherwise we get into a rabbit hole
                 # where it is not clear what grid boundary conditions belong to. The
                 # idea is that users only create boundary conditions for the full grid
                 # and that the splitting onto subgrids is only done once, automatically,
