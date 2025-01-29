@@ -291,7 +291,7 @@ class FieldCollection(FieldBase):
         label: str | None = None,
         labels: list[str | None] | _FieldLabels | None = None,
         dtype: DTypeLike = None,
-    ):
+    ) -> FieldCollection:
         """Create a field collection from classes and data.
 
         Args:
