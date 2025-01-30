@@ -160,7 +160,7 @@ class BoundariesList(BoundariesBase):
         if config["boundaries.accept_lists"] and ("low" in data or "high" in data):
             # check for legacy format that has been deprecated on 2024-11-23
             warnings.warn(
-                "Deprecated format for boundary conditions." + cls.get_help(),
+                "Deprecated format for boundary conditions. " + cls.get_help(),
                 DeprecationWarning,
             )
             return [
@@ -301,7 +301,7 @@ class BoundariesList(BoundariesBase):
         elif config["boundaries.accept_lists"] and hasattr(data, "__len__"):
             # sequences have been deprecated on 2024-11-23
             warnings.warn(
-                "Deprecated format for boundary conditions." + cls.get_help(),
+                "Deprecated format for boundary conditions. " + cls.get_help(),
                 DeprecationWarning,
             )
             if len(data) == grid.num_axes:
@@ -388,22 +388,11 @@ class BoundariesList(BoundariesBase):
         """
         if isinstance(index, str):
             # assume that the index is a known identifier
-            if index in self.grid.boundary_names:
-                # found a known boundary
-                axis, upper = self.grid.boundary_names[index]
+            if index in self.grid.axes:
+                return self._axes[self.grid.axes.index(index)]
+            else:
+                axis, upper = self.grid._get_boundary_index(index)
                 return self._axes[axis][upper]
-
-            # check all axes
-            for ax, ax_name in enumerate(self.grid.axes):
-                if index == ax_name:
-                    return self._axes[ax]
-                if index == ax_name + "-":
-                    return self._axes[ax][False]
-                if index == ax_name + "+":
-                    return self._axes[ax][True]
-
-            # found nothing
-            raise KeyError(index)
 
         else:
             # handle all other cases, in particular integer indices
@@ -422,32 +411,14 @@ class BoundariesList(BoundariesBase):
         """
         if isinstance(index, str):
             # assume that the index is a known identifier
-
-            if index in self.grid.boundary_names:
-                # set a specific boundary side
-                ax, upper = self.grid.boundary_names[index]
-                self._axes[ax][upper] = data
-
+            if index in self.grid.axes:
+                axis = self.grid.axes.index(index)
+                self._axes[axis] = get_boundary_axis(
+                    grid=self.grid, axis=axis, data=data, rank=self[axis].rank
+                )
             else:
-                # check all axes
-                for ax, ax_name in enumerate(self.grid.axes):
-                    if index == ax_name:
-                        # found just the axis -> set both sides
-                        self._axes[ax] = get_boundary_axis(
-                            grid=self.grid, axis=ax, data=data, rank=self[ax].rank
-                        )
-                        break
-                    if index == ax_name + "-":
-                        # found lower part of the axis
-                        self._axes[ax][False] = data
-                        break
-                    if index == ax_name + "+":
-                        # found upper part of the axis
-                        self._axes[ax][True] = data
-                        break
-
-                else:
-                    raise KeyError(index)
+                axis, upper = self.grid._get_boundary_index(index)
+                self._axes[axis][upper] = data
 
         else:
             # handle all other cases, in particular integer indices
