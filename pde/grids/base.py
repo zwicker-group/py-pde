@@ -277,8 +277,23 @@ class GridBase(metaclass=ABCMeta):
         """
         if isinstance(index, str):
             # assume that the index is a known identifier
-            axis, upper = self.boundary_names[index]
+            if index in self.boundary_names:
+                # found a known boundary
+                axis, upper = self.boundary_names[index]
+            else:
+                # check all axes
+                for axis, ax_name in enumerate(self.axes):
+                    if index == ax_name + "-":
+                        upper = False
+                        break
+                    if index == ax_name + "+":
+                        upper = True
+                        break
+                else:
+                    raise KeyError("Unknown boundary {index}")
+
         else:
+            # assume the index is directly given as a tuple of an axis and a boolean
             axis, upper = index
         return axis, upper
 
