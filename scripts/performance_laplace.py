@@ -12,7 +12,8 @@ import numba as nb
 import numpy as np
 
 from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
-from pde.grids.boundaries import BoundariesBase
+from pde.grids.boundaries import BoundariesList
+from pde.grids.operators.cartesian import _make_laplace_numba_2d
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit
 
@@ -167,11 +168,13 @@ def main():
             bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
             expected = field.laplace("auto_periodic_neumann")
 
-            for method in ["CUSTOM", "OPTIMIZED", "numba", "scipy"]:
+            for method in ["CUSTOM", "OPTIMIZED", "9POINT", "numba", "scipy"]:
                 if method == "CUSTOM":
                     laplace = custom_laplace_2d(shape, periodic=periodic)
                 elif method == "OPTIMIZED":
                     laplace = optimized_laplace_2d(bcs)
+                elif method == "9POINT":
+                    laplace = grid.make_operator("laplace", bc=bcs, corner_weight=1 / 3)
                 elif method in {"numba", "scipy"}:
                     laplace = grid.make_operator("laplace", bc=bcs, backend=method)
                 else:
@@ -183,7 +186,8 @@ def main():
                     np.testing.assert_allclose(result, expected.data)
                     speed = estimate_computation_speed(laplace, field._data_full)
                 else:
-                    np.testing.assert_allclose(laplace(field.data), expected.data)
+                    if method != "9POINT":
+                        np.testing.assert_allclose(laplace(field.data), expected.data)
                     speed = estimate_computation_speed(laplace, field.data)
                 print(f"{method:>9s}: {int(speed):>9d}")
             print()
@@ -193,7 +197,7 @@ def main():
         grid = CylindricalSymGrid(shape[0], [0, shape[1]], shape)
         print(f"Cylindrical grid, shape={shape}")
         field = ScalarField.random_normal(grid)
-        bcs = BoundariesBase.from_data(grid, "derivative")
+        bcs = BoundariesList.from_data("derivative", grid=grid)
         expected = field.laplace(bcs)
 
         for method in ["CUSTOM", "numba"]:
@@ -214,7 +218,7 @@ def main():
         grid = SphericalSymGrid(shape, shape)
         print(grid)
         field = ScalarField.random_normal(grid)
-        bcs = BoundariesBase.from_data(grid, "derivative")
+        bcs = BoundariesList.from_data("derivative", grid=grid)
 
         for conservative in [True, False]:
             laplace = grid.make_operator("laplace", bcs, conservative=conservative)

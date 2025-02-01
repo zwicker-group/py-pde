@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Callable, Literal
 
 import numba as nb
@@ -35,6 +36,49 @@ from .common import make_general_poisson_solver, uniform_discretization
 
 # The `make_derivative?` methods are imported for backward compatibility. Their usage is
 # deprecated since 2023-12-06
+
+
+_logger = logging.getLogger(__name__)
+""":class:`logging.Logger`: Logger instance."""
+
+
+def make_corner_point_setter_2d(grid: CartesianGrid) -> Callable[[np.ndarray], None]:
+    """Make a helper function that sets the virtual corner points of a 2d field.
+
+    Args:
+        grid (:class:`~pde.grids.cartesian.CartesianGrid`):
+            The grid for which the helper function is created
+
+    Returns:
+        A function that can be applied to an array of values
+    """
+    periodic_x, periodic_y = grid.periodic
+
+    @jit
+    def set_corner_points(arr: np.ndarray) -> None:
+        """Set the corner points of the array `arr`"""
+        if periodic_x:
+            # exploit periodicity along x-direction to use known boundary points
+            arr[0, 0] = arr[-2, 0]
+            arr[-1, 0] = arr[1, 0]
+            arr[0, -1] = arr[-2, -1]
+            arr[-1, -1] = arr[1, -1]
+
+        elif periodic_y:
+            # exploit periodicity along y-direction to use known boundary points
+            arr[0, 0] = arr[0, -2]
+            arr[-1, 0] = arr[-1, 1]
+            arr[0, -1] = arr[0, -2]
+            arr[-1, -1] = arr[-1, 1]
+
+        else:
+            # we cannot exploit any periodicity, so we interpolate
+            arr[0, 0] = 0.5 * (arr[0, 1] + arr[1, 0])
+            arr[-1, 0] = 0.5 * (arr[-1, 1] + arr[-2, 0])
+            arr[0, -1] = 0.5 * (arr[0, -2] + arr[1, -1])
+            arr[-1, -1] = 0.5 * (arr[-1, -2] + arr[-2, -1])
+
+    return set_corner_points  # type: ignore
 
 
 def _get_laplace_matrix_1d(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]:
@@ -309,30 +353,84 @@ def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
     return laplace  # type: ignore
 
 
-def _make_laplace_numba_2d(grid: CartesianGrid) -> OperatorType:
+def _make_laplace_numba_2d(
+    grid: CartesianGrid, *, corner_weight: float | None = None
+) -> OperatorType:
     """Make a 2d Laplace operator using numba compilation.
 
     Args:
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
+        corner_weight (float):
+            Weighting factor for the corner points. If `None`, the value is read from
+            the configuration option `operators.cartesian_laplacian_2d_corner_weight`.
+            The standard value is zero, which corresponds to the traditional 5-point
+            stencil. Typical alternative choices are 1/2 (Oono-Puri stencil) and 1/3
+            (Patra-Karttunen or Mehrstellen stencil); see
+            https://en.wikipedia.org/wiki/Nine-point_stencil.
 
     Returns:
         A function that can be applied to an array of values
     """
-    dim_x, dim_y = grid.shape
-    scale_x, scale_y = grid.discretization**-2
+    if corner_weight is None:
+        corner_weight = config["operators.cartesian.laplacian_2d_corner_weight"]
 
     # use parallel processing for large enough arrays
+    dim_x, dim_y = grid.shape
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
-    @jit(parallel=parallel)
-    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
-        """Apply Laplace operator to array `arr`"""
-        for i in nb.prange(1, dim_x + 1):
-            for j in range(1, dim_y + 1):
-                lap_x = (arr[i - 1, j] - 2 * arr[i, j] + arr[i + 1, j]) * scale_x
-                lap_y = (arr[i, j - 1] - 2 * arr[i, j] + arr[i, j + 1]) * scale_y
-                out[i - 1, j - 1] = lap_x + lap_y
+    if corner_weight == 0:
+        # 5-point stencil
+        scale_x, scale_y = grid.discretization**-2
+
+        @jit(parallel=parallel)
+        def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+            """Apply Laplace operator to array `arr`"""
+            for i in nb.prange(1, dim_x + 1):
+                for j in range(1, dim_y + 1):
+                    lap_x = (arr[i - 1, j] - 2 * arr[i, j] + arr[i + 1, j]) * scale_x
+                    lap_y = (arr[i, j - 1] - 2 * arr[i, j] + arr[i, j + 1]) * scale_y
+                    out[i - 1, j - 1] = lap_x + lap_y
+
+    else:
+        # 9-point stencil
+        w = corner_weight
+        _logger.info("Create 2D Cartesian Laplacian with 9-point stencil (w=%.3g)", w)
+
+        dx, dy = grid.discretization**-2
+        stencil = np.array(
+            [
+                [
+                    0.25 * (dx**-2 + dy**-2) * w,
+                    dy**-2 * (1 - w),
+                    0.25 * (dx**-2 + dy**-2) * w,
+                ],
+                [
+                    dx**-2 * (1 - w),
+                    dx**-2 * dy**-2 * (dx**2 + dy**2) * (w - 2),
+                    dx**-2 * (1 - w),
+                ],
+                [
+                    0.25 * (dx**-2 + dy**-2) * w,
+                    dy**-2 * (1 - w),
+                    0.25 * (dx**-2 + dy**-2) * w,
+                ],
+            ]
+        )
+
+        set_corner_points = make_corner_point_setter_2d(grid)
+
+        @jit(parallel=parallel)
+        def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+            """Apply Laplace operator to array `arr`"""
+            set_corner_points(arr)
+            for i in nb.prange(1, dim_x + 1):
+                for j in range(1, dim_y + 1):
+                    value = 0
+                    for x in range(3):
+                        for y in range(3):
+                            value += arr[i + x - 1, j + y - 1] * stencil[x, y]
+                    out[i - 1, j - 1] = value
 
     return laplace  # type: ignore
 
@@ -463,6 +561,7 @@ def make_laplace(
     grid: CartesianGrid,
     *,
     backend: Literal["auto", "numba", "numba-spectral", "scipy"] = "auto",
+    **kwargs,
 ) -> OperatorType:
     """Make a Laplace operator on a Cartesian grid.
 
@@ -472,6 +571,8 @@ def make_laplace(
         backend (str):
             Backend used for calculating the Laplace operator. If backend='auto', a
             suitable backend is chosen automatically.
+        **kwargs:
+            Specifies extra arguments influencing how the operator is created. Note that
 
     Returns:
         A function that can be applied to an array of values
@@ -487,11 +588,11 @@ def make_laplace(
 
     if backend == "numba":
         if dim == 1:
-            laplace = _make_laplace_numba_1d(grid)
+            laplace = _make_laplace_numba_1d(grid, **kwargs)
         elif dim == 2:
-            laplace = _make_laplace_numba_2d(grid)
+            laplace = _make_laplace_numba_2d(grid, **kwargs)
         elif dim == 3:
-            laplace = _make_laplace_numba_3d(grid)
+            laplace = _make_laplace_numba_3d(grid, **kwargs)
         else:
             raise NotImplementedError(
                 f"Numba Laplace operator not implemented for {dim:d} dimensions"
@@ -499,16 +600,16 @@ def make_laplace(
 
     elif backend == "numba-spectral":
         if dim == 1:
-            laplace = _make_laplace_numba_spectral_1d(grid)
+            laplace = _make_laplace_numba_spectral_1d(grid, **kwargs)
         elif dim == 2:
-            laplace = _make_laplace_numba_spectral_2d(grid)
+            laplace = _make_laplace_numba_spectral_2d(grid, **kwargs)
         else:
             raise NotImplementedError(
                 f"Spectral Laplace operator not implemented for {dim:d} dimensions"
             )
 
     elif backend == "scipy":
-        laplace = _make_laplace_scipy_nd(grid)
+        laplace = _make_laplace_scipy_nd(grid, **kwargs)
 
     else:
         raise ValueError(f"Backend `{backend}` is not defined")

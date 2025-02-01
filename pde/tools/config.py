@@ -47,6 +47,15 @@ DEFAULT_CONFIG: list[Parameter] = [
         "to vanish, so the result of the operator can be expressed.",
     ),
     Parameter(
+        "operators.cartesian.laplacian_2d_corner_weight",
+        0.0,
+        float,
+        "Weighting factor for the corner points of the 2d cartesian Laplacian. The "
+        "standard value is zero, which corresponds to the traditional 5-point stencil. "
+        "Alternative choices are 1/2 (Oono-Puri stencil) and 1/3 (Patra-Karttunen or "
+        "Mehrstellen stencil); see https://en.wikipedia.org/wiki/Nine-point_stencil.",
+    ),
+    Parameter(
         "boundaries.accept_lists",
         True,
         bool,
