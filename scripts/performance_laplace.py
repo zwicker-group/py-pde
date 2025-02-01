@@ -12,7 +12,8 @@ import numba as nb
 import numpy as np
 
 from pde import CylindricalSymGrid, ScalarField, SphericalSymGrid, UnitGrid, config
-from pde.grids.boundaries import BoundariesBase
+from pde.grids.boundaries import BoundariesList
+from pde.grids.operators.cartesian import _make_laplace_numba_2d
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit
 
@@ -151,6 +152,93 @@ def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
     return laplace
 
 
+def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
+    """Test Laplacian on Cartesian grids.
+
+    Args:
+        shape (tuple):
+            Dimensions of the 2d grid
+        periodic (bool):
+            Periodicity of the grid
+    """
+    grid = UnitGrid(shape, periodic=periodic)
+    print(grid)
+    field = ScalarField.random_normal(grid)
+    bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
+    expected = field.laplace("auto_periodic_neumann")
+
+    for method in ["CUSTOM", "OPTIMIZED", "9POINT", "numba", "scipy"]:
+        if method == "CUSTOM":
+            laplace = custom_laplace_2d(shape, periodic=periodic)
+        elif method == "OPTIMIZED":
+            laplace = optimized_laplace_2d(bcs)
+        elif method == "9POINT":
+            laplace = grid.make_operator("laplace", bc=bcs, corner_weight=1 / 3)
+        elif method in {"numba", "scipy"}:
+            laplace = grid.make_operator("laplace", bc=bcs, backend=method)
+        else:
+            raise ValueError(f"Unknown method `{method}`")
+
+        # call once to pre-compile and test result
+        if method == "OPTIMIZED":
+            result = laplace(field._data_full)
+            np.testing.assert_allclose(result, expected.data)
+            speed = estimate_computation_speed(laplace, field._data_full)
+        else:
+            if method != "9POINT":
+                np.testing.assert_allclose(laplace(field.data), expected.data)
+            speed = estimate_computation_speed(laplace, field.data)
+        print(f"{method:>9s}: {int(speed):>9d}")
+    print()
+
+
+def test_cylindrical(shape: tuple[int, int]) -> None:
+    """Test Laplacian on cylindrical grids.
+
+    Args:
+        shape (tuple):
+            Dimensions of the cylindrical grid
+    """
+    grid = CylindricalSymGrid(shape[0], [0, shape[1]], shape)
+    print(f"Cylindrical grid, shape={shape}")
+    field = ScalarField.random_normal(grid)
+    bcs = BoundariesList.from_data("derivative", grid=grid)
+    expected = field.laplace(bcs)
+
+    for method in ["CUSTOM", "numba"]:
+        if method == "CUSTOM":
+            laplace = custom_laplace_cyl_neumann(shape)
+        elif method == "numba":
+            laplace = grid.make_operator("laplace", bc=bcs)
+        else:
+            raise ValueError(f"Unknown method `{method}`")
+        # call once to pre-compile and test result
+        np.testing.assert_allclose(laplace(field.data), expected.data)
+        speed = estimate_computation_speed(laplace, field.data)
+        print(f"{method:>8s}: {int(speed):>9d}")
+    print()
+
+
+def test_spherical(shape: int) -> None:
+    """Test Laplacian on spherical grids.
+
+    Args:
+        shape (int):
+            Number of support points along the radial direction
+    """
+    grid = SphericalSymGrid(shape, shape)
+    print(grid)
+    field = ScalarField.random_normal(grid)
+    bcs = BoundariesList.from_data("derivative", grid=grid)
+
+    for conservative in [True, False]:
+        laplace = grid.make_operator("laplace", bcs, conservative=conservative)
+        laplace(field.data)  # call once to pre-compile
+        speed = estimate_computation_speed(laplace, field.data)
+        print(f" numba (conservative={str(conservative):<5}): {int(speed):>9d}")
+    print()
+
+
 def main():
     """Main routine testing the performance."""
     print("Reports calls-per-second (larger is better)")
@@ -158,70 +246,15 @@ def main():
     print("  The `OPTIMIZED` uses some infrastructure form the py-pde package.")
     print("  The other methods use the functions supplied by the package.\n")
 
-    # Cartesian grid with different shapes and boundary conditions
     for shape in [(32, 32), (512, 512)]:
         for periodic in [True, False]:
-            grid = UnitGrid(shape, periodic=periodic)
-            print(grid)
-            field = ScalarField.random_normal(grid)
-            bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
-            expected = field.laplace("auto_periodic_neumann")
+            test_cartesian(shape, periodic)
 
-            for method in ["CUSTOM", "OPTIMIZED", "numba", "scipy"]:
-                if method == "CUSTOM":
-                    laplace = custom_laplace_2d(shape, periodic=periodic)
-                elif method == "OPTIMIZED":
-                    laplace = optimized_laplace_2d(bcs)
-                elif method in {"numba", "scipy"}:
-                    laplace = grid.make_operator("laplace", bc=bcs, backend=method)
-                else:
-                    raise ValueError(f"Unknown method `{method}`")
-
-                # call once to pre-compile and test result
-                if method == "OPTIMIZED":
-                    result = laplace(field._data_full)
-                    np.testing.assert_allclose(result, expected.data)
-                    speed = estimate_computation_speed(laplace, field._data_full)
-                else:
-                    np.testing.assert_allclose(laplace(field.data), expected.data)
-                    speed = estimate_computation_speed(laplace, field.data)
-                print(f"{method:>9s}: {int(speed):>9d}")
-            print()
-
-    # Cylindrical grid with different shapes
     for shape in [(32, 64), (512, 512)]:
-        grid = CylindricalSymGrid(shape[0], [0, shape[1]], shape)
-        print(f"Cylindrical grid, shape={shape}")
-        field = ScalarField.random_normal(grid)
-        bcs = BoundariesBase.from_data(grid, "derivative")
-        expected = field.laplace(bcs)
+        test_cylindrical(shape)
 
-        for method in ["CUSTOM", "numba"]:
-            if method == "CUSTOM":
-                laplace = custom_laplace_cyl_neumann(shape)
-            elif method == "numba":
-                laplace = grid.make_operator("laplace", bc=bcs)
-            else:
-                raise ValueError(f"Unknown method `{method}`")
-            # call once to pre-compile and test result
-            np.testing.assert_allclose(laplace(field.data), expected.data)
-            speed = estimate_computation_speed(laplace, field.data)
-            print(f"{method:>8s}: {int(speed):>9d}")
-        print()
-
-    # Spherical grid with different shapes
     for shape in [32, 512]:
-        grid = SphericalSymGrid(shape, shape)
-        print(grid)
-        field = ScalarField.random_normal(grid)
-        bcs = BoundariesBase.from_data(grid, "derivative")
-
-        for conservative in [True, False]:
-            laplace = grid.make_operator("laplace", bcs, conservative=conservative)
-            laplace(field.data)  # call once to pre-compile
-            speed = estimate_computation_speed(laplace, field.data)
-            print(f" numba (conservative={str(conservative):<5}): {int(speed):>9d}")
-        print()
+        test_spherical(shape)
 
 
 if __name__ == "__main__":

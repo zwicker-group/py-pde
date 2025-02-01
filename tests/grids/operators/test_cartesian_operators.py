@@ -359,3 +359,43 @@ def test_poisson_solver_cartesian(grid, bc_val, rng):
     np.testing.assert_allclose(
         test.data, d.data, err_msg=f"bcs={bc_val}, grid={grid}", rtol=1e-6
     )
+
+
+@pytest.mark.parametrize("periodic_x", [False, True])
+@pytest.mark.parametrize("periodic_y", [False, True])
+def test_corner_point_setter(periodic_x, periodic_y):
+    """Test the corner point setter."""
+    grid = UnitGrid([1, 1], periodic=[periodic_x, periodic_y])
+
+    arr = np.array([[np.nan, 1, np.nan], [2, 3, 4], [np.nan, 5, np.nan]])
+    if periodic_x:
+        arr[0, :] = arr[2, :] = arr[1, :]
+    if periodic_y:
+        arr[:, 0] = arr[:, 2] = arr[:, 1]
+
+    setter = ops.make_corner_point_setter_2d(grid)
+    setter(arr)
+
+    if periodic_x and periodic_y:
+        np.testing.assert_allclose(arr, 3)
+    elif periodic_x and not periodic_y:
+        np.testing.assert_allclose(arr, [[2, 3, 4], [2, 3, 4], [2, 3, 4]])
+    elif not periodic_x and periodic_y:
+        np.testing.assert_allclose(arr, [[1, 1, 1], [3, 3, 3], [5, 5, 5]])
+    elif not periodic_x and not periodic_y:
+        np.testing.assert_allclose(2 * arr, [[3, 2, 5], [4, 6, 8], [7, 10, 9]])
+
+
+@pytest.mark.parametrize("periodic_x", [False, True])
+@pytest.mark.parametrize("periodic_y", [False, True])
+def test_9point_stencil(periodic_x, periodic_y, rng):
+    """Test the corner point setter."""
+    grid = UnitGrid([16, 16], periodic=[periodic_x, periodic_y])
+    field = ScalarField.random_uniform(grid, rng=rng).smooth(1)
+    lap1 = field.laplace(bc="auto_periodic_neumann")
+
+    lap2 = field.laplace(bc="auto_periodic_neumann", corner_weight=1e-10)
+    np.testing.assert_allclose(lap1.data, lap2.data)
+
+    lap3 = field.laplace(bc="auto_periodic_neumann", corner_weight=1 / 3)
+    np.testing.assert_allclose(lap1.data, lap3.data, atol=0.05)
