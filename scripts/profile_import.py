@@ -5,16 +5,15 @@ The total time should ideally be below 1 second.
 """
 
 import sys
+from pathlib import Path
 
-sys.path.append("..")
+PACKAGE_PATH = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PACKAGE_PATH))
+
 
 from pyinstrument import Profiler
 
-profiler = Profiler()
-profiler.start()
+with Profiler() as profiler:
+    import pde
 
-import pde
-
-profiler.stop()
-
-print(profiler.output_text(unicode=True, color=True))
+print(profiler.open_in_browser())
