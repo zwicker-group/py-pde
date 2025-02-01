@@ -19,6 +19,7 @@ import collections
 import contextlib
 import importlib
 import re
+import subprocess as sp
 import sys
 import warnings
 from pathlib import Path
@@ -261,6 +262,22 @@ def packages_from_requirements(requirements_file: Path | str) -> list[str]:
     return result
 
 
+def get_ffmpeg_version() -> str | None:
+    """Read version number of ffmpeg program."""
+    # run ffmpeg to get its version
+    try:
+        version_bytes = sp.check_output(["ffmpeg", "-version"])
+    except:
+        return None
+
+    # extract the version number from the output
+    version_string = version_bytes.splitlines()[0].decode("utf-8")
+    match = re.search(r"version\s+([\w\.]+)\s+copyright", version_string, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+
 def environment() -> dict[str, Any]:
     """Obtain information about the compute environment.
 
@@ -281,6 +298,11 @@ def environment() -> dict[str, Any]:
     result["package version"] = package_version
     result["python version"] = sys.version
     result["platform"] = sys.platform
+
+    # add ffmpeg version if available
+    ffmpeg_version = get_ffmpeg_version()
+    if ffmpeg_version:
+        result["ffmpeg version"] = ffmpeg_version
 
     # add the package configuration
     result["config"] = config.to_dict()
