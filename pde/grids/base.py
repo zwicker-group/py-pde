@@ -1415,12 +1415,15 @@ class GridBase(metaclass=ABCMeta):
             arr: np.ndarray, out: np.ndarray | None = None, args=None
         ) -> np.ndarray:
             """Set boundary conditions and apply operator."""
-            assert arr.shape == shape_in_valid
-            # ensure `out` array is allocated
+            # check input array
+            if arr.shape != shape_in_valid:
+                raise ValueError(f"Incompatible shapes {arr.shape} != {shape_in_valid}")
+
+            # ensure `out` array is allocated and has the right shape
             if out is None:
                 out = np.empty(shape_out, dtype=arr.dtype)
-            else:
-                assert out.shape == shape_out
+            elif out.shape != shape_out:
+                raise ValueError(f"Incompatible shapes {out.shape} != {shape_out}")
 
             # prepare input with boundary conditions
             arr_full = np.empty(shape_in_full, dtype=arr.dtype)
@@ -1457,7 +1460,8 @@ class GridBase(metaclass=ABCMeta):
                         arr: np.ndarray, out: np.ndarray | None = None, args=None
                     ) -> np.ndarray:
                         """Allocates `out` and applies operator to the data."""
-                        assert arr.shape == shape_in_valid
+                        if arr.shape != shape_in_valid:
+                            raise ValueError(f"Incompatible shapes of input array")
 
                         out = np.empty(shape_out, dtype=arr.dtype)
                         # prepare input with boundary conditions
@@ -1477,8 +1481,10 @@ class GridBase(metaclass=ABCMeta):
                         arr: np.ndarray, out: np.ndarray | None = None, args=None
                     ) -> np.ndarray:
                         """Applies operator to the data wihtout allocating out."""
-                        assert arr.shape == shape_in_valid
-                        assert out.shape == shape_out  # type: ignore
+                        if arr.shape != shape_in_valid:
+                            raise ValueError(f"Incompatible shapes of input array")
+                        if out.shape != shape_out:  # type: ignore
+                            raise ValueError(f"Incompatible shapes of output array")
 
                         # prepare input with boundary conditions
                         arr_full = np.empty(shape_in_full, dtype=arr.dtype)

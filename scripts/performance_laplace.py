@@ -94,7 +94,10 @@ def custom_laplace_2d(shape, periodic, dx=1):
 
 
 def optimized_laplace_2d(bcs):
-    """Make laplace operator with flexible boundary conditions."""
+    """Make an optimized laplace operator
+
+    The main optimization is that we expect the input to be a full array containing
+    virtual boundary points. This avoids memory allocation and a copy of the data."""
     set_ghost_cells = bcs.make_ghost_cell_setter()
     apply_laplace = bcs.grid.make_operator_no_bc("laplace")
     shape = bcs.grid.shape
