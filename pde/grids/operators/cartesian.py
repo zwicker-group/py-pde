@@ -362,8 +362,8 @@ def _make_laplace_numba_2d(
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         corner_weight (float):
-            Weighting factor for the corner points. If `None`, the value is read from
-            the configuration option `operators.cartesian_laplacian_2d_corner_weight`.
+            Weighting factor for the corner points of the stencil. If `None`, the value
+            is read from the configuration option `operators.cartesian_laplacian_2d_corner_weight`.
             The standard value is zero, which corresponds to the traditional 5-point
             stencil. Typical alternative choices are 1/2 (Oono-Puri stencil) and 1/3
             (Patra-Karttunen or Mehrstellen stencil); see
@@ -380,7 +380,7 @@ def _make_laplace_numba_2d(
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     if corner_weight == 0:
-        # 5-point stencil
+        # use standard 5-point stencil
         scale_x, scale_y = grid.discretization**-2
 
         @jit(parallel=parallel)
@@ -393,28 +393,25 @@ def _make_laplace_numba_2d(
                     out[i - 1, j - 1] = lap_x + lap_y
 
     else:
-        # 9-point stencil
+        # use 9-point stencil with interpolated boundary conditions
         w = corner_weight
         _logger.info("Create 2D Cartesian Laplacian with 9-point stencil (w=%.3g)", w)
 
-        dx, dy = grid.discretization**-2
+        if not np.isclose(*grid.discretization):
+            # we have not yet found a good expression for the 9-point stencil for dx!=dy
+            _logger.warning(
+                "9-point stencils with anisotropic grids are not tested and might "
+                "produce wrong results."
+            )
+
+        # prepare the stencil matrix
+        dxm2, dym2 = grid.discretization**-2
+        dm2 = dxm2 + dym2
         stencil = np.array(
             [
-                [
-                    0.25 * (dx**-2 + dy**-2) * w,
-                    dy**-2 * (1 - w),
-                    0.25 * (dx**-2 + dy**-2) * w,
-                ],
-                [
-                    dx**-2 * (1 - w),
-                    dx**-2 * dy**-2 * (dx**2 + dy**2) * (w - 2),
-                    dx**-2 * (1 - w),
-                ],
-                [
-                    0.25 * (dx**-2 + dy**-2) * w,
-                    dy**-2 * (1 - w),
-                    0.25 * (dx**-2 + dy**-2) * w,
-                ],
+                [0.25 * dm2 * w, dxm2 * (1 - w), 0.25 * dm2 * w],
+                [dym2 * (1 - w), (dxm2 + dym2) * (w - 2), dym2 * (1 - w)],
+                [0.25 * dm2 * w, dxm2 * (1 - w), 0.25 * dm2 * w],
             ]
         )
 

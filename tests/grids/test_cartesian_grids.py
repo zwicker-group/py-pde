@@ -8,7 +8,7 @@ from functools import partial
 import numpy as np
 import pytest
 
-from pde import CartesianGrid, UnitGrid
+from pde import CartesianGrid, ScalarField, UnitGrid
 from pde.grids.boundaries import BoundariesBase, PeriodicityError
 from pde.grids.operators.common import make_derivative
 
@@ -347,3 +347,15 @@ def test_boundary_coordinates():
     np.testing.assert_allclose(c, [[2.0, 0.5], [2.0, 1.5]])
     c = grid._boundary_coordinates(axis=0, upper=True, offset=0.5)
     np.testing.assert_allclose(c, [[1.5, 0.5], [1.5, 1.5]])
+
+
+@pytest.mark.parametrize("periodic", [True, False])
+@pytest.mark.parametrize("corner_weight", [1e-8, 1 / 3])
+def test_9point_stencil(periodic, corner_weight):
+    """Test the 9-point Cartesian stencil."""
+    grid = CartesianGrid([[-1, 1], [-1, 1]], [17, 17], periodic=periodic)
+    field = ScalarField.from_expression(grid, "exp(-x**2 - y**2)")
+
+    reference = field.laplace(bc="auto_periodic_neumann")
+    test = field.laplace(bc="auto_periodic_neumann", corner_weight=corner_weight)
+    np.testing.assert_allclose(reference.data, test.data, atol=corner_weight / 3)
