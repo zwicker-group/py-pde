@@ -3,7 +3,7 @@ name: "Generate coverage report"
 on: [push]
 
 jobs:
-  build:
+  coverage_report:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

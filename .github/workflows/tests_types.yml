@@ -3,7 +3,7 @@ name: "Static type checking"
 on: [push]
 
 jobs:
-  build:
+  test_types:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -26,7 +26,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        cat tests/requirements_full.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -n 1 -I % sh -c "pip install % || true"
+        cat tests/requirements_full.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -I % sh -c "pip install % || true"
         pip install -r tests/requirements.txt
         pip install types-PyYAML
 
