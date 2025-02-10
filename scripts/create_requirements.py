@@ -11,7 +11,7 @@ from string import Template
 
 PACKAGE_PATH = Path(__file__).resolve().parents[1]
 MIN_PYTHON_VERSION = "3.9"
-MAX_PYTHON_VERSION = "3.12"
+MAX_PYTHON_VERSION = "3.13"
 
 
 @dataclass
@@ -107,7 +107,7 @@ REQUIREMENTS = [
     ),
     Requirement(
         name="py-modelrunner",
-        version_min="0.18.3",
+        version_min="0.19",
         usage="Running simulations and handling I/O",
         collections={"full", "docs"},
     ),
