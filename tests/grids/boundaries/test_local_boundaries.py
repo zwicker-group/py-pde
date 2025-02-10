@@ -258,20 +258,9 @@ def test_inhomogeneous_bcs_2d():
     assert ev(data, (1, 0)) == pytest.approx(1.5)
     assert ev(data, (1, 1)) == pytest.approx(2.5)
 
-    ev = bc_x.make_adjacent_evaluator()
-    assert ev(*_get_arr_1d(data, (0, 0), axis=0)) == pytest.approx(1)
-    assert ev(*_get_arr_1d(data, (0, 1), axis=0)) == pytest.approx(1)
-    assert ev(*_get_arr_1d(data, (1, 0), axis=0)) == pytest.approx(1.5)
-    assert ev(*_get_arr_1d(data, (1, 1), axis=0)) == pytest.approx(2.5)
-
     # test lower bc
     bc_x = BCBase.from_data(g, 0, False, {"curvature": "y"})
     assert bc_x.axis_coord == 0
-    ev = bc_x.make_adjacent_evaluator()
-    assert ev(*_get_arr_1d(data, (1, 0), axis=0)) == pytest.approx(1)
-    assert ev(*_get_arr_1d(data, (1, 1), axis=0)) == pytest.approx(1)
-    assert ev(*_get_arr_1d(data, (0, 0), axis=0)) == pytest.approx(1.5)
-    assert ev(*_get_arr_1d(data, (0, 1), axis=0)) == pytest.approx(2.5)
 
 
 @pytest.mark.parametrize("expr", ["1", "x + y**2"])

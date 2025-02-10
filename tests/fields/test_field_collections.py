@@ -348,16 +348,6 @@ def test_collection_apply(rng):
     np.testing.assert_allclose(f1.apply("s1 * v2").data, v.data * 2)
 
 
-@pytest.mark.parametrize("num", [1, 2, 3])
-def test_rgb_image_plotting(num):
-    """Test plotting of collections as rgb fields."""
-    grid = UnitGrid([16, 8])
-    fc = FieldCollection([ScalarField.random_uniform(grid) for _ in range(num)])
-
-    refs = fc.plot("rgb_image")
-    fc._update_plot(refs)
-
-
 @pytest.mark.parametrize("num", [1, 2, 3, 4])
 def test_merged_image_plotting(num):
     """Test plotting of collections as merged images."""

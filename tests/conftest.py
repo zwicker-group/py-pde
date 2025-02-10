@@ -3,6 +3,8 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import gc
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest

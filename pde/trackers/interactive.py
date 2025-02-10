@@ -250,7 +250,6 @@ class InteractivePlotTracker(TrackerBase):
         *,
         close: bool = True,
         show_time: bool = False,
-        interval=None,
     ):
         """
         Args:
@@ -263,7 +262,7 @@ class InteractivePlotTracker(TrackerBase):
             show_time (bool):
                 Whether to indicate the time
         """
-        super().__init__(interrupts=interrupts, interval=interval)
+        super().__init__(interrupts=interrupts)
         self.close = close
         self.show_time = show_time
 

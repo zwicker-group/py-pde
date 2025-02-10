@@ -73,12 +73,7 @@ from numba.extending import overload, register_jitable
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import address_as_void_pointer, jit, numba_dict
-from ...tools.typing import (
-    AdjacentEvaluator,
-    FloatNumerical,
-    GhostCellSetter,
-    VirtualPointEvaluator,
-)
+from ...tools.typing import FloatNumerical, GhostCellSetter, VirtualPointEvaluator
 from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
@@ -591,23 +586,6 @@ class BCBase(metaclass=ABCMeta):
             result is the data value at this point, which is calculated using
             the boundary condition.
         """
-
-    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
-        """Returns a function evaluating the value adjacent to a given point.
-
-        .. deprecated:: Since 2023-12-19
-
-        Returns:
-            function: A function with signature (arr_1d, i_point, bc_idx), where
-            `arr_1d` is the one-dimensional data array (the data points along the axis
-            perpendicular to the boundary), `i_point` is the index into this array for
-            the current point and bc_idx are the remaining indices of the current point,
-            which indicate the location on the boundary plane. The result of the
-            function is the data value at the adjacent point along the axis associated
-            with this boundary condition in the upper (lower) direction when `upper` is
-            True (False).
-        """
-        raise NotImplementedError
 
     @abstractmethod
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
@@ -1529,9 +1507,6 @@ class ExpressionBC(BCBase):
     def get_virtual_point(self, arr, idx: tuple[int, ...] | None = None) -> float:
         raise NotImplementedError
 
-    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
-        raise NotImplementedError
-
     def _get_value_cell_index(self, with_ghost_cells: bool) -> int:
         if self.value_cell is None:
             # pick adjacent cell by default
@@ -2159,69 +2134,6 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         return virtual_point  # type: ignore
 
-    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
-        # method deprecated since 2023-12-19
-        warnings.warn("`make_adjacent_evaluator` is deprecated", DeprecationWarning)
-        # get values distinguishing upper from lower boundary
-        if self.upper:
-            i_bndry = self.grid.shape[self.axis] - 1
-            i_dx = 1
-        else:
-            i_bndry = 0
-            i_dx = -1
-
-        if self.homogeneous:
-            # the boundary condition does not depend on space
-
-            # calculate necessary constants
-            const, factor, index = self.get_virtual_point_data(compiled=True)
-            zeros = np.zeros(self._shape_tensor)
-            ones = np.ones(self._shape_tensor)
-
-            @register_jitable(inline="always")
-            def adjacent_point(
-                arr_1d: np.ndarray, i_point: int, bc_idx: tuple[int, ...]
-            ) -> FloatNumerical:
-                """Evaluate the value adjacent to the current point."""
-                # determine the parameters for evaluating adjacent point. Note
-                # that defining the variables c and f for the interior points
-                # seems needless, but it turns out that this results in a 10x
-                # faster function (because of branch prediction?).
-                if i_point == i_bndry:
-                    c, f, i = const(), factor(), index
-                else:
-                    c, f, i = zeros, ones, i_point + i_dx  # INTENTIONAL
-
-                # calculate the values
-                return c + f * arr_1d[..., i]  # type: ignore
-
-        else:
-            # the boundary condition is a function of space
-
-            # calculate necessary constants
-            const, factor, index = self.get_virtual_point_data(compiled=True)
-            zeros = np.zeros(self._shape_tensor + self._shape_boundary)
-            ones = np.ones(self._shape_tensor + self._shape_boundary)
-
-            @register_jitable(inline="always")
-            def adjacent_point(arr_1d, i_point, bc_idx) -> float:
-                """Evaluate the value adjacent to the current point."""
-                # determine the parameters for evaluating adjacent point. Note
-                # that defining the variables c and f for the interior points
-                # seems needless, but it turns out that this results in a 10x
-                # faster function (because of branch prediction?). This is
-                # surprising, because it uses arrays zeros and ones that are
-                # quite pointless
-                if i_point == i_bndry:
-                    c, f, i = const(), factor(), index
-                else:
-                    c, f, i = zeros, ones, i_point + i_dx  # INTENTIONAL
-
-                # calculate the values
-                return c[bc_idx] + f[bc_idx] * arr_1d[..., i]  # type: ignore
-
-        return adjacent_point  # type: ignore
-
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         # calculate necessary constants
         const, factor, index = self.get_virtual_point_data()
@@ -2753,73 +2665,6 @@ class ConstBC2ndOrderBase(ConstBCBase):
                 return data[0][bc_idx] + data[1][bc_idx] * val1 + data[3][bc_idx] * val2
 
         return virtual_point  # type: ignore
-
-    def make_adjacent_evaluator(self) -> AdjacentEvaluator:
-        # method deprecated since 2023-12-19
-        warnings.warn("`make_adjacent_evaluator` is deprecated", DeprecationWarning)
-        size = self.grid.shape[self.axis]
-        if size < 2:
-            raise ValueError(
-                f"Need at least two support points along axis {self.axis} to apply "
-                "boundary conditions"
-            )
-
-        # get values distinguishing upper from lower boundary
-        if self.upper:
-            i_bndry = size - 1
-            i_dx = 1
-        else:
-            i_bndry = 0
-            i_dx = -1
-
-        # calculate necessary constants
-        data_vp = self.get_virtual_point_data()
-
-        zeros = np.zeros_like(self.value)
-        ones = np.ones_like(self.value)
-
-        if self.homogeneous:
-            # the boundary condition does not depend on space
-
-            @register_jitable
-            def adjacent_point(
-                arr_1d: np.ndarray, i_point: int, bc_idx: tuple[int, ...]
-            ) -> float:
-                """Evaluate the value adjacent to the current point."""
-                # determine the parameters for evaluating adjacent point
-                if i_point == i_bndry:
-                    data = data_vp
-                else:
-                    data = (zeros, ones, i_point + i_dx, zeros, 0)
-
-                # calculate the values
-                return (  # type: ignore
-                    data[0]
-                    + data[1] * arr_1d[..., data[2]]
-                    + data[3] * arr_1d[..., data[4]]
-                )
-
-        else:
-            # the boundary condition is a function of space
-
-            @register_jitable
-            def adjacent_point(
-                arr_1d: np.ndarray, i_point: int, bc_idx: tuple[int, ...]
-            ) -> float:
-                """Evaluate the value adjacent to the current point."""
-                # determine the parameters for evaluating adjacent point
-                if i_point == i_bndry:
-                    data = data_vp
-                else:
-                    data = (zeros, ones, i_point + i_dx, zeros, 0)
-
-                return (  # type: ignore
-                    data[0][bc_idx]
-                    + data[1][bc_idx] * arr_1d[..., data[2]]
-                    + data[3][bc_idx] * arr_1d[..., data[4]]
-                )
-
-        return adjacent_point  # type: ignore
 
     def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
         # calculate necessary constants

@@ -37,19 +37,12 @@ class TrackerBase(metaclass=ABCMeta):
     _subclasses: dict[str, type[TrackerBase]] = {}  # all inheriting classes
 
     @fill_in_docstring
-    def __init__(self, interrupts: InterruptData = 1, *, interval=None):
+    def __init__(self, interrupts: InterruptData = 1):
         """
         Args:
             interrupts:
                 {ARG_TRACKER_INTERRUPT}
         """
-        if interval is not None:
-            # deprecated on 2023-12-23
-            warnings.warn(
-                "Argument `interval` has been renamed to `interrupts`",
-                DeprecationWarning,
-            )
-            interrupts = interval
         self.interrupt = parse_interrupt(interrupts)
 
     def __init_subclass__(cls, **kwargs):
