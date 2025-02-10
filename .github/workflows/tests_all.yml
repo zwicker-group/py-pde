@@ -3,7 +3,7 @@ name: "Serial tests"
 on: [push]
 
 jobs:
-  build:
+  serial_tests:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
@@ -22,10 +22,14 @@ jobs:
       uses: AnimMouse/setup-ffmpeg@v1
 
     - name: Install dependencies
-      # install all requirements
+      # install all requirements. Note that the full requirements are installed separately
+      # so the job does not fail if one of the packages cannot be installed. This allows
+      # testing the package for newer python version even when some of the optional
+      # packages are not yet available.
       run: |
         python -m pip install --upgrade pip
-        pip install -r tests/requirements_full.txt
+        pip install -r requirements.txt
+        cat tests/requirements_full.txt | sed -e '/^\s*#.*$/d' -e '/^\s*$/d' | xargs -n 1 pip install
         pip install -r tests/requirements.txt
 
     - name: Run serial tests with pytest
