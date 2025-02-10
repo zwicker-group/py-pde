@@ -2,6 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import contextlib
 import functools
 import platform
 
@@ -33,11 +34,11 @@ if module_available("ffmpeg"):
 if mr is not None:
     STORAGE_CLASSES_ALL.append((0, False, mr.storage.MemoryStorage))
     STORAGE_CLASSES_ALL.append((0, False, mr.storage.JSONStorage))
-    if module_available("yaml"):
-        STORAGE_CLASSES_ALL.append((0, False, mr.storage.YAMLStorage))
-    if module_available("zarr"):
+    with contextlib.suppress(AttributeError):
         STORAGE_CLASSES_ALL.append((0, False, mr.storage.ZarrStorage))
-    if module_available("h5py"):
+    with contextlib.suppress(AttributeError):
+        STORAGE_CLASSES_ALL.append((0, False, mr.storage.YAMLStorage))
+    with contextlib.suppress(AttributeError):
         STORAGE_CLASSES_ALL.append((0, False, mr.storage.HDFStorage))
 
 

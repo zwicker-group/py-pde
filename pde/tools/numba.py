@@ -13,29 +13,12 @@ from typing import Any, Callable, TypeVar
 import numba as nb
 import numpy as np
 from numba.core.types import npytypes, scalars
-from numba.extending import overload, register_jitable
+from numba.extending import is_jitted, overload, register_jitable
 from numba.typed import Dict as NumbaDict
 
 from .. import config
 from ..tools.misc import decorator_arguments
 from .typing import Number
-
-try:
-    # is_jitted has been added in numba 0.53 on 2021-03-11
-    from numba.extending import is_jitted
-
-except ImportError:
-    # for earlier version of numba, we need to define the function
-
-    def is_jitted(function: Callable) -> bool:
-        """Determine whether a function has already been jitted."""
-        try:
-            from numba.core.dispatcher import Dispatcher
-        except ImportError:
-            # assume older numba module structure
-            from numba.dispatcher import Dispatcher
-        return isinstance(function, Dispatcher)
-
 
 # numba version as a list of integers
 NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
@@ -177,7 +160,6 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
         return function
 
     # prepare the compilation arguments
-    kwargs.setdefault("nopython", True)
     if config["numba.fastmath"] is True:
         # enable some (but not all) fastmath flags. We skip the flags that affect
         # handling of infinities and NaN for safety by default. Use "fast" to enable all
@@ -192,10 +174,10 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
     # log some details
     logger = logging.getLogger(__name__)
     name = getattr(function, "__name__", "<anonymous function>")
-    if kwargs["nopython"]:  # standard case
-        logger.info("Compile `%s` with parallel=%s", name, kwargs["parallel"])
-    else:  # this might imply numba falls back to object mode
-        logger.warning("Compile `%s` with nopython=False", name)
+    if kwargs["parallel"]:
+        logger.info("Compile `%s`", name)
+    else:
+        logger.info("Compile `%s` with parallel=True", name)
 
     # increase the compilation counter by one
     JIT_COUNT.increment()
@@ -308,7 +290,7 @@ def get_common_numba_dtype(*args):
     return nb.double
 
 
-@jit(nopython=True, nogil=True)
+@jit(nogil=True)
 def _random_seed_compiled(seed: int) -> None:
     """Sets the seed of the random number generator of numba."""
     np.random.seed(seed)
@@ -325,7 +307,7 @@ def random_seed(seed: int = 0) -> None:
         _random_seed_compiled(seed)
 
 
-if NUMBA_VERSION < [0, 45]:
+if NUMBA_VERSION < [0, 59]:
     warnings.warn(
-        "Your numba version is outdated. Please install at least version 0.45"
+        "Your numba version is outdated. Please install at least version 0.59"
     )

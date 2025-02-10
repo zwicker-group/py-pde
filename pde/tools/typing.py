@@ -44,13 +44,6 @@ class VirtualPointEvaluator(Protocol):
         """Evaluate the virtual point at the given position."""
 
 
-class AdjacentEvaluator(Protocol):
-    def __call__(
-        self, arr_1d: np.ndarray, i_point: int, bc_idx: tuple[int, ...]
-    ) -> float:
-        """Evaluate the values at adjecent points."""
-
-
 class GhostCellSetter(Protocol):
     def __call__(self, data_full: np.ndarray, args=None) -> None:
         """Set the ghost cells."""

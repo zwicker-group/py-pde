@@ -886,50 +886,6 @@ class FieldCollection(FieldBase):
         }
         return PlotReference(ax, axes_image, parameters)
 
-    @plot_on_axes(update_method="_update_rgb_image_plot")
-    def _plot_rgb_image(
-        self,
-        ax,
-        transpose: bool = False,
-        vmin: float | list[float | None] | None = None,
-        vmax: float | list[float | None] | None = None,
-        **kwargs,
-    ) -> PlotReference:
-        r"""Visualize fields by mapping to different color chanels in a 2d density plot.
-
-        Args:
-            ax (:class:`matplotlib.axes.Axes`):
-                Figure axes to be used for plotting.
-            transpose (bool):
-                Determines whether the transpose of the data is plotted
-            vmin, vmax (float, list of float):
-                Define the data range that the color chanels cover. By default, they
-                cover the complete value range of the supplied data.
-            \**kwargs:
-                Additional keyword arguments that affect the image. Non-Cartesian grids
-                might support `performance_goal` to influence how an image is created
-                from raw data. Finally, remaining arguments are passed to
-                :func:`matplotlib.pyplot.imshow` to affect the appearance.
-
-        Returns:
-            :class:`PlotReference`: Instance that contains information to update the
-            plot with new data later.
-        """
-        # since 2024-01-25
-        warnings.warn(
-            "`rgb_image` is deprecated in favor of `merged`", DeprecationWarning
-        )
-        return self._plot_merged_image(  # type: ignore
-            ax=ax,
-            colors="rgb",
-            background_color="k",
-            projection="max",
-            transpose=transpose,
-            vmin=vmin,
-            vmax=vmax,
-            **kwargs,
-        )
-
     def _update_plot(self, reference: list[PlotReference]) -> None:
         """Update a plot collection with the current field values.
 
@@ -984,7 +940,7 @@ class FieldCollection(FieldBase):
             List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
-        if kind in {"merged", "rgb", "rgb_image", "rgb-image"}:
+        if kind in {"merged"}:
             num_panels = 1
         else:
             num_panels = len(self)
@@ -1020,14 +976,6 @@ class FieldCollection(FieldBase):
             # plot a single RGB representation
             reference = [
                 self._plot_merged_image(
-                    ax=axs[0], action="none", **kwargs, **subplot_args[0]
-                )
-            ]
-
-        elif kind in {"rgb", "rgb_image", "rgb-image"}:
-            # plot a single RGB representation
-            reference = [
-                self._plot_rgb_image(
                     ax=axs[0], action="none", **kwargs, **subplot_args[0]
                 )
             ]

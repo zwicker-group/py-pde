@@ -284,7 +284,6 @@ class StorageBase(metaclass=ABCMeta):
         interrupts: InterruptData = 1,
         *,
         transformation: Callable[[FieldBase, float], FieldBase] | None = None,
-        interval=None,
     ) -> StorageTracker:
         """Create object that can be used as a tracker to fill this storage.
 
@@ -321,10 +320,7 @@ class StorageBase(metaclass=ABCMeta):
             possible by defining appropriate :func:`add_to_state`
         """
         return StorageTracker(
-            storage=self,
-            interrupts=interrupts,
-            transformation=transformation,
-            interval=interval,
+            storage=self, interrupts=interrupts, transformation=transformation
         )
 
     def start_writing(self, field: FieldBase, info: InfoDict | None = None) -> None:
@@ -566,7 +562,6 @@ class StorageTracker(TrackerBase):
         interrupts: InterruptData = 1,
         *,
         transformation: Callable[[FieldBase, float], FieldBase] | None = None,
-        interval=None,
     ):
         """
         Args:
@@ -582,7 +577,7 @@ class StorageTracker(TrackerBase):
                 the current field, while the optional second argument is the associated
                 time.
         """
-        super().__init__(interrupts=interrupts, interval=interval)
+        super().__init__(interrupts=interrupts)
         self.storage = storage
         if transformation is not None and not callable(transformation):
             raise TypeError("`transformation` must be callable")
