@@ -3,7 +3,7 @@ name: "Tests with minimal requirements"
 on: [push]
 
 jobs:
-  build:
+  test_minversion:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]  # windows-latest

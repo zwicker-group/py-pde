@@ -3,7 +3,7 @@ name: "Multiprocessing tests"
 on: [push]
 
 jobs:
-  build:
+  test_mpi:
     strategy:
       matrix:
         include:
