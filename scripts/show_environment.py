@@ -19,5 +19,5 @@ for category, data in environment().items():
         for key, value in data.items():
             print(f"    {key}: {value}")
     else:
-        data_formatted = data.replace("\n", "\n    ")
+        data_formatted = str(data).replace("\n", "\n    ")
         print(f"{category}: {data_formatted}")
