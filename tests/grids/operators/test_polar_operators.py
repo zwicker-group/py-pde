@@ -26,7 +26,7 @@ def test_findiff_polar():
     v = VectorField(grid, [[1, 2, 4], [0] * 3])
 
     # test gradient
-    grad = s.gradient(bc=["derivative", "value"])
+    grad = s.gradient(bc={"r-": "derivative", "r+": "value"})
     np.testing.assert_allclose(grad.data[0, :], [1, 3, -6])
     grad = s.gradient(bc="derivative")
     np.testing.assert_allclose(grad.data[0, :], [1, 3, 2])
@@ -36,7 +36,7 @@ def test_findiff_polar():
     np.testing.assert_allclose(grad.data[0, :], [0, 2, 4])
 
     # test divergence
-    div = v.divergence(bc=["derivative", "value"])
+    div = v.divergence(bc={"r-": "derivative", "r+": "value"})
     np.testing.assert_allclose(div.data, [5, 17 / 3, -6 + 4 / r2])
     div = v.divergence(bc="derivative")
     np.testing.assert_allclose(div.data, [5, 17 / 3, 2 + 4 / r2])
@@ -141,18 +141,20 @@ def test_examples_scalar_polar():
     sf = ScalarField.from_expression(grid, "r**3")
 
     # gradient
-    res = sf.gradient([{"derivative": 0}, {"derivative": 3}])
+    res = sf.gradient({"r-": {"derivative": 0}, "r+": {"derivative": 3}})
     expect = VectorField.from_expression(grid, ["3 * r**2", 0])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # gradient squared
     expect = ScalarField.from_expression(grid, "9 * r**4")
     for c in [True, False]:
-        res = sf.gradient_squared([{"derivative": 0}, {"derivative": 3}], central=c)
+        res = sf.gradient_squared(
+            {"r-": {"derivative": 0}, "r+": {"derivative": 3}}, central=c
+        )
         np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # laplace
-    res = sf.laplace([{"derivative": 0}, {"derivative": 3}])
+    res = sf.laplace({"r-": {"derivative": 0}, "r+": {"derivative": 3}})
     expect = ScalarField.from_expression(grid, "9 * r")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
@@ -163,17 +165,17 @@ def test_examples_vector_polar():
     vf = VectorField.from_expression(grid, ["r**3", "r**2"])
 
     # divergence
-    res = vf.divergence([{"derivative": 0}, {"value": 1}])
+    res = vf.divergence({"r-": {"derivative": 0}, "r+": {"value": 1}})
     expect = ScalarField.from_expression(grid, "4 * r**2")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # # vector Laplacian
-    # res = vf.laplace([{"derivative": 0}, {"value": 1}])
+    # res = vf.laplace({"r-": {"derivative": 0}, "r+": {"value": 1}})
     # expect = VectorField.from_expression(grid, ["8 * r", "3"])
     # np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # vector gradient
-    res = vf.gradient([{"derivative": 0}, {"value": [1, 1]}])
+    res = vf.gradient({"r-": {"derivative": 0}, "r+": {"value": [1, 1]}})
     expr = [["3 * r**2", "-r"], ["2 * r", "r**2"]]
     expect = Tensor2Field.from_expression(grid, expr)
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
@@ -185,11 +187,11 @@ def test_examples_tensor_polar():
     tf = Tensor2Field.from_expression(grid, [["r**3"] * 2] * 2)
 
     # tensor divergence
-    res = tf.divergence([{"derivative": 0}, {"normal_value": [1, 1]}])
+    res = tf.divergence({"r-": {"derivative": 0}, "r+": {"normal_value": [1, 1]}})
     expect = VectorField.from_expression(grid, ["3 * r**2", "5 * r**2"])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
-    res = tf.divergence([{"derivative": 0}, {"value": np.ones((2, 2))}])
+    res = tf.divergence({"r-": {"derivative": 0}, "r+": {"value": np.ones((2, 2))}})
     expect = VectorField.from_expression(grid, ["3 * r**2", "5 * r**2"])
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
@@ -199,9 +201,9 @@ def test_laplace_matrix(r_inner, rng):
     """Test laplace operator implemented using matrix multiplication."""
     grid = PolarSymGrid((r_inner, 2), 16)
     if r_inner == 0:
-        bcs = grid.get_boundary_conditions({"neumann"})
+        bcs = grid.get_boundary_conditions({"r": "neumann"})
     else:
-        bcs = grid.get_boundary_conditions({"value": "sin(r)"})
+        bcs = grid.get_boundary_conditions({"r": {"value": "sin(r)"}})
     laplace = make_laplace_from_matrix(*_get_laplace_matrix(bcs))
 
     field = ScalarField.random_uniform(grid, rng=rng)

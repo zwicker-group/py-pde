@@ -92,11 +92,11 @@ def test_findiff_cyl():
     s = ScalarField(grid, [[1, 1], [2, 2], [4, 4]])
 
     # test laplace
-    lap = s.laplace(bc=[{"type": "value", "value": 3}, "periodic"])
+    lap = s.laplace(bc={"r": {"value": 3}, "z": "periodic"})
     y1 = 4 + 3 / r1
     y2 = -16
     np.testing.assert_allclose(lap.data, [[8, 8], [y1, y1], [y2, y2]])
-    lap = s.laplace(bc=[{"type": "derivative", "value": 3}, "periodic"])
+    lap = s.laplace(bc={"r": {"derivative": 3}, "z": "periodic"})
     y2 = -2 + 3.5 / r2
     np.testing.assert_allclose(lap.data, [[8, 8], [y1, y1], [y2, y2]])
 
@@ -149,7 +149,12 @@ def test_examples_scalar_cyl():
     grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32)
     expr = "r**3 * sin(z)"
     sf = ScalarField.from_expression(grid, expr)
-    bcs = [[{"derivative": 0}, {"value": expr}], [{"value": expr}, {"value": expr}]]
+    bcs = {
+        "r-": {"derivative": 0},
+        "r+": {"value": expr},
+        "z-": {"value": expr},
+        "z+": {"value": expr},
+    }
 
     # gradient - The coordinates are ordered as (r, z, φ) in py-pde
     res = sf.gradient(bcs)
@@ -166,7 +171,7 @@ def test_examples_scalar_cyl():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # laplace
-    bcs[0][1] = {"curvature": "6 * sin(z)"}  # adjust BC to fit laplacian better
+    bcs["r+"] = {"curvature": "6 * sin(z)"}  # adjust BC to fit laplacian better
     res = sf.laplace(bcs)
     expect = ScalarField.from_expression(grid, "9 * r * sin(z) - r**3 * sin(z)")
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
@@ -179,9 +184,11 @@ def test_examples_vector_cyl():
     e_φ = "r**2 * sin(z)"
     e_z = "r**4 * cos(z)"
     vf = VectorField.from_expression(grid, [e_r, e_z, e_φ])
-    bc_r = ({"normal_derivative": 0}, {"normal_value": "r**3 * sin(z)"})
-    bc_z = {"normal_curvature": "-r**4 * cos(z)"}
-    bcs = [bc_r, bc_z]
+    bcs = {
+        "r-": {"normal_derivative": 0},
+        "r+": {"normal_value": "r**3 * sin(z)"},
+        "z": {"normal_curvature": "-r**4 * cos(z)"},
+    }
 
     # divergence
     res = vf.divergence(bcs)
@@ -192,7 +199,7 @@ def test_examples_vector_cyl():
     grid = CylindricalSymGrid(1, [0, 2 * np.pi], 32, periodic_z=True)
     vf = VectorField.from_expression(grid, ["r**3 * sin(z)"] * 3)
     val_r_outer = np.broadcast_to(6 * np.sin(grid.axes_coords[1]), (3, 32))
-    bcs = [({"derivative": 0}, {"curvature": val_r_outer}), "periodic"]
+    bcs = {"r-": {"derivative": 0}, "r+": {"curvature": val_r_outer}, "z": "periodic"}
     res = vf.laplace(bcs)
     expr = [
         "8 * r * sin(z) - r**3 * sin(z)",
@@ -203,7 +210,7 @@ def test_examples_vector_cyl():
     np.testing.assert_allclose(res.data, expect.data, rtol=0.1, atol=0.1)
 
     # vector gradient
-    bcs = [({"derivative": 0}, {"curvature": val_r_outer}), "periodic"]
+    bcs = {"r-": {"derivative": 0}, "r+": {"curvature": val_r_outer}, "z": "periodic"}
     res = vf.gradient(bcs)
     expr = [
         ["3 * r**2 * sin(z)", "r**3 * cos(z)", "-r**2 * sin(z)"],
@@ -222,7 +229,11 @@ def test_examples_tensor_cyl():
     # tensor divergence
     rs, zs = grid.axes_coords
     val_r_outer = np.broadcast_to(6 * rs * np.sin(zs), (3, 32))
-    bcs = [({"normal_derivative": 0}, {"normal_curvature": val_r_outer}), "periodic"]
+    bcs = {
+        "r-": {"normal_derivative": 0},
+        "r+": {"normal_curvature": val_r_outer},
+        "z": "periodic",
+    }
     res = tf.divergence(bcs)
     expect = VectorField.from_expression(
         grid,
@@ -240,9 +251,10 @@ def test_laplace_matrix(r_inner, rng):
     """Test laplace operator implemented using matrix multiplication."""
     grid = CylindricalSymGrid((r_inner, 2), (2.5, 4.3), 16)
     if r_inner == 0:
-        bcs = ["neumann", {"derivative": "cos(r) + z"}]
+        bcs = {"r": "neumann"}
     else:
-        bcs = [{"value": "sin(r)"}, {"derivative": "cos(r) + z"}]
+        bcs = {"r": {"value": "sin(r)"}}
+    bcs["z"] = {"derivative": "cos(r) + z"}
     bcs = grid.get_boundary_conditions(bcs)
     laplace = make_laplace_from_matrix(*_get_laplace_matrix(bcs))
 
@@ -258,9 +270,9 @@ def test_poisson_solver_cylindrical(r_inner, rng):
     """Test the poisson solver on Cylindrical grids."""
     grid = CylindricalSymGrid((r_inner, 2), (2.5, 4.3), 16)
     if r_inner == 0:
-        bcs = ["neumann", {"value": "cos(r) + z"}]
+        bcs = {"r": "neumann", "z": {"value": "cos(r) + z"}}
     else:
-        bcs = [{"value": "sin(r)"}, {"derivative": "cos(r) + z"}]
+        bcs = {"r": {"value": "sin(r)"}, "z": {"derivative": "cos(r) + z"}}
     d = ScalarField.random_uniform(grid, rng=rng)
     d -= d.average  # balance the right hand side
     sol = solve_poisson_equation(d, bcs)

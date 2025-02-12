@@ -28,10 +28,8 @@ def test_simple_diffusion_value(rng):
     """Test a simple diffusion equation with constant boundaries."""
     grid = CartesianGrid([[0, 1]], [16])
     c = ScalarField.random_uniform(grid, 0, 1, rng=rng)
-    b_l = {"type": "value", "value": 0}
-    b_r = {"type": "value", "value": 1}
-    pde = DiffusionPDE(bc=[b_l, b_r])
-    sol, info = pde.solve(c, t_range=1, dt=0.001, tracker=None, ret_info=True)
+    eq = DiffusionPDE(bc={"x-": {"value": 0}, "x+": {"value": 1}})
+    sol, info = eq.solve(c, t_range=1, dt=0.001, tracker=None, ret_info=True)
     assert isinstance(info, dict)
     np.testing.assert_allclose(sol.data, grid.axes_coords[0], rtol=5e-3)
 
@@ -40,10 +38,8 @@ def test_simple_diffusion_flux_right(rng):
     """Test a simple diffusion equation with flux boundary on the right."""
     grid = CartesianGrid([[0, 1]], [16])
     c = ScalarField.random_uniform(grid, 0, 1, rng=rng)
-    b_l = {"type": "value", "value": 0}
-    b_r = {"type": "derivative", "value": 3}
-    pde = DiffusionPDE(bc=[b_l, b_r])
-    sol = pde.solve(c, t_range=5, dt=0.001, tracker=None)
+    eq = DiffusionPDE(bc={"x-": {"value": 0}, "x+": {"derivative": 3}})
+    sol = eq.solve(c, t_range=5, dt=0.001, tracker=None)
     np.testing.assert_allclose(sol.data, 3 * grid.axes_coords[0], rtol=5e-3)
 
 
@@ -51,10 +47,8 @@ def test_simple_diffusion_flux_left(rng):
     """Test a simple diffusion equation with flux boundary on the left."""
     grid = CartesianGrid([[0, 1]], [16])
     c = ScalarField.random_uniform(grid, 0, 1, rng=rng)
-    b_l = {"type": "derivative", "value": 2}
-    b_r = {"type": "value", "value": 0}
-    pde = DiffusionPDE(bc=[b_l, b_r])
-    sol = pde.solve(c, t_range=5, dt=0.001, tracker=None)
+    eq = DiffusionPDE(bc={"x-": {"derivative": 2}, "x+": {"value": 0}})
+    sol = eq.solve(c, t_range=5, dt=0.001, tracker=None)
     np.testing.assert_allclose(sol.data, 2 - 2 * grid.axes_coords[0], rtol=5e-3)
 
 

@@ -477,7 +477,8 @@ def test_expression_invalid_args():
 def test_expression_bc_polar_grid():
     """Test whether expression BCs work on polar grids."""
     grid = PolarSymGrid(radius=1, shape=8)
-    bcs = grid.get_boundary_conditions([{"value": 1}, {"value_expression": "1"}])
+    bc = {"r-": {"value": 1}, "r+": {"value_expression": "1"}}
+    bcs = grid.get_boundary_conditions(bc)
 
     state = ScalarField.from_expression(grid, "0")
     bcs.set_ghost_cells(state._data_full)
@@ -501,9 +502,9 @@ def test_expression_bc_specific_value(dim, compiled):
     for i in range(-n - 1, n + 1):
         bc = {"type": "value_expression", "value": "value", "value_cell": i}
 
-        bcs = [[bc, "value"]]
+        bcs = {"x-": bc, "x+": "value"}
         if dim == 2:
-            bcs.append("value")
+            bcs["y"] = "value"
         bcs = grid.get_boundary_conditions(bcs)
 
         assert isinstance(bcs["left"], ExpressionValueBC)

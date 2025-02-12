@@ -28,10 +28,10 @@ def test_interpolation_singular():
 
     # # test boundary interpolation
     for upper in [True, False]:
-        val = field.get_boundary_values(axis=0, upper=upper, bc=[{"value": 1}])
+        val = field.get_boundary_values(axis=0, upper=upper, bc={"x": {"value": 1}})
         assert val == pytest.approx(1)
 
-        b_field = field.get_boundary_field((0, upper), bc=[{"value": 1}])
+        b_field = field.get_boundary_field((0, upper), bc={"x": {"value": 1}})
         assert b_field.data == pytest.approx(1)
 
 
@@ -566,17 +566,25 @@ def test_field_split(decomp, rng):
 def test_field_corner_interpolation_2d():
     """Test corner interpolation for a 2d field."""
     f = ScalarField(UnitGrid([1, 1]), 0)
-    bc_x = [{"value": -1}, {"value": 2}]
-    bc_y = [{"value": -2}, {"value": 1}]
-    f.set_ghost_cells(bc=[bc_x, bc_y], set_corners=True)
-    expect = np.array([[-1.5, -2, 0], [-1, 0, 2], [0, 1, 1.5]])
-    np.testing.assert_allclose(f._data_full, 2 * expect.T)
+    bc = {
+        "x-": {"value": -1},
+        "x+": {"value": 2},
+        "y-": {"value": -2},
+        "y+": {"value": 1},
+    }
+    f.set_ghost_cells(bc=bc, set_corners=True)
+    expect = np.array([[-1.5, -2, 0], [-1, 0, 2], [0, 1, 1.5]]).T
+    np.testing.assert_allclose(f._data_full, 2 * expect)
 
 
 def test_field_corner_interpolation_3d():
     """Test corner interpolation for a 3d field."""
     f = ScalarField(UnitGrid([1, 1, 1]), 0)
-    f.set_ghost_cells(bc=[[{"value": -3}, {"value": 3}]] * 3, set_corners=True)
+    bcs = {}
+    for ax in f.grid.axes:
+        bcs[ax + "-"] = {"value": -3}
+        bcs[ax + "+"] = {"value": 3}
+    f.set_ghost_cells(bc=bcs, set_corners=True)
     expect = np.array(
         [
             [[-6, -6, -2], [-6, -6, 0], [-2, 0, 2]],

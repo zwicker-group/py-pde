@@ -64,13 +64,9 @@ def test_setting_boundary_conditions():
     """Test various versions of settings bcs for cylindrical grids."""
     grid = CylindricalSymGrid(1, [0, 1], [2, 2], periodic_z=False)
     grid.get_boundary_conditions("auto_periodic_neumann")
-    grid.get_boundary_conditions(["derivative", "derivative"])
-    with pytest.raises(ValueError):
-        grid.get_boundary_conditions(["derivative"])
-    with pytest.raises(ValueError):
-        grid.get_boundary_conditions(["derivative"] * 3)
+    grid.get_boundary_conditions({"r": "derivative", "z": "derivative"})
     with pytest.raises(RuntimeError):
-        grid.get_boundary_conditions(["derivative", "periodic"])
+        grid.get_boundary_conditions({"r": "derivative", "z": "periodic"})
 
     b_inner = NeumannBC(grid, 0, upper=False)
     assert grid.get_boundary_conditions("auto_periodic_neumann")[0].low == b_inner
@@ -78,6 +74,6 @@ def test_setting_boundary_conditions():
 
     grid = CylindricalSymGrid(1, [0, 1], [2, 2], periodic_z=True)
     grid.get_boundary_conditions("auto_periodic_neumann")
-    grid.get_boundary_conditions(["derivative", "periodic"])
+    grid.get_boundary_conditions({"r": "derivative", "z": "periodic"})
     with pytest.raises(RuntimeError):
-        grid.get_boundary_conditions(["derivative", "derivative"])
+        grid.get_boundary_conditions({"r": "derivative", "z": "derivative"})

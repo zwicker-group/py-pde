@@ -152,16 +152,13 @@ def test_gradient_1d():
     """Test specific boundary conditions for the 1d gradient."""
     grid = UnitGrid(5)
 
-    b_l = {"type": "derivative", "value": -1}
-    b_r = {"type": "derivative", "value": 1}
-    bcs = grid.get_boundary_conditions([b_l, b_r])
+    bc = {"x-": {"derivative": -1}, "x+": {"derivative": 1}}
+    bcs = grid.get_boundary_conditions(bc)
     field = ScalarField(grid, np.arange(5))
     res = field.gradient(bcs)
     np.testing.assert_allclose(res.data, np.ones((1, 5)))
 
-    b_l = {"type": "value", "value": 3}
-    b_r = {"type": "value", "value": 3}
-    bcs = grid.get_boundary_conditions([b_l, b_r])
+    bcs = grid.get_boundary_conditions({"x": {"value": 3}})
     field = ScalarField(grid, np.full(5, 3))
     res = field.gradient(bcs)
     np.testing.assert_allclose(res.data, np.zeros((1, 5)))
@@ -248,8 +245,8 @@ def test_div_grad_linear(rng):
     f = rng.random() + 1
     y = ScalarField(grid, f * x)
 
-    b1 = [{"type": "neumann", "value": -f}, {"type": "neumann", "value": f}]
-    b2 = [{"type": "value", "value": -f}, {"type": "value", "value": f}]
+    b1 = {"x-": {"derivative": -f}, "x+": {"derivative": f}}
+    b2 = {"x-": {"value": -f}, "x+": {"value": f}}
     for bs in [b1, b2]:
         bcs = y.grid.get_boundary_conditions(bs)
         lap = y.laplace(bcs)
@@ -321,19 +318,20 @@ def test_2nd_order_bc(rng):
     """Test whether 2nd order boundary conditions can be used."""
     grid = UnitGrid([8, 8])
     field = ScalarField.random_uniform(grid, rng=rng)
-    field.laplace([{"value": "sin(y)"}, {"value": "x"}])
+    field.laplace({"x": {"value": "sin(y)"}, "y": {"value": "x"}})
 
 
 @pytest.mark.parametrize("ndim", [1, 2, 3])
 def test_laplace_matrix(ndim, rng):
     """Test laplace operator implemented using matrix multiplication."""
-    if ndim == 1:
-        periodic, bc = [False], [{"value": "sin(x)"}]
-    elif ndim == 2:
-        periodic, bc = [False, True], [{"value": "sin(x)"}, "periodic"]
-    elif ndim == 3:
-        periodic = [False, True, False]
-        bc = [{"value": "sin(x)"}, "periodic", "derivative"]
+    periodic = [False]
+    bc = {"x": {"value": "sin(x)"}}
+    if ndim >= 2:
+        periodic.append(True)
+        bc["y"] = "periodic"
+    if ndim >= 3:
+        periodic.append(False)
+        bc["z"] = "derivative"
     grid = CartesianGrid([[0, 6 * np.pi]] * ndim, 16, periodic=periodic)
     bcs = grid.get_boundary_conditions(bc)
     laplace = make_laplace_from_matrix(*ops._get_laplace_matrix(bcs))
