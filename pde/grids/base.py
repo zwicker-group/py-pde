@@ -612,14 +612,6 @@ class GridBase(metaclass=ABCMeta):
             p1, p2, coords=coords, periodic=[False] * self.dim, axes_bounds=None
         )
 
-    def difference_vector_real(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        # deprecated on 2024-01-09
-        warnings.warn(
-            "`difference_vector_real` has been renamed to `difference_vector`",
-            DeprecationWarning,
-        )
-        return self.difference_vector(p1, p2)
-
     def distance(
         self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
     ) -> float:
@@ -641,14 +633,6 @@ class GridBase(metaclass=ABCMeta):
         """
         diff = self.difference_vector(p1, p2, coords=coords)
         return np.linalg.norm(diff, axis=-1)  # type: ignore
-
-    def distance_real(self, p1: np.ndarray, p2: np.ndarray) -> float:
-        # deprecated on 2024-01-09
-        warnings.warn(
-            "`distance_real` has been renamed to `distance`",
-            DeprecationWarning,
-        )
-        return self.distance(p1, p2)
 
     def _iter_boundaries(self) -> Iterator[tuple[int, bool]]:
         """Iterate over all boundaries of the grid.
@@ -701,54 +685,29 @@ class GridBase(metaclass=ABCMeta):
         # this property should be overwritten when the volume can be calculated directly
         return self.cell_volumes.sum()  # type: ignore
 
-    def point_to_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
+    def point_to_cartesian(self, points: np.ndarray) -> np.ndarray:
         """Convert coordinates of a point in grid coordinates to Cartesian coordinates.
 
         Args:
             points (:class:`~numpy.ndarray`):
                 The grid coordinates of the points
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: The Cartesian coordinates of the point
         """
-        if full:
-            # Deprecated on 2024-01-31
-            warnings.warn(
-                "`full=True` is deprecated. Use `grid.c.pos_to_cart` instead",
-                DeprecationWarning,
-            )
-        else:
-            points = self._coords_full(points)
-        return self.c.pos_to_cart(points)
+        return self.c.pos_to_cart(self._coords_full(points))
 
-    def point_from_cartesian(
-        self, points: np.ndarray, *, full: bool = False
-    ) -> np.ndarray:
+    def point_from_cartesian(self, points: np.ndarray) -> np.ndarray:
         """Convert points given in Cartesian coordinates to grid coordinates.
 
         Args:
             points (:class:`~numpy.ndarray`):
                 Points given in Cartesian coordinates.
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: Points given in the coordinates of the grid
         """
-        points_sph = self.c.pos_from_cart(points)
-        if full:
-            # Deprecated since 2024-01-31
-            warnings.warn(
-                "`full=True` is deprecated. Use `grid.c.pos_from_cart` instead",
-                DeprecationWarning,
-            )
-            return points_sph
-        else:
-            return self._coords_symmetric(points_sph)
+        return self._coords_symmetric(self.c.pos_from_cart(points))
 
     def _vector_to_cartesian(
         self, points: ArrayLike, components: ArrayLike
@@ -901,12 +860,7 @@ class GridBase(metaclass=ABCMeta):
             return res
 
     def transform(
-        self,
-        coordinates: np.ndarray,
-        source: CoordsType,
-        target: CoordsType,
-        *,
-        full: bool = False,
+        self, coordinates: np.ndarray, source: CoordsType, target: CoordsType
     ) -> np.ndarray:
         """Converts coordinates from one coordinate system to another.
 
@@ -941,19 +895,10 @@ class GridBase(metaclass=ABCMeta):
                 The source coordinate system
             target (str):
                 The target coordinate system
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: The transformed coordinates
         """
-        if full:
-            # Deprecated since 2024-01-31
-            warnings.warn(
-                "`full=True` is deprecated. Use `grid.c` methods instead",
-                DeprecationWarning,
-            )
-
         if source == "cartesian":
             # Cartesian coordinates given
             cartesian = np.atleast_1d(coordinates)
@@ -964,22 +909,16 @@ class GridBase(metaclass=ABCMeta):
                 return coordinates
 
             # convert Cartesian coordinates to grid coordinates
-            grid_coords = self.point_from_cartesian(cartesian, full=full)
+            grid_coords = self.point_from_cartesian(cartesian)
 
             if target == "grid":
                 return grid_coords
             if target == "cell":
                 c_min = np.array(self.axes_bounds)[:, 0]
-                if full:
-                    # remove the coordinates that are symmetric
-                    grid_coords = self._coords_symmetric(grid_coords)
                 return (grid_coords - c_min) / self.discretization  # type: ignore
 
         elif source == "cell":
             # Cell coordinates given
-            if full:
-                raise ValueError("Cell coordinates cannot be given with `full=True`")
-
             cells = np.atleast_1d(coordinates)
             if cells.shape[-1] != self.num_axes:
                 raise DimensionError(f"Require {self.num_axes} cell coordinates")
@@ -994,23 +933,18 @@ class GridBase(metaclass=ABCMeta):
             if target == "grid":
                 return grid_coords
             elif target == "cartesian":
-                return self.point_to_cartesian(grid_coords, full=False)
+                return self.point_to_cartesian(grid_coords)
 
         elif source == "grid":
             # Grid coordinates given
             grid_coords = np.atleast_1d(coordinates)
-            if full and grid_coords.shape[-1] != self.dim:
-                raise DimensionError(f"Require {self.dim} grid coordinates")
-            if not full and grid_coords.shape[-1] != self.num_axes:
+            if grid_coords.shape[-1] != self.num_axes:
                 raise DimensionError(f"Require {self.num_axes} grid coordinates")
 
             if target == "cartesian":
-                return self.point_to_cartesian(grid_coords, full=full)
+                return self.point_to_cartesian(grid_coords)
             elif target == "cell":
                 c_min = np.array(self.axes_bounds)[:, 0]
-                if full:
-                    # remove the coordinates that are symmetric
-                    grid_coords = self._coords_symmetric(grid_coords)
                 return (grid_coords - c_min) / self.discretization  # type: ignore
             elif target == "grid":
                 return grid_coords
@@ -1024,7 +958,6 @@ class GridBase(metaclass=ABCMeta):
         points: np.ndarray,
         *,
         coords: Literal["cartesian", "cell", "grid"] = "cartesian",
-        full: bool = False,
     ) -> np.ndarray:
         """Check whether the point is contained in the grid.
 
@@ -1033,14 +966,12 @@ class GridBase(metaclass=ABCMeta):
                 Coordinates of the point
             coords (str):
                 The coordinate system in which the points are given
-            full (bool):
-                Indicates whether coordinates along symmetric axes are specified
 
         Returns:
             :class:`~numpy.ndarray`: A boolean array indicating which points lie within
             the grid
         """
-        cell_coords = self.transform(points, source=coords, target="cell", full=full)
+        cell_coords = self.transform(points, source=coords, target="cell")
         return np.all((cell_coords >= 0) & (cell_coords <= self.shape), axis=-1)  # type: ignore
 
     def iter_mirror_points(

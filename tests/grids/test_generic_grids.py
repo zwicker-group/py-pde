@@ -106,26 +106,6 @@ def test_coordinate_conversion(grid, rng):
 
 
 @pytest.mark.parametrize("grid", iter_grids())
-def test_coordinate_conversion_full(grid, rng):
-    """Test the conversion between cells and points."""
-    p_empty = np.zeros((0, grid.dim))
-    g_empty = np.zeros((0, grid.dim))
-
-    p = grid.get_random_point(coords="cartesian", rng=rng)
-    for coords in ["cartesian", "grid"]:
-        # test empty conversion
-        assert grid.transform(p_empty, "cartesian", coords, full=True).size == 0
-        assert grid.transform(g_empty, "grid", coords, full=True).size == 0
-
-        # test full conversion
-        p1 = grid.transform(p, "cartesian", coords, full=True)
-        for target in ["cartesian", "grid"]:
-            p2 = grid.transform(p1, coords, target, full=True)
-            p3 = grid.transform(p2, target, coords, full=True)
-            np.testing.assert_allclose(p1, p3, err_msg=f"{coords} -> {target}")
-
-
-@pytest.mark.parametrize("grid", iter_grids())
 def test_integration_serial(grid, rng):
     """Test integration of fields."""
     arr = rng.normal(size=grid.shape)
