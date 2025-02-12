@@ -5,6 +5,7 @@ docs/paper/paper.pdf
 tests/coverage/
 tests/mypy-report/
 pde/_version.py
+scripts/run_tests.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

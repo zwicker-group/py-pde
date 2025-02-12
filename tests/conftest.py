@@ -3,8 +3,6 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
-import gc
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -12,12 +10,13 @@ import pytest
 from pde.tools.misc import module_available
 from pde.tools.numba import random_seed
 
+# ensure we use the Agg backend, so figures are not displayed
+plt.switch_backend("agg")
+
 
 @pytest.fixture(autouse=True)
 def _setup_and_teardown():
     """Helper function adjusting environment before and after tests."""
-    # ensure we use the Agg backend, so figures are not displayed
-    plt.switch_backend("agg")
     # raise all underflow errors
     np.seterr(all="raise", under="ignore")
 
