@@ -5,6 +5,7 @@ docs/paper/paper.pdf
 tests/coverage/
 tests/mypy-report/
 pde/_version.py
+scripts/flamegraph.html
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

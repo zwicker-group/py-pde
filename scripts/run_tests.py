@@ -6,6 +6,7 @@ import argparse
 import os
 import subprocess as sp
 import sys
+import tempfile
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -119,6 +120,7 @@ def run_unit_tests(
     coverage: bool = False,
     nojit: bool = False,
     pattern: str = None,
+    use_memray: bool = False,
     pytest_args: list[str] | None = None,
 ) -> int:
     """Run the unit tests.
@@ -131,6 +133,7 @@ def run_unit_tests(
         coverage (bool): Whether to determine the test coverage
         nojit (bool): Whether to disable numba jit compilation
         pattern (str): A pattern that determines which tests are ran
+        use_memray (bool): Use memray to trace memory allocations during tests
         pytest_args (list of str):
             Additional arguments forwarded to py.test. For instance ["--maxfail=1"]
             fails tests early.
@@ -140,6 +143,7 @@ def run_unit_tests(
     """
     if pytest_args is None:
         pytest_args = []
+
     # modify current environment
     env = os.environ.copy()
     env["PYTHONPATH"] = str(PACKAGE_PATH) + ":" + env.get("PYTHONPATH", "")
@@ -150,6 +154,7 @@ def run_unit_tests(
         env["NUMBA_WARNINGS"] = "1"
         env["NUMBA_BOUNDSCHECK"] = "1"
 
+    # determine how to invoke the python interpreter
     if use_mpi:
         # run pytest using MPI with two cores
         args = ["mpiexec", "-n", "2"]
@@ -157,19 +162,25 @@ def run_unit_tests(
             args += ["-host", "localhost:2"]
     else:
         args = []
+    args += [sys.executable]
 
-    # build the arguments string
+    # add the arguments to invoke memory tracing
+    if use_memray:
+        memray_file = Path(tempfile.gettempdir()) / f"memray-{PACKAGE}.bin"
+        memray_file.unlink(missing_ok=True)
+        args += ["-m", "memray", "run", "--aggregate", "--output", str(memray_file)]
+
+    # add the arguments to invoke the testing
     args += [
-        sys.executable,
         "-m",
         "pytest",  # run pytest module
         "-c",
         "pyproject.toml",  # locate the configuration file
         "-rs",  # show summary of skipped tests
         "-rw",  # show summary of warnings raised during tests
-        # "--import-mode=importlib",
     ]
 
+    # add extra arguments for special testing situations
     if runslow:
         args.append("--runslow")  # also run slow tests
     if runinteractive:
@@ -179,7 +190,7 @@ def run_unit_tests(
             import numba_mpi
         except ImportError as err:
             raise RuntimeError(
-                "Moduled `numba_mpi` is required to test with MPI"
+                "Module `numba_mpi` is required to test with MPI"
             ) from err
         args.append("--use_mpi")  # only run tests requiring MPI multiprocessing
 
@@ -198,14 +209,12 @@ def run_unit_tests(
     # add coverage attributes?
     if coverage:
         env["PYPDE_TESTRUN"] = "1"
-        args.extend(
-            [
-                "--cov-config=pyproject.toml",  # locate the configuration file
-                "--cov-report",
-                "html:scripts/coverage",  # create a report in html format
-                f"--cov={PACKAGE}",  # specify in which package the coverage is measured
-            ]
-        )
+        args += [
+            "--cov-config=pyproject.toml",  # locate the configuration file
+            "--cov-report",
+            "html:scripts/coverage",  # create a report in html format
+            f"--cov={PACKAGE}",  # specify in which package the coverage is measured
+        ]
         if use_mpi:
             # this is a hack to allow appending the coverage report
             args.append("--cov-append")
@@ -213,7 +222,7 @@ def run_unit_tests(
     args.extend(pytest_args)
 
     # specify the package to run
-    args.append("tests")
+    args += ["tests"]
 
     # actually run the test
     retcode = sp.run(args, env=env, cwd=PACKAGE_PATH).returncode
@@ -222,6 +231,26 @@ def run_unit_tests(
     if coverage:
         for p in Path("..").glob(".coverage*"):
             p.unlink()
+
+    # post-process memory traces
+    if use_memray:
+        # show a summary of the memory usage
+        args = [sys.executable, "-m", "memray", "summary", str(memray_file)]
+        retcode1 = sp.run(args, env=env).returncode
+        # create a flamegraph of the memory usage
+        flamegraph_file = Path("flamegraph.html")
+        flamegraph_file.unlink(missing_ok=True)
+        args = [
+            sys.executable,
+            "-m",
+            "memray",  # use memray
+            "flamegraph",  # create a flamegraph to summarize output
+            str(memray_file),
+            "-o",
+            str(flamegraph_file),
+        ]
+        retcode2 = sp.run(args, env=env).returncode
+        retcode = _most_severe_exit_code([retcode, retcode1, retcode2])
 
     return retcode
 
@@ -276,6 +305,12 @@ def main() -> int:
         action="store_true",
         default=False,
         help="Run each unit test with MPI multiprocessing",
+    )
+    group.add_argument(
+        "--use_memray",
+        action="store_true",
+        default=False,
+        help="Run test suite under memray to trace memory allocations",
     )
     group.add_argument(
         "--showconfig",
@@ -345,6 +380,7 @@ def main() -> int:
             runslow=args.runslow,
             runinteractive=args.runinteractive,
             use_mpi=args.use_mpi,
+            use_memray=args.use_memray,
             coverage=args.coverage,
             num_cores=args.num_cores,
             nojit=args.nojit,
