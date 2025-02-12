@@ -8,7 +8,7 @@ import numpy as np
 import pytest
 
 from pde import CartesianGrid, ScalarField
-from pde.grids.operators import cartesian as ops
+from pde.grids.operators import common as ops
 
 
 @pytest.mark.parametrize("ndim,axis", [(1, 0), (2, 0), (2, 1), (3, 0), (3, 1), (3, 2)])
@@ -22,7 +22,7 @@ def test_make_derivative(ndim, axis, rng):
     grad = field.gradient(bcs)
     for method in ["central", "forward", "backward"]:
         msg = f"method={method}, periodic={periodic}"
-        diff = ops._make_derivative(grid, axis=axis, method=method)
+        diff = ops.make_derivative(grid, axis=axis, method=method)
         res = field.copy()
         res.data[:] = 0
         field.set_ghost_cells(bcs)
@@ -43,7 +43,7 @@ def test_make_derivative2(ndim, axis, rng):
     grad = field.gradient(bcs)[axis]
     grad2 = grad.gradient(bcs)[axis]
 
-    diff = ops._make_derivative2(grid, axis=axis)
+    diff = ops.make_derivative2(grid, axis=axis)
     res = field.copy()
     res.data[:] = 0
     field.set_ghost_cells(bcs)

@@ -88,25 +88,6 @@ class CoordinatesBase:
         else:
             return np.apply_along_axis(self._pos_from_cart, axis, points)
 
-    def pos_diff(self, p1: np.ndarray, p2: np.ndarray) -> np.ndarray:
-        """Return Cartesian vector(s) pointing from p1 to p2.
-
-        Args:
-            p1 (:class:`~numpy.ndarray`):
-                First point(s)
-            p2 (:class:`~numpy.ndarray`):
-                Second point(s)
-
-        Returns:
-            :class:`~numpy.ndarray`: The difference vectors between the points with
-            periodic boundary conditions applied.
-        """
-        # deprecated since 2024-01-28
-        warnings.warn(
-            "Deprecated function. Use `pos_to_cart` instead", DeprecationWarning
-        )
-        return self.pos_to_cart(p2) - self.pos_to_cart(p1)  # type: ignore
-
     def distance(self, p1: np.ndarray, p2: np.ndarray, *, axis: int = -1) -> float:
         """Calculate the distance between two points.
 

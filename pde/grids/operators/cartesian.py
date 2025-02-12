@@ -30,13 +30,7 @@ from ...tools.typing import OperatorType
 from ..boundaries.axes import BoundariesBase, BoundariesList
 from ..boundaries.axis import BoundaryAxisBase
 from ..cartesian import CartesianGrid
-from .common import make_derivative as _make_derivative
-from .common import make_derivative2 as _make_derivative2
 from .common import make_general_poisson_solver, uniform_discretization
-
-# The `make_derivative?` methods are imported for backward compatibility. Their usage is
-# deprecated since 2023-12-06
-
 
 _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""

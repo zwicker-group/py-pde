@@ -82,7 +82,7 @@ def preserve_scalars(method: TFunc) -> TFunc:
         The decorated method
     """
     # deprecated on 2024-08-21
-    warnings.warn("Method deprecated", DeprecationWarning)
+    warnings.warn("Method `preserve_scalars` is deprecated", DeprecationWarning)
 
     @functools.wraps(method)
     def wrapper(self, *args):
