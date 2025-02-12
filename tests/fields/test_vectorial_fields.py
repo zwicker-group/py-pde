@@ -137,8 +137,8 @@ def test_vector_boundary_conditions():
     grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], 32, periodic=[False, True])
     vf = VectorField.from_expression(grid, ["sin(x)", "0"])
 
-    bc_x = [{"derivative": [-1, 0]}, {"derivative": [1, 0]}]
-    tf = vf.gradient(bc=[bc_x, "periodic"])
+    bc = {"x-": {"derivative": [-1, 0]}, "x+": {"derivative": [1, 0]}, "y": "periodic"}
+    tf = vf.gradient(bc=bc)
 
     res = ScalarField.from_expression(grid, "cos(x)")
     np.testing.assert_allclose(tf[0, 0].data, res.data, atol=0.01, rtol=0.01)
@@ -289,10 +289,7 @@ def test_vector_bcs():
     grid = UnitGrid([3, 3], periodic=False)
     v = VectorField.from_expression(grid, ["x", "cos(y)"])
 
-    bc_x = {"value": [0, 1]}
-    bc_y = {"value": [2, 3]}
-    bcs = [bc_x, bc_y]
-
+    bcs = {"x": {"value": [0, 1]}, "y": {"value": [2, 3]}}
     s1 = v.divergence(bcs, backend="scipy").data
     div = grid.make_operator("divergence", bcs)
     s2 = div(v.data)

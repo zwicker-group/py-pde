@@ -250,7 +250,7 @@ def test_setting_boundary_conditions():
     grid = UnitGrid([3, 3], periodic=[True, False])
     for bc in [
         grid.get_boundary_conditions("auto_periodic_neumann"),
-        grid.get_boundary_conditions(["auto_periodic_neumann", "derivative"]),
+        grid.get_boundary_conditions({"x": "auto_periodic_neumann", "y": "derivative"}),
     ]:
         assert isinstance(bc, BoundariesBase)
 
@@ -270,17 +270,11 @@ def test_setting_boundary_conditions():
 def test_setting_domain_rect():
     """Test various versions of settings bcs for Cartesian grids."""
     grid = UnitGrid([2, 2])
-    grid.get_boundary_conditions(["derivative", "derivative"])
-
-    # wrong number of conditions
-    with pytest.raises(ValueError):
-        grid.get_boundary_conditions(["derivative"])
-    with pytest.raises(ValueError):
-        grid.get_boundary_conditions(["derivative"] * 3)
+    grid.get_boundary_conditions({"x": "derivative", "y": "derivative"})
 
     grid = UnitGrid([2, 2], periodic=[True, False])
     grid.get_boundary_conditions("auto_periodic_neumann")
-    grid.get_boundary_conditions(["periodic", "derivative"])
+    grid.get_boundary_conditions({"x": "periodic", "y": "derivative"})
 
     # incompatible conditions
     with pytest.raises(RuntimeError):
@@ -288,7 +282,7 @@ def test_setting_domain_rect():
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions("derivative")
     with pytest.raises(RuntimeError):
-        grid.get_boundary_conditions(["derivative", "periodic"])
+        grid.get_boundary_conditions({"x": "derivative", "y": "periodic"})
 
 
 @pytest.mark.parametrize("reflect", [True, False])

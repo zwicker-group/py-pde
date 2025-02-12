@@ -32,7 +32,7 @@ def test_inhomogeneous_bcs_1(backend):
     """Test simulation with inhomogeneous boundary conditions."""
     grid = CartesianGrid([[0, 2 * np.pi], [0, 1]], [32, 2], periodic=[True, False])
     state = ScalarField(grid)
-    eq = DiffusionPDE(bc=["auto_periodic_neumann", {"value": "sin(x)"}])
+    eq = DiffusionPDE(bc={"x": "auto_periodic_neumann", "y": {"value": "sin(x)"}})
     sol = eq.solve(state, t_range=1e1, dt=1e-2, backend=backend, tracker=None)
     data = sol.get_line_data(extract="project_x")
     np.testing.assert_almost_equal(
@@ -59,10 +59,8 @@ def test_inhomogeneous_bcs_func(backend):
     def bc_value(adjacent_value, dx, x, y, t):
         return np.sign(x)
 
-    bc_x = "derivative"
-    bc_y = ["derivative", {"value_expression": bc_value}]
-
-    eq = DiffusionPDE(bc=[bc_x, bc_y])
+    bc = {"x": "derivative", "y-": "derivative", "y+": {"value_expression": bc_value}}
+    eq = DiffusionPDE(bc=bc)
     res = eq.solve(field, t_range=10, dt=0.01, adaptive=True, backend=backend)
     assert np.all(res.data[:16] < 0)
     assert np.all(res.data[16:] > 0)
@@ -335,7 +333,8 @@ def test_pde_with_bc_setter(backend):
     eq1 = DiffusionPDE(bc=setter)
     res1 = eq1.solve(field, t_range=1.01, dt=0.1, backend=backend)
 
-    eq2 = DiffusionPDE(bc=[["neumann", {"value_expression": "t"}], "periodic"])
+    bc = {"x-": "neumann", "x+": {"value_expression": "t"}, "y": "periodic"}
+    eq2 = DiffusionPDE(bc=bc)
     res2 = eq2.solve(field, t_range=1.01, dt=0.1, backend=backend)
 
     np.testing.assert_allclose(res1.data, res2.data)

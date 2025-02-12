@@ -156,10 +156,11 @@ def test_setting_boundary_conditions(grid_class):
     b_inner = NeumannBC(grid, 0, upper=False)
 
     assert grid.get_boundary_conditions("auto_periodic_neumann")[0].low == b_inner
-    assert grid.get_boundary_conditions(["derivative", {"value": 2}])[0].low == b_inner
-    bcs = grid.get_boundary_conditions(["value", "value"])
+    bc = {"r-": "derivative", "r+": {"value": 2}}
+    assert grid.get_boundary_conditions(bc)[0].low == b_inner
+    bcs = grid.get_boundary_conditions({"r-": "value", "r+": "value"})
     assert bcs[0].low != b_inner
 
     grid = grid_class([1, 2], 3)
-    bcs = grid.get_boundary_conditions(["value", "value"])
+    bcs = grid.get_boundary_conditions({"r-": "value", "r+": "value"})
     assert bcs[0].low != b_inner

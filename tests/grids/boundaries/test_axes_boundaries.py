@@ -38,7 +38,7 @@ def test_boundaries():
         assert isinstance(str(bcs), str)
         assert isinstance(repr(bcs), str)
 
-        assert bcs == BoundariesBase.from_data([bc_x, bc_y], grid=g)
+        assert bcs == BoundariesBase.from_data({"x": bc_x, "y": bc_y}, grid=g)
         if bx == by:
             assert bcs == BoundariesBase.from_data(bx, grid=g)
 
@@ -92,8 +92,8 @@ def test_mixed_boundary_condition(rng):
     """Test limiting cases of the mixed boundary condition."""
     g = UnitGrid([2])
     d = rng.random(2)
-    g1 = g.make_operator("gradient", bc=[{"mixed": 0}, {"mixed": np.inf}])
-    g2 = g.make_operator("gradient", bc=["derivative", "value"])
+    g1 = g.make_operator("gradient", bc={"x-": {"mixed": 0}, "x+": {"mixed": np.inf}})
+    g2 = g.make_operator("gradient", bc={"x-": "derivative", "x+": "value"})
     np.testing.assert_allclose(g1(d), g2(d))
 
 
@@ -109,7 +109,7 @@ def test_natural_boundary_conditions(cond, is_value):
     g = UnitGrid([2, 2], periodic=[True, False])
     for bc in [
         BoundariesBase.from_data(cond, grid=g),
-        BoundariesBase.from_data(["periodic", cond], grid=g),
+        BoundariesBase.from_data({"x": "periodic", "y": cond}, grid=g),
     ]:
         assert isinstance(bc[0], BoundaryPeriodic)
         if is_value:
