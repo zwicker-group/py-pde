@@ -137,6 +137,7 @@ class Config(collections.UserDict):
         """Helper function converting certain values."""
         if key == "numba.multithreading" and isinstance(value, bool):
             value = "always" if value else "never"
+            # Deprecated on 2025-02-12
             warnings.warn(
                 "Boolean options are deprecated for `numba.multithreading`. Use "
                 f"config['numba.multithreading'] = '{value}' instead.",
