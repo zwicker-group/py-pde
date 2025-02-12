@@ -169,7 +169,7 @@ def jit(function: TFunc, signature=None, parallel: bool = False, **kwargs) -> TF
         kwargs.setdefault("fastmath", config["numba.fastmath"])
     kwargs.setdefault("debug", config["numba.debug"])
     # make sure parallel numba is only enabled in restricted cases
-    kwargs["parallel"] = parallel and config["numba.multithreading"]
+    kwargs["parallel"] = parallel and config.use_multithreading()
 
     # log some details
     logger = logging.getLogger(__name__)

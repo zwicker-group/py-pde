@@ -486,7 +486,7 @@ Here, we use the implementation shipped with `py-pde`, which sets some default
 values.
 However, we could have also used the usual numba implementation.
 It is important that the implementation of the evolution rate only uses python
-constructs that numba can compile.  
+constructs that numba can compile.
 
 One advantage of the numba compiled implementation is that we can now use loops,
 which will be much faster than their python equivalents.
@@ -529,7 +529,7 @@ Here, we extract the total number of elements in the state using its
 :attr:`size` attribute and we obtain the dimensionality of the space from the
 grid attribute :attr:`dim`.
 Note that we access numpy arrays using their :attr:`flat` attribute to provide
-an implementation that works for all dimensions.     
+an implementation that works for all dimensions.
 
 
 .. _configuration:
@@ -547,13 +547,16 @@ Here is a list of all configuration options that can be adjusted in the package:
 
 .. tip::
 
-    To disable parallel computing in the package, the following code could be added to
-    the start of the script:
+    To disable parallel computing via multithreading in the package, the following code
+    could be added to the start of the script:
 
 
     .. code-block:: python
 
         from pde import config
-        config["numba.multithreading"] = False
+        config["numba.multithreading"] = "never"
 
         # actual code using py-pde
+
+    The default value `only_local` already disables multithreading when the package
+    detects it is run in an HPC environment.

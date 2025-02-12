@@ -18,6 +18,7 @@ from __future__ import annotations
 import collections
 import contextlib
 import importlib
+import os
 import re
 import subprocess as sp
 import sys
@@ -81,11 +82,13 @@ DEFAULT_CONFIG: list[Parameter] = [
     ),
     Parameter(
         "numba.multithreading",
-        True,
-        bool,
+        "only_local",
+        str,
         "Determines whether multiple threads are used in numba-compiled code. Enabling "
         "this option accelerates a small subset of operators applied to fields defined "
-        "on large grids.",
+        "on large grids. Possible options are 'never' (disable multithreading), 'local' "
+        "(disable on HPC hardware), and 'always' (enable if number of grid points "
+        "exceeds `numba.multithreading_threshold`)",
     ),
     Parameter(
         "numba.multithreading_threshold",
@@ -130,10 +133,22 @@ class Config(collections.UserDict):
         else:
             return parameter
 
+    def _convert_value(self, key: str, value):
+        """Helper function converting certain values."""
+        if key == "numba.multithreading" and isinstance(value, bool):
+            value = "always" if value else "never"
+            # Deprecated on 2025-02-12
+            warnings.warn(
+                "Boolean options are deprecated for `numba.multithreading`. Use "
+                f"config['numba.multithreading'] = '{value}' instead.",
+                DeprecationWarning,
+            )
+        return value
+
     def __setitem__(self, key: str, value):
         """Update item `key` with `value`"""
         if self.mode == "insert":
-            self.data[key] = value
+            self.data[key] = self._convert_value(key, value)
 
         elif self.mode == "update":
             try:
@@ -142,7 +157,7 @@ class Config(collections.UserDict):
                 raise KeyError(
                     f"{key} is not present and config is not in `insert` mode"
                 ) from err
-            self.data[key] = value
+            self.data[key] = self._convert_value(key, value)
 
         elif self.mode == "locked":
             raise RuntimeError("Configuration is locked")
@@ -185,6 +200,37 @@ class Config(collections.UserDict):
         yield  # return to caller
         # restore old configuration
         self.data = data_initial
+
+    def use_multithreading(self) -> bool:
+        """Determine whether multithreading should be used in numba-compiled code.
+
+        This method checks the configuration setting for `numba.multithreading` and
+        determines whether multithreading should be enabled based on the value of this
+        setting. The possible values for `numba.multithreading` are:
+        - 'always': Multithreading is always enabled.
+        - 'never': Multithreading is never enabled.
+        - 'only_local': Multithreading is enabled only if the code is not running in a
+        high-performance computing (HPC) environment.
+
+        Returns:
+            bool: True if multithreading should be enabled, False otherwise.
+
+        Raises:
+            ValueError: If the `numba.multithreading` setting is not one of the expected
+            values ('always', 'never', 'only_local').
+        """
+        setting = self["numba.multithreading"]
+        if setting == "always":
+            return True
+        elif setting == "never":
+            return False
+        elif setting == "only_local":
+            return not is_hpc_environment()
+        else:
+            raise ValueError(
+                "Parameter `numba.multithreading` must be in {'always', 'never', "
+                f"'only_local'}}, not `{setting}`"
+            )
 
 
 def get_package_versions(
@@ -278,6 +324,16 @@ def get_ffmpeg_version() -> str | None:
     return None
 
 
+def is_hpc_environment() -> bool:
+    """Check whether the code is running in a high-performance computing environment.
+
+    Returns:
+        bool: True if running in an HPC environment, False otherwise.
+    """
+    hpc_env_vars = ["SLURM_JOB_ID", "PBS_JOBID", "LSB_JOBID"]
+    return any(var in os.environ for var in hpc_env_vars)
+
+
 def environment() -> dict[str, Any]:
     """Obtain information about the compute environment.
 
@@ -297,7 +353,9 @@ def environment() -> dict[str, Any]:
     result: dict[str, Any] = {}
     result["package version"] = package_version
     result["python version"] = sys.version
-    result["platform"] = sys.platform
+
+    # check the compute environment
+    result["environment"] = {"platform": sys.platform, "is_hpc": is_hpc_environment()}
 
     # add ffmpeg version if available
     ffmpeg_version = get_ffmpeg_version()

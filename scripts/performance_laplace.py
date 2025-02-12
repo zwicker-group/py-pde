@@ -17,7 +17,7 @@ from pde.grids.operators.cartesian import _make_laplace_numba_2d
 from pde.tools.misc import estimate_computation_speed
 from pde.tools.numba import jit
 
-config["numba.multithreading"] = False
+config["numba.multithreading"] = "never"  # disable multithreading for better comparison
 
 
 def custom_laplace_2d_periodic(shape, dx=1):
