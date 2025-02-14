@@ -80,7 +80,7 @@ which can be used in place of the `DiffusionPDE` in the example above.
 More information
 ----------------
 * Tutorial notebooks in the [tutorials folder](https://github.com/zwicker-group/py-pde/tree/master/examples/jupyter)
-* [Examples gallery](https://py-pde.readthedocs.io/en/latest/examples_gallery/)
+* [Examples gallery](https://py-pde.readthedocs.io/en/latest/gallery.html)
   with an overview of the capabilities of the package
 * The [Discussions on GitHub](https://github.com/zwicker-group/py-pde/discussions)
 * [Full documentation on readthedocs](https://py-pde.readthedocs.io/)
