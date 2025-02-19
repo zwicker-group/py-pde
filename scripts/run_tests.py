@@ -215,9 +215,6 @@ def run_unit_tests(
             "html:scripts/coverage",  # create a report in html format
             f"--cov={PACKAGE}",  # specify in which package the coverage is measured
         ]
-        if use_mpi:
-            # this is a hack to allow appending the coverage report
-            args.append("--cov-append")
 
     args.extend(pytest_args)
 
