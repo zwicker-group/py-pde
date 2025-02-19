@@ -282,13 +282,12 @@ class ScalarField(DataFieldBase):
 
         Args:
             axes (list of str):
-                The names of the axes that are removed by the projection
-                operation. The valid names for a given grid are the ones in
-                the :attr:`GridBase.axes` attribute.
+                The names of the axes that are removed by the projection operation. The
+                valid names for a given grid are the ones in the :attr:`GridBase.axes`
+                attribute.
             method (str):
-                The projection method. This can be either 'integral' to
-                integrate over the removed axes or 'average' to perform an
-                average instead.
+                The projection method. This can be either 'integral' to integrate over
+                the removed axes or 'average' to perform an average instead.
             label (str, optional):
                 The label of the returned field
 

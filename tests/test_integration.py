@@ -71,16 +71,14 @@ def test_custom_pde_mpi(rng):
     """Test a custom PDE using the parallelized solver."""
 
     class TestPDE(PDEBase):
-        def make_modify_after_step(self, state):
-            def modify_after_step(state_data):
-                modification = 0
+        def make_post_step_hook(self, state):
+            def post_step_hook(state_data, t, post_step_data):
                 for i in range(state_data.size):
                     if state_data.flat[i] > 1:
                         state_data.flat[i] -= 1
-                        modification += 2
-                return modification
+                        post_step_data += 2
 
-            return modify_after_step
+            return post_step_hook, 0.0
 
         def evolution_rate(self, state, t=0):
             return ScalarField(state.grid, 1)
