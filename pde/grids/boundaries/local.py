@@ -1605,7 +1605,7 @@ class ExpressionBC(BCBase):
                 return math.nan
 
         # evaluate the function to force compilation and catch errors early
-        virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict({"t": 0.0}))
+        virtual_point(np.zeros([3] * num_axes), (0,) * num_axes, numba_dict(t=0.0))
 
         return virtual_point  # type: ignore
 

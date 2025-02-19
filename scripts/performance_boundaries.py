@@ -47,7 +47,7 @@ def main():
             # create the operator with these conditions
             laplace = grid.make_operator("laplace", bc=bcs)
             if bc == "time-dependent":
-                args = numba_dict({"t": 1})
+                args = numba_dict(t=1)
                 # call once to pre-compile and test result
                 np.testing.assert_allclose(laplace(field.data, args=args), result)
                 # estimate the speed

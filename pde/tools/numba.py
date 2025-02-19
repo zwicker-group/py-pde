@@ -261,12 +261,23 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
     return array_constructor  # type: ignore
 
 
-def numba_dict(data: dict[str, Any] | None = None) -> NumbaDict | None:
-    """Converts a python dictionary to a numba typed dictionary."""
-    if data is None:
-        return None
+def numba_dict(data: dict[str, Any] | None = None, **kwargs) -> NumbaDict:
+    """Converts a python dictionary to a numba typed dictionary.
+
+    Args:
+        data (dict):
+            Data to be converted to a dictionary
+        **kwargs:
+            Additional items added to the dictionary
+
+    Returns:
+        :class:`~numba.typed.Dict`: A dictionary of numba type
+    """
     nb_dict = NumbaDict()
-    for k, v in data.items():
+    if data is not None:
+        for k, v in data.items():
+            nb_dict[k] = v
+    for k, v in kwargs.items():
         nb_dict[k] = v
     return nb_dict
 

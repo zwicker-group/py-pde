@@ -1303,15 +1303,6 @@ class GridBase(metaclass=ABCMeta):
     ) -> Callable[..., np.ndarray]:
         """Return a compiled function applying an operator with boundary conditions.
 
-        The returned function takes the discretized data on the grid as an input and
-        returns the data to which the operator `operator` has been applied. The function
-        only takes the valid grid points and allocates memory for the ghost points
-        internally to apply the boundary conditions specified as `bc`. Note that the
-        function supports an optional argument `out`, which if given should provide
-        space for the valid output array without the ghost cells. The result of the
-        operator is then written into this output array. The function also accepts an
-        optional parameter `args`, which is forwarded to `set_ghost_cells`.
-
         Args:
             operator (str):
                 Identifier for the operator. Some examples are 'laplace', 'gradient', or
@@ -1322,6 +1313,27 @@ class GridBase(metaclass=ABCMeta):
                 {ARG_BOUNDARIES}
             **kwargs:
                 Specifies extra arguments influencing how the operator is created.
+
+        The returned function takes the discretized data on the grid as an input and
+        returns the data to which the operator `operator` has been applied. The function
+        only takes the valid grid points and allocates memory for the ghost points
+        internally to apply the boundary conditions specified as `bc`. Note that the
+        function supports an optional argument `out`, which if given should provide
+        space for the valid output array without the ghost cells. The result of the
+        operator is then written into this output array.
+
+        The function also accepts an optional parameter `args`, which is forwarded to
+        `set_ghost_cells`. This allows setting boundary conditions based on external
+        parameters, like time. Note that since the returned operator will always be
+        compiled by numba, the arguments needs to be compatible with numba. The
+        following example shows how to pass the current time `t`:
+
+        .. code-block:: python
+
+            from pde.tools.numba import numba_dict
+
+            operator = grid.make_operator("laplace", bc={"value_expression": "t"})
+            operator(field.data, args=numba_dict(t=t))
 
         Returns:
             callable: the function that applies the operator. This function has the
