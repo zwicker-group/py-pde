@@ -2,6 +2,7 @@
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
+import numba
 import numpy as np
 import pytest
 
@@ -10,6 +11,7 @@ from pde.tools.numba import (
     flat_idx,
     jit,
     make_array_constructor,
+    numba_dict,
     numba_environment,
 )
 
@@ -63,3 +65,25 @@ def test_make_array_constructor(arr):
     arr2 = constructor()
     np.testing.assert_equal(arr, arr2)
     assert np.shares_memory(arr, arr2)
+
+
+def test_numba_dict():
+    """Test numba_dict function."""
+    cls = dict if numba.config.DISABLE_JIT else numba.typed.Dict
+
+    # test empty dictionaries
+    for d in [numba_dict(), numba_dict({})]:
+        assert len(d) == 0
+        assert isinstance(d, cls)
+
+    # test initializing dictionaries in different ways
+    for d in [
+        numba_dict({"a": 1, "b": 2}),
+        numba_dict(a=1, b=2),
+        numba_dict({"a": 1}, b=2),
+        numba_dict({"a": 1, "b": 3}, b=2),
+    ]:
+        assert isinstance(d, cls)
+        assert len(d) == 2
+        assert d["a"] == 1
+        assert d["b"] == 2
