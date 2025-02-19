@@ -1325,7 +1325,7 @@ class GridBase(metaclass=ABCMeta):
         The function also accepts an optional parameter `args`, which is forwarded to
         `set_ghost_cells`. This allows setting boundary conditions based on external
         parameters, like time. Note that since the returned operator will always be
-        compiled by numba, the arguments needs to be compatible with numba. The
+        compiled by Numba, the arguments need to be compatible with Numba. The
         following example shows how to pass the current time `t`:
 
         .. code-block:: python

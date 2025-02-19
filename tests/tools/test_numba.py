@@ -69,10 +69,12 @@ def test_make_array_constructor(arr):
 
 def test_numba_dict():
     """Test numba_dict function."""
+    cls = dict if numba.config.DISABLE_JIT else numba.typed.Dict
+
     # test empty dictionaries
     for d in [numba_dict(), numba_dict({})]:
         assert len(d) == 0
-        assert isinstance(d, numba.typed.Dict)
+        assert isinstance(d, cls)
 
     # test initializing dictionaries in different ways
     for d in [
@@ -81,7 +83,7 @@ def test_numba_dict():
         numba_dict({"a": 1}, b=2),
         numba_dict({"a": 1, "b": 3}, b=2),
     ]:
-        assert isinstance(d, numba.typed.Dict)
+        assert isinstance(d, cls)
         assert len(d) == 2
         assert d["a"] == 1
         assert d["b"] == 2
