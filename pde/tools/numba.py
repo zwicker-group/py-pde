@@ -261,7 +261,7 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
     return array_constructor  # type: ignore
 
 
-def numba_dict(data: dict[str, Any] | None = None, **kwargs) -> NumbaDict:
+def numba_dict(data: dict[str, Any] | None = None, /, **kwargs) -> NumbaDict:
     """Converts a python dictionary to a numba typed dictionary.
 
     Args:

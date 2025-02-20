@@ -87,3 +87,8 @@ def test_numba_dict():
         assert len(d) == 2
         assert d["a"] == 1
         assert d["b"] == 2
+
+    # test edge case
+    d = numba_dict(data=1)
+    assert d["data"] == 1
+    assert isinstance(d, cls)
