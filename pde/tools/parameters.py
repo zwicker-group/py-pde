@@ -10,6 +10,7 @@ One aim is to allow easy management of inheritance of parameters.
    HideParameter
    Parameterized
    get_all_parameters
+   sphinx_display_parameters
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """

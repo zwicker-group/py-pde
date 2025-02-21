@@ -1,5 +1,11 @@
 """Auxiliary mathematical functions.
 
+.. autosummary::
+   :nosignatures:
+
+   SmoothData1D
+   OnlineStatistics
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 

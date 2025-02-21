@@ -8,6 +8,8 @@
    parse_version_str
    check_package_version
    packages_from_requirements
+   get_ffmpeg_version
+   is_hpc_environment
    environment
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>

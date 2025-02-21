@@ -1,5 +1,15 @@
 """Helper functions for just-in-time compilation with numba.
 
+.. autosummary::
+   :nosignatures:
+
+   numba_environment
+   jit
+   make_array_constructor
+   numba_dict
+   get_common_numba_dtype
+   random_seed
+
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
 
