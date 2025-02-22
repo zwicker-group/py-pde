@@ -24,6 +24,12 @@ def make_linear_operator(dependent_variables):
         dependent = dependent_variables  # variables that the operator can affect
         _logger = logging.getLogger("LinearOperator")
 
+        # def _sympystr(self, printer):
+        #     return "D"
+
+        # def _latex(self, printer):
+        #     return r"\mathcal{D}"
+
         @classmethod
         def eval(cls, arg):
             """Evaluate common cases of the differential operator."""
