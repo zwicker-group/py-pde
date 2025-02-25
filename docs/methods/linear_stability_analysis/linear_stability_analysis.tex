@@ -1,5 +1,6 @@
 \documentclass[
 	superscriptaddress,
+	twocolumn,
 	aps, pre
 ]{revtex4-1}
 
@@ -21,11 +22,11 @@
 \date{\today}
 
 \begin{abstract}
-\tableofcontents
 \end{abstract}
 
 
 \maketitle
+\tableofcontents
 
 
 \section{General derivation}
@@ -88,7 +89,7 @@ To see whether \Eqref{eqn:growth_rate_goal} and \Eqref{eqn:growth_rate_hypothesi
 	 &= A'(c)B'(c) (\nabla c)^2  + A(c)B''(c) (\nabla c)^2 + A(c)B'(c) \nabla^2 c
 	\;.
 \end{align}
-First, \Eqref{eqn:growth_rate_goal} can be to the form where the terms are derivatives are directly applied to $c$.
+First, \Eqref{eqn:growth_rate_goal} can be brought to the form where the terms are derivatives are directly applied to $c$.
 \begin{align}
 	\omega(\vq) &= \sum_{n=0}^\infty \takenat{\pfrac{f}{(\nabla^n c)}}{c_0}\cdot (i\vect q)^n
 %\notag\\
@@ -115,6 +116,36 @@ This would imply
 	A(c_0) B'(c_0) (-\vq^2 \dc)
 \end{align}
 This works well in this simple case, but we somehow need to tell sympy how to simplify the expressions.
+
+\subsection{Compositions}
+For the simple case
+\begin{align}
+	f = A(\nabla^2 c)
+\end{align}
+we find
+\begin{align}
+	f = A(c_0 + \nabla^2 \delta c)
+	\;.
+\end{align}
+Assuming $\nabla^2 \delta c$ is also small, we have
+\begin{align}
+	f \approx A(c_0) + A'(c_0) \nabla^2 \delta c
+\end{align}
+For the more complicated case
+\begin{align}
+	f = B\bigl(\nabla^2\bigl[A(\nabla^2 c)\bigr]\bigr)
+\end{align}		
+we find
+\begin{align}
+	f &= B\bigl(\nabla^2\bigl[A(c_0 + \nabla^2 \delta c)\bigr]\bigr)
+\notag\\
+	& \approx B\bigl(\nabla^2\bigl[A(c_0) + A'(c_0) \nabla^2 \delta c\bigr]\bigr)
+\notag\\
+	& = B\bigl(A'(c_0) \nabla^4 \delta c\bigr)
+\notag\\
+	& \approx B'(0) A'(c_0) \nabla^4 \delta c
+\end{align}
+\todo{Can we simply replace all fields by $c_0 + \epsilon\delta c$ and use sympy to expand in $\epsilon$? I guess we need to tell sympy that the differential operators are linear, but this might be possible. We might need to do this from the inside out, ensuring that each leaf-expression is linear. We can do this for each linear operator (expand inside). During this linearization we might be able to replace the differential operators by their Fourier transform }
 
 
 %\bibliographystyle{apsrev4-1}
