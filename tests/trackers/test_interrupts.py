@@ -8,6 +8,7 @@ import pytest
 from pde.trackers.interrupts import (
     ConstantInterrupts,
     FixedInterrupts,
+    GeometricInterrupts,
     LogarithmicInterrupts,
     RealtimeInterrupts,
     parse_interrupt,
@@ -63,6 +64,34 @@ def test_interrupt_logarithmic():
     assert ival.dt == 4
     assert ival.next(3) == pytest.approx(16)
     assert ival.dt == 8
+
+
+def test_interrupt_logarithmic_seq(rng):
+    """Test the LogarithmicInterrupts class."""
+    dt, factor, t_start = rng.uniform(1, 2, size=3)
+    ival = LogarithmicInterrupts(dt, factor=factor, t_start=t_start)
+
+    ts0 = [ival.initialize(0)]
+    ts0 += [ival.next(0) for _ in range(8)]
+    ts1 = [ival.value(i) for i in range(9)]
+    np.testing.assert_almost_equal(ts0, ts1)
+
+    ts2 = t_start + (1 - factor ** np.arange(9)) / (1 - factor) * dt
+    np.testing.assert_almost_equal(ts0, ts2)
+
+
+def test_interrupt_geometric(rng):
+    """Test the GeometricInterrupts class."""
+    scale, factor = rng.uniform(1, 2, size=2)
+    ival = GeometricInterrupts(scale, factor)
+
+    ts0 = [ival.initialize(0)]
+    ts0 += [ival.next(0) for _ in range(8)]
+    ts1 = [ival.value(i) for i in range(9)]
+    np.testing.assert_almost_equal(ts0, ts1)
+
+    ts2 = scale * factor ** np.arange(9)
+    np.testing.assert_almost_equal(ts0, ts2)
 
 
 def test_interrupt_realtime():
