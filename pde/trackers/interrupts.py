@@ -8,7 +8,9 @@ The provided interrupt classes are:
    ConstantInterrupts
    FixedInterrupts
    LogarithmicInterrupts
+   GeometricInterrupts
    RealtimeInterrupts
+   parse_interrupt
 
 .. codeauthor:: David Zwicker <david.zwicker@ds.mpg.de>
 """
@@ -36,9 +38,8 @@ class InterruptsBase(metaclass=ABCMeta):
     dt: float
     """float: current time difference between interrupts"""
 
-    @abstractmethod
-    def copy(self: TInterrupt) -> TInterrupt:
-        """Return a copy of this instance."""
+    def copy(self):
+        return copy.copy(self)
 
     @abstractmethod
     def initialize(self, t: float) -> float:
@@ -66,7 +67,7 @@ class InterruptsBase(metaclass=ABCMeta):
 
 
 class FixedInterrupts(InterruptsBase):
-    """Class representing a list of interrupt times."""
+    """Interrupts at fixed, predetermined times."""
 
     def __init__(self, interrupts: np.ndarray | Sequence[float]):
         self.interrupts = np.atleast_1d(interrupts)
@@ -108,7 +109,7 @@ class FixedInterrupts(InterruptsBase):
 
 
 class ConstantInterrupts(InterruptsBase):
-    """Class representing equidistantly spaced time interrupts."""
+    """Interrupts equidistantly spaced in time."""
 
     def __init__(self, dt: float = 1, t_start: float | None = None):
         """
@@ -122,14 +123,11 @@ class ConstantInterrupts(InterruptsBase):
                 equilibration period during which no data is recorded.
         """
         self.dt = float(dt)
-        self.t_start = t_start
+        self.t_start = None if t_start is None else float(t_start)
         self._t_next: float | None = None  # next time it should be called
 
     def __repr__(self):
         return f"{self.__class__.__name__}(dt={self.dt:g}, t_start={self.t_start})"
-
-    def copy(self):
-        return copy.copy(self)
 
     def initialize(self, t: float) -> float:
         if self.t_start is None:
@@ -155,7 +153,23 @@ class ConstantInterrupts(InterruptsBase):
 
 
 class LogarithmicInterrupts(ConstantInterrupts):
-    """Class representing logarithmically spaced time interrupts."""
+    r"""Interrupts with successively increased spacing.
+
+    The durations between interrupts increases by a constant factor :math:`f`:
+
+    .. math::
+        t_{i+1} = t_i + \Delta t_i \qquad \text{with} \qquad
+        \Delta t_{i+1} = f \Delta t_i
+
+    starting with initial values :math:`t_0` and :math:`\Delta t_0`. This results in
+    exponentially spaced interrupts :math:`t_i = a + b f^i`, where
+    :math:`a = t_0 - \Delta t_0 (f - 1)^{-1}` and :math:`b = \Delta t_0 (f - 1)^{-1}`.
+
+    Note that the geometric sequence described above can be disrupted if other
+    interrupts interfere. This class ensures ever increasing durations between its
+    interrupts, at the cost of potentially oddly spaced times. If a geometric sequence
+    is required, use :class:`GeometricInterrupts` instead.
+    """
 
     def __init__(
         self, dt_initial: float = 1, factor: float = 1, t_start: float | None = None
@@ -163,33 +177,101 @@ class LogarithmicInterrupts(ConstantInterrupts):
         """
         Args:
             dt_initial (float):
-                The initial duration between subsequent interrupts. This is measured in
-                simulation time units.
+                The initial duration :math:`\Delta t_0` between subsequent interrupts.
+                This is measured in simulation time units.
             factor (float):
-                The factor by which the time between interrupts is increased every time.
-                Values larger than one lead to time interrupts that are increasingly
-                further apart.
+                The factor :math:`f` by which the time between interrupts is increased
+                after every interrupt. Values larger than one lead to time interrupts
+                that are increasingly further apart.
             t_start (float, optional):
-                The time after which the tracker becomes active. If omitted, the tracker
-                starts recording right away. This argument can be used for an initial
-                equilibration period during which no data is recorded.
+                The time :math:`t_0` after which the tracker becomes active. If omitted,
+                the tracker starts recording right away. This argument can be used for
+                an initial equilibration period during which no data is recorded.
         """
-        super().__init__(dt=dt_initial / factor, t_start=t_start)
+        # convert arguments
+        self.dt_initial = float(dt_initial)
         self.factor = float(factor)
+
+        # initialize instance
+        super().__init__(dt=self.dt_initial / self.factor, t_start=t_start)
 
     def __repr__(self):
         return (
-            f"{self.__class__.__name__}(dt={self.dt:g}, "
+            f"{self.__class__.__name__}(dt={self.dt_initial:g}, "
             f"factor={self.factor:g}, t_start={self.t_start})"
         )
+
+    def value(self, iteration: int) -> float:
+        """Calculate value of i-th interrupt.
+
+        Args:
+            iteration (int):
+                The iteration of the interrupt
+
+        Returns:
+            float: time of the i-th interrupt
+        """
+        a = self.t_start - self.dt_initial / (self.factor - 1)
+        b = self.dt_initial / (self.factor - 1)
+        return a + b * self.factor**iteration
 
     def next(self, t: float) -> float:
         self.dt *= self.factor
         return super().next(t)
 
 
+class GeometricInterrupts(InterruptsBase):
+    r"""Interrupts from the geometric sequence :math:`t_i = \Delta t f^i`
+
+    In contrast to :class:`LogarithmicInterrupts`, this class ensures that time points
+    lie on the geometric sequence given above. However, data points might be skipped if
+    the simulations progress too quickly.
+    """
+
+    def __init__(self, scale: float, factor: float):
+        """
+        Args:
+            scale (float):
+                Time scale :math:`\Delta t`.
+            factor (float):
+                Scale factor :math:`f`.
+        """
+        self.scale = float(scale)
+        self.factor = float(factor)
+        self._t_next: float | None = None  # next time it should be called
+
+    def __repr__(self):
+        return (
+            f"{self.__class__.__name__}(scale={self.scale:g}, factor={self.factor:g})"
+        )
+
+    def value(self, iteration: int) -> float:
+        """Calculate value of i-th interrupt.
+
+        Args:
+            iteration (int):
+                The iteration of the interrupt
+
+        Returns:
+            float: time of the i-th interrupt
+        """
+        return self.scale * self.factor**iteration
+
+    def initialize(self, t: float) -> float:
+        return self.next(t)
+
+    def next(self, t: float) -> float:
+        if self._t_next is None:
+            t_basis = max(t, self.scale / 2)
+        else:
+            t_basis = max(t, self._t_next / self.factor**1.5)
+        i = np.ceil(np.log(t_basis) / np.log(self.factor))
+        self._t_next = self.scale * self.factor**i
+        return self._t_next
+
+
 class RealtimeInterrupts(ConstantInterrupts):
-    """Class representing time interrupts spaced equidistantly in real time.
+    """Interrupts spaced equidistantly in real time.
 
     This spacing is only achieved approximately and depends on the initial value
     set by `dt_initial` and the actual variation in computation speed.

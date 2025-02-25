@@ -38,6 +38,7 @@ one of the following classes:
    ~interrupts.FixedInterrupts
    ~interrupts.ConstantInterrupts
    ~interrupts.LogarithmicInterrupts
+   ~interrupts.GeometricInterrupts
    ~interrupts.RealtimeInterrupts
 
 In particular, interrupts can be specified conveniently using
