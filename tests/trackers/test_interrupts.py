@@ -93,6 +93,31 @@ def test_interrupt_geometric(rng):
     ts2 = scale * factor ** np.arange(9)
     np.testing.assert_almost_equal(ts0, ts2)
 
+    with pytest.raises(ValueError):
+        GeometricInterrupts(10, -1)
+
+    interrupt = parse_interrupt("geometric(10, 1.1)")
+    assert isinstance(interrupt, GeometricInterrupts)
+    assert interrupt.scale == 10
+    assert interrupt.factor == 1.1
+
+    interrupt = parse_interrupt("geometric(1,2)")
+    assert isinstance(interrupt, GeometricInterrupts)
+    assert interrupt.scale == 1
+    assert interrupt.factor == 2
+
+    interrupt = parse_interrupt("geometric( .1e-4 , 2.E2 )")
+    assert isinstance(interrupt, GeometricInterrupts)
+    assert interrupt.scale == 0.1e-4
+    assert interrupt.factor == 2.0e2
+
+    with pytest.raises(ValueError):
+        parse_interrupt("geometric(1)")
+    with pytest.raises(ValueError):
+        parse_interrupt("geometric(1,2,3)")
+    with pytest.raises(ValueError):
+        parse_interrupt("geometric(1,zero)")
+
 
 def test_interrupt_realtime():
     """Test the RealtimeInterrupts class."""

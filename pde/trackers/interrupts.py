@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import copy
 import math
+import re
 import time
 from abc import ABCMeta, abstractmethod
 from collections.abc import Sequence
@@ -238,6 +239,8 @@ class GeometricInterrupts(InterruptsBase):
         """
         self.scale = float(scale)
         self.factor = float(factor)
+        if factor <= 0:
+            raise ValueError("Factor must be a positive number")
         self._t_next: float | None = None  # next time it should be called
 
     def __repr__(self):
@@ -261,12 +264,19 @@ class GeometricInterrupts(InterruptsBase):
         return self.next(t)
 
     def next(self, t: float) -> float:
+        # determine minimal time we need to return
         if self._t_next is None:
-            t_basis = max(t, self.scale / 2)
+            # get a time slightly below the first interrupt
+            t_min = self.scale * self.factor**-0.5
         else:
-            t_basis = max(t, self._t_next / self.factor**1.5)
-        i = np.ceil(np.log(t_basis) / np.log(self.factor))
-        self._t_next = self.scale * self.factor**i
+            # get a time slightly above the last returned interrupt
+            t_min = self._t_next * self.factor**0.5
+        # current time might have surpassed the estimate above
+        t_min = max(t, t_min)
+        # estimate (fractional) iteration number of current time point
+        i = np.log(t_min / self.scale) / np.log(self.factor)
+        # round up the fractional estimate and get associated interrupt time
+        self._t_next = self.scale * self.factor ** np.ceil(i)
         return self._t_next
 
 
@@ -335,8 +345,11 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
         data (str or number or :class:`InterruptsBase`):
             Data determining the interrupt class. If this is a :class:`InterruptsBase`,
             it is simply returned, numbers imply :class:`ConstantInterrupts`, a string
-            is parsed as a time for :class:`RealtimeInterrupts`, and lists are
-            interpreted as :class:`FixedInterrupts`.
+            is generally parsed as a time for :class:`RealtimeInterrupts`, and lists are
+            interpreted as :class:`FixedInterrupts`. Instance of
+            :class:`GeometricInterrupts` can be constructed with the special string
+            :code:`"geometric(SCALE, FACTOR)"`, specifying the `scale` and `factor`
+            values directly as numbers.
 
     Returns:
         :class:`InterruptsBase`: An instance that represents the interrupt
@@ -346,7 +359,17 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
     elif isinstance(data, (int, float)):
         return ConstantInterrupts(data)
     elif isinstance(data, str):
-        return RealtimeInterrupts(data)
+        if data.startswith("geometric"):
+            regex = r"geometric\(\s*([0-9.e+-]*)\s*,\s*([0-9.e+-]*)\s*\)"
+            matches = re.search(regex, data, re.IGNORECASE)
+            if matches:
+                scale = float(matches.group(1))
+                factor = float(matches.group(2))
+                return GeometricInterrupts(scale, factor)
+            else:
+                raise ValueError(f"Could not interpret `{data}` as interrupt")
+        else:
+            return RealtimeInterrupts(data)
     elif hasattr(data, "__iter__"):
         return FixedInterrupts(data)
     else:
