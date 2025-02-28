@@ -159,6 +159,7 @@ REQUIREMENTS = [
     Requirement(name="sphinx-gallery", version_min="0.6", docs_only=True),
     Requirement(name="sphinx-rtd-theme", version_min="1", docs_only=True),
     Requirement(name="Pillow", version_min="7.0", docs_only=True),
+    Requirement(name="utilitiez", version_min="0.3", docs_only=True, tests_only=True),
     # for tests only
     Requirement(
         name="jupyter_contrib_nbextensions", version_min="0.5", tests_only=True
