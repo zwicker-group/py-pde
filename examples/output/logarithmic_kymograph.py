@@ -2,7 +2,7 @@ r"""
 Logarithmic kymograph
 =====================
 
-This example demonstrates space-time plot with a logarithmic time axis, which are useful
+This example demonstrates a space-time plot with a logarithmic time axis, which is useful
 to analyze coarsening processes. Here, we use :func:`utilitiez.densityplot` for plotting.
 """
 
@@ -16,7 +16,7 @@ grid = pde.UnitGrid([128])
 field = pde.ScalarField.random_uniform(grid, -0.1, 0.1)
 eq = pde.CahnHilliardPDE(interface_width=2)
 
-# run the simulation and store the data in logarithmically space time intervals
+# run the simulation and store data in logarithmically spaced time intervals
 storage = pde.MemoryStorage()
 res = eq.solve(
     field, t_range=1e5, adaptive=True, tracker=[storage.tracker("geometric(10, 1.1)")]
