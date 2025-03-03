@@ -335,7 +335,7 @@ class RealtimeInterrupts(ConstantInterrupts):
         return super().next(t)
 
 
-InterruptData = Union[InterruptsBase, float, str, Sequence[float], np.ndarray]
+InterruptData = Union[InterruptsBase, int, float, str, Sequence[float], np.ndarray]
 
 
 def parse_interrupt(data: InterruptData) -> InterruptsBase:
@@ -355,10 +355,15 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
         :class:`InterruptsBase`: An instance that represents the interrupt
     """
     if isinstance(data, InterruptsBase):
+        # is already the correct class
         return data
+
     elif isinstance(data, (int, float)):
+        # is a number, so we assume a constant interrupt of that duration
         return ConstantInterrupts(data)
+
     elif isinstance(data, str):
+        # a string is either a special geometric sequence of a time duration
         if data.startswith("geometric"):
             regex = r"geometric\(\s*([0-9.e+-]*)\s*,\s*([0-9.e+-]*)\s*\)"
             matches = re.search(regex, data, re.IGNORECASE)
@@ -370,7 +375,11 @@ def parse_interrupt(data: InterruptData) -> InterruptsBase:
                 raise ValueError(f"Could not interpret `{data}` as interrupt")
         else:
             return RealtimeInterrupts(data)
+
     elif hasattr(data, "__iter__"):
+        # a sequence is supposed to give fixed time points for interrupts
         return FixedInterrupts(data)
+
     else:
+        # anything else we cannot handle
         raise TypeError(f"Cannot parse interrupt data `{data}`")
