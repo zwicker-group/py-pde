@@ -75,7 +75,6 @@ def test_example_scripts(path):
 @pytest.mark.skipif(not module_available("h5py"), reason="requires `h5py`")
 @pytest.mark.skipif(not module_available("jupyter"), reason="requires `jupyter`")
 @pytest.mark.skipif(not module_available("notebook"), reason="requires `notebook`")
-@pytest.mark.skipif(not module_available("nbconvert"), reason="requires `nbconvert`")
 @pytest.mark.parametrize("path", NOTEBOOKS)
 def test_jupyter_notebooks(path, tmp_path):
     """Run the jupyter notebooks."""
