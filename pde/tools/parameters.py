@@ -506,9 +506,16 @@ def sphinx_display_parameters(app, what, name, obj, options, lines):
 
             app.connect('autodoc-process-docstring', sphinx_display_parameters)
     """
+    # also support the Parametrized class from modelrunner
+    try:
+        from modelrunner.model.parameters import Parameterized as MRParametrized
+    except ImportError:
+        # fall-back of just using the same class
+        MRParametrized = Parameterized
+
     if (
         what == "class"
-        and issubclass(obj, Parameterized)
+        and issubclass(obj, (Parameterized, MRParametrized))
         and any(":param parameters:" in line for line in lines)
     ):
         # parse parameters
