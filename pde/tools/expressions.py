@@ -159,6 +159,11 @@ class NumpyArrayPrinter(PythonCodePrinter):
 def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.Basic:
     """Parse an expression using sympy with extra guards.
 
+    This function essentially uses :func:`~sympy.parse_expr`, albeit with a carefully
+    curated dictionary for local variables so extra symbols and functions are not parsed
+    as sympy functions. We also treat the heaviside function specially, since we
+    otherwise could only support very specific syntax.
+
     Args:
         expression (str):
             The expression to be parsed
@@ -175,7 +180,7 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
 
     # collect all symbols that are likely present and should thus be interpreted as
     # symbols by sympy. If we omit defining `local_dict`, many expressions will be
-    # parsed as objects inherent to sympy , which breaks our expressions.
+    # parsed as objects inherent to sympy, which breaks our expressions.
     local_dict = {}
 
     def fill_locals(element, sympy_cls):
@@ -593,7 +598,10 @@ class ScalarExpression(ExpressionBase):
 
         elif isinstance(expression, numbers.Number):
             # expression is a simple number
-            sympy_expr = sympy.Float(expression)
+            if np.iscomplex(expression):
+                sympy_expr = sympy.sympify(expression)
+            else:
+                sympy_expr = sympy.Float(expression)
 
         elif bool(expression):
             # parse expression as a string

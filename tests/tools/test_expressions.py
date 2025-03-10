@@ -49,11 +49,17 @@ def test_parse_expr_guarded():
     assert peg("field + 1", symbols={"field": 1, "a": 2}).subs("field", 1) == 2
 
 
-@pytest.mark.parametrize("expr", [None, 1, "1", "a - a"])
+@pytest.mark.parametrize("expr", [None, 1, "1", "a - a", "3 + 2j"])
 def test_const(expr):
     """Test simple expressions with constants."""
     e = ScalarExpression() if expr is None else ScalarExpression(expr)
-    val = 0 if expr is None or expr == "a - a" else float(expr)
+    is_complex = "j" in str(expr)
+    if expr is None or expr == "a - a":
+        val = 0
+    elif is_complex:
+        val = 3 + 2j
+    else:
+        val = float(expr)
     assert e.constant
     assert e.value == val
     assert e() == val
@@ -64,7 +70,7 @@ def test_const(expr):
     assert e.rank == 0
     assert bool(e) == (val != 0)
     assert e.is_zero == (val == 0)
-    assert not e.complex
+    assert e.complex == is_complex
 
     g = e.derivatives
     assert g.constant
