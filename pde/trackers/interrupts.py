@@ -175,7 +175,7 @@ class LogarithmicInterrupts(ConstantInterrupts):
     def __init__(
         self, dt_initial: float = 1, factor: float = 1, t_start: float | None = None
     ):
-        """
+        r"""
         Args:
             dt_initial (float):
                 The initial duration :math:`\Delta t_0` between subsequent interrupts.
@@ -230,7 +230,7 @@ class GeometricInterrupts(InterruptsBase):
     """
 
     def __init__(self, scale: float, factor: float):
-        """
+        r"""
         Args:
             scale (float):
                 Time scale :math:`\Delta t`.
