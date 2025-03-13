@@ -1146,7 +1146,8 @@ class ExpressionBC(BCBase):
                 Selects which value is actually set. Possible choices include `value`,
                 `derivative`, `mixed`, and `virtual_point`.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that can be used in expressions
+                A dictionary with user defined functions that can be used in the
+                expression
             value_cell (int):
                 Determines which cells is read to determine the field value that is used
                 as `value` in the expression or the function call. The default (`None`)

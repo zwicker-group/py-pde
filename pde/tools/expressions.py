@@ -245,7 +245,8 @@ class ExpressionBase(metaclass=ABCMeta):
                 renamed to the definite name. If signature is `None`, all variables in
                 `expressions` are allowed.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that used in the expression.
+                A dictionary with user defined functions that can be used in the
+                expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
@@ -558,7 +559,8 @@ class ScalarExpression(ExpressionBase):
                 renamed to the definite name. If signature is `None`, all variables in
                 `expressions` are allowed.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that used in the expression.
+                A dictionary with user defined functions that can be used in the
+                expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
@@ -764,7 +766,8 @@ class TensorExpression(ExpressionBase):
                 renamed to the definite name. If signature is `None`, all variables in
                 `expressions` are allowed.
             user_funcs (dict, optional):
-                A dictionary with user defined functions that used in the expression.
+                A dictionary with user defined functions that can be used in the
+                expression.
             consts (dict, optional):
                 A dictionary with user defined constants that can be used in the
                 expression. The values of these constants should either be numbers or
