@@ -1886,7 +1886,7 @@ class ConstBCBase(BCBase):
                 # not depend on some of the variables, but we still want the array
                 # to contain a value at each boundary point
                 result = np.empty_like(bc_coords[0])
-                coords: dict[str, float] = {name: 0 for name in self.grid.axes}
+                coords: dict[str, float] = dict.fromkeys(self.grid.axes, 0)
                 # set the coordinate of this BC
                 coords[self.grid.axes[self.axis]] = self.axis_coord
                 for idx in np.ndindex(*result.shape):

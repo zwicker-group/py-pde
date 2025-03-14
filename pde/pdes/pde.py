@@ -178,7 +178,7 @@ class PDE(PDEBase):
                     self._logger.info("Transformed expression to `%s`", rhs_item)
 
             # create placeholder dictionary of constants that will be specified later
-            consts_d: dict[str, NumberOrArray] = {name: 0 for name in consts}
+            consts_d: dict[str, NumberOrArray] = dict.fromkeys(consts, 0)
             rhs_expr = ScalarExpression(
                 rhs_item,
                 user_funcs=user_funcs,
@@ -708,7 +708,7 @@ class PDE(PDEBase):
             else:
                 dim = len(self.variables)
                 if isinstance(state_hom, numbers.Number):
-                    state_dict = {v: state_hom for v in self.variables}  # type: ignore
+                    state_dict = dict.fromkeys(self.variables, state_hom)  # type: ignore
                 elif len(state_hom) != dim:
                     raise ValueError(f"Expect {dim} values in `state_hom`")
                 else:

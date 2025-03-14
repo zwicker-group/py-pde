@@ -156,7 +156,7 @@ def test_too_many_channels(tmp_path, rng):
 
     field = pde.FieldCollection.scalar_random_uniform(5, pde.UnitGrid([16]), rng=rng)
     writer = MovieStorage(path)
-    eq = pde.PDE({s: "0" for s in "abcde"})
+    eq = pde.PDE(dict.fromkeys("abcde", "0"))
     with pytest.raises(RuntimeError):
         eq.solve(field, t_range=3.5, backend="numpy", tracker=writer.tracker(2))
 
