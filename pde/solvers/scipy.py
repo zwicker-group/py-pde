@@ -15,6 +15,9 @@ from ..tools.typing import BackendType
 from .base import SolverBase
 
 
+class ScipySolverError(RuntimeError): ...
+
+
 class ScipySolver(SolverBase):
     """PDE solver using :func:`scipy.integrate.solve_ivp`.
 
@@ -87,6 +90,7 @@ class ScipySolver(SolverBase):
             if dt is not None:
                 self.solver_params["first_step"] = min(t_end - t_start, dt)
 
+            # run the scipy integrator
             sol = integrate.solve_ivp(
                 rhs_helper,
                 t_span=(t_start, t_end),
@@ -94,6 +98,12 @@ class ScipySolver(SolverBase):
                 t_eval=[t_end],  # only store necessary data of the final time point
                 **self.solver_params,
             )
+
+            # check whether the integrator was successful
+            if not sol.success:
+                raise ScipySolverError(sol.message)
+
+            # store information about this step
             self.info["steps"] += sol.nfev
             state.data[:] = sol.y.reshape(shape)
             return sol.t[0]  # type: ignore
