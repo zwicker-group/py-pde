@@ -92,7 +92,7 @@ class TrackerBase(metaclass=ABCMeta):
             float: The first time the tracker needs to handle data
         """
         if info is not None:
-            t_start = info.get("solver", {}).get("t_start", 0)
+            t_start = info.get("controller", {}).get("t_start", 0)
         else:
             t_start = 0
         return self.interrupt.initialize(t_start)
