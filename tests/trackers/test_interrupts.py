@@ -5,6 +5,7 @@
 import numpy as np
 import pytest
 
+import pde
 from pde.trackers.interrupts import (
     ConstantInterrupts,
     FixedInterrupts,
@@ -169,3 +170,27 @@ def test_interrupt_fixed():
     assert np.isinf(ival.next(0))
     with pytest.raises(ValueError):
         ival = FixedInterrupts([[1]])
+
+
+@pytest.mark.parametrize("t_start", [0, 1])
+def test_interrupt_integrated(t_start):
+    """Test how interrupts are used in py-pde."""
+
+    # Initialize the equation and the space.
+    state = pde.ScalarField(pde.UnitGrid([1]))
+
+    # Solve the equation and store the trajectory.
+    storage = pde.MemoryStorage()
+    eq = pde.DiffusionPDE()
+    dt = 0.001
+    final_state = eq.solve(
+        state,
+        t_range=[t_start, t_start + 0.25],
+        dt=dt,
+        backend="numpy",
+        tracker=storage.tracker(0.1),
+    )
+
+    assert storage.times[0] == pytest.approx(t_start)
+    assert storage.times[1] == pytest.approx(t_start + 0.1, abs=dt)
+    assert len(storage) == 3
