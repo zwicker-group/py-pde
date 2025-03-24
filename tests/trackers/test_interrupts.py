@@ -172,8 +172,9 @@ def test_interrupt_fixed():
         ival = FixedInterrupts([[1]])
 
 
-@pytest.mark.parametrize("t_start", [0, 1])
-def test_interrupt_integrated(t_start):
+@pytest.mark.parametrize("t_start", [-1, 0, 1])
+@pytest.mark.parametrize("adaptive", [False, True])
+def test_interrupt_integrated(t_start, adaptive):
     """Test how interrupts are used in py-pde."""
 
     # Initialize the equation and the space.
@@ -187,10 +188,11 @@ def test_interrupt_integrated(t_start):
         state,
         t_range=[t_start, t_start + 0.25],
         dt=dt,
+        adaptive=adaptive,
         backend="numpy",
         tracker=storage.tracker(0.1),
     )
 
     assert storage.times[0] == pytest.approx(t_start)
-    assert storage.times[1] == pytest.approx(t_start + 0.1, abs=dt)
+    assert storage.times[1] == pytest.approx(t_start + 0.1)
     assert len(storage) == 3

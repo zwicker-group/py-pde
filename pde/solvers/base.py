@@ -408,8 +408,8 @@ class SolverBase:
             """Advance `state` from `t_start` to `t_end` using fixed steps."""
             # retrieve last post_step_data and continue with this
             post_step_data = self.info["post_step_data"]
-            # calculate number of steps (which is at least 1)
-            steps = max(1, int(np.ceil((t_end - t_start) / dt_float)))
+            # calculate number of steps that lead to an end time closest to t_end
+            steps = max(1, int(round((t_end - t_start) / dt_float)))
             # call the stepper with fixed time steps
             t_last = fixed_stepper(state.data, t_start, steps, post_step_data)
             # keep some stats and data
