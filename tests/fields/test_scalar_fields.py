@@ -436,7 +436,7 @@ def test_complex_dtype():
 
     f = ScalarField(grid, 1)
     assert not f.is_complex
-    with pytest.raises(np.core._exceptions.UFuncTypeError):
+    with pytest.raises(TypeError):
         f += 1j
 
     f = f + 1j
