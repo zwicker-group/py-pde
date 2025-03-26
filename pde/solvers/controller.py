@@ -194,7 +194,7 @@ class Controller:
         if dt is None:  # self.solver.info['dt'] might be None
             atol = 1e-12
         else:
-            atol = 0.1 * dt
+            atol = 1e-9 * dt
 
         # evolve the system from t_start to t_end
         t = t_start

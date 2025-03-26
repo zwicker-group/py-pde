@@ -241,11 +241,12 @@ class TrackerCollection:
         # check each tracker to see whether we need to handle it
         stop_iteration_err = None
         for i, t_next in enumerate(self.tracker_action_times):
-            if t > t_next or np.isclose(t, t_next, atol=atol, rtol=0):
+            if t > t_next - atol:
                 try:
                     self.trackers[i].handle(state, t)
                 except StopIteration as err:
-                    # stop iteration after all trackers have been handled
+                    # This tracker requested to stop the iteration. We save this
+                    # information for later, so we can first handle all trackers.
                     stop_iteration_err = err
 
                 # calculate next event (may skip some if too close)
