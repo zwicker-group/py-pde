@@ -250,11 +250,11 @@ def get_package_versions(
     versions: dict[str, str] = {}
     for name in sorted(packages):
         try:
-            module = importlib.import_module(name.replace("-", "_"))
+            version = importlib.metadata.version(name)
         except ImportError:
             versions[name] = na_str
         else:
-            versions[name] = module.__version__
+            versions[name] = version
     return versions
 
 
