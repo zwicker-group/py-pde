@@ -520,7 +520,7 @@ class GridBase(metaclass=ABCMeta):
     @cached_property()
     def cell_coords(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: coordinate values for all axes of each cell."""
-        return np.moveaxis(self.coordinate_arrays, 0, -1)
+        return np.moveaxis(self.coordinate_arrays, 0, -1)  # type: ignore
 
     @cached_property()
     def cell_volumes(self) -> np.ndarray:
@@ -535,7 +535,7 @@ class GridBase(metaclass=ABCMeta):
         else:
             # use cell_volume_data
             vols = functools.reduce(np.outer, self.cell_volume_data)
-            return np.broadcast_to(vols, self.shape)
+            return np.broadcast_to(vols, self.shape)  # type: ignore
 
     @cached_property()
     def uniform_cell_volumes(self) -> bool:
@@ -769,7 +769,7 @@ class GridBase(metaclass=ABCMeta):
         """
         point = np.asarray(point, dtype=np.double)
         if point.size == 0:
-            return np.zeros((0, self.num_axes))
+            return np.zeros((0, self.num_axes))  # type: ignore
 
         if point.ndim == 0:
             if self.num_axes > 1:
@@ -857,7 +857,7 @@ class GridBase(metaclass=ABCMeta):
                         res[..., i] = self.c.coordinate_limits[i][1]
                     else:
                         res[..., i] = value
-            return res
+            return res  # type: ignore
 
     def transform(
         self, coordinates: np.ndarray, source: CoordsType, target: CoordsType
@@ -1412,10 +1412,10 @@ class GridBase(metaclass=ABCMeta):
                         set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
 
                         # apply operator
-                        operator_raw(arr_full, out)
+                        operator_raw(arr_full, out)  # type: ignore
 
                         # return valid part of the output
-                        return out
+                        return out  # type: ignore
 
                 else:
                     # reuse provided `out` array
@@ -1608,7 +1608,7 @@ class GridBase(metaclass=ABCMeta):
             np.isscalar(d) for d in self.cell_volume_data
         ):
             # all cells have the same volume
-            cell_volume = np.prod(self.cell_volume_data)  # type: ignore
+            cell_volume = np.prod(self.cell_volume_data)
 
             @jit
             def get_cell_volume(*args) -> float:
@@ -1770,7 +1770,7 @@ class GridBase(metaclass=ABCMeta):
                 Returns:
                     :class:`~numpy.ndarray`: The interpolated value at the point
                 """
-                c_li, c_hi, w_l, w_h = data_x(point[0])
+                c_li, c_hi, w_l, w_h = data_x(float(point[0]))
 
                 if c_li == -42:  # out of bounds
                     if fill is None:  # outside the domain
@@ -1780,7 +1780,7 @@ class GridBase(metaclass=ABCMeta):
                         return fill
 
                 # do the linear interpolation
-                return w_l * data[..., c_li] + w_h * data[..., c_hi]
+                return w_l * data[..., c_li] + w_h * data[..., c_hi]  # type: ignore
 
         elif self.num_axes == 2:
             # specialize for 2-dimensional interpolation
@@ -1803,8 +1803,8 @@ class GridBase(metaclass=ABCMeta):
                     :class:`~numpy.ndarray`: The interpolated value at the point
                 """
                 # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
-                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
+                c_xli, c_xhi, w_xl, w_xh = data_x(float(point[0]))
+                c_yli, c_yhi, w_yl, w_yh = data_y(float(point[1]))
 
                 if c_xli == -42 or c_yli == -42:  # out of bounds
                     if fill is None:  # outside the domain
@@ -1843,9 +1843,9 @@ class GridBase(metaclass=ABCMeta):
                     :class:`~numpy.ndarray`: The interpolated value at the point
                 """
                 # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
-                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
-                c_zli, c_zhi, w_zl, w_zh = data_z(point[2])
+                c_xli, c_xhi, w_xl, w_xh = data_x(float(point[0]))
+                c_yli, c_yhi, w_yl, w_yh = data_y(float(point[1]))
+                c_zli, c_zhi, w_zl, w_zh = data_z(float(point[2]))
 
                 if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
                     if fill is None:  # outside the domain
@@ -1916,7 +1916,7 @@ class GridBase(metaclass=ABCMeta):
                         different discretizations and in particular grids with
                         non-uniform discretizations
                 """
-                c_li, c_hi, w_l, w_h = data_x(point[0])
+                c_li, c_hi, w_l, w_h = data_x(float(point[0]))
 
                 if c_li == -42:  # out of bounds
                     raise DomainError("Point lies outside the grid domain")
@@ -1952,8 +1952,8 @@ class GridBase(metaclass=ABCMeta):
                         non-uniform discretizations
                 """
                 # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
-                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
+                c_xli, c_xhi, w_xl, w_xh = data_x(float(point[0]))
+                c_yli, c_yhi, w_yl, w_yh = data_y(float(point[1]))
 
                 if c_xli == -42 or c_yli == -42:  # out of bounds
                     raise DomainError("Point lies outside the grid domain")
@@ -1999,9 +1999,9 @@ class GridBase(metaclass=ABCMeta):
                         non-uniform discretizations
                 """
                 # determine surrounding points and their weights
-                c_xli, c_xhi, w_xl, w_xh = data_x(point[0])
-                c_yli, c_yhi, w_yl, w_yh = data_y(point[1])
-                c_zli, c_zhi, w_zl, w_zh = data_z(point[2])
+                c_xli, c_xhi, w_xl, w_xh = data_x(float(point[0]))
+                c_yli, c_yhi, w_yl, w_yh = data_y(float(point[1]))
+                c_zli, c_zhi, w_zl, w_zh = data_z(float(point[2]))
 
                 if c_xli == -42 or c_yli == -42 or c_zli == -42:  # out of bounds
                     raise DomainError("Point lies outside the grid domain")
@@ -2068,7 +2068,7 @@ class GridBase(metaclass=ABCMeta):
                     assert arr.shape == grid_shape
                     total = 0
                     for i in range(arr.size):
-                        total += get_cell_volume(i) * arr.flat[i]
+                        total += get_cell_volume(i) * arr.flat[i]  # type: ignore
                     return total
 
             else:
@@ -2084,7 +2084,7 @@ class GridBase(metaclass=ABCMeta):
                         arr_comp = arr[idx]
                         for i in range(arr_comp.size):
                             total[idx] += get_cell_volume(i) * arr_comp.flat[i]
-                    return total
+                    return total  # type: ignore
 
             return impl
 

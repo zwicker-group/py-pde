@@ -100,7 +100,7 @@ def _subdivide(num: int, chunks: int) -> np.ndarray:
     """
     if chunks > num:
         raise RuntimeError("Cannot divide in more chunks than support points")
-    return np.diff(np.linspace(0, num, chunks + 1).astype(int))
+    return np.diff(np.linspace(0, num, chunks + 1).astype(int))  # type: ignore
 
 
 def _subdivide_along_axis(grid: GridBase, axis: int, chunks: int) -> list[GridBase]:
@@ -245,7 +245,7 @@ class GridMesh:
         for axis, chunks in enumerate(decomposition):
             # iterate over all grids that have been determined already
             for idx, subgrid in np.ndenumerate(subgrids[tuple(idx_set)]):
-                i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)  # type: ignore
+                i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)
                 divison = _subdivide_along_axis(subgrid, axis=axis, chunks=chunks)
                 subgrids[i] = divison
 
@@ -257,7 +257,7 @@ class GridMesh:
     @property
     def num_axes(self) -> int:
         """int: the number of axes that the grids possess"""
-        return self.subgrids.ndim
+        return self.subgrids.ndim  # type: ignore
 
     @property
     def shape(self) -> tuple[int, ...]:
@@ -266,7 +266,7 @@ class GridMesh:
 
     def __len__(self) -> int:
         """Total number of subgrids."""
-        return self.subgrids.size
+        return self.subgrids.size  # type: ignore
 
     @property
     def current_node(self) -> int:

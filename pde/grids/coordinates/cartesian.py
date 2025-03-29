@@ -55,7 +55,7 @@ class CartesianCoordinates(CoordinatesBase):
     def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
         jac = np.zeros((self.dim, self.dim) + points.shape[:-1])
         jac[range(self.dim), range(self.dim)] = 1
-        return jac
+        return jac  # type: ignore
 
     def _volume_factor(self, points: np.ndarray) -> ArrayLike:
         return np.ones(points.shape[:-1])
@@ -64,7 +64,7 @@ class CartesianCoordinates(CoordinatesBase):
         return np.prod(c_high - c_low, axis=-1)
 
     def _scale_factors(self, points: np.ndarray) -> np.ndarray:
-        return np.ones_like(points)
+        return np.ones_like(points)  # type: ignore
 
     def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
-        return np.eye(self.dim)
+        return np.eye(self.dim)  # type: ignore

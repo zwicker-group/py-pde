@@ -151,7 +151,7 @@ class PDE(PDEBase):
         # parse noise strength
         if isinstance(noise, dict):
             noise = [noise.get(var, 0) for var in rhs]
-        if hasattr(noise, "__iter__") and len(noise) != len(rhs):  # type: ignore
+        if hasattr(noise, "__iter__") and len(noise) != len(rhs):
             raise ValueError("Number of noise strengths does not match field count")
 
         super().__init__(noise=noise, rng=rng)
@@ -439,7 +439,7 @@ class PDE(PDEBase):
                 raise TypeError(f"Constant has unsupported type {value.__class__}")
 
             for rhs in self._rhs_expr.values():
-                rhs.consts[name] = value  # type: ignore
+                rhs.consts[name] = value
 
         # obtain functions used in the expression
         ops_general: dict[str, Callable] = {}
@@ -624,7 +624,7 @@ class PDE(PDEBase):
                     with nb.objmode():
                         data_tpl = get_data_tuple(state_data)
                         wrap(data_tpl, t, out)
-                    return out
+                    return out  # type: ignore
 
                 return evolution_rate  # type: ignore
 

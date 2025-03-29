@@ -802,7 +802,7 @@ class SteadyStateTracker(TrackerBase):
         # calculate the maximal deviation of the evolution rate from zero, subtracting
         # the relative tolerance with respect to the field values
         rate_abs = np.abs(evolution_rate) - self.rtol * np.abs(field.data[finite])
-        rate_abs_max = np.max(rate_abs)
+        rate_abs_max: np.ndarray = np.max(rate_abs)
 
         # check wether the simulation has converged
         if rate_abs_max <= self.atol:

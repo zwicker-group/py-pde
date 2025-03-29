@@ -376,7 +376,7 @@ class FieldBase(metaclass=ABCMeta):
     def dtype(self) -> DTypeLike:
         """:class:`~DTypeLike`: the numpy dtype of the underlying data."""
         # this property is necessary to support np.iscomplexobj for DataFieldBases
-        return self.data.dtype  # type: ignore
+        return self.data.dtype
 
     @property
     def is_complex(self) -> bool:

@@ -40,7 +40,7 @@ class BisphericalCoordinates(CoordinatesBase):
         x = self.scale_parameter * np.sin(σ) / denom * np.cos(φ)
         y = self.scale_parameter * np.sin(σ) / denom * np.sin(φ)
         z = self.scale_parameter * np.sinh(τ) / denom
-        return np.stack((x, y, z), axis=-1)
+        return np.stack((x, y, z), axis=-1)  # type: ignore
 
     def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
         x, y, z = points[..., 0], points[..., 1], points[..., 2]
@@ -51,7 +51,7 @@ class BisphericalCoordinates(CoordinatesBase):
         σ = np.pi - 2 * np.arctan2(2 * a * d, denom)
         τ = 0.5 * np.log(((z + a) ** 2 + d**2) / ((z - a) ** 2 + d**2))
         φ = np.arctan2(y, x)
-        return np.stack((σ, τ, φ), axis=-1)
+        return np.stack((σ, τ, φ), axis=-1)  # type: ignore
 
     def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
@@ -75,12 +75,12 @@ class BisphericalCoordinates(CoordinatesBase):
 
     def _volume_factor(self, points: np.ndarray) -> ArrayLike:
         σ, τ = points[..., 0], points[..., 1]
-        return self.scale_parameter**3 * np.sin(σ) * (np.cosh(τ) - np.cos(σ)) ** -3  # type: ignore
+        return self.scale_parameter**3 * np.sin(σ) * (np.cosh(τ) - np.cos(σ)) ** -3
 
     def _scale_factors(self, points: np.ndarray) -> np.ndarray:
         σ, τ = points[..., 0], points[..., 1]
         sf = self.scale_parameter / (np.cosh(τ) - np.cos(σ))
-        return np.array([sf, sf, sf * np.sin(σ)])
+        return np.array([sf, sf, sf * np.sin(σ)])  # type: ignore
 
     def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
         σ, τ, φ = points[..., 0], points[..., 1], points[..., 2]
@@ -93,7 +93,7 @@ class BisphericalCoordinates(CoordinatesBase):
         cosφ = np.cos(φ)
         d = cosσ - coshτ
 
-        return np.array(
+        return np.array(  # type: ignore
             [
                 [
                     cosφ * (1 - cosσ * coshτ) / d,

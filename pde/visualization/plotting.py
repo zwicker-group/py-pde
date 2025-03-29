@@ -360,7 +360,7 @@ class ScalarFieldPlot:
 
                 # initialize image
                 ax = self.axes[i, j]
-                img = ax.imshow(
+                img = ax.imshow(  # type: ignore
                     empty,
                     vmin=vmin,
                     vmax=vmax,
@@ -370,9 +370,9 @@ class ScalarFieldPlot:
                     interpolation="quadric",
                 )
                 _add_horizontal_colorbar(img, ax)
-                ax.set_title(panel.get("title", ""))
-                ax.set_xlabel(example_image["label_x"])
-                ax.set_ylabel(example_image["label_y"])
+                ax.set_title(panel.get("title", ""))  # type: ignore
+                ax.set_xlabel(example_image["label_x"])  # type: ignore
+                ax.set_ylabel(example_image["label_y"])  # type: ignore
 
                 # store the default value alongside
                 img._default_vmin_vmax = vmin, vmax
