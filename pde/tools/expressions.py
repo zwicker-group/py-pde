@@ -600,7 +600,7 @@ class ScalarExpression(ExpressionBase):
 
         elif isinstance(expression, numbers.Number):
             # expression is a simple number
-            if np.iscomplex(expression):
+            if np.iscomplex(expression):  # type: ignore
                 sympy_expr = sympy.sympify(expression)
             else:
                 sympy_expr = sympy.Float(expression)

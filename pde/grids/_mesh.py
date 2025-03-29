@@ -262,7 +262,7 @@ class GridMesh:
     @property
     def shape(self) -> tuple[int, ...]:
         """tuple: the number of subgrids along each axis"""
-        return self.subgrids.shape
+        return self.subgrids.shape  # type: ignore
 
     def __len__(self) -> int:
         """Total number of subgrids."""
