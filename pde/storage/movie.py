@@ -35,9 +35,9 @@ from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 def _get_limits(value: float | ArrayLike, dim: int) -> np.ndarray:
     """Helper function creating sequence of length `dim` from input."""
     if np.isscalar(value):
-        return np.full(dim, value, dtype=float)
+        return np.full(dim, value, dtype=float)  # type: ignore
     else:
-        return np.asarray(value)[:dim].astype(float)
+        return np.asarray(value)[:dim].astype(float)  # type: ignore
 
 
 class MovieStorage(StorageBase):
@@ -262,7 +262,7 @@ class MovieStorage(StorageBase):
         vmin = _get_limits(self.vmin, len(fields))
         vmax = _get_limits(self.vmax, len(fields))
         for f_id, f in enumerate(fields):
-            norm = Normalize(vmin[f_id], vmax[f_id], clip=True)
+            norm = Normalize(vmin[f_id], vmax[f_id], clip=True)  # type: ignore
             num = f.grid.dim**f.rank  # independent components in the field
             self._norms.extend([norm] * num)
 

@@ -345,7 +345,7 @@ class VectorField(DataFieldBase):
                         assert a.shape == b.shape == in_shape
                         out = np.empty(out_shape, dtype=dtype)
                         calc(a, b, out)
-                        return out
+                        return out  # type: ignore
 
                 else:
                     # function is called with `out` argument -> reuse `out` array

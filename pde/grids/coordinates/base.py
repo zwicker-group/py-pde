@@ -62,7 +62,7 @@ class CoordinatesBase:
         if axis == -1 or axis == self.dim - 1:
             return self._pos_to_cart(points)
         else:
-            return np.apply_along_axis(self._pos_to_cart, axis, points)
+            return np.apply_along_axis(self._pos_to_cart, axis, points)  # type:ignore
 
     def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
         # actual calculation needs to be implemented by sub-class
@@ -86,7 +86,7 @@ class CoordinatesBase:
         if axis == -1 or axis == self.dim - 1:
             return self._pos_from_cart(points)
         else:
-            return np.apply_along_axis(self._pos_from_cart, axis, points)
+            return np.apply_along_axis(self._pos_from_cart, axis, points)  # type:ignore
 
     def distance(self, p1: np.ndarray, p2: np.ndarray, *, axis: int = -1) -> float:
         """Calculate the distance between two points.
@@ -108,7 +108,7 @@ class CoordinatesBase:
         return np.linalg.norm(x2 - x1, axis=axis)  # type: ignore
 
     def _scale_factors(self, points: np.ndarray) -> np.ndarray:
-        return np.diag(self.metric(points)) ** 2
+        return np.diag(self.metric(points)) ** 2  # type:ignore
 
     def scale_factors(self, points: np.ndarray) -> np.ndarray:
         """Calculate the scale factors at various points.
@@ -134,7 +134,7 @@ class CoordinatesBase:
         if self.dim == 1 and jac.ndim != points.ndim + 1:
             # this happens with some versions of scipy, which collapses dimensions
             jac = jac[..., np.newaxis]
-        return jac
+        return jac  # type:ignore
 
     def mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
         """Returns the Jacobian matrix of the coordinate mapping.
@@ -153,7 +153,7 @@ class CoordinatesBase:
 
     def _volume_factor(self, points: np.ndarray) -> ArrayLike:
         # default implementation based on scale factors
-        return np.prod(self._scale_factors(points), axis=0)  # type: ignore
+        return np.prod(self._scale_factors(points), axis=0)
 
     def volume_factor(self, points: np.ndarray) -> ArrayLike:
         """Calculate the volume factors at various points.
@@ -178,7 +178,7 @@ class CoordinatesBase:
             cell_volumes[i] = integrate.nquad(
                 lambda *x: self._volume_factor(np.array(x)), np.c_[c_low[i], c_high[i]]
             )[0]
-        return cell_volumes
+        return cell_volumes  # type:ignore
 
     def cell_volume(self, c_low: np.ndarray, c_high: np.ndarray) -> np.ndarray:
         """Calculate the volume between coordinate lines.
@@ -214,7 +214,7 @@ class CoordinatesBase:
         points = np.atleast_1d(points)
         metric = np.zeros((self.dim, self.dim) + points.shape[:-1])
         metric[range(self.dim), range(self.dim)] = self.scale_factors(points) ** 2
-        return metric
+        return metric  # type:ignore
 
     def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
         raise NotImplementedError

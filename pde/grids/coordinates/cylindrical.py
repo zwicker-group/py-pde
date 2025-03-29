@@ -32,19 +32,19 @@ class CylindricalCoordinates(CoordinatesBase):
         r, φ, z = points[..., 0], points[..., 1], points[..., 2]
         x = r * np.cos(φ)
         y = r * np.sin(φ)
-        return np.stack((x, y, z), axis=-1)
+        return np.stack((x, y, z), axis=-1)  # type: ignore
 
     def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
         x, y, z = points[..., 0], points[..., 1], points[..., 2]
         r = np.hypot(x, y)
         φ = np.arctan2(y, x)
-        return np.stack((r, φ, z), axis=-1)
+        return np.stack((r, φ, z), axis=-1)  # type: ignore
 
     def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
         r, φ = points[..., 0], points[..., 1]
         sinφ, cosφ = np.sin(φ), np.cos(φ)
         zero = np.zeros_like(r)
-        return np.array(
+        return np.array(  # type: ignore
             [
                 [cosφ, -r * sinφ, zero],
                 [sinφ, r * cosφ, zero],
@@ -63,13 +63,13 @@ class CylindricalCoordinates(CoordinatesBase):
     def _scale_factors(self, points: np.ndarray) -> np.ndarray:
         r = points[..., 0]
         ones = np.ones_like(r)
-        return np.array([ones, r, ones])
+        return np.array([ones, r, ones])  # type: ignore
 
     def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
         φ = points[..., 1]
         sinφ, cosφ = np.sin(φ), np.cos(φ)
         zero = np.zeros_like(φ)
-        return np.array(
+        return np.array(  # type: ignore
             [
                 [cosφ, sinφ, zero],
                 [-sinφ, cosφ, zero],

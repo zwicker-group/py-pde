@@ -680,7 +680,7 @@ class FieldCollection(FieldBase):
     @property
     def magnitudes(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: scalar magnitudes of all fields."""
-        return np.array([field.magnitude for field in self])
+        return np.array([field.magnitude for field in self])  # type: ignore
 
     def get_line_data(  # type: ignore
         self,

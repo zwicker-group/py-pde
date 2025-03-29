@@ -36,11 +36,11 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
         float or :class:`~numpy.ndarray`: Volume of the sphere
     """
     if dim == 1:
-        return 2 * radius
+        return 2 * radius  # type: ignore
     elif dim == 2:
-        return np.pi * radius**2
+        return np.pi * radius**2  # type: ignore
     elif dim == 3:
-        return 4 / 3 * np.pi * radius**3
+        return 4 / 3 * np.pi * radius**3  # type: ignore
     else:
         raise NotImplementedError(f"Cannot calculate the volume in {dim} dimensions")
 
@@ -231,7 +231,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
             return self.transform(r, "grid", "cell")
 
         elif coords == "grid":
-            return r
+            return r  # type: ignore
 
         else:
             raise ValueError(f"Unknown coordinate system `{coords}`")

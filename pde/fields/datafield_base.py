@@ -520,7 +520,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             if self.rank == 0:
                 fill = self.data.dtype.type(fill)
             else:
-                fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)  # type: ignore
+                fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
 
         # create the method to interpolate data at a single point
         interpolate_single = grid._make_interpolator_compiled(
@@ -571,7 +571,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             for idx in np.ndindex(*point_shape):
                 out[(...,) + idx] = interpolate_single(data, point[idx])
 
-            return out
+            return out  # type: ignore
 
         # store a reference to the data so it is not garbage collected too early
         interpolator._data = self.data
@@ -685,13 +685,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             c_h[..., ax] %= grid.shape[ax]
 
         # determine the valid points and the total weight in first iteration
-        total_weight = 0
+        total_weight = 0.0
         cells = []
         for i in np.ndindex(*((2,) * grid_dim)):
             coords = np.choose(i, [c_l, c_h])
             if np.all(coords >= 0) and np.all(coords < grid.shape):
                 weight = np.prod(np.choose(i, [w_l, w_h]))
-                total_weight += weight
+                total_weight += weight  # type: ignore
                 cells.append((tuple(coords), weight))
 
         if total_weight == 0:
@@ -1003,7 +1003,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                         assert b.shape == b_shape
                         out = np.empty(out_shape, dtype=dtype)
                         calc(a, b, out)
-                        return out
+                        return out  # type: ignore
 
                 else:
                     # function is called with `out` argument -> reuse `out` array

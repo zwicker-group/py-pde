@@ -439,7 +439,7 @@ class PDEBase(metaclass=ABCMeta):
                             for i in range(state_data[n].size):
                                 scale = noises_var[n] / cell_volume(i)
                                 out[n].flat[i] = np.sqrt(scale) * np.random.randn()
-                    return out
+                    return out  # type: ignore
 
             else:
                 # a single noise value is given for all fields
@@ -452,7 +452,7 @@ class PDEBase(metaclass=ABCMeta):
                     for i in range(state_data.size):
                         scale = noise_var / cell_volume(i)
                         out.flat[i] = np.sqrt(scale) * np.random.randn()
-                    return out
+                    return out  # type: ignore
 
         else:
 

@@ -141,7 +141,7 @@ def flat_idx(arr: np.ndarray, i: int) -> Number:
     if np.isscalar(arr):
         return arr  # type: ignore
     else:
-        return arr.flat[i]  # type: ignore
+        return arr.flat[i]
 
 
 @overload(flat_idx)

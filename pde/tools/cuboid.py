@@ -19,6 +19,8 @@ from .typing import FloatNumerical
 class Cuboid:
     """Class that represents a cuboid in :math:`n` dimensions."""
 
+    _size: np.ndarray
+
     def __init__(self, pos, size, mutable: bool = True):
         """Defines a cuboid from a position and a size vector.
 
@@ -173,7 +175,7 @@ class Cuboid:
         null = sides == 0
         null_count = null.sum()
         if null_count == 0:
-            return 2 * np.sum(np.prod(sides) / sides)  # type: ignore
+            return 2 * np.sum(np.prod(sides) / sides)
         elif null_count == 1:
             return 2 * np.prod(sides[~null])  # type: ignore
         else:

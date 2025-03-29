@@ -1906,18 +1906,18 @@ class ConstBCBase(BCBase):
             # assume tensorial and/or inhomogeneous values
             value = np.asarray(value)
 
-            if value.ndim == 0:
+            if value.ndim == 0:  # type: ignore
                 # value is a scalar
                 result = np.broadcast_to(value, self._shape_tensor)
-            elif value.shape == self._shape_tensor + self._shape_boundary:
+            elif value.shape == self._shape_tensor + self._shape_boundary:  # type: ignore
                 # inhomogeneous field with all tensor components
                 result = value
-            elif value.shape == self._shape_tensor:
+            elif value.shape == self._shape_tensor:  # type: ignore
                 # homogeneous field with all tensor components
                 result = value
             else:
                 raise ValueError(
-                    f"Dimensions {value.shape} of the given value are incompatible "
+                    f"Dimensions {value.shape} of the given value are incompatible "  # type: ignore
                     f"with the expected shape {self._shape_tensor} of the boundary "
                     f"value and its spatial dimensions {self._shape_boundary}. "
                     f"(rank={self.rank}, normal={self.normal})"
@@ -1927,7 +1927,7 @@ class ConstBCBase(BCBase):
         if np.any(np.isnan(result)):
             _logger.warning("In valid values in %s", self)
 
-        return result
+        return result  # type: ignore
 
     def link_value(self, value: np.ndarray):
         """Link value of this boundary condition to external array."""
