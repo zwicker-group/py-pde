@@ -52,6 +52,7 @@ class StorageBase(metaclass=ABCMeta):
 
     def __init__(
         self,
+        *,
         info: InfoDict | None = None,
         write_mode: WriteModeType = "truncate_once",
     ):
@@ -196,8 +197,8 @@ class StorageBase(metaclass=ABCMeta):
         """Initialize internal field variable."""
         if self.grid is None:
             raise RuntimeError(
-                "Could not load grid from data. Please set the `_grid` attribute "
-                "to the grid that has been used for the stored data"
+                "Could not load grid from data. Please set the `storage._grid` "
+                "attribute to the grid that has been used for the stored data."
             )
 
         if "field_attributes" in self.info:
@@ -224,7 +225,9 @@ class StorageBase(metaclass=ABCMeta):
             else:
                 raise RuntimeError(
                     "`field` attribute was not stored in file and the data shape "
-                    f"{local_shape} could not be interpreted automatically"
+                    f"{local_shape} could not be interpreted automatically. To be able "
+                    "to read the data automatically, please set the `storage._field` "
+                    "attribute to a field that then will define how data is interpreted."
                 )
             self._logger.warning(
                 "`field` attribute was not stored. Assume data is of type %s.",
