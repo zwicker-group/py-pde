@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from typing import Callable, Literal
 
 import numpy as np
@@ -105,14 +106,14 @@ def make_correlated_noise(
     rng: np.random.Generator | None = None,
     **kwargs,
 ) -> Callable[[], np.ndarray]:
-    r"""Return a function creating random values with exponential spatial correlations.
+    r"""Return a function creating random values with specified spatial correlations.
 
     The returned field :math:`f` generally obeys a selected correlation function
-    :math:`C(\boldsymbol k)`. In Fourier space, we thus have
+    :math:`C(k)`. In Fourier space, we thus have
 
     .. math::
         \langle f(\boldsymbol k) f(\boldsymbol k’) \rangle =
-            C(\boldsymbol k^2) \delta(\boldsymbol k-\boldsymbol k’)
+            C(|\boldsymbol k|) \delta(\boldsymbol k-\boldsymbol k’)
 
     For simplicity, the correlations respect periodic boundary conditions.
 
@@ -132,22 +133,23 @@ def make_correlated_noise(
         **kwargs:
             Additional parameters can affect details of the correlation function
 
-    Supported correlation function
+    .. table:: Supported correlation functions
+        :widths: 20 80
 
-    ================= ==================================================================
-    Identifier        Correlation function
-    ================= ==================================================================
-    :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length scale
-                      :math:`\lambda` set by argument :code:`length_scale`.
+        ================= ==============================================================
+        Identifier        Correlation function
+        ================= ==============================================================
+        :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
+                          scale :math:`\lambda` set by argument :code:`length_scale`.
 
-    :code:`power law` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
-                      argument :code:`exponent`.
+        :code:`power law` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
+                          argument :code:`exponent`.
 
-    :code:`cosine`    :math:`C(k) = \exp\bigl(-s(\lambda k - 1)\bigr)^2` with the length
-                      scale :math:`\lambda` set by argument :code:`length_scale`,
-                      whereas the sharpness parameter :math:`s` is set by
-                      :code:`sharpness` and defaults to 10.
-    ================= ==================================================================
+        :code:`cosine`    :math:`C(k) = \exp\bigl(-s^2(\lambda k - 1)^2\bigr)` with the
+                          length scale :math:`\lambda` set by argument
+                          :code:`length_scale`, whereas the sharpness parameter
+                          :math:`s` is set by :code:`sharpness` and defaults to 10.
+        ================= ==============================================================
 
     Returns:
         callable: a function returning a random realization
@@ -208,17 +210,18 @@ def make_colored_noise(
     shape: tuple[int, ...],
     dx=1.0,
     exponent: float = 0,
-    *,
+    scale: float = 1,
     rng: np.random.Generator | None = None,
 ) -> Callable[[], np.ndarray]:
     r"""Return a function creating an array of random values that obey.
 
     .. math::
         \langle c(\boldsymbol k) c(\boldsymbol k’) \rangle =
-            |\boldsymbol k|^\nu \delta(\boldsymbol k-\boldsymbol k’)
+            \Gamma^2 |\boldsymbol k|^\nu \delta(\boldsymbol k-\boldsymbol k’)
 
-    in spectral space on a Cartesian grid. For simplicity, the correlations respect
-    periodic boundary conditions.
+    in spectral space on a Cartesian grid. The special case :math:`\nu = 0` corresponds
+    to white noise. For simplicity, the correlations respect periodic boundary
+    conditions.
 
     Args:
         shape (tuple of ints):
@@ -227,30 +230,64 @@ def make_colored_noise(
         dx (float or list of floats):
             Discretization along each dimension. A uniform discretization in each
             direction can be indicated by a single number.
-        exponent (float):
-            Exponent :math:`\nu` of the power spectrum. The special case :math:`\nu = 0`
-            corresponds to white noise.
+        exponent:
+            Exponent :math:`\nu` of the power spectrum
+        scale:
+            Scaling factor :math:`\Gamma` determining noise strength
         rng (:class:`~numpy.random.Generator`):
             Random number generator (default: :func:`~numpy.random.default_rng()`)
 
     Returns:
         callable: a function returning a random realization
     """
+    # deprecated since 2025-04-04
+    warnings.warn(
+        "`make_colored_noise` is deprecated. Use `make_correlated_noise` with "
+        "correlation='power law' instead",
+        DeprecationWarning,
+    )
     rng = np.random.default_rng(rng)
+
+    # extract some information about the grid
+    dim = len(shape)
+    dx = np.broadcast_to(dx, (dim,))
 
     if exponent == 0:
         # fast case of white noise
         def noise_normal():
             """Return array of colored noise."""
-            return rng.normal(size=shape)
+            return scale * rng.normal(size=shape)
 
         return noise_normal
 
-    else:
-        # deal with correlated noise in the following
-        return _make_isotropic_correlated_noise(
-            shape,
-            corr_spectrum=lambda k2s: k2s ** (exponent / 4),
-            discretization=dx,
-            rng=rng,
-        )
+    # deal with colored noise in the following
+
+    # prepare wave vectors
+    k2s = np.array(0)
+    for i in range(dim):
+        if i == dim - 1:
+            k = np.fft.rfftfreq(shape[i], dx[i])
+        else:
+            k = np.fft.fftfreq(shape[i], dx[i])
+        k2s = np.add.outer(k2s, k**2)
+
+    # scaling of all modes with k != 0
+    k2s.flat[0] = 1
+    scaling = scale * k2s ** (exponent / 4)
+    scaling.flat[0] = 0
+
+    def noise_colored() -> np.ndarray:
+        """Return array of colored noise."""
+        # random field
+        arr: np.ndarray = rng.normal(size=shape)
+
+        # forward transform
+        arr = np_rfftn(arr)
+
+        # scale according to frequency
+        arr *= scaling
+
+        # backwards transform
+        return np_irfftn(arr, s=shape, axes=range(dim))  # type: ignore
+
+    return noise_colored

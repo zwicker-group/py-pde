@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import functools
 import json
+import warnings
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
@@ -181,6 +182,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(grid, data=data, label=label, dtype=dtype)
 
     @classmethod
+    @fill_in_docstring
     def random_normal(
         cls: type[TDataField],
         grid: GridBase,
@@ -194,7 +196,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         rng: np.random.Generator | None = None,
         **kwargs,
     ) -> TDataField:
-        """Creates Gaussian random field with normal distributed random values.
+        r"""Creates Gaussian random field with normal distributed random values.
 
         A complex field is returned when either `mean` or `std` is a complex number. In
         this case, the real and imaginary parts of these arguments are used to determine
@@ -205,7 +207,15 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         Real and imaginary parts of fields, as well as all components of vector and
         tensor fields, are always uncorrelated. Correlations in spatial positions are
-        supported through the `correlation` argument.
+        supported through the `correlation` argument. If set, the returned field
+        :math:`f` obeys the selected correlation function :math:`C(k)` (see table below
+        for details). In Fourier space, we thus have
+
+        .. math::
+            \langle f(\boldsymbol k) f(\boldsymbol k’) \rangle =
+                C(|\boldsymbol k|) \delta(\boldsymbol k-\boldsymbol k’)
+
+        For simplicity, the correlations respect periodic boundary conditions.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -233,6 +243,24 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
             **kwargs:
                 Additional parameters can affect details of the correlation function.
+
+        .. table:: Supported correlation functions
+            :widths: 20 80
+
+            ================= ==========================================================
+            Identifier        Correlation function
+            ================= ==========================================================
+            :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
+                              scale :math:`\lambda` set by argument :code:`length_scale`.
+
+            :code:`power law` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
+                              argument :code:`exponent`.
+
+            :code:`cosine`    :math:`C(k) = \exp\bigl(-s^2(\lambda k - 1)^2\bigr)` with
+                              the length scale :math:`\lambda` set by argument
+                              :code:`length_scale`, whereas the sharpness parameter
+                              :math:`s` is set by :code:`sharpness` and defaults to 10.
+            ================= ==========================================================
         """
         rng = np.random.default_rng(rng)
 
@@ -395,6 +423,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
+        # deprecated since 2025-04-04
+        warnings.warn(
+            "`random_colored` method is deprecated. Use `random_normal` with "
+            "correlation='power law' instead",
+            DeprecationWarning,
+        )
+
         # get function making colored noise
         from ..tools.spectral import make_colored_noise
 
