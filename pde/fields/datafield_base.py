@@ -146,9 +146,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
     ) -> TDataField:
-        """Create field with uniform distributed random values.
+        """Create field with uncorrelated uniform distributed random values.
 
-        These values are uncorrelated in space.
+        A complex field is returned when `vmin` or `vmax` is a complex number. In this
+        case, the real and imaginary parts of these arguments are used to determine
+        the distribution of the real and imaginary parts of the resulting field.
+        Consequently, :code:`ScalarField.random_uniform(grid, 0, 1 + 1j)` creates a
+        complex field where the real and imaginary parts are chosen from a standard
+        uniform distribution.
+
+        Real and imaginary parts of fields, all components of vector and tensor fields,
+        as well as all spatial positions are always uncorrelated.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
