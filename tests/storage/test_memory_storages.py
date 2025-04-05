@@ -37,24 +37,28 @@ def test_memory_storage():
     np.testing.assert_allclose(np.ravel(s3.data), np.arange(4))
 
 
-def test_field_type_guessing(rng):
+@pytest.mark.parametrize("cls", [ScalarField, VectorField, Tensor2Field])
+def test_field_type_guessing_fields(cls, rng):
     """Test the ability to guess the field type."""
-    for cls in [ScalarField, VectorField, Tensor2Field]:
-        grid = UnitGrid([3])
-        field = cls.random_normal(grid, rng=rng)
-        s = MemoryStorage()
-        s.start_writing(field)
-        s.append(field, 0)
-        s.append(field, 1)
+    grid = UnitGrid([3])
+    field = cls.random_normal(grid, rng=rng)
+    s = MemoryStorage()
+    s.start_writing(field)
+    s.append(field, 0)
+    s.append(field, 1)
 
-        # delete information
-        s._field = None
-        s.info = {}
+    # delete information
+    s._field = None
+    s.info = {}
 
-        assert not s.has_collection
-        assert len(s) == 2
-        assert s[0] == field
+    assert not s.has_collection
+    assert len(s) == 2
+    assert s[0] == field
 
+
+def test_field_type_guessing_collection(rng):
+    """Test the ability to guess the field type of a collection."""
+    grid = UnitGrid([3])
     field = FieldCollection([ScalarField(grid), VectorField(grid)])
     s = MemoryStorage()
     s.start_writing(field)

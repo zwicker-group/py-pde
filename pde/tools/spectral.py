@@ -95,7 +95,7 @@ def _make_isotropic_correlated_noise(
     return noise_corr
 
 
-CorrelationType = Literal["gaussian", "power law", "cosine"]
+CorrelationType = Literal["none", "gaussian", "power law", "cosine"]
 
 
 def make_correlated_noise(
@@ -139,6 +139,8 @@ def make_correlated_noise(
         ================= ==============================================================
         Identifier        Correlation function
         ================= ==============================================================
+        :code:`none`      No correlation, :math:`C(k) = \delta(k)`
+
         :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
                           scale :math:`\lambda` set by argument :code:`length_scale`.
 
@@ -156,7 +158,11 @@ def make_correlated_noise(
     """
     rng = np.random.default_rng(rng)
 
-    if correlation == "gaussian":
+    if correlation == "none":
+        # no correlation
+        corr_spectrum = None
+
+    elif correlation == "gaussian":
         # gaussian correlation function with length scale `corr_length``
         length_scale = kwargs.pop("length_scale", 1)
         if length_scale == 0:

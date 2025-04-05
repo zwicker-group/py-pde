@@ -190,7 +190,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         return cls(grid, data=data, label=label, dtype=dtype)
 
     @classmethod
-    @fill_in_docstring
     def random_normal(
         cls: type[TDataField],
         grid: GridBase,
@@ -198,7 +197,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         std: float = 1,
         *,
         scaling: Literal["none", "physical"] = "none",
-        correlation: CorrelationType | None = None,
+        correlation: CorrelationType = "none",
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
@@ -258,6 +257,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             ================= ==========================================================
             Identifier        Correlation function
             ================= ==========================================================
+            :code:`none`      No correlation, :math:`C(k) = \delta(k)`
+
             :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
                               scale :math:`\lambda` set by argument :code:`length_scale`.
 
@@ -272,6 +273,29 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         rng = np.random.default_rng(rng)
 
+        # create a function for creating a single noise field
+        make_scalar_field = make_correlated_noise(
+            grid.shape,
+            correlation=correlation,
+            discretization=grid.discretization,
+            rng=rng,
+            **kwargs,
+        )
+
+        if cls.rank == 0:
+            make_random_field = make_scalar_field
+        else:
+            tensor_shape = (grid.dim,) * cls.rank
+
+            def make_random_field() -> np.ndarray:
+                """Helper function that creates a single tensor field."""
+                out = np.empty(tensor_shape + grid.shape)
+                print(out.shape, tensor_shape, grid)
+                for idx in np.ndindex(tensor_shape):
+                    out[idx] = make_scalar_field()
+                return out  # type: ignore
+
+        # create random fields with correct mean and standard deviation
         if scaling == "none":
             scale = 1
         elif scaling == "physical":
@@ -279,33 +303,6 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             raise ValueError(f"Unknown noise scaling {scaling}")
 
-        # determine the shape of the data array
-        tensor_shape = (grid.dim,) * cls.rank
-
-        # create a function for creating a scalar noise field
-        if correlation is None:
-            if kwargs:
-                cls._logger.warning("Unused arguments: %s", kwargs.keys())
-
-            def make_random_field() -> np.ndarray:
-                return rng.normal(size=tensor_shape + grid.shape)  # type: ignore
-
-        else:
-            make_scalar_field = make_correlated_noise(
-                grid.shape,
-                correlation=correlation,
-                discretization=grid.discretization,
-                rng=rng,
-                **kwargs,
-            )
-
-            def make_random_field() -> np.ndarray:
-                out = np.empty_like(tensor_shape + grid.shape)
-                for idx in np.ndindex(tensor_shape):
-                    out[idx] = make_scalar_field()
-                return out  # type: ignore
-
-        # create random fields with correct mean and standard deviation
         if np.iscomplexobj(mean) or np.iscomplexobj(std):
             # create complex random numbers for the field
             real_part = np.real(mean) + np.real(std) * scale * make_random_field()
