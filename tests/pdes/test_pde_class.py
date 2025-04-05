@@ -220,7 +220,7 @@ def test_pde_user_funcs(rng):
     """Test user supplied functions."""
     # test a simple case
     eq = PDE({"u": "get_x(gradient(u))"}, user_funcs={"get_x": lambda arr: arr[0]})
-    field = ScalarField.random_colored(grids.UnitGrid([32, 32]), rng=rng)
+    field = ScalarField.random_normal(grids.UnitGrid([32, 32]), rng=rng)
     rhs = eq.evolution_rate(field)
     np.testing.assert_allclose(
         rhs.data, field.gradient("auto_periodic_neumann").data[0]

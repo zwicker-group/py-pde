@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import functools
 import json
+import warnings
 from abc import ABCMeta, abstractmethod
 from inspect import isabstract
 from typing import TYPE_CHECKING, Any, Callable, Literal, TypeVar
@@ -23,6 +24,7 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
 from ..tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ..tools.plotting import PlotReference, plot_on_axes
+from ..tools.spectral import CorrelationType, make_correlated_noise
 from ..tools.typing import ArrayLike, NumberOrArray
 from .base import FieldBase, RankError
 
@@ -144,9 +146,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
     ) -> TDataField:
-        """Create field with uniform distributed random values.
+        """Create field with uncorrelated uniform distributed random values.
 
-        These values are uncorrelated in space.
+        A complex field is returned when `vmin` or `vmax` is a complex number. In this
+        case, the real and imaginary parts of these arguments are used to determine
+        the distribution of the real and imaginary parts of the resulting field.
+        Consequently, :code:`ScalarField.random_uniform(grid, 0, 1 + 1j)` creates a
+        complex field where the real and imaginary parts are chosen from a standard
+        uniform distribution.
+
+        Real and imaginary parts of fields, all components of vector and tensor fields,
+        as well as all spatial positions are always uncorrelated.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -187,18 +197,32 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         std: float = 1,
         *,
         scaling: Literal["none", "physical"] = "none",
+        correlation: CorrelationType = "none",
         label: str | None = None,
         dtype: DTypeLike | None = None,
         rng: np.random.Generator | None = None,
+        **kwargs,
     ) -> TDataField:
-        """Create field with normal distributed random values.
+        r"""Creates Gaussian random field with normal distributed random values.
 
-        These values are uncorrelated in space. A complex field is returned when either
-        `mean` or `std` is a complex number. In this case, the real and imaginary parts
-        of these arguments are used to determine the distribution of the real and
-        imaginary parts of the resulting field. Consequently,
-        :code:`ScalarField.random_normal(grid, 0, 1 + 1j)` creates a complex field where
-        the real and imaginary parts are chosen from a standard normal distribution.
+        A complex field is returned when either `mean` or `std` is a complex number. In
+        this case, the real and imaginary parts of these arguments are used to determine
+        the distribution of the real and imaginary parts of the resulting field.
+        Consequently, :code:`ScalarField.random_normal(grid, 0, 1 + 1j)` creates a
+        complex field where the real and imaginary parts are chosen from a standard
+        normal distribution.
+
+        Real and imaginary parts of fields, as well as all components of vector and
+        tensor fields, are always uncorrelated. Correlations in spatial positions are
+        supported through the `correlation` argument. If set, the returned field
+        :math:`f` obeys the selected correlation function :math:`C(k)` (see table below
+        for details). In Fourier space, we thus have
+
+        .. math::
+            \langle f(\boldsymbol k) f(\boldsymbol k’) \rangle =
+                C(|\boldsymbol k|) \delta(\boldsymbol k-\boldsymbol k’)
+
+        For simplicity, the correlations respect periodic boundary conditions.
 
         Args:
             grid (:class:`~pde.grids.base.GridBase`):
@@ -213,6 +237,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 standard deviation) or 'physical' (the variance of the random number is
                 scaled by the inverse volume of the grid cell; this is for instance
                 useful for concentration fields, which vary less in larger volumes).
+            correlation (str):
+                Selects the correlation function used to make the correlated noise. Many
+                of the options (described below) support additional parameters that can
+                be supplied as keyword arguments.
             label (str, optional):
                 Name of the returned field
             dtype (numpy dtype):
@@ -220,9 +248,54 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 `mean` and `std` are real, otherwise it is `complex`.
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
+            **kwargs:
+                Additional parameters can affect details of the correlation function.
+
+        .. table:: Supported correlation functions
+            :widths: 20 80
+
+            ================= ==========================================================
+            Identifier        Correlation function
+            ================= ==========================================================
+            :code:`none`      No correlation, :math:`C(k) = \delta(k)`
+
+            :code:`gaussian`  :math:`C(k) = \exp(\frac12 k^2 \lambda^2)` with the length
+                              scale :math:`\lambda` set by argument :code:`length_scale`.
+
+            :code:`power law` :math:`C(k) = k^{\nu/2}` with exponent :math:`\nu` set by
+                              argument :code:`exponent`.
+
+            :code:`cosine`    :math:`C(k) = \exp\bigl(-s^2(\lambda k - 1)^2\bigr)` with
+                              the length scale :math:`\lambda` set by argument
+                              :code:`length_scale`, whereas the sharpness parameter
+                              :math:`s` is set by :code:`sharpness` and defaults to 10.
+            ================= ==========================================================
         """
         rng = np.random.default_rng(rng)
 
+        # create a function for creating a single noise field
+        make_scalar_field = make_correlated_noise(
+            grid.shape,
+            correlation=correlation,
+            discretization=grid.discretization,
+            rng=rng,
+            **kwargs,
+        )
+
+        if cls.rank == 0:
+            make_random_field = make_scalar_field
+        else:
+            tensor_shape = (grid.dim,) * cls.rank
+
+            def make_random_field() -> np.ndarray:
+                """Helper function that creates a single tensor field."""
+                out = np.empty(tensor_shape + grid.shape)
+                print(out.shape, tensor_shape, grid)
+                for idx in np.ndindex(tensor_shape):
+                    out[idx] = make_scalar_field()
+                return out  # type: ignore
+
+        # create random fields with correct mean and standard deviation
         if scaling == "none":
             scale = 1
         elif scaling == "physical":
@@ -230,17 +303,14 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             raise ValueError(f"Unknown noise scaling {scaling}")
 
-        # determine the shape of the data array
-        shape = (grid.dim,) * cls.rank + grid.shape
-
         if np.iscomplexobj(mean) or np.iscomplexobj(std):
             # create complex random numbers for the field
-            real_part = np.real(mean) + np.real(std) * scale * rng.normal(size=shape)
-            imag_part = np.imag(mean) + np.imag(std) * scale * rng.normal(size=shape)
+            real_part = np.real(mean) + np.real(std) * scale * make_random_field()
+            imag_part = np.imag(mean) + np.imag(std) * scale * make_random_field()
             data: np.ndarray = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
-            data = mean + std * scale * rng.normal(size=shape)
+            data = mean + std * scale * make_random_field()
 
         return cls(grid, data=data, label=label, dtype=dtype)
 
@@ -358,11 +428,18 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             rng (:class:`~numpy.random.Generator`):
                 Random number generator (default: :func:`~numpy.random.default_rng()`)
         """
+        # deprecated since 2025-04-04
+        warnings.warn(
+            "`random_colored` method is deprecated. Use `random_normal` with "
+            "correlation='power law' instead",
+            DeprecationWarning,
+        )
+
         # get function making colored noise
         from ..tools.spectral import make_colored_noise
 
-        make_noise = make_colored_noise(
-            grid.shape, dx=grid.discretization, exponent=exponent, scale=scale, rng=rng
+        make_scalar_field = make_colored_noise(
+            grid.shape, dx=grid.discretization, exponent=exponent, rng=rng
         )
 
         # create random fields for each tensor component
@@ -370,7 +447,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         data = np.empty(tensor_shape + grid.shape)
         # determine random field for each component
         for index in np.ndindex(*tensor_shape):
-            data[index] = make_noise()
+            data[index] = scale * make_scalar_field()
 
         return cls(grid, data=data, label=label, dtype=dtype)
 
