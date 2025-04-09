@@ -88,9 +88,9 @@ DEFAULT_CONFIG: list[Parameter] = [
         str,
         "Determines whether multiple threads are used in numba-compiled code. Enabling "
         "this option accelerates a small subset of operators applied to fields defined "
-        "on large grids. Possible options are 'never' (disable multithreading), 'local' "
-        "(disable on HPC hardware), and 'always' (enable if number of grid points "
-        "exceeds `numba.multithreading_threshold`)",
+        "on large grids. Possible options are 'never' (disable multithreading), "
+        "'only_local' (disable on HPC hardware), and 'always' (enable if number of "
+        "grid points exceeds `numba.multithreading_threshold`)",
     ),
     Parameter(
         "numba.multithreading_threshold",
