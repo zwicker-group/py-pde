@@ -17,6 +17,8 @@ from typing import Callable, Literal
 
 import numpy as np
 
+from .typing import NumberOrArray
+
 try:
     from pyfftw.interfaces.numpy_fft import irfftn as np_irfftn
     from pyfftw.interfaces.numpy_fft import rfftn as np_rfftn
@@ -33,7 +35,7 @@ def _make_isotropic_correlated_noise(
     shape: tuple[int, ...],
     corr_spectrum: Callable[[np.ndarray], np.ndarray],
     *,
-    discretization=1.0,
+    discretization: NumberOrArray = 1.0,
     rng: np.random.Generator | None = None,
 ) -> Callable[[], np.ndarray]:
     r"""Return a function creating an array of random values with spatial correlations.
@@ -63,33 +65,32 @@ def _make_isotropic_correlated_noise(
 
     # extract some information about the grid
     dim = len(shape)
-    discretization = np.broadcast_to(discretization, (dim,))
+    dx_arr = np.broadcast_to(discretization, (dim,))
 
     # prepare wave vectors
     k2s = np.array(0)
     for i in range(dim):
         if i == dim - 1:
-            k = np.fft.rfftfreq(shape[i], discretization[i])
+            k = np.fft.rfftfreq(shape[i], dx_arr[i])
         else:
-            k = np.fft.fftfreq(shape[i], discretization[i])
+            k = np.fft.fftfreq(shape[i], dx_arr[i])
         k2s = np.add.outer(k2s, k**2)
 
     # scaling of all modes with k != 0
     k2s.flat[0] = 1
     scaling = np.sqrt(corr_spectrum(k2s))
     scaling.flat[0] = 0
-
-    shape_noise = shape[:-1] + (int(np.ceil((shape[-1] + 1) / 2)),)
+    scaling /= scaling.mean()  # normalize scaling to correct the variance
 
     def noise_corr() -> np.ndarray:
         """Return array of correlated noise."""
-        # random field
+        # initialize uncorrelated random field
         arr: np.ndarray = rng.normal(size=shape)
-        # forward transform
-        arr = np_rfftn(arr)
-        # scale according to frequency
+        # forward transform to frequency space
+        arr = np_rfftn(arr, s=shape, axes=range(dim))
+        # scale frequency according to transformed correlation function
         arr *= scaling
-        # backward transform
+        # backward transform to return to real space
         return np_irfftn(arr, s=shape, axes=range(dim))  # type: ignore
 
     return noise_corr
@@ -102,7 +103,7 @@ def make_correlated_noise(
     shape: tuple[int, ...],
     correlation: CorrelationType,
     *,
-    discretization=1.0,
+    discretization: NumberOrArray = 1.0,
     rng: np.random.Generator | None = None,
     **kwargs,
 ) -> Callable[[], np.ndarray]:
@@ -163,34 +164,36 @@ def make_correlated_noise(
         corr_spectrum = None
 
     elif correlation == "gaussian":
-        # gaussian correlation function with length scale `corr_length``
+        # gaussian correlation function with length scale `length_scale`
         length_scale = kwargs.pop("length_scale", 1)
         if length_scale == 0:
             corr_spectrum = None
         else:
 
             def corr_spectrum(k2s):
+                """Fourier transform of a Gaussian function."""
                 return np.exp(-0.5 * length_scale**2 * k2s)
 
     elif correlation == "power law":
-        # power law correlation function
+        # power law correlation function with `exponent`
         exponent = kwargs.pop("exponent", 0)
         if exponent == 0:
             corr_spectrum = None
         else:
 
             def corr_spectrum(k2s):
+                """Fourier transform of a power law."""
                 return k2s ** (exponent / 4)
 
     elif correlation == "cosine":
-        # cosine correlation function with a dominant mode of length scale
+        # cosine correlation function with a dominant mode scale `length_scale`
         length_scale = kwargs.pop("length_scale", 1)
         sharpness = kwargs.pop("sharpness", 10)
-        k0 = 1 / length_scale
-        w2 = (k0 / sharpness) ** 2
+        sharpness2 = sharpness**2
 
         def corr_spectrum(k2s):
-            return np.exp(-((np.sqrt(k2s) - k0) ** 2) / w2)
+            """Fourier transform of a function that has a dominant harmonic mode."""
+            return np.exp(-sharpness2 * (length_scale * np.sqrt(k2s) - 1) ** 2)
 
     else:
         raise ValueError(f"Unknown correlation `{correlation}`")
