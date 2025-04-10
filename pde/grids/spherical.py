@@ -36,7 +36,7 @@ def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
         float or :class:`~numpy.ndarray`: Volume of the sphere
     """
     if dim == 1:
-        return 2 * radius  # type: ignore
+        return 2 * radius
     elif dim == 2:
         return np.pi * radius**2  # type: ignore
     elif dim == 3:

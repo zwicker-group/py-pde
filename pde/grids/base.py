@@ -962,8 +962,8 @@ class GridBase(metaclass=ABCMeta):
         """Check whether the point is contained in the grid.
 
         Args:
-            point (:class:`~numpy.ndarray`):
-                Coordinates of the point
+            points (:class:`~numpy.ndarray`):
+                Coordinates of the point(s)
             coords (str):
                 The coordinate system in which the points are given
 

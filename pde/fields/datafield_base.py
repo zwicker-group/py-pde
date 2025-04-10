@@ -768,7 +768,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             coords = np.choose(i, [c_l, c_h])
             if np.all(coords >= 0) and np.all(coords < grid.shape):
                 weight = np.prod(np.choose(i, [w_l, w_h]))
-                total_weight += weight  # type: ignore
+                total_weight += weight
                 cells.append((tuple(coords), weight))
 
         if total_weight == 0:

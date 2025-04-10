@@ -336,7 +336,7 @@ def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
         A function that can be applied to an array of values
     """
     dim_x = grid.shape[0]
-    scale = grid.discretization[0] ** -2
+    scale: float = grid.discretization[0] ** -2  # type: ignore
 
     @jit
     def laplace(arr: np.ndarray, out: np.ndarray) -> None:
