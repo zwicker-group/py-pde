@@ -35,7 +35,7 @@ from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 def _get_limits(value: float | ArrayLike, dim: int) -> np.ndarray:
     """Helper function creating sequence of length `dim` from input."""
     if np.isscalar(value):
-        return np.full(dim, value, dtype=float)  # type: ignore
+        return np.full(dim, value, dtype=float)
     else:
         return np.asarray(value)[:dim].astype(float)  # type: ignore
 

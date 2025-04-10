@@ -73,7 +73,12 @@ from numba.extending import overload, register_jitable
 from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import address_as_void_pointer, jit, numba_dict
-from ...tools.typing import FloatNumerical, GhostCellSetter, VirtualPointEvaluator
+from ...tools.typing import (
+    FloatNumerical,
+    GhostCellSetter,
+    NumberOrArray,
+    VirtualPointEvaluator,
+)
 from ..base import GridBase, PeriodicityError
 
 if TYPE_CHECKING:
@@ -2268,7 +2273,7 @@ class DirichletBC(ConstBC1stOrderBase):
         return f"{field} = {self.value}   @ {axis_name}={self.axis_coord}"
 
     def get_virtual_point_data(self, compiled: bool = False) -> tuple[Any, Any, int]:
-        const = 2 * self.value
+        const: NumberOrArray = 2 * self.value
         index = self.grid.shape[self.axis] - 1 if self.upper else 0
 
         if not compiled:
