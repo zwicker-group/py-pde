@@ -15,8 +15,8 @@ Here, :math:`D_0` and :math:`D_1` are the respective diffusivity and the
 parameters :math:`a` and :math:`b` are related to reaction rates.
 
 Note that the same result can also be achieved with a 
-:doc:`full implementation of a custom class <pde_brusselator_class>`, which
-allows for more flexibility at the cost of code complexity.
+:doc:`full implementation of a custom class <../advanced_pdes/pde_brusselator_class>`,
+which allows for more flexibility at the cost of code complexity.
 """
 
 from pde import PDE, FieldCollection, PlotTracker, ScalarField, UnitGrid
