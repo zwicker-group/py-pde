@@ -353,3 +353,14 @@ def test_9point_stencil(periodic, corner_weight):
     reference = field.laplace(bc="auto_periodic_neumann")
     test = field.laplace(bc="auto_periodic_neumann", corner_weight=corner_weight)
     np.testing.assert_allclose(reference.data, test.data, atol=corner_weight / 3)
+
+
+@pytest.mark.parametrize("periodic", [True, False])
+def test_mixed_derivatives(periodic):
+    """Test mixed derivatives of scalar fields."""
+    grid = CartesianGrid([[0, 1], [-1, 0.5]], [7, 9], periodic=periodic)
+    field = ScalarField.random_normal(grid, label="c")
+
+    res1 = field.apply("d_dx(d_dy(c))")
+    res2 = field.apply("d_dy(d_dx(c))")
+    np.testing.assert_allclose(res1.data, res2.data)
