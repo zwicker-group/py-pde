@@ -359,8 +359,8 @@ def test_9point_stencil(periodic, corner_weight):
 def test_mixed_derivatives(periodic):
     """Test mixed derivatives of scalar fields."""
     grid = CartesianGrid([[0, 1], [-1, 0.5]], [7, 9], periodic=periodic)
-    field = ScalarField.random_normal(grid, label="c")
+    field = ScalarField.random_normal(grid, label="fld")
 
-    res1 = field.apply("d_dx(d_dy(c))")
-    res2 = field.apply("d_dy(d_dx(c))")
+    res1 = field.apply("d_dx(d_dy(fld))")
+    res2 = field.apply("d_dy(d_dx(fld))")
     np.testing.assert_allclose(res1.data, res2.data)
