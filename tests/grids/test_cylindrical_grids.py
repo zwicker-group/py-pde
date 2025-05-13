@@ -77,3 +77,13 @@ def test_setting_boundary_conditions():
     grid.get_boundary_conditions({"r": "derivative", "z": "periodic"})
     with pytest.raises(RuntimeError):
         grid.get_boundary_conditions({"r": "derivative", "z": "derivative"})
+
+
+def test_mixed_derivatives():
+    """Test mixed derivatives of scalar fields."""
+    grid = CylindricalSymGrid(1, [-1, 0.5], [7, 9])
+    field = ScalarField.random_normal(grid, label="c")
+
+    res1 = field.apply("d_dz(d_dr(c))")
+    res2 = field.apply("d_dr(d_dz(c))")
+    np.testing.assert_allclose(res1.data, res2.data)

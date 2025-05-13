@@ -636,7 +636,7 @@ class FieldBase(metaclass=ABCMeta):
         Args:
             func (callable or str):
                 The (vectorized) function being applied to the data or an expression
-                that can be parsed using sympy (:func:`~pde.tools.expression.evaluate`
+                that can be parsed using sympy (:func:`~pde.tools.expressions.evaluate`
                 is used in this case). The local field values can be accessed using the
                 field labels for a field collection and via the variable `c` otherwise.
             out (FieldBase, optional):
@@ -644,7 +644,7 @@ class FieldBase(metaclass=ABCMeta):
             label (str, optional):
                 Name of the returned field
             evaluate_args (dict):
-                Additional arguments passed to :func:`~pde.tools.expression.evaluate`.
+                Additional arguments passed to :func:`~pde.tools.expressions.evaluate`.
                 Only used when `func` is a string.
 
         Returns:
@@ -660,7 +660,10 @@ class FieldBase(metaclass=ABCMeta):
             if evaluate_args is None:
                 evaluate_args = {}
             if isinstance(self, DataFieldBase):
-                result = evaluate(func, {"c": self}, **evaluate_args)
+                fields = {"c": self}
+                if self.label is not None:
+                    fields[self.label] = self
+                result = evaluate(func, fields, **evaluate_args)
             elif isinstance(self, FieldCollection):
                 result = evaluate(func, self, **evaluate_args)
             else:
