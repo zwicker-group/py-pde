@@ -114,6 +114,40 @@ def optimized_laplace_2d(bcs):
     return laplace
 
 
+try:
+    import jax
+except ImportError:
+    print("Skip `jax` implementation since module is not available")
+else:
+    import jax.numpy as jnp
+
+    def custom_laplace_2d_jax(shape, periodic, dx=1):
+        """Make jax-compiled laplace operator."""
+
+        @jax.jit
+        def laplace(arr_input):
+            arr = jnp.asarray(arr_input, dtype=jnp.float32)
+
+            # set boundary conditions
+            if periodic:
+                arr = arr.at[0, :].set(arr[-2, :])
+                arr = arr.at[-1, :].set(arr[1, :])
+                arr = arr.at[:, 0].set(arr[:, -2])
+                arr = arr.at[:, -1].set(arr[:, 1])
+            else:
+                arr = arr.at[0, :].set(arr[1, :])
+                arr = arr.at[-1, :].set(arr[-2, :])
+                arr = arr.at[:, 0].set(arr[:, 1])
+                arr = arr.at[:, -1].set(arr[:, -2])
+
+            # apply discretized Laplace operator
+            darr_dx = arr[0:-2, 1:-1] + arr[2:, 1:-1] - 2 * arr[1:-1, 1:-1]
+            darr_dy = arr[1:-1, 0:-2] + arr[1:-1, 2:] - 2 * arr[1:-1, 1:-1]
+            return (darr_dx + darr_dy) / dx**2
+
+        return laplace
+
+
 def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
     """Make laplace operator with Neumann boundary conditions."""
     dim_r, dim_z = shape
@@ -171,23 +205,27 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
     bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
     expected = field.laplace("auto_periodic_neumann")
 
-    for method in ["CUSTOM", "OPTIMIZED", "9POINT", "numba", "scipy"]:
+    for method in ["CUSTOM", "OPTIMIZED", "9POINT", "numba", "jax", "scipy"]:
         if method == "CUSTOM":
             laplace = custom_laplace_2d(shape, periodic=periodic)
         elif method == "OPTIMIZED":
             laplace = optimized_laplace_2d(bcs)
         elif method == "9POINT":
             laplace = grid.make_operator("laplace", bc=bcs, corner_weight=1 / 3)
+        elif method == "jax":
+            laplace = custom_laplace_2d_jax(shape, periodic=periodic)
         elif method in {"numba", "scipy"}:
             laplace = grid.make_operator("laplace", bc=bcs, backend=method)
         else:
             raise ValueError(f"Unknown method `{method}`")
 
         # call once to pre-compile and test result
-        if method == "OPTIMIZED":
-            result = laplace(field._data_full)
-            np.testing.assert_allclose(result, expected.data)
-            speed = estimate_computation_speed(laplace, field._data_full)
+        if method in {"OPTIMIZED", "jax"}:
+            with np.errstate(over="ignore"):  # jax converts data to float32
+                result = laplace(field._data_full)
+                np.testing.assert_allclose(result, expected.data, atol=1e-5, rtol=1e-5)
+                speed = estimate_computation_speed(laplace, field._data_full)
+
         else:
             if method != "9POINT":
                 np.testing.assert_allclose(laplace(field.data), expected.data)
