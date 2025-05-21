@@ -148,6 +148,86 @@ else:
         return laplace
 
 
+try:
+    import torch
+except ImportError:
+    print("Skip `torch` implementation since module is not available")
+else:
+    import ast
+    import importlib
+    import inspect
+    import tempfile
+    import textwrap
+    from pathlib import Path
+
+    def replace_constants(func, consts):
+        """Replace variables in a function by a constant."""
+
+        class RewriteName(ast.NodeTransformer):
+            def visit_Name(self, node):
+                if isinstance(node, ast.Name) and node.id in consts:
+                    return ast.Constant(consts[node.id])
+                return node
+
+        # convert function into AST
+        source = inspect.getsource(func)
+        tree = ast.parse(textwrap.dedent(source))
+
+        # rewrite the AST to replace variables by constants
+        tree = RewriteName().visit(tree)
+        ast.fix_missing_locations(tree)
+
+        # Recompile the function and write it to a temporary python module
+        # Unfortunately, pytorch needs access to the actual source code of the function
+        # and cannot only work with the AST, so we need to write the code to a temporary
+        # file.
+        func_code = "import math\n\n" + ast.unparse(tree)
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as fp:
+            fp.write(func_code.encode("utf-8"))
+            module_path = fp.name
+            module_name = Path(module_path).stem
+
+        # load the python module to get the function
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        module = importlib.util.module_from_spec(spec)
+        # sys.modules[module_name] = module
+        spec.loader.exec_module(module)
+        return getattr(module, func.__name__)
+
+    def custom_laplace_2d_torch(shape, periodic, dx=1):
+        """Make torch-compiled laplace operator."""
+
+        dx = float(dx)
+
+        def laplace(arr):
+            # set boundary conditions
+            if periodic:
+                arr[0, :] = arr[-2, :]
+                arr[-1, :] = arr[1, :]
+                arr[:, 0] = arr[:, -2]
+                arr[:, -1] = arr[:, 1]
+            else:
+                arr[0, :] = arr[1, :]
+                arr[-1, :] = arr[-2, :]
+                arr[:, 0] = arr[:, 1]
+                arr[:, -1] = arr[:, -2]
+
+            # apply discretized Laplace operator
+            darr_dx = arr[0:-2, 1:-1] + arr[2:, 1:-1] - 2 * arr[1:-1, 1:-1]
+            darr_dy = arr[1:-1, 0:-2] + arr[1:-1, 2:] - 2 * arr[1:-1, 1:-1]
+            return (darr_dx + darr_dy) / dx**2
+
+        # modify AST of function to replace constants since pytorch cannot deal with
+        # closures over variables outside the function definition
+        laplace = replace_constants(laplace, {"periodic": periodic, "dx": dx})
+
+        # compile the function using torch
+        dim_x, dim_y = shape
+        example_arr = np.zeros((dim_x + 2, dim_y + 2))
+        return torch.jit.script(laplace)
+        # return torch.jit.trace(laplace, example_inputs=(example_arr,))
+
+
 def custom_laplace_cyl_neumann(shape, dr=1, dz=1):
     """Make laplace operator with Neumann boundary conditions."""
     dim_r, dim_z = shape
@@ -205,7 +285,7 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
     bcs = grid.get_boundary_conditions("auto_periodic_neumann", rank=0)
     expected = field.laplace("auto_periodic_neumann")
 
-    for method in ["CUSTOM", "OPTIMIZED", "9POINT", "numba", "jax", "scipy"]:
+    for method in ["CUSTOM", "OPTIMIZED", "9POINT", "numba", "jax", "torch", "scipy"]:
         if method == "CUSTOM":
             laplace = custom_laplace_2d(shape, periodic=periodic)
         elif method == "OPTIMIZED":
@@ -214,6 +294,8 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
             laplace = grid.make_operator("laplace", bc=bcs, corner_weight=1 / 3)
         elif method == "jax":
             laplace = custom_laplace_2d_jax(shape, periodic=periodic)
+        elif method == "torch":
+            laplace = custom_laplace_2d_torch(shape, periodic=periodic)
         elif method in {"numba", "scipy"}:
             laplace = grid.make_operator("laplace", bc=bcs, backend=method)
         else:
@@ -221,10 +303,19 @@ def test_cartesian(shape: tuple[int, int], periodic: bool) -> None:
 
         # call once to pre-compile and test result
         if method in {"OPTIMIZED", "jax"}:
-            with np.errstate(over="ignore"):  # jax converts data to float32
+            with np.errstate(over="ignore"):  # jax/torch converts data to float32
                 result = laplace(field._data_full)
                 np.testing.assert_allclose(result, expected.data, atol=1e-5, rtol=1e-5)
                 speed = estimate_computation_speed(laplace, field._data_full)
+
+        elif method == "torch":
+            import torch
+
+            with np.errstate(over="ignore"):
+                data_tensor = torch.from_numpy(field._data_full)
+                result = laplace(data_tensor)
+                np.testing.assert_allclose(result, expected.data, atol=1e-5, rtol=1e-5)
+                speed = estimate_computation_speed(laplace, data_tensor)
 
         else:
             if method != "9POINT":
