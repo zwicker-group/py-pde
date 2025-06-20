@@ -1777,7 +1777,7 @@ class ConstBCBase(BCBase):
                 on the axes names of the respective grid.
         """
         super().__init__(grid, axis, upper, rank=rank)
-        self.value = value  # type: ignore
+        self.value = value
 
     def __eq__(self, other):
         """Checks for equality neglecting the `upper` property."""

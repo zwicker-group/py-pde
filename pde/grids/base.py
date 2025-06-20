@@ -931,7 +931,7 @@ class GridBase(metaclass=ABCMeta):
             grid_coords = c_min + cells * self.discretization
 
             if target == "grid":
-                return grid_coords
+                return grid_coords  # type: ignore
             elif target == "cartesian":
                 return self.point_to_cartesian(grid_coords)
 
@@ -947,7 +947,7 @@ class GridBase(metaclass=ABCMeta):
                 c_min = np.array(self.axes_bounds)[:, 0]
                 return (grid_coords - c_min) / self.discretization  # type: ignore
             elif target == "grid":
-                return grid_coords
+                return grid_coords  # type: ignore
 
         else:
             raise ValueError(f"Unknown source coordinates `{source}`")
@@ -1412,10 +1412,10 @@ class GridBase(metaclass=ABCMeta):
                         set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
 
                         # apply operator
-                        operator_raw(arr_full, out)  # type: ignore
+                        operator_raw(arr_full, out)
 
                         # return valid part of the output
-                        return out  # type: ignore
+                        return out
 
                 else:
                     # reuse provided `out` array

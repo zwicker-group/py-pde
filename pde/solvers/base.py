@@ -234,7 +234,7 @@ class SolverBase:
             post_step_hook = jit(sig_hook)(post_step_hook)
             self._logger.debug("Compiled post-step hook")
 
-        return post_step_hook  # type: ignore
+        return post_step_hook
 
     def _make_pde_rhs(
         self, state: FieldBase, backend: BackendType = "auto"

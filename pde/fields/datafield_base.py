@@ -1080,7 +1080,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                         assert b.shape == b_shape
                         out = np.empty(out_shape, dtype=dtype)
                         calc(a, b, out)
-                        return out  # type: ignore
+                        return out
 
                 else:
                     # function is called with `out` argument -> reuse `out` array

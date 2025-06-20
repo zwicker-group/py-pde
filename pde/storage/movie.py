@@ -378,6 +378,7 @@ class MovieStorage(StorageBase):
                 f"`{self.__class__.__name__}.start_writing`"
             )
         # normalization and video format have been initialized
+        assert self._grid is not None
         assert self._norms is not None
         assert self._format is not None
 
@@ -589,7 +590,7 @@ class MovieStorage(StorageBase):
         yield from zip(self.times, self)
 
     @fill_in_docstring
-    def tracker(  # type: ignore
+    def tracker(
         self,
         interrupts: InterruptData = 1,
         *,

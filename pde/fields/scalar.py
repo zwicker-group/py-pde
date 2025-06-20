@@ -99,7 +99,7 @@ class ScalarField(DataFieldBase):
             # if this fails, evaluate expression point-wise
             data = np.empty(grid.shape)
             for cells in np.ndindex(*grid.shape):
-                data[cells] = expr(*grid.cell_coords[cells])  # type: ignore
+                data[cells] = expr(*grid.cell_coords[cells])
 
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 

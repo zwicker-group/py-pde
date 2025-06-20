@@ -204,13 +204,13 @@ class FieldCollection(FieldBase):
         # break the connection between the data fields
         if isinstance(index, int):
             # simple numerical index
-            self.fields[index].data = value  # type: ignore
+            self.fields[index].data = value
 
         elif isinstance(index, str):
             # index specifying the label of the field
             for field in self.fields:
                 if field.label == index:
-                    field.data = value  # type: ignore
+                    field.data = value
                     break  # indicates that a field has been found
             else:
                 raise KeyError(f"No field with name `{index}`")

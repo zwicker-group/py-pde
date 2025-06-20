@@ -278,7 +278,7 @@ class GeometricInterrupts(InterruptsBase):
         i = np.log(t_min / self.scale) / np.log(self.factor)
         # round up the fractional estimate and get associated interrupt time
         self._t_next = self.scale * self.factor ** np.ceil(i)
-        return self._t_next  # type: ignore
+        return self._t_next
 
 
 class RealtimeInterrupts(ConstantInterrupts):
