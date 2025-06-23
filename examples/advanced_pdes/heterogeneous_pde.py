@@ -15,7 +15,7 @@ from pde import PDE, ScalarField
 package_path = Path(inspect.getfile(lambda: None)).parents[2]
 img_path = package_path / "docs" / "source" / "_images" / "logo_small.png"
 
-background = ScalarField.from_image(img_path)  # create initial condition
+background = ScalarField.from_image(img_path)  # create source field from image
 state = ScalarField(background.grid)  # generate initial condition
 
 # define the pde
