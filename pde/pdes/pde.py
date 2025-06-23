@@ -610,7 +610,7 @@ class PDE(PDEBase):
                 # all other functions need to call one deeper in the chain
                 @jit
                 def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray) -> None:
-                    inner(data_tpl, t, out)  # type: ignore
+                    inner(data_tpl, t, out)
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             if i < num_fields - 1:

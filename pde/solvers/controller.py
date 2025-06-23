@@ -76,7 +76,7 @@ class Controller:
                 can be chosen when creating a tracker object explicitly.
         """
         self.solver = solver
-        self.t_range = t_range  # type: ignore
+        self.t_range = t_range
         self.trackers = TrackerCollection.from_data(tracker)
 
         # initialize some diagnostic information

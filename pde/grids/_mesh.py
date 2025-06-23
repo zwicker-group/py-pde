@@ -595,7 +595,7 @@ class GridMesh:
 
             subfield_data = np.empty(shape, dtype=field_data.dtype)
             mpi_recv(subfield_data, 0, MPIFlags.field_split)
-            return subfield_data
+            return subfield_data  # type: ignore
 
     def split_field_mpi(self: GridMesh, field: TField) -> TField:
         """Split a field onto the subgrids by communicating data via MPI.
