@@ -14,6 +14,7 @@ from pde import (
     UnitGrid,
     config,
 )
+from pde.tools.misc import module_available
 
 
 def test_diffusion_single(rng):
@@ -123,6 +124,7 @@ def test_diffusion_sde(backend, rng):
     assert stats.kstest(np.ravel(sol.data), dist).pvalue > 0.1
 
 
+@pytest.mark.skipif(not module_available("rocket_fft"), reason="requires `rocket-fft`")
 @pytest.mark.parametrize("ndim", [1, 2])
 def test_diffusion_spectral(ndim, rng):
     """Test spectral operators for simple diffusion model."""
