@@ -6,7 +6,14 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from pde import CartesianGrid, DiffusionPDE, MemoryStorage, ScalarField, UnitGrid
+from pde import (
+    CartesianGrid,
+    DiffusionPDE,
+    MemoryStorage,
+    ScalarField,
+    UnitGrid,
+    config,
+)
 
 
 def test_diffusion_single(rng):
@@ -114,3 +121,27 @@ def test_diffusion_sde(backend, rng):
     var_expected = var_local * t_range / grid.typical_discretization
     dist = stats.norm(scale=np.sqrt(var_expected)).cdf
     assert stats.kstest(np.ravel(sol.data), dist).pvalue > 0.1
+
+
+@pytest.mark.parametrize("ndim", [1, 2])
+def test_diffusion_spectral(ndim, rng):
+    """Test spectral operators for simple diffusion model."""
+    eq = DiffusionPDE()
+
+    config["operators.cartesian.default_backend"] = "numba"
+    grid1 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
+    state1 = ScalarField.random_normal(grid1, correlation="gaussian", rng=rng)
+    field1 = eq.evolution_rate(state1)
+
+    config["operators.cartesian.default_backend"] = "numba-spectral"
+    grid2 = CartesianGrid([[0, 1]] * ndim, 128, periodic=True)
+    state2 = ScalarField(grid2, state1.data)
+    field2 = eq.evolution_rate(state2)
+
+    # results should be close
+    thresh = 0.1 * ndim
+    np.testing.assert_allclose(
+        field1.data, field2.data, atol=thresh * field1.fluctuations, rtol=thresh
+    )
+    # but not identical!
+    assert not np.allclose(field1.data, field2.data)

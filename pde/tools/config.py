@@ -51,6 +51,14 @@ DEFAULT_CONFIG: list[Parameter] = [
         "to vanish, so the result of the operator can be expressed.",
     ),
     Parameter(
+        "operators.cartesian.default_backend",
+        "auto",
+        str,
+        "Sets default backend with which Cartesian operators are created. Typical "
+        "options include `scipy` and `numba`. The default option `auto` typically "
+        "provides the most flexible result and should rarely be changed.",
+    ),
+    Parameter(
         "operators.cartesian.laplacian_2d_corner_weight",
         0.0,
         float,
