@@ -660,7 +660,7 @@ class FieldBase(metaclass=ABCMeta):
             if evaluate_args is None:
                 evaluate_args = {}
             if isinstance(self, DataFieldBase):
-                fields = {"c": self}
+                fields: dict[str, DataFieldBase] = {"c": self}
                 if self.label is not None:
                     fields[self.label] = self
                 result = evaluate(func, fields, **evaluate_args)
@@ -690,7 +690,7 @@ class FieldBase(metaclass=ABCMeta):
             raise TypeError("`out` must be of type `FieldBase`")
         if label:
             out.label = label
-        return out  # type: ignore
+        return out
 
     @abstractmethod
     def get_line_data(
