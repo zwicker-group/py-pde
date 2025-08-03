@@ -231,3 +231,15 @@ def test_from_expressions():
         Tensor2Field.from_expression(grid, ["x"] * 3)
     with pytest.raises(ValueError):
         Tensor2Field.from_expression(grid, [["x"], [1, 1]])
+
+
+def test_tensor_symmetry():
+    """Test tensor symmetries."""
+    grid = UnitGrid([4, 4])
+
+    tf = Tensor2Field.from_expression(grid, [[1, "x**2"], ["x**2", "x * y"]])
+    assert tf.is_symmetric()
+
+    tf = Tensor2Field.from_expression(grid, [[1, 1], ["x**2", "x * y"]])
+    assert not tf.is_symmetric()
+    assert tf.symmetrize().is_symmetric()

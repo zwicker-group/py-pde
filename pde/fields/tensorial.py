@@ -261,6 +261,19 @@ class Tensor2Field(DataFieldBase):
         axes = (1, 0) + tuple(range(2, 2 + self.grid.num_axes))
         return Tensor2Field(self.grid, self.data.transpose(axes), label=label)
 
+    def is_symmetric(self, rtol=1e-05, atol=1e-08) -> bool:
+        """Returns whether the tensor is symmetric.
+
+        Args:
+            rtol (float):
+                The relative tolerance parameter (see :func:`~numpy.allclose`).
+            atol (float):
+                The absolute tolerance parameter (see :func:`~numpy.allclose`).
+        """
+        # transpose the tensor data for each grid point
+        data_T = self.data.transpose((1, 0) + tuple(range(2, 2 + self.grid.num_axes)))
+        return np.allclose(self.data, data_T, rtol=rtol, atol=atol)
+
     def symmetrize(
         self, make_traceless: bool = False, inplace: bool = False
     ) -> Tensor2Field:
