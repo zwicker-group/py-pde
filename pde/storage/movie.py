@@ -46,14 +46,14 @@ def _import_ffmpeg() -> types.ModuleType:
     """Import `ffmpeg` package, warning when incorrect package is installed."""
     # try to figure out which `ffmpeg` package is installed
     try:
-        # the following function was only added in python 3.10
         from importlib.metadata import packages_distributions  # type: ignore
 
-        packages = packages_distributions()["ffmpeg"]
-    except (ImportError, KeyError):
-        pass  # ignore these errors
+    except ImportError:
+        pass  # the packages_distributions function was only added in python 3.10
+
     else:
-        # check whether the correct package is part of this
+        # check whether `ffmpeg` refers to the correct package
+        packages = packages_distributions().get("ffmpeg", [])
         if len(packages) == 1:
             name = packages[0]
             if name != "ffmpeg-python":
