@@ -40,7 +40,13 @@ from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
 from ..tools.typing import Real
 from ..visualization.movies import Movie
-from .base import FinishedSimulation, InfoDict, TrackerBase
+from .base import (
+    FinishedSimulation,
+    InfoDict,
+    TrackerBase,
+    TransformationType,
+    TransformedTrackerBase,
+)
 from .interrupts import InterruptData, RealtimeInterrupts
 
 if TYPE_CHECKING:
@@ -263,7 +269,7 @@ class PrintTracker(TrackerBase):
         self.stream.flush()
 
 
-class PlotTracker(TrackerBase):
+class PlotTracker(TransformedTrackerBase):
     """Tracker plotting data on screen, to files, or writes a movie.
 
     This tracker can be used to create movies from simulations or to simply update a
@@ -294,6 +300,7 @@ class PlotTracker(TrackerBase):
         tight_layout: bool = False,
         max_fps: float = math.inf,
         plot_args: dict[str, Any] | None = None,
+        transformation: TransformationType = None,
     ):
         """
         Args:
@@ -331,6 +338,13 @@ class PlotTracker(TrackerBase):
                 to specify axes ranges when a single panel is shown. For instance, the
                 value :code:`{'ax_style': {'ylim': (0, 1)}}` enforces the y-axis to lie
                 between 0 and 1.
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then plotted. This allows to show derived
+                quantities of the field during calculations. The argument needs
+                to be a callable function taking 1 or 2 arguments. The first argument
+                always is the current field, while the optional second argument is the
+                associated time.
 
         Note:
             If an instance of :class:`~pde.visualization.movies.Movie` is given as the
@@ -352,7 +366,7 @@ class PlotTracker(TrackerBase):
         from ..visualization.movies import Movie
 
         # initialize the tracker
-        super().__init__(interrupts=interrupts)
+        super().__init__(interrupts=interrupts, transformation=transformation)
         self.title = title
         self.output_file = output_file
         self.tight_layout = tight_layout
@@ -405,23 +419,27 @@ class PlotTracker(TrackerBase):
 
         self._context = get_plotting_context(title="Initializing...", show=self.show)
 
+        # obtain the potentially transformed data
+        t_first = super().initialize(state, info)
+        plot_data = self._transform(state, t_first)
+
         # do the actual plotting
         with self._context:
-            self._plot_reference = state.plot(**self.plot_args)
+            self._plot_reference = plot_data.plot(**self.plot_args)
             if self.tight_layout:
                 plt.gcf().tight_layout()
 
         if self._context.supports_update:
             # the context supports reusing figures
-            if hasattr(state.plot, "update_method"):
+            if hasattr(plot_data.plot, "update_method"):
                 # the plotting method supports updating the plot
-                if state.plot.update_method is None:
-                    if state.plot.mpl_class == "axes":  # type: ignore
+                if plot_data.plot.update_method is None:
+                    if plot_data.plot.mpl_class == "axes":  # type: ignore
                         self._update_method = "update_ax"
-                    elif state.plot.mpl_class == "figure":  # type: ignore
+                    elif plot_data.plot.mpl_class == "figure":  # type: ignore
                         self._update_method = "update_fig"
                     else:
-                        mpl_class = state.plot.mpl_class  # type: ignore
+                        mpl_class = plot_data.plot.mpl_class  # type: ignore
                         raise RuntimeError(
                             f"Unknown mpl_class on plot method: {mpl_class}"
                         )
@@ -430,7 +448,7 @@ class PlotTracker(TrackerBase):
             else:
                 raise RuntimeError(
                     "PlotTracker does not  work since the state of type "
-                    f"{state.__class__.__name__} does not use the plot protocol of "
+                    f"{plot_data.__class__.__name__} does not use the plot protocol of "
                     "`pde.tools.plotting`."
                 )
         else:
@@ -457,33 +475,36 @@ class PlotTracker(TrackerBase):
             if time_passed < 1 / self.max_fps:
                 return  # we just recently updated the image
 
+        # obtain the potentially transformed data
+        plot_data = self._transform(state, t)
+
         if callable(self.title):
-            self._context.title = str(self.title(state, t))
+            self._context.title = str(self.title(plot_data, t))
         else:
             self._context.title = self.title.format(time=t)
 
         # update the plot in the correct plotting context
         with self._context:
             if self._update_method == "update_data":
-                # the state supports updating the plot data
-                update_func = getattr(state, state.plot.update_method)  # type: ignore
+                # the plot_data supports updating the plot data
+                update_func = getattr(plot_data, plot_data.plot.update_method)  # type: ignore
                 update_func(self._plot_reference)
 
             elif self._update_method == "update_ax":
                 fig = self._context.fig
                 fig.clf()  # type: ignore
                 ax = fig.add_subplot(1, 1, 1)  # type: ignore
-                state.plot(ax=ax, **self.plot_args)
+                plot_data.plot(ax=ax, **self.plot_args)
 
             elif self._update_method == "update_fig":
                 fig = self._context.fig
                 fig.clf()  # type: ignore
-                state.plot(fig=fig, **self.plot_args)
+                plot_data.plot(fig=fig, **self.plot_args)
                 if self.tight_layout:
                     plt.gcf().tight_layout()
 
             elif self._update_method == "replot":
-                state.plot(**self.plot_args)
+                plot_data.plot(**self.plot_args)
                 if self.tight_layout:
                     plt.gcf().tight_layout()
 
@@ -565,6 +586,13 @@ class LivePlotTracker(PlotTracker):
                 be used to specify axes ranges when a single panel is shown. For
                 instance, the value `{'ax_style': {'ylim': (0, 1)}}` enforces
                 the y-axis to lie between 0 and 1.
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then plotted. This allows to show derived
+                quantities of the field during calculations. The argument needs
+                to be a callable function taking 1 or 2 arguments. The first argument
+                always is the current field, while the optional second argument is the
+                associated time.
         """
         super().__init__(interrupts=interrupts, show=show, max_fps=max_fps, **kwargs)
 
@@ -712,7 +740,7 @@ class SteadyStateTracker(TrackerBase):
     Steady state is obtained when the state does not change anymore, i.e., when the
     evolution rate is close to zero. If the argument `evolution_rate` is specified, it
     is used to calculate the evolution rate directly. If it is omitted, the evolution
-    rate is estaimted by comparing the current state `cur` to the state `prev` at the
+    rate is estimated by comparing the current state `cur` to the state `prev` at the
     previous time step. In both cases, convergence is assumed when the absolute value of
     the evolution rate falls below :code:`atol + rtol * cur` for all points. Here,
     `atol` and `rtol` denote absolute and relative tolerances, respectively.
