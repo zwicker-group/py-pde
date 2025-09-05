@@ -310,8 +310,7 @@ class PlotTracker(TransformedTrackerBase):
                 Title text of the figure. If this is a string, it is shown with a
                 potential placeholder named `time` being replaced by the current
                 simulation time. Conversely, if `title` is a function, it is called with
-                the current state and the time as arguments. This function is expected
-                to return a string.
+                the current (potentially transformed) state and the time as arguments. This function is expected to return a string.
             output_file (str, optional):
                 Specifies a single image file, which is updated periodically, so that
                 the progress can be monitored (e.g. on a compute cluster)
@@ -560,9 +559,11 @@ class LivePlotTracker(PlotTracker):
         Args:
             interrupts:
                 {ARG_TRACKER_INTERRUPT}
-            title (str):
-                Text to show in the title. The current time point will be
-                appended to this text, so include a space for optimal results.
+            title (str or callable):
+                Title text of the figure. If this is a string, it is shown with a
+                potential placeholder named `time` being replaced by the current
+                simulation time. Conversely, if `title` is a function, it is called with
+                the current (potentially transformed) state and the time as arguments. This function is expected to return a string.
             output_file (str, optional):
                 Specifies a single image file, which is updated periodically, so
                 that the progress can be monitored (e.g. on a compute cluster)
