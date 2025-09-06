@@ -17,7 +17,7 @@ except ImportError:
     del PackageNotFoundError, version  # clean name space
 
 # initialize the configuration
-from .tools.config import Config, environment
+from .tools.config import Config, Parameter, environment
 
 config = Config()  # initialize the default configuration
 
@@ -29,7 +29,6 @@ from .grids import *
 from .pdes import *
 from .solvers import *
 from .storage import *
-from .tools.parameters import Parameter
 from .trackers import *
 from .visualization import *
 

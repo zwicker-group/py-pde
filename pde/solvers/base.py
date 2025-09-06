@@ -179,36 +179,11 @@ class SolverBase:
 
         if self._use_post_step_hook:
             try:
-                # look for the definition of a hook function
-                if hasattr(self.pde, "make_modify_after_step"):
-                    # Deprecated on 2024-08-02
-                    warnings.warn(
-                        "`make_modify_after_step` has been replaced by `make_post_step_hook`",
-                        DeprecationWarning,
-                    )
-                    modify_after_step = self.pde.make_modify_after_step(state)
-                    if self._compiled:
-                        sig_modify = (nb.typeof(state.data),)
-                        modify_after_step = jit(sig_modify)(modify_after_step)
-
-                    def post_step_hook(
-                        state_data: np.ndarray, t: float, post_step_data: np.ndarray
-                    ):
-                        """Wrap function to adjust signature."""
-                        post_step_data += modify_after_step(state_data)
-
-                    # create zero of correct type
-                    self._post_step_data_init = np.dtype(state.dtype).type(0)
-                    self._logger.info(
-                        "Created post-step hook from `make_modify_after_step`"
-                    )
-
-                else:
-                    # get hook function and initial data from PDE
-                    post_step_hook, self._post_step_data_init = (
-                        self.pde.make_post_step_hook(state)
-                    )
-                    self._logger.info("Created post-step hook from PDE")
+                # try to get hook function and initial data from PDE instance
+                post_step_hook, self._post_step_data_init = (
+                    self.pde.make_post_step_hook(state)
+                )
+                self._logger.info("Created post-step hook from PDE")
 
             except NotImplementedError:
                 pass  # no hook function defined on the PDE

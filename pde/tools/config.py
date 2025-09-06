@@ -3,6 +3,7 @@
 .. autosummary::
    :nosignatures:
 
+   Parameter
    Config
    get_package_versions
    parse_version_str
@@ -20,6 +21,7 @@ from __future__ import annotations
 import collections
 import contextlib
 import importlib
+import logging
 import os
 import re
 import subprocess as sp
@@ -28,8 +30,111 @@ import warnings
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from .misc import module_available
-from .parameters import Parameter
+
+
+class Parameter:
+    """Class representing a single parameter."""
+
+    def __init__(
+        self,
+        name: str,
+        default_value=None,
+        cls=object,
+        description: str = "",
+        hidden: bool = False,
+        extra: dict[str, Any] | None = None,
+    ):
+        """Initialize a parameter.
+
+        Args:
+            name (str):
+                The name of the parameter
+            default_value:
+                The default value
+            cls:
+                The type of the parameter, which is used for conversion
+            description (str):
+                A string describing the impact of this parameter. This
+                description appears in the parameter help
+            hidden (bool):
+                Whether the parameter is hidden in the description summary
+            extra (dict):
+                Extra arguments that are stored with the parameter
+        """
+        self.name = name
+        self.default_value = default_value
+        self.cls = cls
+        self.description = description
+        self.hidden = hidden
+        self.extra = {} if extra is None else extra
+
+        if cls is not object:
+            # check whether the default value is of the correct type
+            converted_value = cls(default_value)
+            if isinstance(converted_value, np.ndarray):
+                # numpy arrays are checked for each individual value
+                valid_default = np.allclose(
+                    converted_value, default_value, equal_nan=True
+                )
+
+            else:
+                # other values are compared directly. Note that we also check identity
+                # to capture the case where the value is `math.nan`, where the direct
+                # comparison (nan == nan) would evaluate to False
+                valid_default = (
+                    converted_value is default_value or converted_value == default_value
+                )
+
+            if not valid_default:
+                if hasattr(self, "_logger"):
+                    logger: logging.Logger = self._logger
+                else:
+                    logger = logging.getLogger(self.__class__.__module__)
+                logger.warning(
+                    "Default value `%s` does not seem to be of type `%s`",
+                    name,
+                    cls.__name__,
+                )
+
+    def __repr__(self):
+        return (
+            f'{self.__class__.__name__}(name="{self.name}", default_value='
+            f'"{self.default_value}", cls="{self.cls.__name__}", '
+            f'description="{self.description}", hidden={self.hidden})'
+        )
+
+    __str__ = __repr__
+
+    def convert(self, value=None):
+        """Converts a `value` into the correct type for this parameter. If `value` is
+        not given, the default value is converted.
+
+        Note that this does not make a copy of the values, which could lead to
+        unexpected effects where the default value is changed by an instance.
+
+        Args:
+            value: The value to convert
+
+        Returns:
+            The converted value, which is of type `self.cls`
+        """
+        if value is None:
+            value = self.default_value
+
+        if self.cls is object:
+            return value
+        else:
+            try:
+                return self.cls(value)
+            except ValueError as err:
+                raise ValueError(
+                    f"Could not convert {value!r} to {self.cls.__name__} for parameter "
+                    f"'{self.name}'"
+                ) from err
+
 
 # define default parameter values
 DEFAULT_CONFIG: list[Parameter] = [

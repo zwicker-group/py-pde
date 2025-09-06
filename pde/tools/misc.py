@@ -5,7 +5,6 @@
 
    module_available
    ensure_directory_exists
-   preserve_scalars
    decorator_arguments
    import_class
    classproperty
@@ -66,34 +65,6 @@ def ensure_directory_exists(folder: str | Path):
     except OSError as err:
         if err.errno != errno.EEXIST:
             raise
-
-
-def preserve_scalars(method: TFunc) -> TFunc:
-    """Decorator that makes vectorized methods work with scalars.
-
-    This decorator allows to call functions that are written to work on numpy
-    arrays to also accept python scalars, like `int` and `float`. Essentially,
-    this wrapper turns them into an array and unboxes the result.
-
-    Args:
-        method: The method being decorated
-
-    Returns:
-        The decorated method
-    """
-    # deprecated on 2024-08-21
-    warnings.warn("Method `preserve_scalars` is deprecated", DeprecationWarning)
-
-    @functools.wraps(method)
-    def wrapper(self, *args):
-        args = [number_array(arg, copy=None) for arg in args]
-        if args[0].ndim == 0:
-            args = [arg[None] for arg in args]
-            return method(self, *args)[0]
-        else:
-            return method(self, *args)
-
-    return wrapper  # type: ignore
 
 
 def decorator_arguments(decorator: Callable) -> Callable:
