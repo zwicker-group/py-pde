@@ -28,20 +28,6 @@ def test_ensure_directory_exists(tmp_path):
     assert not path.exists()
 
 
-def test_preserve_scalars():
-    """Test the preserve_scalars decorator."""
-
-    class Test:
-        @misc.preserve_scalars
-        def meth(self, arr):
-            return arr + 1
-
-    t = Test()
-
-    assert t.meth(1) == 2
-    np.testing.assert_equal(t.meth(np.ones(2)), np.full(2, 2))
-
-
 def test_hybridmethod():
     """Test the hybridmethod decorator."""
 

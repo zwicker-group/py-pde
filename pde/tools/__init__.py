@@ -14,7 +14,6 @@
    mpi
    numba
    output
-   parameters
    parse_duration
    plotting
    spectral
