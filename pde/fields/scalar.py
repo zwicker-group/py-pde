@@ -275,6 +275,7 @@ class ScalarField(DataFieldBase):
     def project(
         self,
         axes: str | Sequence[str],
+        *,
         method: Literal["integral", "average", "mean"] = "integral",
         label: str | None = None,
     ) -> ScalarField:

@@ -589,6 +589,28 @@ class FieldCollection(FieldBase):
             labels=_labels,
         )
 
+    def _apply_to_fields(
+        self,
+        func: Callable[[DataFieldBase], DataFieldBase],
+        *,
+        label: str | None = None,
+    ) -> FieldCollection:
+        """Apply function to every individual field.
+
+        Args:
+            func (callable):
+                Function applied to every field of this collections
+            label (str, optional):
+                Name of the returned collection. If omitted, the current label is used.
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`: Modified fields
+        """
+        if label is None:
+            label = self.label
+        fields = [func(fields) for fields in self.fields]
+        return self.__class__(fields, label=label)
+
     def _unary_operation(self: FieldCollection, op: Callable) -> FieldCollection:
         """Perform an unary operation on this field collection.
 
@@ -623,12 +645,11 @@ class FieldCollection(FieldBase):
                 Name of the returned field collection
 
         Returns:
-            :class:`~pde.fields.coolection.FieldCollection`: Interpolated data
+            :class:`~pde.fields.collection.FieldCollection`: Interpolated data
         """
-        if label is None:
-            label = self.label
-        fields = [f.interpolate_to_grid(grid, fill=fill) for f in self.fields]
-        return self.__class__(fields, label=label)
+        return self._apply_to_fields(
+            lambda f: f.interpolate_to_grid(grid, fill=fill), label=label
+        )
 
     def smooth(
         self,
@@ -651,7 +672,8 @@ class FieldCollection(FieldBase):
             Name of the returned field
 
         Returns:
-            Field collection with smoothed data, stored at `out` if given.
+            :class:`~pde.fields.collection.FieldCollection`:
+                Smoothed data, stored at `out` if given.
         """
         # allocate memory for storing output
         if out is None:
@@ -681,6 +703,63 @@ class FieldCollection(FieldBase):
     def magnitudes(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: scalar magnitudes of all fields."""
         return np.array([field.magnitude for field in self])  # type: ignore
+
+    def project(
+        self, axes: str | Sequence[str], *, label: str | None = None, **kwargs
+    ) -> FieldCollection:
+        """Project fields along given axes.
+
+        This is currently only implemented for scalar fields. If any field in the
+        collection has higher rank, the entire process fails.
+
+        Args:
+            axes (list of str):
+                The names of the axes that are removed by the projection operation. The
+                valid names for a given grid are the ones in the :attr:`GridBase.axes`
+                attribute.
+            label (str, optional):
+                Name of the returned collection. If omitted, the current label is used.
+            method (str):
+                The projection method. This can be either 'integral' to integrate over
+                the removed axes or 'average' to perform an average instead.
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`:
+                The projected data of all fields on a subgrid of the original grid.
+        """
+        if not all(isinstance(f, ScalarField) for f in self):
+            raise TypeError("All fields must be scalar fields to project data")
+        return self._apply_to_fields(lambda f: f.project(axes, **kwargs), label=label)  # type: ignore
+
+    def slice(
+        self, position: dict[str, float], *, label: str | None = None, **kwargs
+    ) -> FieldCollection:
+        """Slice all fields at a given position.
+
+        This is currently only implemented for scalar fields. If any field in the
+        collection has higher rank, the entire process fails.
+
+        Args:
+            position (dict):
+                Determines the location of the slice using a dictionary supplying
+                coordinate values for a subset of axes. Axes not mentioned in the
+                dictionary are retained and form the slice. For instance, in a 2d
+                Cartesian grid, `position = {'x': 1}` slices along the y-direction at
+                x=1. Additionally, the special positions 'low', 'mid', and 'high' are
+                supported to reference relative positions along the axis.
+            label (str, optional):
+                Name of the returned collection. If omitted, the current label is used.
+            method (str):
+                The method used for slicing. Currently, we only support `nearest`, which
+                takes data from cells defined on the grid.
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`:
+                The projected data of all fields on a subgrid of the original grid.
+        """
+        if not all(isinstance(f, ScalarField) for f in self):
+            raise TypeError("All fields must be scalar fields to slice data")
+        return self._apply_to_fields(lambda f: f.slice(position, **kwargs), label=label)  # type: ignore
 
     def get_line_data(  # type: ignore
         self,
