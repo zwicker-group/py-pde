@@ -371,3 +371,29 @@ def test_merged_image_plotting(num):
         vmin=-1,
         vmax=[1, 2, 3, 4],
     )
+
+
+def test_collection_slice_project():
+    """Test slicing and projection of field data."""
+    grid = UnitGrid([8, 16])
+    fc = FieldCollection.scalar_random_uniform(2, grid)
+
+    f2 = fc.slice({"x": 0.5}, label="sliced")
+    np.testing.assert_allclose(f2[0].data, fc[0].data[0, :])
+    assert f2.label == "sliced"
+
+    f3 = fc.project("x", label="projected")
+    np.testing.assert_allclose(f3[0].data, fc[0].data.sum(axis=0))
+    assert f3.label == "projected"
+
+
+def test_collection_slice_project_wrong_type():
+    """Test slicing and projection of field data."""
+    grid = UnitGrid([8, 16])
+    fc = FieldCollection([VectorField(grid)])
+
+    with pytest.raises(TypeError):
+        fc.slice({"x": 0.5})
+
+    with pytest.raises(TypeError):
+        fc.project("x")
