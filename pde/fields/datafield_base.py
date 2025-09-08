@@ -501,6 +501,22 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         label: str | None = None,
         dtype: DTypeLike | None = None,
     ) -> TDataField:
+        """Return a copy of the field.
+
+        This method creates a new instance of the field with the same grid and data.
+        Optionally, a new label and/or data type can be specified for the copy.
+
+        Args:
+            label (str, optional):
+                Name of the copied field. If omitted, the label of the original field is
+                used.
+            dtype (numpy dtype, optional):
+                Data type of the copied field. If omitted, the data type of the original
+                field is used.
+
+        Returns:
+            :class:`DataFieldBase`: A copy of the current field instance.
+        """
         if label is None:
             label = self.label
         if dtype is None:
