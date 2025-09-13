@@ -1180,7 +1180,7 @@ class GridBase(metaclass=ABCMeta):
     def operators(cls) -> set[str]:
         """set: all operators defined for this class"""
         result = set()
-        # add all customly defined operators
+        # add all custom defined operators
         classes = inspect.getmro(cls)[:-1]  # type: ignore
         for anycls in classes:
             result |= set(anycls._operators.keys())  # type: ignore
@@ -1194,7 +1194,7 @@ class GridBase(metaclass=ABCMeta):
                 }
         return result
 
-    @operators.instancemethod
+    @operators.instancemethod  # type: ignore
     @property
     def operators(self) -> set[str]:
         """set: all operators defined for this instance"""

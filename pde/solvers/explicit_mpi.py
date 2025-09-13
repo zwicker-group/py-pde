@@ -163,7 +163,7 @@ class ExplicitMPISolver(ExplicitSolver):
         self.info["dt"] = dt
         self.info["dt_adaptive"] = self.adaptive
         self.info["steps"] = 0
-        self.info["stochastic"] = self.pde.is_sde
+        self.info["stochastic"] = getattr(self.pde, "is_sde", False)
         self.info["use_mpi"] = True
         self.info["scheme"] = self.scheme
 

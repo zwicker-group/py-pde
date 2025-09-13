@@ -101,7 +101,7 @@ class PDEBase(metaclass=ABCMeta):
     def __init_subclass__(cls, **kwargs):
         """Initialize class-level attributes of subclasses."""
         super().__init_subclass__(**kwargs)
-        # create logger for this specific field class
+        # create logger for this specific PDE class
         cls._logger = _base_logger.getChild(cls.__qualname__)
 
     def __getstate__(self) -> dict[str, Any]:
@@ -121,8 +121,10 @@ class PDEBase(metaclass=ABCMeta):
         magnitude is controlled by the `noise` property. In this case, `is_sde` is
         `True` if `self.noise != 0`.
         """
-        # check for self.noise, in case __init__ is not called in a subclass
-        return hasattr(self, "noise") and np.any(self.noise != 0)  # type: ignore
+        # check for self.noise, but do not assume it is defined in case __init__ is not
+        # called in a subclass
+        noise = getattr(self, "noise", 0)
+        return bool(np.any(noise != 0))
 
     def make_post_step_hook(self, state: FieldBase) -> tuple[StepperHook, Any]:
         """Returns a function that is called after each step.
@@ -407,8 +409,8 @@ class PDEBase(metaclass=ABCMeta):
 
         Args:
             state (:class:`~pde.fields.FieldBase`):
-                An example for the state from which the grid and other
-                information can be extracted
+                An example for the state from which the grid and other information can
+                be extracted
 
         Returns:
             Function determining the right hand side of the PDE
@@ -648,7 +650,14 @@ class PDEBase(metaclass=ABCMeta):
                 self._logger.warning("Solver is not an instance of `SolverBase`.")
 
         elif isinstance(solver, str):
+            if dt is None and solver == "explicit":
+                # Use an adaptive solver in the default case of an explicit solver
+                # when no time step is specified
+                kwargs.setdefault("adaptive", True)
             solver_obj = SolverBase.from_name(solver, pde=self, **kwargs)
+
+        elif isinstance(solver, SolverBase):
+            raise TypeError("`solver` must be a class not an instance")
 
         else:
             raise TypeError(f"Solver {solver} is not supported")
@@ -678,8 +687,10 @@ def expr_prod(factor: float, expression: str) -> str:
     """Helper function for building an expression with an (optional) pre-factor.
 
     Args:
-        factor (float): The value of the prefactor
-        expression (str): The remaining expression
+        factor (float):
+            The value of the prefactor
+        expression (str):
+            The remaining expression
 
     Returns:
         str: The expression with the factor appended if necessary
