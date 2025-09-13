@@ -1194,7 +1194,7 @@ class GridBase(metaclass=ABCMeta):
                 }
         return result
 
-    @operators.instancemethod
+    @operators.instancemethod  # type:ignore
     @property
     def operators(self) -> set[str]:
         """set: all operators defined for this instance"""

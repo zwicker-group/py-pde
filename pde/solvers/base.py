@@ -373,6 +373,7 @@ class SolverBase:
         fixed_stepper = self._make_fixed_stepper(state, dt_float)
 
         self.info["dt"] = dt_float
+        self.info["dt_adaptive"] = False
         self.info["steps"] = 0
         self.info["post_step_data"] = self._post_step_data_init
         self.info["stochastic"] = getattr(self.pde, "is_sde", False)

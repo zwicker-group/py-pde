@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from pde import ScalarField, UnitGrid, pdes
+from pde.solvers import ExplicitSolver
 
 
 @pytest.mark.parametrize("dim", [1, 2])
@@ -58,3 +59,22 @@ def test_pde_consistency_test(rng):
     state = ScalarField.random_uniform(UnitGrid([4]), rng=rng)
     with pytest.raises(AssertionError):
         eq.solve(state, t_range=5, tracker=None)
+
+
+def test_pde_automatic_adaptive_solver():
+    """Test whether adaptive solver is enabled as expected."""
+    eq = pdes.DiffusionPDE()
+    state = ScalarField(UnitGrid([2]))
+    args = {"state": state, "t_range": 0.01, "backend": "numpy", "tracker": None}
+
+    eq.solve(**args)
+    assert eq.diagnostics["solver"]["dt_adaptive"]
+
+    eq.solve(dt=0.01, **args)
+    assert not eq.diagnostics["solver"]["dt_adaptive"]
+
+    eq.solve(solver=ExplicitSolver, **args)
+    assert not eq.diagnostics["solver"]["dt_adaptive"]
+
+    eq.solve(solver="implicit", **args)
+    assert not eq.diagnostics["solver"]["dt_adaptive"]
