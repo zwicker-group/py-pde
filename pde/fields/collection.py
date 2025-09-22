@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import math
 import warnings
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Any, Callable, Literal, overload
@@ -982,8 +983,8 @@ class FieldCollection(FieldBase):
     def plot(
         self,
         kind: str | Sequence[str] = "auto",
-        figsize="auto",
-        arrangement: Literal["horizontal", "vertical"] = "horizontal",
+        figsize: Literal["auto"] | tuple[float, float] = "auto",
+        arrangement: Literal["horizontal", "vertical"] | tuple[int, int] = "horizontal",
         fig=None,
         subplot_args=None,
         **kwargs,
@@ -1002,10 +1003,12 @@ class FieldCollection(FieldBase):
                 `default` is passed. Conversely, the size is adjusted automatically when
                 `auto` is passed. Finally, a specific figure size can be specified using
                 two values, using :func:`matplotlib.figure.Figure.set_size_inches`.
-            arrangement (str):
-                Determines how the subpanels will be arranged. The default value
-                `horizontal` places all subplots next to each other. The alternative
-                value `vertical` puts them below each other.
+            arrangement (str or tuple of int):
+                Determines how the sub panels will be arranged. The default value
+                `horizontal` places all subplots next to each other, whereas `vertical`
+                puts them below each other. Alternatively, an exact number of rows and
+                columns can be specified by the tuple :code:`(nrows, ncols)`. Negative
+                values will be replaced by suitable values that ensure enough panels.
             {PLOT_ARGS}
             subplot_args (list):
                 Additional arguments for the specific subplots. Should be a list with a
@@ -1019,43 +1022,46 @@ class FieldCollection(FieldBase):
             List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
+        # determine how many panels we need
         if kind in {"merged"}:
             num_panels = 1
         else:
             num_panels = len(self)
+        if subplot_args is None:
+            subplot_args = [{}] * num_panels
+
+        # determine the number of rows and columns in the plot
+        if arrangement == "horizontal":
+            nrows, ncols = 1, num_panels
+        elif arrangement == "vertical":
+            nrows, ncols = num_panels, 1
+        else:
+            nrows, ncols = arrangement
+            if ncols < 0 and nrows < 0:
+                nrows = ncols = math.ceil(np.sqrt(num_panels))
+            elif ncols < 0:
+                ncols = math.ceil(num_panels / nrows)
+            elif nrows < 0:
+                nrows = math.ceil(num_panels / ncols)
 
         # set the size of the figure
         if figsize == "default":
             pass  # just leave the figure size at its default value
-
         elif figsize == "auto":
-            # adjust the size of the figure
-            if arrangement == "horizontal":
-                fig.set_size_inches((4 * num_panels, 3), forward=True)
-            elif arrangement == "vertical":
-                fig.set_size_inches((4, 3 * num_panels), forward=True)
-
+            # adjust the size of the figure according to panels
+            fig.set_size_inches((4 * ncols, 3 * nrows), forward=True)
         else:
             # assume that an actual tuple is given
             fig.set_size_inches(figsize, forward=True)
 
         # create all the subpanels
-        if arrangement == "horizontal":
-            (axs,) = fig.subplots(1, num_panels, squeeze=False)
-        elif arrangement == "vertical":
-            axs = fig.subplots(num_panels, 1, squeeze=False)
-            axs = [a[0] for a in axs]  # transpose
-        else:
-            raise ValueError(f"Unknown arrangement `{arrangement}`")
-
-        if subplot_args is None:
-            subplot_args = [{}] * num_panels
+        axs = fig.subplots(nrows=nrows, ncols=ncols, squeeze=False)
 
         if kind in {"merged"}:
             # plot a single RGB representation
             reference = [
                 self._plot_merged_image(
-                    ax=axs[0], action="none", **kwargs, **subplot_args[0]
+                    ax=axs[0, 0], action="none", **kwargs, **subplot_args[0]
                 )
             ]
 
@@ -1065,7 +1071,9 @@ class FieldCollection(FieldBase):
                 kind = [kind] * num_panels
             reference = [
                 field.plot(kind=knd, ax=ax, action="none", **kwargs, **sp_args)
-                for field, knd, ax, sp_args in zip(self.fields, kind, axs, subplot_args)
+                for field, knd, ax, sp_args in zip(
+                    self.fields, kind, axs.flat, subplot_args
+                )
             ]
 
         # return the references for all subplots

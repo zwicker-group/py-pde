@@ -397,3 +397,31 @@ def test_collection_slice_project_wrong_type():
 
     with pytest.raises(TypeError):
         fc.project("x")
+
+
+def test_field_collection_plotting():
+    """Test different arrangements of field plotting."""
+    grid = UnitGrid([2])
+
+    def get_panel_count(arrangement):
+        ref = field.plot(arrangement=arrangement, action="none")
+        return len(ref[0].ax.figure.get_axes())
+
+    field = FieldCollection.scalar_random_uniform(4, grid)
+    assert get_panel_count((-1, 2)) == 4
+    assert get_panel_count((2, -1)) == 4
+    assert get_panel_count((-1, -1)) == 4
+
+    field = FieldCollection.scalar_random_uniform(5, grid)
+    assert get_panel_count("horizontal") == 5
+    assert get_panel_count("vertical") == 5
+    assert get_panel_count((3, 4)) == 12
+    assert get_panel_count((2, -1)) == 6
+    assert get_panel_count((-1, 3)) == 6
+    assert get_panel_count((-1, -1)) == 9
+    with pytest.raises(ValueError):
+        get_panel_count((0, 4))
+    with pytest.raises(ValueError):
+        get_panel_count((4, 0))
+    with pytest.raises(TypeError):
+        get_panel_count(4)
