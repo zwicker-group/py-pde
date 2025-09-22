@@ -16,7 +16,7 @@ jobs:
         python-version: '3.11'
 
     - name: Setup FFmpeg
-      uses: FedericoCarboni/setup-ffmpeg@v3
+      uses: AnimMouse/setup-ffmpeg@v1
 
     - name: Install dependencies
       # install all requirements. Note that the full requirements are installed separately
