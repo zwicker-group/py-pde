@@ -984,7 +984,8 @@ class FieldCollection(FieldBase):
         self,
         kind: str | Sequence[str] = "auto",
         figsize: Literal["auto"] | tuple[float, float] = "auto",
-        arrangement: Literal["horizontal", "vertical"] | tuple[int, int] = "horizontal",
+        arrangement: Literal["horizontal", "vertical", "square"]
+        | tuple[int, int] = "horizontal",
         fig=None,
         subplot_args=None,
         **kwargs,
@@ -1031,6 +1032,8 @@ class FieldCollection(FieldBase):
             subplot_args = [{}] * num_panels
 
         # determine the number of rows and columns in the plot
+        if arrangement == "square":
+            arrangement = (-1, -1)
         if arrangement == "horizontal":
             nrows, ncols = 1, num_panels
         elif arrangement == "vertical":

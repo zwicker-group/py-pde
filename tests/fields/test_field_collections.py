@@ -408,6 +408,9 @@ def test_field_collection_plotting():
         return len(ref[0].ax.figure.get_axes())
 
     field = FieldCollection.scalar_random_uniform(4, grid)
+    assert get_panel_count("horizontal") == 4
+    assert get_panel_count("vertical") == 4
+    assert get_panel_count("square") == 4
     assert get_panel_count((-1, 2)) == 4
     assert get_panel_count((2, -1)) == 4
     assert get_panel_count((-1, -1)) == 4
@@ -415,6 +418,7 @@ def test_field_collection_plotting():
     field = FieldCollection.scalar_random_uniform(5, grid)
     assert get_panel_count("horizontal") == 5
     assert get_panel_count("vertical") == 5
+    assert get_panel_count("square") == 9
     assert get_panel_count((3, 4)) == 12
     assert get_panel_count((2, -1)) == 6
     assert get_panel_count((-1, 3)) == 6
