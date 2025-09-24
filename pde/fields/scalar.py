@@ -107,8 +107,8 @@ class ScalarField(DataFieldBase):
     def from_image(
         cls,
         path: Path | str,
-        bounds=None,
-        periodic=False,
+        bounds: Sequence[tuple[float, float]] | None = None,
+        periodic: bool | Sequence[bool] = False,
         *,
         label: str | None = None,
     ) -> ScalarField:

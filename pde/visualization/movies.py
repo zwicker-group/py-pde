@@ -58,7 +58,7 @@ class Movie:
                 movie will appear to run.
             dpi (float):
                 The resolution of the resulting movie. The default value is controlled
-                by :mod:`matplotlib` and is usally set to 100.
+                by :mod:`matplotlib` and is usually set to 100.
             \**kwargs:
                 Additional parameters are used to initialize
                 :class:`matplotlib.animation.FFMpegWriter`. Here, we can for instance

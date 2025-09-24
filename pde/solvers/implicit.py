@@ -84,7 +84,7 @@ class ImplicitSolver(SolverBase):
             # fixed point iteration for improving state after dt
             for n in range(maxiter):
                 state_prev[:] = state_data  # keep previous state to judge convergence
-                # another interation to improve estimate
+                # another iteration to improve estimate
                 state_data[:] = state_t + dt * rhs(state_data, t + dt)
 
                 # calculate mean squared error to judge convergence
@@ -153,7 +153,7 @@ class ImplicitSolver(SolverBase):
             # fixed point iteration for improving state after dt
             for n in range(maxiter):
                 state_prev[:] = state_data  # keep previous state to judge convergence
-                # another interation to improve estimate
+                # another iteration to improve estimate
                 state_data[:] = state_t + dt * rhs(state_data, t + dt)
 
                 # calculate mean squared error to judge convergence

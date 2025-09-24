@@ -704,7 +704,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             interpolator = self.make_interpolator(fill=fill, with_ghost_cells=True)
 
         else:
-            # create an interpolator without imposing bounary conditions
+            # create an interpolator without imposing boundary conditions
             interpolator = self.make_interpolator(fill=fill, with_ghost_cells=False)
 
         # do the actual interpolation

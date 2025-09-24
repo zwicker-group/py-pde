@@ -222,7 +222,7 @@ class FieldCollection(FieldBase):
     @property
     def fields(self) -> list[DataFieldBase]:
         """list: the fields of this collection"""
-        # return shallow copy of list so the internal list is not modified accidentially
+        # return shallow copy of list so the internal list is not modified accidentally
         return self._fields[:]
 
     @property
@@ -827,7 +827,7 @@ class FieldCollection(FieldBase):
             transpose (bool):
                 Determines whether the transpose of the data is plotted
             vmin, vmax (float, list of float):
-                Define the data range that the color chanels cover. By default, they
+                Define the data range that the color channels cover. By default, they
                 cover the complete value range of the supplied data.
 
         Returns:
@@ -904,7 +904,7 @@ class FieldCollection(FieldBase):
         vmax: float | list[float | None] | None = None,
         **kwargs,
     ) -> PlotReference:
-        r"""Visualize fields by mapping to different color chanels in a 2d density plot.
+        r"""Visualize fields by mapping to different color channels in a 2d density plot.
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -925,7 +925,7 @@ class FieldCollection(FieldBase):
             transpose (bool):
                 Determines whether the transpose of the data is plotted
             vmin, vmax (float, list of float):
-                Define the data range that the color chanels cover. By default, they
+                Define the data range that the color channels cover. By default, they
                 cover the complete value range of the supplied data.
             \**kwargs:
                 Additional keyword arguments that affect the image. Non-Cartesian grids
@@ -986,8 +986,8 @@ class FieldCollection(FieldBase):
         figsize: Literal["auto"] | tuple[float, float] = "auto",
         arrangement: Literal["horizontal", "vertical", "square"]
         | tuple[int, int] = "horizontal",
-        fig=None,
         subplot_args=None,
+        fig=None,
         **kwargs,
     ) -> list[PlotReference]:
         r"""Visualize all the fields in the collection.
@@ -1010,11 +1010,11 @@ class FieldCollection(FieldBase):
                 puts them below each other. Alternatively, an exact number of rows and
                 columns can be specified by the tuple :code:`(nrows, ncols)`. Negative
                 values will be replaced by suitable values that ensure enough panels.
-            {PLOT_ARGS}
             subplot_args (list):
                 Additional arguments for the specific subplots. Should be a list with a
                 dictionary of arguments for each subplot. Supplying an empty dict allows
                 to keep the default setting of specific subplots.
+            {PLOT_ARGS}
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual plotting
                 function of all subplots.

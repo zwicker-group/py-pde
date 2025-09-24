@@ -830,7 +830,7 @@ class GridBase(metaclass=ABCMeta):
         Args:
             points (:class:`~numpy.ndarray`):
                 The points specified with `num_axes` coordinates, not specifying
-                cooridnates along symmetry axes of the grid.
+                coordinates along symmetry axes of the grid.
             value (str or float):
                 Value of the points along symmetry axes. The special values `min` and
                 `max` denote the minimal and maximal values along the respective
@@ -1423,7 +1423,7 @@ class GridBase(metaclass=ABCMeta):
                     def apply_op_impl(
                         arr: np.ndarray, out: np.ndarray | None = None, args=None
                     ) -> np.ndarray:
-                        """Applies operator to the data wihtout allocating out."""
+                        """Applies operator to the data without allocating out."""
                         if arr.shape != shape_in_valid:
                             raise ValueError(f"Incompatible shapes of input array")
                         if out.shape != shape_out:  # type: ignore

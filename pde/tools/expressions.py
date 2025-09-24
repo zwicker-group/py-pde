@@ -91,7 +91,7 @@ def parse_number(
 
 
 @vectorize()
-def _heaviside_implemention_ufunc(x1, x2):
+def _heaviside_implementation_ufunc(x1, x2):
     """Ufunc implementation of the Heaviside function used for numba and sympy.
 
     Args:
@@ -111,7 +111,7 @@ def _heaviside_implemention_ufunc(x1, x2):
         return 1.0
 
 
-def _heaviside_implemention(x1, x2):
+def _heaviside_implementation(x1, x2):
     """Normal implementation of the Heaviside function used for numba and sympy.
 
     Args:
@@ -123,19 +123,19 @@ def _heaviside_implemention(x1, x2):
     """
     # this extra function is necessary since the `overload` wrapper cannot deal properly
     # with the `_DUFunc` returned by `vectorize`
-    return _heaviside_implemention_ufunc(x1, x2)
+    return _heaviside_implementation_ufunc(x1, x2)
 
 
 @overload(np.heaviside)
 def np_heaviside(x1, x2):
     """Numba implementation of the Heaviside function."""
-    return _heaviside_implemention
+    return _heaviside_implementation
 
 
 # special functions that we want to support in expressions but that are not defined by
 # sympy version 1.6 or have a different signature than expected by numba/numpy
 SPECIAL_FUNCTIONS: dict[str, Callable] = {
-    "Heaviside": _heaviside_implemention,
+    "Heaviside": _heaviside_implementation,
     "hypot": np.hypot,
 }
 
@@ -199,14 +199,14 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
     # replace lower-case heaviside (which would translate to numpy function) by
     # upper-case Heaviside, which is directly recognized by sympy. Down the line, this
     # allows easier handling of special cases
-    def substitude(expr):
+    def substitute(expr):
         """Helper function substituting expressions."""
         if isinstance(expr, list):
-            return [substitude(e) for e in expr]
+            return [substitute(e) for e in expr]
         else:
             return expr.subs(sympy.Function("heaviside"), sympy.Heaviside)
 
-    return substitude(expr)
+    return substitute(expr)
 
 
 ExpressionType = Union[float, str, np.ndarray, basic.Basic, "ExpressionBase"]
@@ -475,7 +475,7 @@ class ExpressionBase(metaclass=ABCMeta):
             if prepare_compilation:
                 func = jit(func)
 
-            # TOOD: support keyword arguments
+            # TODO: support keyword arguments
 
             def result(*args):
                 return func(*args, *const_values)

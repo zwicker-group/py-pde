@@ -150,7 +150,7 @@ class SolverBase:
 
             @register_jitable
             def synchronize_errors(error: float) -> float:
-                """Return error synchronized accross all cores."""
+                """Return error synchronized across all cores."""
                 return mpi_allreduce(error, operator=operator)  # type: ignore
 
         else:
