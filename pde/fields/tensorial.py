@@ -161,7 +161,7 @@ class Tensor2Field(DataFieldBase):
         # set the result as the full data array
         self._data_full = data_full
 
-        # ensure that no copying happend
+        # ensure that no copying happened
         if not np.may_share_memory(self.data, value):
             raise RuntimeError("Spurious copy detected!")
 

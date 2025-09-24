@@ -15,7 +15,7 @@ eq = pde.DiffusionPDE()
 
 
 def run_solver(solver, label):
-    """helper function testing the solver"""
+    """Helper function testing the solver."""
     controller = pde.Controller(solver, t_range=1, tracker=None)
     sol = controller.run(field, dt=1e-3)
     sol.label = label + " solver"

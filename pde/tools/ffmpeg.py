@@ -116,7 +116,7 @@ formats = {
 
 
 def find_format(channels: int, bits_per_channel: int = 8) -> str | None:
-    """Find a defined FFmpegFormat that satisifies the requirements.
+    """Find a defined FFmpegFormat that satisfies the requirements.
 
     Args:
         channels (int):
@@ -125,7 +125,7 @@ def find_format(channels: int, bits_per_channel: int = 8) -> str | None:
             Minimal number of bits per channel
 
     Returns:
-        str: Identifier for a format that satisifies the requirements (but might have
+        str: Identifier for a format that satisfies the requirements (but might have
         more channels or more bits per channel then requested. `None` is returned if no
         format can be identified.
     """
