@@ -167,7 +167,13 @@ def test_cosine_correlation(rng):
         rng=rng,
     )
 
+    # test for normal distribution
+    data = noise_corr()
+    assert stats.normaltest(data).pvalue < 1e-8
+    assert np.abs(np.mean(data)) < 1e-3
+    # we cannot test the variance, since it is not guaranteed for cosine correlations
+
     # get spectral density
-    k, density = spectral_density(data=noise_corr(), dx=grid.discretization[0])
+    k, density = spectral_density(data=data, dx=grid.discretization[0])
     k_max = k[np.argmax(density)]
     assert k_max == pytest.approx(1 / length_scale)
