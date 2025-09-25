@@ -230,17 +230,17 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             mean (float):
                 Mean of the Gaussian distribution
             std (float):
-                Standard deviation of the Gaussian distribution.
+                Standard deviation of the Gaussian distribution
             scaling (str):
                 Determines how the values are scaled. Possible choices are 'none'
                 (values are drawn from a normal distribution with given mean and
                 standard deviation) or 'physical' (the variance of the random number is
                 scaled by the inverse volume of the grid cell; this is for instance
-                useful for concentration fields, which vary less in larger volumes).
+                useful for concentration fields, which vary less in larger cells).
             correlation (str):
-                Selects the correlation function used to make the correlated noise. Many
-                of the options (described below) support additional parameters that can
-                be supplied as keyword arguments.
+                Selects the autocorrelation function to create spatially correlated
+                noise. Many of the options (described below) support additional
+                parameters that can be supplied as keyword arguments.
             label (str, optional):
                 Name of the returned field
             dtype (numpy dtype):
@@ -270,6 +270,12 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                               :code:`length_scale`, whereas the sharpness parameter
                               :math:`s` is set by :code:`sharpness` and defaults to 10.
             ================= ==========================================================
+
+        Note:
+            The returned field only has the correct standard deviation (set by `std`)
+            for correlation functions that decrease monotonously. In other cases (i.e.,
+            for :code:`cosine` correlation), the variance depends on details, like the
+            resolution of the grid.
         """
         rng = np.random.default_rng(rng)
 

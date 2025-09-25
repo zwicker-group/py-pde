@@ -154,6 +154,11 @@ def make_correlated_noise(
                           :math:`s` is set by :code:`sharpness` and defaults to 10.
         ================= ==============================================================
 
+    Note:
+        The returned field only has unit variance for correlation functions that
+        decrease monotonously. In other cases (i.e., for :code:`cosine` correlation),
+        the variance depends on details, like the resolution of the grid.
+
     Returns:
         callable: a function returning a random realization
     """
