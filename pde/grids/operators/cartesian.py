@@ -551,7 +551,7 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
 def make_laplace(
     grid: CartesianGrid,
     *,
-    backend: Literal["auto", "numba", "numba-spectral", "scipy"] = "auto",
+    backend: Literal["auto", "config", "numba", "numba-spectral", "scipy"] = "config",
     **kwargs,
 ) -> OperatorType:
     """Make a Laplace operator on a Cartesian grid.
@@ -560,8 +560,8 @@ def make_laplace(
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
-            Backend used for calculating the Laplace operator. If backend='auto', a
-            suitable backend is chosen automatically.
+            Backend used for calculating the Laplace operator. The value is read from
+            the configuration for `config`, and a suitable backend is chosen for `auto`.
         **kwargs:
             Specifies extra arguments influencing how the operator is created. Note that
 
@@ -570,8 +570,10 @@ def make_laplace(
     """
     dim = grid.dim
 
-    if backend == "auto":
-        # choose the fastest available Laplace operator
+    if backend == "config":  # read value from configuration
+        backend = config["operators.cartesian.default_backend"]
+
+    if backend == "auto":  # choose the fastest available Laplace operator
         if 1 <= dim <= 3:
             backend = "numba"
         else:
@@ -804,7 +806,7 @@ def _make_gradient_numba_3d(
 def make_gradient(
     grid: CartesianGrid,
     *,
-    backend: Literal["auto", "numba", "scipy"] = "auto",
+    backend: Literal["auto", "config", "numba", "scipy"] = "config",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """Make a gradient operator on a Cartesian grid.
@@ -813,8 +815,8 @@ def make_gradient(
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
-            Backend used for calculating the gradient operator.
-            If backend='auto', a suitable backend is chosen automatically.
+            Backend used for calculating the gradient operator. The value is read from
+            the configuration for `config`, and a suitable backend is chosen for `auto`.
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -824,8 +826,10 @@ def make_gradient(
     """
     dim = grid.dim
 
-    if backend == "auto":
-        # choose the fastest available gradient operator
+    if backend == "config":  # read value from configuration
+        backend = config["operators.cartesian.default_backend"]
+
+    if backend == "auto":  # choose the fastest available Laplace operator
         if 1 <= dim <= 3:
             backend = "numba"
         else:
@@ -1229,7 +1233,7 @@ def _make_divergence_numba_3d(
 def make_divergence(
     grid: CartesianGrid,
     *,
-    backend: Literal["auto", "numba", "scipy"] = "auto",
+    backend: Literal["auto", "config", "numba", "scipy"] = "config",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """Make a divergence operator on a Cartesian grid.
@@ -1238,8 +1242,8 @@ def make_divergence(
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
-            Backend used for calculating the divergence operator.
-            If backend='auto', a suitable backend is chosen automatically.
+            Backend used for calculating the divergence operator. The value is read from
+            the configuration for `config`, and a suitable backend is chosen for `auto`.
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -1249,8 +1253,10 @@ def make_divergence(
     """
     dim = grid.dim
 
-    if backend == "auto":
-        # choose the fastest available divergence operator
+    if backend == "config":  # read value from configuration
+        backend = config["operators.cartesian.default_backend"]
+
+    if backend == "auto":  # choose the fastest available Laplace operator
         if 1 <= dim <= 3:
             backend = "numba"
         else:
@@ -1281,7 +1287,7 @@ def _vectorize_operator(
     make_operator: Callable,
     grid: CartesianGrid,
     *,
-    backend: Literal["auto", "numba", "scipy"] = "numba",
+    backend: Literal["auto", "config", "numba", "scipy"] = "config",
     **kwargs,
 ) -> OperatorType:
     """Apply an operator to on all dimensions of a vector.
@@ -1292,7 +1298,7 @@ def _vectorize_operator(
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
-            Backend used for calculating the vector gradient operator.
+            Backend used for calculating the vectorized operator.
 
     Returns:
         A function that can be applied to an array of values
@@ -1315,7 +1321,7 @@ def _vectorize_operator(
 def make_vector_gradient(
     grid: CartesianGrid,
     *,
-    backend: Literal["auto", "numba", "scipy"] = "numba",
+    backend: Literal["auto", "config", "numba", "scipy"] = "config",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """Make a vector gradient operator on a Cartesian grid.
@@ -1324,7 +1330,9 @@ def make_vector_gradient(
         grid (:class:`~pde.grids.cartesian.CartesianGrid`):
             The grid for which the operator is created
         backend (str):
-            Backend used for calculating the vector gradient operator.
+            Backend used for calculating the vector gradient operator. The value is read
+            from the configuration for `config`, and a suitable backend is chosen for
+            `auto`.
         method (str):
             The method for calculating the derivative. Possible values are 'central',
             'forward', and 'backward'.
@@ -1337,7 +1345,9 @@ def make_vector_gradient(
 
 @CartesianGrid.register_operator("vector_laplace", rank_in=1, rank_out=1)
 def make_vector_laplace(
-    grid: CartesianGrid, *, backend: Literal["auto", "numba", "scipy"] = "numba"
+    grid: CartesianGrid,
+    *,
+    backend: Literal["auto", "config", "numba", "scipy"] = "config",
 ) -> OperatorType:
     """Make a vector Laplacian on a Cartesian grid.
 
@@ -1357,7 +1367,7 @@ def make_vector_laplace(
 def make_tensor_divergence(
     grid: CartesianGrid,
     *,
-    backend: Literal["auto", "numba", "scipy"] = "numba",
+    backend: Literal["auto", "config", "numba", "scipy"] = "config",
     method: Literal["central", "forward", "backward"] = "central",
 ) -> OperatorType:
     """Make a tensor divergence operator on a Cartesian grid.

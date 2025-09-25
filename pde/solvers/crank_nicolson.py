@@ -39,7 +39,7 @@ class CrankNicolsonSolver(SolverBase):
             maxerror (float):
                 The maximal error that is permitted in each step
             explicit_fraction (float):
-                Hyperparameter determinig the fraction of explicit time stepping in the
+                Hyperparameter determining the fraction of explicit time stepping in the
                 implicit step. `explicit_fraction == 0` is the simple Crank-Nicolson
                 scheme, while `explicit_fraction == 1` reduces to the explicit Euler
                 method. Intermediate values can improve convergence.
@@ -71,7 +71,6 @@ class CrankNicolsonSolver(SolverBase):
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
-        self.info["dt_adaptive"] = False
 
         rhs = self._make_pde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)

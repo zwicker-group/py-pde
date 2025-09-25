@@ -20,7 +20,7 @@ from ..fields.datafield_base import DataFieldBase
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
-from ..trackers.base import InfoDict, TrackerBase
+from ..trackers.base import InfoDict, TransformationType, TransformedTrackerBase
 from ..trackers.interrupts import InterruptData
 
 if TYPE_CHECKING:
@@ -550,7 +550,7 @@ class StorageBase(metaclass=ABCMeta):
         return self.apply(lambda x: x, out=out, progress=progress)
 
 
-class StorageTracker(TrackerBase):
+class StorageTracker(TransformedTrackerBase):
     """Tracker that stores data in special storage classes.
 
     Attributes:
@@ -564,7 +564,7 @@ class StorageTracker(TrackerBase):
         storage,
         interrupts: InterruptData = 1,
         *,
-        transformation: Callable[[FieldBase, float], FieldBase] | None = None,
+        transformation: TransformationType = None,
     ):
         """
         Args:
@@ -580,20 +580,8 @@ class StorageTracker(TrackerBase):
                 the current field, while the optional second argument is the associated
                 time.
         """
-        super().__init__(interrupts=interrupts)
+        super().__init__(interrupts=interrupts, transformation=transformation)
         self.storage = storage
-        if transformation is not None and not callable(transformation):
-            raise TypeError("`transformation` must be callable")
-        self.transformation = transformation
-
-    def _transform(self, field: FieldBase, t: float) -> FieldBase:
-        """Transforms the field according to the defined transformation."""
-        if self.transformation is None:
-            return field
-        elif self.transformation.__code__.co_argcount == 1:
-            return self.transformation(field)  # type: ignore
-        else:
-            return self.transformation(field, t)
 
     def initialize(self, field: FieldBase, info: InfoDict | None = None) -> float:
         """

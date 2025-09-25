@@ -491,7 +491,7 @@ class GridMesh:
                 with_ghost_cells=with_ghost_cells,
             )
 
-            return field.__class__(  # type: ignore
+            return field.__class__(
                 grid=self[node_id],
                 data=data,
                 label=field.label,
@@ -509,7 +509,7 @@ class GridMesh:
             ]
 
             # combine everything to a field collection
-            return field.__class__(fields, label=field.label)  # type: ignore
+            return field.__class__(fields, label=field.label)
 
         else:
             raise TypeError(f"Field type {field.__class__.__name__} unsupported")
@@ -595,7 +595,7 @@ class GridMesh:
 
             subfield_data = np.empty(shape, dtype=field_data.dtype)
             mpi_recv(subfield_data, 0, MPIFlags.field_split)
-            return subfield_data
+            return subfield_data  # type: ignore
 
     def split_field_mpi(self: GridMesh, field: TField) -> TField:
         """Split a field onto the subgrids by communicating data via MPI.
@@ -614,7 +614,7 @@ class GridMesh:
 
         if isinstance(field, DataFieldBase):
             # split individual field
-            return field.__class__(  # type: ignore
+            return field.__class__(
                 self.current_grid,
                 data=self.split_field_data_mpi(field._data_full, with_ghost_cells=True),
                 label=field.label,

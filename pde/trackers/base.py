@@ -10,7 +10,7 @@ import math
 import warnings
 from abc import ABCMeta, abstractmethod
 from collections.abc import Sequence
-from typing import Any, Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 
@@ -115,6 +115,62 @@ class TrackerBase(metaclass=ABCMeta):
             info (dict):
                 Extra information from the simulation
         """
+
+
+TransformationType = Optional[Callable[[FieldBase, float], FieldBase]]
+
+
+class TransformedTrackerBase(TrackerBase):
+    """Tracker that allows modifying incoming data.
+
+    To support the transformations sub-classes need to call
+    :code:`self._transform(field, t)` to obtain the transformed field.
+    """
+
+    @fill_in_docstring
+    def __init__(
+        self,
+        interrupts: InterruptData = 1,
+        *,
+        transformation: TransformationType = None,
+    ):
+        """
+        Args:
+            interrupts:
+                {ARG_TRACKER_INTERRUPT}
+            transformation (callable, optional):
+                A function that transforms the current state into a new field or field
+                collection, which is then used in the tracker. This allows to process
+                derived quantities of the field during calculations. The argument needs
+                to be a callable function taking 1 or 2 arguments. The first argument
+                always is the current field, while the optional second argument is the
+                associated time.
+        """
+        super().__init__(interrupts=interrupts)
+        if transformation is not None and not callable(transformation):
+            raise TypeError("`transformation` must be callable")
+        self.transformation = transformation
+        self._emitted_type_warning = False
+
+    def _transform(self, field: FieldBase, t: float) -> FieldBase:
+        """Transforms the field according to the defined transformation."""
+        if self.transformation is None:
+            # no transformation specified -> just return field
+            return field
+
+        if self.transformation.__code__.co_argcount == 1:
+            # transformation does not take time argument
+            transformed_field = self.transformation(field)  # type: ignore
+
+        else:
+            # transformation takes field and time arguments
+            transformed_field = self.transformation(field, t)
+
+        # check whether transformed data is a proper field
+        if not (self._emitted_type_warning or isinstance(transformed_field, FieldBase)):
+            warnings.warn("Applied `transformation` did not return a field.")
+            self._emitted_type_warning = True
+        return transformed_field
 
 
 TrackerCollectionDataType = Union[Sequence[TrackerDataType], TrackerDataType, None]

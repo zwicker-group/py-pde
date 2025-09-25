@@ -11,6 +11,8 @@ from __future__ import annotations
 import io
 import json
 import shlex
+import types
+import warnings
 from collections.abc import Iterator, Sequence
 from fractions import Fraction
 from pathlib import Path
@@ -40,6 +42,36 @@ def _get_limits(value: float | ArrayLike, dim: int) -> np.ndarray:
         return np.asarray(value)[:dim].astype(float)  # type: ignore
 
 
+def _import_ffmpeg() -> types.ModuleType:
+    """Import `ffmpeg` package, warning when incorrect package is installed."""
+    # try to figure out which `ffmpeg` package is installed
+    try:
+        from importlib.metadata import packages_distributions  # type: ignore
+
+    except ImportError:
+        pass  # the packages_distributions function was only added in python 3.10
+
+    else:
+        # check whether `ffmpeg` refers to the correct package
+        packages = packages_distributions().get("ffmpeg", [])
+        if len(packages) == 1:
+            name = packages[0]
+            if name != "ffmpeg-python":
+                warnings.warn(
+                    f"Expected `ffmpeg-python` package, but found `{name}`",
+                    ImportWarning,
+                )
+        elif len(packages) > 1:
+            warnings.warn(
+                f"Expected `ffmpeg-python` package, but found {packages}", ImportWarning
+            )
+
+    # import package
+    import ffmpeg
+
+    return ffmpeg  # type: ignore
+
+
 class MovieStorage(StorageBase):
     """Store discretized fields in a movie file.
 
@@ -48,7 +80,7 @@ class MovieStorage(StorageBase):
     lossless compression for various configurations. Not all video players support this
     codec, but `VLC <https://www.videolan.org>`_ usually works quite well.
 
-    Note that important metainformation is stored as a comment in the movie, so this
+    Note that important meta information is stored as a comment in the movie, so this
     data must not be deleted or altered if the video should be read again.
 
     Warning:
@@ -117,7 +149,7 @@ class MovieStorage(StorageBase):
             loglevel (str):
                 FFmpeg log level determining the amount of data sent to stdout. The
                 default only emits warnings and errors, but setting this to `"info"` can
-                be useful to get additioanl information about the encoding.
+                be useful to get additional information about the encoding.
         """
         if not module_available("ffmpeg"):
             raise ModuleNotFoundError("`MovieStorage` needs `ffmpeg-python` package")
@@ -181,7 +213,7 @@ class MovieStorage(StorageBase):
 
     def _read_metadata(self) -> None:
         """Read metadata from video and store it in :attr:`info`"""
-        import ffmpeg  # lazy loading so it's not a hard dependence
+        ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
 
         path = Path(self.filename)
         if not path.exists():
@@ -281,7 +313,7 @@ class MovieStorage(StorageBase):
             info (dict):
                 Supplies extra information that is stored in the storage
         """
-        import ffmpeg  # lazy loading so it's not a hard dependence
+        ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
 
         if self._is_writing:
             raise RuntimeError(f"{self.__class__.__name__} is already in writing mode")
@@ -378,6 +410,7 @@ class MovieStorage(StorageBase):
                 f"`{self.__class__.__name__}.start_writing`"
             )
         # normalization and video format have been initialized
+        assert self._grid is not None
         assert self._norms is not None
         assert self._format is not None
 
@@ -478,7 +511,7 @@ class MovieStorage(StorageBase):
 
     def _iter_data(self) -> Iterator[np.ndarray]:
         """Iterate over all stored fields."""
-        import ffmpeg  # lazy loading so it's not a hard dependence
+        ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
 
         if "width" not in self.info:
             self._read_metadata()
@@ -513,7 +546,7 @@ class MovieStorage(StorageBase):
     @property
     def data(self):
         """:class:`~numpy.ndarray`: The actual data for all times."""
-        it = self._iter_data()  # get the iterater of all data
+        it = self._iter_data()  # get the iterator of all data
         first_frame = next(it)  # get the first frame to obtain necessary information
         # allocate memory for all data
         data = np.empty((len(self),) + first_frame.shape, dtype=first_frame.dtype)
@@ -535,7 +568,7 @@ class MovieStorage(StorageBase):
             :class:`~pde.fields.FieldBase`:
             The field class containing the grid and data
         """
-        import ffmpeg  # lazy loading so it's not a hard dependence
+        ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
 
         if t_index < 0:
             t_index += len(self)
@@ -589,7 +622,7 @@ class MovieStorage(StorageBase):
         yield from zip(self.times, self)
 
     @fill_in_docstring
-    def tracker(  # type: ignore
+    def tracker(
         self,
         interrupts: InterruptData = 1,
         *,

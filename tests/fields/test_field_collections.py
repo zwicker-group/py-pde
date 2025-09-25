@@ -371,3 +371,61 @@ def test_merged_image_plotting(num):
         vmin=-1,
         vmax=[1, 2, 3, 4],
     )
+
+
+def test_collection_slice_project():
+    """Test slicing and projection of field data."""
+    grid = UnitGrid([8, 16])
+    fc = FieldCollection.scalar_random_uniform(2, grid)
+
+    f2 = fc.slice({"x": 0.5}, label="sliced")
+    np.testing.assert_allclose(f2[0].data, fc[0].data[0, :])
+    assert f2.label == "sliced"
+
+    f3 = fc.project("x", label="projected")
+    np.testing.assert_allclose(f3[0].data, fc[0].data.sum(axis=0))
+    assert f3.label == "projected"
+
+
+def test_collection_slice_project_wrong_type():
+    """Test slicing and projection of field data."""
+    grid = UnitGrid([8, 16])
+    fc = FieldCollection([VectorField(grid)])
+
+    with pytest.raises(TypeError):
+        fc.slice({"x": 0.5})
+
+    with pytest.raises(TypeError):
+        fc.project("x")
+
+
+def test_field_collection_plotting():
+    """Test different arrangements of field plotting."""
+    grid = UnitGrid([2])
+
+    def get_panel_count(arrangement):
+        ref = field.plot(arrangement=arrangement, action="none")
+        return len(ref[0].ax.figure.get_axes())
+
+    field = FieldCollection.scalar_random_uniform(4, grid)
+    assert get_panel_count("horizontal") == 4
+    assert get_panel_count("vertical") == 4
+    assert get_panel_count("square") == 4
+    assert get_panel_count((-1, 2)) == 4
+    assert get_panel_count((2, -1)) == 4
+    assert get_panel_count((-1, -1)) == 4
+
+    field = FieldCollection.scalar_random_uniform(5, grid)
+    assert get_panel_count("horizontal") == 5
+    assert get_panel_count("vertical") == 5
+    assert get_panel_count("square") == 9
+    assert get_panel_count((3, 4)) == 12
+    assert get_panel_count((2, -1)) == 6
+    assert get_panel_count((-1, 3)) == 6
+    assert get_panel_count((-1, -1)) == 9
+    with pytest.raises(ValueError):
+        get_panel_count((0, 4))
+    with pytest.raises(ValueError):
+        get_panel_count((4, 0))
+    with pytest.raises(TypeError):
+        get_panel_count(4)

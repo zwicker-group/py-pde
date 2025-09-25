@@ -830,7 +830,7 @@ class GridBase(metaclass=ABCMeta):
         Args:
             points (:class:`~numpy.ndarray`):
                 The points specified with `num_axes` coordinates, not specifying
-                cooridnates along symmetry axes of the grid.
+                coordinates along symmetry axes of the grid.
             value (str or float):
                 Value of the points along symmetry axes. The special values `min` and
                 `max` denote the minimal and maximal values along the respective
@@ -931,7 +931,7 @@ class GridBase(metaclass=ABCMeta):
             grid_coords = c_min + cells * self.discretization
 
             if target == "grid":
-                return grid_coords
+                return grid_coords  # type: ignore
             elif target == "cartesian":
                 return self.point_to_cartesian(grid_coords)
 
@@ -947,7 +947,7 @@ class GridBase(metaclass=ABCMeta):
                 c_min = np.array(self.axes_bounds)[:, 0]
                 return (grid_coords - c_min) / self.discretization  # type: ignore
             elif target == "grid":
-                return grid_coords
+                return grid_coords  # type: ignore
 
         else:
             raise ValueError(f"Unknown source coordinates `{source}`")
@@ -1180,7 +1180,7 @@ class GridBase(metaclass=ABCMeta):
     def operators(cls) -> set[str]:
         """set: all operators defined for this class"""
         result = set()
-        # add all customly defined operators
+        # add all custom defined operators
         classes = inspect.getmro(cls)[:-1]  # type: ignore
         for anycls in classes:
             result |= set(anycls._operators.keys())  # type: ignore
@@ -1194,7 +1194,7 @@ class GridBase(metaclass=ABCMeta):
                 }
         return result
 
-    @operators.instancemethod
+    @operators.instancemethod  # type: ignore
     @property
     def operators(self) -> set[str]:
         """set: all operators defined for this instance"""
@@ -1412,10 +1412,10 @@ class GridBase(metaclass=ABCMeta):
                         set_valid_w_bc(arr_full, arr, args=args)  # type: ignore
 
                         # apply operator
-                        operator_raw(arr_full, out)  # type: ignore
+                        operator_raw(arr_full, out)
 
                         # return valid part of the output
-                        return out  # type: ignore
+                        return out
 
                 else:
                     # reuse provided `out` array
@@ -1423,7 +1423,7 @@ class GridBase(metaclass=ABCMeta):
                     def apply_op_impl(
                         arr: np.ndarray, out: np.ndarray | None = None, args=None
                     ) -> np.ndarray:
-                        """Applies operator to the data wihtout allocating out."""
+                        """Applies operator to the data without allocating out."""
                         if arr.shape != shape_in_valid:
                             raise ValueError(f"Incompatible shapes of input array")
                         if out.shape != shape_out:  # type: ignore

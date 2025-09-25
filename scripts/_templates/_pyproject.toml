@@ -110,7 +110,6 @@ filterwarnings = [
 
 [tool.mypy]
 python_version = "$MIN_PYTHON_VERSION"
-plugins = "numpy.typing.mypy_plugin"
 warn_return_any = true
 warn_unused_configs = true
 warn_unused_ignores = true

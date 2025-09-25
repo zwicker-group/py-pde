@@ -64,7 +64,6 @@ class ImplicitSolver(SolverBase):
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler"
         self.info["stochastic"] = False
-        self.info["dt_adaptive"] = False
 
         rhs = self._make_pde_rhs(state, backend=self.backend)
         maxiter = int(self.maxiter)
@@ -85,7 +84,7 @@ class ImplicitSolver(SolverBase):
             # fixed point iteration for improving state after dt
             for n in range(maxiter):
                 state_prev[:] = state_data  # keep previous state to judge convergence
-                # another interation to improve estimate
+                # another iteration to improve estimate
                 state_data[:] = state_t + dt * rhs(state_data, t + dt)
 
                 # calculate mean squared error to judge convergence
@@ -128,7 +127,6 @@ class ImplicitSolver(SolverBase):
         self.info["function_evaluations"] = 0
         self.info["scheme"] = "implicit-euler-maruyama"
         self.info["stochastic"] = True
-        self.info["dt_adaptive"] = False
 
         rhs = self.pde.make_pde_rhs(state, backend=self.backend)  # type: ignore
         rhs_sde = self._make_sde_rhs(state, backend=self.backend)
@@ -155,7 +153,7 @@ class ImplicitSolver(SolverBase):
             # fixed point iteration for improving state after dt
             for n in range(maxiter):
                 state_prev[:] = state_data  # keep previous state to judge convergence
-                # another interation to improve estimate
+                # another iteration to improve estimate
                 state_data[:] = state_t + dt * rhs(state_data, t + dt)
 
                 # calculate mean squared error to judge convergence

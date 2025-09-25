@@ -99,7 +99,7 @@ class ScalarField(DataFieldBase):
             # if this fails, evaluate expression point-wise
             data = np.empty(grid.shape)
             for cells in np.ndindex(*grid.shape):
-                data[cells] = expr(*grid.cell_coords[cells])  # type: ignore
+                data[cells] = expr(*grid.cell_coords[cells])
 
         return cls(grid=grid, data=data, label=label, dtype=dtype)
 
@@ -107,8 +107,8 @@ class ScalarField(DataFieldBase):
     def from_image(
         cls,
         path: Path | str,
-        bounds=None,
-        periodic=False,
+        bounds: Sequence[tuple[float, float]] | None = None,
+        periodic: bool | Sequence[bool] = False,
         *,
         label: str | None = None,
     ) -> ScalarField:
@@ -275,6 +275,7 @@ class ScalarField(DataFieldBase):
     def project(
         self,
         axes: str | Sequence[str],
+        *,
         method: Literal["integral", "average", "mean"] = "integral",
         label: str | None = None,
     ) -> ScalarField:

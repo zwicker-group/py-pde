@@ -18,8 +18,12 @@ jobs:
       with:
         python-version: '3.13'
 
-    - name: Setup FFmpeg
+    - if: runner.os != 'macOS' || runner.arch != 'ARM64'
+      name: Setup FFmpeg for ${{ runner.os }} on ${{ runner.arch }}
       uses: AnimMouse/setup-ffmpeg@v1
+    - if: runner.os == 'macOS' && runner.arch == 'ARM64'
+      name: Compile FFmpeg using brew for ${{ runner.os }} on ${{ runner.arch }}
+      run: brew install ffmpeg
 
     - name: Install dependencies
       # install all requirements. Note that the full requirements are installed separately

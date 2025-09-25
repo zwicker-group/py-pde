@@ -12,7 +12,7 @@ jobs:
           - os: "macos-13"
             mpi: "mpich"
           - os: "windows-latest"
-            mpi: "intelmpi"
+            mpi: "msmpi"
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
 

@@ -150,7 +150,7 @@ class SolverBase:
 
             @register_jitable
             def synchronize_errors(error: float) -> float:
-                """Return error synchronized accross all cores."""
+                """Return error synchronized across all cores."""
                 return mpi_allreduce(error, operator=operator)  # type: ignore
 
         else:
@@ -179,36 +179,11 @@ class SolverBase:
 
         if self._use_post_step_hook:
             try:
-                # look for the definition of a hook function
-                if hasattr(self.pde, "make_modify_after_step"):
-                    # Deprecated on 2024-08-02
-                    warnings.warn(
-                        "`make_modify_after_step` has been replaced by `make_post_step_hook`",
-                        DeprecationWarning,
-                    )
-                    modify_after_step = self.pde.make_modify_after_step(state)
-                    if self._compiled:
-                        sig_modify = (nb.typeof(state.data),)
-                        modify_after_step = jit(sig_modify)(modify_after_step)
-
-                    def post_step_hook(
-                        state_data: np.ndarray, t: float, post_step_data: np.ndarray
-                    ):
-                        """Wrap function to adjust signature."""
-                        post_step_data += modify_after_step(state_data)
-
-                    # create zero of correct type
-                    self._post_step_data_init = np.dtype(state.dtype).type(0)
-                    self._logger.info(
-                        "Created post-step hook from `make_modify_after_step`"
-                    )
-
-                else:
-                    # get hook function and initial data from PDE
-                    post_step_hook, self._post_step_data_init = (
-                        self.pde.make_post_step_hook(state)
-                    )
-                    self._logger.info("Created post-step hook from PDE")
+                # try to get hook function and initial data from PDE instance
+                post_step_hook, self._post_step_data_init = (
+                    self.pde.make_post_step_hook(state)
+                )
+                self._logger.info("Created post-step hook from PDE")
 
             except NotImplementedError:
                 pass  # no hook function defined on the PDE
@@ -234,7 +209,7 @@ class SolverBase:
             post_step_hook = jit(sig_hook)(post_step_hook)
             self._logger.debug("Compiled post-step hook")
 
-        return post_step_hook  # type: ignore
+        return post_step_hook
 
     def _make_pde_rhs(
         self, state: FieldBase, backend: BackendType = "auto"
@@ -398,6 +373,7 @@ class SolverBase:
         fixed_stepper = self._make_fixed_stepper(state, dt_float)
 
         self.info["dt"] = dt_float
+        self.info["dt_adaptive"] = False
         self.info["steps"] = 0
         self.info["post_step_data"] = self._post_step_data_init
         self.info["stochastic"] = getattr(self.pde, "is_sde", False)

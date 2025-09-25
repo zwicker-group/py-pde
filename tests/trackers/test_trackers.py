@@ -8,7 +8,14 @@ import pickle
 import numpy as np
 import pytest
 
-from pde import Controller, ExplicitSolver, MemoryStorage, ScalarField, UnitGrid
+from pde import (
+    Controller,
+    ExplicitSolver,
+    FieldCollection,
+    MemoryStorage,
+    ScalarField,
+    UnitGrid,
+)
 from pde.pdes import AllenCahnPDE, CahnHilliardPDE, DiffusionPDE
 from pde.tools.misc import module_available
 from pde.trackers import get_named_trackers, trackers
@@ -246,3 +253,43 @@ def test_double_tracker(rng):
 
     np.testing.assert_allclose(times1, np.arange(5))
     np.testing.assert_allclose(times2, np.arange(5))
+
+
+def test_plot_tracker_transformation(tmp_path, rng):
+    """Test whether the plot tracker works with transformations."""
+    output_file = tmp_path / "img.png"
+
+    def get_title(state, t):
+        return f"{state.integrals} at {t:g}"
+
+    def add_square(field, t):
+        return FieldCollection([field + t, field**2])
+
+    grid = UnitGrid([4, 4])
+    state = ScalarField.random_uniform(grid, rng=rng)
+    eq = DiffusionPDE()
+    tracker = trackers.PlotTracker(
+        output_file=output_file,
+        title=get_title,
+        interrupts=0.1,
+        show=False,
+        transformation=add_square,
+    )
+
+    eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")
+
+    assert output_file.stat().st_size > 0
+
+
+def test_plot_tracker_transformation_warning(rng):
+    """Test whether the plot tracker warns when wrong transformation is used."""
+    grid = UnitGrid([4, 4])
+    state = ScalarField.random_uniform(grid, rng=rng)
+    eq = DiffusionPDE()
+    tracker = trackers.PlotTracker(interrupts=0.1, transformation=lambda state: None)
+
+    with (
+        pytest.raises(RuntimeError),
+        pytest.warns(UserWarning, match="did not return a field"),
+    ):
+        eq.solve(state, t_range=0.5, dt=0.005, tracker=tracker, backend="numpy")

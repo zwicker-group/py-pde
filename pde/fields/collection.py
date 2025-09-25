@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import math
 import warnings
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Any, Callable, Literal, overload
@@ -204,13 +205,13 @@ class FieldCollection(FieldBase):
         # break the connection between the data fields
         if isinstance(index, int):
             # simple numerical index
-            self.fields[index].data = value  # type: ignore
+            self.fields[index].data = value
 
         elif isinstance(index, str):
             # index specifying the label of the field
             for field in self.fields:
                 if field.label == index:
-                    field.data = value  # type: ignore
+                    field.data = value
                     break  # indicates that a field has been found
             else:
                 raise KeyError(f"No field with name `{index}`")
@@ -221,7 +222,7 @@ class FieldCollection(FieldBase):
     @property
     def fields(self) -> list[DataFieldBase]:
         """list: the fields of this collection"""
-        # return shallow copy of list so the internal list is not modified accidentially
+        # return shallow copy of list so the internal list is not modified accidentally
         return self._fields[:]
 
     @property
@@ -589,6 +590,28 @@ class FieldCollection(FieldBase):
             labels=_labels,
         )
 
+    def _apply_to_fields(
+        self,
+        func: Callable[[DataFieldBase], DataFieldBase],
+        *,
+        label: str | None = None,
+    ) -> FieldCollection:
+        """Apply function to every individual field.
+
+        Args:
+            func (callable):
+                Function applied to every field of this collections
+            label (str, optional):
+                Name of the returned collection. If omitted, the current label is used.
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`: Modified fields
+        """
+        if label is None:
+            label = self.label
+        fields = [func(fields) for fields in self.fields]
+        return self.__class__(fields, label=label)
+
     def _unary_operation(self: FieldCollection, op: Callable) -> FieldCollection:
         """Perform an unary operation on this field collection.
 
@@ -623,12 +646,11 @@ class FieldCollection(FieldBase):
                 Name of the returned field collection
 
         Returns:
-            :class:`~pde.fields.coolection.FieldCollection`: Interpolated data
+            :class:`~pde.fields.collection.FieldCollection`: Interpolated data
         """
-        if label is None:
-            label = self.label
-        fields = [f.interpolate_to_grid(grid, fill=fill) for f in self.fields]
-        return self.__class__(fields, label=label)
+        return self._apply_to_fields(
+            lambda f: f.interpolate_to_grid(grid, fill=fill), label=label
+        )
 
     def smooth(
         self,
@@ -651,7 +673,8 @@ class FieldCollection(FieldBase):
             Name of the returned field
 
         Returns:
-            Field collection with smoothed data, stored at `out` if given.
+            :class:`~pde.fields.collection.FieldCollection`:
+                Smoothed data, stored at `out` if given.
         """
         # allocate memory for storing output
         if out is None:
@@ -681,6 +704,63 @@ class FieldCollection(FieldBase):
     def magnitudes(self) -> np.ndarray:
         """:class:`~numpy.ndarray`: scalar magnitudes of all fields."""
         return np.array([field.magnitude for field in self])  # type: ignore
+
+    def project(
+        self, axes: str | Sequence[str], *, label: str | None = None, **kwargs
+    ) -> FieldCollection:
+        """Project fields along given axes.
+
+        This is currently only implemented for scalar fields. If any field in the
+        collection has higher rank, the entire process fails.
+
+        Args:
+            axes (list of str):
+                The names of the axes that are removed by the projection operation. The
+                valid names for a given grid are the ones in the :attr:`GridBase.axes`
+                attribute.
+            label (str, optional):
+                Name of the returned collection. If omitted, the current label is used.
+            method (str):
+                The projection method. This can be either 'integral' to integrate over
+                the removed axes or 'average' to perform an average instead.
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`:
+                The projected data of all fields on a subgrid of the original grid.
+        """
+        if not all(isinstance(f, ScalarField) for f in self):
+            raise TypeError("All fields must be scalar fields to project data")
+        return self._apply_to_fields(lambda f: f.project(axes, **kwargs), label=label)  # type: ignore
+
+    def slice(
+        self, position: dict[str, float], *, label: str | None = None, **kwargs
+    ) -> FieldCollection:
+        """Slice all fields at a given position.
+
+        This is currently only implemented for scalar fields. If any field in the
+        collection has higher rank, the entire process fails.
+
+        Args:
+            position (dict):
+                Determines the location of the slice using a dictionary supplying
+                coordinate values for a subset of axes. Axes not mentioned in the
+                dictionary are retained and form the slice. For instance, in a 2d
+                Cartesian grid, `position = {'x': 1}` slices along the y-direction at
+                x=1. Additionally, the special positions 'low', 'mid', and 'high' are
+                supported to reference relative positions along the axis.
+            label (str, optional):
+                Name of the returned collection. If omitted, the current label is used.
+            method (str):
+                The method used for slicing. Currently, we only support `nearest`, which
+                takes data from cells defined on the grid.
+
+        Returns:
+            :class:`~pde.fields.collection.FieldCollection`:
+                The projected data of all fields on a subgrid of the original grid.
+        """
+        if not all(isinstance(f, ScalarField) for f in self):
+            raise TypeError("All fields must be scalar fields to slice data")
+        return self._apply_to_fields(lambda f: f.slice(position, **kwargs), label=label)  # type: ignore
 
     def get_line_data(  # type: ignore
         self,
@@ -747,7 +827,7 @@ class FieldCollection(FieldBase):
             transpose (bool):
                 Determines whether the transpose of the data is plotted
             vmin, vmax (float, list of float):
-                Define the data range that the color chanels cover. By default, they
+                Define the data range that the color channels cover. By default, they
                 cover the complete value range of the supplied data.
 
         Returns:
@@ -824,7 +904,7 @@ class FieldCollection(FieldBase):
         vmax: float | list[float | None] | None = None,
         **kwargs,
     ) -> PlotReference:
-        r"""Visualize fields by mapping to different color chanels in a 2d density plot.
+        r"""Visualize fields by mapping to different color channels in a 2d density plot.
 
         Args:
             ax (:class:`matplotlib.axes.Axes`):
@@ -845,7 +925,7 @@ class FieldCollection(FieldBase):
             transpose (bool):
                 Determines whether the transpose of the data is plotted
             vmin, vmax (float, list of float):
-                Define the data range that the color chanels cover. By default, they
+                Define the data range that the color channels cover. By default, they
                 cover the complete value range of the supplied data.
             \**kwargs:
                 Additional keyword arguments that affect the image. Non-Cartesian grids
@@ -903,10 +983,11 @@ class FieldCollection(FieldBase):
     def plot(
         self,
         kind: str | Sequence[str] = "auto",
-        figsize="auto",
-        arrangement: Literal["horizontal", "vertical"] = "horizontal",
-        fig=None,
+        figsize: Literal["auto"] | tuple[float, float] = "auto",
+        arrangement: Literal["horizontal", "vertical", "square"]
+        | tuple[int, int] = "horizontal",
         subplot_args=None,
+        fig=None,
         **kwargs,
     ) -> list[PlotReference]:
         r"""Visualize all the fields in the collection.
@@ -923,15 +1004,17 @@ class FieldCollection(FieldBase):
                 `default` is passed. Conversely, the size is adjusted automatically when
                 `auto` is passed. Finally, a specific figure size can be specified using
                 two values, using :func:`matplotlib.figure.Figure.set_size_inches`.
-            arrangement (str):
-                Determines how the subpanels will be arranged. The default value
-                `horizontal` places all subplots next to each other. The alternative
-                value `vertical` puts them below each other.
-            {PLOT_ARGS}
+            arrangement (str or tuple of int):
+                Determines how the sub panels will be arranged. The default value
+                `horizontal` places all subplots next to each other, whereas `vertical`
+                puts them below each other. Alternatively, an exact number of rows and
+                columns can be specified by the tuple :code:`(nrows, ncols)`. Negative
+                values will be replaced by suitable values that ensure enough panels.
             subplot_args (list):
                 Additional arguments for the specific subplots. Should be a list with a
                 dictionary of arguments for each subplot. Supplying an empty dict allows
                 to keep the default setting of specific subplots.
+            {PLOT_ARGS}
             \**kwargs:
                 All additional keyword arguments are forwarded to the actual plotting
                 function of all subplots.
@@ -940,43 +1023,48 @@ class FieldCollection(FieldBase):
             List of :class:`PlotReference`: Instances that contain information
             to update all the plots with new data later.
         """
+        # determine how many panels we need
         if kind in {"merged"}:
             num_panels = 1
         else:
             num_panels = len(self)
+        if subplot_args is None:
+            subplot_args = [{}] * num_panels
+
+        # determine the number of rows and columns in the plot
+        if arrangement == "square":
+            arrangement = (-1, -1)
+        if arrangement == "horizontal":
+            nrows, ncols = 1, num_panels
+        elif arrangement == "vertical":
+            nrows, ncols = num_panels, 1
+        else:
+            nrows, ncols = arrangement
+            if ncols < 0 and nrows < 0:
+                nrows = ncols = math.ceil(np.sqrt(num_panels))
+            elif ncols < 0:
+                ncols = math.ceil(num_panels / nrows)
+            elif nrows < 0:
+                nrows = math.ceil(num_panels / ncols)
 
         # set the size of the figure
         if figsize == "default":
             pass  # just leave the figure size at its default value
-
         elif figsize == "auto":
-            # adjust the size of the figure
-            if arrangement == "horizontal":
-                fig.set_size_inches((4 * num_panels, 3), forward=True)
-            elif arrangement == "vertical":
-                fig.set_size_inches((4, 3 * num_panels), forward=True)
-
+            # adjust the size of the figure according to panels
+            fig.set_size_inches((4 * ncols, 3 * nrows), forward=True)
         else:
             # assume that an actual tuple is given
             fig.set_size_inches(figsize, forward=True)
 
         # create all the subpanels
-        if arrangement == "horizontal":
-            (axs,) = fig.subplots(1, num_panels, squeeze=False)
-        elif arrangement == "vertical":
-            axs = fig.subplots(num_panels, 1, squeeze=False)
-            axs = [a[0] for a in axs]  # transpose
-        else:
-            raise ValueError(f"Unknown arrangement `{arrangement}`")
-
-        if subplot_args is None:
-            subplot_args = [{}] * num_panels
+        axs = fig.subplots(nrows=nrows, ncols=ncols, squeeze=False)
 
         if kind in {"merged"}:
             # plot a single RGB representation
             reference = [
                 self._plot_merged_image(
-                    ax=axs[0], action="none", **kwargs, **subplot_args[0]
+                    ax=axs[0, 0], action="none", **kwargs, **subplot_args[0]
                 )
             ]
 
@@ -986,7 +1074,9 @@ class FieldCollection(FieldBase):
                 kind = [kind] * num_panels
             reference = [
                 field.plot(kind=knd, ax=ax, action="none", **kwargs, **sp_args)
-                for field, knd, ax, sp_args in zip(self.fields, kind, axs, subplot_args)
+                for field, knd, ax, sp_args in zip(
+                    self.fields, kind, axs.flat, subplot_args
+                )
             ]
 
         # return the references for all subplots

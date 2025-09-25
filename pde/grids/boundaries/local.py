@@ -553,7 +553,7 @@ class BCBase(metaclass=ABCMeta):
         Returns:
             :class:`BCBase`: Boundary conditions valid on the subgrid
         """
-        raise NotImplementedError("Boundary condition cannot be transfered to subgrid")
+        raise NotImplementedError("Boundary condition cannot be transferred to subgrid")
 
     def check_value_rank(self, rank: int) -> None:
         """Check whether the values at the boundaries have the correct rank.
@@ -1380,7 +1380,7 @@ class ExpressionBC(BCBase):
                 # cheap way to signal a problem
                 raise ValueError from None
 
-            # compile the actual functio and check the result
+            # compile the actual function and check the result
             result_compiled = value_func(*self._test_values)
             if not np.allclose(result_compiled, expected):
                 raise RuntimeError(
@@ -1777,7 +1777,7 @@ class ConstBCBase(BCBase):
                 on the axes names of the respective grid.
         """
         super().__init__(grid, axis, upper, rank=rank)
-        self.value = value  # type: ignore
+        self.value = value
 
     def __eq__(self, other):
         """Checks for equality neglecting the `upper` property."""
