@@ -43,7 +43,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def __init__(
         self,
         grid: GridBase,
-        data: ArrayLike | str | None = "zeros",
+        data: ArrayLike | Literal["empty", "zeros", "ones"] | None = "zeros",
         *,
         label: str | None = None,
         dtype: DTypeLike | None = None,
