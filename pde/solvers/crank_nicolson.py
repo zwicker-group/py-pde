@@ -12,7 +12,7 @@ import numpy as np
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
-from ..tools.typing import BackendType
+from ..tools.typing import BackendType, NumericArray
 from .base import ConvergenceError, SolverBase
 
 
@@ -55,7 +55,7 @@ class CrankNicolsonSolver(SolverBase):
 
     def _make_single_step_fixed_dt(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
+    ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a single step with an implicit Euler scheme.
 
         Args:
@@ -78,7 +78,7 @@ class CrankNicolsonSolver(SolverBase):
         α = self.explicit_fraction
 
         # handle deterministic version of the pde
-        def crank_nicolson_step(state_data: np.ndarray, t: float) -> None:
+        def crank_nicolson_step(state_data: NumericArray, t: float) -> None:
             """Compiled inner loop for speed."""
             nfev = 0  # count function evaluations
 
@@ -101,7 +101,7 @@ class CrankNicolsonSolver(SolverBase):
                 # calculate mean squared error
                 err = 0.0
                 for j in range(state_data.size):
-                    diff = state_data.flat[j] - state_prev.flat[j]
+                    diff: NumericArray = state_data.flat[j] - state_prev.flat[j]
                     err += (diff.conjugate() * diff).real
                 err /= state_data.size
 

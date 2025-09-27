@@ -11,7 +11,7 @@ import numpy as np
 
 from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
-from ..tools.typing import BackendType
+from ..tools.typing import BackendType, NumericArray
 from .base import SolverBase
 
 
@@ -73,7 +73,7 @@ class ScipySolver(SolverBase):
         # obtain function for evaluating the right hand side
         rhs = self._make_pde_rhs(state, backend=self.backend)
 
-        def rhs_helper(t: float, state_flat: np.ndarray) -> np.ndarray:
+        def rhs_helper(t: float, state_flat: NumericArray) -> NumericArray:
             """Helper function to provide the correct call convention."""
             rhs_value = rhs(state_flat.reshape(shape), t)
             y = np.broadcast_to(rhs_value, shape).flat

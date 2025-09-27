@@ -33,6 +33,7 @@ from typing import Any
 import numpy as np
 
 from .misc import module_available
+from .typing import NumericArray
 
 
 class Parameter:

@@ -9,6 +9,7 @@ import modelrunner as mr
 import numpy as np
 
 from ..fields.base import FieldBase
+from ..tools.typing import NumericArray
 from .base import InfoDict, StorageBase, WriteModeType
 
 
@@ -147,7 +148,7 @@ class ModelrunnerStorage(StorageBase):
             self.storage, loc=self.loc, attrs=self.info, mode="append"
         )
 
-    def _append_data(self, data: np.ndarray, time: float) -> None:
+    def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
 
         Args:

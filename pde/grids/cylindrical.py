@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import numpy as np
 
 from ..tools.cache import cached_property
+from ..tools.typing import NumericArray
 from .base import (
     CoordsType,
     DimensionError,
@@ -218,7 +219,7 @@ class CylindricalSymGrid(GridBase):
         avoid_center: bool = False,
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
-    ) -> np.ndarray:
+    ) -> NumericArray:
         """Return a random point within the grid.
 
         Args:
@@ -265,13 +266,15 @@ class CylindricalSymGrid(GridBase):
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
     def difference_vector(
-        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
-    ) -> np.ndarray:
+        self, p1: NumericArray, p2: NumericArray, *, coords: CoordsType = "grid"
+    ) -> NumericArray:
         return self._difference_vector(
             p1, p2, coords=coords, periodic=self.periodic, axes_bounds=self.axes_bounds
         )
 
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
+    def get_line_data(
+        self, data: NumericArray, extract: str = "auto"
+    ) -> dict[str, Any]:
         """Return a line cut for the cylindrical grid.
 
         Args:
@@ -298,7 +301,7 @@ class CylindricalSymGrid(GridBase):
         if extract == "cut_z" or extract == "cut_axial":
             # do a cut along the z axis for r=0
             axis = 1
-            data_y: np.ndarray | tuple[np.ndarray] = data[..., 0, :]
+            data_y: NumericArray | tuple[NumericArray] = data[..., 0, :]
             label_y = "Cut along z"
 
         elif extract == "project_z" or extract == "project_axial":
@@ -324,7 +327,7 @@ class CylindricalSymGrid(GridBase):
             "label_y": label_y,
         }
 
-    def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
+    def get_image_data(self, data: NumericArray) -> dict[str, Any]:
         """Return a 2d-image of the data.
 
         Args:
@@ -354,7 +357,7 @@ class CylindricalSymGrid(GridBase):
         }
 
     def iter_mirror_points(
-        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
+        self, point: NumericArray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
         """Generates all mirror points corresponding to `point`
 
@@ -379,7 +382,7 @@ class CylindricalSymGrid(GridBase):
             yield point + np.array([self.length, 0, 0])
 
     @cached_property()
-    def cell_volume_data(self) -> tuple[np.ndarray, float]:
+    def cell_volume_data(self) -> tuple[NumericArray, float]:
         """:class:`~numpy.ndarray`: the volumes of all cells."""
         dr, dz = self.discretization
         rs = self.axes_coords[0]

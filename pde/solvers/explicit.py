@@ -14,7 +14,7 @@ from ..fields.base import FieldBase
 from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.numba import jit
-from ..tools.typing import BackendType
+from ..tools.typing import BackendType, NumericArray
 from .base import AdaptiveSolverBase
 
 
@@ -56,7 +56,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
     def _make_single_step_fixed_euler(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
+    ) -> Callable[[NumericArray, float], None]:
         """Make a simple Euler stepper with fixed time step.
 
         Args:
@@ -76,7 +76,7 @@ class ExplicitSolver(AdaptiveSolverBase):
             self.info["scheme"] = "euler-maruyama"
             rhs_sde = self._make_sde_rhs(state, backend=self.backend)
 
-            def stepper(state_data: np.ndarray, t: float) -> None:
+            def stepper(state_data: NumericArray, t: float) -> None:
                 """Perform a single Euler-Maruyama step."""
                 evolution_rate, noise_realization = rhs_sde(state_data, t)
                 state_data += dt * evolution_rate
@@ -90,7 +90,7 @@ class ExplicitSolver(AdaptiveSolverBase):
             self.info["scheme"] = "euler"
             rhs_pde = self._make_pde_rhs(state, backend=self.backend)
 
-            def stepper(state_data: np.ndarray, t: float) -> None:
+            def stepper(state_data: NumericArray, t: float) -> None:
                 """Perform a single Euler step."""
                 state_data += dt * rhs_pde(state_data, t)
 
@@ -100,7 +100,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
     def _make_single_step_rk45(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
+    ) -> Callable[[NumericArray, float], None]:
         """Make function doing a single explicit Runge-Kutta step of order 5(4)
 
         Args:
@@ -121,7 +121,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         # obtain functions determining how the PDE is evolved
         rhs = self._make_pde_rhs(state, backend=self.backend)
 
-        def stepper(state_data: np.ndarray, t: float) -> None:
+        def stepper(state_data: NumericArray, t: float) -> None:
             """Compiled inner loop for speed."""
             # calculate the intermediate values in Runge-Kutta
             k1 = dt * rhs(state_data, t)
@@ -136,7 +136,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
     def _make_single_step_fixed_dt(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
+    ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a single step with a fixed time step.
 
         Args:
@@ -157,7 +157,7 @@ class ExplicitSolver(AdaptiveSolverBase):
     def _make_adaptive_euler_stepper(
         self, state: FieldBase
     ) -> Callable[
-        [np.ndarray, float, float, float, OnlineStatistics | None, Any],
+        [NumericArray, float, float, float, OnlineStatistics | None, Any],
         tuple[float, float, int],
     ]:
         """Make an adaptive Euler stepper.
@@ -190,7 +190,7 @@ class ExplicitSolver(AdaptiveSolverBase):
         dt_min = self.dt_min
 
         def adaptive_stepper(
-            state_data: np.ndarray,
+            state_data: NumericArray,
             t_start: float,
             t_end: float,
             dt_init: float,
@@ -271,7 +271,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
     def _make_single_step_error_estimate_rkf(
         self, state: FieldBase
-    ) -> Callable[[np.ndarray, float, float], tuple[np.ndarray, float]]:
+    ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
         """Make an adaptive stepper using the explicit Runge-Kutta-Fehlberg method.
 
         Args:
@@ -328,8 +328,8 @@ class ExplicitSolver(AdaptiveSolverBase):
         c5 = -1 / 5
 
         def stepper(
-            state_data: np.ndarray, t: float, dt: float
-        ) -> tuple[np.ndarray, float]:
+            state_data: NumericArray, t: float, dt: float
+        ) -> tuple[NumericArray, float]:
             """Basic stepper to estimate error."""
             # do the six intermediate steps
             k1 = dt * rhs(state_data, t)
@@ -357,7 +357,7 @@ class ExplicitSolver(AdaptiveSolverBase):
 
     def _make_single_step_error_estimate(
         self, state: FieldBase
-    ) -> Callable[[np.ndarray, float, float], tuple[np.ndarray, float]]:
+    ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
         """Make a stepper that also estimates the error.
 
         Args:
@@ -376,7 +376,7 @@ class ExplicitSolver(AdaptiveSolverBase):
     def _make_adaptive_stepper(
         self, state: FieldBase
     ) -> Callable[
-        [np.ndarray, float, float, float, OnlineStatistics | None, Any],
+        [NumericArray, float, float, float, OnlineStatistics | None, Any],
         tuple[float, float, int],
     ]:
         """Return a stepper function using an explicit scheme with fixed time steps.

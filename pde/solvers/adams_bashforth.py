@@ -12,6 +12,7 @@ import numpy as np
 
 from ..fields.base import FieldBase
 from ..tools.numba import jit
+from ..tools.typing import NumericArray
 from .base import SolverBase
 
 
@@ -22,7 +23,7 @@ class AdamsBashforthSolver(SolverBase):
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, int, Any], float]:
+    ) -> Callable[[NumericArray, float, int, Any], float]:
         """Return a stepper function using an explicit scheme with fixed time steps.
 
         Args:
@@ -39,7 +40,7 @@ class AdamsBashforthSolver(SolverBase):
         post_step_hook = self._make_post_step_hook(state)
 
         def single_step(
-            state_data: np.ndarray, t: float, state_prev: np.ndarray
+            state_data: NumericArray, t: float, state_prev: NumericArray
         ) -> None:
             """Perform a single Adams-Bashforth step."""
             rhs_prev = rhs_pde(state_prev, t - dt).copy()
@@ -56,7 +57,7 @@ class AdamsBashforthSolver(SolverBase):
             single_step = jit(sig_single_step)(single_step)
 
         def fixed_stepper(
-            state_data: np.ndarray, t_start: float, steps: int, post_step_data
+            state_data: NumericArray, t_start: float, steps: int, post_step_data
         ) -> float:
             """Perform `steps` steps with fixed time steps."""
             nonlocal state_prev, init_state_prev

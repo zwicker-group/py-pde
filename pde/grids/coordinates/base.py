@@ -10,6 +10,8 @@ import numpy as np
 from numpy.typing import ArrayLike
 from scipy import integrate, optimize
 
+from ...tools.typing import NumericArray
+
 
 class DimensionError(ValueError):
     """Exception indicating that dimensions were inconsistent."""
@@ -40,11 +42,11 @@ class CoordinatesBase:
                 res[axes_alt] = axes_name
         return res
 
-    def _pos_to_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_to_cart(self, points: NumericArray) -> NumericArray:
         # actual calculation needs to be implemented by sub-class
         raise NotImplementedError
 
-    def pos_to_cart(self, points: np.ndarray, *, axis: int = -1) -> np.ndarray:
+    def pos_to_cart(self, points: NumericArray, *, axis: int = -1) -> NumericArray:
         """Convert coordinates to Cartesian coordinates.
 
         Args:
@@ -64,11 +66,11 @@ class CoordinatesBase:
         else:
             return np.apply_along_axis(self._pos_to_cart, axis, points)  # type:ignore
 
-    def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_from_cart(self, points: NumericArray) -> NumericArray:
         # actual calculation needs to be implemented by sub-class
         raise NotImplementedError
 
-    def pos_from_cart(self, points: np.ndarray, *, axis: int = -1) -> np.ndarray:
+    def pos_from_cart(self, points: NumericArray, *, axis: int = -1) -> NumericArray:
         """Convert Cartesian coordinates to coordinates in this system.
 
         Args:
@@ -88,7 +90,7 @@ class CoordinatesBase:
         else:
             return np.apply_along_axis(self._pos_from_cart, axis, points)  # type:ignore
 
-    def distance(self, p1: np.ndarray, p2: np.ndarray, *, axis: int = -1) -> float:
+    def distance(self, p1: NumericArray, p2: NumericArray, *, axis: int = -1) -> float:
         """Calculate the distance between two points.
 
         Args:
@@ -107,10 +109,10 @@ class CoordinatesBase:
         x2 = self.pos_to_cart(p2, axis=axis)
         return np.linalg.norm(x2 - x1, axis=axis)  # type: ignore
 
-    def _scale_factors(self, points: np.ndarray) -> np.ndarray:
+    def _scale_factors(self, points: NumericArray) -> NumericArray:
         return np.diag(self.metric(points)) ** 2  # type:ignore
 
-    def scale_factors(self, points: np.ndarray) -> np.ndarray:
+    def scale_factors(self, points: NumericArray) -> NumericArray:
         """Calculate the scale factors at various points.
 
         Args:
@@ -125,7 +127,7 @@ class CoordinatesBase:
             raise DimensionError(f"Shape {points.shape} cannot denote points")
         return self._scale_factors(points)
 
-    def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
+    def _mapping_jacobian(self, points: NumericArray) -> NumericArray:
         # Basic implementation based on finite difference, which should be overwritten
         # using analytical expressions for speed and accuracy
         jac = np.apply_along_axis(
@@ -136,7 +138,7 @@ class CoordinatesBase:
             jac = jac[..., np.newaxis]
         return jac  # type:ignore
 
-    def mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
+    def mapping_jacobian(self, points: NumericArray) -> NumericArray:
         """Returns the Jacobian matrix of the coordinate mapping.
 
         Args:
@@ -151,11 +153,11 @@ class CoordinatesBase:
             raise DimensionError(f"Shape {points.shape} cannot denote points")
         return self._mapping_jacobian(points)
 
-    def _volume_factor(self, points: np.ndarray) -> ArrayLike:
+    def _volume_factor(self, points: NumericArray) -> ArrayLike:
         # default implementation based on scale factors
         return np.prod(self._scale_factors(points), axis=0)
 
-    def volume_factor(self, points: np.ndarray) -> ArrayLike:
+    def volume_factor(self, points: NumericArray) -> ArrayLike:
         """Calculate the volume factors at various points.
 
         Args:
@@ -170,7 +172,7 @@ class CoordinatesBase:
             raise DimensionError(f"Shape {points.shape} cannot denote points")
         return self._volume_factor(points)
 
-    def _cell_volume(self, c_low: np.ndarray, c_high: np.ndarray) -> np.ndarray:
+    def _cell_volume(self, c_low: NumericArray, c_high: NumericArray) -> NumericArray:
         # Basic implementation based on numerical integration, which should be
         # overwritten if the integration can be done analytically
         cell_volumes = np.empty(c_low.shape[:-1])
@@ -180,7 +182,7 @@ class CoordinatesBase:
             )[0]
         return cell_volumes  # type:ignore
 
-    def cell_volume(self, c_low: np.ndarray, c_high: np.ndarray) -> np.ndarray:
+    def cell_volume(self, c_low: NumericArray, c_high: NumericArray) -> NumericArray:
         """Calculate the volume between coordinate lines.
 
         Args:
@@ -200,7 +202,7 @@ class CoordinatesBase:
             raise DimensionError(f"Shape {c_high.shape} cannot denote points")
         return self._cell_volume(c_low, c_high)
 
-    def metric(self, points: np.ndarray) -> np.ndarray:
+    def metric(self, points: NumericArray) -> NumericArray:
         """Calculate the metric tensor at coordinate points.
 
         Args:
@@ -216,10 +218,10 @@ class CoordinatesBase:
         metric[range(self.dim), range(self.dim)] = self.scale_factors(points) ** 2
         return metric  # type:ignore
 
-    def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
+    def _basis_rotation(self, points: NumericArray) -> NumericArray:
         raise NotImplementedError
 
-    def basis_rotation(self, points: np.ndarray) -> np.ndarray:
+    def basis_rotation(self, points: NumericArray) -> NumericArray:
         """Returns rotation matrix rotating basis vectors to Cartesian coordinates.
 
         Args:
@@ -236,7 +238,9 @@ class CoordinatesBase:
             raise DimensionError(f"Shape {points.shape} cannot denote points")
         return self._basis_rotation(points)
 
-    def vec_to_cart(self, points: np.ndarray, components: np.ndarray) -> np.ndarray:
+    def vec_to_cart(
+        self, points: NumericArray, components: NumericArray
+    ) -> NumericArray:
         """Convert the vectors at given points to a Cartesian basis.
 
         Args:

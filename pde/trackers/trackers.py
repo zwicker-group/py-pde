@@ -38,7 +38,7 @@ from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.output import get_progress_bar_class
 from ..tools.parse_duration import parse_duration
-from ..tools.typing import Real
+from ..tools.typing import NumericArray, Real
 from ..visualization.movies import Movie
 from .base import (
     FinishedSimulation,
@@ -762,7 +762,7 @@ class SteadyStateTracker(TrackerBase):
         rtol: float = 1e-5,
         *,
         progress: bool = False,
-        evolution_rate: Callable[[np.ndarray, float], np.ndarray] | None = None,
+        evolution_rate: Callable[[NumericArray, float], NumericArray] | None = None,
     ):
         """
         Args:
@@ -793,9 +793,9 @@ class SteadyStateTracker(TrackerBase):
 
         self._progress_bar: Any = None
         self._pbar_offset: float = 0  # required for calculating progress
-        self._last_data: np.ndarray | None = None
+        self._last_data: NumericArray | None = None
         self._last_time: float | None = None
-        self._best_rate_max: np.ndarray | None = None
+        self._best_rate_max: NumericArray | None = None
 
     def handle(self, field: FieldBase, t: float) -> None:
         """Handle data supplied to this tracker.
@@ -831,7 +831,7 @@ class SteadyStateTracker(TrackerBase):
         # calculate the maximal deviation of the evolution rate from zero, subtracting
         # the relative tolerance with respect to the field values
         rate_abs = np.abs(evolution_rate) - self.rtol * np.abs(field.data[finite])
-        rate_abs_max: np.ndarray = np.max(rate_abs)
+        rate_abs_max: NumericArray = np.max(rate_abs)
 
         # check wether the simulation has converged
         if rate_abs_max <= self.atol:

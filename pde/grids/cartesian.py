@@ -13,6 +13,7 @@ import numpy as np
 
 from ..tools.cuboid import Cuboid
 from ..tools.plotting import plot_on_axes
+from ..tools.typing import NumericArray
 from .base import (
     CoordsType,
     DimensionError,
@@ -71,7 +72,7 @@ class CartesianGrid(GridBase):
                 either a list of booleans defining periodicity for each individual axis
                 or a single boolean value specifying the same periodicity for all axes.
         """
-        bounds_arr: np.ndarray = np.array(bounds, ndmin=1, dtype=np.double)
+        bounds_arr: NumericArray = np.array(bounds, ndmin=1, dtype=np.double)
         if bounds_arr.shape == (2,):
             raise ValueError(
                 "`bounds with shape (2,) are ambiguous. Either use shape (1, 2) to set "
@@ -200,7 +201,7 @@ class CartesianGrid(GridBase):
         return tuple(self.discretization)
 
     def iter_mirror_points(
-        self, point: np.ndarray, with_self: bool = False, only_periodic: bool = True
+        self, point: NumericArray, with_self: bool = False, only_periodic: bool = True
     ) -> Generator:
         """Generates all mirror points corresponding to `point`
 
@@ -237,7 +238,7 @@ class CartesianGrid(GridBase):
         boundary_distance: float = 0,
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
-    ) -> np.ndarray:
+    ) -> NumericArray:
         """Return a random point within the grid.
 
         Args:
@@ -273,13 +274,15 @@ class CartesianGrid(GridBase):
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
     def difference_vector(
-        self, p1: np.ndarray, p2: np.ndarray, *, coords: CoordsType = "grid"
-    ) -> np.ndarray:
+        self, p1: NumericArray, p2: NumericArray, *, coords: CoordsType = "grid"
+    ) -> NumericArray:
         return self._difference_vector(
             p1, p2, coords=coords, periodic=self.periodic, axes_bounds=self.axes_bounds
         )
 
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
+    def get_line_data(
+        self, data: NumericArray, extract: str = "auto"
+    ) -> dict[str, Any]:
         """Return a line cut through the given data.
 
         Args:
@@ -353,7 +356,7 @@ class CartesianGrid(GridBase):
             "label_y": label_y,
         }
 
-    def get_image_data(self, data: np.ndarray) -> dict[str, Any]:
+    def get_image_data(self, data: NumericArray) -> dict[str, Any]:
         if data.shape[-self.dim :] != self.shape:
             raise ValueError(
                 f"Shape {data.shape} of the data array is not compatible with grid "
@@ -382,7 +385,7 @@ class CartesianGrid(GridBase):
             "label_y": self.axes[1],
         }
 
-    def get_vector_data(self, data: np.ndarray, **kwargs) -> dict[str, Any]:
+    def get_vector_data(self, data: NumericArray, **kwargs) -> dict[str, Any]:
         if self.dim != 2:
             raise DimensionError("Vector data only available for dim==2")
         if data.shape != (2,) + self.shape:

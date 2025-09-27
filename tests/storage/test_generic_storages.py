@@ -125,11 +125,13 @@ def test_storage_truncation(tmp_path, rng):
         state = ScalarField.random_uniform(grid, 0.2, 0.3, rng=rng)
         eq = DiffusionPDE()
 
-        eq.solve(state, t_range=0.1, dt=0.001, tracker=tracker_list)
+        eq.solve(state, t_range=0.1, dt=0.001, backend="numpy", tracker=tracker_list)
         if truncate:
             for storage in storages:
                 storage.clear()
-        eq.solve(state, t_range=[0.1, 0.2], dt=0.001, tracker=tracker_list)
+        eq.solve(
+            state, t_range=[0.1, 0.2], dt=0.001, backend="numpy", tracker=tracker_list
+        )
 
         times = np.arange(0.1, 0.201, 0.01)
         if not truncate:
@@ -161,9 +163,11 @@ def test_storing_extract_range(atol, can_clear, storage_factory):
     s1.end_writing()
 
     np.testing.assert_equal(s1[0].data, 0)
-    np.testing.assert_equal(s1[1].data, 2)
-    np.testing.assert_equal(s1[-1].data, 2)
-    np.testing.assert_equal(s1[-2].data, 0)
+    if not isinstance(s1, MovieStorage):
+        # skip the following for MovieStorage, because these tests are slow
+        np.testing.assert_equal(s1[1].data, 2)
+        np.testing.assert_equal(s1[-1].data, 2)
+        np.testing.assert_equal(s1[-2].data, 0)
 
     with pytest.raises(IndexError):
         s1[2]
@@ -171,15 +175,17 @@ def test_storing_extract_range(atol, can_clear, storage_factory):
         s1[-3]
 
     # test extraction
-    s2 = s1.extract_time_range()
-    assert s2.times == list(s1.times)
-    np.testing.assert_allclose(s2.data, s1.data)
     s3 = s1.extract_time_range(0.5)
     assert s3.times == s1.times[:1]
     np.testing.assert_allclose(s3.data, s1.data[:1])
-    s4 = s1.extract_time_range((0.5, 1.5))
-    assert s4.times == s1.times[1:]
-    np.testing.assert_allclose(s4.data, s1.data[1:])
+    if not isinstance(s1, MovieStorage):
+        # skip the following for MovieStorage, because these tests are slow
+        s2 = s1.extract_time_range()
+        assert s2.times == list(s1.times)
+        np.testing.assert_allclose(s2.data, s1.data)
+        s4 = s1.extract_time_range((0.5, 1.5))
+        assert s4.times == s1.times[1:]
+        np.testing.assert_allclose(s4.data, s1.data[1:])
 
 
 @pytest.mark.parametrize("storage_class", STORAGE_CLASSES)

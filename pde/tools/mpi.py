@@ -178,7 +178,7 @@ def mpi_allreduce(data, operator):
         # in a serial run, we can always return the value as is
         return data
 
-    if isinstance(data, np.ndarray):
+    if isinstance(data, NumericArray):
         # synchronize an array
         out = np.empty_like(data)
         MPI.COMM_WORLD.Allreduce(data, out, op=Operator.operator(operator))

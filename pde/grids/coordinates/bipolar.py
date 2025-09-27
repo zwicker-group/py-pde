@@ -7,6 +7,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import ArrayLike
 
+from ...tools.typing import NumericArray
 from .base import CoordinatesBase
 
 
@@ -34,14 +35,14 @@ class BipolarCoordinates(CoordinatesBase):
             and self.scale_parameter == other.scale_parameter
         )
 
-    def _pos_to_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_to_cart(self, points: NumericArray) -> NumericArray:
         σ, τ = points[..., 0], points[..., 1]
         denom = np.cosh(τ) - np.cos(σ)
         x = self.scale_parameter * np.sinh(τ) / denom
         y = self.scale_parameter * np.sin(σ) / denom
         return np.stack((x, y), axis=-1)  # type: ignore
 
-    def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_from_cart(self, points: NumericArray) -> NumericArray:
         x, y = points[..., 0], points[..., 1]
         a = self.scale_parameter
         h2 = x**2 + y**2
@@ -50,7 +51,7 @@ class BipolarCoordinates(CoordinatesBase):
         τ = 0.5 * np.log(((x + a) ** 2 + y**2) / ((x - a) ** 2 + y**2))
         return np.stack((σ, τ), axis=-1)  # type: ignore
 
-    def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
+    def _mapping_jacobian(self, points: NumericArray) -> NumericArray:
         σ, τ = points[..., 0], points[..., 1]
 
         sinσ = np.sin(σ)
@@ -66,16 +67,16 @@ class BipolarCoordinates(CoordinatesBase):
             ]
         )
 
-    def _volume_factor(self, points: np.ndarray) -> ArrayLike:
+    def _volume_factor(self, points: NumericArray) -> ArrayLike:
         σ, τ = points[..., 0], points[..., 1]
         return self.scale_parameter**2 * (np.cosh(τ) - np.cos(σ)) ** -2
 
-    def _scale_factors(self, points: np.ndarray) -> np.ndarray:
+    def _scale_factors(self, points: NumericArray) -> NumericArray:
         σ, τ = points[..., 0], points[..., 1]
         sf = self.scale_parameter / (np.cosh(τ) - np.cos(σ))
         return np.array([sf, sf])  # type: ignore
 
-    def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
+    def _basis_rotation(self, points: NumericArray) -> NumericArray:
         σ, τ = points[..., 0], points[..., 1]
 
         sinσ = np.sin(σ)

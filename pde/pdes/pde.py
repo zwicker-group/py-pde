@@ -26,7 +26,7 @@ from ..grids.boundaries.local import BCDataError
 from ..pdes.base import PDEBase, TState
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, NumberOrArray, StepperHook
+from ..tools.typing import ArrayLike, NumberOrArray, NumericArray, StepperHook
 
 if TYPE_CHECKING:
     import sympy
@@ -71,7 +71,7 @@ class PDE(PDEBase):
         *,
         bc: BoundariesData | None = None,
         bc_ops: dict[str, BoundariesData] | None = None,
-        post_step_hook: Callable[[np.ndarray, float], None] | None = None,
+        post_step_hook: Callable[[NumericArray, float], None] | None = None,
         user_funcs: dict[str, Callable] | None = None,
         consts: dict[str, NumberOrArray] | None = None,
         noise: ArrayLike = 0,
@@ -370,7 +370,7 @@ class PDE(PDEBase):
         else:
             raise ValueError(f"Unsupported backend {backend}")
 
-        def rhs_func(*args) -> np.ndarray:
+        def rhs_func(*args) -> NumericArray:
             """Wrapper that inserts the extra arguments and initialized bc_args."""
             bc_args = NumbaDict()  # args for differential operators
             bc_args["t"] = args[-1]  # pass time to differential operators
@@ -484,7 +484,7 @@ class PDE(PDEBase):
             starts: tuple[int, ...] = tuple(slc.start for slc in state._slices)
             stops: tuple[int, ...] = tuple(slc.stop for slc in state._slices)
 
-            def get_data_tuple(state_data: np.ndarray) -> tuple[np.ndarray, ...]:
+            def get_data_tuple(state_data: NumericArray) -> tuple[NumericArray, ...]:
                 """Helper for turning state_data into a tuple of field data."""
                 return tuple(
                     (
@@ -568,7 +568,7 @@ class PDE(PDEBase):
     # time will not be updated
     def _make_pde_rhs_numba_coll(
         self, state: FieldCollection, cache: dict[str, Any]
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Create the compiled rhs if `state` is a field collection.
 
         Args:
@@ -594,8 +594,8 @@ class PDE(PDEBase):
 
         def chain(
             i: int = 0,
-            inner: Callable[[np.ndarray, float, np.ndarray], None] | None = None,
-        ) -> Callable[[np.ndarray, float], np.ndarray]:
+            inner: Callable[[NumericArray, float, NumericArray], None] | None = None,
+        ) -> Callable[[NumericArray, float], NumericArray]:
             """Recursive helper function for applying all rhs."""
             # run through all functions
             rhs = rhs_list[i]
@@ -603,13 +603,13 @@ class PDE(PDEBase):
             if inner is None:
                 # the innermost function does not need to call a child
                 @jit
-                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray) -> None:
+                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
             else:
                 # all other functions need to call one deeper in the chain
                 @jit
-                def wrap(data_tpl: np.ndarray, t: float, out: np.ndarray) -> None:
+                def wrap(data_tpl: NumericArray, t: float, out: NumericArray) -> None:
                     inner(data_tpl, t, out)
                     out[starts[i] : stops[i]] = rhs(*data_tpl, t)
 
@@ -619,7 +619,9 @@ class PDE(PDEBase):
             else:
                 # this is the outermost function
                 @jit
-                def evolution_rate(state_data: np.ndarray, t: float = 0) -> np.ndarray:
+                def evolution_rate(
+                    state_data: NumericArray, t: float = 0
+                ) -> NumericArray:
                     out = np.empty(data_shape)
                     with nb.objmode():
                         data_tpl = get_data_tuple(state_data)
@@ -633,7 +635,7 @@ class PDE(PDEBase):
 
     def _make_pde_rhs_numba(  # type: ignore
         self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
@@ -759,10 +761,10 @@ class PDE(PDEBase):
     def _dispersion_relation(
         self,
         state_hom: list | dict[str, float],
-        qs: np.ndarray | None = None,
+        qs: NumericArray | None = None,
         *,
         t: float = 0,
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NumericArray, NumericArray]:
         """Evaluate the dispersion relation.
 
         Args:

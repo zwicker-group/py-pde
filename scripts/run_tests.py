@@ -208,7 +208,7 @@ def run_unit_tests(
     else:
         num_cores = int(num_cores)
     if num_cores > 1:
-        args.extend(["-n", str(num_cores), "--durations=10"])
+        args.extend(["-n", str(num_cores), "--durations=32"])
 
     # run only a subset of the tests?
     if pattern is not None:

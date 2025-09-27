@@ -25,7 +25,7 @@ from ..tools.misc import Number, number_array
 from ..tools.numba import get_common_numba_dtype, jit, make_array_constructor
 from ..tools.plotting import PlotReference, plot_on_axes
 from ..tools.spectral import CorrelationType, make_correlated_noise
-from ..tools.typing import ArrayLike, NumberOrArray
+from ..tools.typing import ArrayLike, NumberOrArray, NumericArray
 from .base import FieldBase, RankError
 
 if TYPE_CHECKING:
@@ -182,7 +182,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # create complex random numbers for the field
             real_part = rng.uniform(np.real(vmin), np.real(vmax), size=shape)
             imag_part = rng.uniform(np.imag(vmin), np.imag(vmax), size=shape)
-            data: np.ndarray = real_part + 1j * imag_part
+            data: NumericArray = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
             data = rng.uniform(vmin, vmax, size=shape)
@@ -293,7 +293,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         else:
             tensor_shape = (grid.dim,) * cls.rank
 
-            def make_random_field() -> np.ndarray:
+            def make_random_field() -> NumericArray:
                 """Helper function that creates a single tensor field."""
                 out = np.empty(tensor_shape + grid.shape)
                 print(out.shape, tensor_shape, grid)
@@ -313,7 +313,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
             # create complex random numbers for the field
             real_part = np.real(mean) + np.real(std) * scale * make_random_field()
             imag_part = np.imag(mean) + np.imag(std) * scale * make_random_field()
-            data: np.ndarray = real_part + 1j * imag_part
+            data: NumericArray = real_part + 1j * imag_part
         else:
             # create real random numbers for the field
             data = mean + std * scale * make_random_field()
@@ -481,7 +481,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     def from_state(
         cls: type[TDataField],
         attributes: dict[str, Any],
-        data: np.ndarray | None = None,
+        data: NumericArray | None = None,
     ) -> TDataField:
         """Create a field from given state.
 
@@ -593,7 +593,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         *,
         fill: Number | None = None,
         with_ghost_cells: bool = False,
-    ) -> Callable[[np.ndarray, np.ndarray], NumberOrArray]:
+    ) -> Callable[[NumericArray, NumericArray], NumberOrArray]:
         r"""Returns a function that can be used to interpolate values.
 
         Args:
@@ -617,7 +617,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         # convert `fill` to dtype of data
         if fill is not None:
             if self.rank == 0:
-                fill = self.data.dtype.type(fill)
+                fill = self.data.dtype.type(fill)  # type: ignore
             else:
                 fill = np.broadcast_to(fill, self.data_shape).astype(self.data.dtype)
 
@@ -636,8 +636,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
         @jit
         def interpolator(
-            point: np.ndarray, data: np.ndarray | None = None
-        ) -> np.ndarray:
+            point: NumericArray, data: NumericArray | None = None
+        ) -> NumericArray:
             """Return the interpolated value at the position `point`
 
             Args:
@@ -680,11 +680,11 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
     @fill_in_docstring
     def interpolate(
         self,
-        point: np.ndarray,
+        point: NumericArray,
         *,
         bc: BoundariesData | None = None,
         fill: Number | None = None,
-    ) -> np.ndarray:
+    ) -> NumericArray:
         r"""Interpolate the field to points between support points.
 
         Args:
@@ -748,7 +748,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         """
         raise NotImplementedError(f"Cannot interpolate {self.__class__.__name__}")
 
-    def insert(self, point: np.ndarray, amount: ArrayLike) -> None:
+    def insert(self, point: NumericArray, amount: ArrayLike) -> None:
         """Adds an (integrated) value to the field at an interpolated position.
 
         Args:
@@ -965,7 +965,7 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
     def make_dot_operator(
         self, backend: Literal["numpy", "numba"] = "numba", *, conjugate: bool = True
-    ) -> Callable[[np.ndarray, np.ndarray, np.ndarray | None], np.ndarray]:
+    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
         """Return operator calculating the dot product between two fields.
 
         This supports both products between two vectors as well as products
@@ -986,13 +986,13 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
         num_axes = self.grid.num_axes
 
         @register_jitable
-        def maybe_conj(arr: np.ndarray) -> np.ndarray:
+        def maybe_conj(arr: NumericArray) -> NumericArray:
             """Helper function implementing optional conjugation."""
             return arr.conjugate() if conjugate else arr
 
         def dot(
-            a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-        ) -> np.ndarray:
+            a: NumericArray, b: NumericArray, out: NumericArray | None = None
+        ) -> NumericArray:
             """Numpy implementation to calculate dot product between two fields."""
             rank_a = a.ndim - num_axes
             rank_b = b.ndim - num_axes
@@ -1040,8 +1040,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             @overload(dot, inline="always")
             def dot_ol(
-                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-            ) -> np.ndarray:
+                a: NumericArray, b: NumericArray, out: NumericArray | None = None
+            ) -> NumericArray:
                 """Numba implementation to calculate dot product between two fields."""
                 # get (and check) rank of the input arrays
                 rank_a = get_rank(a)
@@ -1050,7 +1050,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 if rank_a == 1 and rank_b == 1:  # result is scalar field
 
                     @register_jitable
-                    def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> None:
+                    def calc(
+                        a: NumericArray, b: NumericArray, out: NumericArray
+                    ) -> None:
                         out[:] = a[0] * maybe_conj(b[0])
                         for j in range(1, dim):
                             out[:] += a[j] * maybe_conj(b[j])
@@ -1058,7 +1060,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 elif rank_a == 2 and rank_b == 1:  # result is vector field
 
                     @register_jitable
-                    def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> None:
+                    def calc(
+                        a: NumericArray, b: NumericArray, out: NumericArray
+                    ) -> None:
                         for i in range(dim):
                             out[i] = a[i, 0] * maybe_conj(b[0])
                             for j in range(1, dim):
@@ -1067,7 +1071,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 elif rank_a == 1 and rank_b == 2:  # result is vector field
 
                     @register_jitable
-                    def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> None:
+                    def calc(
+                        a: NumericArray, b: NumericArray, out: NumericArray
+                    ) -> None:
                         for i in range(dim):
                             out[i] = a[0] * maybe_conj(b[0, i])
                             for j in range(1, dim):
@@ -1076,7 +1082,9 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                 elif rank_a == 2 and rank_b == 2:  # result is tensor-2 field
 
                     @register_jitable
-                    def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> None:
+                    def calc(
+                        a: NumericArray, b: NumericArray, out: NumericArray
+                    ) -> None:
                         for i in range(dim):
                             for j in range(dim):
                                 out[i, j] = a[i, 0] * maybe_conj(b[0, j])
@@ -1095,8 +1103,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     dtype = get_common_numba_dtype(a, b)
 
                     def dot_impl(
-                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-                    ) -> np.ndarray:
+                        a: NumericArray,
+                        b: NumericArray,
+                        out: NumericArray | None = None,
+                    ) -> NumericArray:
                         """Helper function allocating output array."""
                         assert a.shape == a_shape
                         assert b.shape == b_shape
@@ -1108,8 +1118,10 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
                     # function is called with `out` argument -> reuse `out` array
 
                     def dot_impl(
-                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-                    ) -> np.ndarray:
+                        a: NumericArray,
+                        b: NumericArray,
+                        out: NumericArray | None = None,
+                    ) -> NumericArray:
                         """Helper function without allocating output array."""
                         assert a.shape == a_shape
                         assert b.shape == b_shape
@@ -1121,8 +1133,8 @@ class DataFieldBase(FieldBase, metaclass=ABCMeta):
 
             @jit
             def dot_compiled(
-                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-            ) -> np.ndarray:
+                a: NumericArray, b: NumericArray, out: NumericArray | None = None
+            ) -> NumericArray:
                 """Numba implementation to calculate dot product between two fields."""
                 return dot(a, b, out)
 

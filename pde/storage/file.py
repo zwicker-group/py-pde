@@ -15,6 +15,7 @@ from numpy.typing import DTypeLike
 
 from ..fields.base import FieldBase
 from ..tools.misc import ensure_directory_exists, hdf_write_attributes
+from ..tools.typing import NumericArray
 from .base import InfoDict, StorageBase, WriteModeType
 
 
@@ -363,7 +364,7 @@ class FileStorage(StorageBase):
 
         self._is_writing = True
 
-    def _append_data(self, data: np.ndarray, time: float) -> None:
+    def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
 
         Args:

@@ -43,7 +43,7 @@ from .cache import cached_method, cached_property
 from .docstrings import fill_in_docstring
 from .misc import Number, number, number_array
 from .numba import jit
-from .typing import NumberOrArray
+from .typing import NumberOrArray, NumericArray
 
 try:
     from numba.core.extending import overload
@@ -209,7 +209,7 @@ def parse_expr_guarded(expression: str, symbols=None, functions=None) -> basic.B
     return substitute(expr)
 
 
-ExpressionType = Union[float, str, np.ndarray, basic.Basic, "ExpressionBase"]
+ExpressionType = Union[float, str, NumericArray, basic.Basic, "ExpressionBase"]
 
 
 class ExpressionBase(metaclass=ABCMeta):
@@ -889,7 +889,7 @@ class TensorExpression(ExpressionBase):
 
     def get_compiled_array(
         self, single_arg: bool = True
-    ) -> Callable[[np.ndarray, np.ndarray | None], np.ndarray]:
+    ) -> Callable[[NumericArray, NumericArray | None], NumericArray]:
         """Compile the tensor expression such that a numpy array is returned.
 
         Args:

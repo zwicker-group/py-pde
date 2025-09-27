@@ -12,6 +12,7 @@ import numpy as np
 
 from ..fields import FieldCollection
 from ..fields.base import FieldBase
+from ..tools.typing import NumericArray
 from .base import InfoDict, StorageBase, WriteModeType
 
 
@@ -21,7 +22,7 @@ class MemoryStorage(StorageBase):
     def __init__(
         self,
         times: Sequence[float] | None = None,
-        data: list[np.ndarray] | None = None,
+        data: list[NumericArray] | None = None,
         *,
         info: InfoDict | None = None,
         field_obj: FieldBase | None = None,
@@ -51,7 +52,7 @@ class MemoryStorage(StorageBase):
             self._grid = field_obj.grid
             self._data_shape = field_obj.data.shape
 
-        self.data: list[np.ndarray] = [] if data is None else data
+        self.data: list[NumericArray] = [] if data is None else data
         if self._data_shape is None and len(self.data) > 0:
             self._data_shape = self.data[0].shape
 
@@ -194,7 +195,7 @@ class MemoryStorage(StorageBase):
                 "`truncate_once`, `truncate`, and `append`"
             )
 
-    def _append_data(self, data: np.ndarray, time: float) -> None:
+    def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
 
         Args:

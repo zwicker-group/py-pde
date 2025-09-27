@@ -19,7 +19,7 @@ from ..grids.cartesian import CartesianGrid
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, get_common_dtype
 from ..tools.numba import get_common_numba_dtype, jit
-from ..tools.typing import NumberOrArray
+from ..tools.typing import NumberOrArray, NumericArray
 from .datafield_base import DataFieldBase
 from .scalar import ScalarField
 
@@ -271,7 +271,7 @@ class VectorField(DataFieldBase):
 
     def make_outer_prod_operator(
         self, backend: Literal["numpy", "numba"] = "numba"
-    ) -> Callable[[np.ndarray, np.ndarray, np.ndarray | None], np.ndarray]:
+    ) -> Callable[[NumericArray, NumericArray, NumericArray | None], NumericArray]:
         """Return operator calculating the outer product of two vector fields.
 
         Warning:
@@ -289,8 +289,8 @@ class VectorField(DataFieldBase):
         """
 
         def outer(
-            a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-        ) -> np.ndarray:
+            a: NumericArray, b: NumericArray, out: NumericArray | None = None
+        ) -> NumericArray:
             """Calculate the outer product using numpy."""
             return np.einsum("i...,j...->ij...", a, b, out=out)
 
@@ -315,7 +315,9 @@ class VectorField(DataFieldBase):
 
             # create the inner function calculating the outer product
             @register_jitable
-            def calc(a: np.ndarray, b: np.ndarray, out: np.ndarray) -> np.ndarray:
+            def calc(
+                a: NumericArray, b: NumericArray, out: NumericArray
+            ) -> NumericArray:
                 """Calculate outer product between fields `a` and `b`"""
                 for i in range(dim):
                     for j in range(dim):
@@ -324,8 +326,8 @@ class VectorField(DataFieldBase):
 
             @overload(outer, inline="always")
             def outer_ol(
-                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-            ) -> np.ndarray:
+                a: NumericArray, b: NumericArray, out: NumericArray | None = None
+            ) -> NumericArray:
                 """Numba implementation to calculate outer product between two
                 fields."""
                 # get (and check) rank of the input arrays
@@ -339,8 +341,10 @@ class VectorField(DataFieldBase):
                     dtype = get_common_numba_dtype(a, b)
 
                     def outer_impl(
-                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-                    ) -> np.ndarray:
+                        a: NumericArray,
+                        b: NumericArray,
+                        out: NumericArray | None = None,
+                    ) -> NumericArray:
                         """Helper function allocating output array."""
                         assert a.shape == b.shape == in_shape
                         out = np.empty(out_shape, dtype=dtype)
@@ -351,8 +355,10 @@ class VectorField(DataFieldBase):
                     # function is called with `out` argument -> reuse `out` array
 
                     def outer_impl(
-                        a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-                    ) -> np.ndarray:
+                        a: NumericArray,
+                        b: NumericArray,
+                        out: NumericArray | None = None,
+                    ) -> NumericArray:
                         """Helper function without allocating output array."""
                         # check input
                         assert a.shape == b.shape == in_shape
@@ -364,8 +370,8 @@ class VectorField(DataFieldBase):
 
             @jit
             def outer_compiled(
-                a: np.ndarray, b: np.ndarray, out: np.ndarray | None = None
-            ) -> np.ndarray:
+                a: NumericArray, b: NumericArray, out: NumericArray | None = None
+            ) -> NumericArray:
                 """Numba implementation to calculate outer product between two
                 fields."""
                 return outer(a, b, out)
@@ -458,7 +464,7 @@ class VectorField(DataFieldBase):
         return self.apply_operator("vector_laplace", bc=bc, out=out, **kwargs)  # type: ignore
 
     @property
-    def integral(self) -> np.ndarray:
+    def integral(self) -> NumericArray:
         """:class:`~numpy.ndarray`: integral of each component over space."""
         return self.grid.integrate(self.data)  # type: ignore
 
