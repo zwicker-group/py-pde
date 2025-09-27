@@ -18,7 +18,7 @@ from ..grids.base import DimensionError, DomainError, GridBase
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number
-from ..tools.typing import NumberOrArray
+from ..tools.typing import NumberOrArray, NumericArray
 from .datafield_base import DataFieldBase
 
 if TYPE_CHECKING:

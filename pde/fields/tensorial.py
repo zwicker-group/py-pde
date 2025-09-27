@@ -15,7 +15,7 @@ from ..grids.base import DimensionError, GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import get_common_dtype
 from ..tools.plotting import PlotReference, plot_on_figure
-from ..tools.typing import NumberOrArray
+from ..tools.typing import NumberOrArray, NumericArray
 from .datafield_base import DataFieldBase
 from .scalar import ScalarField
 from .vectorial import VectorField
@@ -102,7 +102,7 @@ class Tensor2Field(DataFieldBase):
         points = [grid.cell_coords[..., i] for i in range(grid.num_axes)]
 
         # evaluate all vector components at all points
-        data: list[list[np.ndarray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
+        data: list[list[NumericArray]] = [[None] * grid.dim for _ in range(grid.dim)]  # type: ignore
         for i in range(grid.dim):
             for j in range(grid.dim):
                 expr = ScalarExpression(
@@ -245,7 +245,7 @@ class Tensor2Field(DataFieldBase):
         return self.apply_operator("tensor_divergence", bc=bc, out=out, **kwargs)  # type: ignore
 
     @property
-    def integral(self) -> np.ndarray:
+    def integral(self) -> NumericArray:
         """:class:`~numpy.ndarray`: integral of each component over space."""
         return self.grid.integrate(self.data)  # type: ignore
 

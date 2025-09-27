@@ -16,11 +16,12 @@ import numpy as np
 
 from ..tools.cache import cached_property
 from ..tools.plotting import plot_on_axes
+from ..tools.typing import NumericArray
 from .base import CoordsType, GridBase, _check_shape, discretize_interval
 from .cartesian import CartesianGrid
 from .coordinates import PolarCoordinates, SphericalCoordinates
 
-TNumArr = TypeVar("TNumArr", float, np.ndarray)
+TNumArr = TypeVar("TNumArr", float, NumericArray)
 
 
 def volume_from_radius(radius: TNumArr, dim: int) -> TNumArr:
@@ -165,7 +166,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         return volume
 
     @cached_property()
-    def cell_volume_data(self) -> tuple[np.ndarray]:
+    def cell_volume_data(self) -> tuple[NumericArray]:
         """Tuple of :class:`~numpy.ndarray`: the volumes of all cells."""
         dr = self.discretization[0]
         rs = self.axes_coords[0]
@@ -180,7 +181,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         avoid_center: bool = False,
         coords: CoordsType = "cartesian",
         rng: np.random.Generator | None = None,
-    ) -> np.ndarray:
+    ) -> NumericArray:
         """Return a random point within the grid.
 
         Note that these points will be uniformly distributed in the volume, implying
@@ -236,7 +237,9 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
         else:
             raise ValueError(f"Unknown coordinate system `{coords}`")
 
-    def get_line_data(self, data: np.ndarray, extract: str = "auto") -> dict[str, Any]:
+    def get_line_data(
+        self, data: NumericArray, extract: str = "auto"
+    ) -> dict[str, Any]:
         """Return a line cut along the radial axis.
 
         Args:
@@ -262,7 +265,7 @@ class SphericalSymGridBase(GridBase, metaclass=ABCMeta):
 
     def get_image_data(
         self,
-        data: np.ndarray,
+        data: NumericArray,
         *,
         performance_goal: Literal["speed", "quality"] = "speed",
         fill_value: float = 0,

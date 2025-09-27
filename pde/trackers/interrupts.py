@@ -28,6 +28,7 @@ from typing import Any, Optional, TypeVar, Union
 import numpy as np
 
 from ..tools.parse_duration import parse_duration
+from ..tools.typing import NumericArray
 
 InfoDict = Optional[dict[str, Any]]
 TInterrupt = TypeVar("TInterrupt", bound="InterruptsBase")
@@ -70,7 +71,7 @@ class InterruptsBase(metaclass=ABCMeta):
 class FixedInterrupts(InterruptsBase):
     """Interrupts at fixed, predetermined times."""
 
-    def __init__(self, interrupts: np.ndarray | Sequence[float]):
+    def __init__(self, interrupts: NumericArray | Sequence[float]):
         self.interrupts = np.atleast_1d(interrupts)
         if self.interrupts.ndim != 1:
             raise ValueError("`interrupts` must be a 1d sequence")
@@ -336,7 +337,7 @@ class RealtimeInterrupts(ConstantInterrupts):
         return super().next(t)
 
 
-InterruptData = Union[InterruptsBase, int, float, str, Sequence[float], np.ndarray]
+InterruptData = Union[InterruptsBase, int, float, str, Sequence[float], NumericArray]
 
 
 def parse_interrupt(data: InterruptData) -> InterruptsBase:

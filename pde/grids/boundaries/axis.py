@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Union
 import numpy as np
 from numba.extending import register_jitable
 
-from ...tools.typing import GhostCellSetter
+from ...tools.typing import GhostCellSetter, NumericArray
 from ..base import GridBase, PeriodicityError
 from .local import _MPIBC, BCBase, BCDataError, BoundaryData, _PeriodicBC
 
@@ -209,7 +209,7 @@ class BoundaryAxisBase:
             # the normal case of an interior point
             return 0, {axis_coord: 1}
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cell values for all boundaries.
 
         Args:
@@ -237,7 +237,7 @@ class BoundaryAxisBase:
         ghost_cell_setter_high = self.high.make_ghost_cell_setter()
 
         @register_jitable
-        def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
             """Helper function setting the conditions on all axes."""
             # send boundary information to other nodes if using MPI
             ghost_cell_sender_low(data_full, args=args)

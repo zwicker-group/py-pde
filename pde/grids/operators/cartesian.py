@@ -26,7 +26,7 @@ from numba.extending import overload, register_jitable
 from ... import config
 from ...tools.misc import module_available
 from ...tools.numba import jit
-from ...tools.typing import OperatorType
+from ...tools.typing import NumericArray, OperatorType
 from ..boundaries.axes import BoundariesBase, BoundariesList
 from ..boundaries.axis import BoundaryAxisBase
 from ..cartesian import CartesianGrid
@@ -36,7 +36,7 @@ _logger = logging.getLogger(__name__)
 """:class:`logging.Logger`: Logger instance."""
 
 
-def make_corner_point_setter_2d(grid: CartesianGrid) -> Callable[[np.ndarray], None]:
+def make_corner_point_setter_2d(grid: CartesianGrid) -> Callable[[NumericArray], None]:
     """Make a helper function that sets the virtual corner points of a 2d field.
 
     Args:
@@ -49,7 +49,7 @@ def make_corner_point_setter_2d(grid: CartesianGrid) -> Callable[[np.ndarray], N
     periodic_x, periodic_y = grid.periodic
 
     @jit
-    def set_corner_points(arr: np.ndarray) -> None:
+    def set_corner_points(arr: NumericArray) -> None:
         """Set the corner points of the array `arr`"""
         if periodic_x:
             # exploit periodicity along x-direction to use known boundary points
@@ -75,7 +75,7 @@ def make_corner_point_setter_2d(grid: CartesianGrid) -> Callable[[np.ndarray], N
     return set_corner_points  # type: ignore
 
 
-def _get_laplace_matrix_1d(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_1d(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
     """Get sparse matrix for Laplace operator on a 1d Cartesian grid.
 
     Args:
@@ -117,7 +117,7 @@ def _get_laplace_matrix_1d(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]
     return matrix, vector
 
 
-def _get_laplace_matrix_2d(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_2d(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
     """Get sparse matrix for Laplace operator on a 2d Cartesian grid.
 
     Args:
@@ -186,7 +186,7 @@ def _get_laplace_matrix_2d(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]
     return matrix, vector
 
 
-def _get_laplace_matrix_3d(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix_3d(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
     """Get sparse matrix for Laplace operator on a 3d Cartesian grid.
 
     Args:
@@ -273,7 +273,7 @@ def _get_laplace_matrix_3d(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]
     return matrix, vector
 
 
-def _get_laplace_matrix(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
     """Get sparse matrix for Laplace operator on a Cartesian grid.
 
     Args:
@@ -314,7 +314,7 @@ def _make_laplace_scipy_nd(grid: CartesianGrid) -> OperatorType:
 
     scaling = uniform_discretization(grid) ** -2
 
-    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         assert arr.shape == grid._shape_full
         valid = (...,) + (slice(1, -1),) * grid.dim
@@ -339,7 +339,7 @@ def _make_laplace_numba_1d(grid: CartesianGrid) -> OperatorType:
     scale: float = grid.discretization[0] ** -2  # type: ignore
 
     @jit
-    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         for i in range(1, dim_x + 1):
             out[i - 1] = (arr[i - 1] - 2 * arr[i] + arr[i + 1]) * scale
@@ -378,7 +378,7 @@ def _make_laplace_numba_2d(
         scale_x, scale_y = grid.discretization**-2
 
         @jit(parallel=parallel)
-        def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+        def laplace(arr: NumericArray, out: NumericArray) -> None:
             """Apply Laplace operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
@@ -412,7 +412,7 @@ def _make_laplace_numba_2d(
         set_corner_points = make_corner_point_setter_2d(grid)
 
         @jit(parallel=parallel)
-        def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+        def laplace(arr: NumericArray, out: NumericArray) -> None:
             """Apply Laplace operator to array `arr`"""
             set_corner_points(arr)
             for i in nb.prange(1, dim_x + 1):
@@ -443,7 +443,7 @@ def _make_laplace_numba_3d(grid: CartesianGrid) -> OperatorType:
     parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
@@ -475,17 +475,17 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
     factor = -(ks**2)
 
     @register_jitable
-    def laplace_impl(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace_impl(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         out[:] = fft.ifft(factor * fft.fft(arr[1:-1]))
 
     @overload(laplace_impl)
-    def ol_laplace(arr: np.ndarray, out: np.ndarray):
+    def ol_laplace(arr: NumericArray, out: NumericArray):
         """Integrates data over a grid using numba."""
         if np.isrealobj(arr):
             # special case of a real array
 
-            def laplace_real(arr: np.ndarray, out: np.ndarray) -> None:
+            def laplace_real(arr: NumericArray, out: NumericArray) -> None:
                 """Apply Laplace operator to array `arr`"""
                 out[:] = fft.ifft(factor * fft.fft(arr[1:-1])).real
 
@@ -495,7 +495,7 @@ def _make_laplace_numba_spectral_1d(grid: CartesianGrid) -> OperatorType:
             return laplace_impl
 
     @jit
-    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         laplace_impl(arr, out)
 
@@ -520,17 +520,17 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
     factor = -4 * np.pi**2 * (ks[0][:, None] ** 2 + ks[1][None, :] ** 2)
 
     @register_jitable
-    def laplace_impl(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace_impl(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         out[:] = fft.ifft2(factor * fft.fft2(arr[1:-1, 1:-1]))
 
     @overload(laplace_impl)
-    def ol_laplace(arr: np.ndarray, out: np.ndarray):
+    def ol_laplace(arr: NumericArray, out: NumericArray):
         """Integrates data over a grid using numba."""
         if np.isrealobj(arr):
             # special case of a real array
 
-            def laplace_real(arr: np.ndarray, out: np.ndarray) -> None:
+            def laplace_real(arr: NumericArray, out: NumericArray) -> None:
                 """Apply Laplace operator to array `arr`"""
                 out[:] = fft.ifft2(factor * fft.fft2(arr[1:-1, 1:-1])).real
 
@@ -540,7 +540,7 @@ def _make_laplace_numba_spectral_2d(grid: CartesianGrid) -> OperatorType:
             return laplace_impl
 
     @jit
-    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply Laplace operator to array `arr`"""
         laplace_impl(arr, out)
 
@@ -640,7 +640,7 @@ def _make_gradient_scipy_nd(
     else:
         raise ValueError(f"Unknown derivative type `{method}`")
 
-    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
+    def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         assert arr.shape == grid._shape_full
         if out is None:
@@ -679,7 +679,7 @@ def _make_gradient_numba_1d(
     dx = grid.discretization[0]
 
     @jit
-    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
+    def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
             if method == "central":
@@ -719,7 +719,7 @@ def _make_gradient_numba_2d(
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
+    def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
@@ -763,7 +763,7 @@ def _make_gradient_numba_3d(
     parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
+    def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
@@ -880,7 +880,7 @@ def _make_gradient_squared_numba_1d(
         scale = 0.25 / grid.discretization[0] ** 2
 
         @jit
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_x + 1):
                 out[i - 1] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
@@ -890,7 +890,7 @@ def _make_gradient_squared_numba_1d(
         scale = 0.5 / grid.discretization[0] ** 2
 
         @jit
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_x + 1):
                 diff_l = (arr[i + 1] - arr[i]) ** 2
@@ -927,7 +927,7 @@ def _make_gradient_squared_numba_2d(
         scale_x, scale_y = 0.25 / grid.discretization**2
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
@@ -940,7 +940,7 @@ def _make_gradient_squared_numba_2d(
         scale_x, scale_y = 0.5 / grid.discretization**2
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
@@ -984,7 +984,7 @@ def _make_gradient_squared_numba_3d(
         scale_x, scale_y, scale_z = 0.25 / grid.discretization**2
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
@@ -999,7 +999,7 @@ def _make_gradient_squared_numba_3d(
         scale_x, scale_y, scale_z = 0.5 / grid.discretization**2
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in nb.prange(1, dim_x + 1):
                 for j in range(1, dim_y + 1):
@@ -1081,7 +1081,7 @@ def _make_divergence_scipy_nd(
     else:
         raise ValueError(f"Unknown derivative type `{method}`")
 
-    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
+    def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply divergence operator to array `arr`"""
         assert arr.shape[0] == len(data_shape)
         assert arr.shape[1:] == data_shape
@@ -1122,7 +1122,7 @@ def _make_divergence_numba_1d(
     dx = grid.discretization[0]
 
     @jit
-    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
+    def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in range(1, dim_x + 1):
             if method == "central":
@@ -1162,7 +1162,7 @@ def _make_divergence_numba_2d(
     parallel = dim_x * dim_y >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
+    def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
@@ -1207,7 +1207,7 @@ def _make_divergence_numba_3d(
     parallel = dim_x * dim_y * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
+    def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_x + 1):
             for j in range(1, dim_y + 1):
@@ -1306,7 +1306,7 @@ def _vectorize_operator(
     dim = grid.dim
     operator = make_operator(grid, backend=backend, **kwargs)
 
-    def vectorized_operator(arr: np.ndarray, out: np.ndarray) -> None:
+    def vectorized_operator(arr: NumericArray, out: NumericArray) -> None:
         """Apply vector gradient operator to array `arr`"""
         for i in range(dim):
             operator(arr[i], out[i])

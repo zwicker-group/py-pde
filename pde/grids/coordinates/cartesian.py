@@ -7,6 +7,7 @@ from __future__ import annotations
 import numpy as np
 from numpy.typing import ArrayLike
 
+from ...tools.typing import NumericArray
 from .base import CoordinatesBase
 
 
@@ -46,25 +47,25 @@ class CartesianCoordinates(CoordinatesBase):
     def __eq__(self, other):
         return self.__class__ is other.__class__ and self.dim == other.dim
 
-    def _pos_to_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_to_cart(self, points: NumericArray) -> NumericArray:
         return points
 
-    def _pos_from_cart(self, points: np.ndarray) -> np.ndarray:
+    def _pos_from_cart(self, points: NumericArray) -> NumericArray:
         return points
 
-    def _mapping_jacobian(self, points: np.ndarray) -> np.ndarray:
+    def _mapping_jacobian(self, points: NumericArray) -> NumericArray:
         jac = np.zeros((self.dim, self.dim) + points.shape[:-1])
         jac[range(self.dim), range(self.dim)] = 1
         return jac  # type: ignore
 
-    def _volume_factor(self, points: np.ndarray) -> ArrayLike:
+    def _volume_factor(self, points: NumericArray) -> ArrayLike:
         return np.ones(points.shape[:-1])
 
-    def _cell_volume(self, c_low: np.ndarray, c_high: np.ndarray):
+    def _cell_volume(self, c_low: NumericArray, c_high: NumericArray):
         return np.prod(c_high - c_low, axis=-1)
 
-    def _scale_factors(self, points: np.ndarray) -> np.ndarray:
-        return np.ones_like(points)  # type: ignore
+    def _scale_factors(self, points: NumericArray) -> NumericArray:
+        return np.ones_like(points)
 
-    def _basis_rotation(self, points: np.ndarray) -> np.ndarray:
+    def _basis_rotation(self, points: NumericArray) -> NumericArray:
         return np.eye(self.dim)  # type: ignore

@@ -23,7 +23,7 @@ from ..pdes.base import PDEBase
 from ..tools.math import OnlineStatistics
 from ..tools.misc import classproperty
 from ..tools.numba import is_jitted, jit
-from ..tools.typing import BackendType, StepperHook
+from ..tools.typing import BackendType, NumericArray, StepperHook
 
 _base_logger = logging.getLogger(__name__.rsplit(".", 1)[0])
 """:class:`logging.Logger`: Base logger for solvers."""
@@ -192,7 +192,7 @@ class SolverBase:
             # hook function is not necessary or was not supplied -> provide no-op
 
             def post_step_hook(
-                state_data: np.ndarray, t: float, post_step_data: np.ndarray
+                state_data: NumericArray, t: float, post_step_data: NumericArray
             ):
                 """Default hook function does nothing."""
 
@@ -213,7 +213,7 @@ class SolverBase:
 
     def _make_pde_rhs(
         self, state: FieldBase, backend: BackendType = "auto"
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Obtain a function for evaluating the right hand side.
 
         Args:
@@ -252,7 +252,7 @@ class SolverBase:
 
     def _make_sde_rhs(
         self, state: FieldBase, backend: str = "auto"
-    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
         """Obtain a function for evaluating the right hand side.
 
         Args:
@@ -286,7 +286,7 @@ class SolverBase:
 
     def _make_single_step_fixed_dt(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float], None]:
+    ) -> Callable[[NumericArray, float], None]:
         """Return a function doing a single step with a fixed time step.
 
         Args:
@@ -300,7 +300,7 @@ class SolverBase:
 
     def _make_fixed_stepper(
         self, state: FieldBase, dt: float
-    ) -> Callable[[np.ndarray, float, int, Any], float]:
+    ) -> Callable[[NumericArray, float, int, Any], float]:
         """Return a stepper function using an explicit scheme with fixed time steps.
 
         Args:
@@ -318,7 +318,7 @@ class SolverBase:
             single_step = jit(sig_single_step)(single_step)
 
         def fixed_stepper(
-            state_data: np.ndarray, t_start: float, steps: int, post_step_data
+            state_data: NumericArray, t_start: float, steps: int, post_step_data
         ) -> float:
             """Perform `steps` steps with fixed time steps."""
             for i in range(steps):
@@ -481,7 +481,7 @@ class AdaptiveSolverBase(SolverBase):
 
     def _make_single_step_variable_dt(
         self, state: FieldBase
-    ) -> Callable[[np.ndarray, float, float], np.ndarray]:
+    ) -> Callable[[NumericArray, float, float], NumericArray]:
         """Return a function doing a single step with a variable time step.
 
         Args:
@@ -496,7 +496,7 @@ class AdaptiveSolverBase(SolverBase):
         """
         rhs_pde = self._make_pde_rhs(state, backend=self.backend)
 
-        def single_step(state_data: np.ndarray, t: float, dt: float) -> np.ndarray:
+        def single_step(state_data: NumericArray, t: float, dt: float) -> NumericArray:
             """Basic implementation of Euler scheme."""
             return state_data + dt * rhs_pde(state_data, t)  # type: ignore
 
@@ -504,7 +504,7 @@ class AdaptiveSolverBase(SolverBase):
 
     def _make_single_step_error_estimate(
         self, state: FieldBase
-    ) -> Callable[[np.ndarray, float, float], tuple[np.ndarray, float]]:
+    ) -> Callable[[NumericArray, float, float], tuple[NumericArray, float]]:
         """Make a stepper that also estimates the error.
 
         Args:
@@ -521,8 +521,8 @@ class AdaptiveSolverBase(SolverBase):
             single_step = jit(sig_single_step)(single_step)
 
         def single_step_error_estimate(
-            state_data: np.ndarray, t: float, dt: float
-        ) -> tuple[np.ndarray, float]:
+            state_data: NumericArray, t: float, dt: float
+        ) -> tuple[NumericArray, float]:
             """Basic stepper to estimate error."""
             # single step with dt
             k1 = single_step(state_data, t, dt)
@@ -541,7 +541,7 @@ class AdaptiveSolverBase(SolverBase):
     def _make_adaptive_stepper(
         self, state: FieldBase
     ) -> Callable[
-        [np.ndarray, float, float, float, OnlineStatistics | None, Any],
+        [NumericArray, float, float, float, OnlineStatistics | None, Any],
         tuple[float, float, int],
     ]:
         """Make an adaptive Euler stepper.
@@ -572,7 +572,7 @@ class AdaptiveSolverBase(SolverBase):
             single_step_error = jit(sig_stepper)(single_step_error)
 
         def adaptive_stepper(
-            state_data: np.ndarray,
+            state_data: NumericArray,
             t_start: float,
             t_end: float,
             dt_init: float,

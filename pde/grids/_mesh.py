@@ -18,6 +18,7 @@ from ..fields.datafield_base import DataFieldBase
 from ..tools import mpi
 from ..tools.cache import cached_method
 from ..tools.plotting import plot_on_axes
+from ..tools.typing import NumericArray
 from .base import GridBase
 from .boundaries.axes import BoundariesBase, BoundariesList
 from .boundaries.axis import BoundaryAxisBase, BoundaryPair
@@ -86,7 +87,7 @@ def _get_optimal_decomposition(shape: Sequence[int], mpi_size: int) -> list[int]
     return decomposition
 
 
-def _subdivide(num: int, chunks: int) -> np.ndarray:
+def _subdivide(num: int, chunks: int) -> NumericArray:
     r"""Subdivide `num` intervals in `chunk` chunks.
 
     Args:
@@ -239,13 +240,13 @@ class GridMesh:
             )
 
         # subdivide the base grid according to the decomposition
-        subgrids: np.ndarray = np.empty(decomposition, dtype=object)
+        subgrids: NumericArray = np.empty(decomposition, dtype=object)
         subgrids.flat[0] = grid.copy()  # seed the initial grid at the top-left
         idx_set: list[Any] = [0] * subgrids.ndim  # indices to extract all grids
         for axis, chunks in enumerate(decomposition):
             # iterate over all grids that have been determined already
             for idx, subgrid in np.ndenumerate(subgrids[tuple(idx_set)]):
-                i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)  # type: ignore
+                i = idx + (slice(None, None),) + (0,) * (subgrids.ndim - axis - 1)
                 divison = _subdivide_along_axis(subgrid, axis=axis, chunks=chunks)
                 subgrids[i] = divison
 
@@ -342,7 +343,7 @@ class GridMesh:
         return indices_1d
 
     @cached_method()
-    def _get_data_indices(self, with_ghost_cells: bool = False) -> np.ndarray:
+    def _get_data_indices(self, with_ghost_cells: bool = False) -> NumericArray:
         """Indices to extract valid field data for each subgrid.
 
         Args:
@@ -355,7 +356,7 @@ class GridMesh:
         indices_1d = self._get_data_indices_1d(with_ghost_cells)
 
         # combine everything into a full indices
-        indices: np.ndarray = np.empty(self.shape, dtype=object)
+        indices: NumericArray = np.empty(self.shape, dtype=object)
         for idx in np.ndindex(self.shape):
             indices[idx] = tuple(indices_1d[n][i] for n, i in enumerate(idx))
 
@@ -427,11 +428,11 @@ class GridMesh:
 
     def extract_field_data(
         self,
-        field_data: np.ndarray,
+        field_data: NumericArray,
         node_id: int | None = None,
         *,
         with_ghost_cells: bool = False,
-    ) -> np.ndarray:
+    ) -> NumericArray:
         """Extract one subfield from a global one.
 
         Args:
@@ -550,8 +551,8 @@ class GridMesh:
         return BoundariesList(bcs)
 
     def split_field_data_mpi(
-        self, field_data: np.ndarray, *, with_ghost_cells: bool = False
-    ) -> np.ndarray:
+        self, field_data: NumericArray, *, with_ghost_cells: bool = False
+    ) -> NumericArray:
         """Extract one subfield from a global field.
 
         Args:
@@ -639,11 +640,11 @@ class GridMesh:
 
     def combine_field_data(
         self,
-        subfields: Sequence[np.ndarray],
-        out: np.ndarray | None = None,
+        subfields: Sequence[NumericArray],
+        out: NumericArray | None = None,
         *,
         with_ghost_cells: bool = False,
-    ) -> np.ndarray:
+    ) -> NumericArray:
         """Combine data of multiple fields defined on subgrids.
 
         Args:
@@ -680,11 +681,11 @@ class GridMesh:
 
     def combine_field_data_mpi(
         self,
-        subfield: np.ndarray,
-        out: np.ndarray | None = None,
+        subfield: NumericArray,
+        out: NumericArray | None = None,
         *,
         with_ghost_cells: bool = False,
-    ) -> np.ndarray | None:
+    ) -> NumericArray | None:
         """Combine data of all subfields using MPI.
 
         Args:

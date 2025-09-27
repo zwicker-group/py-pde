@@ -30,14 +30,15 @@ from ..tools.cache import cached_property
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import module_available
 from ..tools.parse_duration import parse_duration
+from ..tools.typing import NumericArray
 from ..trackers.interrupts import ConstantInterrupts, InterruptData, parse_interrupt
 from .base import InfoDict, StorageBase, StorageTracker, WriteModeType
 
 
-def _get_limits(value: float | ArrayLike, dim: int) -> np.ndarray:
+def _get_limits(value: float | ArrayLike, dim: int) -> NumericArray:
     """Helper function creating sequence of length `dim` from input."""
     if np.isscalar(value):
-        return np.full(dim, value, dtype=float)
+        return np.full(dim, value, dtype=float)  # type: ignore
     else:
         return np.asarray(value)[:dim].astype(float)  # type: ignore
 
@@ -397,7 +398,7 @@ class MovieStorage(StorageBase):
         self._warned_normalization = False
         self._state = "writing"
 
-    def _append_data(self, data: np.ndarray, time: float) -> None:
+    def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
 
         Args:
@@ -509,7 +510,7 @@ class MovieStorage(StorageBase):
 
         return times
 
-    def _iter_data(self) -> Iterator[np.ndarray]:
+    def _iter_data(self) -> Iterator[NumericArray]:
         """Iterate over all stored fields."""
         ffmpeg = _import_ffmpeg()  # lazy loading so it's not a hard dependence
 

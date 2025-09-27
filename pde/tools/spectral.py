@@ -17,7 +17,7 @@ from typing import Callable, Literal
 
 import numpy as np
 
-from .typing import NumberOrArray
+from .typing import NumberOrArray, NumericArray
 
 try:
     from pyfftw.interfaces.numpy_fft import irfftn as np_irfftn
@@ -33,11 +33,11 @@ _logger = logging.getLogger(__name__)
 
 def _make_isotropic_correlated_noise(
     shape: tuple[int, ...],
-    corr_spectrum: Callable[[np.ndarray], np.ndarray],
+    corr_spectrum: Callable[[NumericArray], NumericArray],
     *,
     discretization: NumberOrArray = 1.0,
     rng: np.random.Generator | None = None,
-) -> Callable[[], np.ndarray]:
+) -> Callable[[], NumericArray]:
     r"""Return a function creating an array of random values with spatial correlations.
 
     An ensemble average (calling the returned function) multiple times produces normal
@@ -82,10 +82,10 @@ def _make_isotropic_correlated_noise(
     scaling.flat[0] = 0
     scaling /= scaling.mean()  # normalize scaling to correct the variance
 
-    def noise_corr() -> np.ndarray:
+    def noise_corr() -> NumericArray:
         """Return array of correlated noise."""
         # initialize uncorrelated random field
-        arr: np.ndarray = rng.normal(size=shape)
+        arr: NumericArray = rng.normal(size=shape)
         # forward transform to frequency space
         arr = np_rfftn(arr, s=shape, axes=range(dim))
         # scale frequency according to transformed correlation function
@@ -106,7 +106,7 @@ def make_correlated_noise(
     discretization: NumberOrArray = 1.0,
     rng: np.random.Generator | None = None,
     **kwargs,
-) -> Callable[[], np.ndarray]:
+) -> Callable[[], NumericArray]:
     r"""Return a function creating random values with specified spatial correlations.
 
     The returned field :math:`f` generally obeys a selected correlation function
@@ -226,7 +226,7 @@ def make_colored_noise(
     exponent: float = 0,
     scale: float = 1,
     rng: np.random.Generator | None = None,
-) -> Callable[[], np.ndarray]:
+) -> Callable[[], NumericArray]:
     r"""Return a function creating an array of random values that obey.
 
     .. math::
@@ -290,10 +290,10 @@ def make_colored_noise(
     scaling = scale * k2s ** (exponent / 4)
     scaling.flat[0] = 0
 
-    def noise_colored() -> np.ndarray:
+    def noise_colored() -> NumericArray:
         """Return array of colored noise."""
         # random field
-        arr: np.ndarray = rng.normal(size=shape)
+        arr: NumericArray = rng.normal(size=shape)
 
         # forward transform
         arr = np_rfftn(arr)

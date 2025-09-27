@@ -13,13 +13,13 @@ import itertools
 import numpy as np
 from numpy.typing import DTypeLike
 
-from .typing import FloatNumerical
+from .typing import FloatOrArray, NumericArray
 
 
 class Cuboid:
     """Class that represents a cuboid in :math:`n` dimensions."""
 
-    _size: np.ndarray
+    _size: NumericArray
 
     def __init__(self, pos, size, mutable: bool = True):
         """Defines a cuboid from a position and a size vector.
@@ -40,11 +40,11 @@ class Cuboid:
         self.pos.flags.writeable = self.mutable
 
     @property
-    def size(self) -> np.ndarray:
+    def size(self) -> NumericArray:
         return self._size
 
     @size.setter
-    def size(self, value: FloatNumerical):
+    def size(self, value: FloatOrArray):
         self._size = np.array(value, self.pos.dtype)  # make copy
         if self.pos.shape != self._size.shape:
             raise ValueError(
@@ -59,7 +59,7 @@ class Cuboid:
         self._size.flags.writeable = self.mutable
 
     @property
-    def corners(self) -> tuple[np.ndarray, np.ndarray]:
+    def corners(self) -> tuple[NumericArray, NumericArray]:
         """Return coordinates of two extreme corners defining the cuboid."""
         return np.copy(self.pos), self.pos + self.size
 
@@ -74,7 +74,7 @@ class Cuboid:
         self._size.flags.writeable = self._mutable
 
     @classmethod
-    def from_points(cls, p1: np.ndarray, p2: np.ndarray, **kwargs) -> Cuboid:
+    def from_points(cls, p1: NumericArray, p2: NumericArray, **kwargs) -> Cuboid:
         """Create cuboid from two points.
 
         Args:
@@ -89,7 +89,7 @@ class Cuboid:
         return cls(p1, p2 - p1, **kwargs)
 
     @classmethod
-    def from_bounds(cls, bounds: np.ndarray, **kwargs) -> Cuboid:
+    def from_bounds(cls, bounds: NumericArray, **kwargs) -> Cuboid:
         """Create cuboid from bounds.
 
         Args:
@@ -103,7 +103,7 @@ class Cuboid:
 
     @classmethod
     def from_centerpoint(
-        cls, centerpoint: np.ndarray, size: np.ndarray, **kwargs
+        cls, centerpoint: NumericArray, size: NumericArray, **kwargs
     ) -> Cuboid:
         """Create cuboid from two points.
 
@@ -193,7 +193,7 @@ class Cuboid:
     def volume(self) -> float:
         return np.prod(self.size)  # type: ignore
 
-    def buffer(self, amount: FloatNumerical = 0, inplace=False) -> Cuboid:
+    def buffer(self, amount: FloatOrArray = 0, inplace=False) -> Cuboid:
         """Dilate the cuboid by a certain amount in all directions."""
         amount = np.asarray(amount)
         if inplace:
@@ -203,7 +203,7 @@ class Cuboid:
         else:
             return self.__class__(self.pos - amount, self.size + 2 * amount)
 
-    def contains_point(self, points: np.ndarray) -> np.ndarray:
+    def contains_point(self, points: NumericArray) -> NumericArray:
         """Returns a True when `points` are within the Cuboid.
 
         Args:
@@ -226,7 +226,9 @@ class Cuboid:
         return np.all(c1 <= points, axis=-1) & np.all(points <= c2, axis=-1)  # type: ignore
 
 
-def asanyarray_flags(data: np.ndarray, dtype: DTypeLike = None, writeable: bool = True):
+def asanyarray_flags(
+    data: NumericArray, dtype: DTypeLike = None, writeable: bool = True
+):
     """Turns data into an array and sets the respective flags.
 
     A copy is only made if necessary

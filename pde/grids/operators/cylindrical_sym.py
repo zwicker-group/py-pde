@@ -24,13 +24,13 @@ import numpy as np
 from ... import config
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit
-from ...tools.typing import OperatorType
+from ...tools.typing import NumericArray, OperatorType
 from ..boundaries.axes import BoundariesBase, BoundariesList
 from ..cylindrical import CylindricalSymGrid
 from .common import make_general_poisson_solver
 
 
-def _get_laplace_matrix(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
     """Get sparse matrix for Laplace operator on a cylindrical grid.
 
     Args:
@@ -126,7 +126,7 @@ def make_laplace(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply laplace operator to array `arr`"""
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
@@ -163,7 +163,7 @@ def make_gradient(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
+    def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in nb.prange(1, dim_r + 1):  # iterate radial points
             for j in range(1, dim_z + 1):  # iterate axial points
@@ -204,7 +204,7 @@ def make_gradient_squared(
         scale_r, scale_z = 0.25 / grid.discretization**2
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply gradient operator to array `arr`"""
             for i in nb.prange(1, dim_r + 1):  # iterate radial points
                 for j in range(1, dim_z + 1):  # iterate axial points
@@ -217,7 +217,7 @@ def make_gradient_squared(
         scale_r, scale_z = 0.5 / grid.discretization**2
 
         @jit(parallel=parallel)
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply gradient operator to array `arr`"""
             for i in nb.prange(1, dim_r + 1):  # iterate radial points
                 for j in range(1, dim_z + 1):  # iterate axial points
@@ -252,7 +252,7 @@ def make_divergence(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
+    def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply divergence operator to array `arr`"""
         arr_r, arr_z = arr[0], arr[1]
 
@@ -290,7 +290,7 @@ def make_vector_gradient(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
+    def vector_gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         # assign aliases
         arr_r, arr_z, arr_φ = arr
@@ -341,7 +341,7 @@ def make_vector_laplace(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def vector_laplace(arr: np.ndarray, out: np.ndarray) -> None:
+    def vector_laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply vector laplace operator to array `arr`"""
         # assign aliases
         arr_r, arr_z, arr_φ = arr
@@ -398,7 +398,7 @@ def make_tensor_divergence(grid: CylindricalSymGrid) -> OperatorType:
     parallel = dim_r * dim_z >= config["numba.multithreading_threshold"]
 
     @jit(parallel=parallel)
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
+    def tensor_divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply tensor divergence operator to array `arr`"""
         # assign aliases
         arr_rr, arr_rz, arr_rφ = arr[0, 0], arr[0, 1], arr[0, 2]

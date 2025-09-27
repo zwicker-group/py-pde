@@ -74,9 +74,10 @@ from ...tools.cache import cached_method
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import address_as_void_pointer, jit, numba_dict
 from ...tools.typing import (
-    FloatNumerical,
+    FloatOrArray,
     GhostCellSetter,
     NumberOrArray,
+    NumericArray,
     VirtualPointEvaluator,
 )
 from ..base import GridBase, PeriodicityError
@@ -94,7 +95,9 @@ class BCDataError(ValueError):
     """Exception that signals that incompatible data was supplied for the BC."""
 
 
-def _get_arr_1d(arr, idx: tuple[int, ...], axis: int) -> tuple[np.ndarray, int, tuple]:
+def _get_arr_1d(
+    arr, idx: tuple[int, ...], axis: int
+) -> tuple[NumericArray, int, tuple]:
     """Extract the 1d array along axis at point idx.
 
     Args:
@@ -148,7 +151,7 @@ def _get_arr_1d(arr, idx: tuple[int, ...], axis: int) -> tuple[np.ndarray, int, 
 
 def _make_get_arr_1d(
     dim: int, axis: int
-) -> Callable[[np.ndarray, tuple[int, ...]], tuple[np.ndarray, int, tuple]]:
+) -> Callable[[NumericArray, tuple[int, ...]], tuple[NumericArray, int, tuple]]:
     """Create function that extracts a 1d array at a given position.
 
     Args:
@@ -167,12 +170,12 @@ def _make_get_arr_1d(
         Consequently, `i = idx[axis]` and `arr[..., idx] == arr_1d[..., i]`.
     """
     assert 0 <= axis < dim
-    ResultType = tuple[np.ndarray, int, tuple]
+    ResultType = tuple[NumericArray, int, tuple]
 
     # extract the correct indices
     if dim == 1:
 
-        def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
+        def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
             """Extract the 1d array along axis at point idx."""
             i = idx[0]
             bc_idx: tuple = (...,)
@@ -182,7 +185,7 @@ def _make_get_arr_1d(
     elif dim == 2:
         if axis == 0:
 
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
                 """Extract the 1d array along axis at point idx."""
                 i, y = idx
                 bc_idx = (..., y)
@@ -191,7 +194,7 @@ def _make_get_arr_1d(
 
         elif axis == 1:
 
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
                 """Extract the 1d array along axis at point idx."""
                 x, i = idx
                 bc_idx = (..., x)
@@ -201,7 +204,7 @@ def _make_get_arr_1d(
     elif dim == 3:
         if axis == 0:
 
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
                 """Extract the 1d array along axis at point idx."""
                 i, y, z = idx
                 bc_idx = (..., y, z)
@@ -210,7 +213,7 @@ def _make_get_arr_1d(
 
         elif axis == 1:
 
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
                 """Extract the 1d array along axis at point idx."""
                 x, i, z = idx
                 bc_idx = (..., x, z)
@@ -219,7 +222,7 @@ def _make_get_arr_1d(
 
         elif axis == 2:
 
-            def get_arr_1d(arr: np.ndarray, idx: tuple[int, ...]) -> ResultType:
+            def get_arr_1d(arr: NumericArray, idx: tuple[int, ...]) -> ResultType:
                 """Extract the 1d array along axis at point idx."""
                 x, y, i = idx
                 bc_idx = (..., x, y)
@@ -593,7 +596,7 @@ class BCBase(metaclass=ABCMeta):
         """
 
     @abstractmethod
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cell values for this boundary.
 
         Args:
@@ -613,7 +616,7 @@ class BCBase(metaclass=ABCMeta):
         boundary."""
 
         @register_jitable
-        def noop(data_full: np.ndarray, args=None) -> None:
+        def noop(data_full: NumericArray, args=None) -> None:
             """No-operation as the default case."""
 
         return noop  # type: ignore
@@ -650,7 +653,7 @@ class BCBase(metaclass=ABCMeta):
         if self.grid.num_axes == 1:  # 1d grid
 
             @register_jitable
-            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+            def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                 """Helper function setting the conditions on all axes."""
                 data_valid = data_full[..., 1:-1]
                 val = vp_value(data_valid, (np_idx,), args=args)
@@ -664,7 +667,7 @@ class BCBase(metaclass=ABCMeta):
                 num_y = self.grid.shape[1]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1]
                     for j in range(num_y):
@@ -678,7 +681,7 @@ class BCBase(metaclass=ABCMeta):
                 num_x = self.grid.shape[0]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1]
                     for i in range(num_x):
@@ -693,7 +696,7 @@ class BCBase(metaclass=ABCMeta):
                 num_y, num_z = self.grid.shape[1:]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
                     for j in range(num_y):
@@ -708,7 +711,7 @@ class BCBase(metaclass=ABCMeta):
                 num_x, num_z = self.grid.shape[0], self.grid.shape[2]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
@@ -723,7 +726,7 @@ class BCBase(metaclass=ABCMeta):
                 num_x, num_y = self.grid.shape[:2]
 
                 @register_jitable
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     """Helper function setting the conditions on all axes."""
                     data_valid = data_full[..., 1:-1, 1:-1, 1:-1]
                     for i in range(num_x):
@@ -803,7 +806,7 @@ class _MPIBC(BCBase):
         axis_name = self.grid.axes[self.axis]
         return f"MPI @ {axis_name}={self.axis_coord}"
 
-    def send_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def send_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """mpi_send the ghost cell values for this boundary.
 
         Args:
@@ -814,7 +817,7 @@ class _MPIBC(BCBase):
 
         mpi_send(data_full[self._idx_read], self._neighbor_id, self._mpi_flag)
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         from ...tools.mpi import mpi_recv
 
         mpi_recv(data_full[self._idx_write], self._neighbor_id, self._mpi_flag)
@@ -834,34 +837,34 @@ class _MPIBC(BCBase):
 
         if num_axes == 1:
 
-            def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+            def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
                 mpi_send(data_full[..., idx], cell, flag)
 
         elif num_axes == 2:
             if axis == 0:
 
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
                     mpi_send(data_full[..., idx, 1:-1], cell, flag)
 
             else:
 
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
                     mpi_send(data_full[..., 1:-1, idx], cell, flag)
 
         elif num_axes == 3:
             if axis == 0:
 
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
                     mpi_send(data_full[..., idx, 1:-1, 1:-1], cell, flag)
 
             elif axis == 1:
 
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
                     mpi_send(data_full[..., 1:-1, idx, 1:-1], cell, flag)
 
             else:
 
-                def ghost_cell_sender(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_sender(data_full: NumericArray, args=None) -> None:
                     mpi_send(data_full[..., 1:-1, 1:-1, idx], cell, flag)
 
         else:
@@ -881,7 +884,7 @@ class _MPIBC(BCBase):
 
         if num_axes == 1:
 
-            def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+            def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                 if data_full.ndim == 1:
                     # in this case, `data_full[..., idx]` is a scalar, which numba
                     # treats differently, so `numba_mpi.mpi_recv` fails
@@ -894,28 +897,28 @@ class _MPIBC(BCBase):
         elif num_axes == 2:
             if axis == 0:
 
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     mpi_recv(data_full[..., idx, 1:-1], cell, flag)
 
             else:
 
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     mpi_recv(data_full[..., 1:-1, idx], cell, flag)
 
         elif num_axes == 3:
             if axis == 0:
 
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     mpi_recv(data_full[..., idx, 1:-1, 1:-1], cell, flag)
 
             elif axis == 1:
 
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     mpi_recv(data_full[..., 1:-1, idx, 1:-1], cell, flag)
 
             else:
 
-                def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+                def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
                     mpi_recv(data_full[..., 1:-1, 1:-1, idx], cell, flag)
 
         else:
@@ -973,7 +976,7 @@ class UserBC(BCBase):
             grid=subgrid, axis=self.axis, upper=self.upper, rank=self.rank
         )
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         if args is None:
             # usual case where set_ghost_cells is called automatically. In our case,
             # won't do anything since we expect the user to call the function manually
@@ -1016,7 +1019,7 @@ class UserBC(BCBase):
         get_arr_1d = _make_get_arr_1d(self.grid.num_axes, self.axis)
         dx = self.grid.discretization[self.axis]
 
-        def extract_value(values, arr: np.ndarray, idx: tuple[int, ...]):
+        def extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
             """Helper function that extracts the correct value from supplied ones."""
             if isinstance(values, (nb.types.Number, Number)):
                 # scalar was supplied => simply return it
@@ -1029,17 +1032,17 @@ class UserBC(BCBase):
                 raise TypeError("Either a scalar or an array must be supplied")
 
         @overload(extract_value)
-        def ol_extract_value(values, arr: np.ndarray, idx: tuple[int, ...]):
+        def ol_extract_value(values, arr: NumericArray, idx: tuple[int, ...]):
             """Helper function that extracts the correct value from supplied ones."""
             if isinstance(values, (nb.types.Number, Number)):
                 # scalar was supplied => simply return it
-                def impl(values, arr: np.ndarray, idx: tuple[int, ...]):
+                def impl(values, arr: NumericArray, idx: tuple[int, ...]):
                     return values
 
             elif isinstance(arr, (nb.types.Array, np.ndarray)):
                 # array was supplied => extract value at current position
 
-                def impl(values, arr: np.ndarray, idx: tuple[int, ...]):
+                def impl(values, arr: NumericArray, idx: tuple[int, ...]):
                     _, _, bc_idx = get_arr_1d(arr, idx)
                     return values[bc_idx]
 
@@ -1049,7 +1052,7 @@ class UserBC(BCBase):
             return impl
 
         @register_jitable
-        def virtual_point(arr: np.ndarray, idx: tuple[int, ...], args):
+        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args):
             """Evaluate the virtual point at `idx`"""
             if "virtual_point" in args:
                 # set the virtual point directly
@@ -1076,7 +1079,7 @@ class UserBC(BCBase):
         ghost_cell_setter_inner = super().make_ghost_cell_setter()
 
         @register_jitable
-        def ghost_cell_setter(data_full: np.ndarray, args=None) -> None:
+        def ghost_cell_setter(data_full: NumericArray, args=None) -> None:
             """Helper function setting the conditions on all axes."""
             if args is None:
                 return  # no-op when no specific arguments are given
@@ -1532,7 +1535,7 @@ class ExpressionBC(BCBase):
                 raise IndexError(f"Index {self.value_cell} out of bounds ({size=})")
             return idx - 1 if with_ghost_cells else idx
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         dx = self.grid.discretization[self.axis]
 
         # prepare the array of slices to index bcs
@@ -1582,7 +1585,7 @@ class ExpressionBC(BCBase):
         func = self._func(do_jit=True)
 
         @jit
-        def virtual_point(arr: np.ndarray, idx: tuple[int, ...], args=None) -> float:
+        def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None) -> float:
             """Evaluate the virtual point at `idx`"""
             _, _, bc_idx = get_arr_1d(arr, idx)
             grid_value = arr[idx]
@@ -1732,7 +1735,7 @@ class ExpressionMixedBC(ExpressionBC):
 class ConstBCBase(BCBase):
     """Base class representing a boundary whose virtual point is set from constants."""
 
-    _value: np.ndarray
+    _value: NumericArray
 
     value_is_linked: bool
     """ bool: flag that indicates whether the value associated with this
@@ -1747,7 +1750,7 @@ class ConstBCBase(BCBase):
         upper: bool,
         *,
         rank: int = 0,
-        value: float | np.ndarray | str = 0,
+        value: float | NumericArray | str = 0,
     ):
         """
         Warning:
@@ -1786,12 +1789,12 @@ class ConstBCBase(BCBase):
         return super().__eq__(other) and np.array_equal(self.value, other.value)
 
     @property
-    def value(self) -> np.ndarray:
+    def value(self) -> NumericArray:
         return self._value
 
     @value.setter
     @fill_in_docstring
-    def value(self, value: float | np.ndarray | str = 0):
+    def value(self, value: float | NumericArray | str = 0):
         """Set the value of this boundary condition.
 
         Warning:
@@ -1841,7 +1844,7 @@ class ConstBCBase(BCBase):
             return self.__repr__()
 
     @fill_in_docstring
-    def _parse_value(self, value: float | np.ndarray | str) -> np.ndarray:
+    def _parse_value(self, value: float | NumericArray | str) -> NumericArray:
         """Parses a boundary value.
 
         Warning:
@@ -1934,7 +1937,7 @@ class ConstBCBase(BCBase):
 
         return result  # type: ignore
 
-    def link_value(self, value: np.ndarray):
+    def link_value(self, value: NumericArray):
         """Link value of this boundary condition to external array."""
         assert value.data.c_contiguous
 
@@ -1952,7 +1955,7 @@ class ConstBCBase(BCBase):
         self: ConstBCBase,
         upper: bool | None = None,
         rank: int | None = None,
-        value: float | np.ndarray | str | None = None,
+        value: float | NumericArray | str | None = None,
     ) -> ConstBCBase:
         """Return a copy of itself, but with a reference to the same grid."""
         obj = self.__class__(
@@ -1990,7 +1993,7 @@ class ConstBCBase(BCBase):
             value=self.value,
         )
 
-    def _make_value_getter(self) -> Callable[[], np.ndarray]:
+    def _make_value_getter(self) -> Callable[[], NumericArray]:
         """Return a (compiled) function for obtaining the value.
 
         Note:
@@ -2014,7 +2017,7 @@ class ConstBCBase(BCBase):
         # problems with address_as_void_pointer
 
         @nb.njit(nb.typeof(self._value)(), inline="always")
-        def get_value() -> np.ndarray:
+        def get_value() -> NumericArray:
             """Helper function returning the linked array."""
             return nb.carray(address_as_void_pointer(mem_addr), shape, dtype)  # type: ignore
 
@@ -2114,7 +2117,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
             @jit
             def virtual_point(
-                arr: np.ndarray, idx: tuple[int, ...], args=None
+                arr: NumericArray, idx: tuple[int, ...], args=None
             ) -> float:
                 """Evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
@@ -2128,7 +2131,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
             @jit
             def virtual_point(
-                arr: np.ndarray, idx: tuple[int, ...], args=None
+                arr: NumericArray, idx: tuple[int, ...], args=None
             ) -> float:
                 """Evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
@@ -2140,7 +2143,7 @@ class ConstBC1stOrderBase(ConstBCBase):
 
         return virtual_point  # type: ignore
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         # calculate necessary constants
         const, factor, index = self.get_virtual_point_data()
 
@@ -2393,8 +2396,8 @@ class MixedBC(ConstBC1stOrderBase):
         upper: bool,
         *,
         rank: int = 0,
-        value: float | np.ndarray | str = 0,
-        const: float | np.ndarray | str = 0,
+        value: float | NumericArray | str = 0,
+        const: float | NumericArray | str = 0,
     ):
         r"""
         Args:
@@ -2433,8 +2436,8 @@ class MixedBC(ConstBC1stOrderBase):
         self: MixedBC,
         upper: bool | None = None,
         rank: int | None = None,
-        value: float | np.ndarray | str | None = None,
-        const: float | np.ndarray | str | None = None,
+        value: float | NumericArray | str | None = None,
+        const: float | NumericArray | str | None = None,
     ) -> MixedBC:
         """Return a copy of itself, but with a reference to the same grid."""
         obj = self.__class__(
@@ -2645,7 +2648,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
         if self.homogeneous:
 
             @register_jitable
-            def virtual_point(arr: np.ndarray, idx: tuple[int, ...], args=None):
+            def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None):
                 """Evaluate the virtual point at `idx`"""
                 arr_1d, _, _ = get_arr_1d(arr, idx)
                 if normal:
@@ -2659,7 +2662,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
         else:
 
             @register_jitable
-            def virtual_point(arr: np.ndarray, idx: tuple[int, ...], args=None):
+            def virtual_point(arr: NumericArray, idx: tuple[int, ...], args=None):
                 """Evaluate the virtual point at `idx`"""
                 arr_1d, _, bc_idx = get_arr_1d(arr, idx)
                 if normal:
@@ -2672,7 +2675,7 @@ class ConstBC2ndOrderBase(ConstBCBase):
 
         return virtual_point  # type: ignore
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         # calculate necessary constants
         data = self.get_virtual_point_data()
 
@@ -2729,7 +2732,7 @@ class CurvatureBC(ConstBC2ndOrderBase):
 
     def get_virtual_point_data(
         self,
-    ) -> tuple[np.ndarray, np.ndarray, int, np.ndarray, int]:
+    ) -> tuple[NumericArray, NumericArray, int, NumericArray, int]:
         """Return data suitable for calculating virtual points.
 
         Returns:

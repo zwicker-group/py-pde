@@ -18,7 +18,7 @@ import numba as nb
 import numpy as np
 from numba.experimental import jitclass
 
-from .typing import ArrayLike
+from .typing import ArrayLike, NumericArray
 
 
 class SmoothData1D:
@@ -68,7 +68,7 @@ class SmoothData1D:
         """Checks whether the value `x` is contain in the range of x-values."""
         return self.x.min() <= x <= self.x.max()  # type: ignore
 
-    def __call__(self, xs: ArrayLike) -> np.ndarray:
+    def __call__(self, xs: ArrayLike) -> NumericArray:
         """Return smoothed y values for the positions given in `xs`
 
         Args:
@@ -92,7 +92,7 @@ class SmoothData1D:
         result = self.y @ weight
         return result.reshape(shape)  # type: ignore
 
-    def derivative(self, xs: ArrayLike) -> np.ndarray:
+    def derivative(self, xs: ArrayLike) -> NumericArray:
         """Return the derivative of the smoothed values for the positions `xs`
 
         Note that this value

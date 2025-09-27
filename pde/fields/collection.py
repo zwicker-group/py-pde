@@ -26,7 +26,7 @@ from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.misc import Number, number_array
 from ..tools.plotting import PlotReference, plot_on_axes, plot_on_figure
-from ..tools.typing import NumberOrArray
+from ..tools.typing import NumberOrArray, NumericArray
 from .base import FieldBase
 from .datafield_base import DataFieldBase
 from .scalar import ScalarField
@@ -103,7 +103,7 @@ class FieldCollection(FieldBase):
             self._fields = fields  # type: ignore
 
         # extract data from individual fields
-        fields_data: list[np.ndarray] = []
+        fields_data: list[NumericArray] = []
         self._slices: list[slice] = []
         dof = 0  # count local degrees of freedom
         for field in self.fields:
@@ -253,7 +253,7 @@ class FieldCollection(FieldBase):
 
     @classmethod
     def from_state(
-        cls, attributes: dict[str, Any], data: np.ndarray | None = None
+        cls, attributes: dict[str, Any], data: NumericArray | None = None
     ) -> FieldCollection:
         """Create a field collection from given state.
 
@@ -286,7 +286,7 @@ class FieldCollection(FieldBase):
         cls,
         field_classes,
         grid: GridBase,
-        data: np.ndarray,
+        data: NumericArray,
         *,
         with_ghost_cells: bool = True,
         label: str | None = None,
@@ -701,7 +701,7 @@ class FieldCollection(FieldBase):
         return [field.average for field in self]
 
     @property
-    def magnitudes(self) -> np.ndarray:
+    def magnitudes(self) -> NumericArray:
         """:class:`~numpy.ndarray`: scalar magnitudes of all fields."""
         return np.array([field.magnitude for field in self])  # type: ignore
 
@@ -807,7 +807,7 @@ class FieldCollection(FieldBase):
         transpose: bool = False,
         vmin: float | list[float | None] | None = None,
         vmax: float | list[float | None] | None = None,
-    ) -> tuple[np.ndarray, dict[str, Any]]:
+    ) -> tuple[NumericArray, dict[str, Any]]:
         """Obtain data required for a merged plot.
 
         Args:

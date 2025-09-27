@@ -15,6 +15,7 @@ from ..grids.boundaries import set_default_bc
 from ..grids.boundaries.axes import BoundariesData
 from ..tools.docstrings import fill_in_docstring
 from ..tools.numba import jit
+from ..tools.typing import NumericArray
 from .base import PDEBase, expr_prod
 
 
@@ -113,7 +114,7 @@ class SwiftHohenbergPDE(PDEBase):
 
     def _make_pde_rhs_numba(  # type: ignore
         self, state: ScalarField
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function evaluating the right hand side of the PDE.
 
         Args:
@@ -137,7 +138,7 @@ class SwiftHohenbergPDE(PDEBase):
         laplace2 = state.grid.make_operator("laplace", bc=self.bc_lap)
 
         @jit(signature)
-        def pde_rhs(state_data: np.ndarray, t: float):
+        def pde_rhs(state_data: NumericArray, t: float):
             """Compiled helper function evaluating right hand side."""
             state_laplace = laplace(state_data, args={"t": t})
             state_laplace2 = laplace2(state_laplace, args={"t": t})

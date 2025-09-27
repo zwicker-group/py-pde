@@ -18,6 +18,8 @@ from typing import Optional, Union
 import numpy as np
 from numpy.typing import DTypeLike
 
+from .typing import NumericArray
+
 
 @dataclass
 class FFmpegFormat:
@@ -57,11 +59,11 @@ class FFmpegFormat:
         else:
             return 1.0
 
-    def data_to_frame(self, normalized_data: np.ndarray) -> np.ndarray:
+    def data_to_frame(self, normalized_data: NumericArray) -> NumericArray:
         """Converts normalized data to data being stored in a color channel."""
         return np.ascontiguousarray(normalized_data * self.max_value, dtype=self.dtype)  # type:ignore
 
-    def data_from_frame(self, frame_data: np.ndarray):
+    def data_from_frame(self, frame_data: NumericArray):
         """Converts data stored in a color channel to normalized data."""
         return frame_data.astype(float) / self.max_value
 

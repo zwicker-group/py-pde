@@ -32,7 +32,7 @@ from typing import Any, Callable, TypeVar
 import numpy as np
 from numpy.typing import DTypeLike
 
-from .typing import ArrayLike, Number
+from .typing import ArrayLike, Number, NumericArray
 
 TFunc = TypeVar("TFunc", bound=Callable[..., Any])
 
@@ -298,7 +298,7 @@ def get_common_dtype(*args):
 
 def number_array(
     data: ArrayLike, dtype: DTypeLike = None, copy: bool | None = None
-) -> np.ndarray:
+) -> NumericArray:
     """Convert data into an array, assuming float numbers if no dtype is given.
 
     Args:

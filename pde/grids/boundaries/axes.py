@@ -24,7 +24,7 @@ from numba.extending import register_jitable
 
 from ... import config
 from ...tools.numba import jit
-from ...tools.typing import GhostCellSetter
+from ...tools.typing import GhostCellSetter, NumericArray
 from ..base import GridBase, PeriodicityError
 from .axis import BoundaryAxisBase, BoundaryPair, BoundaryPairData, get_boundary_axis
 from .local import BCBase, BCDataError, BoundaryData
@@ -47,7 +47,7 @@ def _is_local_bc_data(data: dict[str, Any]) -> bool:
 class BoundariesBase:
     """Base class keeping information about how to set conditions on all boundaries."""
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cells for all boundaries.
 
         Args:
@@ -65,7 +65,7 @@ class BoundariesBase:
         """Return function that sets the ghost cells on a full array.
 
         Returns:
-            Callable with signature :code:`(data_full: np.ndarray, args=None)`, which
+            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
             sets the ghost cells of the full data, potentially using additional
             information in `args` (e.g., the time `t` during solving a PDE)
         """
@@ -437,7 +437,7 @@ class BoundariesList(BoundariesBase):
         return "\n".join(result)
 
     def set_ghost_cells(
-        self, data_full: np.ndarray, *, set_corners: bool = False, args=None
+        self, data_full: NumericArray, *, set_corners: bool = False, args=None
     ) -> None:
         """Set the ghost cells for all boundaries.
 
@@ -490,7 +490,7 @@ class BoundariesList(BoundariesBase):
         # from pde.tools.numba import jit
         #
         # @jit
-        # def set_ghost_cells(data_full: np.ndarray, args=None) -> None:
+        # def set_ghost_cells(data_full: NumericArray, args=None) -> None:
         #     for f in nb.literal_unroll(ghost_cell_setters):
         #         f(data_full, args=args)
         #
@@ -506,13 +506,13 @@ class BoundariesList(BoundariesBase):
             if inner is None:
 
                 @register_jitable
-                def wrap(data_full: np.ndarray, args=None) -> None:
+                def wrap(data_full: NumericArray, args=None) -> None:
                     first(data_full, args=args)
 
             else:
 
                 @register_jitable
-                def wrap(data_full: np.ndarray, args=None) -> None:
+                def wrap(data_full: NumericArray, args=None) -> None:
                     inner(data_full, args=args)
                     first(data_full, args=args)
 
@@ -571,7 +571,7 @@ class BoundariesSetter(BoundariesBase):
 
         return BoundariesSetter(data)
 
-    def set_ghost_cells(self, data_full: np.ndarray, *, args=None) -> None:
+    def set_ghost_cells(self, data_full: NumericArray, *, args=None) -> None:
         """Set the ghost cells for all boundaries.
 
         Args:
@@ -589,7 +589,7 @@ class BoundariesSetter(BoundariesBase):
         """Return function that sets the ghost cells on a full array.
 
         Returns:
-            Callable with signature :code:`(data_full: np.ndarray, args=None)`, which
+            Callable with signature :code:`(data_full: NumericArray, args=None)`, which
             sets the ghost cells of the full data, potentially using additional
             information in `args` (e.g., the time `t` during solving a PDE)
         """

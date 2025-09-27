@@ -21,7 +21,7 @@ import numpy as np
 
 from ...tools.docstrings import fill_in_docstring
 from ...tools.numba import jit
-from ...tools.typing import OperatorType
+from ...tools.typing import NumericArray, OperatorType
 from ..boundaries.axes import BoundariesBase, BoundariesList
 from ..spherical import PolarSymGrid
 from .common import make_general_poisson_solver
@@ -50,7 +50,7 @@ def make_laplace(grid: PolarSymGrid) -> OperatorType:
     dr_2 = 1 / dr**2
 
     @jit
-    def laplace(arr: np.ndarray, out: np.ndarray) -> None:
+    def laplace(arr: NumericArray, out: NumericArray) -> None:
         """Apply laplace operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
             out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * dr_2
@@ -90,7 +90,7 @@ def make_gradient(
         raise ValueError(f"Unknown derivative type `{method}`")
 
     @jit
-    def gradient(arr: np.ndarray, out: np.ndarray) -> None:
+    def gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply gradient operator to array `arr`"""
         for i in range(1, dim_r + 1):  # iterate inner radial points
             if method == "central":
@@ -134,7 +134,7 @@ def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> Operat
         scale = 0.25 / dr**2
 
         @jit
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
                 out[i - 1] = (arr[i + 1] - arr[i - 1]) ** 2 * scale
@@ -144,7 +144,7 @@ def make_gradient_squared(grid: PolarSymGrid, *, central: bool = True) -> Operat
         scale = 0.5 / dr**2
 
         @jit
-        def gradient_squared(arr: np.ndarray, out: np.ndarray) -> None:
+        def gradient_squared(arr: NumericArray, out: NumericArray) -> None:
             """Apply squared gradient operator to array `arr`"""
             for i in range(1, dim_r + 1):  # iterate inner radial points
                 term = (arr[i + 1] - arr[i]) ** 2 + (arr[i] - arr[i - 1]) ** 2
@@ -176,7 +176,7 @@ def make_divergence(grid: PolarSymGrid) -> OperatorType:
     scale_r = 1 / (2 * dr)
 
     @jit
-    def divergence(arr: np.ndarray, out: np.ndarray) -> None:
+    def divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply divergence operator to array `arr`"""
         # inner radial boundary condition
         for i in range(1, dim_r + 1):  # iterate radial points
@@ -209,7 +209,7 @@ def make_vector_gradient(grid: PolarSymGrid) -> OperatorType:
     scale_r = 1 / (2 * dr)
 
     @jit
-    def vector_gradient(arr: np.ndarray, out: np.ndarray) -> None:
+    def vector_gradient(arr: NumericArray, out: NumericArray) -> None:
         """Apply vector gradient operator to array `arr`"""
         # assign aliases
         arr_r, arr_φ = arr
@@ -248,7 +248,7 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
     scale_r = 1 / (2 * dr)
 
     @jit
-    def tensor_divergence(arr: np.ndarray, out: np.ndarray) -> None:
+    def tensor_divergence(arr: NumericArray, out: NumericArray) -> None:
         """Apply tensor divergence operator to array `arr`"""
         # assign aliases
         arr_rr, arr_rφ = arr[0, 0, :], arr[0, 1, :]
@@ -266,7 +266,7 @@ def make_tensor_divergence(grid: PolarSymGrid) -> OperatorType:
 
 
 @fill_in_docstring
-def _get_laplace_matrix(bcs: BoundariesList) -> tuple[np.ndarray, np.ndarray]:
+def _get_laplace_matrix(bcs: BoundariesList) -> tuple[NumericArray, NumericArray]:
     """Get sparse matrix for laplace operator on a polar grid.
 
     Args:

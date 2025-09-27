@@ -28,7 +28,7 @@ from numba.typed import Dict as NumbaDict
 
 from .. import config
 from ..tools.misc import decorator_arguments
-from .typing import Number
+from .typing import Number, NumericArray
 
 # numba version as a list of integers
 NUMBA_VERSION = [int(v) for v in nb.__version__.split(".")[:2]]
@@ -132,7 +132,7 @@ def numba_environment() -> dict[str, Any]:
     }
 
 
-def flat_idx(arr: np.ndarray, i: int) -> Number:
+def flat_idx(arr: NumericArray, i: int) -> Number:
     """Helper function allowing indexing of scalars as if they arrays.
 
     Args:
@@ -244,7 +244,7 @@ else:
         return sig, codegen
 
 
-def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
+def make_array_constructor(arr: NumericArray) -> Callable[[], NumericArray]:
     """Returns an array within a jitted function using basic information.
 
     Args:
@@ -261,9 +261,9 @@ def make_array_constructor(arr: np.ndarray) -> Callable[[], np.ndarray]:
     dtype = arr.dtype
 
     @register_jitable
-    def array_constructor() -> np.ndarray:
+    def array_constructor() -> NumericArray:
         """Helper that reconstructs the array from the pointer and structural info."""
-        data: np.ndarray = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
+        data: NumericArray = nb.carray(address_as_void_pointer(data_addr), shape, dtype)
         if strides is not None:
             data = np.lib.stride_tricks.as_strided(data, shape, strides)
         return data

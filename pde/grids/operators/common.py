@@ -12,7 +12,7 @@ from typing import Callable, Literal
 import numpy as np
 
 from ...tools.numba import jit
-from ...tools.typing import OperatorType
+from ...tools.typing import NumericArray, OperatorType
 from ..base import GridBase
 
 
@@ -56,7 +56,7 @@ def make_derivative(
     if num_axes == 1:
 
         @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
+        def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
                 if method == "central":
@@ -69,7 +69,7 @@ def make_derivative(
     elif num_axes == 2:
 
         @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
+        def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 2d array `arr`"""
             for i in range(1, shape[0] + 1):
                 for j in range(1, shape[1] + 1):
@@ -85,7 +85,7 @@ def make_derivative(
     elif num_axes == 3:
 
         @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
+        def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 3d array `arr`"""
             for i in range(1, shape[0] + 1):
                 for j in range(1, shape[1] + 1):
@@ -137,7 +137,7 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
     if num_axes == 1:
 
         @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
+        def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 1d array `arr`"""
             for i in range(1, shape[0] + 1):
                 out[i - 1] = (arr[i + 1] - 2 * arr[i] + arr[i - 1]) * scale
@@ -145,7 +145,7 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
     elif num_axes == 2:
 
         @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
+        def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 2d array `arr`"""
             for i in range(1, shape[0] + 1):
                 for j in range(1, shape[1] + 1):
@@ -156,7 +156,7 @@ def make_derivative2(grid: GridBase, axis: int = 0) -> OperatorType:
     elif num_axes == 3:
 
         @jit
-        def diff(arr: np.ndarray, out: np.ndarray) -> None:
+        def diff(arr: NumericArray, out: NumericArray) -> None:
             """Calculate derivative of 3d array `arr`"""
             for i in range(1, shape[0] + 1):
                 for j in range(1, shape[1] + 1):
@@ -197,7 +197,7 @@ def uniform_discretization(grid: GridBase) -> float:
 
 def make_laplace_from_matrix(
     matrix, vector
-) -> Callable[[np.ndarray, np.ndarray | None], np.ndarray]:
+) -> Callable[[NumericArray, NumericArray | None], NumericArray]:
     """Make a Laplace operator using matrix vector products.
 
     Args:
@@ -213,7 +213,7 @@ def make_laplace_from_matrix(
     mat = matrix.tocsc()
     vec = vector.toarray()[:, 0]
 
-    def laplace(arr: np.ndarray, out: np.ndarray | None = None) -> np.ndarray:
+    def laplace(arr: NumericArray, out: NumericArray | None = None) -> NumericArray:
         """Apply the laplace operator to `arr`"""
         result = mat.dot(arr.flat) + vec
         if out is None:
@@ -259,7 +259,7 @@ def make_general_poisson_solver(
     mat = matrix.tocsc()
     vec = vector.toarray()[:, 0]
 
-    def solve_poisson(arr: np.ndarray, out: np.ndarray) -> None:
+    def solve_poisson(arr: NumericArray, out: NumericArray) -> None:
         """Solves Poisson's equation using sparse linear algebra."""
         # prepare the right hand side vector
         rhs = np.ravel(arr) - vec

@@ -36,6 +36,7 @@ from ..tools.plotting import (
     plot_on_axes,
     plot_on_figure,
 )
+from ..tools.typing import NumericArray
 
 _logger = logging.getLogger(__name__)
 ScaleData = Union[str, float, tuple[float, float]]
@@ -844,7 +845,7 @@ def plot_interactive(
         raise RuntimeError("Storage did not contain information about the grid")
 
     # collect data from all time points
-    timecourse: dict[str, list[np.ndarray]] = {}
+    timecourse: dict[str, list[NumericArray]] = {}
     for field in storage:
         layer_data = field._get_napari_data(**kwargs)
 

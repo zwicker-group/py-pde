@@ -16,7 +16,7 @@ from ..fields import FieldCollection
 from ..fields.base import FieldBase
 from ..fields.datafield_base import DataFieldBase
 from ..tools.numba import jit
-from ..tools.typing import ArrayLike, StepperHook
+from ..tools.typing import ArrayLike, NumericArray, StepperHook
 from ..trackers.base import TrackerCollectionDataType
 
 if TYPE_CHECKING:
@@ -187,7 +187,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def _make_pde_rhs_numba(
         self, state: FieldBase, **kwargs
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side."""
         raise NotImplementedError(
             "The right-hand side of the PDE is not implemented using the `numba` "
@@ -249,7 +249,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def _make_pde_rhs_numba_cached(
         self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Create a compiled function for evaluating the right hand side.
 
         This method implements caching and checking of the actual method, which is
@@ -296,7 +296,7 @@ class PDEBase(metaclass=ABCMeta):
         state: TState,
         backend: Literal["auto", "numpy", "numba"] = "auto",
         **kwargs,
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the right hand side of the PDE.
 
         Args:
@@ -323,7 +323,9 @@ class PDEBase(metaclass=ABCMeta):
             # "auto" and the numba compilation is not available
             state = state.copy()  # save this exact state for the closure
 
-            def evolution_rate_numpy(state_data: np.ndarray, t: float) -> np.ndarray:
+            def evolution_rate_numpy(
+                state_data: NumericArray, t: float
+            ) -> NumericArray:
                 """Evaluate the rhs given only a state without the grid."""
                 state.data = state_data
                 return self.evolution_rate(state, t, **kwargs).data
@@ -404,7 +406,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def _make_noise_realization_numba(
         self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], np.ndarray]:
+    ) -> Callable[[NumericArray, float], NumericArray]:
         """Return a function for evaluating the noise term of the PDE.
 
         Args:
@@ -426,12 +428,14 @@ class PDEBase(metaclass=ABCMeta):
 
             if isinstance(state, FieldCollection):
                 # different noise strengths, assuming one for each field
-                noises_var: np.ndarray = np.empty(data_shape[0])
+                noises_var: NumericArray = np.empty(data_shape[0])
                 for n, noise_var in enumerate(np.broadcast_to(self.noise, len(state))):
                     noises_var[state._slices[n]] = noise_var
 
                 @jit
-                def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
+                def noise_realization(
+                    state_data: NumericArray, t: float
+                ) -> NumericArray:
                     """Helper function returning a noise realization."""
                     out = np.empty(data_shape)
                     for n in range(len(state_data)):
@@ -448,7 +452,9 @@ class PDEBase(metaclass=ABCMeta):
                 noise_var = float(self.noise)
 
                 @jit
-                def noise_realization(state_data: np.ndarray, t: float) -> np.ndarray:
+                def noise_realization(
+                    state_data: NumericArray, t: float
+                ) -> NumericArray:
                     """Helper function returning a noise realization."""
                     out = np.empty(state_data.shape)
                     for i in range(state_data.size):
@@ -459,14 +465,14 @@ class PDEBase(metaclass=ABCMeta):
         else:
 
             @jit
-            def noise_realization(state_data: np.ndarray, t: float) -> None:
+            def noise_realization(state_data: NumericArray, t: float) -> None:
                 """Helper function returning a noise realization."""
 
         return noise_realization  # type: ignore
 
     def _make_sde_rhs_numba(
         self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
         """Return a function for evaluating the noise term of the PDE.
 
         Args:
@@ -481,7 +487,9 @@ class PDEBase(metaclass=ABCMeta):
         noise_realization = self._make_noise_realization_numba(state, **kwargs)
 
         @jit
-        def sde_rhs(state_data: np.ndarray, t: float) -> tuple[np.ndarray, np.ndarray]:
+        def sde_rhs(
+            state_data: NumericArray, t: float
+        ) -> tuple[NumericArray, NumericArray]:
             """Compiled helper function returning a noise realization."""
             return (evolution_rate(state_data, t), noise_realization(state_data, t))
 
@@ -489,7 +497,7 @@ class PDEBase(metaclass=ABCMeta):
 
     def _make_sde_rhs_numba_cached(
         self, state: TState, **kwargs
-    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
         """Create a compiled function for evaluating the noise term of the PDE.
 
         Args:
@@ -523,7 +531,7 @@ class PDEBase(metaclass=ABCMeta):
         state: TState,
         backend: Literal["auto", "numpy", "numba"] = "auto",
         **kwargs,
-    ) -> Callable[[np.ndarray, float], tuple[np.ndarray, np.ndarray]]:
+    ) -> Callable[[NumericArray, float], tuple[NumericArray, NumericArray]]:
         """Return a function for evaluating the right hand side of the SDE.
 
         Args:
@@ -554,8 +562,8 @@ class PDEBase(metaclass=ABCMeta):
             state = state.copy()
 
             def sde_rhs(
-                state_data: np.ndarray, t: float
-            ) -> tuple[np.ndarray, np.ndarray]:
+                state_data: NumericArray, t: float
+            ) -> tuple[NumericArray, NumericArray]:
                 """Evaluate the rhs given only a state without the grid."""
                 state.data = state_data
                 return (

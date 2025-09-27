@@ -20,6 +20,7 @@ from ..fields.datafield_base import DataFieldBase
 from ..grids.base import GridBase
 from ..tools.docstrings import fill_in_docstring
 from ..tools.output import display_progress
+from ..tools.typing import NumericArray
 from ..trackers.base import InfoDict, TransformationType, TransformedTrackerBase
 from ..trackers.interrupts import InterruptData
 
@@ -106,7 +107,7 @@ class StorageBase(metaclass=ABCMeta):
             return self._dtype
 
     @abstractmethod
-    def _append_data(self, data: np.ndarray, time: float) -> None:
+    def _append_data(self, data: NumericArray, time: float) -> None:
         """Append a new data set.
 
         Args:

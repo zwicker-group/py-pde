@@ -17,7 +17,7 @@ from numpy.typing import DTypeLike
 
 from ..grids.base import GridBase
 from ..tools.plotting import napari_add_layers, napari_viewer
-from ..tools.typing import NumberOrArray
+from ..tools.typing import NumberOrArray, NumericArray
 
 if TYPE_CHECKING:
     from .scalar import ScalarField
@@ -38,15 +38,15 @@ class FieldBase(metaclass=ABCMeta):
 
     _subclasses: dict[str, type[FieldBase]] = {}  # all classes inheriting from this
     _grid: GridBase  # the grid on which the field is defined
-    __data_full: np.ndarray  # the data on the grid including ghost points
-    _data_valid: np.ndarray  # the valid data without ghost points
+    __data_full: NumericArray  # the data on the grid including ghost points
+    _data_valid: NumericArray  # the valid data without ghost points
     _label: str | None  # name of the field
     _logger: logging.Logger  # logger instance to output information
 
     def __init__(
         self,
         grid: GridBase,
-        data: np.ndarray,
+        data: NumericArray,
         *,
         label: str | None = None,
     ):
@@ -82,7 +82,7 @@ class FieldBase(metaclass=ABCMeta):
         return state
 
     @property
-    def data(self) -> np.ndarray:
+    def data(self) -> NumericArray:
         """:class:`~numpy.ndarray`: discretized data at the support points."""
         return self._data_valid
 
@@ -109,7 +109,7 @@ class FieldBase(metaclass=ABCMeta):
         return idx_comp + self.grid._idx_valid
 
     @property
-    def _data_full(self) -> np.ndarray:
+    def _data_full(self) -> NumericArray:
         """:class:`~numpy.ndarray`: the full data including ghost cells."""
         return self.__data_full
 
@@ -146,17 +146,17 @@ class FieldBase(metaclass=ABCMeta):
         self._data_valid = self.__data_full[self._idx_valid]
 
     @property
-    def _data_flat(self) -> np.ndarray:
+    def _data_flat(self) -> NumericArray:
         """:class:`~numpy.ndarray`: flat version of discretized data with ghost
         cells."""
         # flatten the first dimension of the internal data by creating a view and then
         # setting the new shape. This disallows accidental copying of the data
         data_flat = self._data_full.view()
         data_flat.shape = (-1, *self.grid._shape_full)
-        return data_flat
+        return data_flat  # type: ignore
 
     @_data_flat.setter
-    def _data_flat(self, value: np.ndarray) -> None:
+    def _data_flat(self, value: NumericArray) -> None:
         """Set the full data including ghost cells from a flattened array."""
         # simply set the data -> this might need to be overwritten
         self._data_full = value
@@ -187,7 +187,7 @@ class FieldBase(metaclass=ABCMeta):
 
     @classmethod
     def from_state(
-        cls, attributes: dict[str, Any], data: np.ndarray | None = None
+        cls, attributes: dict[str, Any], data: NumericArray | None = None
     ) -> FieldBase:
         """Create a field from given state.
 
